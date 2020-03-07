@@ -1,11 +1,14 @@
-# cup1d
-Cosmology using P1D - small scale clustering of the Lyman alpha forest
+# cup1d - Cosmology using P1D - small scale clustering of the Lyman alpha forest
 
 This repository contains some tools to perform the last steps of a cosmological analysis of the 1D power spectrum (P1D) of the Lyman alpha forest. 
 
-p1d_archive and derived classes contain the measured P1D from a given suite of simulations, and can be used as a starting point  to setup different emulators / interpolators.
+p1d_archive and derived classes are containers for measured P1D from a given suite of simulations, and can be used as a starting point  to setup different emulators / interpolators. 
 
-Installing is currently fairly straightforward, and we would like to keep it this way!
+Test simulations can be found under sim_suites/. 
+
+Examples for how to make several plots can be found in notebooks/.
+
+Installing is now straightforward, and we would like to keep it this way!
 
 Things to add in the (near) future:
  - interpolators (linear, glass...)
