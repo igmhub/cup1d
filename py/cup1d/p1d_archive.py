@@ -29,7 +29,8 @@ class ArchiveP1D(object):
         return
 
 
-    def plot_samples(self,param_1,param_2,tau_scalings=True,temp_scalings=True):
+    def plot_samples(self,param_1,param_2,tau_scalings=True,temp_scalings=True,
+                point_size=5):
         """For parameter pair (param1,param2), plot each point in the archive.
             Use tau_scalings and temp_scalings to plot also post-processing."""
 
@@ -57,7 +58,43 @@ class ArchiveP1D(object):
 		# we will color code the points with redshift
         zmin=min(emu_z)
         zmax=max(emu_z)
-        plt.scatter(emu_1,emu_2,c=emu_z,s=1,vmin=zmin, vmax=zmax)
+        plt.scatter(emu_1,emu_2,c=emu_z,s=point_size,vmin=zmin, vmax=zmax)
+        cbar=plt.colorbar()
+        cbar.set_label("Redshift", labelpad=+1)
+        plt.xlabel(param_1)
+        plt.ylabel(param_2)
+        plt.show()
+
+        return
+
+
+    def plot_sample_p1d(self,param,tau_scalings=False,temp_scalings=False,
+                point_size=2):
+        """Plot all P1D(k) color-coded by value of parameter 1. """
+
+        emu_data=self.data
+        Nemu=len(emu_data)
+
+        if not tau_scalings:
+            mask_tau=[x['scale_tau']==1.0 for x in emu_data]
+        else:
+            mask_tau=[True]*Nemu
+        if not temp_scalings:
+            mask_temp=[(x['scale_T0']==1.0)
+                        & (x['scale_gamma']==1.0) for x in emu_data]
+        else:
+            mask_temp=[True]*Nemu
+
+        # figure out values of param_1,param_2 in archive
+        emu_p=np.array([emu_data[i][param] for i in range(Nemu) if (
+                                                mask_tau[i] & mask_temp[i])])
+        emu_p=np.array([emu_data[i][param] for i in range(Nemu) if (
+                                                mask_tau[i] & mask_temp[i])])
+
+		# we will color code the points with redshift
+        pmin=min(emu_p)
+        pmax=max(emu_p)
+        plt.scatter(emu_1,emu_2,c=emu_z,s=point_size,vmin=zmin, vmax=zmax)
         cbar=plt.colorbar()
         cbar.set_label("Redshift", labelpad=+1)
         plt.xlabel(param_1)
