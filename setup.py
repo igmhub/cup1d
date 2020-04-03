@@ -11,6 +11,5 @@ setup(name="cup1d",
     url="https://github.com/igmhub/cup1d",
     author="Chris Pedersen, Andreu Font-Ribera et al.",
     author_email="christian.pedersen.17@ucl.ac.uk",
-#packages=find_packages(),
-    package_dir={'': 'py'}
+    packages=find_packages(),
     )
