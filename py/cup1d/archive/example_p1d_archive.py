@@ -2,7 +2,7 @@ import numpy as np
 import os
 import json
 
-from . import p1d_archive
+from cup1d.archive import p1d_archive
 
 
 class ExampleArchiveP1D(p1d_archive.ArchiveP1D):
