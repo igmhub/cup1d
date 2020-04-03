@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from cup1d import p1d_data_base
+from data import p1d_data_base
 
 class P1D_PD2013(p1d_data_base.BaseDataP1D):
     """Class containing P1D from Palanque-Delabrouille et al. (2013)."""
