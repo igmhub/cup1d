@@ -40,3 +40,17 @@ def gaussian_chi2_Chabanier2019(neff,DL2):
     r=0.55
     return gaussian_chi2(neff,DL2,neff_val,DL2_val,neff_err,DL2_err,r)
 
+def gaussian_chi2_PalanqueDelabrouille2015(neff,DL2):
+    """Compute Gaussian Delta chi^2 for a particular point(s) (neff,DL2),
+    using the measurement from Palanque-Delabrouille et al. (2015, Figure 11).
+    """
+    # DL2 = k^3 P(k) / (2 pi^2), at z=3
+    DL2_val=0.325
+    DL2_err=0.03
+    # neff = effective slope at kp = 0.009 s/km, i.e., d ln P / dln k
+    neff_val=-2.360
+    neff_err=0.01
+    # correlation coefficient
+    r=0.55
+    return gaussian_chi2(neff,DL2,neff_val,DL2_val,neff_err,DL2_err,r)
+
