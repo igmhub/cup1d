@@ -45,7 +45,7 @@ def gaussian_chi2_PalanqueDelabrouille2015(neff,DL2):
     using the measurement from Palanque-Delabrouille et al. (2015, Figure 11).
     """
     # DL2 = k^3 P(k) / (2 pi^2), at z=3
-    DL2_val=0.32
+    DL2_val=0.325
     DL2_err=0.03
     # neff = effective slope at kp = 0.009 s/km, i.e., d ln P / dln k
     neff_val=-2.360
