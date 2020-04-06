@@ -5,6 +5,6 @@ To the chains within cup1d, set an environmental variable. For instance:
 export PLANCK_CHAINS = '/share/data/Planck_chains/'
 
 The structure inside that folder should be something like:
-$PLANCK_CHAINS/COM_CosmoParams_fullGrid_R3.00/base_mnu/
+$PLANCK_CHAINS/COM_CosmoParams_fullGrid_R3.01/base_mnu
 
-
+We could consider adding the simplest chain in the repo (rouhgly 100 Mb).

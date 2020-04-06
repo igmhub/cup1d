@@ -16,7 +16,7 @@ def planck_chains_dir(release):
         raise ValueError('wrong Planck release',release)
 
 
-def get_planck_results(release,data,lya_data=None):
+def get_planck_results(release,model,data,lya_data=None):
     """Load results from Planck, for a given data release and data combination.
     Inputs:
         - release (integer): 2013, 2015 or 2018
@@ -28,7 +28,7 @@ def get_planck_results(release,data,lya_data=None):
     analysis['release']=release
     analysis['root_dir']=planck_chains_dir(analysis['release'])
     # specify analysis and chain name
-    analysis['model']='base_mnu'
+    analysis['model']=model
     analysis['data']=data
     analysis['dir_name']=analysis['root_dir']+'/'+analysis['model']+'/'+analysis['data']+'/'
     # specify Lya chain
@@ -43,22 +43,18 @@ def get_planck_results(release,data,lya_data=None):
     return analysis
 
 
-def get_planck_2013():
-    """Load results from Planck 2013, planck_lowl_lowLike_highL"""
-    return get_planck_results(2013,'planck_lowl_lowLike_highL')
+def get_planck_2013(model='base_mnu',data='planck_lowl_lowLike_highL'):
+    """Load results from Planck 2013 chain"""
+    return get_planck_results(2013,model=model,data=data)
 
 
-def get_planck_2015():
-    """Load results from Planck 2015, plikHM_TT_WMAPTEB"""
-    return get_planck_results(2015,'plikHM_TT_WMAPTEB')
+def get_planck_2015(model='base_mnu',data='plikHM_TT_WMAPTEB'):
+    """Load results from Planck 2015 chain"""
+    return get_planck_results(2015,model=model,data=data)
 
 
-def get_planck_2018(lya_data=None):
-    """Load results from Planck 2018, plikHM_TT_lowl_lowE"""
-    return get_planck_results(2018,'plikHM_TT_lowl_lowE',lya_data)
+def get_planck_2018(model='base_mnu',data='plikHM_TT_lowl_lowE',lya_data=None):
+    """Load results from Planck 2018 chain"""
+    return get_planck_results(2018,model=model,data=data,lya_data=lya_data)
 
-
-def get_planck_2018_BAO(lya_data=None):
-    """Load results from Planck 2018 + BAO, plikHM_TT_lowl_lowE_BAO"""
-    return get_planck_results(2018,'plikHM_TT_lowl_lowE_BAO',lya_data)
 
