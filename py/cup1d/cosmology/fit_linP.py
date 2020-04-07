@@ -1,8 +1,7 @@
 import numpy as np
 import os
 import camb
-import camb_cosmo
-import likelihood_parameter
+from cup1d.cosmology import camb_cosmo
 
 class LinearPowerModel(object):
     """Store parameters describing the linear power in a cosmology.
@@ -87,43 +86,6 @@ class LinearPowerModel(object):
             else:
                 raise ValueError('k_units not recognized '+self.k_units)
         return params
-
-
-    def get_likelihood_parameters(self):
-        """Tell likelihood about the linear power parameters"""
-
-        params=[]
-        params.append(likelihood_parameter.LikelihoodParameter(
-                        name='g_star',min_value=0.95,max_value=0.99,
-                        value=self.linP_params['g_star']))
-        params.append(likelihood_parameter.LikelihoodParameter(
-                        name='f_star',min_value=0.95,max_value=0.99,
-                        value=self.linP_params['f_star']))
-        params.append(likelihood_parameter.LikelihoodParameter(
-                        name='Delta2_star',min_value=0.25,max_value=0.4,
-                        value=self.linP_params['Delta2_star']))
-        params.append(likelihood_parameter.LikelihoodParameter(
-                        name='n_star',min_value=-2.35,max_value=-2.25,
-                        value=self.linP_params['n_star']))
-        params.append(likelihood_parameter.LikelihoodParameter(
-                        name='alpha_star',min_value=-0.27,max_value=-0.16,
-                        value=self.linP_params['alpha_star']))
-
-        return params
-
-
-    def update_parameters(self,like_params):
-        """Update linear power parameters, if present in input list"""
-
-        # get current dictionary with parameters, update and setup again
-        params=self.get_params()
-
-        for par in like_params:
-            if par.name in params:
-                params[par.name]=par.value
-
-        self._setup_from_parameters(params)
-        return
 
 
     def get_f_star(self):
