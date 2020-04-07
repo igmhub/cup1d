@@ -10,8 +10,10 @@ class LinearPowerModel(object):
             - construct with set of parameters, and store them
         It can work in velocity or comoving units."""
 
-    def __init__(self,params=None,cosmo=None,z_star=3.0,k_units='kms',kp=None):
-        """Setup model, specifying units (kms or Mpc) and pivot point"""
+    def __init__(self,params=None,cosmo=None,z_star=3.0,k_units='kms',
+                    kp=None, z_evol=True):
+        """Setup model, specifying units (kms or Mpc) and pivot point.
+            If z_evol=False, do not compute f_star and g_star."""
 
         # choose suitable pivot point, depending on units
         self.z_star=z_star
@@ -34,7 +36,7 @@ class LinearPowerModel(object):
         else:
             self.cosmo=cosmo
             # parameterize cosmology and store parameters
-            self._setup_from_cosmology()
+            self._setup_from_cosmology(z_evol)
 
 
     def _setup_from_parameters(self,params):
@@ -54,28 +56,35 @@ class LinearPowerModel(object):
         self.linP_params['linP_kms']=linP_kms
 
 
-    def _setup_from_cosmology(self):
+    def _setup_from_cosmology(self,z_evol=True):
         """Compute and store parameters describing the linear power."""
 
         if not self.cosmo: raise ValueError('no cosmology in LinearPowerModel')
 
         if self.k_units is 'kms':
             self.linP_params=parameterize_cosmology_kms(self.cosmo,
-                                                        self.z_star,self.kp)
+                                        self.z_star,self.kp,z_evol=z_evol)
         elif self.k_units is 'Mpc':
+            assert z_evol==True,'implement (z_evol + Mpc) if really needed'
             self.linP_params=parameterize_cosmology_Mpc(self.cosmo,
-                                                        self.z_star,self.kp)
+                                        self.z_star,self.kp)
         else:
             raise ValueError('k_units not recognized '+self.k_units)
 
 
-    def get_params(self,poly=False):
+    def get_params(self,poly=False,z_evol=True):
         """Return dictionary with parameters. 
-            If poly=True, return also polynomial with shape of linear power"""
+            If poly=True, return also polynomial with shape of linear power.
+            If z_evol=False, do not compute f_star and g_star."""
 
-        params={'f_star':self.get_f_star(), 'g_star':self.get_g_star(), 
-                'Delta2_star':self.get_Delta2_star(), 
-                'n_star':self.get_n_star(), 'alpha_star':self.get_alpha_star()}
+        params={}
+        if z_evol:
+            # these parameters are slow to compute, and not always used
+            params['f_star']=self.get_f_star()
+            params['g_star']=self.get_g_star()
+        params['Delta2_star']=self.get_Delta2_star()
+        params['n_star']=self.get_n_star()
+        params['alpha_star']=self.get_alpha_star()
 
         # check if we want linear power as well, in km/s or Mpc units
         if poly:
@@ -219,25 +228,30 @@ def parameterize_cosmology_Mpc(cosmo,z_star,kp_Mpc):
     return results
 
 
-def parameterize_cosmology_kms(cosmo,z_star,kp_kms):
+def parameterize_cosmology_kms(cosmo,z_star,kp_kms,z_evol=True):
     """Given input cosmology, compute set of parameters that describe 
         the linear power around z_star and wavenumbers kp (in km/s)."""
-    # get logarithmic growth rate at z_star, around kp_Mpc
-    kp_Mpc=kp_kms*camb_cosmo.dkms_dMpc(cosmo,z_star)
-    f_star = compute_f_star(cosmo,z_star=z_star,kp_Mpc=kp_Mpc)
-    # compute deviation from EdS expansion
-    g_star = compute_g_star(cosmo,z_star=z_star)
+
+    results={}
+
+    # these are slow functions, and not always needed
+    if z_evol:
+        # get logarithmic growth rate at z_star, around kp_Mpc
+        kp_Mpc=kp_kms*camb_cosmo.dkms_dMpc(cosmo,z_star)
+        results['f_star'] = compute_f_star(cosmo,z_star=z_star,kp_Mpc=kp_Mpc)
+        # compute deviation from EdS expansion
+        results['g_star'] = compute_g_star(cosmo,z_star=z_star)
+
     # compute linear power, in km/s, at z_star
     # and fit a second order polynomial to the log power, around kp_kms
     linP_kms = fit_linP_kms(cosmo,z_star,kp_kms,deg=2)
     # translate the polynomial to our parameters
     ln_A_star = linP_kms[0]
-    Delta2_star = np.exp(ln_A_star)*kp_kms**3/(2*np.pi**2)
-    n_star = linP_kms[1]
+    results['Delta2_star'] = np.exp(ln_A_star)*kp_kms**3/(2*np.pi**2)
+    results['n_star'] = linP_kms[1]
     # note that the curvature is alpha/2
-    alpha_star = 2.0*linP_kms[2]
-    results={'f_star':f_star, 'g_star':g_star,
-            'Delta2_star':Delta2_star, 'n_star':n_star, 
-            'alpha_star':alpha_star, 'linP_kms':linP_kms}
+    results['alpha_star'] = 2.0*linP_kms[2]
+    results['linP_kms'] = linP_kms
+
     return results
 
