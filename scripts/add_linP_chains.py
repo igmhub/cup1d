@@ -8,21 +8,30 @@ planck2018=planck_chains.get_planck_2018()
 
 # reduce sice of chain, at least while testing
 samples=planck2018['samples']
-thinning=10000
+thinning=50
 samples.thin(thinning)
 Nsamp=len(samples.weights)
 print('will use %d samples'%Nsamp)
 
+# print in total 100 updates
+print_every=int(Nsamp/100)
+print('will print every',print_every)
+
 # do not compute (f_star,g_star), only linP at z=3
 z_evol=False
 
+# time execution
 start_time = time.time()
+
 linP_params=[]
 for i in range(Nsamp):
-    verbose=(i%2==0)
+    verbose=(i%print_every==0)
     if verbose: print('sample point',i)
+    # actually, let's not print than that
+    verbose=False
     params=samples.getParamSampleDict(i)
     linP=add_linP_params.get_linP_params(params,z_evol=z_evol,verbose=verbose)
+    if verbose: print('linP params',linP)
     linP_params.append(linP)
 
 end_time = time.time()
