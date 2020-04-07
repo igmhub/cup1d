@@ -37,7 +37,6 @@ def get_planck_results(release,model,data,lya_data=None):
         analysis['chain_name']=analysis['model']+'_'+analysis['data']
     else:
         analysis['chain_name']=analysis['model']+'_'+analysis['data']+'_'+analysis['lya_data']
-    print('chain name =',analysis['chain_name'])
     analysis['samples'] = loadMCSamples(analysis['dir_name']+analysis['chain_name'])
     analysis['parameters']=analysis['samples'].getParams()
     return analysis

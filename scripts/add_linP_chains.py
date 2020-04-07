@@ -1,5 +1,4 @@
 import numpy as np
-import copy
 from cup1d.planck import planck_chains
 from cup1d.planck import add_linP_params
 
@@ -7,8 +6,8 @@ from cup1d.planck import add_linP_params
 planck2018=planck_chains.get_planck_2018()
 
 # reduce sice of chain, at least while testing
-samples=planck2018['samples'].copy()
-thinning=10000
+samples=planck2018['samples']
+thinning=20000
 samples.thin(thinning)
 Nsamp=len(samples.weights)
 print('will use %d samples'%Nsamp)
@@ -49,4 +48,9 @@ print('alpha_star mean = {} +/- {}'.format(param_means[90],np.sqrt(param_vars[90
 print('f_star mean = {} +/- {}'.format(param_means[91],np.sqrt(param_vars[91])))
 print('g_star mean = {} +/- {}'.format(param_means[92],np.sqrt(param_vars[92])))
 
-
+# store new chain to file
+new_root_name=planck2018['dir_name']+planck2018['chain_name']+'_linP'
+if (thinning > 1.0):
+    new_root_name+='_'+str(thinning)
+    print('new root name',new_root_name)
+    samples.saveAsText(root=new_root_name,make_dirs=True)
