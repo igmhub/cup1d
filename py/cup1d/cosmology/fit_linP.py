@@ -72,7 +72,7 @@ class LinearPowerModel(object):
 
     def get_params(self,poly=False):
         """Return dictionary with parameters. 
-            If False=True, return also polynomial with shape of linear power"""
+            If poly=True, return also polynomial with shape of linear power"""
 
         params={'f_star':self.get_f_star(), 'g_star':self.get_g_star(), 
                 'Delta2_star':self.get_Delta2_star(), 
