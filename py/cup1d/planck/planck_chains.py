@@ -16,14 +16,16 @@ def planck_chains_dir(release):
         raise ValueError('wrong Planck release',release)
 
 
-def get_planck_results(release,model,data,lya_data=None):
+def get_planck_results(release,model,data,linP_tag=None):
     """Load results from Planck, for a given data release and data combination.
     Inputs:
         - release (integer): 2013, 2015 or 2018
         - data (string): data combination, e.g., plikHM_TT_lowl_lowE
+        - linP_tag (string): label identifying linear power columns
     Outputs: 
         - dictionary with relevant information
     """
+
     analysis={}
     analysis['release']=release
     analysis['root_dir']=planck_chains_dir(analysis['release'])
@@ -31,14 +33,15 @@ def get_planck_results(release,model,data,lya_data=None):
     analysis['model']=model
     analysis['data']=data
     analysis['dir_name']=analysis['root_dir']+'/'+analysis['model']+'/'+analysis['data']+'/'
-    # specify Lya chain
-    analysis['lya_data']=lya_data
-    if lya_data is None:
+    # specify linear power parameters added (if any)
+    analysis['linP_tag']=linP_tag
+    if linP_tag is None:
         analysis['chain_name']=analysis['model']+'_'+analysis['data']
     else:
-        analysis['chain_name']=analysis['model']+'_'+analysis['data']+'_'+analysis['lya_data']
+        analysis['chain_name']=analysis['model']+'_'+analysis['data']+'_'+analysis['linP_tag']
     analysis['samples'] = loadMCSamples(analysis['dir_name']+analysis['chain_name'])
     analysis['parameters']=analysis['samples'].getParams()
+
     return analysis
 
 
@@ -52,8 +55,9 @@ def get_planck_2015(model='base_mnu',data='plikHM_TT_WMAPTEB'):
     return get_planck_results(2015,model=model,data=data)
 
 
-def get_planck_2018(model='base_mnu',data='plikHM_TT_lowl_lowE',lya_data=None):
-    """Load results from Planck 2018 chain"""
-    return get_planck_results(2018,model=model,data=data,lya_data=lya_data)
+def get_planck_2018(model='base_mnu',data='plikHM_TT_lowl_lowE',linP_tag=None):
+    """Load results from Planck 2018 chain.
+        -linP_tag identifies chains with added linear parameters."""
+    return get_planck_results(2018,model=model,data=data,linP_tag=linP_tag)
 
 
