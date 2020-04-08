@@ -16,13 +16,13 @@ def gaussian_chi2_McDonald2005(neff,DL2):
     using the measurement from McDonald et al. (2005).
     """
     # DL2 = k^3 P(k) / (2 pi^2) , at z=3
-    DL2_val=0.452
-    DL2_err=0.072
+    DL2_val=0.47
+    DL2_err=0.06
     # neff = effective slope at kp = 0.009 s/km, i.e., d ln P / dln k
-    neff_val=-2.321
-    neff_err=0.069
+    neff_val=-2.3
+    neff_err=0.055
     # correlation coefficient
-    r=0.63
+    r=0.6
     return gaussian_chi2(neff,DL2,neff_val,DL2_val,neff_err,DL2_err,r)
 
 
