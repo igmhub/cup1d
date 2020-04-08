@@ -4,17 +4,19 @@ from cup1d.planck import planck_chains
 from cup1d.planck import add_linP_params
 
 # load Planck 2018 chain
-planck2018=planck_chains.get_planck_2018()
+model='base_mnu'
+data='plikHM_TT_lowl_lowE'
+planck2018=planck_chains.get_planck_2018(model=model,data=data)
 
 # reduce sice of chain, at least while testing
 samples=planck2018['samples']
 thinning=50
 samples.thin(thinning)
-Nsamp=len(samples.weights)
-print('will use %d samples'%Nsamp)
+Nsamp,Npar=samples.samples.shape
+print('Thinned chains have {} samples and {} parameters'.format(Nsamp,Npar))
 
 # print in total 100 updates
-print_every=int(Nsamp/100)
+print_every=int(Nsamp/100)+1
 print('will print every',print_every)
 
 # do not compute (f_star,g_star), only linP at z=3
@@ -61,12 +63,12 @@ if z_evol:
 # get basic statistics for the new parameters
 param_means=np.mean(samples.samples,axis=0)
 param_vars=np.var(samples.samples,axis=0)
-print('DL2_star mean = {} +/- {}'.format(param_means[88],np.sqrt(param_vars[88])))
-print('n_star mean = {} +/- {}'.format(param_means[89],np.sqrt(param_vars[89])))
-print('alpha_star mean = {} +/- {}'.format(param_means[90],np.sqrt(param_vars[90])))
+print('DL2_star mean = {} +/- {}'.format(param_means[Npar],np.sqrt(param_vars[Npar])))
+print('n_star mean = {} +/- {}'.format(param_means[Npar+1],np.sqrt(param_vars[Npar+1])))
+print('alpha_star mean = {} +/- {}'.format(param_means[Npar+2],np.sqrt(param_vars[Npar+2])))
 if z_evol:
-    print('f_star mean = {} +/- {}'.format(param_means[91],np.sqrt(param_vars[91])))
-    print('g_star mean = {} +/- {}'.format(param_means[92],np.sqrt(param_vars[92])))
+    print('f_star mean = {} +/- {}'.format(param_means[Npar+3],np.sqrt(param_vars[Npar+3])))
+    print('g_star mean = {} +/- {}'.format(param_means[Npar+4],np.sqrt(param_vars[Npar+4])))
 
 # store new chain to file
 new_root_name=planck2018['dir_name']+planck2018['chain_name']
