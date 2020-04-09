@@ -1,12 +1,16 @@
 import numpy as np
+import os
 import time
 from cup1d.planck import planck_chains
 from cup1d.planck import add_linP_params
 
 # load Planck 2018 chain
 model='base_mnu'
-data='plikHM_TT_lowl_lowE'
-planck2018=planck_chains.get_planck_2018(model=model,data=data)
+data='plikHM_TTTEEE_lowl_lowE'
+# point to original Planck chains
+root_dir=os.environ['PLANCK_CHAINS']
+planck2018=planck_chains.get_planck_2018(model=model,data=data,
+                                    root_dir=root_dir,linP_tag=None)
 
 # reduce sice of chain, at least while testing
 samples=planck2018['samples']
