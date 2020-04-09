@@ -4,17 +4,35 @@ import time
 from cup1d.planck import planck_chains
 from cup1d.planck import add_linP_params
 
-# load Planck 2018 chain
-model='base_mnu'
-data='plikHM_TTTEEE_lowl_lowE'
 # point to original Planck chains
 root_dir=os.environ['PLANCK_CHAINS']
-planck2018=planck_chains.get_planck_2018(model=model,data=data,
-                                    root_dir=root_dir,linP_tag=None)
+# load Planck chain
+model='base_mnu'
+release=2018
+if release==2013:
+    data=None
+    #data='WMAP'
+    planck=planck_chains.get_planck_2013(model=model,data=data,
+                                root_dir=root_dir,linP_tag=None)
+elif release==2015:
+    data=None
+    planck=planck_chains.get_planck_2015(model=model,data=data,
+                                root_dir=root_dir,linP_tag=None)
+elif release==2018:
+    data=None
+    #data='plikHM_TTTEEE_lowl_lowE_BAO'
+    planck=planck_chains.get_planck_2018(model=model,data=data,
+                                root_dir=root_dir,linP_tag=None)
+else:
+    print('wrong relase',release)
+    exit()
+
+# do not compute (f_star,g_star), only linP at z=3
+z_evol=True
 
 # reduce sice of chain, at least while testing
-samples=planck2018['samples']
-thinning=50
+samples=planck['samples']
+thinning=10
 samples.thin(thinning)
 Nsamp,Npar=samples.samples.shape
 print('Thinned chains have {} samples and {} parameters'.format(Nsamp,Npar))
@@ -22,9 +40,6 @@ print('Thinned chains have {} samples and {} parameters'.format(Nsamp,Npar))
 # print in total 100 updates
 print_every=int(Nsamp/100)+1
 print('will print every',print_every)
-
-# do not compute (f_star,g_star), only linP at z=3
-z_evol=False
 
 # time execution
 start_time = time.time()
@@ -75,7 +90,7 @@ if z_evol:
     print('g_star mean = {} +/- {}'.format(param_means[Npar+4],np.sqrt(param_vars[Npar+4])))
 
 # store new chain to file
-new_root_name=planck2018['dir_name']+planck2018['chain_name']
+new_root_name=planck['dir_name']+planck['chain_name']
 if z_evol:
     new_root_name += '_zlinP'
 else:

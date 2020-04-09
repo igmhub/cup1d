@@ -55,7 +55,7 @@ def get_planck_2013(model='base_mnu',data='planck_lowl_lowLike_highL',
     return get_planck_results(2013,model=model,data=data,
                             root_dir=root_dir,linP_tag=linP_tag)
             
-def get_planck_2015(model='base_mnu',data='plikHM_TT_WMAPTEB',
+def get_planck_2015(model='base_mnu',data='plikHM_TT_lowTEB',
                     root_dir=None,linP_tag='zlinP_10'):
     """Load results from Planck 2015 chain"""
     return get_planck_results(2015,model=model,data=data,
