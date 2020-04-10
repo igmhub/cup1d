@@ -62,7 +62,7 @@ def get_planck_2015(model='base_mnu',data='plikHM_TT_lowTEB',
                             root_dir=root_dir,linP_tag=linP_tag)
 
 
-def get_planck_2018(model='base_mnu',data='plikHM_TT_lowl_lowE',
+def get_planck_2018(model='base_mnu',data='plikHM_TTTEEE_lowl_lowE',
                     root_dir=None,linP_tag='zlinP_10'):
     """Load results from Planck 2018 chain.
         - linP_tag identifies chains with added linear parameters."""
