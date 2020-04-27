@@ -1,0 +1,37 @@
+omegabh2	\Omega_b h^2
+omegach2	\Omega_c h^2
+theta	100\theta_{MC}
+tau	\tau
+mnu	\Sigma m_\nu
+ns	n_s
+logA	{\rm{ln}}(10^{10} A_s)
+asz	A_{SZ}
+omegal*	\Omega_\Lambda
+omegam*	\Omega_m
+sigma8*	\sigma_8
+zrei*	z_{re}
+H0*	H_0
+A*	10^9 A_s
+omegamh2*	\Omega_m h^2
+omegamh3*	\Omega_m h^3
+yheused*	Y_P
+clamp*	10^9 A_s e^{-2\tau}
+omeganuh2*	\Omega_\nu h^2
+age*	{\rm{Age}}/{\rm{Gyr}}
+zstar*	z_*
+rstar*	r_*
+thetastar*	\theta_*
+zdrag*	z_{\rm{drag}}
+rdrag*	r_{\rm{drag}}
+kd*	k_D
+thetad*	\theta_D
+zeq*	z_{\rm{eq}}
+thetaeq*	\theta_{\rm{eq}}
+rsDv057*	r_{\rm{drag}}/D_V(0.57)
+H057*	H(0.57)
+DA057*	D_A(0.57)
+linP_DL2_star*	Ly\alpha \, \Delta_\ast
+linP_n_star*	Ly\alpha \, n_\ast
+linP_alpha_star*	Ly\alpha \, \alpha_\ast
+linP_f_star*	Ly\alpha \, f_\ast
+linP_g_star*	Ly\alpha \, g_\ast
