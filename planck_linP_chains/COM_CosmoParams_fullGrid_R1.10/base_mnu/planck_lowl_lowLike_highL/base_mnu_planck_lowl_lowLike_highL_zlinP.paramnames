@@ -1,0 +1,67 @@
+omegabh2	\Omega_b h^2
+omegach2	\Omega_c h^2
+theta	100\theta_{MC}
+tau	\tau
+mnu	\Sigma m_\nu
+ns	n_s
+logA	{\rm{ln}}(10^{10} A_s)
+aps100	A^{PS}_{100}
+aps143	A^{PS}_{143}
+aps217	A^{PS}_{217}
+acib143	A^{CIB}_{143}
+acib217	A^{CIB}_{217}
+asz143	A^{tSZ}_{143}
+psr	r^{PS}_{143\times217}
+cibr	r^{CIB}_{143\times217}
+ncib	\gamma^{CIB}
+cal0	c_{100}
+cal2	c_{217}
+xi	\xi^{tSZ-CIB}
+aksz	A^{kSZ}
+bm_1_1	\beta^1_1
+a_ps_act_148	A^{PS,ACT}_{148}
+a_ps_act_217	A^{PS,ACT}_{218}
+a_ps_spt_95	A^{PS,SPT}_{95}
+a_ps_spt_150	A^{PS,SPT}_{150}
+a_ps_spt_220	A^{PS,SPT}_{220}
+r_ps_spt_95x150	r^{PS}_{95\times150}
+r_ps_spt_95x220	r^{PS}_{95\times220}
+r_ps_150x220	r^{PS}_{150\times220}
+act_dust_s	A^{ACTs}_{\rm dust}
+act_dust_e	A^{ACTe}_{\rm dust}
+cal_acts_148	y_{ACTs}^{148}
+cal_acts_217	y_{ACTs}^{217}
+cal_acte_148	y_{ACTe}^{148}
+cal_acte_217	y_{ACTe}^{217}
+cal_spt_95	y_{SPT}^{95}
+cal_spt_150	y_{SPT}^{150}
+cal_spt_220	y_{SPT}^{220}
+omegal*	\Omega_\Lambda
+omegam*	\Omega_m
+sigma8*	\sigma_8
+zrei*	z_{re}
+H0*	H_0
+A*	10^9 A_s
+omegamh2*	\Omega_m h^2
+omegamh3*	\Omega_m h^3
+yheused*	Y_P
+clamp*	10^9 A_s e^{-2\tau}
+omeganuh2*	\Omega_\nu h^2
+age*	{\rm{Age}}/{\rm{Gyr}}
+zstar*	z_*
+rstar*	r_*
+thetastar*	\theta_*
+zdrag*	z_{\rm{drag}}
+rdrag*	r_{\rm{drag}}
+kd*	k_D
+thetad*	\theta_D
+zeq*	z_{\rm{eq}}
+thetaeq*	\theta_{\rm{eq}}
+rsDv057*	r_{\rm{drag}}/D_V(0.57)
+H057*	H(0.57)
+DA057*	D_A(0.57)
+linP_DL2_star*	Ly\alpha \, \Delta_\ast
+linP_n_star*	Ly\alpha \, n_\ast
+linP_alpha_star*	Ly\alpha \, \alpha_\ast
+linP_f_star*	Ly\alpha \, f_\ast
+linP_g_star*	Ly\alpha \, g_\ast

@@ -1,5 +1,5 @@
 This folder contains some chains from Planck 2018, with extra columns 
 containing linear power parameters around z=3 and k=0.009 s/km.
 
-The original chains were also thinned by a factor of 10.
+Chains ending with _10 have been thinned by a factor of 10.
 

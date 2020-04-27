@@ -18,6 +18,23 @@ def planck_chains_dir(release,root_dir):
         raise ValueError('wrong Planck release',release)
 
 
+def load_samples(file_root):
+    """Check that input chain exist, at least in zipped format, and read them."""
+
+    try:
+        samples = loadMCSamples(file_root)
+    except IOError:
+        if os.path.exists(file_root+'.txt.gz'):
+            print('unzip chain',file_root)
+            cmd='gzip -dk '+file_root+'.txt.gz'
+            os.system(cmd)
+            samples = loadMCSamples(file_root)
+        else:
+            raise IOError('No chains found (not even zipped): ' + file_root)
+
+    return samples
+
+
 def get_planck_results(release,model,data,root_dir,linP_tag):
     """Load results from Planck, for a given data release and data combination.
     Inputs:
@@ -43,27 +60,28 @@ def get_planck_results(release,model,data,root_dir,linP_tag):
         analysis['chain_name']=analysis['model']+'_'+analysis['data']
     else:
         analysis['chain_name']=analysis['model']+'_'+analysis['data']+'_'+analysis['linP_tag']
-    analysis['samples'] = loadMCSamples(analysis['dir_name']+analysis['chain_name'])
+    # load and store chains read from file
+    analysis['samples'] = load_samples(analysis['dir_name']+analysis['chain_name'])
     analysis['parameters']=analysis['samples'].getParams()
 
     return analysis
 
 
 def get_planck_2013(model='base_mnu',data='planck_lowl_lowLike_highL',
-                    root_dir=None,linP_tag='zlinP_10'):
+                    root_dir=None,linP_tag='zlinP'):
     """Load results from Planck 2013 chain"""
     return get_planck_results(2013,model=model,data=data,
                             root_dir=root_dir,linP_tag=linP_tag)
             
 def get_planck_2015(model='base_mnu',data='plikHM_TT_lowTEB',
-                    root_dir=None,linP_tag='zlinP_10'):
+                    root_dir=None,linP_tag='zlinP'):
     """Load results from Planck 2015 chain"""
     return get_planck_results(2015,model=model,data=data,
                             root_dir=root_dir,linP_tag=linP_tag)
 
 
 def get_planck_2018(model='base_mnu',data='plikHM_TTTEEE_lowl_lowE',
-                    root_dir=None,linP_tag='zlinP_10'):
+                    root_dir=None,linP_tag='zlinP'):
     """Load results from Planck 2018 chain.
         - linP_tag identifies chains with added linear parameters."""
     return get_planck_results(2018,model=model,data=data,
