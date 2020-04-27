@@ -1,0 +1,6 @@
+Extracted from an email sent by Vid on April 27th 2020
+
+As promised I attach the P1D files, which are in the same format as Table A1 in https://arxiv.org/pdf/1702.01761.pdf
+
+The covariance matrix is in the form: i,j,C_ij with i,j running in i,j = kbin + zbin * nkbins, for the P1D (k,z) binning. Let me know if it's confusing or not making sense. This is the covariance matrix we published along with the arXiv paper. The covariance matrix contains only statistical error information, you would need to add systematic errors as a diagonal error matrix. The statistical variance is increased by 10% to account for bootstrapping method underestimating the variance. This was further explored in the WDM paper, and found that for WDM it has no big effect, but we were focusing on wDM only -- it might be different for e.g. s8 or ns.
+
