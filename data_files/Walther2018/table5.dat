@@ -31,14 +31,14 @@
 #Name: J/ApJ/852/22/table5
 #Title: Measured flux power spectrum after masking metals and removing the window function due to masking
 #---Details of Columns:
-    z           (F6.3)  [1.8/3.4] Redshift [ucd=src.redshift]
-    k (s/km)    (E9.2)  [0.002/0.4] Mode [ucd=instr.scale]
-    k.P(k)/pi   (E9.2)  [0.0002/0.2] Power spectrum [ucd=stat.fit.param]
-    e_k.P(k)/pi (E9.2)  [3.6e-05/0.03] Statistical uncertainty in kPk/pi [ucd=stat.error]
------- --------- --------- ---------
-                           e_       
-z      k (s/km)  k.P(k)/pi k.P(k)/pi
------- --------- --------- ---------
+#    z           (F6.3)  [1.8/3.4] Redshift [ucd=src.redshift]
+#    k (s/km)    (E9.2)  [0.002/0.4] Mode [ucd=instr.scale]
+#    k.P(k)/pi   (E9.2)  [0.0002/0.2] Power spectrum [ucd=stat.fit.param]
+#    e_k.P(k)/pi (E9.2)  [3.6e-05/0.03] Statistical uncertainty in kPk/pi [ucd=stat.error]
+#------ --------- --------- ---------
+#                           e_       
+#z      k (s/km)  k.P(k)/pi k.P(k)/pi
+#------ --------- --------- ---------
  1.830  2.86e-03  7.12e-03  2.75e-03
  1.830  3.54e-03  1.27e-02  3.36e-03
  1.830  4.46e-03  1.82e-02  5.42e-03
