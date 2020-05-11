@@ -24,7 +24,7 @@ class P1D_PD2013(p1d_data_base.BaseDataP1D):
         return
 
 
-    def _setup_FFT(self,basedir,add_syst=True):
+    def _setup_FFT(self,basedir,add_syst):
         """Setup measurement using FFT approach."""
     
         # start by reading Pk file
@@ -52,7 +52,7 @@ class P1D_PD2013(p1d_data_base.BaseDataP1D):
             corr=np.loadtxt(corr_file,unpack=True)
             # compute covariance matrix (stats only)
             sigma=Pkstat[i]
-            zcov=np.dot(corr,np.outer(sigma,sigma))
+            zcov=np.multiply(sigma,np.multiply(corr,sigma))
             if add_syst:
                 syst=Pksyst[i]
                 zcov+=np.diag(syst)
@@ -61,7 +61,7 @@ class P1D_PD2013(p1d_data_base.BaseDataP1D):
         return z,k_kms,Pk_kms,cov_Pk_kms
         
 
-    def _setup_like(self,basedir,add_syst=True):
+    def _setup_like(self,basedir,add_syst):
         """Setup measurement using likelihood approach"""
 
         p1d_file=basedir+'/table5a.dat'
