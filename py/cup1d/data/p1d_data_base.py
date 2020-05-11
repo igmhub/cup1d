@@ -42,7 +42,7 @@ class BaseDataP1D(object):
         return
 
 
-    def plot_p1d(self,use_dimensionless=True):
+    def plot_p1d(self,use_dimensionless=True,xlog=False,ylog=True):
         """Plot P1D mesurement. If use_dimensionless, plot k*P(k)/pi."""
 
         N=len(self.z)
@@ -58,7 +58,10 @@ class BaseDataP1D(object):
                             label='z = {}'.format(self.z[i]))
 
         plt.legend()
-        plt.yscale('log', nonposy='clip')
+        if ylog:
+            plt.yscale('log', nonposy='clip')
+        if xlog:
+            plt.xscale('log')
         plt.xlabel('k [s/km]')
         if use_dimensionless:
             plt.ylabel(r'$k P(k)/ \pi$')

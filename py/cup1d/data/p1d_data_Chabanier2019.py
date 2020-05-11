@@ -19,7 +19,7 @@ class P1D_Chabanier2019(p1d_data_base.BaseDataP1D):
         return
 
 
-    def _setup_from_file(self,basedir,add_syst=True):
+    def _setup_from_file(self,basedir,add_syst):
         """Reconstruct covariance matrix from files."""
     
         # start by reading Pk file
@@ -61,7 +61,7 @@ class P1D_Chabanier2019(p1d_data_base.BaseDataP1D):
             corr=allcorr[:,i,:]
             # compute covariance matrix (stats only)
             sigma=Pkstat[i]
-            zcov=np.dot(corr,np.outer(sigma,sigma))
+            zcov=np.multiply(sigma,np.multiply(corr,sigma))
             if add_syst:
                 syst=Pksyst[i]
                 zcov+=np.diag(syst)
