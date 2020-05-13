@@ -24,7 +24,6 @@ class P1D_Walther2018(p1d_data_base.BaseDataP1D):
     
         # start by reading Pk file
         p1d_file=basedir+'/table5.dat'
-        print(p1d_file)
 
         # note that the file contains    k P1D(k) / pi
         inz,ink,inkPk,inkPkstat=np.loadtxt(p1d_file,unpack=True)
