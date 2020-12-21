@@ -18,10 +18,10 @@ class LinearPowerModel(object):
         # choose suitable pivot point, depending on units
         self.z_star=z_star
         self.k_units=k_units
-        if kp is None:
-            if self.k_units is 'kms':
+        if kp == None:
+            if self.k_units == 'kms':
                 self.kp=0.009
-            elif self.k_units is 'Mpc':
+            elif self.k_units == 'Mpc':
                 self.kp=0.7
             else:
                 raise ValueError('k_units not recognized '+self.k_units)
@@ -30,7 +30,7 @@ class LinearPowerModel(object):
 
         # store (or compute) parameters and / or cosmology
         if params:
-            assert cosmo is None, 'can not pass both cosmo and params'
+            assert cosmo == None, 'can not pass both cosmo and params'
             self.cosmo=None
             self._setup_from_parameters(params)
         else:
@@ -42,7 +42,7 @@ class LinearPowerModel(object):
     def _setup_from_parameters(self,params):
         """Setup object from dictionary with parameters."""
 
-        assert self.k_units is 'kms', '_setup_from_parameters works in kms'
+        assert self.k_units == 'kms', '_setup_from_parameters works in kms'
         kp_kms=self.kp
 
         # copy input dictionary
@@ -61,10 +61,10 @@ class LinearPowerModel(object):
 
         if not self.cosmo: raise ValueError('no cosmology in LinearPowerModel')
 
-        if self.k_units is 'kms':
+        if self.k_units == 'kms':
             self.linP_params=parameterize_cosmology_kms(self.cosmo,
                                         self.z_star,self.kp,z_evol=z_evol)
-        elif self.k_units is 'Mpc':
+        elif self.k_units == 'Mpc':
             assert z_evol==True,'implement (z_evol + Mpc) if really needed'
             self.linP_params=parameterize_cosmology_Mpc(self.cosmo,
                                         self.z_star,self.kp)
@@ -88,9 +88,9 @@ class LinearPowerModel(object):
 
         # check if we want linear power as well, in km/s or Mpc units
         if poly:
-            if self.k_units is 'kms':
+            if self.k_units == 'kms':
                 params['linP_kms']=self.linP_params['linP_kms']
-            elif self.k_units is 'Mpc':
+            elif self.k_units == 'Mpc':
                 params['linP_kms']=self.linP_params['linP_kms']
             else:
                 raise ValueError('k_units not recognized '+self.k_units)
@@ -118,7 +118,7 @@ class LinearPowerModel(object):
         # check that you actually hold a CAMB cosmology object
         if not self.cosmo: raise ValueError('no cosmology in LinearPowerModel')
         # make sure object is setup in Mpc units
-        assert self.k_units is 'Mpc', 'parameterize_z_Mpc can only work in Mpc'
+        assert self.k_units == 'Mpc', 'parameterize_z_Mpc can only work in Mpc'
 
         linP_zs=[]
         for z in zs:
