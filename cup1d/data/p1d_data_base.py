@@ -59,7 +59,7 @@ class BaseDataP1D(object):
 
         plt.legend()
         if ylog:
-            plt.yscale('log', nonposy='clip')
+            plt.yscale('log', nonpositive='clip')
         if xlog:
             plt.xscale('log')
         plt.xlabel('k [s/km]')
