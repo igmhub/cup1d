@@ -1,0 +1,4 @@
+build/
+cup1d.egg-info/
+dist/
+notebooks/.ipynb_checkpoints/
