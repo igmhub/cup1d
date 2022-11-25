@@ -51,6 +51,6 @@ def plot_multiple_p1d(datasets,zmin=1.7,zmax=6.0,kmin=0.001,kmax=0.1,
                          yerr=fact*err_Pk_kms,
                          label=label+' z = {}'.format(z))
     plt.legend()
-    plt.yscale('log', nonposy='clip')
+    plt.yscale('log', nonpositive='clip')
     plt.xscale('log')
     plt.ylabel(r'$k P(k)/ \pi$')
