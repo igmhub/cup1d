@@ -10,9 +10,10 @@ class P1D_Walther2018(p1d_data_base.BaseDataP1D):
 
         # folder storing P1D measurement
         assert ('CUP1D_PATH' in os.environ),'You need to define CUP1D_PATH'
-        basedir=os.environ['CUP1D_PATH']+'/data_files/Walther2018/'
+        basedir=os.environ['CUP1D_PATH']+'/data_files/p1d_measurements/'
+        datadir=basedir+'/Walther2018/'
 
-        z,k_kms,Pk_kms,cov_Pk_kms=self._setup_from_file(basedir)
+        z,k_kms,Pk_kms,cov_Pk_kms=self._setup_from_file(datadir)
 
         p1d_data_base.BaseDataP1D.__init__(self,z,k_kms,Pk_kms,cov_Pk_kms)
 

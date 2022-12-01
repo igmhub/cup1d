@@ -10,9 +10,10 @@ class P1D_Chabanier2019(p1d_data_base.BaseDataP1D):
 
         # folder storing P1D measurement
         assert ('CUP1D_PATH' in os.environ),'You need to define CUP1D_PATH'
-        basedir=os.environ['CUP1D_PATH']+'/data_files/Chabanier2019/'
+        basedir=os.environ['CUP1D_PATH']+'/data_files/p1d_measurements/'
+        datadir=basedir+'/Chabanier2019/'
 
-        z,k_kms,Pk_kms,cov_Pk_kms=self._setup_from_file(basedir,add_syst)
+        z,k_kms,Pk_kms,cov_Pk_kms=self._setup_from_file(datadir,add_syst)
 
         p1d_data_base.BaseDataP1D.__init__(self,z,k_kms,Pk_kms,cov_Pk_kms)
 

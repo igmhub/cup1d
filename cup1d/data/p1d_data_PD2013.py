@@ -12,12 +12,13 @@ class P1D_PD2013(p1d_data_base.BaseDataP1D):
 
         # folder storing P1D measurement
         assert ('CUP1D_PATH' in os.environ),'You need to define CUP1D_PATH'
-        basedir=os.environ['CUP1D_PATH']+'/data_files/PD2013/'
+        basedir=os.environ['CUP1D_PATH']+'/data_files/p1d_measurements/'
+        datadir=basedir+'/PD2013/'
 
         if use_FFT:
-            z,k_kms,Pk_kms,cov_Pk_kms=self._setup_FFT(basedir,add_syst)
+            z,k_kms,Pk_kms,cov_Pk_kms=self._setup_FFT(datadir,add_syst)
         else:
-            z,k_kms,Pk_kms,cov_Pk_kms=self._setup_like(basedir,add_syst)
+            z,k_kms,Pk_kms,cov_Pk_kms=self._setup_like(datadir,add_syst)
 
         p1d_data_base.BaseDataP1D.__init__(self,z,k_kms,Pk_kms,cov_Pk_kms)
 
