@@ -594,7 +594,8 @@ class Likelihood(object):
         return sim_linP_params
 
 
-    def plot_p1d(self,values=None,plot_every_iz=1,residuals=False):
+    def plot_p1d(self,values=None,plot_every_iz=1,residuals=False,
+                 plot_fname=None):
         """Plot P1D in theory vs data. If plot_every_iz >1,
             plot only few redshift bins"""
 
@@ -665,7 +666,8 @@ class Likelihood(object):
         plt.xlabel(r'$k_\parallel$ [s/km]')
         plt.xlim(min(k_kms)-0.001,max(k_kms)+0.001)
         plt.tight_layout()
-        plt.savefig('p1d.pdf')
+        if plot_fname:
+            plt.savefig(plot_fname)
         plt.show()
 
         return
