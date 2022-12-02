@@ -349,29 +349,18 @@ class EmceeSampler(object):
              ## Old chains will have no blobs
              all_params=chain
              all_strings=self.paramstrings
-        elif len(blobs[0])<6:
-            ## For now this will represent a lya_theory chain
-            ## so we ignore derived parameters for the time being
-             all_params=chain
-             all_strings=self.paramstrings
         elif len(blobs[0])==6:
-            ## If blobs are length 6, we are using a full_theory chain.
-            ## Build an array of chain + blobs, as chainconsumer
-            ## doesn't know about the difference between sampled and derived
-            ## parameters
-
-            ## Array for blobs:
+            # Build an array of chain + blobs, as chainconsumer doesn't know
+            # about the difference between sampled and derived parameters
             blobs_full=np.hstack((np.vstack(blobs["Delta2_star"]),
                         np.vstack(blobs["n_star"]),
                         np.vstack(blobs["f_star"]),
                         np.vstack(blobs["g_star"]),
                         np.vstack(blobs["alpha_star"]),
                         np.vstack(blobs["H0"])))
-
-            ## Array for all parameters
+            # Array for all parameters
             all_params=np.hstack((chain,blobs_full))
-
-            ## Ordered strings for all parameters
+            # Ordered strings for all parameters
             all_strings=self.paramstrings+blob_strings
         else:
             print("Unkown blob configuration, just returning sampled params")
@@ -592,14 +581,7 @@ class EmceeSampler(object):
         saveDict["data_sim_number"]=self.like.data.sim_label
         saveDict["data_cov_factor"]=self.like.data.data_cov_factor
         saveDict["data_year"]=self.like.data.data_cov_label
-        saveDict["include_CMB"]=self.like.include_CMB
         saveDict["cosmo_fid_label"]=self.like.cosmo_fid_label
-        saveDict["use_compression"]=self.like.use_compression
-        if self.like.use_compression==3:
-            if self.like.marg_p1d.grid_fname:
-                saveDict["grid_fname"]=self.like.marg_p1d.grid_fname
-            else:
-                saveDict["reduced_IGM"]=self.like.marg_p1d.reduced_IGM
 
         # Make sure (As,ns,nrun) were defined in standard pivot_scalar
         if hasattr(self.like.theory,"cosmo_model_fid"):
@@ -632,12 +614,7 @@ class EmceeSampler(object):
         # save config info in plain text as well
         self._write_dict_to_text(saveDict)
 
-        # save KDE for (Delta2_star,n_star), to use as marginalised P1D
-        self.write_kde()
-
-        ## Save plots
-        ## Using try as have latex issues when running on compute
-        ## nodes on some clusters
+        # Save plots (might have issues in some clusters)
         try:
             self.plot_best_fit(residuals=residuals,
                     delta_lnprob_cut=plot_delta_lnprob_cut)
@@ -686,7 +663,7 @@ class EmceeSampler(object):
         return
 
 
-    def plot_corner(self,plot_params=None,cmb_prior=False,
+    def plot_corner(self,plot_params=None,
                 delta_lnprob_cut=None,usetex=True,serif=True):
         """ Make corner plot in ChainConsumer
             - plot_params: Pass a list of parameters to plot (in LaTeX form),
@@ -699,12 +676,6 @@ class EmceeSampler(object):
         params_plot, strings_plot=self.get_all_params(
                                             delta_lnprob_cut=delta_lnprob_cut)
 
-        if cmb_prior==True:
-            mean_cmb = self.like.cmb_like.true_values
-            data_cmb = self.like.cmb_like.return_CMB_only()
-            c.add_chain(data_cmb,parameters=self.like.cmb_like.param_list,
-                                name="CMB Likelihood")
-        
         c.add_chain(params_plot,parameters=strings_plot,name="Chains")
 
         c.configure(diagonal_tick_labels=False, tick_font_size=10,
@@ -719,21 +690,11 @@ class EmceeSampler(object):
             ## Plot params passed as argument
             params_to_plot=plot_params
 
-        if cmb_prior==True:
-            ## Only plot the parameters that are varied in the chain
-            ## not priors for parameters that aren't being varied
-            plot_param_strings=[]
-            for par in self.like.get_free_parameter_list():
-                plot_param_strings.append(param_dict[par])
-            fig = c.plotter.plot(figsize=(12,12),
-                    parameters=plot_param_strings,truth=self.truth)
-        else:
-            fig = c.plotter.plot(figsize=(12,12),
+        fig = c.plotter.plot(figsize=(12,12),
                     parameters=params_to_plot,truth=self.truth)
 
         if self.save_directory is not None:
             fig.savefig(self.save_directory+"/corner.pdf")
-        
         else:
             fig.show()
 
