@@ -7,7 +7,7 @@ def planck_chains_dir(release,root_dir):
         If no root_dir is passed, use environmental variable PLANCK_CHAINS."""
 
     if root_dir is None:
-        root_dir=os.environ['CUP1D_PATH']+'/planck_linP_chains'
+        root_dir=os.environ['CUP1D_PATH']+'/data_files/planck_linP_chains'
     if release==2013:
         return root_dir+'/COM_CosmoParams_fullGrid_R1.10/'
     elif release==2015:

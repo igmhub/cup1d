@@ -239,25 +239,25 @@ class Theory(object):
         ks_Mpc=self.cosmo_model_fid.cosmo.InitPower.pivot_scalar
 
         # likelihood pivot point, in velocity units
-        dkms_dMpc=self.recons.H_star_fid/(1+self.z_star)
+        dkms_dMpc=self.cosmo_model_fid.dkms_dMpc(self.z_star)
         kp_Mpc=self.kp_kms*dkms_dMpc
 
         # logarithm of ratio of pivot points
         ln_kp_ks=np.log(kp_Mpc/ks_Mpc)
 
-        # ask true camb_model for blobs (it should be fiducial!)
-        true_blob=self.get_blob(self.cosmo_model_fid)
+        # get blob for fiducial cosmo
+        fid_blob=self.get_blob(self.cosmo_model_fid)
 
         # rescale blobs
         delta_alpha_star=delta_nrun
         delta_n_star=delta_ns+delta_nrun*ln_kp_ks
         ln_ratio_A_star=np.log(ratio_As)+(delta_ns+0.5*delta_nrun*ln_kp_ks)*ln_kp_ks
 
-        alpha_star=true_blob[2]+delta_alpha_star
-        n_star=true_blob[1]+delta_n_star
-        Delta2_star=true_blob[0]*np.exp(ln_ratio_A_star)
+        alpha_star=fid_blob[2]+delta_alpha_star
+        n_star=fid_blob[1]+delta_n_star
+        Delta2_star=fid_blob[0]*np.exp(ln_ratio_A_star)
 
-        return (Delta2_star, n_star, alpha_star) + true_blob[3:]
+        return (Delta2_star, n_star, alpha_star) + fid_blob[3:]
 
 
     def get_p1d_kms(self,k_kms,like_params=[],return_covar=False,

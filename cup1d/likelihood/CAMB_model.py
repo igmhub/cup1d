@@ -110,19 +110,24 @@ class CAMBModel(object):
         return linP_params
 
 
-    def get_M_of_zs(self):
-        """ Return M(z)=H(z)/(1+z) for each z """
+    def dkms_dMpc(self,z):
+        """ Return H(z)/(1+z) to convert Mpc to km/s """
 
         # get CAMB results objects (might be cached already)
         camb_results=self.get_camb_results()
-        
+        H_z=camb_results.hubble_parameter(z)
+        return H_z/(1+z)
+
+
+    def get_M_of_zs(self):
+        """ Return M(z)=H(z)/(1+z) for each z """
+
         M_of_zs=[]
         for z in self.zs:
-            H_z=camb_results.hubble_parameter(z)
-            M_of_zs.append(H_z/(1+z))
+            M_of_zs.append(self.dkms_dMpc(z))
     
         return M_of_zs
-    
+
 
     def get_new_model(self,like_params):
         """ For an arbitrary list of like_params, return a new CAMBModel """
