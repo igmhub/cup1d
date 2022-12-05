@@ -42,3 +42,13 @@ You will also need to install several other python packages:
 ```
 pip install configobj configargparse emcee chainconsumer h5py getdist
 ```
+
+### Notebooks / tutorials
+
+You can start by plotting the many P1D measurements stored in the repo, by looking at `notebooks/p1d_measurements`.
+
+You can also redo old neutrino mass constraints by importance sampling WMAP and Planck chains, following `notebooks/planck`.
+
+You can also play with the LaCE emulator with the notebooks in `notebooks/emulator`
+
+Finally, you can run your own analysis on mock data following the notebooks in `notebooks/likelihood`
