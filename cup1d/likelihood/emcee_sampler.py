@@ -544,10 +544,6 @@ class EmceeSampler(object):
 
         saveDict={}
 
-        # we have not yet implemented book-keeping for extra P1D likelihood
-        if self.like.extra_p1d_like:
-            raise ValueError('implement book-keeping for extra_p1d_like')
-
         # identify Nyx archives
         if hasattr(self.like.theory.emulator.archive,"fname"):
             saveDict["nyx_fname"]=self.like.theory.emulator.archive.fname
