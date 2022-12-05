@@ -24,7 +24,7 @@ class P1D_QMLE_Ohio(base_p1d_data.BaseDataP1D):
         datadir=basedir+'/QMLE_Ohio/'
 
         # for now we can only handle diagonal covariances
-        if self.version=='ohio-v0':
+        if version=='ohio-v0':
             fname=datadir+'/desi-y5fp-1.5-4-o3-deconv-power-qmle_kmax0.04.txt'
             Nz=12
             Nk=32
