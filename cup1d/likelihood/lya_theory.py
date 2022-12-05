@@ -1,11 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from lace.cosmo import camb_cosmo
+from lace.cosmo import fit_linP
 from cup1d.nuisance import mean_flux_model
 from cup1d.nuisance import thermal_model
 from cup1d.nuisance import pressure_model
 from cup1d.likelihood import CAMB_model
-from cup1d.likelihood import linear_power_model
+
 
 class Theory(object):
     """Translator between the likelihood object and the emulator. This object
@@ -43,13 +44,8 @@ class Theory(object):
             cosmo_fid=camb_cosmo.get_cosmology()
 
         # setup CAMB object for the fiducial cosmology
-        self.cosmo_model_fid=CAMB_model.CAMBModel(zs=self.zs,cosmo=cosmo_fid)
-
-        # store fiducial linear parameters
-        linP_model_fid=linear_power_model.LinearPowerModel(
-                    cosmo=self.cosmo_model_fid.cosmo,
-                    camb_results=self.cosmo_model_fid.get_camb_results())
-        self.fid_linP_params=linP_model_fid.linP_params
+        self.cosmo_model_fid=CAMB_model.CAMBModel(zs=self.zs,
+                    cosmo=cosmo_fid,z_star=self.z_star,kp_kms=self.kp_kms)
 
         # setup fiducial IGM models (from Gadget sims if not specified)
         if mf_model_fid:
@@ -203,12 +199,8 @@ class Theory(object):
                 out=np.nan,*([np.nan]*(Nblob-1))
                 return out
         else:
-            linP_model=linear_power_model.LinearPowerModel(
-                                    cosmo=camb_model.cosmo,
-                                    camb_results=camb_model.get_camb_results(),
-                                    z_star=self.z_star,
-                                    kp_kms=self.kp_kms)
-            params=linP_model.get_params()
+            # compute linear power parameters for input cosmology
+            params=self.cosmo_model_fid.get_linP_params()
             return params['Delta2_star'],params['n_star'], \
                     params['alpha_star'],params['f_star'], \
                     params['g_star'],camb_model.cosmo.H0

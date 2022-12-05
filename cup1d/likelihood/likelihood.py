@@ -9,10 +9,10 @@ from lace.cosmo import fit_linP
 
 from cup1d.likelihood import cosmologies
 from cup1d.likelihood import lya_theory
-from cup1d.likelihood import CAMB_model
 from cup1d.nuisance import mean_flux_model
 from cup1d.nuisance import thermal_model
 from cup1d.nuisance import pressure_model
+
 
 class Likelihood(object):
     """Likelihood class, holds data, theory, and knows about parameters"""

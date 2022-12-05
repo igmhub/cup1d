@@ -9,7 +9,7 @@ from cup1d.likelihood import likelihood_parameter
 class CAMBModel(object):
     """ Interface between CAMB object and Theory """
 
-    def __init__(self,zs,cosmo=None):
+    def __init__(self,zs,cosmo=None,z_star=3.0,kp_kms=0.009):
         """Setup from CAMB object and list of redshifts"""
 
         # list of redshifts at which we evaluate linear power
@@ -21,10 +21,14 @@ class CAMBModel(object):
         else:
             self.cosmo=cosmo
 
-        # will cache CAMB results when computed
+        # cache CAMB results when computed
         self.cached_camb_results=None
-        # will cache wavenumbers and linear power (at zs) when computed
+        # cache wavenumbers and linear power (at zs) when computed
         self.cached_linP_Mpc=None
+        # cache linear power parameters at (z_star,kp_kms)
+        self.z_star=z_star
+        self.kp_kms=kp_kms
+        self.cached_linP_params=None
 
 
     def get_likelihood_parameters(self):
@@ -80,6 +84,17 @@ class CAMBModel(object):
                     zs=self.zs,camb_results=camb_results)
 
         return self.cached_linP_Mpc
+
+
+    def get_linP_params(self):
+        """ Linear power parameters at (z_star,kp_kms) for this cosmology """
+
+        if self.cached_linP_params is None:
+            self.cached_linP_params = fit_linP.parameterize_cosmology_kms(
+                        self.cosmo,self.get_camb_results(),
+                        self.z_star,self.kp_kms)
+
+        return self.cached_linP_params
 
 
     def get_linP_Mpc_params(self,kp_Mpc):
