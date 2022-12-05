@@ -420,12 +420,25 @@ class EmceeSampler(object):
                                     data_cov_label=data_year,
                                     polyfit=(config["emu_type"]=="polyfit"))
 
-        # Setup likelihood
+        # (optionally) setup extra P1D data (from HIRES)
+        if "extra_p1d_label" in config:
+            extra_p1d_data=data_MPGADGET.P1D_MPGADGET(basedir=config["basedir"],
+                                    sim_label=config["data_sim_number"],
+                                    zmax=config["extra_p1d_zmax"],
+                                    data_cov_factor=1.0,
+                                    data_cov_label=config["extra_p1d_label"],
+                                    polyfit=(config["emu_type"]=="polyfit"))
+        else:
+            extra_p1d_data=None
+
+        # Setup free parameters
         if self.verbose: print("Setting up likelihood")
         free_param_names=[]
         for item in config["free_params"]:
             free_param_names.append(item[0])
         free_param_limits=config["free_param_limits"]
+
+        # Setup fiducial cosmo and likelihood
         cosmo_fid_label=config["cosmo_fid_label"]
         self.like=likelihood.Likelihood(data=data,emulator=emulator,
                             free_param_names=free_param_names,
@@ -433,7 +446,8 @@ class EmceeSampler(object):
                             verbose=False,
                             prior_Gauss_rms=config["prior_Gauss_rms"],
                             emu_cov_factor=config["emu_cov_factor"],
-                            cosmo_fid_label=cosmo_fid_label)
+                            cosmo_fid_label=cosmo_fid_label,
+                            extra_p1d_data=extra_p1d_data)
 
         # Verify we have a backend, and load it
         assert os.path.isfile(self.save_directory+"/backend.h5"), "Backend not found, can't load chains"
@@ -582,6 +596,14 @@ class EmceeSampler(object):
         saveDict["data_cov_factor"]=self.like.data.data_cov_factor
         saveDict["data_year"]=self.like.data.data_cov_label
         saveDict["cosmo_fid_label"]=self.like.cosmo_fid_label
+
+        # Add information about the extra-p1d data (high-resolution P1D)
+        if self.like.extra_p1d_like:
+            extra_p1d_data=self.like.extra_p1d_like.data
+            saveDict["extra_p1d_label"]=extra_p1d_data.data_cov_label
+            saveDict["extra_p1d_zmax"]=max(extra_p1d_data.z)
+        else:
+            print("did not have extra P1D likelihood")
 
         # Make sure (As,ns,nrun) were defined in standard pivot_scalar
         if hasattr(self.like.theory,"cosmo_model_fid"):
