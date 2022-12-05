@@ -285,7 +285,7 @@ class Likelihood(object):
         """Compute theoretical prediction for 1D P(k)"""
 
         if k_kms is None:
-            k_kms=self.data.k
+            k_kms=self.data.k_kms
 
         # translate sampling point (in unit cube) to parameter values
         if values is not None:
@@ -315,7 +315,7 @@ class Likelihood(object):
         covmats at each z """
 
         # get measured bins from data
-        k_kms=self.data.k
+        k_kms=self.data.k_kms
         zs=self.data.z
         Nz=len(zs)
 
@@ -345,7 +345,7 @@ class Likelihood(object):
             unless you are setting ignore_log_det_cov=True."""
 
         # get measured bins from data
-        k_kms=self.data.k
+        k_kms=self.data.k_kms
         zs=self.data.z
         Nz=len(zs)
 
@@ -529,7 +529,7 @@ class Likelihood(object):
     def exploration(self,values):
         """ Return exploration term for acquisition function """
         # get measured bins from data
-        k_kms=self.data.k
+        k_kms=self.data.k_kms
         zs=self.data.z
         Nz=len(zs)
 
@@ -600,7 +600,7 @@ class Likelihood(object):
             plot only few redshift bins"""
 
         # get measured bins from data
-        k_kms=self.data.k
+        k_kms=self.data.k_kms
         k_emu_kms=np.logspace(np.log10(min(k_kms)),np.log10(max(k_kms)),500)
         zs=self.data.z
         Nz=len(zs)

@@ -78,7 +78,7 @@ class P1D_MPGADGET(base_p1d_data.BaseDataP1D):
             print("Unknown data_cov_label",self.data_cov_label)
             quit()
 
-        k_kms=data_file.k
+        k_kms=data_file.k_kms
         z_data=data_file.z
 
         # setup TestSimulation object to read json files from sim directory
