@@ -12,7 +12,7 @@ from lace.cosmo import camb_cosmo
 from cup1d.data import base_p1d_data
 from cup1d.data import data_PD2013
 from cup1d.data import data_Chabanier2019
-#from cup1d.data import data_Karacayli_DESI
+from cup1d.data import data_QMLE_Ohio
 from cup1d.data import data_Karacayli2022
 from cup1d.data import test_simulation
 
@@ -70,8 +70,8 @@ class P1D_MPGADGET(base_p1d_data.BaseDataP1D):
             data_file=data_Chabanier2019.P1D_Chabanier2019(add_syst=add_syst)
         elif self.data_cov_label=="PD2013":
             data_file=data_PD2013.P1D_PD2013(add_syst=add_syst)
-        #elif self.data_cov_label=="Karacayli_DESI":
-        #    data_file=data_Karacayli_DESI.P1D_Karacayli_DESI()
+        elif self.data_cov_label=="QMLE_Ohio":
+            data_file=data_QMLE_Ohio.P1D_QMLE_Ohio()
         elif self.data_cov_label=="Karacayli2022":
             data_file=data_Karacayli2022.P1D_Karacayli2022()
         else:
