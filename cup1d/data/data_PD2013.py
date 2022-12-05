@@ -14,9 +14,9 @@ class P1D_PD2013(base_p1d_data.BaseDataP1D):
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         if use_FFT:
-            z,k,Pk,cov=self._setup_FFT(datadir,add_syst)
+            z,k,Pk,cov=read_FFT_from_file(datadir,add_syst)
         else:
-            z,k,Pk,cov=self._setup_like(datadir,add_syst)
+            z,k,Pk,cov=self.read_like_from_file(datadir,add_syst)
 
         # drop low-z or high-z bins
         if zmin or zmax:
@@ -27,48 +27,48 @@ class P1D_PD2013(base_p1d_data.BaseDataP1D):
         return
 
 
-    def _setup_FFT(self,datadir,add_syst=True):
-        """Setup measurement using FFT approach"""
+def read_FFT_from_file(datadir,add_syst=True):
+    """Setup measurement using FFT approach"""
+
+    # start by reading Pk file
+    p1d_file=datadir+'/table4a.dat'
+    iz,ik,inz,ink,inPk,inPkstat,inPknoise,inPkmetal,inPksyst=np.loadtxt(
+                p1d_file,unpack=True)
+
+    # store unique values of redshift and wavenumber
+    z=np.unique(inz)
+    Nz=len(z)
+    k=np.unique(ink)
+    Nk=len(k)
+
+    # store P1D, statistical error, noise power, metal power and systematic
+    Pk=np.reshape(inPk,[Nz,Nk])
+    Pkstat=np.reshape(inPkstat,[Nz,Nk])
+    Pknoise=np.reshape(inPknoise,[Nz,Nk])
+    Pkmetal=np.reshape(inPkmetal,[Nz,Nk])
+    Pksyst=np.reshape(inPksyst,[Nz,Nk])
+
+    # now read correlation matrices and compute covariance matrices
+    cov=[]
+    for i in range(Nz):
+        corr_file=datadir+'/cct4b'+str(i+1)+'.dat'
+        corr=np.loadtxt(corr_file,unpack=True)
+        # compute variance (start with statistics only)
+        var=Pkstat[i]**2
+        if add_syst:
+            var+=Pksyst[i]**2
+        sigma=np.sqrt(var)
+        zcov=np.multiply(corr,np.outer(sigma,sigma))
+        cov.append(zcov)
+
+    return z,k,Pk,cov
     
-        # start by reading Pk file
-        p1d_file=datadir+'/table4a.dat'
-        iz,ik,inz,ink,inPk,inPkstat,inPknoise,inPkmetal,inPksyst=np.loadtxt(
-                    p1d_file,unpack=True)
 
-        # store unique values of redshift and wavenumber
-        z=np.unique(inz)
-        Nz=len(z)
-        k=np.unique(ink)
-        Nk=len(k)
+def read_like_from_file(datadir,add_syst=True):
+    """Setup measurement using likelihood approach"""
 
-        # store P1D, statistical error, noise power, metal power and systematic
-        Pk=np.reshape(inPk,[Nz,Nk])
-        Pkstat=np.reshape(inPkstat,[Nz,Nk])
-        Pknoise=np.reshape(inPknoise,[Nz,Nk])
-        Pkmetal=np.reshape(inPkmetal,[Nz,Nk])
-        Pksyst=np.reshape(inPksyst,[Nz,Nk])
-
-        # now read correlation matrices and compute covariance matrices
-        cov=[]
-        for i in range(Nz):
-            corr_file=datadir+'/cct4b'+str(i+1)+'.dat'
-            corr=np.loadtxt(corr_file,unpack=True)
-            # compute variance (start with statistics only)
-            var=Pkstat[i]**2
-            if add_syst:
-                var+=Pksyst[i]**2
-            sigma=np.sqrt(var)
-            zcov=np.multiply(corr,np.outer(sigma,sigma))
-            cov.append(zcov)
-
-        return z,k,Pk,cov
-        
-
-    def _setup_like(self,datadir,add_syst=True):
-        """Setup measurement using likelihood approach"""
-
-        p1d_file=datadir+'/table5a.dat'
-        raise ValueError('implement _setup_like to read likelihood P1D') 
+    p1d_file=datadir+'/table5a.dat'
+    raise ValueError('implement _setup_like to read likelihood P1D') 
 
 
 def analytic_p1d_PD2013_z_kms(z,k_kms):
