@@ -52,3 +52,10 @@ You can also redo old neutrino mass constraints by importance sampling WMAP and 
 You can also play with the LaCE emulator with the notebooks in `notebooks/emulator`
 
 Finally, you can run your own analysis on mock data following the notebooks in `notebooks/likelihood`
+
+
+### Forecasting script
+
+You can run the script under scripts/forecast.py to forecast the constraints on linear power parameters for a given P1D covariance.
+
+It marginalizes over 8 nuisance parameters, so it might take a while to run!
