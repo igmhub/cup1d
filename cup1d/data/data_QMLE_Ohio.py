@@ -18,7 +18,7 @@ class P1D_QMLE_Ohio(base_p1d_data.BaseDataP1D):
     def _read_file(self,diag_cov,kmax_kms,version):
         """Read file containing mock P1D"""
 
-        # folder storing P1D measurements (private to DESI)
+        # DESI members can access this data in GitHub (cosmodesi/p1d_forecast)
         assert ('P1D_FORECAST' in os.environ),'Define P1D_FORECAST variable'
         basedir=os.environ['P1D_FORECAST']+'/private_data/p1d_measurements/'
         datadir=basedir+'/QMLE_Ohio/'
