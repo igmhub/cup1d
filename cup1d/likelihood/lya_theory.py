@@ -15,7 +15,7 @@ class Theory(object):
 
     def __init__(self,zs,emulator=None,verbose=False,
                     mf_model_fid=None,T_model_fid=None,kF_model_fid=None,
-                    cosmo_fid=None):
+                    cosmo_fid=None,free_param_names=None):
         """Setup object to compute predictions for the 1D power spectrum.
         Inputs:
             - zs: redshifts that will be evaluated
@@ -51,7 +51,8 @@ class Theory(object):
         if mf_model_fid:
             self.mf_model_fid = mf_model_fid
         else:
-            self.mf_model_fid = mean_flux_model.MeanFluxModel()
+            self.mf_model_fid = mean_flux_model.MeanFluxModel(
+                    free_param_names=free_param_names)
         if T_model_fid:
             self.T_model_fid = T_model_fid
         else:
