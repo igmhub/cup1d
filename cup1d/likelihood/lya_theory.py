@@ -56,11 +56,13 @@ class Theory(object):
         if T_model_fid:
             self.T_model_fid = T_model_fid
         else:
-            self.T_model_fid = thermal_model.ThermalModel()
+            self.T_model_fid = thermal_model.ThermalModel(
+                    free_param_names=free_param_names)
         if kF_model_fid:
             self.kF_model_fid = kF_model_fid
         else:
-            self.kF_model_fid = pressure_model.PressureModel()
+            self.kF_model_fid = pressure_model.PressureModel(
+                    free_param_names=free_param_names)
 
 
     def fixed_background(self,like_params):

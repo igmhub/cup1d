@@ -12,7 +12,7 @@ class MeanFluxModel(object):
          """
 
     def __init__(self,z_tau=3.0,ln_tau_coeff=None,fid_fname=None,
-            free_param_names=None):
+                free_param_names=None):
         """Construct model as a rescaling around a fiducial mean flux"""
 
         # figure out filename
@@ -33,14 +33,13 @@ class MeanFluxModel(object):
         if ln_tau_coeff:
             assert free_param_names is None
             self.ln_tau_coeff=ln_tau_coeff
-        if not ln_tau_coeff:
+        else:
             if free_param_names:
                 # figure out number of mean flux free params
                 n_mf=len([p for p in free_param_names if 'ln_tau_' in p])
             else:
                 n_mf=2
             self.ln_tau_coeff=[0.0]*n_mf
-
         # store list of likelihood parameters (might be fixed or free)
         self.set_parameters()
 

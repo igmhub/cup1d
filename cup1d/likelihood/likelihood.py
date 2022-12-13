@@ -79,8 +79,10 @@ class Likelihood(object):
                 print('create Nyx IGM models')
                 mf_fid=mean_flux_model.MeanFluxModel(fid_fname=fid_igm_fname,
                         free_param_names=free_param_names)
-                T_fid=thermal_model.ThermalModel(fid_fname=fid_igm_fname)
-                kF_fid=pressure_model.PressureModel(fid_fname=fid_igm_fname)
+                T_fid=thermal_model.ThermalModel(fid_fname=fid_igm_fname,
+                        free_param_names=free_param_names)
+                kF_fid=pressure_model.PressureModel(fid_fname=fid_igm_fname,
+                        free_param_names=free_param_names)
             else:
                 # if not specified, use Gadget models
                 mf_fid=None
