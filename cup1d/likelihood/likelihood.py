@@ -77,9 +77,12 @@ class Likelihood(object):
             if fid_igm_fname:
                 # for now this is only used in Nyx sims
                 print('create Nyx IGM models')
-                mf_fid=mean_flux_model.MeanFluxModel(fid_fname=fid_igm_fname)
-                T_fid=thermal_model.ThermalModel(fid_fname=fid_igm_fname)
-                kF_fid=pressure_model.PressureModel(fid_fname=fid_igm_fname)
+                mf_fid=mean_flux_model.MeanFluxModel(fid_fname=fid_igm_fname,
+                        free_param_names=free_param_names)
+                T_fid=thermal_model.ThermalModel(fid_fname=fid_igm_fname,
+                        free_param_names=free_param_names)
+                kF_fid=pressure_model.PressureModel(fid_fname=fid_igm_fname,
+                        free_param_names=free_param_names)
             else:
                 # if not specified, use Gadget models
                 mf_fid=None
@@ -90,7 +93,8 @@ class Likelihood(object):
             self.theory=lya_theory.Theory(zs=self.data.z,
                     emulator=emulator,verbose=verbose,
                     cosmo_fid=cosmo_fid,mf_model_fid=mf_fid,
-                    T_model_fid=T_fid,kF_model_fid=kF_fid)
+                    T_model_fid=T_fid,kF_model_fid=kF_fid,
+                    free_param_names=free_param_names)
 
         # check matching pivot points when using mock data (not sure is needed)
         if hasattr(self.data,"mock_sim"):

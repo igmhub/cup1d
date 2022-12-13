@@ -57,10 +57,14 @@ class EmceeSampler(object):
 
             # number of walkers
             if nwalkers:
-                self.nwalkers=nwalkers
+                if nwalkers > 2*self.ndim:
+                    self.nwalkers=nwalkers
+                else:
+                    print('nwalkers={} ; ndim={}'.format(nwalkers,self.ndim))
+                    raise ValueError('specified number of walkers too small')
             else:
-                self.nwalkers=10*self.ndim
-            if self.verbose: print('setup with',self.nwalkers,'walkers')
+                self.nwalkers=4*self.ndim
+            print('setup with',self.nwalkers,'walkers')
 
         ## Set up list of parameter names in tex format for plotting
         self.paramstrings=[]
@@ -780,12 +784,21 @@ param_dict={
             "f_star":"$f_\star$",
             "ln_tau_0":"$\mathrm{ln}\,\\tau_0$",
             "ln_tau_1":"$\mathrm{ln}\,\\tau_1$",
+            "ln_tau_2":"$\mathrm{ln}\,\\tau_2$",
+            "ln_tau_3":"$\mathrm{ln}\,\\tau_3$",
             "ln_sigT_kms_0":"$\mathrm{ln}\,\sigma^T_0$",
             "ln_sigT_kms_1":"$\mathrm{ln}\,\sigma^T_1$",
+            "ln_sigT_kms_2":"$\mathrm{ln}\,\sigma^T_2$",
+            "ln_sigT_kms_3":"$\mathrm{ln}\,\sigma^T_3$",
             "ln_gamma_0":"$\mathrm{ln}\,\gamma_0$",
             "ln_gamma_1":"$\mathrm{ln}\,\gamma_1$",
+            "ln_gamma_2":"$\mathrm{ln}\,\gamma_2$",
+            "ln_gamma_3":"$\mathrm{ln}\,\gamma_3$",
+            # it might be better to specify kF_kms here as well
             "ln_kF_0":"$\mathrm{ln}\,k^F_0$",
             "ln_kF_1":"$\mathrm{ln}\,k^F_1$",
+            "ln_kF_2":"$\mathrm{ln}\,k^F_2$",
+            "ln_kF_3":"$\mathrm{ln}\,k^F_3$",
             "H0":"$H_0$",
             "mnu":"$\Sigma m_\\nu$",
             "As":"$A_s$",

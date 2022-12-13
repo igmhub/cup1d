@@ -12,7 +12,8 @@ class PressureModel(object):
         We use a power law rescaling around a fiducial simulation at the centre
         of the initial Latin hypercube in simulation space."""
 
-    def __init__(self,z_kF=3.0,ln_kF_coeff=None,fid_fname=None):
+    def __init__(self,z_kF=3.0,ln_kF_coeff=None,fid_fname=None,
+                free_param_names=None):
         """Construct model with central redshift and (x2,x1,x0) polynomial."""
 
         # figure out filename
@@ -30,9 +31,16 @@ class PressureModel(object):
         self.fid_kF_interp=interp1d(self.fid_z,self.fid_kF,kind="cubic")
 
         self.z_kF=z_kF
-        if not ln_kF_coeff:
-            ln_kF_coeff=[0.0,0.0]
-        self.ln_kF_coeff=ln_kF_coeff
+        if ln_kF_coeff:
+            assert free_param_names is None
+            self.ln_kF_coeff=ln_kF_coeff
+        else:
+            if free_param_names:
+                # figure out number of free pressure params
+                n_kF=len([p for p in free_param_names if 'ln_kF_' in p])
+            else:
+                n_kF=2
+            self.ln_kF_coeff=[0.0]*n_kF
         # store list of likelihood parameters (might be fixed or free)
         self.set_parameters()
 

@@ -4,6 +4,7 @@ import os
 from scipy.interpolate import interp1d
 from cup1d.likelihood import likelihood_parameter
 
+
 class ThermalModel(object):
     """ Model the redshift evolution of the gas temperature parameters gamma
         and sigT_kms.
@@ -11,7 +12,7 @@ class ThermalModel(object):
         of the initial Latin hypercube in simulation space."""
 
     def __init__(self,z_T=3.0,ln_sigT_kms_coeff=None,ln_gamma_coeff=None,
-                fid_fname=None):
+                fid_fname=None,free_param_names=None):
         """ Model the redshift evolution of the thermal broadening scale and gamma.
         We use a power law rescaling around a fiducial simulation at the centre
         of the initial Latin hypercube in simulation space."""
@@ -33,15 +34,35 @@ class ThermalModel(object):
         self.fid_gamma_interp=interp1d(self.fid_z,self.fid_gamma,kind="cubic")
 
         self.z_T=z_T
-        if not ln_sigT_kms_coeff:
-            ln_sigT_kms_coeff=[0.0,0.0]
-        if not ln_gamma_coeff:
-            ln_gamma_coeff=[0.0,0.0]
-        self.ln_sigT_kms_coeff=ln_sigT_kms_coeff
-        self.ln_gamma_coeff=ln_gamma_coeff
+
+        # figure out parameters for sigT_kms (T0)
+        if ln_sigT_kms_coeff:
+            assert free_param_names is None
+            self.ln_sigT_kms_coeff=ln_sigT_kms_coeff
+        else:
+            if free_param_names:
+                # figure out number of sigT free params
+                n_sigT=len([p for p in free_param_names if 'ln_sigT_kms_' in p])
+            else:
+                n_sigT=2
+            self.ln_sigT_kms_coeff=[0.0]*n_sigT
         # store list of likelihood parameters (might be fixed or free)
         self.set_sigT_kms_parameters()
+
+        # figure out parameters for gamma (T0)
+        if ln_gamma_coeff:
+            assert free_param_names is None
+            self.ln_gamma_coeff=ln_gamma_coeff
+        else:
+            if free_param_names:
+                # figure out number of gamma free params
+                n_gamma=len([p for p in free_param_names if 'ln_gamma_' in p])
+            else:
+                n_gamma=2
+            self.ln_gamma_coeff=[0.0]*n_gamma
+        # store list of likelihood parameters (might be fixed or free)
         self.set_gamma_parameters()
+
 
     def get_sigT_kms_Nparam(self):
         """Number of parameters in the model of T_0"""
