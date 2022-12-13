@@ -787,6 +787,7 @@ param_dict={
             "ln_gamma_0":"$\mathrm{ln}\,\gamma_0$",
             "ln_gamma_1":"$\mathrm{ln}\,\gamma_1$",
             "ln_gamma_2":"$\mathrm{ln}\,\gamma_2$",
+            # it might be better to specify kF_kms here as well
             "ln_kF_0":"$\mathrm{ln}\,k^F_0$",
             "ln_kF_1":"$\mathrm{ln}\,k^F_1$",
             "ln_kF_2":"$\mathrm{ln}\,k^F_2$",
