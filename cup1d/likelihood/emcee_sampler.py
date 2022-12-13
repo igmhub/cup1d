@@ -57,10 +57,14 @@ class EmceeSampler(object):
 
             # number of walkers
             if nwalkers:
-                self.nwalkers=nwalkers
+                if nwalkers > 2*self.ndim:
+                    self.nwalkers=nwalkers
+                else:
+                    print('nwalkers={} ; ndim={}'.format(nwalkers,self.ndim))
+                    raise ValueError('specified number of walkers too small')
             else:
-                self.nwalkers=10*self.ndim
-            if self.verbose: print('setup with',self.nwalkers,'walkers')
+                self.nwalkers=4*self.ndim
+            print('setup with',self.nwalkers,'walkers')
 
         ## Set up list of parameter names in tex format for plotting
         self.paramstrings=[]
