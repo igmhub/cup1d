@@ -1,5 +1,3 @@
-import matplotlib ## Suppresses plotting issues on compute nodes
-matplotlib.use("Agg")
 import os
 import configargparse
 import time
@@ -13,23 +11,38 @@ from cup1d.likelihood import emcee_sampler
 os.environ["OMP_NUM_THREADS"] = "1"
 
 parser = configargparse.ArgumentParser()
-parser.add_argument('--timeout', type=float, required=True, help='Stop chain after these many hours')
-parser.add_argument('--subfolder', type=str, default='test', help='Subdirectory to save chain file in')
-parser.add_argument('--emu_type', type=str, default='polyfit',help='k_bin or polyfit emulator')
-parser.add_argument('--sim_label', type=str, default='central', help='Which sim to use as mock data')
-parser.add_argument('--kmax_Mpc', type=float, default=8, help='Maximum k to train emulator')
-parser.add_argument('--z_max', type=float, default=4.5, help='Maximum redshift')
-parser.add_argument('--simple_igm', action='store_true', help='Use a one-parameter IGM model for testing')
-parser.add_argument('--no_igm', action='store_true', help='Do not vary IGM parameters at all')
-parser.add_argument('--cosmo_fid_label', type=str, default='default', help='Fiducial cosmology to use (default,truth)')
-parser.add_argument('--nwalkers', type=int, default=64, help='Number of walkers to sample')
-parser.add_argument('--burn_in', type=int, default=200, help='Number of burn in steps')
-parser.add_argument('--prior_Gauss_rms', type=float, default=0.5,help='Width of Gaussian prior')
-parser.add_argument('--data_cov_factor', type=float, default=1.0, help='Factor to multiply the data covariance by')
-parser.add_argument('--data_cov_label', type=str, default='Chabanier2019', help='Data covariance to use, Chabanier2019 or Karacayli_DESI')
-parser.add_argument('--rootdir', type=str, default=None, help='Root directory containing chains')
-parser.add_argument('--extra_p1d_label', type=str, default=None, help='Which extra p1d data covmats to use (e.g., Karacayli_HIRES)')
-parser.add_argument('--free_cosmo_params', nargs="+", help='List of cosmological parameters to sample')
+parser.add_argument('--timeout', type=float, required=True,
+        help='Stop chain after these many hours')
+parser.add_argument('--subfolder', type=str, default='cup1d',
+        help='Subdirectory to save chain file in')
+parser.add_argument('--emu_type', type=str, default='polyfit',
+        help='k_bin or polyfit emulator')
+parser.add_argument('--sim_label', type=str, default='central',
+        help='Which sim to use as mock data')
+parser.add_argument('--kmax_Mpc', type=float, default=8,
+        help='Maximum k to train emulator')
+parser.add_argument('--z_max', type=float, default=4.5,
+        help='Maximum redshift')
+parser.add_argument('--n_igm', type=int, default=2,
+        help='Number of free parameters for IGM model')
+parser.add_argument('--no_igm', action='store_true',
+        help='Do not vary IGM parameters at all')
+parser.add_argument('--cosmo_fid_label', type=str, default='default',
+        help='Fiducial cosmology to use (default,truth)')
+parser.add_argument('--burn_in', type=int, default=200,
+        help='Number of burn in steps')
+parser.add_argument('--prior_Gauss_rms', type=float, default=0.5,
+        help='Width of Gaussian prior')
+parser.add_argument('--data_cov_factor', type=float, default=1.0,
+        help='Factor to multiply the data covariance by')
+parser.add_argument('--data_cov_label', type=str, default='Chabanier2019',
+        help='Data covariance to use, Chabanier2019 or PD2013')
+parser.add_argument('--rootdir', type=str, default=None,
+        help='Root directory containing chains')
+parser.add_argument('--extra_p1d_label', type=str, default=None,
+        help='Which extra p1d data covmats to use (e.g., Karacayli2022)')
+parser.add_argument('--free_cosmo_params', nargs="+",
+        help='List of cosmological parameters to sample')
 args = parser.parse_args()
 
 print('--- print options from parser ---')
@@ -46,7 +59,8 @@ if args.rootdir:
     rootdir=args.rootdir
     print('set input rootdir',rootdir)
 else:
-    rootdir='/global/cfs/cdirs/desi/users/font/Codes/cup1d/emcee_chains/'
+    assert ('P1D_FORECAST' in os.environ),'Define P1D_FORECAST variable'
+    rootdir=os.environ['P1D_FORECAST']+'/chains/'
     print('use default rootdir',rootdir)
 
 # compile list of free parameters
@@ -59,11 +73,10 @@ else:
 if args.no_igm:
     print('running without IGM parameters')
 else:
-    if args.simple_igm:
-        free_parameters+=['ln_tau_0']
-    else:
-        free_parameters+=['ln_tau_0','ln_tau_1','ln_sigT_kms_0','ln_sigT_kms_1',
-                'ln_gamma_0','ln_gamma_1','ln_kF_0','ln_kF_1']
+    print('using {} parameters for IGM model'.format(args.n_igm))
+    for i in range(args.n_igm):
+        for par in ["tau","sigT_kms","gamma","kF"]:
+            free_parameters.append('ln_{}_{}'.format(par,i))
 print('free parameters',free_parameters)
 
 # check if sim_label is part of the training set, and remove it
@@ -102,6 +115,7 @@ if args.extra_p1d_label:
                         sim_label=args.sim_label,
                         zmax=args.z_max,
                         data_cov_label=args.extra_p1d_label,
+                        data_cov_factor=1.0,
                         polyfit=(args.emu_type=='polyfit'))
 else:
     extra_p1d_data=None
@@ -111,11 +125,11 @@ like=likelihood.Likelihood(data=data,emulator=emu,
                         free_param_names=free_parameters,
                         prior_Gauss_rms=args.prior_Gauss_rms,
                         cosmo_fid_label=args.cosmo_fid_label,
-                        extra_p1d_data=extra_p1d_data)
+                        extra_p1d_data=extra_p1d_data,
+                        verbose=False)
 
 # pass likelihood to sampler
 sampler = emcee_sampler.EmceeSampler(like=like,verbose=False,
-                        nwalkers=args.nwalkers,
                         subfolder=args.subfolder,
                         rootdir=rootdir)
 
@@ -135,7 +149,6 @@ end = time.time()
 multi_time = end - start
 print("Sampling took {0:.1f} seconds".format(multi_time))
 
-# store results
+# store results (skip plotting when running at NERSC)
 sampler.write_chain_to_file(residuals=True,plot_nersc=True,
             plot_delta_lnprob_cut=50)
-
