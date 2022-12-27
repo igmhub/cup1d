@@ -6,6 +6,9 @@ class Mock_P1D(base_p1d_data.BaseDataP1D):
     def __init__(self,data,theory):
         """ Copy data and replace P1D signal using theory"""
 
+        # keep theory in case you need it later
+        self.theory=theory
+
         # evaluate theory at k_kms, for all redshifts
         emu_p1d_kms=theory.get_p1d_kms(data.k_kms)
 

@@ -250,8 +250,15 @@ class Likelihood(object):
     def get_sim_cosmo(self):
         """ Check that we are running on mock data, and return sim cosmo"""
 
-        assert hasattr(self.data,"mock_sim"), "p1d data is not a mock"
-        return self.data.mock_sim.sim_cosmo
+        # different type of data will check for different sim cosmo
+        if hasattr(self.data,"mock_sim"):
+            # using a data_MPGADGET P1D (from Gadget sim)
+            return self.data.mock_sim.sim_cosmo
+        elif hasattr(self.data,"theory"):
+            # using a mock_data P1D (computed from theory)
+            return self.data.theory.cosmo_model_fid.cosmo
+        else:
+            raise ValueError("Can only use get_sim_cosmo when using mock data")
 
 
     def set_truth(self,z_star=3.0,kp_kms=0.009):
@@ -561,42 +568,6 @@ class Likelihood(object):
 
         return explor
         
-
-    def get_simulation_suite_linP_params(self):
-        """ Compute Delta2_star and n_star for each simulation
-        in the training set of the emulator"""
-
-        # simulation cube used in emulator
-        cube_data=self.theory.emulator.archive.cube_data
-
-        # collect linP params for each simulation
-        Delta2_stars=[]
-        n_stars=[]
-        for sim_num in range(cube_data["nsamples"]):
-            # Don't include simulation used to generate mock data
-            if sim_num==self.theory.emulator.archive.drop_sim_number:
-                continue
-            else:
-                sim_linP_params=self.get_simulation_linP_params(sim_num)
-                Delta2_stars.append(sim_linP_params['Delta2_star'])
-                n_stars.append(sim_linP_params['n_star'])
-        
-        return Delta2_stars, n_stars
-
-
-    def get_simulation_linP_params(self,sim_num,z_star=3.0,kp_kms=0.009):
-        """ Compute Delta2_star and n_star for a given simulation in suite"""
-
-        # setup cosmology from GenIC file
-        sim_cosmo=self.theory.emulator.archive.get_simulation_cosmology(sim_num)
-
-        # fit linear power parameters for simulation cosmology
-        sim_linP_params=fit_linP.parameterize_cosmology_kms(
-                cosmo=sim_cosmo,camb_results=None,
-                z_star=z_star,kp_kms=kp_kms)
-
-        return sim_linP_params
-
 
     def plot_p1d(self,values=None,plot_every_iz=1,residuals=False,
                  plot_fname=None):
