@@ -8,10 +8,10 @@ from cup1d.likelihood import likelihood
 class IminuitMinimizer(object):
     """Wrapper around an iminuit minimizer for Lyman alpha likelihood"""
 
-    def __init__(self,like,error=0.02,print_level=1):
+    def __init__(self,like,error=0.02,verbose=True):
         """Setup minimizer from likelihood."""
 
-        self.verbose=(print_level>0)
+        self.verbose=verbose
         self.like=like
 
         # set initial values (for now, center of the unit cube)
@@ -21,7 +21,6 @@ class IminuitMinimizer(object):
         self.minimizer = Minuit(like.minus_log_prob,ini_values)
         self.minimizer.errordef=0.5
         self.minimizer.errors=error
-        self.minimizer.print_level=print_level
 
 
     def minimize(self,compute_hesse=True):
