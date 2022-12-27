@@ -440,13 +440,11 @@ class EmceeSampler(object):
         free_param_names=[]
         for item in config["free_params"]:
             free_param_names.append(item[0])
-        free_param_limits=config["free_param_limits"]
 
         # Setup fiducial cosmo and likelihood
         cosmo_fid_label=config["cosmo_fid_label"]
         self.like=likelihood.Likelihood(data=data,emulator=emulator,
                             free_param_names=free_param_names,
-                            free_param_limits=free_param_limits,
                             verbose=False,
                             prior_Gauss_rms=config["prior_Gauss_rms"],
                             emu_cov_factor=config["emu_cov_factor"],
@@ -612,14 +610,9 @@ class EmceeSampler(object):
             assert pivot_scalar==0.05,"non-standard pivot_scalar"
 
         free_params_save=[]
-        free_param_limits=[]
         for par in self.like.free_params:
-            ## The parameter limits are saved twice but for the sake
-            ## of backwards compatibility I'm going to leave this
             free_params_save.append([par.name,par.min_value,par.max_value])
-            free_param_limits.append([par.min_value,par.max_value])
         saveDict["free_params"]=free_params_save
-        saveDict["free_param_limits"]=free_param_limits
 
         ## Sampler stuff
         saveDict["burn_in"]=self.burnin_nsteps

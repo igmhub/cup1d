@@ -20,7 +20,6 @@ class Likelihood(object):
     def __init__(self,data,theory=None,emulator=None,
                     cosmo_fid_label='default',
                     free_param_names=None,
-                    free_param_limits=None,
                     verbose=False,
                     prior_Gauss_rms=0.2,
                     kmin_kms=None,
@@ -38,7 +37,6 @@ class Likelihood(object):
                         truth: read true cosmology used in simulation
                         look at cosmologies.py for more options
             - free_param_names is a list of param names, in any order
-            - free_param_limits list of tuples, same order than free_param_names
             - if prior_Gauss_rms is None it will use uniform priors
             - ignore k-bins with k > kmin_kms
             - emu_cov_factor adjusts the contribution from emulator covariance
@@ -103,7 +101,7 @@ class Likelihood(object):
             assert data_pivot==theory_pivot, "non-standard pivot_scalar"
 
         # setup parameters
-        self.set_free_parameters(free_param_names,free_param_limits)
+        self.set_free_parameters(free_param_names)
         if verbose: print(len(self.free_params),'free parameters')
 
         # extra P1D likelihood from, e.g., HIRES
@@ -111,7 +109,6 @@ class Likelihood(object):
             self.extra_p1d_like=Likelihood(data=extra_p1d_data,
                     theory=self.theory,emulator=None,
                     free_param_names=free_param_names,
-                    free_param_limits=free_param_limits,
                     verbose=verbose,
                     prior_Gauss_rms=prior_Gauss_rms,
                     kmin_kms=kmin_kms,
@@ -126,14 +123,11 @@ class Likelihood(object):
         return
 
 
-    def set_free_parameters(self,free_param_names,free_param_limits):
+    def set_free_parameters(self,free_param_names):
         """Setup likelihood parameters that we want to vary"""
 
         # setup list of likelihood free parameters
         self.free_params=[]
-
-        if free_param_limits is not None:
-            assert len(free_param_limits)==len(free_param_names), "wrong number of parameter limits"
 
         # get all parameters in theory, free or not
         params = self.theory.get_parameters()
@@ -143,11 +137,6 @@ class Likelihood(object):
         for par_name in free_param_names:
             for par in params:
                 if par.name == par_name:
-                    if free_param_limits is not None:
-                        ## Set min and max of each parameter if
-                        ## a list is given. otherwise leave as default
-                        par.min_value=free_param_limits[free_param_names.index(par.name)][0]
-                        par.max_value=free_param_limits[free_param_names.index(par.name)][1]
                     self.free_params.append(par)
 
         Nfree=len(self.free_params)
@@ -159,46 +148,6 @@ class Likelihood(object):
             print('likelihood setup with {} free parameters'.format(Nfree))
 
         return
-
-
-    def get_free_parameter_list(self):
-        """ Return a list of names for all free parameters """
-
-        param_list=[]
-        for par in self.free_params:
-            param_list.append(par.name)
-
-        return param_list
-
-
-    def default_sampling_point(self):
-        """Use default likelihood parameters to get array of values (in cube)"""
-
-        return self.sampling_point_from_parameters(self.free_params)
-
-
-    def sampling_point_from_parameters(self,like_params):
-        """Get parameter values in cube for free parameters in input array.
-            Note: input list could be longer than list of free parameters,
-            and in different order."""
-
-        # collect list of values of parameters in cube
-        values=[]
-        # loop over free parameters in likelihood, this sets the order
-        for par in self.free_params:
-            found=False
-            # loop over input likelihood parameters and find match
-            for inpar in like_params:
-                if par.name == inpar.name:
-                    assert found==False,'parameter found twice'
-                    values.append(inpar.value_in_cube())
-                    found=True
-            if not found:
-                print('free parameter not in input list',par.info_str())
-
-        assert len(self.free_params)==len(values),'size mismatch'
-
-        return values
 
 
     def parameters_from_sampling_point(self,values):
@@ -318,36 +267,6 @@ class Likelihood(object):
             return None
         else:
             return -2.0*log_like
-
-
-    def get_covmats(self,values=None):
-        """ Return the data and emulator covmats for a given
-        set of likelihood parameters. Will return a list of the
-        covmats at each z """
-
-        # get measured bins from data
-        k_kms=self.data.k_kms
-        zs=self.data.z
-        Nz=len(zs)
-
-        # ask emulator prediction for P1D in each bin
-        emu_p1d, emu_covar = self.get_p1d_kms(k_kms,values,return_covar=True)
-        if self.verbose: print('got P1D from emulator')
-
-        data_covar=[]
-
-        for iz in range(Nz):
-            # acess data for this redshift
-            z=zs[iz]
-            # make sure that theory is valid
-            if emu_p1d[iz] is None:
-                if self.verbose: print(z,'theory did not emulate p1d')
-                return None
-            if self.verbose: print('compute chi2 for z={}'.format(z))
-            # get data
-            data_covar.append(self.data.get_cov_iz(iz))
-
-        return data_covar, emu_covar
 
 
     def get_log_like(self,values=None,ignore_log_det_cov=True,
