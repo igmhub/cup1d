@@ -8,7 +8,7 @@ from cup1d.likelihood import likelihood
 class IminuitMinimizer(object):
     """Wrapper around an iminuit minimizer for Lyman alpha likelihood"""
 
-    def __init__(self,like,error=0.02,verbose=True):
+    def __init__(self,like,error=0.02,verbose=False):
         """Setup minimizer from likelihood."""
 
         self.verbose=verbose
