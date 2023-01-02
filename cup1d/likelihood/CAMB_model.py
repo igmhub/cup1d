@@ -48,7 +48,7 @@ class CAMBModel(object):
                         name='As',min_value=1.0e-09,max_value=3.2e-09,
                         value=self.cosmo.InitPower.As))
         params.append(likelihood_parameter.LikelihoodParameter(
-                        name='ns',min_value=0.89,max_value=1.05,
+                        name='ns',min_value=0.88,max_value=1.05,
                         value=self.cosmo.InitPower.ns))
         params.append(likelihood_parameter.LikelihoodParameter(
                         name='mnu',min_value=0.0,max_value=1.0,

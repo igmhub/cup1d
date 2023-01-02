@@ -161,46 +161,6 @@ class Likelihood(object):
         return
 
 
-    def get_free_parameter_list(self):
-        """ Return a list of names for all free parameters """
-
-        param_list=[]
-        for par in self.free_params:
-            param_list.append(par.name)
-
-        return param_list
-
-
-    def default_sampling_point(self):
-        """Use default likelihood parameters to get array of values (in cube)"""
-
-        return self.sampling_point_from_parameters(self.free_params)
-
-
-    def sampling_point_from_parameters(self,like_params):
-        """Get parameter values in cube for free parameters in input array.
-            Note: input list could be longer than list of free parameters,
-            and in different order."""
-
-        # collect list of values of parameters in cube
-        values=[]
-        # loop over free parameters in likelihood, this sets the order
-        for par in self.free_params:
-            found=False
-            # loop over input likelihood parameters and find match
-            for inpar in like_params:
-                if par.name == inpar.name:
-                    assert found==False,'parameter found twice'
-                    values.append(inpar.value_in_cube())
-                    found=True
-            if not found:
-                print('free parameter not in input list',par.info_str())
-
-        assert len(self.free_params)==len(values),'size mismatch'
-
-        return values
-
-
     def parameters_from_sampling_point(self,values):
         """Translate input array of values (in cube) to likelihood parameters"""
         
@@ -250,8 +210,15 @@ class Likelihood(object):
     def get_sim_cosmo(self):
         """ Check that we are running on mock data, and return sim cosmo"""
 
-        assert hasattr(self.data,"mock_sim"), "p1d data is not a mock"
-        return self.data.mock_sim.sim_cosmo
+        # different type of data will check for different sim cosmo
+        if hasattr(self.data,"mock_sim"):
+            # using a data_MPGADGET P1D (from Gadget sim)
+            return self.data.mock_sim.sim_cosmo
+        elif hasattr(self.data,"theory"):
+            # using a mock_data P1D (computed from theory)
+            return self.data.theory.cosmo_model_fid.cosmo
+        else:
+            raise ValueError("Can only use get_sim_cosmo when using mock data")
 
 
     def set_truth(self,z_star=3.0,kp_kms=0.009):
@@ -311,36 +278,6 @@ class Likelihood(object):
             return None
         else:
             return -2.0*log_like
-
-
-    def get_covmats(self,values=None):
-        """ Return the data and emulator covmats for a given
-        set of likelihood parameters. Will return a list of the
-        covmats at each z """
-
-        # get measured bins from data
-        k_kms=self.data.k_kms
-        zs=self.data.z
-        Nz=len(zs)
-
-        # ask emulator prediction for P1D in each bin
-        emu_p1d, emu_covar = self.get_p1d_kms(k_kms,values,return_covar=True)
-        if self.verbose: print('got P1D from emulator')
-
-        data_covar=[]
-
-        for iz in range(Nz):
-            # acess data for this redshift
-            z=zs[iz]
-            # make sure that theory is valid
-            if emu_p1d[iz] is None:
-                if self.verbose: print(z,'theory did not emulate p1d')
-                return None
-            if self.verbose: print('compute chi2 for z={}'.format(z))
-            # get data
-            data_covar.append(self.data.get_cov_iz(iz))
-
-        return data_covar, emu_covar
 
 
     def get_log_like(self,values=None,ignore_log_det_cov=True,
@@ -495,107 +432,6 @@ class Likelihood(object):
             initial_values=np.ones(len(self.free_params))*0.5
 
         return minimize(self.minus_log_prob, x0=initial_values,method=method,tol=tol)
-
-
-    def maximise_acquisition(self,alpha,verbose=False,tolerance=0.1,cube=False):
-        """ Maximise lnprob+alpha*sigma, where sigma is the exploration
-        term as defined in Rogers et al (2019) """
-
-        x0=np.ones(len(self.free_params))*0.5
-
-        result = minimize(self.acquisition, x0,args=(alpha,verbose),
-                method='nelder-mead',
-                options={'xatol': tolerance, 'disp': True})
-
-        if cube:
-            return result.x
-        else:
-            ## Map to physical params
-            theta_physical=np.empty(len(result.x))
-            for aa, theta in enumerate(result.x):
-                theta_physical[aa]=self.free_params[aa].value_from_cube(theta)
-            return theta_physical
-
-
-    def acquisition(self,theta,alpha,verbose):
-        """ Acquisition function """
-        logprob=self.log_prob(theta)
-        explo=self.exploration(theta)
-        theta_param=theta
-        if verbose:
-                print("\n theta=", theta_param)
-                print("log prob = ", logprob)
-                print("exploration = ", alpha*explo)
-                print("acquisition function = ", logprob+alpha*explo)
-        return -1.0*(logprob+alpha*explo)
-
-
-    def exploration(self,values):
-        """ Return exploration term for acquisition function """
-        # get measured bins from data
-        k_kms=self.data.k_kms
-        zs=self.data.z
-        Nz=len(zs)
-
-        # ask emulator prediction for P1D in each bin
-        emu_p1d,emu_covar = self.get_p1d_kms(k_kms,values,return_covar=True)
-        if self.verbose: print('got P1D from emulator')
-
-        # compute log like contribution from each redshift bin
-        explor=0
-
-        for iz in range(Nz):
-            # acess data for this redshift
-            z=zs[iz]
-            # make sure that theory is valid
-            if emu_p1d[iz] is None:
-                if self.verbose: print(z,'theory did not emulate p1d')
-                return None
-            if self.verbose: print('compute exploration term for z={}'.format(z))
-            # get data cov
-            data_cov=self.data.get_cov_iz(iz)
-
-            # compute chi2 for this redshift bin
-            icov = np.linalg.inv(data_cov)
-            explor += np.dot(np.dot(icov,np.sqrt(np.diag(emu_covar[iz]))),np.sqrt(np.diag(emu_covar[iz])))
-
-        return explor
-        
-
-    def get_simulation_suite_linP_params(self):
-        """ Compute Delta2_star and n_star for each simulation
-        in the training set of the emulator"""
-
-        # simulation cube used in emulator
-        cube_data=self.theory.emulator.archive.cube_data
-
-        # collect linP params for each simulation
-        Delta2_stars=[]
-        n_stars=[]
-        for sim_num in range(cube_data["nsamples"]):
-            # Don't include simulation used to generate mock data
-            if sim_num==self.theory.emulator.archive.drop_sim_number:
-                continue
-            else:
-                sim_linP_params=self.get_simulation_linP_params(sim_num)
-                Delta2_stars.append(sim_linP_params['Delta2_star'])
-                n_stars.append(sim_linP_params['n_star'])
-        
-        return Delta2_stars, n_stars
-
-
-    def get_simulation_linP_params(self,sim_num,z_star=3.0,kp_kms=0.009):
-        """ Compute Delta2_star and n_star for a given simulation in suite"""
-
-        # setup cosmology from GenIC file
-        sim_cosmo=self.theory.emulator.archive.get_simulation_cosmology(sim_num)
-
-        # fit linear power parameters for simulation cosmology
-        sim_linP_params=fit_linP.parameterize_cosmology_kms(
-                cosmo=sim_cosmo,camb_results=None,
-                z_star=z_star,kp_kms=kp_kms)
-
-        return sim_linP_params
 
 
     def plot_p1d(self,values=None,plot_every_iz=1,residuals=False,
