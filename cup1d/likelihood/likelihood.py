@@ -250,8 +250,15 @@ class Likelihood(object):
     def get_sim_cosmo(self):
         """ Check that we are running on mock data, and return sim cosmo"""
 
-        assert hasattr(self.data,"mock_sim"), "p1d data is not a mock"
-        return self.data.mock_sim.sim_cosmo
+        # different type of data will check for different sim cosmo
+        if hasattr(self.data,"mock_sim"):
+            # using a data_MPGADGET P1D (from Gadget sim)
+            return self.data.mock_sim.sim_cosmo
+        elif hasattr(self.data,"theory"):
+            # using a mock_data P1D (computed from theory)
+            return self.data.theory.cosmo_model_fid.cosmo
+        else:
+            raise ValueError("Can only use get_sim_cosmo when using mock data")
 
 
     def set_truth(self,z_star=3.0,kp_kms=0.009):
