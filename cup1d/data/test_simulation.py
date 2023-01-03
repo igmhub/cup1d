@@ -113,8 +113,7 @@ class TestSimulation(object):
         # setup CAMB object
         self.sim_cosmo=camb_cosmo.get_cosmology_from_dictionary(sim_cosmo_dict)
         # compute linear power parameters at each z (in Mpc units)
-        linP_zs=fit_linP.get_linP_Mpc_zs(self.sim_cosmo,self.zs,kp_Mpc,
-                include_f_p=True)
+        linP_zs=fit_linP.get_linP_Mpc_zs(self.sim_cosmo,self.zs,kp_Mpc)
         #print('linP_zs',linP_zs)
         linP_values=list(linP_zs)
 
