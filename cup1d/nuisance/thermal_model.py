@@ -98,6 +98,12 @@ class ThermalModel(object):
         return sigT_kms
 
 
+    def get_T0(self,z):
+        """T_0 at the input redshift"""
+        sigT_kms=self.power_law_scaling_sigT_kms(z)*self.fid_sigT_kms_interp(z)
+        return T0_from_broadening_kms(sigT_kms)
+
+
     def get_gamma(self,z):
         """gamma at the input redshift"""
         gamma=self.power_law_scaling_gamma(z)*self.fid_gamma_interp(z)
@@ -117,7 +123,8 @@ class ThermalModel(object):
             else:
                 xmin=-0.4
                 xmax=0.4
-            value=self.ln_sigT_kms_coeff[i]
+            # note non-trivial order in coefficients
+            value=self.ln_sigT_kms_coeff[Npar-i-1]
             par = likelihood_parameter.LikelihoodParameter(name=name,
                                 value=value,min_value=xmin,max_value=xmax)
             self.sigT_kms_params.append(par)
@@ -164,16 +171,15 @@ class ThermalModel(object):
 
         # loop over likelihood parameters
         for like_par in like_params:
-            if 'sigT_kms' in like_par.name:
+            if 'ln_sigT_kms' in like_par.name:
                 # make sure you find the parameter
                 found=False
                 # loop over T0 parameters in thermal model
                 for ip in range(len(self.sigT_kms_params)):
                     if self.sigT_kms_params[ip].name == like_par.name:
                         assert found==False,'can not update parameter twice'
-                        # note different order than with gamma parameters
-                        #self.ln_sigT_kms_coeff[Npar_T0-ip-1]=like_par.value
-                        self.ln_sigT_kms_coeff[ip]=like_par.value
+                        self.ln_sigT_kms_coeff[Npar_sigT_kms-ip-1]=like_par.value
+                        #self.ln_sigT_kms_coeff[ip]=like_par.value
                         found=True
                 assert found==True,'could not update parameter '+like_par.name
             elif 'ln_gamma' in like_par.name:
