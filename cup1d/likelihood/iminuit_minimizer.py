@@ -8,18 +8,20 @@ from cup1d.likelihood import likelihood
 class IminuitMinimizer(object):
     """Wrapper around an iminuit minimizer for Lyman alpha likelihood"""
 
-    def __init__(self,like,error=0.02,verbose=False):
+    def __init__(self,like,ini_values=None,error=0.02,verbose=False):
         """Setup minimizer from likelihood."""
 
         self.verbose=verbose
         self.like=like
 
         # set initial values (for now, center of the unit cube)
-        ini_values=0.5*np.ones(len(self.like.free_params))
+        if ini_values is None:
+            ini_values=0.5*np.ones(len(self.like.free_params))
 
         # setup iminuit object (errordef=0.5 if using log-likelihood)
         self.minimizer = Minuit(like.minus_log_prob,ini_values)
         self.minimizer.errordef=0.5
+        # error only used to set initial parameter step
         self.minimizer.errors=error
 
 
@@ -34,6 +36,7 @@ class IminuitMinimizer(object):
             self.minimizer.hesse()
 
         return
+
 
     def plot_best_fit(self,plot_every_iz=1,residuals=True):
         """Plot best-fit P1D vs data.
@@ -77,7 +80,7 @@ class IminuitMinimizer(object):
 
         # check if you were asked for errors as well
         if return_hesse:
-            cube_errors=self.minimizer.errors()
+            cube_errors=self.minimizer.errors
             par_error = cube_errors[ipar] *(par.max_value-par.min_value)
             return par_value, par_error
         else:
@@ -99,13 +102,13 @@ class IminuitMinimizer(object):
             if pname_x=='As':
                 true_x*=1e9
         else:
-            true_x=0.0
+            true_x = 0.5 if cube_values else 0.0
         if pname_y in self.like.truth:
             true_y=self.like.truth[pname_y]
             if pname_y=='As':
                 true_y*=1e9
         else:
-            true_y=0.0
+            true_y = 0.5 if cube_values else 0.0
 
         # figure out order of parameters in free parameters list
         ix=self.index_by_name(pname_x)
