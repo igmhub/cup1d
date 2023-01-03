@@ -108,8 +108,16 @@ class Likelihood(object):
 
         # extra P1D likelihood from, e.g., HIRES
         if extra_p1d_data:
+            # new theory, since we might need different zs
+            extra_theory=lya_theory.Theory(zs=extra_p1d_data.z,
+                    emulator=self.theory.emulator,
+                    cosmo_fid=self.theory.cosmo_model_fid.cosmo,
+                    mf_model_fid=self.theory.mf_model_fid,
+                    T_model_fid=self.theory.T_model_fid,
+                    kF_model_fid=self.theory.kF_model_fid,
+                    verbose=verbose)
             self.extra_p1d_like=Likelihood(data=extra_p1d_data,
-                    theory=self.theory,emulator=None,
+                    theory=extra_theory,emulator=None,
                     free_param_names=free_param_names,
                     free_param_limits=free_param_limits,
                     verbose=verbose,
