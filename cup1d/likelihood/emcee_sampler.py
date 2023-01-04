@@ -24,14 +24,12 @@ class EmceeSampler(object):
                         nwalkers=None,read_chain_file=None,verbose=False,
                         subfolder=None,rootdir=None,
                         save_chain=True,progress=False,
-                        train_when_reading=True,
-                        ignore_grid_when_reading=False):
+                        train_when_reading=True):
         """Setup sampler from likelihood, or use default.
             If read_chain_file is provided, read pre-computed chain.
             rootdir allows user to search for saved chains in a different
             location to the code itself.
-            If not train_when_reading, emulator can not be used when reading.
-            Use ignore_grid_when_reading for plotting marginalised chains."""
+            If not train_when_reading, emulator can not be used when reading."""
 
         self.verbose=verbose
         self.progress=progress
@@ -40,7 +38,7 @@ class EmceeSampler(object):
             if self.verbose: print('will read chain from file',read_chain_file)
             assert not like, "likelihood specified but reading chain from file"
             self.read_chain_from_file(read_chain_file,rootdir,subfolder,
-                        train_when_reading,ignore_grid_when_reading)
+                        train_when_reading)
             self.burnin_pos=None
         else: 
             self.like=like
@@ -247,12 +245,10 @@ class EmceeSampler(object):
         return
 
 
-    def get_initial_walkers(self,initial=0.1):
+    def get_initial_walkers(self,initial=0.05):
         """Setup initial states of walkers in sensible points
            -- initial will set a range within unit volume around the
-              fiducial values to initialise walkers (set to 0.5 to
-              distribute across full prior volume) """
-
+              fiducial values to initialise walkers (if no prior is used)"""
 
         ndim=self.ndim
         nwalkers=self.nwalkers
@@ -262,7 +258,7 @@ class EmceeSampler(object):
 
         if self.like.prior_Gauss_rms is None:
             p0=np.random.rand(ndim*nwalkers).reshape((nwalkers,ndim))
-            p0=p0*initial+0.5
+            p0=p0*2*initial+0.5-initial
         else:
             rms=self.like.prior_Gauss_rms
             p0=np.ndarray([nwalkers,ndim])
@@ -375,7 +371,7 @@ class EmceeSampler(object):
 
 
     def read_chain_from_file(self,chain_number,rootdir,subfolder,
-                train_when_reading,ignore_grid_when_reading):
+                             train_when_reading):
         """Read chain from file, check parameters and setup likelihood"""
         
         if rootdir:
@@ -392,16 +388,12 @@ class EmceeSampler(object):
             config = json.load(json_file)
 
         if self.verbose: print("Building archive")
-        try:
-            kp=config["kp_Mpc"]
-        except:
-            kp=None
 
         archive=p1d_archive.archiveP1D(basedir=config["basedir"],
                             drop_sim_number=config["data_sim_number"],
                             drop_tau_rescalings=True,
                             drop_temp_rescalings=True,
-                            z_max=config["z_max"],kp_Mpc=kp)
+                            z_max=config["z_max"])
 
         # Setup the emulators
         if self.verbose: print("Setting up emulator")
@@ -555,14 +547,11 @@ class EmceeSampler(object):
             saveDict["basedir"]=self.like.theory.emulator.archive.basedir
             saveDict["skewers_label"]=self.like.theory.emulator.archive.skewers_label
             saveDict["p1d_label"]=self.like.theory.emulator.archive.p1d_label
-            saveDict["drop_tau_rescalings"]=self.like.theory.emulator.archive.drop_tau_rescalings
-            saveDict["drop_temp_rescalings"]=self.like.theory.emulator.archive.drop_temp_rescalings
             saveDict["nearest_tau"]=self.like.theory.emulator.archive.nearest_tau
             saveDict["z_max"]=self.like.theory.emulator.archive.z_max
             saveDict["undersample_cube"]=self.like.theory.emulator.archive.undersample_cube
 
         # Emulator settings
-        saveDict["kp_Mpc"]=self.like.theory.emulator.archive.kp_Mpc
         saveDict["paramList"]=self.like.theory.emulator.paramList
         saveDict["kmax_Mpc"]=self.like.theory.emulator.kmax_Mpc
 

@@ -50,8 +50,7 @@ def read_chain_for_getdist(rootdir,subfolder,chain_num,label,
     run={'chain_num':chain_num,'label':label}
     sampler=emcee_sampler.EmceeSampler(read_chain_file=chain_num,
                 rootdir=rootdir,subfolder=subfolder,
-                train_when_reading=False,
-                ignore_grid_when_reading=True)
+                train_when_reading=False)
     run['sampler']=sampler
 
     print('figure out free parameters for',label)
