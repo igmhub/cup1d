@@ -401,8 +401,8 @@ class EmceeSampler(object):
                                 train=train_when_reading,
                                 emu_type=config["emu_type"],
                                 kmax_Mpc=config["kmax_Mpc"],
-                                asymmetric_kernel=config["asym_kernel"],
-                                rbf_only=config["asym_kernel"],
+                                asymmetric_kernel=True,
+                                rbf_only=True,
                                 passarchive=archive,
                                 verbose=self.verbose)
 
@@ -545,36 +545,16 @@ class EmceeSampler(object):
             saveDict["nyx_fname"]=self.like.theory.emulator.archive.fname
         else:
             saveDict["basedir"]=self.like.theory.emulator.archive.basedir
-            saveDict["skewers_label"]=self.like.theory.emulator.archive.skewers_label
-            saveDict["p1d_label"]=self.like.theory.emulator.archive.p1d_label
-            saveDict["nearest_tau"]=self.like.theory.emulator.archive.nearest_tau
             saveDict["z_max"]=self.like.theory.emulator.archive.z_max
-            saveDict["undersample_cube"]=self.like.theory.emulator.archive.undersample_cube
 
         # Emulator settings
+        assert self.like.theory.emulator.asymmetric_kernel
+        assert self.like.theory.emulator.rbf_only
         saveDict["paramList"]=self.like.theory.emulator.paramList
         saveDict["kmax_Mpc"]=self.like.theory.emulator.kmax_Mpc
-
-        ## Do we train a GP on each z?
-        if self.like.theory.emulator.emulators:
-            z_emulator=True
-            emu_hyperparams=[]
-            for emu in self.like.theory.emulator.emulators:
-                emu_hyperparams.append(emu.gp.param_array.tolist())
-        else:
-            z_emulator=False
-            emu_hyperparams=self.like.theory.emulator.gp.param_array.tolist()
-        saveDict["z_emulator"]=z_emulator
-
-        ## Is this an asymmetric, rbf-only emulator?
-        if self.like.theory.emulator.asymmetric_kernel and self.like.theory.emulator.rbf_only:
-            saveDict["asym_kernel"]=True
-        else:
-            saveDict["asym_kernel"]=False
-
+        emu_hyperparams=self.like.theory.emulator.gp.param_array.tolist()
         saveDict["emu_hyperparameters"]=emu_hyperparams
         saveDict["emu_type"]=self.like.theory.emulator.emu_type
-        saveDict["reduce_var"]=self.like.theory.emulator.reduce_var_mf
 
         ## Likelihood & data settings
         saveDict["prior_Gauss_rms"]=self.like.prior_Gauss_rms
