@@ -14,6 +14,7 @@ from lace.cosmo import camb_cosmo
 from lace.emulator import p1d_archive
 from lace.emulator import gp_emulator
 from cup1d.data import data_MPGADGET
+from cup1d.data import mock_data
 from cup1d.likelihood import likelihood
 
 
@@ -407,6 +408,7 @@ class EmceeSampler(object):
             data_type=config["data_type"]
         else:
             data_type="gadget"
+        if self.verbose: print("Setup data of type =",data_type)
         if data_type=="mock":
             # using a mock_data P1D (computed from theory)
             data=mock_data.Mock_P1D(emulator=emulator,
