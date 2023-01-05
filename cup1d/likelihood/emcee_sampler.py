@@ -378,7 +378,7 @@ class EmceeSampler(object):
             chain_location=rootdir
         else:
             assert ('CUP1D_PATH' in os.environ),'export CUP1D_PATH'
-            chain_location=os.environ['CUP1D_PATH']+"/emcee_chains/"
+            chain_location=os.environ['CUP1D_PATH']+"/chains/"
         if subfolder:
             self.save_directory=chain_location+"/"+subfolder+"/chain_"+str(chain_number)
         else:
@@ -496,7 +496,7 @@ class EmceeSampler(object):
             chain_location=rootdir
         else:
             assert ('CUP1D_PATH' in os.environ),'export CUP1D_PATH'
-            chain_location=os.environ['CUP1D_PATH']+"/emcee_chains/"
+            chain_location=os.environ['CUP1D_PATH']+"/chains/"
         if subfolder:
             # If there is one, check if it exists, if not make it
             if not os.path.isdir(chain_location+"/"+subfolder):
