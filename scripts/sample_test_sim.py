@@ -53,14 +53,12 @@ print("----------")
 print(parser.format_values()) 
 print("----------")
 
-basedir='/lace/emulator/sim_suites/Australia20/'
-
 if args.rootdir:
     rootdir=args.rootdir
     print('set input rootdir',rootdir)
 else:
-    assert ('P1D_FORECAST' in os.environ),'Define P1D_FORECAST variable'
-    rootdir=os.environ['P1D_FORECAST']+'/chains/'
+    assert ('CUP1D_PATH' in os.environ),'Define CUP1D_PATH variable'
+    rootdir=os.environ['CUP1D_PATH']+'/chains/'
     print('use default rootdir',rootdir)
 
 # compile list of free parameters
@@ -81,41 +79,24 @@ print('free parameters',free_parameters)
 
 # check if sim_label is part of the training set, and remove it
 if args.sim_label.isdigit():
-    drop_sim_number=int(args.sim_label)
-    print('dropping simulation from training set',drop_sim_number)
-else:
-    drop_sim_number=None
-    print('using test simulation',args.sim_label)
+    raise ValueError("option not allowed any more")
 
 # generate mock P1D measurement
-data=data_MPGADGET.P1D_MPGADGET(basedir=basedir,
-                        sim_label=args.sim_label,
+data=data_MPGADGET.P1D_MPGADGET(sim_label=args.sim_label,
 			            zmax=args.z_max,
                         data_cov_factor=args.data_cov_factor,
                         data_cov_label=args.data_cov_label,
                         polyfit=(args.emu_type=='polyfit'))
 
-# set up emulator training data
-archive=p1d_archive.archiveP1D(basedir=basedir,z_max=args.z_max,
-                        drop_sim_number=drop_sim_number,
-                        drop_tau_rescalings=True,
-                        drop_temp_rescalings=True)
-
 # set up an emulator
-emu=gp_emulator.GPEmulator(basedir,train=True,
-                        passarchive=archive,
-                        emu_type=args.emu_type,
-                        kmax_Mpc=args.kmax_Mpc,
-                        asymmetric_kernel=True,
-                        rbf_only=True)
+emu=gp_emulator.GPEmulator(emu_type=args.emu_type,
+                        kmax_Mpc=args.kmax_Mpc)
 
 # check if we want to include high-resolution data
 if args.extra_p1d_label:
-    extra_p1d_data=data_MPGADGET.P1D_MPGADGET(basedir=basedir,
-                        sim_label=args.sim_label,
+    extra_p1d_data=data_MPGADGET.P1D_MPGADGET(sim_label=args.sim_label,
                         zmax=args.z_max,
                         data_cov_label=args.extra_p1d_label,
-                        data_cov_factor=1.0,
                         polyfit=(args.emu_type=='polyfit'))
 else:
     extra_p1d_data=None
@@ -125,11 +106,10 @@ like=likelihood.Likelihood(data=data,emulator=emu,
                         free_param_names=free_parameters,
                         prior_Gauss_rms=args.prior_Gauss_rms,
                         cosmo_fid_label=args.cosmo_fid_label,
-                        extra_p1d_data=extra_p1d_data,
-                        verbose=False)
+                        extra_p1d_data=extra_p1d_data)
 
 # pass likelihood to sampler
-sampler = emcee_sampler.EmceeSampler(like=like,verbose=False,
+sampler = emcee_sampler.EmceeSampler(like=like,
                         subfolder=args.subfolder,
                         rootdir=rootdir)
 
