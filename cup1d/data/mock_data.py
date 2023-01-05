@@ -24,20 +24,25 @@ class Mock_P1D(base_p1d_data.BaseDataP1D):
         else:
             raise ValueError("Unknown data_label",data_label)
 
-        # setup theory
+        # check if emulator was provided
         if emulator is None:
             emulator=gp_emulator.GPEmulator()
+
+        # setup and store theory (we will need it later)
         self.theory=lya_theory.Theory(zs=data.z,emulator=emulator)
 
-        # evaluate theory at k_kms, for all redshifts
-        emu_p1d_kms=self.theory.get_p1d_kms(data.k_kms)
-
-        # at each z, update value of p1d
+        # at each z will update value of p1d
         Pk_kms=data.Pk_kms.copy()
-        for iz,z in enumerate(data.z):
-            Pk_kms[iz]=emu_p1d_kms[iz]
 
-        # copy data
+        # if emulator is not trained, skip mock making
+        if emulator.trained:
+            # evaluate theory at k_kms, for all redshifts
+            emu_p1d_kms=self.theory.get_p1d_kms(data.k_kms)
+            for iz,z in enumerate(data.z):
+                Pk_kms[iz]=emu_p1d_kms[iz]
+        else:
+            print('emulator not trained, will not make mock')
+
         base_p1d_data.BaseDataP1D.__init__(self,z=data.z,k_kms=data.k_kms,
                                     Pk_kms=Pk_kms,cov_Pk_kms=data.cov_Pk_kms)
 
