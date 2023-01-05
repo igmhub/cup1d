@@ -234,7 +234,7 @@ class Likelihood(object):
 
         # access true cosmology used in mock data
         sim_cosmo=self.get_sim_cosmo()
-        camb_results_sim=camb_cosmo.get_camb_results(sim_cosmo)
+        camb_results_sim=camb_cosmo.get_camb_results(sim_cosmo,zs=[z_star])
 
         # store relevant parameters
         self.truth={}
