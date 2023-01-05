@@ -12,7 +12,7 @@ os.environ["OMP_NUM_THREADS"] = "1"
 parser = configargparse.ArgumentParser()
 parser.add_argument('--timeout', type=float, required=True,
         help='Stop chain after these many hours')
-parser.add_argument('--subfolder', type=str, default='cup1d',
+parser.add_argument('--subfolder', type=str, default='mock',
         help='Subdirectory to save chain file in')
 parser.add_argument('--emu_type', type=str, default='polyfit',
         help='k_bin or polyfit emulator')
