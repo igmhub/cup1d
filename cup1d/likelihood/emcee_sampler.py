@@ -387,45 +387,68 @@ class EmceeSampler(object):
         with open(self.save_directory+"/config.json") as json_file:  
             config = json.load(json_file)
 
-        if self.verbose: print("Building archive")
+        if self.verbose: print("Setup emulator")
+        emu_type=config["emu_type"]
+        emulator=gp_emulator.GPEmulator(train=train_when_reading,
+                                    emu_type=emu_type,
+                                    kmax_Mpc=config["kmax_Mpc"])
 
-        archive=p1d_archive.archiveP1D(basedir=config["basedir"],
-                            drop_sim_number=config["data_sim_number"],
-                            drop_tau_rescalings=True,
-                            drop_temp_rescalings=True,
-                            z_max=config["z_max"])
-
-        # Setup the emulators
-        if self.verbose: print("Setting up emulator")
-        emulator=gp_emulator.GPEmulator(paramList=config["paramList"],
-                                train=train_when_reading,
-                                emu_type=config["emu_type"],
-                                kmax_Mpc=config["kmax_Mpc"],
-                                asymmetric_kernel=True,
-                                rbf_only=True,
-                                passarchive=archive,
-                                verbose=self.verbose)
+        # Figure out redshift range in data
+        if "z_list" in config:
+            z_list=config["z_list"]
+            zmin=min(z_list)
+            zmax=max(z_list)
+        else:
+            zmin=config["data_zmin"]
+            zmax=config["data_zmax"]
 
         # Setup mock data
-        data_cov=config["data_cov_factor"]
-        data_year=config["data_year"]
-        data=data_MPGADGET.P1D_MPGADGET(sim_label=config["data_sim_number"],
-                                    basedir=config["basedir"],
-                                    z_list=np.asarray(config["z_list"]),
-                                    data_cov_factor=data_cov,
-                                    data_cov_label=data_year,
-                                    polyfit=(config["emu_type"]=="polyfit"))
-
-        # (optionally) setup extra P1D data (from HIRES)
-        if "extra_p1d_label" in config:
-            extra_p1d_data=data_MPGADGET.P1D_MPGADGET(basedir=config["basedir"],
-                                    sim_label=config["data_sim_number"],
-                                    zmax=config["extra_p1d_zmax"],
-                                    data_cov_factor=1.0,
-                                    data_cov_label=config["extra_p1d_label"],
-                                    polyfit=(config["emu_type"]=="polyfit"))
+        if "data_type" in config:
+            data_type=config["data_type"]
         else:
-            extra_p1d_data=None
+            data_type="gadget"
+        if data_type=="mock":
+            # using a mock_data P1D (computed from theory)
+            data=mock_data.Mock_P1D(emulator=emulator,
+                    data_label=config["data_mock_label"],
+                    zmin=zmin,zmax=zmax)
+            # (optionally) setup extra P1D from high-resolution
+            if "extra_p1d_label" in config:
+                extra_data=mock_data.Mock_P1D(emulator=emulator,
+                        data_label=config["extra_p1d_label"],
+                        zmin=config["extra_p1d_zmin"],
+                        zmax=config["extra_p1d_zmax"])
+            else:
+                extra_data=None
+        elif data_type=="gadget":
+            # using a data_MPGADGET P1D (from Gadget sim)
+            if "data_sim_number" in config:
+                sim_label=config["data_sim_number"]
+            else:
+                sim_label=config["data_sim_label"]
+            # check that sim is not from emulator suite
+            assert sim_label not in range(30)
+            # figure out p1d covariance used
+            if "data_year" in config:
+                data_cov_label=config["data_year"]
+            else:
+                data_cov_label=config["data_cov_label"]
+            data=data_MPGADGET.P1D_MPGADGET(sim_label=sim_label,
+                                    zmin=zmin,zmax=zmax,
+                                    data_cov_factor=config["data_cov_factor"],
+                                    data_cov_label=data_cov_label,
+                                    polyfit=(emu_type=="polyfit"))
+            # (optionally) setup extra P1D from high-resolution
+            if "extra_p1d_label" in config:
+                extra_data=data_MPGADGET.P1D_MPGADGET(sim_label=sim_label,
+                        zmin=config["extra_p1d_zmin"],
+                        zmax=config["extra_p1d_zmax"],
+                        data_cov_label=config["extra_p1d_label"],
+                        polyfit=(emu_type=="polyfit"))
+            else:
+                extra_data=None
+        else:
+            raise ValueError("unknown data type")
 
         # Setup free parameters
         if self.verbose: print("Setting up likelihood")
@@ -439,11 +462,10 @@ class EmceeSampler(object):
         self.like=likelihood.Likelihood(data=data,emulator=emulator,
                             free_param_names=free_param_names,
                             free_param_limits=free_param_limits,
-                            verbose=False,
                             prior_Gauss_rms=config["prior_Gauss_rms"],
                             emu_cov_factor=config["emu_cov_factor"],
                             cosmo_fid_label=cosmo_fid_label,
-                            extra_p1d_data=extra_p1d_data)
+                            extra_p1d_data=extra_data)
 
         # Verify we have a backend, and load it
         assert os.path.isfile(self.save_directory+"/backend.h5"), "Backend not found, can't load chains"
@@ -540,63 +562,58 @@ class EmceeSampler(object):
 
         saveDict={}
 
-        # identify Nyx archives
-        if hasattr(self.like.theory.emulator.archive,"fname"):
-            saveDict["nyx_fname"]=self.like.theory.emulator.archive.fname
-        else:
-            saveDict["basedir"]=self.like.theory.emulator.archive.basedir
-            saveDict["z_max"]=self.like.theory.emulator.archive.z_max
-
         # Emulator settings
         assert self.like.theory.emulator.asymmetric_kernel
         assert self.like.theory.emulator.rbf_only
-        saveDict["paramList"]=self.like.theory.emulator.paramList
         saveDict["kmax_Mpc"]=self.like.theory.emulator.kmax_Mpc
-        emu_hyperparams=self.like.theory.emulator.gp.param_array.tolist()
-        saveDict["emu_hyperparameters"]=emu_hyperparams
         saveDict["emu_type"]=self.like.theory.emulator.emu_type
 
-        ## Likelihood & data settings
-        saveDict["prior_Gauss_rms"]=self.like.prior_Gauss_rms
-        saveDict["z_list"]=self.like.theory.zs.tolist()
-        saveDict["emu_cov_factor"]=self.like.emu_cov_factor
-        saveDict["data_basedir"]=self.like.data.basedir
-        saveDict["data_sim_number"]=self.like.data.sim_label
-        saveDict["data_cov_factor"]=self.like.data.data_cov_factor
-        saveDict["data_year"]=self.like.data.data_cov_label
-        saveDict["cosmo_fid_label"]=self.like.cosmo_fid_label
+        # Data settings
+        if hasattr(self.like.data,"mock_sim"):
+            # using a data_MPGADGET P1D (from Gadget sim)
+            saveDict["data_type"]="gadget"
+            saveDict["data_sim_label"]=self.like.data.sim_label
+            saveDict["data_cov_label"]=self.like.data.data_cov_label
+            saveDict["data_cov_factor"]=self.like.data.data_cov_factor
+        elif hasattr(self.like.data,"theory"):
+            # using a mock_data P1D (computed from theory)
+            saveDict["data_type"]="mock"
+            saveDict["data_mock_label"]=self.like.data.data_label
+        else:
+            raise ValueError("unknown data type")
+        saveDict["data_zmin"]=min(self.like.theory.zs)
+        saveDict["data_zmax"]=max(self.like.theory.zs)
 
         # Add information about the extra-p1d data (high-resolution P1D)
         if self.like.extra_p1d_like:
-            extra_p1d_data=self.like.extra_p1d_like.data
-            saveDict["extra_p1d_label"]=extra_p1d_data.data_cov_label
-            saveDict["extra_p1d_zmax"]=max(extra_p1d_data.z)
-        else:
-            print("did not have extra P1D likelihood")
+            extra_data=self.like.extra_p1d_like.data
+            if hasattr(extra_data,"mock_sim"):
+                saveDict["extra_p1d_label"]=extra_data.data_cov_label
+            elif hasattr(extra_data,"theory"):
+                saveDict["extra_p1d_label"]=extra_data.data_label
+            else:
+                raise ValueError("unknown data type")
+            saveDict["extra_p1d_zmin"]=min(extra_data.z)
+            saveDict["extra_p1d_zmax"]=max(extra_data.z)
 
-        # Make sure (As,ns,nrun) were defined in standard pivot_scalar
-        if hasattr(self.like.theory,"cosmo_model_fid"):
-            cosmo_fid=self.like.theory.cosmo_model_fid.cosmo
-            pivot_scalar=cosmo_fid.InitPower.pivot_scalar
-            assert pivot_scalar==0.05,"non-standard pivot_scalar"
-
+        # Other likelihood settings
+        saveDict["prior_Gauss_rms"]=self.like.prior_Gauss_rms
+        saveDict["cosmo_fid_label"]=self.like.cosmo_fid_label
+        saveDict["emu_cov_factor"]=self.like.emu_cov_factor
         free_params_save=[]
         free_param_limits=[]
         for par in self.like.free_params:
-            ## The parameter limits are saved twice but for the sake
-            ## of backwards compatibility I'm going to leave this
             free_params_save.append([par.name,par.min_value,par.max_value])
             free_param_limits.append([par.min_value,par.max_value])
         saveDict["free_params"]=free_params_save
         saveDict["free_param_limits"]=free_param_limits
 
-        ## Sampler stuff
+        # Sampler stuff
         saveDict["burn_in"]=self.burnin_nsteps
         saveDict["nwalkers"]=self.nwalkers
         saveDict["autocorr"]=self.autocorr.tolist()
 
-        ## Save dictionary to json file in the
-        ## appropriate directory
+        # Save dictionary to json file in the appropriate directory
         if self.save_directory is None:
             self._setup_chain_folder()
         with open(self.save_directory+"/config.json", "w") as json_file:
