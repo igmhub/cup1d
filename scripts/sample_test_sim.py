@@ -3,7 +3,6 @@ import configargparse
 import time
 # our own modules
 from lace.emulator import gp_emulator
-from lace.emulator import p1d_archive
 from cup1d.data import data_MPGADGET
 from cup1d.likelihood import likelihood
 from cup1d.likelihood import emcee_sampler

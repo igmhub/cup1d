@@ -3,8 +3,7 @@ import configargparse
 import time
 # our own modules
 from lace.emulator import gp_emulator
-from lace.emulator import p1d_archive
-from cup1d.data import data_MPGADGET
+from cup1d.data import mock_data
 from cup1d.likelihood import likelihood
 from cup1d.likelihood import emcee_sampler
 
@@ -17,8 +16,6 @@ parser.add_argument('--subfolder', type=str, default='cup1d',
         help='Subdirectory to save chain file in')
 parser.add_argument('--emu_type', type=str, default='polyfit',
         help='k_bin or polyfit emulator')
-parser.add_argument('--sim_label', type=str, default='central',
-        help='Which sim to use as mock data')
 parser.add_argument('--kmax_Mpc', type=float, default=8,
         help='Maximum k to train emulator')
 parser.add_argument('--z_max', type=float, default=4.5,
@@ -33,10 +30,8 @@ parser.add_argument('--burn_in', type=int, default=200,
         help='Number of burn in steps')
 parser.add_argument('--prior_Gauss_rms', type=float, default=0.5,
         help='Width of Gaussian prior')
-parser.add_argument('--data_cov_factor', type=float, default=1.0,
-        help='Factor to multiply the data covariance by')
-parser.add_argument('--data_cov_label', type=str, default='Chabanier2019',
-        help='Data covariance to use, Chabanier2019 or PD2013')
+parser.add_argument('--data_label', type=str, default='Chabanier2019',
+        help='Data covariance to use, Chabanier2019 or QMLE_Ohio')
 parser.add_argument('--rootdir', type=str, default=None,
         help='Root directory containing chains')
 parser.add_argument('--extra_p1d_label', type=str, default=None,
@@ -53,14 +48,12 @@ print("----------")
 print(parser.format_values()) 
 print("----------")
 
-basedir='/lace/emulator/sim_suites/Australia20/'
-
 if args.rootdir:
     rootdir=args.rootdir
     print('set input rootdir',rootdir)
 else:
-    assert ('P1D_FORECAST' in os.environ),'Define P1D_FORECAST variable'
-    rootdir=os.environ['P1D_FORECAST']+'/chains/'
+    assert ('CUP1D_PATH' in os.environ),'Define CUP1D_PATH variable'
+    rootdir=os.environ['CUP1D_PATH']+'/chains/'
     print('use default rootdir',rootdir)
 
 # compile list of free parameters
@@ -79,44 +72,20 @@ else:
             free_parameters.append('ln_{}_{}'.format(par,i))
 print('free parameters',free_parameters)
 
-# check if sim_label is part of the training set, and remove it
-if args.sim_label.isdigit():
-    drop_sim_number=int(args.sim_label)
-    print('dropping simulation from training set',drop_sim_number)
-else:
-    drop_sim_number=None
-    print('using test simulation',args.sim_label)
+# set up an emulator
+emu=gp_emulator.GPEmulator(emu_type=args.emu_type,
+                        kmax_Mpc=args.kmax_Mpc)
 
 # generate mock P1D measurement
-data=data_MPGADGET.P1D_MPGADGET(basedir=basedir,
-                        sim_label=args.sim_label,
-			            zmax=args.z_max,
-                        data_cov_factor=args.data_cov_factor,
-                        data_cov_label=args.data_cov_label,
-                        polyfit=(args.emu_type=='polyfit'))
-
-# set up emulator training data
-archive=p1d_archive.archiveP1D(basedir=basedir,z_max=args.z_max,
-                        drop_sim_number=drop_sim_number,
-                        drop_tau_rescalings=True,
-                        drop_temp_rescalings=True)
-
-# set up an emulator
-emu=gp_emulator.GPEmulator(basedir,train=True,
-                        passarchive=archive,
-                        emu_type=args.emu_type,
-                        kmax_Mpc=args.kmax_Mpc,
-                        asymmetric_kernel=True,
-                        rbf_only=True)
+data=mock_data.Mock_P1D(emulator=emu,
+                        data_label=args.data_label,
+                        zmax=args.z_max)
 
 # check if we want to include high-resolution data
 if args.extra_p1d_label:
-    extra_p1d_data=data_MPGADGET.P1D_MPGADGET(basedir=basedir,
-                        sim_label=args.sim_label,
-                        zmax=args.z_max,
-                        data_cov_label=args.extra_p1d_label,
-                        data_cov_factor=1.0,
-                        polyfit=(args.emu_type=='polyfit'))
+    extra_p1d_data=mock_data.Mock_P1D(emulator=emu,
+                        data_label=args.extra_p1d_label,
+                        zmax=args.z_max)
 else:
     extra_p1d_data=None
 
@@ -125,11 +94,10 @@ like=likelihood.Likelihood(data=data,emulator=emu,
                         free_param_names=free_parameters,
                         prior_Gauss_rms=args.prior_Gauss_rms,
                         cosmo_fid_label=args.cosmo_fid_label,
-                        extra_p1d_data=extra_p1d_data,
-                        verbose=False)
+                        extra_p1d_data=extra_p1d_data)
 
 # pass likelihood to sampler
-sampler = emcee_sampler.EmceeSampler(like=like,verbose=False,
+sampler = emcee_sampler.EmceeSampler(like=like,
                         subfolder=args.subfolder,
                         rootdir=rootdir)
 
