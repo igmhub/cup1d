@@ -16,6 +16,8 @@ parser.add_argument('--subfolder', type=str, default='mock',
         help='Subdirectory to save chain file in')
 parser.add_argument('--emu_type', type=str, default='polyfit',
         help='k_bin or polyfit emulator')
+parser.add_argument('--emu_cov_factor', type=float, default=1,
+        help='scale contribution of emulator covariance')
 parser.add_argument('--kmax_Mpc', type=float, default=8,
         help='Maximum k to train emulator')
 parser.add_argument('--z_max', type=float, default=4.5,
@@ -92,6 +94,7 @@ else:
 # create likelihood object from data and emulator
 like=likelihood.Likelihood(data=data,emulator=emu,
                         free_param_names=free_parameters,
+                        emu_cov_factor=args.emu_cov_factor,
                         prior_Gauss_rms=args.prior_Gauss_rms,
                         cosmo_fid_label=args.cosmo_fid_label,
                         extra_p1d_data=extra_p1d_data)
