@@ -14,6 +14,7 @@ from lace.cosmo import camb_cosmo
 from lace.emulator import p1d_archive
 from lace.emulator import gp_emulator
 from cup1d.data import data_MPGADGET
+from cup1d.data import mock_data
 from cup1d.likelihood import likelihood
 
 
@@ -24,14 +25,12 @@ class EmceeSampler(object):
                         nwalkers=None,read_chain_file=None,verbose=False,
                         subfolder=None,rootdir=None,
                         save_chain=True,progress=False,
-                        train_when_reading=True,
-                        ignore_grid_when_reading=False):
+                        train_when_reading=True):
         """Setup sampler from likelihood, or use default.
             If read_chain_file is provided, read pre-computed chain.
             rootdir allows user to search for saved chains in a different
             location to the code itself.
-            If not train_when_reading, emulator can not be used when reading.
-            Use ignore_grid_when_reading for plotting marginalised chains."""
+            If not train_when_reading, emulator can not be used when reading."""
 
         self.verbose=verbose
         self.progress=progress
@@ -40,7 +39,7 @@ class EmceeSampler(object):
             if self.verbose: print('will read chain from file',read_chain_file)
             assert not like, "likelihood specified but reading chain from file"
             self.read_chain_from_file(read_chain_file,rootdir,subfolder,
-                        train_when_reading,ignore_grid_when_reading)
+                        train_when_reading)
             self.burnin_pos=None
         else: 
             self.like=like
@@ -247,12 +246,10 @@ class EmceeSampler(object):
         return
 
 
-    def get_initial_walkers(self,initial=0.1):
+    def get_initial_walkers(self,initial=0.05):
         """Setup initial states of walkers in sensible points
            -- initial will set a range within unit volume around the
-              fiducial values to initialise walkers (set to 0.5 to
-              distribute across full prior volume) """
-
+              fiducial values to initialise walkers (if no prior is used)"""
 
         ndim=self.ndim
         nwalkers=self.nwalkers
@@ -262,7 +259,7 @@ class EmceeSampler(object):
 
         if self.like.prior_Gauss_rms is None:
             p0=np.random.rand(ndim*nwalkers).reshape((nwalkers,ndim))
-            p0=p0*initial+0.5
+            p0=p0*2*initial+0.5-initial
         else:
             rms=self.like.prior_Gauss_rms
             p0=np.ndarray([nwalkers,ndim])
@@ -375,14 +372,14 @@ class EmceeSampler(object):
 
 
     def read_chain_from_file(self,chain_number,rootdir,subfolder,
-                train_when_reading,ignore_grid_when_reading):
+                             train_when_reading):
         """Read chain from file, check parameters and setup likelihood"""
         
         if rootdir:
             chain_location=rootdir
         else:
             assert ('CUP1D_PATH' in os.environ),'export CUP1D_PATH'
-            chain_location=os.environ['CUP1D_PATH']+"/emcee_chains/"
+            chain_location=os.environ['CUP1D_PATH']+"/chains/"
         if subfolder:
             self.save_directory=chain_location+"/"+subfolder+"/chain_"+str(chain_number)
         else:
@@ -391,49 +388,69 @@ class EmceeSampler(object):
         with open(self.save_directory+"/config.json") as json_file:  
             config = json.load(json_file)
 
-        if self.verbose: print("Building archive")
-        try:
-            kp=config["kp_Mpc"]
-        except:
-            kp=None
+        if self.verbose: print("Setup emulator")
+        emu_type=config["emu_type"]
+        emulator=gp_emulator.GPEmulator(train=train_when_reading,
+                                    emu_type=emu_type,
+                                    kmax_Mpc=config["kmax_Mpc"])
 
-        archive=p1d_archive.archiveP1D(basedir=config["basedir"],
-                            drop_sim_number=config["data_sim_number"],
-                            drop_tau_rescalings=True,
-                            drop_temp_rescalings=True,
-                            z_max=config["z_max"],kp_Mpc=kp)
-
-        # Setup the emulators
-        if self.verbose: print("Setting up emulator")
-        emulator=gp_emulator.GPEmulator(paramList=config["paramList"],
-                                train=train_when_reading,
-                                emu_type=config["emu_type"],
-                                kmax_Mpc=config["kmax_Mpc"],
-                                asymmetric_kernel=config["asym_kernel"],
-                                rbf_only=config["asym_kernel"],
-                                passarchive=archive,
-                                verbose=self.verbose)
+        # Figure out redshift range in data
+        if "z_list" in config:
+            z_list=config["z_list"]
+            zmin=min(z_list)
+            zmax=max(z_list)
+        else:
+            zmin=config["data_zmin"]
+            zmax=config["data_zmax"]
 
         # Setup mock data
-        data_cov=config["data_cov_factor"]
-        data_year=config["data_year"]
-        data=data_MPGADGET.P1D_MPGADGET(sim_label=config["data_sim_number"],
-                                    basedir=config["basedir"],
-                                    z_list=np.asarray(config["z_list"]),
-                                    data_cov_factor=data_cov,
-                                    data_cov_label=data_year,
-                                    polyfit=(config["emu_type"]=="polyfit"))
-
-        # (optionally) setup extra P1D data (from HIRES)
-        if "extra_p1d_label" in config:
-            extra_p1d_data=data_MPGADGET.P1D_MPGADGET(basedir=config["basedir"],
-                                    sim_label=config["data_sim_number"],
-                                    zmax=config["extra_p1d_zmax"],
-                                    data_cov_factor=1.0,
-                                    data_cov_label=config["extra_p1d_label"],
-                                    polyfit=(config["emu_type"]=="polyfit"))
+        if "data_type" in config:
+            data_type=config["data_type"]
         else:
-            extra_p1d_data=None
+            data_type="gadget"
+        if self.verbose: print("Setup data of type =",data_type)
+        if data_type=="mock":
+            # using a mock_data P1D (computed from theory)
+            data=mock_data.Mock_P1D(emulator=emulator,
+                    data_label=config["data_mock_label"],
+                    zmin=zmin,zmax=zmax)
+            # (optionally) setup extra P1D from high-resolution
+            if "extra_p1d_label" in config:
+                extra_data=mock_data.Mock_P1D(emulator=emulator,
+                        data_label=config["extra_p1d_label"],
+                        zmin=config["extra_p1d_zmin"],
+                        zmax=config["extra_p1d_zmax"])
+            else:
+                extra_data=None
+        elif data_type=="gadget":
+            # using a data_MPGADGET P1D (from Gadget sim)
+            if "data_sim_number" in config:
+                sim_label=config["data_sim_number"]
+            else:
+                sim_label=config["data_sim_label"]
+            # check that sim is not from emulator suite
+            assert sim_label not in range(30)
+            # figure out p1d covariance used
+            if "data_year" in config:
+                data_cov_label=config["data_year"]
+            else:
+                data_cov_label=config["data_cov_label"]
+            data=data_MPGADGET.P1D_MPGADGET(sim_label=sim_label,
+                                    zmin=zmin,zmax=zmax,
+                                    data_cov_factor=config["data_cov_factor"],
+                                    data_cov_label=data_cov_label,
+                                    polyfit=(emu_type=="polyfit"))
+            # (optionally) setup extra P1D from high-resolution
+            if "extra_p1d_label" in config:
+                extra_data=data_MPGADGET.P1D_MPGADGET(sim_label=sim_label,
+                        zmin=config["extra_p1d_zmin"],
+                        zmax=config["extra_p1d_zmax"],
+                        data_cov_label=config["extra_p1d_label"],
+                        polyfit=(emu_type=="polyfit"))
+            else:
+                extra_data=None
+        else:
+            raise ValueError("unknown data type")
 
         # Setup free parameters
         if self.verbose: print("Setting up likelihood")
@@ -447,11 +464,10 @@ class EmceeSampler(object):
         self.like=likelihood.Likelihood(data=data,emulator=emulator,
                             free_param_names=free_param_names,
                             free_param_limits=free_param_limits,
-                            verbose=False,
                             prior_Gauss_rms=config["prior_Gauss_rms"],
                             emu_cov_factor=config["emu_cov_factor"],
                             cosmo_fid_label=cosmo_fid_label,
-                            extra_p1d_data=extra_p1d_data)
+                            extra_p1d_data=extra_data)
 
         # Verify we have a backend, and load it
         assert os.path.isfile(self.save_directory+"/backend.h5"), "Backend not found, can't load chains"
@@ -482,7 +498,7 @@ class EmceeSampler(object):
             chain_location=rootdir
         else:
             assert ('CUP1D_PATH' in os.environ),'export CUP1D_PATH'
-            chain_location=os.environ['CUP1D_PATH']+"/emcee_chains/"
+            chain_location=os.environ['CUP1D_PATH']+"/chains/"
         if subfolder:
             # If there is one, check if it exists, if not make it
             if not os.path.isdir(chain_location+"/"+subfolder):
@@ -548,86 +564,58 @@ class EmceeSampler(object):
 
         saveDict={}
 
-        # identify Nyx archives
-        if hasattr(self.like.theory.emulator.archive,"fname"):
-            saveDict["nyx_fname"]=self.like.theory.emulator.archive.fname
-        else:
-            saveDict["basedir"]=self.like.theory.emulator.archive.basedir
-            saveDict["skewers_label"]=self.like.theory.emulator.archive.skewers_label
-            saveDict["p1d_label"]=self.like.theory.emulator.archive.p1d_label
-            saveDict["drop_tau_rescalings"]=self.like.theory.emulator.archive.drop_tau_rescalings
-            saveDict["drop_temp_rescalings"]=self.like.theory.emulator.archive.drop_temp_rescalings
-            saveDict["nearest_tau"]=self.like.theory.emulator.archive.nearest_tau
-            saveDict["z_max"]=self.like.theory.emulator.archive.z_max
-            saveDict["undersample_cube"]=self.like.theory.emulator.archive.undersample_cube
-
         # Emulator settings
-        saveDict["kp_Mpc"]=self.like.theory.emulator.archive.kp_Mpc
-        saveDict["paramList"]=self.like.theory.emulator.paramList
+        assert self.like.theory.emulator.asymmetric_kernel
+        assert self.like.theory.emulator.rbf_only
         saveDict["kmax_Mpc"]=self.like.theory.emulator.kmax_Mpc
-
-        ## Do we train a GP on each z?
-        if self.like.theory.emulator.emulators:
-            z_emulator=True
-            emu_hyperparams=[]
-            for emu in self.like.theory.emulator.emulators:
-                emu_hyperparams.append(emu.gp.param_array.tolist())
-        else:
-            z_emulator=False
-            emu_hyperparams=self.like.theory.emulator.gp.param_array.tolist()
-        saveDict["z_emulator"]=z_emulator
-
-        ## Is this an asymmetric, rbf-only emulator?
-        if self.like.theory.emulator.asymmetric_kernel and self.like.theory.emulator.rbf_only:
-            saveDict["asym_kernel"]=True
-        else:
-            saveDict["asym_kernel"]=False
-
-        saveDict["emu_hyperparameters"]=emu_hyperparams
         saveDict["emu_type"]=self.like.theory.emulator.emu_type
-        saveDict["reduce_var"]=self.like.theory.emulator.reduce_var_mf
 
-        ## Likelihood & data settings
-        saveDict["prior_Gauss_rms"]=self.like.prior_Gauss_rms
-        saveDict["z_list"]=self.like.theory.zs.tolist()
-        saveDict["emu_cov_factor"]=self.like.emu_cov_factor
-        saveDict["data_basedir"]=self.like.data.basedir
-        saveDict["data_sim_number"]=self.like.data.sim_label
-        saveDict["data_cov_factor"]=self.like.data.data_cov_factor
-        saveDict["data_year"]=self.like.data.data_cov_label
-        saveDict["cosmo_fid_label"]=self.like.cosmo_fid_label
+        # Data settings
+        if hasattr(self.like.data,"mock_sim"):
+            # using a data_MPGADGET P1D (from Gadget sim)
+            saveDict["data_type"]="gadget"
+            saveDict["data_sim_label"]=self.like.data.sim_label
+            saveDict["data_cov_label"]=self.like.data.data_cov_label
+            saveDict["data_cov_factor"]=self.like.data.data_cov_factor
+        elif hasattr(self.like.data,"theory"):
+            # using a mock_data P1D (computed from theory)
+            saveDict["data_type"]="mock"
+            saveDict["data_mock_label"]=self.like.data.data_label
+        else:
+            raise ValueError("unknown data type")
+        saveDict["data_zmin"]=min(self.like.theory.zs)
+        saveDict["data_zmax"]=max(self.like.theory.zs)
 
         # Add information about the extra-p1d data (high-resolution P1D)
         if self.like.extra_p1d_like:
-            extra_p1d_data=self.like.extra_p1d_like.data
-            saveDict["extra_p1d_label"]=extra_p1d_data.data_cov_label
-            saveDict["extra_p1d_zmax"]=max(extra_p1d_data.z)
-        else:
-            print("did not have extra P1D likelihood")
+            extra_data=self.like.extra_p1d_like.data
+            if hasattr(extra_data,"mock_sim"):
+                saveDict["extra_p1d_label"]=extra_data.data_cov_label
+            elif hasattr(extra_data,"theory"):
+                saveDict["extra_p1d_label"]=extra_data.data_label
+            else:
+                raise ValueError("unknown data type")
+            saveDict["extra_p1d_zmin"]=min(extra_data.z)
+            saveDict["extra_p1d_zmax"]=max(extra_data.z)
 
-        # Make sure (As,ns,nrun) were defined in standard pivot_scalar
-        if hasattr(self.like.theory,"cosmo_model_fid"):
-            cosmo_fid=self.like.theory.cosmo_model_fid.cosmo
-            pivot_scalar=cosmo_fid.InitPower.pivot_scalar
-            assert pivot_scalar==0.05,"non-standard pivot_scalar"
-
+        # Other likelihood settings
+        saveDict["prior_Gauss_rms"]=self.like.prior_Gauss_rms
+        saveDict["cosmo_fid_label"]=self.like.cosmo_fid_label
+        saveDict["emu_cov_factor"]=self.like.emu_cov_factor
         free_params_save=[]
         free_param_limits=[]
         for par in self.like.free_params:
-            ## The parameter limits are saved twice but for the sake
-            ## of backwards compatibility I'm going to leave this
             free_params_save.append([par.name,par.min_value,par.max_value])
             free_param_limits.append([par.min_value,par.max_value])
         saveDict["free_params"]=free_params_save
         saveDict["free_param_limits"]=free_param_limits
 
-        ## Sampler stuff
+        # Sampler stuff
         saveDict["burn_in"]=self.burnin_nsteps
         saveDict["nwalkers"]=self.nwalkers
         saveDict["autocorr"]=self.autocorr.tolist()
 
-        ## Save dictionary to json file in the
-        ## appropriate directory
+        # Save dictionary to json file in the appropriate directory
         if self.save_directory is None:
             self._setup_chain_folder()
         with open(self.save_directory+"/config.json", "w") as json_file:

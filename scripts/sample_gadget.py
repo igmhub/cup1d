@@ -3,7 +3,7 @@ import configargparse
 import time
 # our own modules
 from lace.emulator import gp_emulator
-from cup1d.data import mock_data
+from cup1d.data import data_MPGADGET
 from cup1d.likelihood import likelihood
 from cup1d.likelihood import emcee_sampler
 
@@ -12,12 +12,14 @@ os.environ["OMP_NUM_THREADS"] = "1"
 parser = configargparse.ArgumentParser()
 parser.add_argument('--timeout', type=float, required=True,
         help='Stop chain after these many hours')
-parser.add_argument('--subfolder', type=str, default='mock',
+parser.add_argument('--subfolder', type=str, default='gadget',
         help='Subdirectory to save chain file in')
 parser.add_argument('--emu_type', type=str, default='polyfit',
         help='k_bin or polyfit emulator')
 parser.add_argument('--emu_cov_factor', type=float, default=1,
         help='scale contribution of emulator covariance')
+parser.add_argument('--sim_label', type=str, default='central',
+        help='Which sim to use as mock data')
 parser.add_argument('--kmax_Mpc', type=float, default=8,
         help='Maximum k to train emulator')
 parser.add_argument('--z_max', type=float, default=4.5,
@@ -32,8 +34,10 @@ parser.add_argument('--burn_in', type=int, default=200,
         help='Number of burn in steps')
 parser.add_argument('--prior_Gauss_rms', type=float, default=0.5,
         help='Width of Gaussian prior')
-parser.add_argument('--data_label', type=str, default='Chabanier2019',
-        help='Data covariance to use, Chabanier2019 or QMLE_Ohio')
+parser.add_argument('--data_cov_factor', type=float, default=1.0,
+        help='Factor to multiply the data covariance by')
+parser.add_argument('--data_cov_label', type=str, default='Chabanier2019',
+        help='Data covariance to use, Chabanier2019 or PD2013')
 parser.add_argument('--rootdir', type=str, default=None,
         help='Root directory containing chains')
 parser.add_argument('--extra_p1d_label', type=str, default=None,
@@ -74,20 +78,27 @@ else:
             free_parameters.append('ln_{}_{}'.format(par,i))
 print('free parameters',free_parameters)
 
+# check if sim_label is part of the training set, and remove it
+if args.sim_label.isdigit():
+    raise ValueError("option not allowed any more")
+
+# generate mock P1D measurement
+data=data_MPGADGET.P1D_MPGADGET(sim_label=args.sim_label,
+			            zmax=args.z_max,
+                        data_cov_factor=args.data_cov_factor,
+                        data_cov_label=args.data_cov_label,
+                        polyfit=(args.emu_type=='polyfit'))
+
 # set up an emulator
 emu=gp_emulator.GPEmulator(emu_type=args.emu_type,
                         kmax_Mpc=args.kmax_Mpc)
 
-# generate mock P1D measurement
-data=mock_data.Mock_P1D(emulator=emu,
-                        data_label=args.data_label,
-                        zmax=args.z_max)
-
 # check if we want to include high-resolution data
 if args.extra_p1d_label:
-    extra_p1d_data=mock_data.Mock_P1D(emulator=emu,
-                        data_label=args.extra_p1d_label,
-                        zmax=args.z_max)
+    extra_p1d_data=data_MPGADGET.P1D_MPGADGET(sim_label=args.sim_label,
+                        zmax=args.z_max,
+                        data_cov_label=args.extra_p1d_label,
+                        polyfit=(args.emu_type=='polyfit'))
 else:
     extra_p1d_data=None
 
