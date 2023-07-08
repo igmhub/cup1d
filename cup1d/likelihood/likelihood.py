@@ -77,23 +77,23 @@ class Likelihood(object):
             if fid_igm_fname:
                 # for now this is only used in Nyx sims
                 print('create Nyx IGM models')
-                mf_fid=mean_flux_model.MeanFluxModel(fid_fname=fid_igm_fname,
+                F_fid=mean_flux_model.MeanFluxModel(fid_fname=fid_igm_fname,
                         free_param_names=free_param_names)
                 T_fid=thermal_model.ThermalModel(fid_fname=fid_igm_fname,
                         free_param_names=free_param_names)
-                kF_fid=pressure_model.PressureModel(fid_fname=fid_igm_fname,
+                P_fid=pressure_model.PressureModel(fid_fname=fid_igm_fname,
                         free_param_names=free_param_names)
             else:
                 # if not specified, use Gadget models
-                mf_fid=None
+                F_fid=None
                 T_fid=None
-                kF_fid=None
+                P_fid=None
 
             # Set up a theory object
             self.theory=lya_theory.Theory(zs=self.data.z,
                     emulator=emulator,verbose=verbose,
-                    cosmo_fid=cosmo_fid,mf_model_fid=mf_fid,
-                    T_model_fid=T_fid,kF_model_fid=kF_fid,
+                    cosmo_fid=cosmo_fid,F_model_fid=F_fid,
+                    T_model_fid=T_fid,P_model_fid=P_fid,
                     free_param_names=free_param_names)
 
         # check matching pivot points when using mock data (not sure is needed)
@@ -112,9 +112,9 @@ class Likelihood(object):
             extra_theory=lya_theory.Theory(zs=extra_p1d_data.z,
                     emulator=self.theory.emulator,
                     cosmo_fid=self.theory.cosmo_model_fid.cosmo,
-                    mf_model_fid=self.theory.mf_model_fid,
+                    F_model_fid=self.theory.F_model_fid,
                     T_model_fid=self.theory.T_model_fid,
-                    kF_model_fid=self.theory.kF_model_fid,
+                    P_model_fid=self.theory.P_model_fid,
                     verbose=verbose)
             self.extra_p1d_like=Likelihood(data=extra_p1d_data,
                     theory=extra_theory,emulator=None,

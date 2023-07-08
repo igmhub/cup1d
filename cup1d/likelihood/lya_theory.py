@@ -14,7 +14,7 @@ class Theory(object):
     going through our Delta^2_\star parametrisation """
 
     def __init__(self,zs,emulator=None,verbose=False,
-                    mf_model_fid=None,T_model_fid=None,kF_model_fid=None,
+                    F_model_fid=None,T_model_fid=None,P_model_fid=None,
                     cosmo_fid=None,free_param_names=None):
         """Setup object to compute predictions for the 1D power spectrum.
         Inputs:
@@ -48,20 +48,20 @@ class Theory(object):
                     cosmo=cosmo_fid,z_star=self.z_star,kp_kms=self.kp_kms)
 
         # setup fiducial IGM models (from Gadget sims if not specified)
-        if mf_model_fid:
-            self.mf_model_fid = mf_model_fid
+        if F_model_fid:
+            self.F_model_fid = F_model_fid
         else:
-            self.mf_model_fid = mean_flux_model.MeanFluxModel(
+            self.F_model_fid = mean_flux_model.MeanFluxModel(
                     free_param_names=free_param_names)
         if T_model_fid:
             self.T_model_fid = T_model_fid
         else:
             self.T_model_fid = thermal_model.ThermalModel(
                     free_param_names=free_param_names)
-        if kF_model_fid:
-            self.kF_model_fid = kF_model_fid
+        if P_model_fid:
+            self.P_model_fid = P_model_fid
         else:
-            self.kF_model_fid = pressure_model.PressureModel(
+            self.P_model_fid = pressure_model.PressureModel(
                     free_param_names=free_param_names)
 
 
@@ -127,13 +127,20 @@ class Theory(object):
             return_blob=False):
         """Compute models that will be emulated, one per redshift bin.
             - like_params identify likelihood parameters to use.
+            - return_M_of_z will also return conversion from Mpc to km/s
             - return_blob will return extra information about the call."""
 
-        # setup IMG models using list of likelihood parameters
+        # useful while debugging Nyx emulator
+        emu_params=self.emulator.emu_params
+        if self.verbose:
+            print('list of parameters expected by the emulator')
+            print(emu_params)
+
+        # setup IGM models using list of likelihood parameters
         igm_models=self.get_igm_models(like_params)
-        mf_model=igm_models['mf_model']
+        F_model=igm_models['F_model']
         T_model=igm_models['T_model']
-        kF_model=igm_models['kF_model']
+        P_model=igm_models['P_model']
 
         # compute linear power parameters at all redshifts, and H(z) / (1+z)
         if self.fixed_background(like_params):
@@ -160,12 +167,18 @@ class Theory(object):
             # emulator parameters for linear power, at this redshift (in Mpc)
             model=linP_Mpc_params[iz]
             # emulator parameters for nuisance models, at this redshift
-            model['mF']=mf_model.get_mean_flux(z)
+            model['mF']=F_model.get_mean_flux(z)
             model['gamma']=T_model.get_gamma(z)
             sigT_kms=T_model.get_sigT_kms(z)
             model['sigT_Mpc']=sigT_kms/M_of_zs[iz]
-            kF_kms=kF_model.get_kF_kms(z)
-            model['kF_Mpc']=kF_kms*M_of_zs[iz]
+            kF_kms=P_model.get_kF_kms(z)
+            kF_Mpc=kF_kms*M_of_zs[iz]
+            # figure out type of pressure emu_param being used
+            if 'kF_Mpc' in emu_params:
+                model['kF_Mpc']=kF_Mpc
+            elif 'lambda_P' in emu_params:
+                lamP_kpc=1000/kF_Mpc
+                model['lambda_P']=lamP_kpc
             if self.verbose: print(iz,z,'model',model)
             emu_calls.append(model)
 
@@ -326,13 +339,13 @@ class Theory(object):
         params=self.cosmo_model_fid.get_likelihood_parameters()
 
         # get parameters from nuisance models
-        for par in self.mf_model_fid.get_parameters():
+        for par in self.F_model_fid.get_parameters():
             params.append(par)
         for par in self.T_model_fid.get_sigT_kms_parameters():
             params.append(par)
         for par in self.T_model_fid.get_gamma_parameters():
             params.append(par)
-        for par in self.kF_model_fid.get_parameters():
+        for par in self.P_model_fid.get_parameters():
             params.append(par)
 
         if self.verbose:
@@ -346,11 +359,11 @@ class Theory(object):
     def get_igm_models(self,like_params=[]):
         """Setup IGM models from input list of likelihood parameters"""
 
-        mf_model = self.mf_model_fid.get_new_model(like_params)
+        F_model = self.F_model_fid.get_new_model(like_params)
         T_model = self.T_model_fid.get_new_model(like_params)
-        kF_model = self.kF_model_fid.get_new_model(like_params)
+        P_model = self.P_model_fid.get_new_model(like_params)
 
-        models={'mf_model':mf_model,'T_model':T_model,'kF_model':kF_model}
+        models={'F_model':F_model,'T_model':T_model,'P_model':P_model}
 
         return models
 
