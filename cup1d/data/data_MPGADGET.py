@@ -5,7 +5,6 @@ from numpy.lib.polynomial import poly
 from scipy.interpolate import interp1d
 
 from lace.emulator import poly_p1d
-from lace.emulator import p1d_archive
 from lace.setup_simulations import read_genic
 from lace.cosmo import camb_cosmo
 

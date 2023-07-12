@@ -11,7 +11,6 @@ from chainconsumer import ChainConsumer
 # our own modules
 from lace.cosmo import fit_linP
 from lace.cosmo import camb_cosmo
-from lace.emulator import p1d_archive
 from lace.emulator import gp_emulator
 from cup1d.data import data_MPGADGET
 from cup1d.data import mock_data
@@ -24,13 +23,11 @@ class EmceeSampler(object):
     def __init__(self,like=None,
                         nwalkers=None,read_chain_file=None,verbose=False,
                         subfolder=None,rootdir=None,
-                        save_chain=True,progress=False,
-                        train_when_reading=True):
+                        save_chain=True,progress=False):
         """Setup sampler from likelihood, or use default.
             If read_chain_file is provided, read pre-computed chain.
             rootdir allows user to search for saved chains in a different
-            location to the code itself.
-            If not train_when_reading, emulator can not be used when reading."""
+            location to the code itself. """
 
         self.verbose=verbose
         self.progress=progress
@@ -38,8 +35,7 @@ class EmceeSampler(object):
         if read_chain_file:
             if self.verbose: print('will read chain from file',read_chain_file)
             assert not like, "likelihood specified but reading chain from file"
-            self.read_chain_from_file(read_chain_file,rootdir,subfolder,
-                        train_when_reading)
+            self.read_chain_from_file(read_chain_file,rootdir,subfolder)
             self.burnin_pos=None
         else: 
             self.like=like
@@ -371,8 +367,7 @@ class EmceeSampler(object):
         return all_params, all_strings
 
 
-    def read_chain_from_file(self,chain_number,rootdir,subfolder,
-                             train_when_reading):
+    def read_chain_from_file(self,chain_number,rootdir,subfolder):
         """Read chain from file, check parameters and setup likelihood"""
         
         if rootdir:
@@ -390,7 +385,8 @@ class EmceeSampler(object):
 
         if self.verbose: print("Setup emulator")
         emu_type=config["emu_type"]
-        emulator=gp_emulator.GPEmulator(train=train_when_reading,
+        # for now, assume we are working with Pedersen21 postprocessing
+        emulator=gp_emulator.GPEmulator(training_set='Pedersen21',
                                     emu_type=emu_type,
                                     kmax_Mpc=config["kmax_Mpc"])
 
@@ -565,8 +561,6 @@ class EmceeSampler(object):
         saveDict={}
 
         # Emulator settings
-        assert self.like.theory.emulator.asymmetric_kernel
-        assert self.like.theory.emulator.rbf_only
         saveDict["kmax_Mpc"]=self.like.theory.emulator.kmax_Mpc
         saveDict["emu_type"]=self.like.theory.emulator.emu_type
 
@@ -831,8 +825,7 @@ def compare_corners(chain_files,labels,plot_params=None,save_string=None,
     ## Add each chain we want to plot
     for aa,chain_file in enumerate(chain_files):
         sampler=EmceeSampler(read_chain_file=chain_file,
-                                subfolder=subfolder,rootdir=rootdir,
-                                train_when_reading=False)
+                                subfolder=subfolder,rootdir=rootdir)
         params,strings=sampler.get_all_params(delta_lnprob_cut=delta_lnprob_cut)
         c.add_chain(params,parameters=strings,name=labels[aa])
         
