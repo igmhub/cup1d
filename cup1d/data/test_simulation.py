@@ -2,8 +2,7 @@ import json
 import numpy as np
 import os
 from lace.setup_simulations import read_genic
-from lace.cosmo import camb_cosmo
-from lace.cosmo import fit_linP
+from lace.cosmo import camb_cosmo, fit_linP, thermal_broadening
 from lace.emulator import poly_p1d
 from cup1d.data import read_gadget
 from cup1d.nuisance import thermal_model
@@ -175,7 +174,7 @@ class TestSimulation(object):
             # compute also T_0 from thermal broadening (in km/s)
             dkms_dMpc=camb_cosmo.dkms_dMpc(self.sim_cosmo,z=z)
             sigT_kms=sigT_Mpc*dkms_dMpc
-            T0=thermal_model.T0_from_broadening_kms(sigT_kms)
+            T0=thermal_broadening.T0_from_broadening_kms(sigT_kms)
             emu_dict["T0"]=T0
             ## Add linear power parameters
             ## These are stored starting earliest redshift first
