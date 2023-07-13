@@ -16,7 +16,7 @@ parser.add_argument('--subfolder', type=str, default='gadget',
         help='Subdirectory to save chain file in')
 parser.add_argument('--emu_type', type=str, default='polyfit',
         help='k_bin or polyfit emulator')
-parser.add_argument('--emu_cov_factor', type=float, default=1,
+parser.add_argument('--emu_cov_factor', type=float, default=0,
         help='scale contribution of emulator covariance')
 parser.add_argument('--sim_label', type=str, default='central',
         help='Which sim to use as mock data')
@@ -90,7 +90,8 @@ data=data_MPGADGET.P1D_MPGADGET(sim_label=args.sim_label,
                         polyfit=(args.emu_type=='polyfit'))
 
 # set up an emulator
-emu=gp_emulator.GPEmulator(emu_type=args.emu_type,
+emu=gp_emulator.GPEmulator(training_set='Pedersen21',
+                        emu_type=args.emu_type,
                         kmax_Mpc=args.kmax_Mpc)
 
 # check if we want to include high-resolution data

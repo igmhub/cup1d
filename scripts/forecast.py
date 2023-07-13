@@ -16,7 +16,7 @@ parser.add_argument('--subfolder', type=str, default='mock',
         help='Subdirectory to save chain file in')
 parser.add_argument('--emu_type', type=str, default='polyfit',
         help='k_bin or polyfit emulator')
-parser.add_argument('--emu_cov_factor', type=float, default=1,
+parser.add_argument('--emu_cov_factor', type=float, default=0,
         help='scale contribution of emulator covariance')
 parser.add_argument('--kmax_Mpc', type=float, default=8,
         help='Maximum k to train emulator')
@@ -75,7 +75,8 @@ else:
 print('free parameters',free_parameters)
 
 # set up an emulator
-emu=gp_emulator.GPEmulator(emu_type=args.emu_type,
+emu=gp_emulator.GPEmulator(training_set='Pedersen21',
+                        emu_type=args.emu_type,
                         kmax_Mpc=args.kmax_Mpc)
 
 # generate mock P1D measurement
