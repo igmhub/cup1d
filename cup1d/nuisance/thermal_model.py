@@ -2,6 +2,7 @@ import numpy as np
 import copy
 import os
 from scipy.interpolate import interp1d
+from lace.cosmo import thermal_broadening
 from cup1d.likelihood import likelihood_parameter
 
 
@@ -101,7 +102,8 @@ class ThermalModel(object):
     def get_T0(self,z):
         """T_0 at the input redshift"""
         sigT_kms=self.power_law_scaling_sigT_kms(z)*self.fid_sigT_kms_interp(z)
-        return T0_from_broadening_kms(sigT_kms)
+        T0=thermal_broadening.T0_from_broadening_kms(sigT_kms)
+        return T0
 
 
     def get_gamma(self,z):
@@ -205,16 +207,4 @@ class ThermalModel(object):
         T.update_parameters(parameters)
         return T
 
-
-def thermal_broadening_kms(T_0):
-    """Thermal broadening RMS in velocity units, given T_0"""
-
-    sigma_T_kms=9.1 * np.sqrt(T_0/1.e4)
-    return sigma_T_kms
-
-def T0_from_broadening_kms(sigma_T_kms):
-    """T0 given thermal broadening RMS in velocity units"""
-
-    T_0 = 1.e4 * (sigma_T_kms/9.1)**2
-    return T_0
 
