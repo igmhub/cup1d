@@ -12,6 +12,7 @@ from chainconsumer import ChainConsumer
 from lace.cosmo import fit_linP
 from lace.cosmo import camb_cosmo
 from lace.emulator import gp_emulator
+from lace.emulator import nn_emulator
 from cup1d.data import data_MPGADGET
 from cup1d.data import mock_data
 from cup1d.likelihood import likelihood
@@ -385,15 +386,32 @@ class EmceeSampler(object):
 
         if self.verbose: print("Setup emulator")
 
-        if "emu_type" in config:
-            emu_type=config["emu_type"]
+        # new runs specify emulator_label, old ones use Pedersen23
+        if "emulator_label" in config:
+            emulator_label=config["emulator_label"]
         else:
-            emu_type="polyfit"
+            emulator_label="Pedersen23"
 
-        # for now, assume we are working with Pedersen21 postprocessing
-        emulator=gp_emulator.GPEmulator(training_set='Pedersen21',
-                                    emu_type=emu_type,
+        # setup emulator based on emulator_label
+        if emulator_label=="Pedersen23":
+            # check consistency in old book-keepings
+            if "emu_type" in config:
+                if config["emu_type"]!="polyfit":
+                    raise ValueError("emu_type not polyfit",config["emu_type"])
+            # emulator_label='Pedersen23' would ignore kmax_Mpc
+            print("setup GP emulator used in Pedersen et al. (2023)")
+            emulator=gp_emulator.GPEmulator(training_set="Pedersen21",
                                     kmax_Mpc=config["kmax_Mpc"])
+        elif emulator_label=="Cabayol23":
+            print("setup NN emulator used in Cabayol-Garcia et al. (2023)")
+            emulator=nn_emulator.NNEmulator(training_set="Cabayol23",
+                                    emulator_label="Cabayol23")
+        elif emulator_label=="Nyx23":
+            print("setup NN emulator using Nyx simulations")
+            emulator=nn_emulator.NNEmulator(training_set="Nyx23",
+                                    emulator_label="Cabayol23_Nyx")
+        else:
+            raise ValueError("wrong emulator_label",emulator_label)
 
         # Figure out redshift range in data
         if "z_list" in config:
@@ -569,6 +587,8 @@ class EmceeSampler(object):
         saveDict["kmax_Mpc"]=self.like.theory.emulator.kmax_Mpc
         if isinstance(self.like.theory.emulator,gp_emulator.GPEmulator):
             saveDict["emu_type"]=self.like.theory.emulator.emu_type
+        else:
+            saveDict["emulator_label"]=self.like.theory.emulator.emulator_label
 
         # Data settings
         if hasattr(self.like.data,"mock_sim"):
