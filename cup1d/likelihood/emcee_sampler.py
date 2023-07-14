@@ -11,6 +11,7 @@ from chainconsumer import ChainConsumer
 # our own modules
 from lace.cosmo import fit_linP
 from lace.cosmo import camb_cosmo
+from lace.archive import gadget_archive
 from lace.emulator import gp_emulator
 from lace.emulator import nn_emulator
 from cup1d.data import data_MPGADGET
@@ -406,7 +407,7 @@ class EmceeSampler(object):
             print("setup NN emulator used in Cabayol-Garcia et al. (2023)")
             emulator=nn_emulator.NNEmulator(training_set="Cabayol23",
                                     emulator_label="Cabayol23")
-        elif emulator_label=="Nyx23":
+        elif emulator_label=="Nyx":
             print("setup NN emulator using Nyx simulations")
             emulator=nn_emulator.NNEmulator(training_set="Nyx23",
                                     emulator_label="Cabayol23_Nyx")
@@ -584,11 +585,16 @@ class EmceeSampler(object):
         saveDict={}
 
         # Emulator settings
-        saveDict["kmax_Mpc"]=self.like.theory.emulator.kmax_Mpc
-        if isinstance(self.like.theory.emulator,gp_emulator.GPEmulator):
-            saveDict["emu_type"]=self.like.theory.emulator.emu_type
+        emulator=self.like.theory.emulator
+        saveDict["kmax_Mpc"]=emulator.kmax_Mpc
+        if isinstance(emulator,gp_emulator.GPEmulator):
+            saveDict["emu_type"]=emulator.emu_type
         else:
-            saveDict["emulator_label"]=self.like.theory.emulator.emulator_label
+            # this is dangerous, there might be different settings
+            if isinstance(emulator.archive,gadget_archive.GadgetArchive):
+                saveDict["emulator_label"]="Cabayol23"
+            else:
+                saveDict["emulator_label"]="Nyx"
 
         # Data settings
         if hasattr(self.like.data,"mock_sim"):
