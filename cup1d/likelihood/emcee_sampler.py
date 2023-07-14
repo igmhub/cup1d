@@ -384,7 +384,12 @@ class EmceeSampler(object):
             config = json.load(json_file)
 
         if self.verbose: print("Setup emulator")
-        emu_type=config["emu_type"]
+
+        if "emu_type" in config:
+            emu_type=config["emu_type"]
+        else:
+            emu_type="polyfit"
+
         # for now, assume we are working with Pedersen21 postprocessing
         emulator=gp_emulator.GPEmulator(training_set='Pedersen21',
                                     emu_type=emu_type,
@@ -562,7 +567,8 @@ class EmceeSampler(object):
 
         # Emulator settings
         saveDict["kmax_Mpc"]=self.like.theory.emulator.kmax_Mpc
-        saveDict["emu_type"]=self.like.theory.emulator.emu_type
+        if isinstance(self.like.theory.emulator,gp_emulator.GPEmulator):
+            saveDict["emu_type"]=self.like.theory.emulator.emu_type
 
         # Data settings
         if hasattr(self.like.data,"mock_sim"):
