@@ -26,7 +26,7 @@ class Mock_P1D(base_p1d_data.BaseDataP1D):
 
         # check if emulator was provided
         if emulator is None:
-            emulator=gp_emulator.GPEmulator()
+            emulator=gp_emulator.GPEmulator(training_set="Pedersen21")
 
         # setup and store theory (we will need it later)
         self.theory=lya_theory.Theory(zs=data.z,emulator=emulator)
