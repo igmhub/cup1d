@@ -6,7 +6,7 @@ import emcee
 import time
 import scipy.stats
 from multiprocessing import Pool
-#from chainconsumer import ChainConsumer
+from chainconsumer import ChainConsumer
 
 # our own modules
 from lace.cosmo import fit_linP
