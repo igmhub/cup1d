@@ -225,6 +225,9 @@ class Likelihood(object):
         elif hasattr(self.data,"theory"):
             # using a mock_data P1D (computed from theory)
             return self.data.theory.cosmo_model_fid.cosmo
+        elif hasattr(self.data,"sim_cosmo"):
+            # using new data_gadget module
+            return self.data.sim_cosmo
         else:
             raise ValueError("Can only use get_sim_cosmo when using mock data")
 
