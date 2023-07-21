@@ -18,7 +18,7 @@ class PressureModel(object):
 
         # figure out filename
         if not fid_fname:
-            basedir="/lace/emulator/sim_suites/Australia20/"
+            basedir="/data/sim_suites/Australia20/"
             assert ('LACE_REPO' in os.environ),'export LACE_REPO'
             repo=os.environ['LACE_REPO']
             fid_fname="{}/{}/fiducial_igm_evolution.txt".format(repo,basedir)
