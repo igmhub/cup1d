@@ -456,7 +456,9 @@ class EmceeSampler(object):
                 data_cov_label=config["data_year"]
             else:
                 data_cov_label=config["data_cov_label"]
-            data=data_gadget.Gadget_P1D(sim_label=sim_label,
+            # we can get the archive from the emulator (should be consistent)
+            data=data_gadget.Gadget_P1D(archive=emulator.archive,
+                                    sim_label=sim_label,
                                     zmin=zmin,zmax=zmax,
                                     data_cov_factor=config["data_cov_factor"],
                                     data_cov_label=data_cov_label,
@@ -464,7 +466,8 @@ class EmceeSampler(object):
                                     polyfit_ndeg=emulator.ndeg)
             # (optionally) setup extra P1D from high-resolution
             if "extra_p1d_label" in config:
-                extra_data=data_gadget.Gadget_P1D(sim_label=sim_label,
+                extra_data=data_gadget.Gadget_P1D(archive=emulator.archive,
+                        sim_label=sim_label,
                         zmin=config["extra_p1d_zmin"],
                         zmax=config["extra_p1d_zmax"],
                         data_cov_label=config["extra_p1d_label"],
@@ -482,7 +485,8 @@ class EmceeSampler(object):
                 data_cov_label=config["data_year"]
             else:
                 data_cov_label=config["data_cov_label"]
-            data=data_nyx.Nyx_P1D(sim_label=sim_label,
+            data=data_nyx.Nyx_P1D(archive=emulator.archive,
+                                    sim_label=sim_label,
                                     zmin=zmin,zmax=zmax,
                                     data_cov_factor=config["data_cov_factor"],
                                     data_cov_label=data_cov_label,
@@ -490,7 +494,8 @@ class EmceeSampler(object):
                                     polyfit_ndeg=emulator.ndeg)
             # (optionally) setup extra P1D from high-resolution
             if "extra_p1d_label" in config:
-                extra_data=data_nyx.Nyx_P1D(sim_label=sim_label,
+                extra_data=data_nyx.Nyx_P1D(archive=emulator.archive,
+                        sim_label=sim_label,
                         zmin=config["extra_p1d_zmin"],
                         zmax=config["extra_p1d_zmax"],
                         data_cov_label=config["extra_p1d_label"],
