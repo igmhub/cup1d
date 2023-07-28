@@ -44,6 +44,7 @@ class Gadget_P1D(base_p1d_data.BaseDataP1D):
 
         # read P1D from simulation
         self.archive=archive
+        self.sim_label=sim_label
         self.testing_data = archive.get_testing_data(sim_label,z_max=z_max)
 
         # store cosmology used in the simulation 
@@ -51,13 +52,13 @@ class Gadget_P1D(base_p1d_data.BaseDataP1D):
         self.sim_cosmo=camb_cosmo.get_cosmology_from_dictionary(cosmo_params)
 
         # setup P1D using covariance and testing sim
-        z,k,Pk,cov=self._load_p1d(sim_label)
+        z,k,Pk,cov=self._load_p1d()
 
         # setup base class
         base_p1d_data.BaseDataP1D.__init__(self,z,k,Pk,cov)
 
 
-    def _load_p1d(self,sim_label):
+    def _load_p1d(self):
 
         # figure out dataset to mimic
         if self.data_cov_label=="Chabanier2019":
