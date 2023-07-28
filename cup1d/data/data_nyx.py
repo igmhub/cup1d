@@ -44,6 +44,7 @@ class Nyx_P1D(base_p1d_data.BaseDataP1D):
 
         # store archive
         self.archive=archive
+        self.sim_label=sim_label
 
         # read P1D from simulation (nyx_central needs a hack)
         if sim_label=="nyx_central":
