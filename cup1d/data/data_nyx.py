@@ -54,7 +54,7 @@ class Nyx_P1D(base_p1d_data.BaseDataP1D):
                 ind_rescaling=ind_rescaling, z_max=z_max)
 
         # store cosmology used in the simulation 
-        cosmo_params=self.archive.data[0]['cosmo_params']
+        cosmo_params=self.testing_data[0]['cosmo_params']
         self.sim_cosmo=camb_cosmo.get_Nyx_cosmology(cosmo_params)
 
         # setup P1D using covariance and testing sim
