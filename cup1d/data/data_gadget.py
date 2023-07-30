@@ -44,25 +44,23 @@ class Gadget_P1D(base_p1d_data.BaseDataP1D):
 
         # read P1D from simulation
         self.archive=archive
+        self.sim_label=sim_label
         self.testing_data = archive.get_testing_data(sim_label,z_max=z_max)
+        if len(self.testing_data)==0:
+            raise ValueError("could not set testing data",sim_label)
 
-        # store cosmology used in the simulation (needs to be implemented)
-        if sim_label in ["mpg_central", "mpg_seed", "mpg_reio"]:
-            # use default cosmology in central simulation
-            self.sim_cosmo=camb_cosmo.get_cosmology(ns=0.97,As=2e-9)
-        elif sim_label == "mpg_growth":
-            self.sim_cosmo=camb_cosmo.get_cosmology(ns=0.97,As=2e-9,H0=74)
-        else:
-            raise ValueError("need to use actual cosmology from sim")
+        # store cosmology used in the simulation 
+        cosmo_params=self.testing_data[0]['cosmo_params']
+        self.sim_cosmo=camb_cosmo.get_cosmology_from_dictionary(cosmo_params)
 
         # setup P1D using covariance and testing sim
-        z,k,Pk,cov=self._load_p1d(sim_label)
+        z,k,Pk,cov=self._load_p1d()
 
         # setup base class
         base_p1d_data.BaseDataP1D.__init__(self,z,k,Pk,cov)
 
 
-    def _load_p1d(self,sim_label):
+    def _load_p1d(self):
 
         # figure out dataset to mimic
         if self.data_cov_label=="Chabanier2019":

@@ -219,10 +219,7 @@ class Likelihood(object):
         """ Check that we are running on mock data, and return sim cosmo"""
 
         # different type of data will check for different sim cosmo
-        if hasattr(self.data,"mock_sim"):
-            # using a data_MPGADGET P1D (from Gadget sim)
-            return self.data.mock_sim.sim_cosmo
-        elif hasattr(self.data,"theory"):
+        if hasattr(self.data,"theory"):
             # using a mock_data P1D (computed from theory)
             return self.data.theory.cosmo_model_fid.cosmo
         elif hasattr(self.data,"sim_cosmo"):

@@ -1,4 +1,3 @@
-import os
 import numpy as np
 from scipy.interpolate import interp1d
 
@@ -43,24 +42,32 @@ class Nyx_P1D(base_p1d_data.BaseDataP1D):
         self.polyfit_kmax_Mpc=polyfit_kmax_Mpc
         self.polyfit_ndeg=polyfit_ndeg
 
-        # read P1D from simulation
+        # store archive
         self.archive=archive
-        self.testing_data = archive.get_testing_data(sim_label,z_max=z_max)
+        self.sim_label=sim_label
 
-        # store cosmology used in the simulation (needs to be implemented)
-        if "mpg" in sim_label:
-            raise ValueError("asking for MP-Gadget to the Nyx archive")
-        print("WARNING: using the wrong cosmology in Nyx_P1D!!!")
-        self.sim_cosmo=camb_cosmo.get_cosmology()
+        # read P1D from simulation (nyx_central needs a hack)
+        if sim_label=="nyx_central":
+            ind_rescaling = 1
+        else:
+            ind_rescaling = None
+        self.testing_data = archive.get_testing_data(sim_label,
+                ind_rescaling=ind_rescaling, z_max=z_max)
+        if len(self.testing_data)==0:
+            raise ValueError("could not set testing data",sim_label)
+
+        # store cosmology used in the simulation 
+        cosmo_params=self.testing_data[0]['cosmo_params']
+        self.sim_cosmo=camb_cosmo.get_Nyx_cosmology(cosmo_params)
 
         # setup P1D using covariance and testing sim
-        z,k,Pk,cov=self._load_p1d(sim_label)
+        z,k,Pk,cov=self._load_p1d()
 
         # setup base class
         base_p1d_data.BaseDataP1D.__init__(self,z,k,Pk,cov)
 
 
-    def _load_p1d(self,sim_label):
+    def _load_p1d(self):
 
         # figure out dataset to mimic
         if self.data_cov_label=="Chabanier2019":
@@ -98,10 +105,7 @@ class Nyx_P1D(base_p1d_data.BaseDataP1D):
         Pk_kms=[]
         cov=[]
         # Set P1D and covariance for each redshift (from low-z to high-z)
-        for iiz in range(len(z_sim)):
-            # this is needed because sims have high-z first
-            iz=len(z_sim)-1-iiz
-            z=z_sim[iz]
+        for iz,z in enumerate(z_sim):
             # convert Mpc to km/s
             dkms_dMpc=sim_camb_results.hubble_parameter(z)/(1+z)
             data_k_Mpc=k_kms*dkms_dMpc
