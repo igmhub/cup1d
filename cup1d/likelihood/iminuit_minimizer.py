@@ -96,19 +96,20 @@ class IminuitMinimizer(object):
         from numpy import linalg as LA
 
         # figure out true values of parameters
-        if self.verbose: print('compute true values for',pname_x,pname_y)
-        if pname_x in self.like.truth:
-            true_x=self.like.truth[pname_x]
-            if pname_x=='As':
-                true_x*=1e9
-        else:
-            true_x = 0.5 if cube_values else 0.0
-        if pname_y in self.like.truth:
-            true_y=self.like.truth[pname_y]
-            if pname_y=='As':
-                true_y*=1e9
-        else:
-            true_y = 0.5 if cube_values else 0.0
+        if self.like.truth:
+            if self.verbose: print('compute true values for',pname_x,pname_y)
+            if pname_x in self.like.truth:
+                true_x=self.like.truth[pname_x]
+                if pname_x=='As':
+                    true_x*=1e9
+            else:
+                true_x = 0.5 if cube_values else 0.0
+            if pname_y in self.like.truth:
+                true_y=self.like.truth[pname_y]
+                if pname_y=='As':
+                    true_y*=1e9
+            else:
+                true_y = 0.5 if cube_values else 0.0
 
         # figure out order of parameters in free parameters list
         ix=self.index_by_name(pname_x)
@@ -164,5 +165,6 @@ class IminuitMinimizer(object):
         plt.ylabel(pname_y)
         plt.xlim(val_x-(nsig+1)*sig_x,val_x+(nsig+1)*sig_x)
         plt.ylim(val_y-(nsig+1)*sig_y,val_y+(nsig+1)*sig_y)
-        plt.axhline(y=true_y,ls=':',color='gray')
-        plt.axvline(x=true_x,ls=':',color='gray')
+        if self.like.truth:
+            plt.axhline(y=true_y,ls=':',color='gray')
+            plt.axvline(x=true_x,ls=':',color='gray')

@@ -83,6 +83,11 @@ class EmceeSampler(object):
         # likelihood contains true parameters, but not in latex names
         like_truth=self.like.truth
 
+        # when running on data, we do not know the truth
+        if like_truth is None:
+            self.truth=None
+            return
+
         # store truth for all parameters, with LaTeX keywords
         self.truth={}
         for param in cosmo_params:
