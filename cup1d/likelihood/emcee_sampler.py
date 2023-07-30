@@ -449,6 +449,8 @@ class EmceeSampler(object):
                 sim_label=config["data_sim_number"]
             else:
                 sim_label=config["data_sim_label"]
+            if not sim_label[:3]=="mpg":
+                sim_label="mpg_"+sim_label
             # check that sim is not from emulator suite
             assert sim_label not in range(30)
             # figure out p1d covariance used
@@ -458,7 +460,7 @@ class EmceeSampler(object):
                 data_cov_label=config["data_cov_label"]
             # we can get the archive from the emulator (should be consistent)
             data=data_gadget.Gadget_P1D(archive=emulator.archive,
-                                    sim_label="mpg_"+sim_label,
+                                    sim_label=sim_label,
                                     z_max=zmax,
                                     data_cov_factor=config["data_cov_factor"],
                                     data_cov_label=data_cov_label,
