@@ -458,7 +458,7 @@ class EmceeSampler(object):
                 data_cov_label=config["data_cov_label"]
             # we can get the archive from the emulator (should be consistent)
             data=data_gadget.Gadget_P1D(archive=emulator.archive,
-                                    sim_label=sim_label,
+                                    sim_label="mpg_"+sim_label,
                                     z_max=zmax,
                                     data_cov_factor=config["data_cov_factor"],
                                     data_cov_label=data_cov_label,
