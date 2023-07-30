@@ -46,6 +46,8 @@ class Gadget_P1D(base_p1d_data.BaseDataP1D):
         self.archive=archive
         self.sim_label=sim_label
         self.testing_data = archive.get_testing_data(sim_label,z_max=z_max)
+        if len(self.testing_data)==0:
+            raise ValueError("could not set testing data",sim_label)
 
         # store cosmology used in the simulation 
         cosmo_params=self.testing_data[0]['cosmo_params']
