@@ -519,6 +519,8 @@ class EmceeSampler(object):
                             diag_cov=True, kmax_kms=0.09, zmin=zmin, zmax=zmax)
                 else:
                     raise ValueError("unknown extra_p1d_label",extra_p1d_label)
+            else:
+                extra_data=None
         else:
             raise ValueError("unknown data type")
 
