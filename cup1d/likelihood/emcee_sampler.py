@@ -17,6 +17,8 @@ from lace.emulator import nn_emulator
 from cup1d.data import data_nyx
 from cup1d.data import data_gadget
 from cup1d.data import mock_data
+from cup1d.data import data_Chabanier2019
+from cup1d.data import data_Karacayli2022
 from cup1d.likelihood import likelihood
 
 
@@ -508,6 +510,15 @@ class EmceeSampler(object):
                         polyfit_ndeg=emulator.ndeg)
             else:
                 extra_data=None
+        elif data_type=="Chabanier2019":
+            data=data_Chabanier2019.P1D_Chabanier2019(zmin=zmin, zmax=zmax)
+            # (optionally) setup extra P1D from high-resolution
+            if "extra_p1d_label" in config:
+                if config["extra_p1d_label"]=="Karacayli2022":
+                    extra_data=data_Karacayli2022.P1D_Karacayli2022(
+                            diag_cov=True, kmax_kms=0.09, zmin=zmin, zmax=zmax)
+                else:
+                    raise ValueError("unknown extra_p1d_label",extra_p1d_label)
         else:
             raise ValueError("unknown data type")
 
@@ -652,6 +663,8 @@ class EmceeSampler(object):
             # using a mock_data P1D (computed from theory)
             saveDict["data_type"]="mock"
             saveDict["data_mock_label"]=self.like.data.data_label
+        elif isinstance(self.like.data,data_Chabanier2019.P1D_Chabanier2019):
+            saveDict["data_type"]="Chabanier2019"
         else:
             raise ValueError("unknown data type")
         saveDict["data_zmin"]=min(self.like.theory.zs)
@@ -664,8 +677,10 @@ class EmceeSampler(object):
                 saveDict["extra_p1d_label"]=extra_data.data_cov_label
             elif hasattr(extra_data,"theory"):
                 saveDict["extra_p1d_label"]=extra_data.data_label
+            elif isinstance(extra_data,data_Karacayli2022.P1D_Karacayli2022):
+                saveDict["extra_p1d_label"]="Karacayli2022"
             else:
-                raise ValueError("unknown data type")
+                raise ValueError("unknown extra p1d data type")
             saveDict["extra_p1d_zmin"]=min(extra_data.z)
             saveDict["extra_p1d_zmax"]=max(extra_data.z)
 
