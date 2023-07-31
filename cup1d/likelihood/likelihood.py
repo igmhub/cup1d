@@ -96,12 +96,6 @@ class Likelihood(object):
                     T_model_fid=T_fid,P_model_fid=P_fid,
                     free_param_names=free_param_names)
 
-        # check matching pivot points when using mock data (not sure is needed)
-        if hasattr(self.data,"mock_sim"):
-            data_pivot=self.data.mock_sim.sim_cosmo.InitPower.pivot_scalar
-            theory_pivot=self.theory.cosmo_model_fid.cosmo.InitPower.pivot_scalar
-            assert data_pivot==theory_pivot, "non-standard pivot_scalar"
-
         # setup parameters
         self.set_free_parameters(free_param_names,free_param_limits)
         if verbose: print(len(self.free_params),'free parameters')
@@ -226,7 +220,8 @@ class Likelihood(object):
             # using new data_gadget module
             return self.data.sim_cosmo
         else:
-            raise ValueError("Can only use get_sim_cosmo when using mock data")
+            # when working with real data can not return truth
+            return None
 
 
     def set_truth(self,z_star=3.0,kp_kms=0.009):
@@ -234,6 +229,10 @@ class Likelihood(object):
 
         # access true cosmology used in mock data
         sim_cosmo=self.get_sim_cosmo()
+        if sim_cosmo is None:
+            print("will not store truth, working with real data")
+            self.truth=None
+            return
         camb_results_sim=camb_cosmo.get_camb_results(sim_cosmo,zs=[z_star])
 
         # store relevant parameters
