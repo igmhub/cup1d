@@ -77,7 +77,7 @@ class MetalModel(object):
         return
 
 
-    def get_X_parameters(self):
+    def get_parameters(self):
         """Return likelihood parameters from the metal model"""
         return self.X_params
 
@@ -85,7 +85,7 @@ class MetalModel(object):
     def update_parameters(self,like_params):
         """Look for metal parameters in list of parameters"""
 
-        Npar=self.get_X_Nparam()
+        Npar=self.get_Nparam()
         param_tag='ln_'+self.metal_label
 
         # loop over likelihood parameters

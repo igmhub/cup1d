@@ -5,6 +5,7 @@ from lace.cosmo import fit_linP
 from cup1d.nuisance import mean_flux_model
 from cup1d.nuisance import thermal_model
 from cup1d.nuisance import pressure_model
+from cup1d.nuisance import metal_model
 from cup1d.likelihood import CAMB_model
 
 
@@ -15,12 +16,17 @@ class Theory(object):
 
     def __init__(self,zs,emulator=None,verbose=False,
                     F_model_fid=None,T_model_fid=None,P_model_fid=None,
+                    include_metals=[],
                     cosmo_fid=None,free_param_names=None):
         """Setup object to compute predictions for the 1D power spectrum.
         Inputs:
             - zs: redshifts that will be evaluated
             - emulator: object to interpolate simulated p1d
             - verbose: print information, useful to debug
+            - F_model_fid: fiducial mean flux model
+            - T_model_fid: fiducial thermal model
+            - P_model_fid: fiducial pressure model
+            - include_metals: list of metal labels to include
             - cosmo_fid: fiducial cosmology used for fixed parameters
         """
 
@@ -63,6 +69,26 @@ class Theory(object):
         else:
             self.P_model_fid = pressure_model.PressureModel(
                     free_param_names=free_param_names)
+
+        # check whether we want to include metal contamination models
+        self.metal_models=[]
+        for metal_label in include_metals:
+            X_model=metal_model.MetalModel(metal_label=metal_label)
+            self.metal_models.append(X_model)
+        # temporary hack
+        if free_param_names:
+            metal_param_names=[]
+            for name in free_param_names:
+                if "ln_Si" in name:
+                    # for now we only know how to vary SiIII
+                    if "ln_SiIII_" not in name:
+                        raise ValueError("implement metal param",name)
+                    metal_param_names.append(name)
+            if len(self.metal_models)>0:
+                raise ValueError("either pass include_metals or free_params")
+            X_model=metal_model.MetalModel(metal_label="SiIII",
+                                        free_param_names=free_param_names)
+            self.metal_models.append(X_model)
 
 
     def fixed_background(self,like_params):
@@ -319,6 +345,14 @@ class Theory(object):
                     else:
                         covars.append(cov_Mpc * M_of_z[iz]**2)
 
+        # include multiplicate metal contamination
+        if len(self.metal_models):
+            for iz,z in enumerate(self.zs):
+                mF=emu_calls[iz]['mF']
+                for metal in self.metal_models:
+                    cont=metal.get_contamination(z=z, k_kms=k_kms, mF=mF)
+                    p1d_kms[iz]*=cont
+
         # decide what to return, and return it
         if return_covar:
             if return_blob:
@@ -338,7 +372,7 @@ class Theory(object):
         # get parameters from CAMB model
         params=self.cosmo_model_fid.get_likelihood_parameters()
 
-        # get parameters from nuisance models
+        # get parameters from nuisance IGM models
         for par in self.F_model_fid.get_parameters():
             params.append(par)
         for par in self.T_model_fid.get_sigT_kms_parameters():
@@ -347,6 +381,11 @@ class Theory(object):
             params.append(par)
         for par in self.P_model_fid.get_parameters():
             params.append(par)
+
+        # get parameters from metal contamination models
+        for metal in self.metal_models:
+            for par in metal.get_parameters():
+                params.append(par)
 
         if self.verbose:
             print('got parameters')
