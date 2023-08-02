@@ -64,8 +64,8 @@ class MetalModel(object):
             name=param_tag+'_'+str(i)
             if i==0:
                 # log of overall amplitude at z_X
-                xmin=-100
-                xmax=1
+                xmin=-20
+                xmax=0
             else:
                 xmin=-5
                 xmax=5

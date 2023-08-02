@@ -84,11 +84,13 @@ class Theory(object):
                     if "ln_SiIII_" not in name:
                         raise ValueError("implement metal param",name)
                     metal_param_names.append(name)
-            if len(self.metal_models)>0:
-                raise ValueError("either pass include_metals or free_params")
-            X_model=metal_model.MetalModel(metal_label="SiIII",
-                                        free_param_names=free_param_names)
-            self.metal_models.append(X_model)
+            if len(metal_param_names)>0:
+                # you have at least one free parameter for metals
+                if len(self.metal_models)>0:
+                    raise ValueError("either pass include_metals or free_params")
+                X_model=metal_model.MetalModel(metal_label="SiIII",
+                                            free_param_names=free_param_names)
+                self.metal_models.append(X_model)
 
 
     def fixed_background(self,like_params):
@@ -346,12 +348,12 @@ class Theory(object):
                         covars.append(cov_Mpc * M_of_z[iz]**2)
 
         # include multiplicate metal contamination
-        if len(self.metal_models):
+        for X_model_fid in self.metal_models:
+            X_model = X_model_fid.get_new_model(like_params)
             for iz,z in enumerate(self.zs):
                 mF=emu_calls[iz]['mF']
-                for metal in self.metal_models:
-                    cont=metal.get_contamination(z=z, k_kms=k_kms, mF=mF)
-                    p1d_kms[iz]*=cont
+                cont=X_model.get_contamination(z=z, k_kms=k_kms, mF=mF)
+                p1d_kms[iz]*=cont
 
         # decide what to return, and return it
         if return_covar:
