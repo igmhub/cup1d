@@ -31,9 +31,9 @@ def read_from_file(datadir, velunits):
 
     # start by reading Pk file
     if velunits:
-        p1d_file = datadir + "/p1d_fft_edr_m2_correction_kms.txt"
+        p1d_file = datadir + "/p1d_measurement_kms.txt"
     else:
-        p1d_file = datadir + "/p1d_fft_edr_m2_correction.txt"
+        p1d_file = datadir + "/p1d_measurement.txt"
 
     inz, ink, inPk = np.loadtxt(
         p1d_file,
@@ -42,7 +42,7 @@ def read_from_file(datadir, velunits):
             3,
         ),
     )
-    # # store unique values of redshift and wavenumber
+    # store unique values of redshift and wavenumber
     z = np.unique(inz)
     Nz = len(z)
 
@@ -55,16 +55,16 @@ def read_from_file(datadir, velunits):
         Pk = []
         for i in range(len(z)):
             mask = inz == z[i]
-            Pk.append(inPk[mask][:Nk])
+            Pk.append(inPk[mask][:Nk] * np.pi / k)
         Pk = np.array(Pk)
     else:
-        Pk = np.reshape(inPk, [Nz, Nk])
+        Pk = np.reshape(inPk * np.pi / k, [Nz, Nk])
 
     # now read correlation matrices
     if velunits:
-        cov_file = datadir + "/covariance_matrix_full_kms.txt"
+        cov_file = datadir + "/covariance_matrix_kms.txt"
     else:
-        cov_file = datadir + "/covariance_matrix_full.txt"
+        cov_file = datadir + "/covariance_matrix.txt"
 
     inzcov, ink1, _, incov = np.loadtxt(
         cov_file,
