@@ -11,9 +11,14 @@ from chainconsumer import ChainConsumer
 # our own modules
 from lace.cosmo import fit_linP
 from lace.cosmo import camb_cosmo
+from lace.archive import gadget_archive
 from lace.emulator import gp_emulator
-from cup1d.data import data_MPGADGET
+from lace.emulator import nn_emulator
+from cup1d.data import data_nyx
+from cup1d.data import data_gadget
 from cup1d.data import mock_data
+from cup1d.data import data_Chabanier2019
+from cup1d.data import data_Karacayli2022
 from cup1d.likelihood import likelihood
 
 
@@ -79,6 +84,11 @@ class EmceeSampler(object):
 
         # likelihood contains true parameters, but not in latex names
         like_truth=self.like.truth
+
+        # when running on data, we do not know the truth
+        if like_truth is None:
+            self.truth=None
+            return
 
         # store truth for all parameters, with LaTeX keywords
         self.truth={}
@@ -384,11 +394,33 @@ class EmceeSampler(object):
             config = json.load(json_file)
 
         if self.verbose: print("Setup emulator")
-        emu_type=config["emu_type"]
-        # for now, assume we are working with Pedersen21 postprocessing
-        emulator=gp_emulator.GPEmulator(training_set='Pedersen21',
-                                    emu_type=emu_type,
+
+        # new runs specify emulator_label, old ones use Pedersen23
+        if "emulator_label" in config:
+            emulator_label=config["emulator_label"]
+        else:
+            emulator_label="Pedersen23"
+
+        # setup emulator based on emulator_label
+        if emulator_label=="Pedersen23":
+            # check consistency in old book-keepings
+            if "emu_type" in config:
+                if config["emu_type"]!="polyfit":
+                    raise ValueError("emu_type not polyfit",config["emu_type"])
+            # emulator_label='Pedersen23' would ignore kmax_Mpc
+            print("setup GP emulator used in Pedersen et al. (2023)")
+            emulator=gp_emulator.GPEmulator(training_set="Pedersen21",
                                     kmax_Mpc=config["kmax_Mpc"])
+        elif emulator_label=="Cabayol23":
+            print("setup NN emulator used in Cabayol-Garcia et al. (2023)")
+            emulator=nn_emulator.NNEmulator(training_set="Cabayol23",
+                                    emulator_label="Cabayol23")
+        elif emulator_label=="Nyx":
+            print("setup NN emulator using Nyx simulations")
+            emulator=nn_emulator.NNEmulator(training_set="Nyx23",
+                                    emulator_label="Cabayol23_Nyx")
+        else:
+            raise ValueError("wrong emulator_label",emulator_label)
 
         # Figure out redshift range in data
         if "z_list" in config:
@@ -419,11 +451,13 @@ class EmceeSampler(object):
             else:
                 extra_data=None
         elif data_type=="gadget":
-            # using a data_MPGADGET P1D (from Gadget sim)
+            # using a data_gadget P1D (from Gadget sim)
             if "data_sim_number" in config:
                 sim_label=config["data_sim_number"]
             else:
                 sim_label=config["data_sim_label"]
+            if not sim_label[:3]=="mpg":
+                sim_label="mpg_"+sim_label
             # check that sim is not from emulator suite
             assert sim_label not in range(30)
             # figure out p1d covariance used
@@ -431,18 +465,60 @@ class EmceeSampler(object):
                 data_cov_label=config["data_year"]
             else:
                 data_cov_label=config["data_cov_label"]
-            data=data_MPGADGET.P1D_MPGADGET(sim_label=sim_label,
-                                    zmin=zmin,zmax=zmax,
+            # we can get the archive from the emulator (should be consistent)
+            data=data_gadget.Gadget_P1D(archive=emulator.archive,
+                                    sim_label=sim_label,
+                                    z_max=zmax,
                                     data_cov_factor=config["data_cov_factor"],
                                     data_cov_label=data_cov_label,
-                                    polyfit=(emu_type=="polyfit"))
+                                    polyfit_kmax_Mpc=emulator.kmax_Mpc,
+                                    polyfit_ndeg=emulator.ndeg)
             # (optionally) setup extra P1D from high-resolution
             if "extra_p1d_label" in config:
-                extra_data=data_MPGADGET.P1D_MPGADGET(sim_label=sim_label,
-                        zmin=config["extra_p1d_zmin"],
-                        zmax=config["extra_p1d_zmax"],
+                extra_data=data_gadget.Gadget_P1D(archive=emulator.archive,
+                        sim_label=sim_label,
+                        z_max=config["extra_p1d_zmax"],
                         data_cov_label=config["extra_p1d_label"],
-                        polyfit=(emu_type=="polyfit"))
+                        polyfit_kmax_Mpc=emulator.kmax_Mpc,
+                        polyfit_ndeg=emulator.ndeg)
+            else:
+                extra_data=None
+        elif data_type=="nyx":
+            # using a data_nyx P1D (from Nyx sim)
+            sim_label=config["data_sim_label"]
+            # check that sim is not from emulator suite
+            assert sim_label not in range(15)
+            # figure out p1d covariance used
+            if "data_year" in config:
+                data_cov_label=config["data_year"]
+            else:
+                data_cov_label=config["data_cov_label"]
+            data=data_nyx.Nyx_P1D(archive=emulator.archive,
+                                    sim_label=sim_label,
+                                    z_max=zmax,
+                                    data_cov_factor=config["data_cov_factor"],
+                                    data_cov_label=data_cov_label,
+                                    polyfit_kmax_Mpc=emulator.kmax_Mpc,
+                                    polyfit_ndeg=emulator.ndeg)
+            # (optionally) setup extra P1D from high-resolution
+            if "extra_p1d_label" in config:
+                extra_data=data_nyx.Nyx_P1D(archive=emulator.archive,
+                        sim_label=sim_label,
+                        z_max=config["extra_p1d_zmax"],
+                        data_cov_label=config["extra_p1d_label"],
+                        polyfit_kmax_Mpc=emulator.kmax_Mpc,
+                        polyfit_ndeg=emulator.ndeg)
+            else:
+                extra_data=None
+        elif data_type=="Chabanier2019":
+            data=data_Chabanier2019.P1D_Chabanier2019(zmin=zmin, zmax=zmax)
+            # (optionally) setup extra P1D from high-resolution
+            if "extra_p1d_label" in config:
+                if config["extra_p1d_label"]=="Karacayli2022":
+                    extra_data=data_Karacayli2022.P1D_Karacayli2022(
+                            diag_cov=True, kmax_kms=0.09, zmin=zmin, zmax=zmax)
+                else:
+                    raise ValueError("unknown extra_p1d_label",extra_p1d_label)
             else:
                 extra_data=None
         else:
@@ -561,13 +637,27 @@ class EmceeSampler(object):
         saveDict={}
 
         # Emulator settings
-        saveDict["kmax_Mpc"]=self.like.theory.emulator.kmax_Mpc
-        saveDict["emu_type"]=self.like.theory.emulator.emu_type
+        emulator=self.like.theory.emulator
+        saveDict["kmax_Mpc"]=emulator.kmax_Mpc
+        if isinstance(emulator,gp_emulator.GPEmulator):
+            saveDict["emu_type"]=emulator.emu_type
+        else:
+            # this is dangerous, there might be different settings
+            if isinstance(emulator.archive,gadget_archive.GadgetArchive):
+                saveDict["emulator_label"]="Cabayol23"
+            else:
+                saveDict["emulator_label"]="Nyx"
 
         # Data settings
-        if hasattr(self.like.data,"mock_sim"):
-            # using a data_MPGADGET P1D (from Gadget sim)
+        if isinstance(self.like.data,data_gadget.Gadget_P1D):
+            # using a data_gadget P1D (from Gadget sim)
             saveDict["data_type"]="gadget"
+            saveDict["data_sim_label"]=self.like.data.sim_label
+            saveDict["data_cov_label"]=self.like.data.data_cov_label
+            saveDict["data_cov_factor"]=self.like.data.data_cov_factor
+        elif isinstance(self.like.data,data_nyx.Nyx_P1D):
+            # using a data_nyx P1D (from Nyx sim)
+            saveDict["data_type"]="nyx"
             saveDict["data_sim_label"]=self.like.data.sim_label
             saveDict["data_cov_label"]=self.like.data.data_cov_label
             saveDict["data_cov_factor"]=self.like.data.data_cov_factor
@@ -575,6 +665,8 @@ class EmceeSampler(object):
             # using a mock_data P1D (computed from theory)
             saveDict["data_type"]="mock"
             saveDict["data_mock_label"]=self.like.data.data_label
+        elif isinstance(self.like.data,data_Chabanier2019.P1D_Chabanier2019):
+            saveDict["data_type"]="Chabanier2019"
         else:
             raise ValueError("unknown data type")
         saveDict["data_zmin"]=min(self.like.theory.zs)
@@ -583,12 +675,14 @@ class EmceeSampler(object):
         # Add information about the extra-p1d data (high-resolution P1D)
         if self.like.extra_p1d_like:
             extra_data=self.like.extra_p1d_like.data
-            if hasattr(extra_data,"mock_sim"):
+            if hasattr(extra_data,"sim_cosmo"):
                 saveDict["extra_p1d_label"]=extra_data.data_cov_label
             elif hasattr(extra_data,"theory"):
                 saveDict["extra_p1d_label"]=extra_data.data_label
+            elif isinstance(extra_data,data_Karacayli2022.P1D_Karacayli2022):
+                saveDict["extra_p1d_label"]="Karacayli2022"
             else:
-                raise ValueError("unknown data type")
+                raise ValueError("unknown extra p1d data type")
             saveDict["extra_p1d_zmin"]=min(extra_data.z)
             saveDict["extra_p1d_zmax"]=max(extra_data.z)
 
