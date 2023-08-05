@@ -138,7 +138,8 @@ class MetalModel(object):
         c_kms = 2.997e5
 
         # we should properly compute this (check McDonald et al. 2006)
-        dv_kms = (lambda_lya-self.lambda_rest)/lambda_lya*c_kms
+        #dv_kms = (lambda_lya-self.lambda_rest)/lambda_lya*c_kms
+        dv_kms = np.log(lambda_lya/self.lambda_rest)*c_kms
 
         return dv_kms
 
