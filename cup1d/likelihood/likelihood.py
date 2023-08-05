@@ -498,7 +498,6 @@ class Likelihood(object):
                         fmt="o",ms="4",label="z=%.1f" % z)
                 ymin=min(ymin,min(p1d_data/model+yshift))
                 ymax=max(ymax,max(p1d_data/model+yshift))
-                print(ymin,'limits',ymax)
                 plt.plot(k_emu_kms,p1d_theory/p1d_theory+yshift,
                         color=col,linestyle="dashed")
                 plt.fill_between(k_emu_kms,
@@ -516,7 +515,6 @@ class Likelihood(object):
                         alpha=0.35,color=col)
                 ymin=min(ymin,min(p1d_data*k_kms/np.pi))
                 ymax=max(ymax,max(p1d_data*k_kms/np.pi))
-                print(ymin,'limits',ymax)
 
         if residuals:
             plt.ylabel(r'$P_{\rm 1D}(z,k_\parallel)$ residuals')
