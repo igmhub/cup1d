@@ -456,6 +456,10 @@ class Likelihood(object):
         zs=self.data.z
         Nz=len(zs)
 
+        # figure out y range for plot
+        ymin=1e10
+        ymax=-1e10
+
         # ask emulator prediction for P1D in each bin
         emu_p1d, emu_cov = self.get_p1d_kms(k_emu_kms,values,return_covar=True)
         like_params=self.parameters_from_sampling_point(values)
@@ -477,16 +481,24 @@ class Likelihood(object):
                 if self.verbose: print(z,'emulator did not provide P1D')
                 continue
             # plot everything
-            col = plt.cm.jet(iz/(Nz-1))
+            if Nz>1:
+                col = plt.cm.jet(iz/(Nz-1))
+                yshift=iz/(Nz-1)
+            else:
+                col = 'blue'
+                yshift=0
 
             if residuals:
                 # interpolate theory to data kp values
                 model=np.interp(k_kms,k_emu_kms,p1d_theory)
                 # shift data in y axis for clarity
-                yshift=iz/(Nz-1)
+                yshift=yshift
                 plt.errorbar(k_kms,p1d_data/model+yshift,color=col,
                         yerr=p1d_err/model,
                         fmt="o",ms="4",label="z=%.1f" % z)
+                ymin=min(ymin,min(p1d_data/model+yshift))
+                ymax=max(ymax,max(p1d_data/model+yshift))
+                print(ymin,'limits',ymax)
                 plt.plot(k_emu_kms,p1d_theory/p1d_theory+yshift,
                         color=col,linestyle="dashed")
                 plt.fill_between(k_emu_kms,
@@ -502,14 +514,17 @@ class Likelihood(object):
                 plt.fill_between(k_emu_kms,(p1d_theory+err_theory)*k_emu_kms/np.pi,
                         (p1d_theory-err_theory)*k_emu_kms/np.pi,
                         alpha=0.35,color=col)
+                ymin=min(ymin,min(p1d_data*k_kms/np.pi))
+                ymax=max(ymax,max(p1d_data*k_kms/np.pi))
+                print(ymin,'limits',ymax)
 
         if residuals:
             plt.ylabel(r'$P_{\rm 1D}(z,k_\parallel)$ residuals')
-            plt.ylim(0.9,2.1)
+            plt.ylim(ymin-0.1,ymax+0.1)
         else:
             plt.yscale('log')
             plt.ylabel(r'$k_\parallel \, P_{\rm 1D}(z,k_\parallel) / \pi$')
-            plt.ylim(0.005,0.6)
+            plt.ylim(0.8*ymin,1.2*ymax)
 
         plt.plot(-10,-10,linestyle="-",label="Data",color="k")
         plt.plot(-10,-10,linestyle=":",label="Fit",color="k")
