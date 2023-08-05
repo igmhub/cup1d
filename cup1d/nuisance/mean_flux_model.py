@@ -119,11 +119,11 @@ class MeanFluxModel(object):
         return
 
 
-    def get_new_model(self,parameters=[]):
+    def get_new_model(self,like_params=[]):
         """Return copy of model, updating values from list of parameters"""
 
         mf = MeanFluxModel(fid_fname=self.fid_fname,z_tau=self.z_tau,
                             ln_tau_coeff=copy.deepcopy(self.ln_tau_coeff))
-        mf.update_parameters(parameters)
+        mf.update_parameters(like_params)
         return mf
 

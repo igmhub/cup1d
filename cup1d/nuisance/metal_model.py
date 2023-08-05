@@ -106,7 +106,7 @@ class MetalModel(object):
         return
 
 
-    def get_new_model(self,parameters=[]):
+    def get_new_model(self,like_params=[]):
         """Return copy of model, updating values from list of parameters"""
 
         X = MetalModel(metal_label = self.metal_label, 
@@ -114,7 +114,7 @@ class MetalModel(object):
                         z_X = self.z_X,
                         ln_X_coeff = copy.deepcopy(self.ln_X_coeff))
 
-        X.update_parameters(parameters)
+        X.update_parameters(like_params)
         return X
 
 
