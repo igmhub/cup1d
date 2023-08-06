@@ -879,6 +879,11 @@ param_dict={
             "ln_kF_2":"$\mathrm{ln}\,k^F_2$",
             "ln_kF_3":"$\mathrm{ln}\,k^F_3$",
             "ln_kF_4":"$\mathrm{ln}\,k^F_4$",
+            # each metal contamination should have its own parameters here
+            "ln_SiIII_0":"$\mathrm{ln}\,f^{SiIII}_0$",
+            "ln_SiIII_1":"$\mathrm{ln}\,f^{SiIII}_1$",
+            #"ln_SiIII_0":"$\mathrm{ln}\,f^{\rm SiIII}_0$",
+            #"ln_SiIII_1":"$\mathrm{ln}\,f^{\rm SiIII}_1$",
             "H0":"$H_0$",
             "mnu":"$\Sigma m_\\nu$",
             "As":"$A_s$",

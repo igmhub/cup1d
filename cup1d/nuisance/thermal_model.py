@@ -198,13 +198,13 @@ class ThermalModel(object):
         return
 
 
-    def get_new_model(self,parameters=[]):
+    def get_new_model(self,like_params=[]):
         """Return copy of model, updating values from list of parameters"""
 
         T = ThermalModel(fid_fname=self.fid_fname,z_T=self.z_T,
                             ln_sigT_kms_coeff=copy.deepcopy(self.ln_sigT_kms_coeff),
                             ln_gamma_coeff=copy.deepcopy(self.ln_gamma_coeff))
-        T.update_parameters(parameters)
+        T.update_parameters(like_params)
         return T
 
 

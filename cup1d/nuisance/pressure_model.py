@@ -115,10 +115,10 @@ class PressureModel(object):
         return
 
 
-    def get_new_model(self,parameters=[]):
+    def get_new_model(self,like_params=[]):
         """Return copy of model, updating values from list of parameters"""
 
         kF = PressureModel(fid_fname=self.fid_fname,z_kF=self.z_kF,
                             ln_kF_coeff=copy.deepcopy(self.ln_kF_coeff))
-        kF.update_parameters(parameters)
+        kF.update_parameters(like_params)
         return kF
