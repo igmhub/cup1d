@@ -7,3 +7,4 @@ emcee
 chainconsumer
 h5py
 getdist
+iminuit

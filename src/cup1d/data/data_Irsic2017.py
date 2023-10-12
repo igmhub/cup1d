@@ -18,7 +18,7 @@ class P1D_Irsic2017(BaseDataP1D):
         z,k_kms,Pk_kms,cov_Pk_kms=read_from_file(datadir,add_syst,
                 ignore_zcov)
 
-        super().__init__(self,z,k_kms,Pk_kms,cov_Pk_kms)
+        super().__init__(z,k_kms,Pk_kms,cov_Pk_kms)
 
         return
 

@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from cup1d.data.base_p1d_data import BaseDataP1D
+from cup1d.data.base_p1d_data import BaseDataP1D, _drop_zbins
 
 
 class P1D_QMLE_Ohio(BaseDataP1D):
@@ -14,9 +14,9 @@ class P1D_QMLE_Ohio(BaseDataP1D):
 
         # drop low-z or high-z bins
         if zmin or zmax:
-            z,k,Pk,cov=base_p1d_data._drop_zbins(z,k,Pk,cov,zmin,zmax)
+            z,k,Pk,cov=_drop_zbins(z,k,Pk,cov,zmin,zmax)
 
-        super().__init__(self,z,k,Pk,cov)
+        super().__init__(z,k,Pk,cov)
 
         return
 

@@ -13,7 +13,7 @@ class P1D_Walther2018(BaseDataP1D):
 
         z,k_kms,Pk_kms,cov_Pk_kms=read_from_file(datadir)
 
-        super().__init__(self,z,k_kms,Pk_kms,cov_Pk_kms)
+        super().__init__(z,k_kms,Pk_kms,cov_Pk_kms)
 
         return
 
