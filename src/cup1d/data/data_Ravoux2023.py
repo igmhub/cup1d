@@ -1,18 +1,16 @@
 import numpy as np
-from cup1d.data import base_p1d_data
 import os
 
+from cup1d.data.base_p1d_data import BaseDataP1D
 
-class P1D_Ravoux2023(base_p1d_data.BaseDataP1D):
+class P1D_Ravoux2023(BaseDataP1D):
     """Class containing P1D from Ravoux et al. (2023)."""
 
     def __init__(self, zmin=None, zmax=None, velunits=True):
         """Read measured P1D from Ravoux et al. (2023)."""
 
         # folder storing P1D measurements
-        assert "CUP1D_PATH" in os.environ, "You need to define CUP1D_PATH"
-        basedir = os.environ["CUP1D_PATH"] + "/data_files/p1d_measurements/"
-        datadir = basedir + "/Ravoux2023/"
+         datadir=BaseDataP1D.BASEDIR + "/Ravoux2023/"
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         z, k, Pk, cov = read_from_file(datadir, velunits)
@@ -21,7 +19,7 @@ class P1D_Ravoux2023(base_p1d_data.BaseDataP1D):
         if zmin or zmax:
             z, k, Pk, cov = base_p1d_data._drop_zbins(z, k, Pk, cov, zmin, zmax)
 
-        base_p1d_data.BaseDataP1D.__init__(self, z, k, Pk, cov)
+        super().__init__(self, z, k, Pk, cov)
 
         return
 

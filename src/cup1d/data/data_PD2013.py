@@ -1,16 +1,15 @@
 import os
 import numpy as np
-from cup1d.data import base_p1d_data
 
-class P1D_PD2013(base_p1d_data.BaseDataP1D):
+from cup1d.data.base_p1d_data import BaseDataP1D
+
+class P1D_PD2013(BaseDataP1D):
 
     def __init__(self,zmin=None,zmax=None,use_FFT=True,add_syst=True):
         """Read measured P1D from files, either FFT or likelihood version."""
 
         # folder storing P1D measurement
-        assert ('CUP1D_PATH' in os.environ),'You need to define CUP1D_PATH'
-        basedir=os.environ['CUP1D_PATH']+'/data_files/p1d_measurements/'
-        datadir=basedir+'/PD2013/'
+        datadir=BaseDataP1D.BASEDIR +'/PD2013/'
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         if use_FFT:
@@ -22,7 +21,7 @@ class P1D_PD2013(base_p1d_data.BaseDataP1D):
         if zmin or zmax:
             z,k,Pk,cov=base_p1d_data._drop_zbins(z,k,Pk,cov,zmin,zmax)
 
-        base_p1d_data.BaseDataP1D.__init__(self,z,k,Pk,cov)
+        super().BaseDataP1D.__init__(self,z,k,Pk,cov)
 
         return
 

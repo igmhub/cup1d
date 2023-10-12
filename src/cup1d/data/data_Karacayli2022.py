@@ -1,8 +1,9 @@
 import os
 import numpy as np
-from cup1d.data import base_p1d_data
 
-class P1D_Karacayli2022(base_p1d_data.BaseDataP1D):
+from cup1d.data.base_p1d_data import BaseDataP1D
+
+class P1D_Karacayli2022(BaseDataP1D):
 
     def __init__(self,diag_cov=True,kmax_kms=0.09,zmin=None,zmax=None):
         """Read measured P1D from file.
@@ -17,7 +18,7 @@ class P1D_Karacayli2022(base_p1d_data.BaseDataP1D):
         if zmin or zmax:
             z,k,Pk,cov=base_p1d_data._drop_zbins(z,k,Pk,cov,zmin,zmax)
 
-        base_p1d_data.BaseDataP1D.__init__(self,z,k,Pk,cov)
+        super().__init__(self,z,k,Pk,cov)
 
         return
 
@@ -26,9 +27,7 @@ def read_from_file(diag_cov,kmax_kms):
     """Read file containing mock P1D"""
 
     # folder storing P1D measurement
-    assert ('CUP1D_PATH' in os.environ),'You need to define CUP1D_PATH'
-    basedir=os.environ['CUP1D_PATH']+'/data_files/p1d_measurements/'
-    datadir=basedir+'/Karacayli2022/'
+    datadir=BaseDataP1D.BASEDIR +'/Karacayli2022/'
 
     # start by reading the file with measured band power
     p1d_file=datadir+'highres-mock-power-spectrum.txt'
