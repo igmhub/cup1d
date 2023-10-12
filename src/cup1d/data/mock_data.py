@@ -9,16 +9,21 @@ from cup1d.likelihood import lya_theory
 class Mock_P1D(base_p1d_data.BaseDataP1D):
     """ Class to generate a mock P1D from another P1D object and a theory"""
 
-    def __init__(self,emulator=None,data_label="Chabanier2019",
-                    zmin=2.0,zmax=4.5):
-        """ Copy data and replace P1D signal using theory"""
+    def __init__(
+            self, emulator=None, data_label="Chabanier2019",
+            zmin=2.0, zmax=4.5, **kwargs
+    ):
+        """ Copy data and replace P1D signal using theory
+        Args:
+            **kwargs: Any other key words arguments to pass into data constructor.
+        """
 
         # load original data
         self.data_label=data_label
         if data_label=="Chabanier2019":
             data=data_Chabanier2019.P1D_Chabanier2019(zmin=zmin,zmax=zmax)
         elif data_label=="QMLE_Ohio":
-            data=data_QMLE_Ohio.P1D_QMLE_Ohio(zmin=zmin,zmax=zmax)
+            data=data_QMLE_Ohio.P1D_QMLE_Ohio(zmin=zmin,zmax=zmax, **kwargs)
         elif data_label=="Karacayli2022":
             data=data_Karacayli2022.P1D_Karacayli2022(zmin=zmin,zmax=zmax)
         else:
