@@ -59,6 +59,8 @@ class P1D_QMLE_Ohio(BaseDataP1D):
         Nk = kbins.size
         Nz = zbins.size
         Pk = data['Pest'].reshape(Nz, Nk)
+        
+        assert (Nk * Nz == data.size)
 
         # will keep only wavenumbers with kmin_kms <= k <= kmax_kms
         drop_lowk = kbins < kmin_kms

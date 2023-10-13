@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.interpolate import interp1d
 
-from lace.emulator import poly_p1d
+from lace.utils import poly_p1d
 from lace.cosmo import camb_cosmo
 
 from cup1d.data import base_p1d_data
