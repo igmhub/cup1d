@@ -9,7 +9,8 @@ class P1D_QMLE_Ohio(BaseDataP1D):
 
     def __init__(
             self, diag_cov=True, kmin_kms=0.001, kmax_kms=0.04,
-            zmin=None,zmax=None,version='ohio-v0', filename=None
+            zmin=None,zmax=None,version='ohio-v0', filename=None,
+            noise_syst=0
     ):
         """Read measured P1D from file from Ohio mocks (QMLE)
         
@@ -18,7 +19,8 @@ class P1D_QMLE_Ohio(BaseDataP1D):
         """
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        z,k,Pk,cov=self._read_file(diag_cov, kmin_kms, kmax_kms, version, filename)
+        z,k,Pk,cov=self._read_file(
+            diag_cov, kmin_kms, kmax_kms, version, filename, noise_syst)
 
         # drop low-z or high-z bins
         if zmin or zmax:
@@ -29,7 +31,7 @@ class P1D_QMLE_Ohio(BaseDataP1D):
         return
 
 
-    def _read_file(self, diag_cov, kmin_kms, kmax_kms, version, filename):
+    def _read_file(self, diag_cov, kmin_kms, kmax_kms, version, filename, noise_syst):
         """Read file containing mock P1D"""
 
         if filename:
@@ -84,6 +86,11 @@ class P1D_QMLE_Ohio(BaseDataP1D):
         for i in range(Nz):
             err = data['ErrorP'][i * Nk:(i + 1) * Nk]
             var = err[Nlk:Nk - Nhk]**2
-            cov.append(np.diag(var))
+            C = np.diag(var)
+            if noise_syst > 0:
+                pnoise = noise_syst * data['b'][i * Nk:(i + 1) * Nk][Nlk:Nk - Nhk]
+                C += np.outer(pnoise, pnoise)
+                
+            cov.append(C)
 
         return zbins, kbins, Pk, cov
