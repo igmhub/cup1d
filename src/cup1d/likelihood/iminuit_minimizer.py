@@ -158,7 +158,7 @@ class IminuitMinimizer(object):
         # make plot
         fig = plt.subplot(111)
         for isig in range(1,nsig+1):
-            ell = Ellipse((val_x,val_y),2*isig*a,2*isig*b,alpha_deg)
+            ell = Ellipse((val_x,val_y), 2 * isig * a, 2 * isig * b, angle=alpha_deg)
             ell.set_alpha(0.6/isig)
             fig.add_artist(ell)
         plt.xlabel(pname_x)
