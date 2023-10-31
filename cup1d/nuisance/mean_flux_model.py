@@ -7,123 +7,134 @@ from cup1d.likelihood import likelihood_parameter
 
 class MeanFluxModel(object):
     """Use a handful of parameters to model the mean transmitted flux fraction
-        (or mean flux) as a function of redshift. 
-         For now, we use a polynomial to describe log(tau_eff) around z_tau.
-         """
+    (or mean flux) as a function of redshift.
+     For now, we use a polynomial to describe log(tau_eff) around z_tau.
+    """
 
-    def __init__(self,z_tau=3.0,ln_tau_coeff=None,fid_fname=None,
-                free_param_names=None):
+    def __init__(
+        self,
+        z_tau=3.0,
+        ln_tau_coeff=None,
+        sim_igm="mpg",
+        fid_fname=None,
+        free_param_names=None,
+    ):
         """Construct model as a rescaling around a fiducial mean flux"""
 
         # figure out filename
-        if not fid_fname:
-            basedir="/data/sim_suites/Australia20/"
-            assert ('LACE_REPO' in os.environ),'export LACE_REPO'
-            repo=os.environ['LACE_REPO']
-            fid_fname="{}/{}/fiducial_igm_evolution.txt".format(repo,basedir)
+        if fid_fname is None:
+            if sim_igm == "mpg":
+                basedir = "/src/lace/data/sim_suites/Australia20/"
+                assert "LACE_REPO" in os.environ, "export LACE_REPO"
+                repo = os.environ["LACE_REPO"]
+                fid_fname = "{}/{}/fiducial_igm_evolution.txt".format(
+                    repo, basedir
+                )
+            elif sim_igm == "nyx":
+                assert "NYX_PATH" in os.environ, "export NYX_PATH"
+                fid_fname = (
+                    os.environ["NYX_PATH"] + "/fiducial_igm_evolution.txt"
+                )
 
         # load fiducial model
-        self.fid_fname=fid_fname
-        fiducial=np.loadtxt(fid_fname)
-        self.fid_z=fiducial[0]
-        self.fid_tau_eff=fiducial[1] ## tau_eff(z)
-        self.fid_tau_interp=interp1d(self.fid_z,self.fid_tau_eff,kind="cubic")
+        self.fid_fname = fid_fname
+        fiducial = np.loadtxt(fid_fname)
+        self.fid_z = fiducial[0]
+        self.fid_tau_eff = fiducial[1]  ## tau_eff(z)
+        self.fid_tau_interp = interp1d(
+            self.fid_z, self.fid_tau_eff, kind="cubic"
+        )
 
-        self.z_tau=z_tau
+        self.z_tau = z_tau
         if ln_tau_coeff:
             assert free_param_names is None
-            self.ln_tau_coeff=ln_tau_coeff
+            self.ln_tau_coeff = ln_tau_coeff
         else:
             if free_param_names:
                 # figure out number of mean flux free params
-                n_mf=len([p for p in free_param_names if 'ln_tau_' in p])
+                n_mf = len([p for p in free_param_names if "ln_tau_" in p])
             else:
-                n_mf=2
-            self.ln_tau_coeff=[0.0]*n_mf
+                n_mf = 2
+            self.ln_tau_coeff = [0.0] * n_mf
         # store list of likelihood parameters (might be fixed or free)
         self.set_parameters()
 
-
     def get_Nparam(self):
         """Number of parameters in the model"""
-        assert len(self.ln_tau_coeff)==len(self.params),"size mismatch"
+        assert len(self.ln_tau_coeff) == len(self.params), "size mismatch"
         return len(self.ln_tau_coeff)
 
-
-    def power_law_scaling(self,z):
-        """ Power law rescaling around z_tau """
-        xz=np.log((1+z)/(1+self.z_tau))
-        ln_poly=np.poly1d(self.ln_tau_coeff)
-        ln_out=ln_poly(xz)
+    def power_law_scaling(self, z):
+        """Power law rescaling around z_tau"""
+        xz = np.log((1 + z) / (1 + self.z_tau))
+        ln_poly = np.poly1d(self.ln_tau_coeff)
+        ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-
-    def get_tau_eff(self,z):
+    def get_tau_eff(self, z):
         """Effective optical depth at the input redshift"""
-        tau_eff=self.power_law_scaling(z)*self.fid_tau_interp(z)
+        tau_eff = self.power_law_scaling(z) * self.fid_tau_interp(z)
         return tau_eff
 
-
-    def get_mean_flux(self,z):
+    def get_mean_flux(self, z):
         """Mean transmitted flux fraction at the input redshift"""
-        tau=self.get_tau_eff(z)
+        tau = self.get_tau_eff(z)
         return np.exp(-tau)
-
 
     def set_parameters(self):
         """Setup likelihood parameters in the mean flux model"""
 
-        self.params=[]
-        Npar=len(self.ln_tau_coeff)
+        self.params = []
+        Npar = len(self.ln_tau_coeff)
         for i in range(Npar):
-            name='ln_tau_'+str(i)
-            if i==0:
-                xmin=-0.1
-                xmax=0.1
+            name = "ln_tau_" + str(i)
+            if i == 0:
+                xmin = -0.1
+                xmax = 0.1
             else:
-                xmin=-0.2
-                xmax=0.2
+                xmin = -0.2
+                xmax = 0.2
             # note non-trivial order in coefficients
-            value=self.ln_tau_coeff[Npar-i-1]
-            par = likelihood_parameter.LikelihoodParameter(name=name,
-                                value=value,min_value=xmin,max_value=xmax)
+            value = self.ln_tau_coeff[Npar - i - 1]
+            par = likelihood_parameter.LikelihoodParameter(
+                name=name, value=value, min_value=xmin, max_value=xmax
+            )
             self.params.append(par)
 
         return
- 
 
     def get_parameters(self):
         """Return likelihood parameters for the mean flux model"""
         return self.params
 
-
-    def update_parameters(self,like_params):
+    def update_parameters(self, like_params):
         """Update mean flux values using input list of likelihood parameters"""
 
-        Npar=self.get_Nparam()
+        Npar = self.get_Nparam()
 
         # loop over likelihood parameters
         for like_par in like_params:
-            if 'ln_tau' not in like_par.name:
+            if "ln_tau" not in like_par.name:
                 continue
             # make sure you find the parameter
-            found=False
+            found = False
             # loop over parameters in mean flux model
             for ip in range(len(self.params)):
                 if self.params[ip].name == like_par.name:
-                    assert found==False,'can not update parameter twice'
-                    self.ln_tau_coeff[Npar-ip-1]=like_par.value
-                    found=True
-            assert found==True,'could not update parameter '+like_par.name
+                    assert found == False, "can not update parameter twice"
+                    self.ln_tau_coeff[Npar - ip - 1] = like_par.value
+                    found = True
+            assert found == True, "could not update parameter " + like_par.name
 
         return
 
-
-    def get_new_model(self,like_params=[]):
+    def get_new_model(self, like_params=[]):
         """Return copy of model, updating values from list of parameters"""
 
-        mf = MeanFluxModel(fid_fname=self.fid_fname,z_tau=self.z_tau,
-                            ln_tau_coeff=copy.deepcopy(self.ln_tau_coeff))
+        mf = MeanFluxModel(
+            fid_fname=self.fid_fname,
+            z_tau=self.z_tau,
+            ln_tau_coeff=copy.deepcopy(self.ln_tau_coeff),
+        )
         mf.update_parameters(like_params)
         return mf
-
