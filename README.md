@@ -25,6 +25,14 @@ cd $CUP1D_PATH
 pip install -e .
 ```
 
+Note: This will replace your local LaCE installation if you have any. To use your editable LaCE installation, uninstall LaCE and reinstall your own copy.
+
+```
+pip uninstall lace
+cd $LACE_PATH
+pip install -e .
+```
+
 ### Notebooks / tutorials
 
 You can start by plotting the many P1D measurements stored in the repo, by looking at `notebooks/p1d_measurements`
