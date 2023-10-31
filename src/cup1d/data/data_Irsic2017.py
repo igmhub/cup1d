@@ -1,9 +1,10 @@
 import os
 import numpy as np
-from cup1d.data import base_p1d_data
+
+from cup1d.data.base_p1d_data import BaseDataP1D
 
 
-class P1D_Irsic2017(base_p1d_data.BaseDataP1D):
+class P1D_Irsic2017(BaseDataP1D):
     """Class containing P1D from Irsic et al. (2017)."""
 
     def __init__(self,add_syst=True,ignore_zcov=True):
@@ -12,14 +13,12 @@ class P1D_Irsic2017(base_p1d_data.BaseDataP1D):
          - ignore_zcov=False will include covariance between z bins."""
 
         # folder storing P1D measurement
-        assert ('CUP1D_PATH' in os.environ),'You need to define CUP1D_PATH'
-        basedir=os.environ['CUP1D_PATH']+'/data_files/p1d_measurements/'
-        datadir=basedir+'/Irsic2017/'
+        datadir=BaseDataP1D.BASEDIR +'/Irsic2017/'
 
         z,k_kms,Pk_kms,cov_Pk_kms=read_from_file(datadir,add_syst,
                 ignore_zcov)
 
-        base_p1d_data.BaseDataP1D.__init__(self,z,k_kms,Pk_kms,cov_Pk_kms)
+        super().__init__(z,k_kms,Pk_kms,cov_Pk_kms)
 
         return
 

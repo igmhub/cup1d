@@ -1,0 +1,10 @@
+lace@git+https://github.com/igmhub/LaCe.git
+gpy
+camb
+configobj
+configargparse
+emcee
+chainconsumer
+h5py
+getdist
+iminuit

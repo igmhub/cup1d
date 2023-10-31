@@ -14,33 +14,23 @@ If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es
 Start a fresh environment:
 
 ```
-conda create -n cup1d python=3.8 pip matplotlib 
-source activate cup1d
+conda create -n cup1d python=3.10
+conda activate cup1d
 ```
 
-You will also need to install GPy and CAMB
-```
-pip install gpy camb
-```
-
-Clone the LaCE repo, set a LACE_REPO environment variable pointing to it, and install it:
-
-```
-cd $LACE_REPO
-python setup.py install
-```
-
-Repeat the operation for the cup1d repo:
+Clone the cup1d repo, set a CUP1D_PATH environment variable pointing to it:
 
 ```
 cd $CUP1D_PATH
-python setup.py install
+pip install -e .
 ```
 
-You will also need to install several other python packages:
+Note: This will replace your local LaCE installation if you have any. To use your editable LaCE installation, uninstall LaCE and reinstall your own copy.
 
 ```
-pip install configobj configargparse emcee chainconsumer h5py getdist
+pip uninstall lace
+cd $LACE_PATH
+pip install -e .
 ```
 
 ### Notebooks / tutorials

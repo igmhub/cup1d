@@ -1,21 +1,19 @@
 import os
 import numpy as np
-from cup1d.data import base_p1d_data
+from cup1d.data.base_p1d_data import BaseDataP1D
 
-class P1D_Walther2018(base_p1d_data.BaseDataP1D):
+class P1D_Walther2018(BaseDataP1D):
     """Class containing P1D from Walther et al. (2018)."""
 
     def __init__(self):
         """Read measured P1D from Walther et al. (2018)."""
 
         # folder storing P1D measurement
-        assert ('CUP1D_PATH' in os.environ),'You need to define CUP1D_PATH'
-        basedir=os.environ['CUP1D_PATH']+'/data_files/p1d_measurements/'
-        datadir=basedir+'/Walther2018/'
+         datadir=BaseDataP1D.BASEDIR +'/Walther2018/'
 
         z,k_kms,Pk_kms,cov_Pk_kms=read_from_file(datadir)
 
-        base_p1d_data.BaseDataP1D.__init__(self,z,k_kms,Pk_kms,cov_Pk_kms)
+        super().__init__(z,k_kms,Pk_kms,cov_Pk_kms)
 
         return
 
