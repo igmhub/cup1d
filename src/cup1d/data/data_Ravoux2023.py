@@ -10,7 +10,7 @@ class P1D_Ravoux2023(BaseDataP1D):
         """Read measured P1D from Ravoux et al. (2023)."""
 
         # folder storing P1D measurements
-         datadir=BaseDataP1D.BASEDIR + "/Ravoux2023/"
+        datadir=BaseDataP1D.BASEDIR + "/Ravoux2023/"
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         z, k, Pk, cov = read_from_file(datadir, velunits)
