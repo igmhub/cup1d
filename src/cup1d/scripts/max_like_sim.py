@@ -17,30 +17,28 @@ def str_to_bool(s):
         return False
 
 
-def load_emu(archive, label_training_set, emulator_label, drop_sim, drop_z):
-    def set_emu_path(label_training_set, emulator_label, drop_sim, drop_z):
+def load_emu(
+    archive,
+    label_training_set,
+    emulator_label,
+    test_sim_label,
+    drop_sim,
+):
+    def set_emu_path(
+        label_training_set,
+        emulator_label,
+        test_sim_label,
+        drop_sim,
+    ):
         folder = "NNmodels/" + label_training_set + "/"
-
         # set file name
         fname = emulator_label
-
         if drop_sim != False:
-            fname += "_drop_sim_" + drop_sim
-            _drop_sim = drop_sim
-        else:
-            _drop_sim = None
-
-        if drop_z != False:
-            fname += "_drop_z_" + str(np.round(drop_z, 2))
-            _drop_z = drop_z
-        else:
-            _drop_z = None
-
+            fname += "_drop_sim_" + test_sim_label
         fname += ".pt"
 
         return folder + fname
 
-    print("Loading emulator " + emulator_label)
     if emulator_label == "Pedersen21":
         if label_training_set != "Pedersen21":
             raise (
@@ -50,7 +48,16 @@ def load_emu(archive, label_training_set, emulator_label, drop_sim, drop_z):
                 + emulator_label
                 + ") not allowed:"
             )
-        emulator = GPEmulator(archive=archive)
+        if drop_sim:
+            _drop_sim = test_sim_label
+        else:
+            _drop_sim = None
+        print("Training emulator " + emulator_label)
+        emulator = GPEmulator(
+            training_set=label_training_set,
+            emulator_label=emulator_label,
+            drop_sim=_drop_sim,
+        )
     else:
         if (label_training_set == "Cabayol23") & (
             (emulator_label == "Cabayol23")
@@ -74,19 +81,20 @@ def load_emu(archive, label_training_set, emulator_label, drop_sim, drop_z):
             )
             sys.exit()
 
-        emu_path = set_emu_path(_training_set, emulator_label, drop_sim, drop_z)
-
-        if drop_sim == False:
+        emu_path = set_emu_path(
+            _training_set, emulator_label, test_sim_label, drop_sim
+        )
+        if drop_sim:
+            _drop_sim = test_sim_label
+        else:
             _drop_sim = None
-        if drop_z == False:
-            _drop_z = None
+        print("Loading emulator " + emulator_label)
         emulator = NNEmulator(
             archive=archive,
             training_set=_training_set,
             emulator_label=emulator_label,
             model_path=emu_path,
             drop_sim=_drop_sim,
-            drop_z=_drop_z,
             train=False,
         )
 
@@ -94,6 +102,8 @@ def load_emu(archive, label_training_set, emulator_label, drop_sim, drop_z):
 
 
 def main():
+    start_all = time.time()
+
     parser = configargparse.ArgumentParser(
         description="Passing options to minimizer"
     )
@@ -105,6 +115,8 @@ def main():
         choices=["Pedersen21", "Cabayol23", "Nyx23_Oct2023"],
         required=True,
     )
+
+    # emulator
     parser.add_argument(
         "--emulator_label",
         default=None,
@@ -124,20 +136,14 @@ def main():
         type=str,
         required=True,
     )
-
-    # P1D
     parser.add_argument(
         "--drop_sim",
         default="False",
         choices=["True", "False"],
-        help="Drop one simulation from the training set at a time",
+        help="Drop test_sim_label simulation from the training set",
     )
-    parser.add_argument(
-        "--drop_z",
-        default="False",
-        choices=["True", "False"],
-        help="Drop one redshift from the training set at a time",
-    )
+
+    # P1D
     parser.add_argument(
         "--add_hires",
         default="False",
@@ -210,9 +216,18 @@ def main():
     #     help="Stop chain after these many hours",
     # )
 
+    #######################
+    # print args
     args = parser.parse_args()
+    print("--- print options from parser ---")
+    print(args)
+    # print("----------")
+    # print(parser.format_help())
+    print("----------")
+    print(parser.format_values())
+    print("----------")
+
     args.drop_sim = str_to_bool(args.drop_sim)
-    args.drop_z = str_to_bool(args.drop_z)
     args.add_hires = str_to_bool(args.add_hires)
     args.use_polyfit = str_to_bool(args.use_polyfit)
 
@@ -227,9 +242,11 @@ def main():
 
     # os.environ["OMP_NUM_THREADS"] = "1"
 
+    #######################
     # load training set
     start = time.time()
-    print("Loading training set " + args.training_set)
+    print("----------")
+    print("Setting training set " + args.training_set)
     if args.training_set == "Pedersen21":
         archive = gadget_archive.GadgetArchive(postproc=args.training_set)
         set_P1D = data_gadget.Gadget_P1D
@@ -250,33 +267,44 @@ def main():
         sim_igm = "nyx"
     else:
         raise ValueError("Training_set not implemented")
+    if args.test_sim_label not in archive.list_sim:
+        print(args.test_sim_label + " is not in part of " + args.training_set)
+        print("List of simulations available: ", archive.list_sim)
+        sys.exit()
     end = time.time()
     multi_time = str(np.round(end - start, 2))
     print("z in range ", z_min, ", ", z_max)
     print("Training set loaded " + multi_time + " s")
 
-    # drop data here if needed
-
-    # no l1O
-    if (args.drop_sim == False) & (args.drop_z == False):
-        # load emulator
-        start = time.time()
-        emulator = load_emu(
-            archive,
-            args.emulator_label,
-            args.training_set,
-            args.drop_sim,
-            args.drop_z,
-        )
-        multi_time = str(np.round(time.time() - start, 2))
-        print("Emulator loaded " + multi_time + " s")
-
-        if args.use_polyfit:
-            polyfit_kmax_Mpc = emulator.kmax_Mpc
-            polyfit_ndeg = emulator.ndeg
+    #######################
+    # set emulator
+    print("----------")
+    print("Setting emulator")
+    start = time.time()
+    if args.drop_sim:
+        ## only drop sim if it was in the training set
+        if args.test_sim_label in archive.list_sim_cube:
+            _drop_sim = True
         else:
-            polyfit_kmax_Mpc = None
-            polyfit_ndeg = None
+            _drop_sim = False
+    else:
+        _drop_sim = False
+    emulator = load_emu(
+        archive,
+        args.emulator_label,
+        args.training_set,
+        args.test_sim_label,
+        _drop_sim,
+    )
+    multi_time = str(np.round(time.time() - start, 2))
+    print("Emulator loaded " + multi_time + " s")
+
+    if args.use_polyfit:
+        polyfit_kmax_Mpc = emulator.kmax_Mpc
+        polyfit_ndeg = emulator.ndeg
+    else:
+        polyfit_kmax_Mpc = None
+        polyfit_ndeg = None
 
     #######################
     # set target P1D
@@ -305,8 +333,10 @@ def main():
     #######################
     # set likelihood
     ## set cosmo free parameters
+    print("----------")
+    print("Set likelihood")
     free_parameters = ["As", "ns"]
-    print("using {} parameters for IGM model".format(args.n_igm))
+    print("Using {} parameters for IGM model".format(args.n_igm))
     for ii in range(args.n_igm):
         for par in ["tau", "sigT_kms", "gamma", "kF"]:
             free_parameters.append("ln_{}_{}".format(par, ii))
@@ -330,6 +360,9 @@ def main():
 
     #######################
     # minimize likelihood
+    print("----------")
+    print("Minimize")
+    start = time.time()
     test_values = len(free_parameters) * [0.5]
     ini_chi2 = like.get_chi2(values=test_values)
     print("chi2 without minimizing =", ini_chi2)
@@ -340,6 +373,8 @@ def main():
     best_fit_values = np.array(minimizer.minimizer.values)
     best_chi2 = like.get_chi2(values=best_fit_values)
     print("chi2 improved from {} to {}".format(ini_chi2, best_chi2))
+    multi_time = str(np.round(time.time() - start, 2))
+    print("Minimized in " + multi_time + " s")
 
     # # sample likelihood
     # subfolder = ""
@@ -372,6 +407,9 @@ def main():
     # sampler.write_chain_to_file(
     #     residuals=True, plot_nersc=True, plot_delta_lnprob_cut=50
     # )
+
+    multi_time = str(np.round(time.time() - start_all, 2))
+    print("Program took " + multi_time + " s")
 
 
 if __name__ == "__main__":
