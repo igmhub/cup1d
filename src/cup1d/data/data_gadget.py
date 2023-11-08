@@ -19,6 +19,7 @@ class Gadget_P1D(base_p1d_data.BaseDataP1D):
         self,
         archive,
         sim_label="mpg_central",
+        z_min=None,
         z_max=None,
         data_cov_label="Chabanier2019",
         data_cov_factor=1.0,
@@ -29,6 +30,7 @@ class Gadget_P1D(base_p1d_data.BaseDataP1D):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
         - archive: p1d measurements from Gadget sims
         - sim_label: check available options in archive
+        - z_min: minimum redshift to use in mock data
         - z_max: maximum redshift to use in mock data
         - data_cov_label: P1D covariance to use (Chabanier2019 or PD2013)
         - data_cov_factor: multiply covariance by this factor
@@ -49,7 +51,9 @@ class Gadget_P1D(base_p1d_data.BaseDataP1D):
         # read P1D from simulation
         self.archive = archive
         self.sim_label = sim_label
-        self.testing_data = archive.get_testing_data(sim_label, z_max=z_max)
+        self.testing_data = archive.get_testing_data(
+            sim_label, z_max=z_max, z_min=z_min
+        )
         if len(self.testing_data) == 0:
             raise ValueError("could not set testing data", sim_label)
 

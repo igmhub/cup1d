@@ -20,6 +20,7 @@ class Nyx_P1D(base_p1d_data.BaseDataP1D):
         archive,
         sim_label="nyx_central",
         z_max=None,
+        z_min=None,
         data_cov_label="Chabanier2019",
         data_cov_factor=1.0,
         add_syst=True,
@@ -30,6 +31,7 @@ class Nyx_P1D(base_p1d_data.BaseDataP1D):
         - archive: p1d measurements from Nyx sims
         - sim_label: check available options in archive
         - z_max: maximum redshift to use in mock data
+        - z_min: minimum redshift to use in mock data
         - data_cov_label: P1D covariance to use (Chabanier2019 or PD2013)
         - data_cov_factor: multiply covariance by this factor
         - add_syst: Include systematic estimates in covariance matrices
@@ -55,8 +57,12 @@ class Nyx_P1D(base_p1d_data.BaseDataP1D):
             ind_rescaling = 1
         else:
             ind_rescaling = None
+
         self.testing_data = archive.get_testing_data(
-            sim_label, ind_rescaling=ind_rescaling, z_max=z_max
+            sim_label,
+            ind_rescaling=ind_rescaling,
+            z_max=z_max,
+            z_min=z_min,
         )
         if len(self.testing_data) == 0:
             raise ValueError("could not set testing data", sim_label)
@@ -126,7 +132,7 @@ class Nyx_P1D(base_p1d_data.BaseDataP1D):
                 sim_p1d_Mpc = sim_p1d_Mpc[1:]
 
             # use polyfit instead of actual P1D from sim (unless asked not to)
-            if self.polyfit_ndeg == None or self.polyfit_kmax_Mpc == None:
+            if (self.polyfit_ndeg is None) or (self.polyfit_kmax_Mpc is None):
                 # evaluate P1D in data wavenumbers (in velocity units)
                 interp_sim_Mpc = interp1d(sim_k_Mpc, sim_p1d_Mpc, "cubic")
                 sim_p1d_kms = interp_sim_Mpc(data_k_Mpc) * dkms_dMpc
