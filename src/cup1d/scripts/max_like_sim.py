@@ -6,103 +6,16 @@ import configargparse
 from lace.archive import gadget_archive, nyx_archive
 from lace.emulator.nn_emulator import NNEmulator
 from lace.emulator.gp_emulator import GPEmulator
-from cup1d.data import mock_data, data_gadget, data_nyx
+from cup1d.data import data_gadget, data_nyx
 from cup1d.likelihood import lya_theory, likelihood, iminuit_minimizer
 
 
-def str_to_bool(s):
-    if s == "True":
-        return True
-    elif s == "False":
-        return False
-
-
-def load_emu(
-    archive,
-    label_training_set,
-    emulator_label,
-    test_sim_label,
-    drop_sim,
-):
-    def set_emu_path(
-        label_training_set,
-        emulator_label,
-        test_sim_label,
-        drop_sim,
-    ):
-        folder = "NNmodels/" + label_training_set + "/"
-        # set file name
-        fname = emulator_label
-        if drop_sim != False:
-            fname += "_drop_sim_" + test_sim_label
-        fname += ".pt"
-
-        return folder + fname
-
-    if emulator_label == "Pedersen21":
-        if label_training_set != "Pedersen21":
-            raise (
-                "Combination of training_set ("
-                + label_training_set
-                + ") and emulator_label ("
-                + emulator_label
-                + ") not allowed:"
-            )
-        if drop_sim:
-            _drop_sim = test_sim_label
-        else:
-            _drop_sim = None
-        print("Training emulator " + emulator_label)
-        emulator = GPEmulator(
-            training_set=label_training_set,
-            emulator_label=emulator_label,
-            drop_sim=_drop_sim,
-        )
-    else:
-        if (label_training_set == "Cabayol23") & (
-            (emulator_label == "Cabayol23")
-            | (emulator_label == "Cabayol23_extended")
-        ):
-            _training_set = "Cabayol23"
-        elif (label_training_set[:5] == "Nyx23") & (
-            (emulator_label == "Nyx_v0")
-            | (emulator_label == "Nyx_v0_extended")
-            | (emulator_label == "Nyx_v1")
-            | (emulator_label == "Nyx_v1_extended")
-        ):
-            _training_set = "Nyx23"
-        else:
-            print(
-                "Combination of training_set ("
-                + label_training_set
-                + ") and emulator_label ("
-                + emulator_label
-                + ") not allowed:"
-            )
-            sys.exit()
-
-        emu_path = set_emu_path(
-            _training_set, emulator_label, test_sim_label, drop_sim
-        )
-        if drop_sim:
-            _drop_sim = test_sim_label
-        else:
-            _drop_sim = None
-        print("Loading emulator " + emulator_label)
-        emulator = NNEmulator(
-            archive=archive,
-            training_set=_training_set,
-            emulator_label=emulator_label,
-            model_path=emu_path,
-            drop_sim=_drop_sim,
-            train=False,
-        )
-
-    return emulator
-
-
-def main():
-    start_all = time.time()
+def parse_args():
+    def str_to_bool(s):
+        if s == "True":
+            return True
+        elif s == "False":
+            return False
 
     parser = configargparse.ArgumentParser(
         description="Passing options to minimizer"
@@ -230,15 +143,201 @@ def main():
     args.drop_sim = str_to_bool(args.drop_sim)
     args.add_hires = str_to_bool(args.add_hires)
     args.use_polyfit = str_to_bool(args.use_polyfit)
+    args.archive = None
+
+    assert "CUP1D_PATH" in os.environ, "Define CUP1D_PATH variable"
 
     # # set output dir
     # if args.rootdir:
     #     rootdir = args.rootdir
     #     print("set input rootdir", rootdir)
     # else:
-    #     assert "CUP1D_PATH" in os.environ, "Define CUP1D_PATH variable"
+    #
     #     rootdir = os.environ["CUP1D_PATH"] + "/chains/"
     #     print("use default rootdir", rootdir)
+    return args
+
+
+def load_emu(
+    archive,
+    label_training_set,
+    emulator_label,
+    test_sim_label,
+    drop_sim,
+):
+    def set_emu_path(
+        label_training_set,
+        emulator_label,
+        test_sim_label,
+        drop_sim,
+    ):
+        folder = "NNmodels/" + label_training_set + "/"
+        # set file name
+        fname = emulator_label
+        if drop_sim != False:
+            fname += "_drop_sim_" + test_sim_label
+        fname += ".pt"
+
+        return folder + fname
+
+    if emulator_label == "Pedersen21":
+        if label_training_set != "Pedersen21":
+            raise (
+                "Combination of training_set ("
+                + label_training_set
+                + ") and emulator_label ("
+                + emulator_label
+                + ") not allowed:"
+            )
+        if drop_sim:
+            _drop_sim = test_sim_label
+        else:
+            _drop_sim = None
+        print("Training emulator " + emulator_label)
+        emulator = GPEmulator(
+            training_set=label_training_set,
+            emulator_label=emulator_label,
+            drop_sim=_drop_sim,
+        )
+    else:
+        if (label_training_set == "Cabayol23") & (
+            (emulator_label == "Cabayol23")
+            | (emulator_label == "Cabayol23_extended")
+        ):
+            _training_set = "Cabayol23"
+        elif (label_training_set[:5] == "Nyx23") & (
+            (emulator_label == "Nyx_v0")
+            | (emulator_label == "Nyx_v0_extended")
+            | (emulator_label == "Nyx_v1")
+            | (emulator_label == "Nyx_v1_extended")
+        ):
+            _training_set = "Nyx23"
+        else:
+            print(
+                "Combination of training_set ("
+                + label_training_set
+                + ") and emulator_label ("
+                + emulator_label
+                + ") not allowed:"
+            )
+            sys.exit()
+
+        emu_path = set_emu_path(
+            _training_set, emulator_label, test_sim_label, drop_sim
+        )
+        if drop_sim:
+            _drop_sim = test_sim_label
+        else:
+            _drop_sim = None
+        print("Loading emulator " + emulator_label)
+        emulator = NNEmulator(
+            archive=archive,
+            training_set=_training_set,
+            emulator_label=emulator_label,
+            model_path=emu_path,
+            drop_sim=_drop_sim,
+            train=False,
+        )
+
+    return emulator
+
+
+def fname_minimize(args):
+    if args.drop_sim:
+        flag_drop = "ydrop"
+    else:
+        flag_drop = "ndrop"
+    if args.use_polyfit:
+        flag_poly = "ypoly"
+    else:
+        flag_poly = "npoly"
+    if args.add_hires:
+        flag_hires = "hres"
+    else:
+        flag_hires = "lres"
+
+    fname = (
+        os.environ["CUP1D_PATH"]
+        + "/data/minimize/"
+        + args.training_set
+        + "_"
+        + flag_hires
+        + "/"
+        + args.emulator_label
+        + "_"
+        + args.cov_label
+        + "_"
+        + args.test_sim_label
+        + "_igm"
+        + str(args.n_igm)
+        + "_"
+        + flag_drop
+        + "_"
+        + flag_poly
+        + ".npy"
+    )
+
+    return fname
+
+
+def minimize(args, like, free_parameters):
+    test_values = len(free_parameters) * [0.5]
+    ini_chi2 = like.get_chi2(values=test_values)
+    print("chi2 without minimizing =", ini_chi2)
+
+    minimizer = iminuit_minimizer.IminuitMinimizer(like)
+    minimizer.minimize(compute_hesse=True)
+
+    cube_values = np.array(minimizer.minimizer.values)
+    best_fit_values = np.zeros_like(cube_values)
+    err_best_fit_values = np.zeros_like(cube_values)
+    truth_values = np.zeros_like(cube_values) + 0.5
+    for ii, par in enumerate(free_parameters):
+        # truth
+        if par in like.truth:
+            true = like.truth[par]
+        else:
+            true = 0.5
+        truth_values[ii] = true
+        # best
+        val_best, err_best = minimizer.best_fit_value(par, return_hesse=True)
+        # if par == "As":
+        #     val_best *= 1e-9
+        #     err_best *= 1e-9
+        best_fit_values[ii] = val_best
+        err_best_fit_values[ii] = err_best
+
+    best_chi2 = like.get_chi2(values=cube_values)
+    print("chi2 improved from {} to {}".format(ini_chi2, best_chi2))
+    # print(best_chi2)
+    # print(free_parameters)
+    # print(truth_values)
+    # print(best_fit_values)
+    # print(err_best_fit_values)
+
+    if args.archive is None:
+        out_args = args
+    else:
+        out_args = args.save()
+
+    save = {
+        "metadata": out_args,
+        "best_chi2": best_chi2,
+        "name_parameters": free_parameters,
+        "truth_parameters": truth_values,
+        "best_parameters": best_fit_values,
+        "err_best_parameters": err_best_fit_values,
+        "covariance": np.array(minimizer.minimizer.covariance),
+    }
+
+    fname = fname_minimize(args)
+
+    print("Saving output in:", fname)
+    np.save(fname, save)
+
+
+def max_like_sim(args):
+    start_all = time.time()
 
     # os.environ["OMP_NUM_THREADS"] = "1"
 
@@ -247,26 +346,34 @@ def main():
     start = time.time()
     print("----------")
     print("Setting training set " + args.training_set)
-    if args.training_set == "Pedersen21":
-        archive = gadget_archive.GadgetArchive(postproc=args.training_set)
-        set_P1D = data_gadget.Gadget_P1D
-        z_min = 2
-        z_max = np.max(archive.list_sim_redshifts)
-        sim_igm = "mpg"
-    elif args.training_set == "Cabayol23":
-        archive = gadget_archive.GadgetArchive(postproc=args.training_set)
-        set_P1D = data_gadget.Gadget_P1D
-        z_min = 2
-        z_max = np.max(archive.list_sim_redshifts)
-        sim_igm = "mpg"
-    elif args.training_set[:5] == "Nyx23":
-        archive = nyx_archive.NyxArchive(nyx_version=args.training_set[6:])
-        set_P1D = data_nyx.Nyx_P1D
-        z_min = 2.2
-        z_max = np.max(archive.list_sim_redshifts)
-        sim_igm = "nyx"
+    if args.archive is None:
+        if args.training_set == "Pedersen21":
+            archive = gadget_archive.GadgetArchive(postproc=args.training_set)
+            set_P1D = data_gadget.Gadget_P1D
+            z_min = 2
+            z_max = np.max(archive.list_sim_redshifts)
+            sim_igm = "mpg"
+        elif args.training_set == "Cabayol23":
+            archive = gadget_archive.GadgetArchive(postproc=args.training_set)
+            set_P1D = data_gadget.Gadget_P1D
+            z_min = 2
+            z_max = np.max(archive.list_sim_redshifts)
+            sim_igm = "mpg"
+        elif args.training_set[:5] == "Nyx23":
+            archive = nyx_archive.NyxArchive(nyx_version=args.training_set[6:])
+            set_P1D = data_nyx.Nyx_P1D
+            z_min = 2.2
+            z_max = np.max(archive.list_sim_redshifts)
+            sim_igm = "nyx"
+        else:
+            raise ValueError("Training_set not implemented")
     else:
-        raise ValueError("Training_set not implemented")
+        archive = args.archive
+        z_min = args.z_min
+        z_max = args.z_max
+        sim_igm = args.sim_igm
+        set_P1D = args.set_P1D
+
     if args.test_sim_label not in archive.list_sim:
         print(args.test_sim_label + " is not in part of " + args.training_set)
         print("List of simulations available: ", archive.list_sim)
@@ -291,8 +398,8 @@ def main():
         _drop_sim = False
     emulator = load_emu(
         archive,
-        args.emulator_label,
         args.training_set,
+        args.emulator_label,
         args.test_sim_label,
         _drop_sim,
     )
@@ -363,16 +470,7 @@ def main():
     print("----------")
     print("Minimize")
     start = time.time()
-    test_values = len(free_parameters) * [0.5]
-    ini_chi2 = like.get_chi2(values=test_values)
-    print("chi2 without minimizing =", ini_chi2)
-
-    minimizer = iminuit_minimizer.IminuitMinimizer(like)
-    minimizer.minimize(compute_hesse=True)
-
-    best_fit_values = np.array(minimizer.minimizer.values)
-    best_chi2 = like.get_chi2(values=best_fit_values)
-    print("chi2 improved from {} to {}".format(ini_chi2, best_chi2))
+    minimize(args, like, free_parameters)
     multi_time = str(np.round(time.time() - start, 2))
     print("Minimized in " + multi_time + " s")
 
@@ -409,8 +507,13 @@ def main():
     # )
 
     multi_time = str(np.round(time.time() - start_all, 2))
+    print("")
+    print("")
     print("Program took " + multi_time + " s")
+    print("")
+    print("")
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    max_like_sim(args)
