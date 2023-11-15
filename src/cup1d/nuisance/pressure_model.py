@@ -84,11 +84,11 @@ class PressureModel(object):
         for i in range(Npar):
             name = "ln_kF_" + str(i)
             if i == 0:
-                xmin = -0.2
-                xmax = 0.2
+                xmin = -0.8
+                xmax = 0.8
             else:
-                xmin = -0.4
-                xmax = 0.4
+                xmin = -1.2
+                xmax = 1.2
             # note non-trivial order in coefficients
             value = self.ln_kF_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(

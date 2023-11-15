@@ -16,6 +16,9 @@ class BaseDataP1D(object):
         self.k_kms = k_kms
         self.Pk_kms = Pk_kms
         self.cov_Pk_kms = cov_Pk_kms
+        self.icov_Pk_kms = []
+        for ii in range(len(z)):
+            self.icov_Pk_kms.append(np.linalg.inv(cov_Pk_kms[ii]))
 
     def get_Pk_iz(self, iz):
         """Return P1D in units of km/s for redshift bin iz"""
@@ -26,6 +29,11 @@ class BaseDataP1D(object):
         """Return covariance of P1D in units of (km/s)^2 for redshift bin iz"""
 
         return self.cov_Pk_kms[iz]
+
+    def get_icov_iz(self, iz):
+        """Return covariance of P1D in units of (km/s)^2 for redshift bin iz"""
+
+        return self.icov_Pk_kms[iz]
 
     def _cull_data(self, kmin_kms):
         """Remove bins with wavenumber k < kmin_kms"""

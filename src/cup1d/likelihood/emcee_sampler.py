@@ -6,7 +6,8 @@ import emcee
 import time
 import scipy.stats
 from multiprocessing import Pool
-from chainconsumer import ChainConsumer
+import pandas as pd
+from chainconsumer import ChainConsumer, Chain, Truth
 
 # our own modules
 from lace.cosmo import fit_linP
@@ -20,6 +21,40 @@ from cup1d.data import mock_data
 from cup1d.data import data_Chabanier2019
 from cup1d.data import data_Karacayli2022
 from cup1d.likelihood import likelihood
+
+
+def purge_chains(ln_prop_chains, nsplit=7, abs_diff=5):
+    """Purge emcee chains that have not converged"""
+    minval = np.median(ln_prop_chains) - 10
+    print(minval)
+    # split each walker in nsplit chunks
+    split_arr = np.array_split(ln_prop_chains, nsplit, axis=0)
+    # compute median of each chunck
+    split_med = []
+    for ii in range(nsplit):
+        split_med.append(split_arr[ii].mean(axis=0))
+    # (nwalkers, nchucks)
+    split_res = np.array(split_med).T
+    # compute median of chunks for each walker ()
+    split_res_med = split_res.mean(axis=1)
+
+    # step-dependence convergence
+    # check that average logprob does not vary much with step
+    # compute difference between chunks and median of each chain
+    keep1 = (np.abs(split_res - split_res_med[:, np.newaxis]) < abs_diff).all(
+        axis=1
+    )
+    # total-dependence convergence
+    # check that average logprob is close to minimum logprob of all chains
+    # check that all chunks are above a target minimum value
+    keep2 = (split_res > minval).all(axis=1)
+
+    # combine both criteria
+    both = keep1 & keep2
+    keep = np.argwhere(both)[:, 0]
+    keep_not = np.argwhere(both == False)[:, 0]
+
+    return keep, keep_not
 
 
 class EmceeSampler(object):
@@ -71,7 +106,7 @@ class EmceeSampler(object):
                     print("nwalkers={} ; ndim={}".format(nwalkers, self.ndim))
                     raise ValueError("specified number of walkers too small")
             else:
-                self.nwalkers = 4 * self.ndim
+                self.nwalkers = 40 * self.ndim
             print("setup with", self.nwalkers, "walkers")
 
         ## Set up list of parameter names in tex format for plotting
@@ -166,7 +201,6 @@ class EmceeSampler(object):
                 if converged:
                     break
                 old_tau = tau
-
         else:
             p0 = self.get_initial_walkers()
             with Pool() as pool:
@@ -207,9 +241,10 @@ class EmceeSampler(object):
                     converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
 
                     ## Check if we are over time limit
-                    if time.time() > time_end:
-                        print("Timed out")
-                        break
+                    if timeout:
+                        if time.time() > time_end:
+                            print("Timed out")
+                            break
                     ## If not, only halt on convergence criterion if
                     ## force_timeout is false
                     if (force_timeout == False) and (converged == True):
@@ -218,13 +253,19 @@ class EmceeSampler(object):
                     old_tau = tau
 
         ## Save chains
-        self.chain = sampler.get_chain(flat=True, discard=self.burnin_nsteps)
         self.lnprob = sampler.get_log_prob(
-            flat=True, discard=self.burnin_nsteps
+            flat=False, discard=self.burnin_nsteps
         )
-        self.blobs = sampler.get_blobs(flat=True, discard=self.burnin_nsteps)
+        mask, _ = purge_chains(self.lnprob)
+        self.lnprob = self.lnprob[:, mask].reshape(-1)
 
-        return
+        self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
+        self.chain = self.chain[:, mask, :].reshape(-1, self.chain.shape[-1])
+
+        self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
+        self.blobs = self.blobs[:, mask].reshape(-1)
+
+        return sampler
 
     def resume_sampler(
         self, max_steps, log_func=None, timeout=None, force_timeout=False
@@ -343,10 +384,8 @@ class EmceeSampler(object):
         - if cube=True, return values in range [0,1]
         - if delta_lnprob_cut is set, use it to remove low-prob islands"""
 
-        chain = self.chain  # .get_chain(flat=True,discard=self.burnin_nsteps)
-        lnprob = (
-            self.lnprob
-        )  # .get_log_prob(flat=True,discard=self.burnin_nsteps)
+        chain = self.chain
+        lnprob = self.lnprob
         blobs = self.blobs
 
         if delta_lnprob_cut:
@@ -716,7 +755,11 @@ class EmceeSampler(object):
         return mean_values
 
     def write_chain_to_file(
-        self, residuals=False, plot_nersc=False, plot_delta_lnprob_cut=None
+        self,
+        plots=False,
+        residuals=False,
+        plot_nersc=False,
+        plot_delta_lnprob_cut=None,
     ):
         """Write flat chain to file"""
 
@@ -799,28 +842,31 @@ class EmceeSampler(object):
         self._write_dict_to_text(saveDict)
 
         # Save plots (might have issues in some clusters)
+        if plots:
+            try:
+                self.plot_best_fit(
+                    residuals=residuals, delta_lnprob_cut=plot_delta_lnprob_cut
+                )
+            except:
+                print("Can't plot best fit")
+            try:
+                self.plot_prediction(residuals=residuals)
+            except:
+                print("Can't plot prediction")
+            try:
+                self.plot_autocorrelation_time()
+            except:
+                print("Can't plot autocorrelation time")
         try:
-            self.plot_best_fit(
-                residuals=residuals, delta_lnprob_cut=plot_delta_lnprob_cut
-            )
-        except:
-            print("Can't plot best fit")
-        try:
-            self.plot_prediction(residuals=residuals)
-        except:
-            print("Can't plot prediction")
-        try:
-            self.plot_autocorrelation_time()
-        except:
-            print("Can't plot autocorrelation time")
-        try:
-            self.plot_corner(
-                usetex=(not plot_nersc),
-                serif=(not plot_nersc),
-                delta_lnprob_cut=plot_delta_lnprob_cut,
-            )
+            summary, cov, corr = self.plot_corner()
         except:
             print("Can't plot corner")
+        else:
+            dict_out = {}
+            dict_out["summary"] = summary
+            dict_out["cov"] = cov
+            dict_out["corr"] = corr
+            np.save(self.save_directory + "/results.npy", dict_out)
 
         return
 
@@ -858,41 +904,31 @@ class EmceeSampler(object):
                     plot all (including derived)
         - if delta_lnprob_cut is set, keep only high-prob points"""
 
-        c = ChainConsumer()
-
         params_plot, strings_plot = self.get_all_params(
             delta_lnprob_cut=delta_lnprob_cut
         )
+        dict_pd = {}
+        noplot = np.array(strings_plot)[-4:]
+        for ii, par in enumerate(strings_plot):
+            if par not in noplot:
+                dict_pd[par] = params_plot[:, ii]
+        pd_data = pd.DataFrame(data=dict_pd)
 
-        c.add_chain(params_plot, parameters=strings_plot, name="Chains")
-
-        c.configure(
-            diagonal_tick_labels=False,
-            tick_font_size=10,
-            label_font_size=25,
-            max_ticks=4,
-            usetex=usetex,
-            serif=serif,
-        )
-
-        ## Decide which parameters to plot
-        if plot_params == None:
-            ## Plot all parameters
-            params_to_plot = strings_plot
-        else:
-            ## Plot params passed as argument
-            params_to_plot = plot_params
-
-        fig = c.plotter.plot(
-            figsize=(12, 12), parameters=params_to_plot, truth=self.truth
-        )
+        c = ChainConsumer()
+        chain = Chain(samples=pd_data, name="a")
+        c.add_chain(chain)
+        summary = c.analysis.get_summary()["a"]
+        cov = chain.get_covariance()
+        corr = chain.get_correlation()
+        c.add_truth(Truth(location=self.truth, line_style=":", color="black"))
+        fig = c.plotter.plot(figsize=(12, 12))
 
         if self.save_directory is not None:
             fig.savefig(self.save_directory + "/corner.pdf")
         else:
             fig.show()
 
-        return
+        return summary, cov, corr
 
     def plot_best_fit(
         self,

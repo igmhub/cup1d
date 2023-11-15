@@ -312,14 +312,24 @@ class Likelihood(object):
         Nz = len(zs)
 
         # ask emulator prediction for P1D in each bin
-        if return_blob:
-            emu_p1d, emu_covar, blob = self.get_p1d_kms(
-                k_kms, values, return_covar=True, return_blob=True
-            )
+        if self.emu_cov_factor == 0:
+            if return_blob:
+                emu_p1d, blob = self.get_p1d_kms(
+                    k_kms, values, return_covar=False, return_blob=True
+                )
+            else:
+                emu_p1d = self.get_p1d_kms(
+                    k_kms, values, return_covar=False, return_blob=False
+                )
         else:
-            emu_p1d, emu_covar = self.get_p1d_kms(
-                k_kms, values, return_covar=True, return_blob=False
-            )
+            if return_blob:
+                emu_p1d, emu_covar, blob = self.get_p1d_kms(
+                    k_kms, values, return_covar=True, return_blob=True
+                )
+            else:
+                emu_p1d, emu_covar = self.get_p1d_kms(
+                    k_kms, values, return_covar=True, return_blob=False
+                )
 
         if self.verbose:
             print("got P1D from emulator")
@@ -339,19 +349,23 @@ class Likelihood(object):
                 print("compute chi2 for z={}".format(z))
             # get data
             p1d = self.data.get_Pk_iz(iz)
-            data_cov = self.data.get_cov_iz(iz)
+            data_icov = self.data.get_icov_iz(iz)
             # add covariance from emulator
-            cov = data_cov + self.emu_cov_factor * emu_covar[iz]
+            if self.emu_cov_factor == 0:
+                icov = data_icov
+            else:
+                icov = data_icov + np.linalg.inv(
+                    self.emu_cov_factor * emu_covar[iz]
+                )
 
             # compute chi2 for this redshift bin
-            icov = np.linalg.inv(cov)
             diff = p1d - emu_p1d[iz]
             chi2_z = np.dot(np.dot(icov, diff), diff)
             # check whether to add determinant of covariance as well
             if ignore_log_det_cov:
                 log_like_z = -0.5 * chi2_z
             else:
-                (_, log_det_cov) = np.linalg.slogdet(cov)
+                log_det_cov = np.log(np.abs(1 / np.linalg.det(icov)))
                 log_like_z = -0.5 * (chi2_z + log_det_cov)
             log_like += log_like_z
             if self.verbose:
@@ -429,9 +443,9 @@ class Likelihood(object):
         assert len(values) == len(self.free_params), "size mismatch"
 
         # Always force parameter to be within range (for now)
-        if max(values) > 1.0:
+        if max(values) > 1:
             return self.min_log_like
-        if min(values) < 0.0:
+        if min(values) < 0:
             return self.min_log_like
 
         if self.prior_Gauss_rms is None:

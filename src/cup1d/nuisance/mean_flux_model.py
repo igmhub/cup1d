@@ -89,11 +89,11 @@ class MeanFluxModel(object):
         for i in range(Npar):
             name = "ln_tau_" + str(i)
             if i == 0:
-                xmin = -0.1
-                xmax = 0.1
+                xmin = -0.3
+                xmax = 0.3
             else:
-                xmin = -0.2
-                xmax = 0.2
+                xmin = -0.5
+                xmax = 0.5
             # note non-trivial order in coefficients
             value = self.ln_tau_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
