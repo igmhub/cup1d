@@ -138,6 +138,13 @@ class EmceeSampler(object):
             param_string = param_dict[param]
             self.truth[param_string] = like_truth[param]
 
+        if (self.like.data.sim_label[4:].isdigit() == False) & (
+            self.like.data.sim_label[4:] != "reio"
+        ):
+            for param in self.like.free_params[2:]:
+                param_string = param_dict[param.name]
+                self.truth[param_string] = 0
+
         return
 
     def run_sampler(
@@ -257,6 +264,13 @@ class EmceeSampler(object):
             flat=False, discard=self.burnin_nsteps
         )
         mask, _ = purge_chains(self.lnprob)
+        self.mask_use = (
+            "Use "
+            + str(mask.shape[0])
+            + " chains of "
+            + str(self.lnprob.shape[1])
+        )
+        self.plot_lnprob(mask)
         self.lnprob = self.lnprob[:, mask].reshape(-1)
 
         self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
@@ -857,16 +871,27 @@ class EmceeSampler(object):
                 self.plot_autocorrelation_time()
             except:
                 print("Can't plot autocorrelation time")
-        try:
-            summary, cov, corr = self.plot_corner()
-        except:
-            print("Can't plot corner")
-        else:
-            dict_out = {}
-            dict_out["summary"] = summary
-            dict_out["cov"] = cov
-            dict_out["corr"] = corr
-            np.save(self.save_directory + "/results.npy", dict_out)
+
+        _ = self.plot_corner(only_cosmo=True)
+        summary = self.plot_corner()
+
+        dict_out = {}
+        dict_out["summary"] = summary
+        dict_out["walkers_survive"] = self.mask_use
+        dict_out["truth"] = self.truth
+
+        all_param, all_names = self.get_all_params()
+        dict_out["param_names"] = all_names[:-4]
+        dict_out["param_percen"] = np.percentile(
+            all_param[:, :-4], [16, 50, 84], axis=0
+        ).T
+
+        ind = np.argmax(self.lnprob)
+        dict_out["param_ml"] = all_param[ind, :-4]
+        dict_out["lnprob_ml"] = self.lnprob[ind]
+        np.save(self.save_directory + "/results.npy", dict_out)
+        np.save(self.save_directory + "/chain.npy", all_param[:, :-4])
+        np.save(self.save_directory + "/lnprob.npy", self.lnprob)
 
         return
 
@@ -896,7 +921,12 @@ class EmceeSampler(object):
         return
 
     def plot_corner(
-        self, plot_params=None, delta_lnprob_cut=None, usetex=True, serif=True
+        self,
+        plot_params=None,
+        delta_lnprob_cut=None,
+        usetex=True,
+        serif=True,
+        only_cosmo=False,
     ):
         """Make corner plot in ChainConsumer
         - plot_params: Pass a list of parameters to plot (in LaTeX form),
@@ -907,10 +937,14 @@ class EmceeSampler(object):
         params_plot, strings_plot = self.get_all_params(
             delta_lnprob_cut=delta_lnprob_cut
         )
+        if only_cosmo:
+            yesplot = np.array(["$\\Delta^2_\\star$", "$n_\\star$"])
+        else:
+            yesplot = np.array(strings_plot)[:-4]
+
         dict_pd = {}
-        noplot = np.array(strings_plot)[-4:]
         for ii, par in enumerate(strings_plot):
-            if par not in noplot:
+            if par in yesplot:
                 dict_pd[par] = params_plot[:, ii]
         pd_data = pd.DataFrame(data=dict_pd)
 
@@ -918,17 +952,30 @@ class EmceeSampler(object):
         chain = Chain(samples=pd_data, name="a")
         c.add_chain(chain)
         summary = c.analysis.get_summary()["a"]
-        cov = chain.get_covariance()
-        corr = chain.get_correlation()
+        # cov = chain.get_covariance()
+        # corr = chain.get_correlation()
         c.add_truth(Truth(location=self.truth, line_style=":", color="black"))
         fig = c.plotter.plot(figsize=(12, 12))
 
         if self.save_directory is not None:
-            fig.savefig(self.save_directory + "/corner.pdf")
+            if only_cosmo:
+                plt.savefig(self.save_directory + "/corner_cosmo.pdf")
+            else:
+                plt.savefig(self.save_directory + "/corner.pdf")
         else:
             fig.show()
 
-        return summary, cov, corr
+        return summary
+
+    def plot_lnprob(self, mask):
+        """Plot the lnprob"""
+        for ii in range(self.lnprob.shape[1]):
+            if ii in mask:
+                plt.plot(self.lnprob[:, ii])
+        if self.save_directory is not None:
+            plt.savefig(self.save_directory + "/lnprob.pdf")
+
+        return
 
     def plot_best_fit(
         self,

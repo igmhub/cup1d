@@ -141,11 +141,11 @@ class ThermalModel(object):
         for i in range(Npar):
             name = "ln_sigT_kms_" + str(i)
             if i == 0:
-                xmin = -0.6
-                xmax = 0.6
+                xmin = -2.0
+                xmax = 2.0
             else:
-                xmin = -1.2
-                xmax = 1.2
+                xmin = -5.0
+                xmax = 5.0
             # note non-trivial order in coefficients
             value = self.ln_sigT_kms_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
@@ -165,8 +165,8 @@ class ThermalModel(object):
                 xmin = -0.6
                 xmax = 0.6
             else:
-                xmin = -1.5
-                xmax = 1.5
+                xmin = -1.6
+                xmax = 1.6
             # note non-trivial order in coefficients
             value = self.ln_gamma_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(

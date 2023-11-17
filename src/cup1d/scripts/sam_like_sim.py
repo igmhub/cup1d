@@ -93,6 +93,13 @@ def parse_args():
         default=None,
         help="Width of Gaussian prior",
     )
+    # not implemented yet!
+    # parser.add_argument(
+    #     "--vary_fiducial_cosmo",
+    #     default="False",
+    #     choices=["True", "False"],
+    #     help="Use as fiducial cosmology the one of the target mock",
+    # )
 
     # parser.add_argument(
     #     "--z_min", type=float, default=2.0, help="Minimum redshift"
@@ -105,27 +112,6 @@ def parse_args():
     #     type=str,
     #     default="default",
     #     help="Fiducial cosmology to use (default,truth)",
-    # )
-
-    # sampler
-    # parser.add_argument(
-    #     "--burn_in",
-    #     type=int,
-    #     default=200,
-    #     help="Number of burn in steps",
-    # )
-
-    # parser.add_argument(
-    #     "--rootdir",
-    #     type=str,
-    #     default=None,
-    #     help="Root directory containing outputs",
-    # )
-    # parser.add_argument(
-    #     "--timeout",
-    #     type=float,
-    #     default=1.0,
-    #     help="Stop chain after these many hours",
     # )
 
     #######################
@@ -203,14 +189,11 @@ def load_emu(
             (emulator_label == "Cabayol23")
             | (emulator_label == "Cabayol23_extended")
         ):
-            _training_set = "Cabayol23"
+            pass
         elif (label_training_set[:5] == "Nyx23") & (
-            (emulator_label == "Nyx_v0")
-            | (emulator_label == "Nyx_v0_extended")
-            | (emulator_label == "Nyx_v1")
-            | (emulator_label == "Nyx_v1_extended")
+            (emulator_label == "Nyx_v0") | (emulator_label == "Nyx_v0_extended")
         ):
-            _training_set = "Nyx23"
+            pass
         else:
             print(
                 "Combination of training_set ("
@@ -222,7 +205,7 @@ def load_emu(
             sys.exit()
 
         emu_path = set_emu_path(
-            _training_set, emulator_label, test_sim_label, drop_sim
+            label_training_set, emulator_label, test_sim_label, drop_sim
         )
         if drop_sim:
             _drop_sim = test_sim_label
@@ -231,7 +214,7 @@ def load_emu(
         print("Loading emulator " + emulator_label)
         emulator = NNEmulator(
             archive=archive,
-            training_set=_training_set,
+            training_set=label_training_set,
             emulator_label=emulator_label,
             model_path=emu_path,
             drop_sim=_drop_sim,

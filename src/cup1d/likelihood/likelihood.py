@@ -349,13 +349,13 @@ class Likelihood(object):
                 print("compute chi2 for z={}".format(z))
             # get data
             p1d = self.data.get_Pk_iz(iz)
-            data_icov = self.data.get_icov_iz(iz)
             # add covariance from emulator
             if self.emu_cov_factor == 0:
-                icov = data_icov
+                icov = self.data.get_icov_iz(iz)
             else:
-                icov = data_icov + np.linalg.inv(
-                    self.emu_cov_factor * emu_covar[iz]
+                icov = np.linalg.inv(
+                    self.data.get_cov_iz(iz)
+                    + self.emu_cov_factor * emu_covar[iz]
                 )
 
             # compute chi2 for this redshift bin

@@ -50,16 +50,33 @@ def main():
     ]
 
     # list of options to set
+    # done!
+    # training_set = "Cabayol23"
+    # emulator_label = "Cabayol23"
+    # add_hires = False
+    # cov_label = "Chabanier2019"
+    # arr_n_igm = [0, 1, 2]
+    # arr_drop_sim = [True, False]
+
     training_set = "Cabayol23"
-    emulator_label = "Cabayol23"
-    add_hires = False
+    emulator_label = "Cabayol23_extended"
+    add_hires = True
+    cov_label = "Chabanier2019"
+    arr_n_igm = [1, 2]
+    arr_drop_sim = [True]
+
+    # WIP arr_n_igm =2 done
+    # training_set = "Nyx23_Oct2023"
+    # emulator_label = "Nyx_v0_extended"
+    # add_hires = True
+    # cov_label = "Chabanier2019"
+    # arr_n_igm = [1, 2]
+    # arr_drop_sim = [True]
+
     # emulator_label = "Cabayol23_extended"
     # add_hires = True
-    use_polyfit = True
-    cov_label = "Chabanier2019"
 
-    arr_drop_sim = [True, False]
-    arr_n_igm = [0, 1, 2]
+    use_polyfit = True
     override = False
 
     if (training_set == "Pedersen21") | (training_set == "Cabayol23"):
@@ -155,40 +172,51 @@ def main():
     else:
         raise ValueError("Training_set not implemented")
 
+    sim_avoid = [
+        # "nyx_3",
+        "nyx_14",
+        "nyx_15",
+        "nyx_16",
+        "nyx_17",
+        "nyx_seed",
+        "nyx_wdm",
+    ]
+
     for drop_sim in arr_drop_sim:
         for n_igm in arr_n_igm:
             for sim_label in list_sims:
-                print("")
-                print("external loop")
-                print("")
+                if sim_label not in sim_avoid:
+                    print("")
+                    print("external loop")
+                    print("")
 
-                args = Args()
-                args.archive = archive
-                args.z_min = z_min
-                args.z_max = z_max
-                args.sim_igm = sim_igm
-                args.emu_type = emu_type
-                args.set_P1D = set_P1D
+                    args = Args()
+                    args.archive = archive
+                    args.z_min = z_min
+                    args.z_max = z_max
+                    args.sim_igm = sim_igm
+                    args.emu_type = emu_type
+                    args.set_P1D = set_P1D
 
-                args.training_set = training_set
-                args.emulator_label = emulator_label
-                args.add_hires = add_hires
-                args.use_polyfit = use_polyfit
-                args.cov_label = cov_label
+                    args.training_set = training_set
+                    args.emulator_label = emulator_label
+                    args.add_hires = add_hires
+                    args.use_polyfit = use_polyfit
+                    args.cov_label = cov_label
 
-                args.drop_sim = drop_sim
-                args.n_igm = n_igm
-                args.test_sim_label = sim_label
+                    args.drop_sim = drop_sim
+                    args.n_igm = n_igm
+                    args.test_sim_label = sim_label
 
-                path = path_sampler(args)
-                # check if run already done
-                if (override == False) & os.path.isfile(
-                    path + "/chain_1/results.npy"
-                ):
-                    print("Skipping: ", path)
-                else:
-                    print("Running: ", path)
-                    sam_like_sim(args)
+                    path = path_sampler(args)
+                    # check if run already done
+                    if (override == False) & os.path.isfile(
+                        path + "/chain_1/results.npy"
+                    ):
+                        print("Skipping: ", path)
+                    else:
+                        print("Running: ", path)
+                        sam_like_sim(args)
 
 
 if __name__ == "__main__":
