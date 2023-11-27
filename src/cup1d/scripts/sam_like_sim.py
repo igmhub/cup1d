@@ -74,6 +74,7 @@ def parse_args():
         "--cov_label",
         type=str,
         default="Chabanier2019",
+        choices=["Chabanier2019", "QMLE_Ohio"],
         help="Data covariance to use, Chabanier2019 or QMLE_Ohio",
     )
     parser.add_argument(
@@ -292,26 +293,26 @@ def sample(args, like, free_parameters):
     )
     sampler.write_chain_to_file(plots=False)
 
-    listpar = [
-        "$\\Delta^2_\\star$",
-        "$n_\\star$",
-        "$\mathrm{ln}\,\\tau_0$",
-        "$\mathrm{ln}\,\\tau_1$",
-        "$\mathrm{ln}\,\\sigma^T_0$",
-        "$\mathrm{ln}\,\\sigma^T_1$",
-        "$\mathrm{ln}\,\\gamma_0$",
-        "$\mathrm{ln}\,\\gamma_1$",
-        "$\mathrm{ln}\,k^F_0$",
-        "$\mathrm{ln}\,k^F_1$",
-    ]
+    # listpar = [
+    #     "$\\Delta^2_\\star$",
+    #     "$n_\\star$",
+    #     "$\mathrm{ln}\,\\tau_0$",
+    #     "$\mathrm{ln}\,\\tau_1$",
+    #     "$\mathrm{ln}\,\\sigma^T_0$",
+    #     "$\mathrm{ln}\,\\sigma^T_1$",
+    #     "$\mathrm{ln}\,\\gamma_0$",
+    #     "$\mathrm{ln}\,\\gamma_1$",
+    #     "$\mathrm{ln}\,k^F_0$",
+    #     "$\mathrm{ln}\,k^F_1$",
+    # ]
 
-    sampler.plot_corner(
-        plot_params=["$\\Delta^2_\\star$", "$n_\\star$"],
-        # plot_params=listpar,
-        delta_lnprob_cut=50,
-        usetex=False,
-        serif=False,
-    )
+    # sampler.plot_corner(
+    #     plot_params=["$\\Delta^2_\\star$", "$n_\\star$"],
+    #     # plot_params=listpar,
+    #     delta_lnprob_cut=50,
+    #     usetex=False,
+    #     serif=False,
+    # )
 
     # cube_values = np.array(minimizer.minimizer.values)
     # best_fit_values = np.zeros_like(cube_values)
@@ -372,11 +373,23 @@ def sam_like_sim(args):
     print("----------")
     print("Setting training set " + args.training_set)
 
-    args.n_steps = 500
-    if args.n_igm == 0:
-        args.n_burn_in = 75
+    args.n_steps = 1000
+    if args.cov_label == "Chabanier2019":
+        if args.n_igm == 0:
+            args.n_burn_in = 75
+        else:
+            args.n_burn_in = 250
+    elif args.cov_label == "QMLE_Ohio":
+        if args.n_igm == 0:
+            # TBD (need to check)
+            args.n_burn_in = 200
+        else:
+            args.n_burn_in = 1200
     else:
-        args.n_burn_in = 250
+        if args.n_igm == 0:
+            args.n_burn_in = 200
+        else:
+            args.n_burn_in = 500
 
     if args.archive is None:
         if args.training_set == "Pedersen21":
