@@ -10,7 +10,7 @@ class P1D_Walther2018(BaseDataP1D):
         """Read measured P1D from Walther et al. (2018)."""
 
         # folder storing P1D measurement
-        datadir = BaseDataP1D.BASEDIR + "/Walther2018/"
+        datadir=BaseDataP1D.BASEDIR +'/Walther2018/'
 
         z, k_kms, Pk_kms, cov_Pk_kms = read_from_file(datadir)
 
