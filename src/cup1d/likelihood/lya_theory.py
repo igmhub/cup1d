@@ -39,6 +39,8 @@ class Theory(object):
             - P_model_fid: fiducial pressure model
             - include_metals: list of metal labels to include
             - cosmo_fid: fiducial cosmology used for fixed parameters
+            - sim_igm: specify file with fiducial IGM models
+            - emu_type: type of emulator: gp or nn
         """
 
         self.verbose = verbose

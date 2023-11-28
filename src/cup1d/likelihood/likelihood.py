@@ -20,7 +20,7 @@ class Likelihood(object):
     def __init__(
         self,
         data,
-        theory=None,
+        theory,
         emulator=None,
         cosmo_fid_label="default",
         free_param_names=None,
@@ -31,12 +31,10 @@ class Likelihood(object):
         emu_cov_factor=1,
         extra_p1d_data=None,
         min_log_like=-1e100,
-        sim_igm="mpg",
     ):
         """Setup likelihood from theory and data. Options:
         - data (required) is the data to model
-        - theory (optional) if not provided, will setup using emulator and
-          list of free parameters
+        - theory (required) instance of lya_theory
         - emulator (optional) only needed if theory not provided
         - cosmo_fid_label (optional) to specify fiducial cosmology
                     default: use default Planck-like cosmology
@@ -49,49 +47,19 @@ class Likelihood(object):
         - emu_cov_factor adjusts the contribution from emulator covariance
         set between 0 and 1.
         - extra_p1d_data: extra P1D data, e.g., from HIRES
-        - min_log_like: use this instead of - infinity
-        - sim_igm: specify file with fiducial IGM models"""
+        - min_log_like: use this instead of - infinity"""
 
         self.verbose = verbose
         self.prior_Gauss_rms = prior_Gauss_rms
         self.emu_cov_factor = emu_cov_factor
         self.cosmo_fid_label = cosmo_fid_label
         self.min_log_like = min_log_like
-        self.sim_igm = sim_igm
         self.data = data
         # (optionally) get rid of low-k data points
         self.data._cull_data(kmin_kms)
 
-        if theory:
-            assert cosmo_fid_label == "default", "wrong settings"
-            self.theory = theory
-        else:
-            if cosmo_fid_label == "truth":
-                # use true cosmology as fiducial (mostly for debugging)
-                cosmo_fid = self.get_sim_cosmo()
-                print("use true cosmo")
-                camb_cosmo.print_info(cosmo_fid)
-            elif cosmo_fid_label == "default":
-                cosmo_fid = None
-            else:
-                cosmo_fid = cosmologies.get_cosmology_from_label(
-                    cosmo_fid_label
-                )
-                print("specified fiducial cosmology")
-                camb_cosmo.print_info(cosmo_fid)
-
-            # Set up a theory object
-            self.theory = lya_theory.Theory(
-                zs=self.data.z,
-                emulator=emulator,
-                verbose=verbose,
-                cosmo_fid=cosmo_fid,
-                F_model_fid=F_fid,
-                T_model_fid=T_fid,
-                P_model_fid=P_fid,
-                free_param_names=free_param_names,
-                sim_igm=sim_igm,
-            )
+        assert cosmo_fid_label == "default", "wrong settings"
+        self.theory = theory
 
         # setup parameters
         self.set_free_parameters(free_param_names, free_param_limits)
