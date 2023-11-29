@@ -1,4 +1,6 @@
 import os
+
+import pandas
 import numpy as np
 
 from cup1d.data.base_p1d_data import BaseDataP1D, _drop_zbins
@@ -23,48 +25,34 @@ class P1D_Karacayli2022(BaseDataP1D):
         return
 
 
-def read_from_file(diag_cov,kmax_kms):
+def read_from_file(diag_cov, kmax_kms):
     """Read file containing mock P1D"""
 
     # folder storing P1D measurement
-    datadir=BaseDataP1D.BASEDIR +'/Karacayli2022/'
+    datadir=BaseDataP1D.BASEDIR + '/Karacayli2022/'
 
     # start by reading the file with measured band power
-    p1d_file=datadir+'highres-mock-power-spectrum.txt'
-    with open(p1d_file, 'r') as reader:
-        lines=reader.readlines()
-    # read number of bins from line 42
-    bins = lines[41].split()
-    Nz = int(bins[1])
-    Nk = int(bins[2])
+    # z, k, P, e
+    data = pandas.read_table(
+        datadir + 'final-conservative-p1d-karacayli_etal2021.txt',
+        delimiter='|', skipinitialspace=True, usecols=[1, 2, 3, 4],
+        names=['z', 'k', 'P', 'e'], header=0
+    ).to_records(index=False)
+    
+    zbins = np.unique(data['z'])
+    kbins = np.unique(data['k'])
+    Nk = kbins.size
+    Nz = zbins.size
+
+    w = kbins < kmax_kms
+    kbins = kbins[w]
     print('Nz = {} , Nk = {}'.format(Nz,Nk))
-    # z k1 k2 kc Pfid ThetaP Pest ErrorP d b t
-    data = lines[44:]
-
-    # store unique redshifts 
-    inz=[float(line.split()[0]) for line in data]
-    z=np.unique(inz)
-
-    # store unique wavenumbers
-    ink=[float(line.split()[3]) for line in data]
-    k=np.unique(ink)
-
-    # store P1D, statistical error, noise power, metal power and systematic
-    inPk=[float(line.split()[6]) for line in data]
-    inPk=np.array(inPk).reshape([Nz,Nk])
+    Pk = data['P'].reshape(Nz, Nk)[:, w]
+    ek = data['e'].reshape(Nz, Nk)[:, w]
 
     # for now only use diagonal elements
     assert diag_cov, 'implement code to read full covariance'
-    inErr=[float(line.split()[7]) for line in data]
+    # for now only use diagonal elements
+    cov = [np.diag(_**2) for _ in ek]
 
-    # limit only to modes < 0.1 s/km
-    Ncull=np.sum(k>kmax_kms)
-    k=k[:Nk-Ncull]
-    Pk=[]
-    cov=[]
-    for i in range(Nz):
-        Pk.append(inPk[i,:Nk-Ncull])
-        err=inErr[i*Nk:(i+1)*Nk]
-        cov.append(np.diag(np.array(err[:Nk-Ncull])**2))
-
-    return z,k,Pk,cov
+    return zbins, kbins, Pk, cov
