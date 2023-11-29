@@ -25,7 +25,6 @@ class P1D_Karacayli2023(BaseDataP1D):
 
         return
 
-
 def read_from_file(diag_cov, kmax_nyq):
     """Read file containing P1D"""
 
