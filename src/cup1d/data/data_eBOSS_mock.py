@@ -10,16 +10,17 @@ class P1D_eBOSS_mock(BaseDataP1D):
     def __init__(
         self,
         diag_cov=False,
-        kmax_kms=0.09,
-        zmin=2.19,
+        kmax_kms=None,
+        zmin=None,
         zmax=None,
+        input_sim="nyx_central",
     ):
         """Read measured P1D from file.
         - diag_cov: for now, use diagonal covariance
         - kmax_kms: limit to low-k where we trust emulator"""
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        z, k, Pk, cov = read_from_file(diag_cov, kmax_kms)
+        z, k, Pk, cov = read_from_file(diag_cov, input_sim, kmax_kms=kmax_kms)
 
         # drop low-z or high-z bins
         if zmin or zmax:
@@ -30,12 +31,20 @@ class P1D_eBOSS_mock(BaseDataP1D):
         return
 
 
-def read_from_file(diag_cov, kmax_kms, old_cov=False):
+def read_from_file(diag_cov, input_sim, kmax_kms=None, old_cov=False):
     """Read file containing mock P1D"""
 
     # folder storing P1D measurement
     datadir = BaseDataP1D.BASEDIR + "/eBOSS_mock/"
-    fname = datadir + "/pk_1d_Nyx_emu_fiducial_mock.out"
+
+    all_input_sim = ["nyx_central"]
+    try:
+        assert input_sim in all_input_sim
+    except AssertionError:
+        raise ValueError("Mock from input_sim=" + input_sim + " not included")
+    else:
+        if input_sim == "nyx_central":
+            fname = datadir + "/pk_1d_Nyx_emu_fiducial_mock.out"
 
     result = np.loadtxt(fname, unpack=True)
     z, k, Pk, sPk, nPk, bPk, tPk = result
@@ -72,19 +81,23 @@ def read_from_file(diag_cov, kmax_kms, old_cov=False):
     covbins = []
 
     for iz in range(Nz):
-        _ = np.argwhere(z == zbins[iz])[:, 0]
-        Pkbins.append(Pk[_])
+        if kmax_kms is None:
+            mask = np.argwhere(z == zbins[iz])[:, 0]
+        else:
+            mask = np.argwhere((z == zbins[iz]) & (k <= kmax_kms))[:, 0]
+
+        Pkbins.append(Pk[mask])
 
         if old_cov:
-            cov_shape = np.zeros((_.shape[0], _.shape[0]))
-            cov_shape[:, :] = sPk[_] ** 2
+            cov_shape = np.zeros((mask.shape[0], mask.shape[0]))
+            cov_shape[:, :] = sPk[mask] ** 2
             # systematics
-            cov_shape[:, :] += tPk[_] ** 2
+            cov_shape[:, :] += tPk[mask] ** 2
             # noise (very large)
-            cov_shape[:, :] += nPk[_] ** 2
-            cov_shape[:, :] = np.sqrt(cov_shape)
+            cov_shape[:, :] += nPk[mask] ** 2
             covbins.append(cov_shape)
         else:
-            covbins.append(np.linalg.inv(inv_covmat[_][:, _]))
+            covbins.append(np.linalg.inv(inv_covmat[mask][:, mask]))
+            # covbins.append(np.linalg.inv(inv_covmat)[mask][:, mask])
 
     return zbins, kbins, Pkbins, covbins
