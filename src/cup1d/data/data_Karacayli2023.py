@@ -7,14 +7,15 @@ from cup1d.data.base_p1d_data import BaseDataP1D, _drop_zbins
 
 class P1D_Karacayli2023(BaseDataP1D):
 
-    def __init__(self,diag_cov=False,kmax_kms=0.09,zmin=2.19,zmax=None):
+    def __init__(self,diag_cov=False,kmax_nyq=0.5,zmin=2.19,zmax=None):
         """Read measured P1D from file.
             - diag_cov: for now, use diagonal covariance
-            - kmax_kms: limit to low-k where we trust emulator """
+            - zmin: z=2.0 bin is not recommended by Karacayli2023
+            - kmax_nyq: High k cut wrt the Nyquist frequency. """
 
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        z,k,Pk,cov=read_from_file(diag_cov,kmax_kms)
+        z,k,Pk,cov=read_from_file(diag_cov,kmax_nyq)
 
         # drop low-z or high-z bins
         if zmin or zmax:
@@ -25,8 +26,8 @@ class P1D_Karacayli2023(BaseDataP1D):
         return
 
 
-def read_from_file(diag_cov, kmax_kms):
-    """Read file containing mock P1D"""
+def read_from_file(diag_cov, kmax_nyq):
+    """Read file containing P1D"""
 
     # folder storing P1D measurement
     datadir=BaseDataP1D.BASEDIR + '/Karacayli2023/'
@@ -36,7 +37,8 @@ def read_from_file(diag_cov, kmax_kms):
         names = _.readline()[1:].strip().split()
 
     # start by reading the file with measured band power
-    # z k1 k2 kc Pfid ThetaP p_final e_stat p_raw p_noise p_fid_qmle p_smooth e_n_syst e_res_syst e_cont_syst e_dla_syst p_sb1 e_sb1_stat e_total
+    # z k1 k2 kc Pfid ThetaP p_final e_stat p_raw p_noise p_fid_qmle p_smooth
+    # e_n_syst e_res_syst e_cont_syst e_dla_syst p_sb1 e_sb1_stat e_total
     data = pandas.read_table(
         fname, comment='#', names=names, delim_whitespace=True
     ).to_records(index=False)
@@ -56,7 +58,13 @@ def read_from_file(diag_cov, kmax_kms):
     Pk = []
     cov = []
     for iz in range(Nz):
-        w = np.isclose(data['z'], zbins[iz])
+        z = zbins[iz]
+        # moving Nyquist frequency of the DESI wavelength
+        # grid. dlambda = 0.8 A
+        dv = 2.99792458e5 * 0.8 / 1215.67 / (1 + z)
+        kmax = kmax_nyq * np.pi / dv
+
+        w = np.isclose(data['z'], z) & (data['kc'] < kmax)
         tmp_d = np.zeros(Nk)
         _nk = w.sum()
         tmp_d[:_nk] = data['p_final'][w]
@@ -64,7 +72,8 @@ def read_from_file(diag_cov, kmax_kms):
         
         tmp_cov = np.zeros((Nk, Nk))
         # Fill non-existing k bins with inf
-        np.fill_diagonal(tmp_cov, 1e12)
+        # such that covariance is still invertible
+        np.fill_diagonal(tmp_cov, np.inf)
         tmp_cov[:_nk, :_nk] = cov_full[w, :][:, w]
         cov.append(tmp_cov)
 
