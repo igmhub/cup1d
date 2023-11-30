@@ -17,42 +17,46 @@ class ThermalModel(object):
         z_T=3.0,
         ln_sigT_kms_coeff=None,
         ln_gamma_coeff=None,
-        sim_igm="mpg",
-        fid_fname=None,
         free_param_names=None,
+        fid_igm=None,
     ):
         """Model the redshift evolution of the thermal broadening scale and gamma.
         We use a power law rescaling around a fiducial simulation at the centre
         of the initial Latin hypercube in simulation space."""
 
-        # figure out filename
-        if fid_fname is None:
-            if sim_igm == "mpg":
-                basedir = "/src/lace/data/sim_suites/Australia20/"
-                assert "LACE_REPO" in os.environ, "export LACE_REPO"
-                repo = os.environ["LACE_REPO"]
-                fid_fname = "{}/{}/fiducial_igm_evolution.txt".format(
-                    repo, basedir
+        if fid_igm is None:
+            fname = (
+                os.environ["LACE_REPO"]
+                + "/src/lace/data/sim_suites/Australia20/IGM_histories.npy"
+            )
+            try:
+                igm_hist = np.load(fname, allow_pickle=True).item()
+            except:
+                raise ValueError(
+                    fname
+                    + "not found. You can produce it using LaCE"
+                    + r"\n script save_"
+                    + sim_igm[:3]
+                    + "_IGM.py"
                 )
-            elif sim_igm == "nyx":
-                assert "NYX_PATH" in os.environ, "export NYX_PATH"
-                fid_fname = (
-                    os.environ["NYX_PATH"] + "/fiducial_igm_evolution.txt"
-                )
+            fid_igm = igm_hist["mpg_central"]
 
-        ## Load fiducial model
-        self.fid_fname = fid_fname
-        fiducial = np.loadtxt(fid_fname)
-        self.fid_z = fiducial[0]
-        self.fid_gamma = fiducial[2]  ## gamma(z)
-        self.fid_sigT_kms = fiducial[3]  ## sigT_kms(z)
-        self.fid_sigT_kms_interp = interp1d(
-            self.fid_z, self.fid_sigT_kms, kind="cubic"
-        )
+        _ = np.argwhere((fid_igm["gamma"] != 0) & (fid_igm["sigT_kms"] != 0))[
+            :, 0
+        ]
+        if len(_) > 0:
+            self.fid_z = fid_igm["z"][_]
+            self.fid_gamma = fid_igm["gamma"][_]
+            self.fid_sigT_kms = fid_igm["sigT_kms"][_]
+        else:
+            raise ValueError("No non-zero gamma and sigT_kms in fiducial IGM")
+
         self.fid_gamma_interp = interp1d(
             self.fid_z, self.fid_gamma, kind="cubic"
         )
-
+        self.fid_sigT_kms_interp = interp1d(
+            self.fid_z, self.fid_sigT_kms, kind="cubic"
+        )
         self.z_T = z_T
 
         # figure out parameters for sigT_kms (T0)

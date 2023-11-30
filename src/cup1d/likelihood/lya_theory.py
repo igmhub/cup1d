@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import copy
 import matplotlib.pyplot as plt
 from lace.cosmo import camb_cosmo
@@ -23,10 +24,12 @@ class Theory(object):
         F_model_fid=None,
         T_model_fid=None,
         P_model_fid=None,
+        z_star=3.0,
+        kp_kms=0.009,
         include_metals=[],
         cosmo_fid=None,
         free_param_names=None,
-        sim_igm="mpg",
+        sim_igm="mpg_central",
         emu_type="nn",
     ):
         """Setup object to compute predictions for the 1D power spectrum.
@@ -45,6 +48,12 @@ class Theory(object):
 
         self.verbose = verbose
         self.zs = zs
+
+        # specify pivot point used in compressed parameters
+        self.z_star = z_star
+        self.kp_kms = kp_kms
+
+        # setup emulator
         self.emulator = emulator
         if emu_type == "nn":
             self.get_emulator_calls = self.get_emulator_calls_nn
@@ -62,9 +71,38 @@ class Theory(object):
         else:
             self.emu_kp_Mpc = self.emulator.archive.kp_Mpc
 
-        # specify pivot point used in compressed parameters
-        self.z_star = 3.0
-        self.kp_kms = 0.009
+        # load IGM history
+        if sim_igm[:3] == "mpg":
+            fname = (
+                os.environ["LACE_REPO"]
+                + "/src/lace/data/sim_suites/Australia20/IGM_histories.npy"
+            )
+        elif sim_igm[:3] == "nyx":
+            fname = os.environ["NYX_PATH"] + "/IGM_histories.npy"
+        else:
+            raise ValueError("only mpg and nyx sim_igm implemented")
+        try:
+            igm_hist = np.load(fname, allow_pickle=True).item()
+        except:
+            raise ValueError(
+                fname
+                + "not found. You can produce it using LaCE"
+                + r"\n script save_"
+                + sim_igm[:3]
+                + "_IGM.py"
+            )
+        else:
+            if sim_igm not in igm_hist:
+                raise ValueError(
+                    sim_igm
+                    + " not found in "
+                    + fname
+                    + r"\n Check out the LaCE script save_"
+                    + sim_igm[:3]
+                    + "_IGM.py"
+                )
+            else:
+                self.fid_igm = igm_hist[sim_igm]
 
         # setup fiducial cosmology
         if not cosmo_fid:
@@ -85,21 +123,21 @@ class Theory(object):
         else:
             self.F_model_fid = mean_flux_model.MeanFluxModel(
                 free_param_names=free_param_names,
-                sim_igm=sim_igm,
+                fid_igm=self.fid_igm,
             )
         if T_model_fid:
             self.T_model_fid = T_model_fid
         else:
             self.T_model_fid = thermal_model.ThermalModel(
                 free_param_names=free_param_names,
-                sim_igm=sim_igm,
+                fid_igm=self.fid_igm,
             )
         if P_model_fid:
             self.P_model_fid = P_model_fid
         else:
             self.P_model_fid = pressure_model.PressureModel(
                 free_param_names=free_param_names,
-                sim_igm=sim_igm,
+                fid_igm=self.fid_igm,
             )
         self.F_model_emcee = copy.deepcopy(self.F_model_fid)
         self.T_model_emcee = copy.deepcopy(self.T_model_fid)

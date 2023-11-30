@@ -15,32 +15,35 @@ class MeanFluxModel(object):
         self,
         z_tau=3.0,
         ln_tau_coeff=None,
-        sim_igm="mpg",
-        fid_fname=None,
         free_param_names=None,
+        fid_igm=None,
     ):
         """Construct model as a rescaling around a fiducial mean flux"""
 
-        # figure out filename
-        if fid_fname is None:
-            if sim_igm == "mpg":
-                basedir = "/src/lace/data/sim_suites/Australia20/"
-                assert "LACE_REPO" in os.environ, "export LACE_REPO"
-                repo = os.environ["LACE_REPO"]
-                fid_fname = "{}/{}/fiducial_igm_evolution.txt".format(
-                    repo, basedir
+        if fid_igm is None:
+            fname = (
+                os.environ["LACE_REPO"]
+                + "/src/lace/data/sim_suites/Australia20/IGM_histories.npy"
+            )
+            try:
+                igm_hist = np.load(fname, allow_pickle=True).item()
+            except:
+                raise ValueError(
+                    fname
+                    + "not found. You can produce it using LaCE"
+                    + r"\n script save_"
+                    + sim_igm[:3]
+                    + "_IGM.py"
                 )
-            elif sim_igm == "nyx":
-                assert "NYX_PATH" in os.environ, "export NYX_PATH"
-                fid_fname = (
-                    os.environ["NYX_PATH"] + "/fiducial_igm_evolution.txt"
-                )
+            fid_igm = igm_hist["mpg_central"]
 
-        # load fiducial model
-        self.fid_fname = fid_fname
-        fiducial = np.loadtxt(fid_fname)
-        self.fid_z = fiducial[0]
-        self.fid_tau_eff = fiducial[1]  ## tau_eff(z)
+        _ = np.argwhere(fid_igm["tau_eff"] != 0)[:, 0]
+        if len(_) > 0:
+            self.fid_z = fid_igm["z"][_]
+            self.fid_tau_eff = fid_igm["tau_eff"][_]
+        else:
+            raise ValueError("No non-zero tau_eff in fiducial IGM")
+
         self.fid_tau_interp = interp1d(
             self.fid_z, self.fid_tau_eff, kind="cubic"
         )

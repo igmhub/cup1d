@@ -17,32 +17,35 @@ class PressureModel(object):
         self,
         z_kF=3.0,
         ln_kF_coeff=None,
-        sim_igm="mpg",
-        fid_fname=None,
         free_param_names=None,
+        fid_igm=None,
     ):
         """Construct model with central redshift and (x2,x1,x0) polynomial."""
 
-        # figure out filename
-        if fid_fname is None:
-            if sim_igm == "mpg":
-                basedir = "/src/lace/data/sim_suites/Australia20/"
-                assert "LACE_REPO" in os.environ, "export LACE_REPO"
-                repo = os.environ["LACE_REPO"]
-                fid_fname = "{}/{}/fiducial_igm_evolution.txt".format(
-                    repo, basedir
+        if fid_igm is None:
+            fname = (
+                os.environ["LACE_REPO"]
+                + "/src/lace/data/sim_suites/Australia20/IGM_histories.npy"
+            )
+            try:
+                igm_hist = np.load(fname, allow_pickle=True).item()
+            except:
+                raise ValueError(
+                    fname
+                    + "not found. You can produce it using LaCE"
+                    + r"\n script save_"
+                    + sim_igm[:3]
+                    + "_IGM.py"
                 )
-            elif sim_igm == "nyx":
-                assert "NYX_PATH" in os.environ, "export NYX_PATH"
-                fid_fname = (
-                    os.environ["NYX_PATH"] + "/fiducial_igm_evolution.txt"
-                )
+            fid_igm = igm_hist["mpg_central"]
 
-        # load fiducial model
-        self.fid_fname = fid_fname
-        fiducial = np.loadtxt(fid_fname)
-        self.fid_z = fiducial[0]
-        self.fid_kF = fiducial[4]  ## kF_kms(z)
+        _ = np.argwhere(fid_igm["kF_kms"] != 0)[:, 0]
+        if len(_) > 0:
+            self.fid_z = fid_igm["z"][_]
+            self.fid_kF = fid_igm["kF_kms"][_]
+        else:
+            raise ValueError("No non-zero kF in fiducial IGM")
+
         self.fid_kF_interp = interp1d(self.fid_z, self.fid_kF, kind="cubic")
 
         self.z_kF = z_kF
