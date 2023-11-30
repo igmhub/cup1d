@@ -44,23 +44,6 @@ class BaseDataP1D(object):
 
         return
 
-    def get_Pk_iz_perturbed(self, nsamples=1, seed=0):
-        """Perturb data by adding Gaussian noise according to the covariance matrix"""
-
-        np.random.seed(seed)
-        Pk_iz_perturb = []
-
-        for iz in range(len(self.Pk_kms)):
-            Pk_iz_perturb.append(
-                np.random.multivariate_normal(
-                    self.Pk_kms[iz],
-                    self.cov_Pk_kms[iz],
-                    nsamples,
-                )
-            )
-
-        return Pk_iz_perturb
-
     def plot_p1d(self, use_dimensionless=True, xlog=False, ylog=True):
         """Plot P1D mesurement. If use_dimensionless, plot k*P(k)/pi."""
 

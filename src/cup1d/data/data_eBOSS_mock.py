@@ -3,10 +3,11 @@ import os
 import pandas
 import numpy as np
 
+from cup1d.data.base_p1d_mock import BaseMockP1D
 from cup1d.data.base_p1d_data import BaseDataP1D, _drop_zbins
 
 
-class P1D_eBOSS_mock(BaseDataP1D):
+class P1D_eBOSS_mock(BaseMockP1D):
     def __init__(
         self,
         diag_cov=False,
@@ -14,6 +15,8 @@ class P1D_eBOSS_mock(BaseDataP1D):
         zmin=None,
         zmax=None,
         input_sim="nyx_central",
+        add_noise=False,
+        seed=0,
     ):
         """Read measured P1D from file.
         - diag_cov: for now, use diagonal covariance
@@ -26,7 +29,7 @@ class P1D_eBOSS_mock(BaseDataP1D):
         if zmin or zmax:
             z, k, Pk, cov = _drop_zbins(z, k, Pk, cov, zmin, zmax)
 
-        super().__init__(z, k, Pk, cov)
+        super().__init__(z, k, Pk, cov, add_noise=add_noise, seed=seed)
 
         return
 
