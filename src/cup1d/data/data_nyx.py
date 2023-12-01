@@ -56,9 +56,8 @@ class Nyx_P1D(BaseMockP1D):
             raise ValueError(
                 "Simulation "
                 + input_sim
-                + " not included in the archive."
-                + r"\n The simulations available are"
-                + archive.list_sim
+                + " not included in the archive. Available options: ",
+                archive.list_sim,
             )
 
         # read P1D from simulation (nyx_central needs a hack)

@@ -56,9 +56,8 @@ class Gadget_P1D(BaseMockP1D):
             raise ValueError(
                 "Simulation "
                 + input_sim
-                + " not included in the archive."
-                + r"\n The simulations available are"
-                + archive.list_sim
+                + " not included in the archive. Available options: ",
+                archive.list_sim,
             )
         self.testing_data = archive.get_testing_data(input_sim, z_max=z_max)
         if len(self.testing_data) == 0:
