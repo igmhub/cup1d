@@ -3,35 +3,33 @@ from scipy.interpolate import interp1d
 
 from lace.utils import poly_p1d
 from lace.cosmo import camb_cosmo
-
-from cup1d.data import base_p1d_data
+from cup1d.data.base_p1d_mock import BaseMockP1D
 from cup1d.data import data_PD2013
 from cup1d.data import data_Chabanier2019
 from cup1d.data import data_QMLE_Ohio
 from cup1d.data import data_Karacayli2022
 
-
-class Nyx_P1D(base_p1d_data.BaseDataP1D):
+class Nyx_P1D(BaseMockP1D):
     """Class to load a Nyx simulation as a mock data object.
     Can use PD2013 or Chabanier2019 covmats"""
 
     def __init__(
         self,
         archive,
-        sim_label="nyx_central",
+        input_sim="nyx_central",
         z_max=None,
-        z_min=None,
         data_cov_label="Chabanier2019",
         data_cov_factor=1.0,
         add_syst=True,
         polyfit_kmax_Mpc=4.0,
         polyfit_ndeg=5,
+        add_noise=False,
+        seed=0,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
         - archive: p1d measurements from Nyx sims
-        - sim_label: check available options in archive
+        - input_sim: check available options in archive
         - z_max: maximum redshift to use in mock data
-        - z_min: minimum redshift to use in mock data
         - data_cov_label: P1D covariance to use (Chabanier2019 or PD2013)
         - data_cov_factor: multiply covariance by this factor
         - add_syst: Include systematic estimates in covariance matrices
@@ -50,22 +48,27 @@ class Nyx_P1D(base_p1d_data.BaseDataP1D):
 
         # store archive
         self.archive = archive
-        self.sim_label = sim_label
+        self.input_sim = input_sim
+        try:
+            assert input_sim in archive.list_sim
+        except AssertionError:
+            raise ValueError(
+                "Simulation "
+                + input_sim
+                + " not included in the archive. Available options: ",
+                archive.list_sim,
+            )
 
         # read P1D from simulation (nyx_central needs a hack)
-        if sim_label == "nyx_central":
-            ind_rescaling = 1
+        if input_sim == "nyx_central":
+            ind_rescaling = 1  # fiducial rescaling not available
         else:
             ind_rescaling = None
-
         self.testing_data = archive.get_testing_data(
-            sim_label,
-            ind_rescaling=ind_rescaling,
-            z_max=z_max,
-            z_min=z_min,
+            input_sim, ind_rescaling=ind_rescaling, z_max=z_max
         )
         if len(self.testing_data) == 0:
-            raise ValueError("could not set testing data", sim_label)
+            raise ValueError("could not set testing data", input_sim)
 
         # store cosmology used in the simulation
         cosmo_params = self.testing_data[0]["cosmo_params"]
@@ -75,7 +78,9 @@ class Nyx_P1D(base_p1d_data.BaseDataP1D):
         z, k, Pk, cov = self._load_p1d()
 
         # setup base class
-        base_p1d_data.BaseDataP1D.__init__(self, z, k, Pk, cov)
+        super().__init__(self, z, k, Pk, cov, add_noise=add_noise, seed=seed)
+        
+        return
 
     def _load_p1d(self):
         # figure out dataset to mimic
