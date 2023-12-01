@@ -281,7 +281,7 @@ def set_log_prob(sampler):
 
 
 def sample(args, like, free_parameters):
-    # cannot call self.log_prob using multiprocess.pool
+    """Sample the posterior distribution"""
 
     path = path_sampler(args)
 
@@ -293,76 +293,10 @@ def sample(args, like, free_parameters):
     )
     sampler.write_chain_to_file(plots=False)
 
-    # listpar = [
-    #     "$\\Delta^2_\\star$",
-    #     "$n_\\star$",
-    #     "$\mathrm{ln}\,\\tau_0$",
-    #     "$\mathrm{ln}\,\\tau_1$",
-    #     "$\mathrm{ln}\,\\sigma^T_0$",
-    #     "$\mathrm{ln}\,\\sigma^T_1$",
-    #     "$\mathrm{ln}\,\\gamma_0$",
-    #     "$\mathrm{ln}\,\\gamma_1$",
-    #     "$\mathrm{ln}\,k^F_0$",
-    #     "$\mathrm{ln}\,k^F_1$",
-    # ]
-
-    # sampler.plot_corner(
-    #     plot_params=["$\\Delta^2_\\star$", "$n_\\star$"],
-    #     # plot_params=listpar,
-    #     delta_lnprob_cut=50,
-    #     usetex=False,
-    #     serif=False,
-    # )
-
-    # cube_values = np.array(minimizer.minimizer.values)
-    # best_fit_values = np.zeros_like(cube_values)
-    # err_best_fit_values = np.zeros_like(cube_values)
-    # truth_values = np.zeros_like(cube_values) + 0.5
-    # for ii, par in enumerate(free_parameters):
-    #     # truth
-    #     if par in like.truth:
-    #         true = like.truth[par]
-    #     else:
-    #         true = 0.5
-    #     truth_values[ii] = true
-    #     # best
-    #     val_best, err_best = minimizer.best_fit_value(par, return_hesse=True)
-    #     # if par == "As":
-    #     #     val_best *= 1e-9
-    #     #     err_best *= 1e-9
-    #     best_fit_values[ii] = val_best
-    #     err_best_fit_values[ii] = err_best
-
-    # best_chi2 = like.get_chi2(values=cube_values)
-    # print("chi2 improved from {} to {}".format(ini_chi2, best_chi2))
-    # # print(best_chi2)
-    # # print(free_parameters)
-    # # print(truth_values)
-    # # print(best_fit_values)
-    # # print(err_best_fit_values)
-
-    # if args.archive is None:
-    #     out_args = args
-    # else:
-    #     out_args = args.save()
-
-    # save = {
-    #     "metadata": out_args,
-    #     "best_chi2": best_chi2,
-    #     "name_parameters": free_parameters,
-    #     "truth_parameters": truth_values,
-    #     "best_parameters": best_fit_values,
-    #     "err_best_parameters": err_best_fit_values,
-    #     "covariance": np.array(minimizer.minimizer.covariance),
-    # }
-
-    # fname = path + "/summary.npy"
-
-    # print("Saving output in:", fname)
-    # np.save(fname, save)
-
 
 def sam_like_sim(args):
+    """Sample the posterior distribution for a of a mock"""
+
     start_all = time.time()
 
     # os.environ["OMP_NUM_THREADS"] = "1"

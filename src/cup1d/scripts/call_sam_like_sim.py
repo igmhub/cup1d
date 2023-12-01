@@ -1,3 +1,5 @@
+""" This script calls sam_like_sim for a given set of simulations """
+
 import os, sys
 import numpy as np
 
@@ -40,6 +42,7 @@ class Args:
 
 
 def main():
+    """Call sam_like_sim for a given set of simulations"""
     list_training_set = ["Pedersen21", "Cabayol23", "Nyx23_Oct2023"]
     emulator_label = [
         "Pedersen21",

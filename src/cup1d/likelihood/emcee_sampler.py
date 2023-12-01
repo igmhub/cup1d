@@ -258,27 +258,14 @@ class EmceeSampler(object):
                         break
                     old_tau = tau
 
-        ## Save chains
+        ## Get samples, flat=False to be able to mask not converged chains latter
         self.lnprob = sampler.get_log_prob(
             flat=False, discard=self.burnin_nsteps
         )
-        mask, _ = purge_chains(self.lnprob)
-        self.mask_use = (
-            "Use "
-            + str(mask.shape[0])
-            + " chains of "
-            + str(self.lnprob.shape[1])
-        )
-        self.plot_lnprob(mask)
-        self.lnprob = self.lnprob[:, mask].reshape(-1)
-
         self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
-        self.chain = self.chain[:, mask, :].reshape(-1, self.chain.shape[-1])
-
         self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
-        self.blobs = self.blobs[:, mask].reshape(-1)
 
-        return sampler
+        return
 
     def resume_sampler(
         self, max_steps, log_func=None, timeout=None, force_timeout=False
@@ -342,11 +329,11 @@ class EmceeSampler(object):
                         break
                 old_tau = tau
 
-        self.chain = sampler.get_chain(flat=True, discard=self.burnin_nsteps)
+        self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
         self.lnprob = sampler.get_log_prob(
-            flat=True, discard=self.burnin_nsteps
+            flat=False, discard=self.burnin_nsteps
         )
-        self.blobs = sampler.get_blobs(flat=True, discard=self.burnin_nsteps)
+        self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
 
         return
 
@@ -397,9 +384,11 @@ class EmceeSampler(object):
         - if cube=True, return values in range [0,1]
         - if delta_lnprob_cut is set, use it to remove low-prob islands"""
 
-        chain = self.chain
-        lnprob = self.lnprob
-        blobs = self.blobs
+        # mask walkers not converged
+        mask, _ = purge_chains(self.lnprob)
+        lnprob = self.lnprob[:, mask].reshape(-1)
+        chain = self.chain[:, mask, :].reshape(-1, chain.shape[-1])
+        blobs = self.blobs[:, mask].reshape(-1)
 
         if delta_lnprob_cut:
             max_lnprob = np.max(lnprob)
@@ -483,7 +472,7 @@ class EmceeSampler(object):
             all_params = chain
             all_strings = self.paramstrings
 
-        return all_params, all_strings
+        return all_params, all_strings, lnprob
 
     def read_chain_from_file(self, chain_number, rootdir, subfolder):
         """Read chain from file, check parameters and setup likelihood"""
@@ -691,11 +680,11 @@ class EmceeSampler(object):
         )
 
         self.burnin_nsteps = config["burn_in"]
-        self.chain = sampler.get_chain(flat=True, discard=self.burnin_nsteps)
+        self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
         self.lnprob = sampler.get_log_prob(
-            flat=True, discard=self.burnin_nsteps
+            flat=False, discard=self.burnin_nsteps
         )
-        self.blobs = sampler.get_blobs(flat=True, discard=self.burnin_nsteps)
+        self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
 
         self.ndim = len(self.like.free_params)
         self.nwalkers = config["nwalkers"]
@@ -755,17 +744,22 @@ class EmceeSampler(object):
 
         return
 
-    def get_best_fit(self, delta_lnprob_cut=None):
+    def get_best_fit(self, delta_lnprob_cut=None, stat_best_fit="mean"):
         """Return an array of best fit values (mean) from the MCMC chain,
         in unit likelihood space.
             - if delta_lnprob_cut is set, use only high-prob points"""
 
         chain, lnprob, blobs = self.get_chain(delta_lnprob_cut=delta_lnprob_cut)
-        mean_values = []
-        for parameter_distribution in np.swapaxes(chain, 0, 1):
-            mean_values.append(np.mean(parameter_distribution))
+        if stat_best_fit == "mean":
+            best_values = np.mean(chain, axis=0)
+        elif stat_best_fit == "median":
+            best_values = np.median(chain, axis=0)
+        elif stat_best_fit == "mle":
+            best_values = chain[np.argmax(lnprob)]
+        else:
+            raise ValueError(stat_best_fit + " not implemented")
 
-        return mean_values
+        return best_values
 
     def write_chain_to_file(self, residuals=True):
         """Write flat chain to file"""
@@ -847,18 +841,28 @@ class EmceeSampler(object):
 
         # save config info in plain text as well
         self._write_dict_to_text(saveDict)
+
+        # plots
         try:
-            self.plot_best_fit(residuals=residuals)
+            mask_use = self.plot_lnprob()
+        except:
+            print("Can't plot lnprob")
+        try:
+            for stat_best_fit in ["mean", "median", "mle"]:
+                self.plot_best_fit(
+                    residuals=residuals, stat_best_fit=stat_best_fit
+                )
         except:
             print("Can't plot best fit")
-
         try:
-            rand_posterior = self.plot_igm_histories()
+            rand_posterior = self.plot_igm_histories(stat_best_fit="mle")
         except:
             print("Can't plot IGM histories")
         try:
             self.plot_best_fit(
-                residuals=residuals, rand_posterior=rand_posterior
+                residuals=residuals,
+                rand_posterior=rand_posterior,
+                stat_best_fit="mle",
             )
         except:
             print("Can't plot best fit")
@@ -866,16 +870,14 @@ class EmceeSampler(object):
             self.plot_prediction(residuals=residuals)
         except:
             print("Can't plot prediction")
-        # try:
-        #     self.plot_autocorrelation_time()
-        # except:
-        #     print("Can't plot autocorrelation time")
-
+        try:
+            self.plot_autocorrelation_time()
+        except:
+            print("Can't plot autocorrelation time")
         try:
             _ = self.plot_corner(only_cosmo=True)
         except:
             print("Can't plot corner")
-
         try:
             summary = self.plot_corner()
         except:
@@ -883,21 +885,21 @@ class EmceeSampler(object):
 
         dict_out = {}
         dict_out["summary"] = summary
-        dict_out["walkers_survive"] = self.mask_use
+        dict_out["walkers_survive"] = mask_use
         dict_out["truth"] = self.truth
 
-        all_param, all_names = self.get_all_params()
+        all_param, all_names, lnprob = self.get_all_params()
         dict_out["param_names"] = all_names[:-4]
         dict_out["param_percen"] = np.percentile(
             all_param[:, :-4], [16, 50, 84], axis=0
         ).T
 
-        ind = np.argmax(self.lnprob)
+        ind = np.argmax(lnprob)
         dict_out["param_ml"] = all_param[ind, :-4]
-        dict_out["lnprob_ml"] = self.lnprob[ind]
+        dict_out["lnprob_ml"] = lnprob[ind]
         np.save(self.save_directory + "/results.npy", dict_out)
         np.save(self.save_directory + "/chain.npy", all_param[:, :-4])
-        np.save(self.save_directory + "/lnprob.npy", self.lnprob)
+        np.save(self.save_directory + "/lnprob.npy", lnprob)
 
         return
 
@@ -940,7 +942,7 @@ class EmceeSampler(object):
                     plot all (including derived)
         - if delta_lnprob_cut is set, keep only high-prob points"""
 
-        params_plot, strings_plot = self.get_all_params(
+        params_plot, strings_plot, _ = self.get_all_params(
             delta_lnprob_cut=delta_lnprob_cut
         )
         if only_cosmo:
@@ -958,8 +960,6 @@ class EmceeSampler(object):
         chain = Chain(samples=pd_data, name="a")
         c.add_chain(chain)
         summary = c.analysis.get_summary()["a"]
-        # cov = chain.get_covariance()
-        # corr = chain.get_correlation()
         c.add_truth(Truth(location=self.truth, line_style=":", color="black"))
         fig = c.plotter.plot(figsize=(12, 12))
 
@@ -973,15 +973,26 @@ class EmceeSampler(object):
 
         return summary
 
-    def plot_lnprob(self, mask):
-        """Plot the lnprob"""
+    def plot_lnprob(self):
+        """Plot lnprob"""
+
+        mask, _ = purge_chains(self.lnprob)
+        mask_use = (
+            "Using "
+            + str(mask.shape[0])
+            + " chains out of "
+            + str(lnprob.shape[1])
+        )
+
         for ii in range(self.lnprob.shape[1]):
             if ii in mask:
                 plt.plot(self.lnprob[:, ii])
+
+        # save to file
         if self.save_directory is not None:
             plt.savefig(self.save_directory + "/lnprob.pdf")
 
-        return
+        return mask_use
 
     def plot_best_fit(
         self,
@@ -990,19 +1001,22 @@ class EmceeSampler(object):
         residuals=False,
         rand_posterior=None,
         delta_lnprob_cut=None,
+        stat_best_fit="mean",
     ):
         """Plot the P1D of the data and the emulator prediction
         for the MCMC best fit
         """
 
         ## Get best fit values for each parameter
-        mean_value = self.get_best_fit(delta_lnprob_cut=delta_lnprob_cut)
-        print("Mean values:", mean_value)
+        best_values = self.get_best_fit(
+            delta_lnprob_cut=delta_lnprob_cut, stat_best_fit=stat_best_fit
+        )
+        print("Best values:", best_values)
 
         plt.figure(figsize=figsize)
         plt.title("MCMC best fit")
         self.like.plot_p1d(
-            values=mean_value,
+            values=best_values,
             plot_every_iz=plot_every_iz,
             residuals=residuals,
             rand_posterior=rand_posterior,
@@ -1010,9 +1024,9 @@ class EmceeSampler(object):
 
         if self.save_directory is not None:
             if rand_posterior is None:
-                fname = "best_fit_err_emu"
+                fname = "best_fit_" + stat_best_fit + "_err_emu"
             else:
-                fname = "best_fit_err_posterior"
+                fname = "best_fit_" + stat_best_fit + "_err_posterior"
             plt.savefig(self.save_directory + "/" + fname + ".pdf")
         else:
             plt.show()
@@ -1039,12 +1053,12 @@ class EmceeSampler(object):
 
         return
 
-    def plot_igm_histories(self, nn=5000):
-        labs = [r"$\tau_\mathrm{eff}$", r"$\gamma$", r"$\sigma_T$", r"$k_F$"]
+    def plot_igm_histories(self, nn=5000, stat_best_fit="mle"):
+        """Plot IGM histories"""
 
-        rand_sample = self.chain[
-            np.random.permutation(self.chain.shape[0])[:nn]
-        ]  # take a random sample of the chain
+        chain, lnprob, blobs = self.get_chain(delta_lnprob_cut=delta_lnprob_cut)
+        mask = np.random.permutation(chain.shape[0])[:nn]
+        rand_sample = chain[mask]
 
         # fiducial IGM parameters
         tau_eff_fid = self.like.theory.fid_igm["tau_eff"]
@@ -1053,7 +1067,7 @@ class EmceeSampler(object):
         kF_kms_fid = self.like.theory.fid_igm["kF_kms"]
 
         # best-fiiting IGM parameters
-        best_value = self.get_best_fit()
+        best_value = self.get_best_fit(stat_best_fit=stat_best_fit)
         like_params = self.like.parameters_from_sampling_point(best_value)
         models = self.like.theory.update_igm_models(like_params)
 
@@ -1083,39 +1097,38 @@ class EmceeSampler(object):
         fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
         ax = ax.reshape(-1)
 
-        ax[0].plot(z, tau_eff_fid, "o:", label="fiducial")
-        err = np.abs(
-            np.percentile(res["tau_eff"], [16, 84], axis=0) - tau_eff_best
-        )
-        ax[0].errorbar(z, tau_eff_best, err, label="best-fitting")
-        ax[0].set_yscale("log")
-        ax[0].legend()
+        arr_pars_fid = [tau_eff_fid, gamma_fid, sigT_kms_fid, kF_kms_fid]
+        arr_pars_best = [tau_eff_best, gamma_best, sigT_kms_best, kF_kms_best]
+        arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
+        latex_labs = [
+            r"$\tau_\mathrm{eff}$",
+            r"$\gamma$",
+            r"$\sigma_T$",
+            r"$k_F$",
+        ]
 
-        ax[1].plot(z, gamma_fid, "o:", label="fiducial")
-        err = np.abs(np.percentile(res["gamma"], [16, 84], axis=0) - gamma_best)
-        ax[1].errorbar(z, gamma_best, err, label="best-fitting")
+        for ii in range(len(arr_labs)):
+            ax[ii].plot(z, arr_pars_fid[ii], "o:", label="fiducial")
+            err = np.abs(
+                np.percentile(res[arr_labs[ii]], [16, 84], axis=0)
+                - arr_pars_best[ii]
+            )
+            ax[ii].errorbar(z, arr_pars_best[ii], err, label="best-fitting")
 
-        ax[2].plot(z, sigT_kms_fid, "o:", label="fiducial")
-        err = np.abs(
-            np.percentile(res["sigT_kms"], [16, 84], axis=0) - sigT_kms_best
-        )
-        ax[2].errorbar(z, sigT_kms_best, err, label="best-fitting")
+            ax[ii].set_ylabel(latex_labs[ii])
+            if ii == 0:
+                ax[ii].set_yscale("log")
+                ax[ii].legend()
 
-        ax[3].plot(z, kF_kms_fid, "o:", label="fiducial")
-        err = np.abs(
-            np.percentile(res["kF_kms"], [16, 84], axis=0) - kF_kms_best
-        )
-        ax[3].errorbar(z, kF_kms_best, err, label="best-fitting")
-
-        for ii in 0, 1, 2, 3:
-            ax[ii].set_ylabel(labs[ii])
-        for ii in 2, 3:
-            ax[ii].set_xlabel(r"$z$")
+            if (ii == 2) | (ii == 3):
+                ax[ii].set_xlabel(r"$z$")
 
         plt.tight_layout()
 
         if self.save_directory is not None:
-            plt.savefig(self.save_directory + "/IGM_histories.pdf")
+            plt.savefig(
+                self.save_directory + "/IGM_histories_" + stat_best_fit + ".pdf"
+            )
 
         return rand_sample
 
@@ -1228,7 +1241,7 @@ def compare_corners(
         sampler = EmceeSampler(
             read_chain_file=chain_file, subfolder=subfolder, rootdir=rootdir
         )
-        params, strings = sampler.get_all_params(
+        params, strings, _ = sampler.get_all_params(
             delta_lnprob_cut=delta_lnprob_cut
         )
         c.add_chain(params, parameters=strings, name=labels[aa])

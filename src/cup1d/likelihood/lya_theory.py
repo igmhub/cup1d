@@ -29,8 +29,7 @@ class Theory(object):
         include_metals=[],
         cosmo_fid=None,
         free_param_names=None,
-        sim_igm="mpg_central",
-        emu_type="nn",
+        fid_sim_igm="mpg_central",
     ):
         """Setup object to compute predictions for the 1D power spectrum.
         Inputs:
@@ -42,8 +41,7 @@ class Theory(object):
             - P_model_fid: fiducial pressure model
             - include_metals: list of metal labels to include
             - cosmo_fid: fiducial cosmology used for fixed parameters
-            - sim_igm: specify file with fiducial IGM models
-            - emu_type: type of emulator: gp or nn
+            - fid_sim_igm: name of the simulation from which we draw the IGM model
         """
 
         self.verbose = verbose
@@ -54,34 +52,39 @@ class Theory(object):
         self.kp_kms = kp_kms
 
         # setup emulator
-        self.emulator = emulator
-        if emu_type == "nn":
+        if emulator is None:
+            print("No emulator passed. Using Cabayol23")
+            self.emulator = NNEmulator(
+                training_set="Cabayol23",
+                emulator_label="Cabayol23",
+                model_path="NNmodels/Cabayol23/Cabayol23.pt",
+                train=False,
+            )
+        else:
+            self.emulator = emulator
+
+        # guess if emulator is GP or NN
+        if hasattr(self.emulator, "nhidden"):
             self.get_emulator_calls = self.get_emulator_calls_nn
             self.call_emulator = self.emulator.emulate_arr_p1d_Mpc
-        elif emu_type == "gp":
+        else:
             self.get_emulator_calls = self.get_emulator_calls_gp
             self.call_emulator = self.emulator.emulate_p1d_Mpc
-        else:
-            raise ValueError("Only nn and gp emu_type implemented")
 
-        # specify pivot point used in emulator
-        if self.emulator is None:
-            print("using default values for emulator pivot point")
-            self.emu_kp_Mpc = 0.7
-        else:
-            self.emu_kp_Mpc = self.emulator.archive.kp_Mpc
+        self.emu_kp_Mpc = self.emulator.archive.kp_Mpc
 
-        # load IGM history
-        self.sim_igm = sim_igm
-        if sim_igm[:3] == "mpg":
+        # load fiducial IGM history (not necessarily the true one)
+        self.fid_sim_igm = fid_sim_igm
+        if fid_sim_igm[:3] == "mpg":
             fname = (
                 os.environ["LACE_REPO"]
                 + "/src/lace/data/sim_suites/Australia20/IGM_histories.npy"
             )
-        elif sim_igm[:3] == "nyx":
+        elif fid_sim_igm[:3] == "nyx":
             fname = os.environ["NYX_PATH"] + "/IGM_histories.npy"
         else:
-            raise ValueError("only mpg and nyx sim_igm implemented")
+            raise ValueError("only mpg and nyx fid_sim_igm implemented")
+
         try:
             igm_hist = np.load(fname, allow_pickle=True).item()
         except:
@@ -89,21 +92,21 @@ class Theory(object):
                 fname
                 + "not found. You can produce it using LaCE"
                 + r"\n script save_"
-                + sim_igm[:3]
+                + fid_sim_igm[:3]
                 + "_IGM.py"
             )
         else:
-            if sim_igm not in igm_hist:
+            if fid_sim_igm not in igm_hist:
                 raise ValueError(
-                    sim_igm
+                    fid_sim_igm
                     + " not found in "
                     + fname
                     + r"\n Check out the LaCE script save_"
-                    + sim_igm[:3]
+                    + fid_sim_igm[:3]
                     + "_IGM.py"
                 )
             else:
-                self.fid_igm = igm_hist[sim_igm]
+                self.fid_igm = igm_hist[fid_sim_igm]
 
         # setup fiducial cosmology
         if not cosmo_fid:

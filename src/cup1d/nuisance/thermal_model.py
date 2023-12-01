@@ -34,20 +34,30 @@ class ThermalModel(object):
             except:
                 raise ValueError(
                     fname
-                    + "not found. You can produce it using LaCE"
-                    + r"\n script save_"
-                    + sim_igm[:3]
-                    + "_IGM.py"
+                    + " not found. You can produce it using the LaCE"
+                    + r" script save_mpg_IGM.py"
                 )
-            fid_igm = igm_hist["mpg_central"]
+            else:
+                fid_igm = igm_hist["mpg_central"]
 
-        _ = np.argwhere((fid_igm["gamma"] != 0) & (fid_igm["sigT_kms"] != 0))[
-            :, 0
-        ]
-        if len(_) > 0:
-            self.fid_z = fid_igm["z"][_]
-            self.fid_gamma = fid_igm["gamma"][_]
-            self.fid_sigT_kms = fid_igm["sigT_kms"][_]
+        mask = fid_igm["gamma"] != 0
+        if np.sum(mask) != fid_igm["gamma"].shape[0]:
+            print(
+                "The fiducial value of gamma is zero for z: ",
+                fid_igm["z"][mask == False],
+            )
+        mask = fid_igm["sigT_kms"] != 0
+        if np.sum(mask) != fid_igm["sigT_kms"].shape[0]:
+            print(
+                "The fiducial value of sigT_kms is zero for z: ",
+                fid_igm["z"][mask == False],
+            )
+
+        mask = (fid_igm["gamma"] != 0) & (fid_igm["sigT_kms"] != 0)
+        if np.sum(mask) > 0:
+            self.fid_z = fid_igm["z"][mask]
+            self.fid_gamma = fid_igm["gamma"][mask]
+            self.fid_sigT_kms = fid_igm["sigT_kms"][mask]
         else:
             raise ValueError("No non-zero gamma and sigT_kms in fiducial IGM")
 

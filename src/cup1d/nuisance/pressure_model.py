@@ -32,17 +32,33 @@ class PressureModel(object):
             except:
                 raise ValueError(
                     fname
-                    + "not found. You can produce it using LaCE"
-                    + r"\n script save_"
-                    + sim_igm[:3]
-                    + "_IGM.py"
+                    + " not found. You can produce it using the LaCE"
+                    + r" script save_mpg_IGM.py"
                 )
-            fid_igm = igm_hist["mpg_central"]
+            else:
+                fid_igm = igm_hist["mpg_central"]
 
-        _ = np.argwhere(fid_igm["kF_kms"] != 0)[:, 0]
-        if len(_) > 0:
-            self.fid_z = fid_igm["z"][_]
-            self.fid_kF = fid_igm["kF_kms"][_]
+        mask = fid_igm["tau_eff"] != 0
+        if np.sum(mask) != fid_igm["tau_eff"].shape[0]:
+            print(
+                "The fiducial value of tau_eff is zero for z: ",
+                fid_igm["z"][mask == False],
+            )
+        if np.sum(mask) > 0:
+            self.fid_z = fid_igm["z"][mask]
+            self.fid_tau_eff = fid_igm["tau_eff"][mask]
+        else:
+            raise ValueError("No non-zero tau_eff in fiducial IGM")
+
+        mask = fid_igm["kF_kms"] != 0
+        if np.sum(mask) != fid_igm["kF_kms"].shape[0]:
+            print(
+                "The fiducial value of kF is zero for z: ",
+                fid_igm["z"][mask == False],
+            )
+        if np.sum(mask) > 0:
+            self.fid_z = fid_igm["z"][mask]
+            self.fid_kF = fid_igm["kF_kms"][mask]
         else:
             raise ValueError("No non-zero kF in fiducial IGM")
 
