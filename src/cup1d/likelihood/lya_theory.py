@@ -4,6 +4,7 @@ import copy
 import matplotlib.pyplot as plt
 from lace.cosmo import camb_cosmo
 from lace.cosmo import fit_linP
+from lace.emulator import gp_emulator
 from cup1d.nuisance import mean_flux_model
 from cup1d.nuisance import thermal_model
 from cup1d.nuisance import pressure_model
@@ -53,13 +54,8 @@ class Theory(object):
 
         # setup emulator
         if emulator is None:
-            print("No emulator passed. Using Cabayol23")
-            self.emulator = NNEmulator(
-                training_set="Cabayol23",
-                emulator_label="Cabayol23",
-                model_path="NNmodels/Cabayol23/Cabayol23.pt",
-                train=False,
-            )
+            self.emulator = gp_emulator.GPEmulator(training_set="Pedersen21")
+            print("Using default emulator: Pedersen21")
         else:
             self.emulator = emulator
 
