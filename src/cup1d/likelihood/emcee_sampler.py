@@ -10,16 +10,16 @@ import pandas as pd
 from chainconsumer import ChainConsumer, Chain, Truth
 
 # our own modules
-from lace.cosmo import fit_linP
-from lace.cosmo import camb_cosmo
+from lace.cosmo import fit_linP, camb_cosmo
 from lace.archive import gadget_archive
-from lace.emulator import gp_emulator
-from lace.emulator import nn_emulator
-from cup1d.data import data_nyx
-from cup1d.data import data_gadget
-from cup1d.data import mock_data
-from cup1d.data import data_Chabanier2019
-from cup1d.data import data_Karacayli2022
+from lace.emulator import gp_emulator, nn_emulator
+from cup1d.data import (
+    data_nyx,
+    data_gadget,
+    mock_data,
+    data_Chabanier2019,
+    data_Karacayli2022,
+)
 from cup1d.likelihood import likelihood
 
 
@@ -138,9 +138,8 @@ class EmceeSampler(object):
             param_string = param_dict[param]
             self.truth[param_string] = like_truth[param]
 
-        if (self.like.data.sim_label[4:].isdigit() == False) & (
-            self.like.data.sim_label[4:] != "reio"
-        ):
+        # when using the IGM history of the analyzed simulation set to zero
+        if self.like.data.sim_label == self.like.theory.sim_igm:
             for param in self.like.free_params[2:]:
                 param_string = param_dict[param.name]
                 self.truth[param_string] = 0
@@ -768,13 +767,7 @@ class EmceeSampler(object):
 
         return mean_values
 
-    def write_chain_to_file(
-        self,
-        plots=False,
-        residuals=False,
-        plot_nersc=False,
-        plot_delta_lnprob_cut=None,
-    ):
+    def write_chain_to_file(self, residuals=True):
         """Write flat chain to file"""
 
         saveDict = {}
@@ -854,26 +847,39 @@ class EmceeSampler(object):
 
         # save config info in plain text as well
         self._write_dict_to_text(saveDict)
+        try:
+            self.plot_best_fit(residuals=residuals)
+        except:
+            print("Can't plot best fit")
 
-        # Save plots (might have issues in some clusters)
-        if plots:
-            try:
-                self.plot_best_fit(
-                    residuals=residuals, delta_lnprob_cut=plot_delta_lnprob_cut
-                )
-            except:
-                print("Can't plot best fit")
-            try:
-                self.plot_prediction(residuals=residuals)
-            except:
-                print("Can't plot prediction")
-            try:
-                self.plot_autocorrelation_time()
-            except:
-                print("Can't plot autocorrelation time")
+        try:
+            rand_posterior = self.plot_igm_histories()
+        except:
+            print("Can't plot IGM histories")
+        try:
+            self.plot_best_fit(
+                residuals=residuals, rand_posterior=rand_posterior
+            )
+        except:
+            print("Can't plot best fit")
+        try:
+            self.plot_prediction(residuals=residuals)
+        except:
+            print("Can't plot prediction")
+        # try:
+        #     self.plot_autocorrelation_time()
+        # except:
+        #     print("Can't plot autocorrelation time")
 
-        _ = self.plot_corner(only_cosmo=True)
-        summary = self.plot_corner()
+        try:
+            _ = self.plot_corner(only_cosmo=True)
+        except:
+            print("Can't plot corner")
+
+        try:
+            summary = self.plot_corner()
+        except:
+            print("Can't plot corner")
 
         dict_out = {}
         dict_out["summary"] = summary
@@ -982,6 +988,7 @@ class EmceeSampler(object):
         figsize=(8, 6),
         plot_every_iz=1,
         residuals=False,
+        rand_posterior=None,
         delta_lnprob_cut=None,
     ):
         """Plot the P1D of the data and the emulator prediction
@@ -995,15 +1002,20 @@ class EmceeSampler(object):
         plt.figure(figsize=figsize)
         plt.title("MCMC best fit")
         self.like.plot_p1d(
-            values=mean_value, plot_every_iz=plot_every_iz, residuals=residuals
+            values=mean_value,
+            plot_every_iz=plot_every_iz,
+            residuals=residuals,
+            rand_posterior=rand_posterior,
         )
 
         if self.save_directory is not None:
-            plt.savefig(self.save_directory + "/best_fit.pdf")
+            if rand_posterior is None:
+                fname = "best_fit_err_emu"
+            else:
+                fname = "best_fit_err_posterior"
+            plt.savefig(self.save_directory + "/" + fname + ".pdf")
         else:
             plt.show()
-
-        return
 
     def plot_prediction(
         self, figsize=(8, 6), values=None, plot_every_iz=1, residuals=False
@@ -1026,6 +1038,86 @@ class EmceeSampler(object):
             plt.show()
 
         return
+
+    def plot_igm_histories(self, nn=5000):
+        labs = [r"$\tau_\mathrm{eff}$", r"$\gamma$", r"$\sigma_T$", r"$k_F$"]
+
+        rand_sample = self.chain[
+            np.random.permutation(self.chain.shape[0])[:nn]
+        ]  # take a random sample of the chain
+
+        # fiducial IGM parameters
+        tau_eff_fid = self.like.theory.fid_igm["tau_eff"]
+        gamma_fid = self.like.theory.fid_igm["gamma"]
+        sigT_kms_fid = self.like.theory.fid_igm["sigT_kms"]
+        kF_kms_fid = self.like.theory.fid_igm["kF_kms"]
+
+        # best-fiiting IGM parameters
+        best_value = self.get_best_fit()
+        like_params = self.like.parameters_from_sampling_point(best_value)
+        models = self.like.theory.update_igm_models(like_params)
+
+        z = self.like.theory.fid_igm["z"]
+        tau_eff_best = models["F_model"].get_tau_eff(z)
+        gamma_best = models["T_model"].get_gamma(z)
+        sigT_kms_best = models["T_model"].get_sigT_kms(z)
+        kF_kms_best = models["P_model"].get_kF_kms(z)
+
+        # sample the chain to get errors on IGM parameters
+        res = {}
+        res["tau_eff"] = np.zeros((nn, len(z)))
+        res["gamma"] = np.zeros((nn, len(z)))
+        res["sigT_kms"] = np.zeros((nn, len(z)))
+        res["kF_kms"] = np.zeros((nn, len(z)))
+        for ii in range(nn):
+            like_params = self.like.parameters_from_sampling_point(
+                rand_sample[ii]
+            )
+            models = self.like.theory.update_igm_models(like_params)
+            res["tau_eff"][ii] = models["F_model"].get_tau_eff(z)
+            res["gamma"][ii] = models["T_model"].get_gamma(z)
+            res["sigT_kms"][ii] = models["T_model"].get_sigT_kms(z)
+            res["kF_kms"][ii] = models["P_model"].get_kF_kms(z)
+
+        # plot the IGM histories
+        fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
+        ax = ax.reshape(-1)
+
+        ax[0].plot(z, tau_eff_fid, "o:", label="fiducial")
+        err = np.abs(
+            np.percentile(res["tau_eff"], [16, 84], axis=0) - tau_eff_best
+        )
+        ax[0].errorbar(z, tau_eff_best, err, label="best-fitting")
+        ax[0].set_yscale("log")
+        ax[0].legend()
+
+        ax[1].plot(z, gamma_fid, "o:", label="fiducial")
+        err = np.abs(np.percentile(res["gamma"], [16, 84], axis=0) - gamma_best)
+        ax[1].errorbar(z, gamma_best, err, label="best-fitting")
+
+        ax[2].plot(z, sigT_kms_fid, "o:", label="fiducial")
+        err = np.abs(
+            np.percentile(res["sigT_kms"], [16, 84], axis=0) - sigT_kms_best
+        )
+        ax[2].errorbar(z, sigT_kms_best, err, label="best-fitting")
+
+        ax[3].plot(z, kF_kms_fid, "o:", label="fiducial")
+        err = np.abs(
+            np.percentile(res["kF_kms"], [16, 84], axis=0) - kF_kms_best
+        )
+        ax[3].errorbar(z, kF_kms_best, err, label="best-fitting")
+
+        for ii in 0, 1, 2, 3:
+            ax[ii].set_ylabel(labs[ii])
+        for ii in 2, 3:
+            ax[ii].set_xlabel(r"$z$")
+
+        plt.tight_layout()
+
+        if self.save_directory is not None:
+            plt.savefig(self.save_directory + "/IGM_histories.pdf")
+
+        return rand_sample
 
 
 ## Dictionary to convert likelihood parameters into latex strings

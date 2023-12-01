@@ -444,7 +444,13 @@ class Likelihood(object):
         )
 
     def plot_p1d(
-        self, values=None, plot_every_iz=1, residuals=False, plot_fname=None
+        self,
+        values=None,
+        plot_every_iz=1,
+        residuals=False,
+        plot_fname=None,
+        rand_posterior=None,
+        show=False,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
@@ -463,10 +469,16 @@ class Likelihood(object):
         emu_p1d, emu_cov = self.get_p1d_kms(
             k_emu_kms, values, return_covar=True
         )
-        like_params = self.parameters_from_sampling_point(values)
-        emu_calls = self.theory.get_emulator_calls(like_params)
-        if self.verbose:
-            print("got P1D from emulator")
+        if rand_posterior is not None:
+            rand_emu = np.zeros((rand_posterior.shape[0], Nz, len(k_emu_kms)))
+            for ii in range(rand_posterior.shape[0]):
+                rand_emu[ii] = self.get_p1d_kms(k_emu_kms, rand_posterior[ii])
+            err_posterior = np.std(rand_emu, axis=0)
+
+        # like_params = self.parameters_from_sampling_point(values)
+        # emu_calls = self.theory.get_emulator_calls(like_params)
+        # if self.verbose:
+        # print("got P1D from emulator")
 
         # plot only few redshifts for clarity
         for iz in range(0, Nz, plot_every_iz):
@@ -476,8 +488,11 @@ class Likelihood(object):
             p1d_cov = self.data.get_cov_iz(iz)
             p1d_err = np.sqrt(np.diag(p1d_cov))
             p1d_theory = emu_p1d[iz]
-            cov_theory = emu_cov[iz]
-            err_theory = np.sqrt(np.diag(cov_theory))
+            if rand_posterior is None:
+                cov_theory = emu_cov[iz]
+                err_theory = np.sqrt(np.diag(cov_theory))
+            else:
+                err_theory = err_posterior[iz]
 
             if p1d_theory is None:
                 if self.verbose:
@@ -503,7 +518,7 @@ class Likelihood(object):
                     yerr=p1d_err / model,
                     fmt="o",
                     ms="4",
-                    label="z=%.1f" % z,
+                    label="z=" + str(np.round(z, 2)),
                 )
                 ymin = min(ymin, min(p1d_data / model + yshift))
                 ymax = max(ymax, max(p1d_data / model + yshift))
@@ -528,7 +543,7 @@ class Likelihood(object):
                     yerr=p1d_err * k_kms / np.pi,
                     fmt="o",
                     ms="4",
-                    label="z=%.1f" % z,
+                    label="z=" + str(np.round(z, 2)),
                 )
                 plt.plot(
                     k_emu_kms,
@@ -562,7 +577,9 @@ class Likelihood(object):
         plt.tight_layout()
         if plot_fname:
             plt.savefig(plot_fname)
-        plt.show()
+
+        if show:
+            plt.show()
 
         return
 

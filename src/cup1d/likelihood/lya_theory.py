@@ -72,6 +72,7 @@ class Theory(object):
             self.emu_kp_Mpc = self.emulator.archive.kp_Mpc
 
         # load IGM history
+        self.sim_igm = sim_igm
         if sim_igm[:3] == "mpg":
             fname = (
                 os.environ["LACE_REPO"]
