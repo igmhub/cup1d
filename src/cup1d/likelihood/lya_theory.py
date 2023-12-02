@@ -31,6 +31,7 @@ class Theory(object):
         cosmo_fid=None,
         free_param_names=None,
         fid_sim_igm="mpg_central",
+        true_sim_igm=None,
     ):
         """Setup object to compute predictions for the 1D power spectrum.
         Inputs:
@@ -42,7 +43,8 @@ class Theory(object):
             - P_model_fid: fiducial pressure model
             - include_metals: list of metal labels to include
             - cosmo_fid: fiducial cosmology used for fixed parameters
-            - fid_sim_igm: name of the simulation from which we draw the IGM model
+            - fid_sim_igm: IGM model assumed
+            - true_sim_igm: if not None, true IGM model of the mock
         """
 
         self.verbose = verbose
@@ -69,40 +71,16 @@ class Theory(object):
 
         self.emu_kp_Mpc = self.emulator.archive.kp_Mpc
 
-        # load fiducial IGM history (not necessarily the true one)
+        # load fiducial IGM history (used for fitting)
         self.fid_sim_igm = fid_sim_igm
-        if fid_sim_igm[:3] == "mpg":
-            fname = (
-                os.environ["LACE_REPO"]
-                + "/src/lace/data/sim_suites/Australia20/IGM_histories.npy"
-            )
-        elif fid_sim_igm[:3] == "nyx":
-            fname = os.environ["NYX_PATH"] + "/IGM_histories.npy"
-        else:
-            raise ValueError("only mpg and nyx fid_sim_igm implemented")
+        self.fid_igm = self.get_igm(fid_sim_igm)
 
-        try:
-            igm_hist = np.load(fname, allow_pickle=True).item()
-        except:
-            raise ValueError(
-                fname
-                + "not found. You can produce it using LaCE"
-                + r"\n script save_"
-                + fid_sim_igm[:3]
-                + "_IGM.py"
-            )
+        # load true IGM history
+        if true_sim_igm is not None:
+            self.true_sim_igm = true_sim_igm
+            self.true_igm = self.get_igm(true_sim_igm)
         else:
-            if fid_sim_igm not in igm_hist:
-                raise ValueError(
-                    fid_sim_igm
-                    + " not found in "
-                    + fname
-                    + r"\n Check out the LaCE script save_"
-                    + fid_sim_igm[:3]
-                    + "_IGM.py"
-                )
-            else:
-                self.fid_igm = igm_hist[fid_sim_igm]
+            self.true_sim_igm = None
 
         # setup fiducial cosmology
         if not cosmo_fid:
@@ -143,6 +121,20 @@ class Theory(object):
         self.T_model_emcee = copy.deepcopy(self.T_model_fid)
         self.P_model_emcee = copy.deepcopy(self.P_model_fid)
 
+        # if self.true_sim_igm is not None:
+        #     self.F_model_true = mean_flux_model.MeanFluxModel(
+        #         free_param_names=free_param_names,
+        #         fid_igm=self.true_igm,
+        #     )
+        #     self.T_model_true = thermal_model.ThermalModel(
+        #         free_param_names=free_param_names,
+        #         fid_igm=self.true_igm,
+        #     )
+        #     self.P_model_true = pressure_model.PressureModel(
+        #         free_param_names=free_param_names,
+        #         fid_igm=self.true_igm,
+        #     )
+
         # check whether we want to include metal contamination models
         self.metal_models = []
         for metal_label in include_metals:
@@ -178,6 +170,43 @@ class Theory(object):
                 return False
 
         return True
+
+    def get_igm(self, sim_igm):
+        """Load IGM history"""
+        if sim_igm[:3] == "mpg":
+            fname = (
+                os.environ["LACE_REPO"]
+                + "/src/lace/data/sim_suites/Australia20/IGM_histories.npy"
+            )
+        elif sim_igm[:3] == "nyx":
+            fname = os.environ["NYX_PATH"] + "/IGM_histories.npy"
+        else:
+            raise ValueError("only mpg and nyx sim_igm implemented")
+
+        try:
+            igm_hist = np.load(fname, allow_pickle=True).item()
+        except:
+            raise ValueError(
+                fname
+                + "not found. You can produce it using LaCE"
+                + r"\n script save_"
+                + sim_igm[:3]
+                + "_IGM.py"
+            )
+        else:
+            if sim_igm not in igm_hist:
+                raise ValueError(
+                    sim_igm
+                    + " not found in "
+                    + fname
+                    + r"\n Check out the LaCE script save_"
+                    + sim_igm[:3]
+                    + "_IGM.py"
+                )
+            else:
+                fid_igm = igm_hist[sim_igm]
+
+        return fid_igm
 
     def get_linP_Mpc_params_from_fiducial(self, like_params):
         """Recycle linP_Mpc_params from fiducial model, when only varying

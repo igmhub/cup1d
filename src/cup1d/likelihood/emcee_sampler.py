@@ -26,7 +26,6 @@ from cup1d.likelihood import likelihood
 def purge_chains(ln_prop_chains, nsplit=7, abs_diff=5):
     """Purge emcee chains that have not converged"""
     minval = np.median(ln_prop_chains) - 10
-    print(minval)
     # split each walker in nsplit chunks
     split_arr = np.array_split(ln_prop_chains, nsplit, axis=0)
     # compute median of each chunck
@@ -139,7 +138,7 @@ class EmceeSampler(object):
             self.truth[param_string] = like_truth[param]
 
         # when using the IGM history of the analyzed simulation set to zero
-        if self.like.data.sim_label == self.like.theory.sim_igm:
+        if self.like.data.input_sim == self.like.theory.fid_sim_igm:
             for param in self.like.free_params[2:]:
                 param_string = param_dict[param.name]
                 self.truth[param_string] = 0
@@ -265,7 +264,7 @@ class EmceeSampler(object):
         self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
         self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
 
-        return
+        return sampler
 
     def resume_sampler(
         self, max_steps, log_func=None, timeout=None, force_timeout=False
@@ -387,7 +386,7 @@ class EmceeSampler(object):
         # mask walkers not converged
         mask, _ = purge_chains(self.lnprob)
         lnprob = self.lnprob[:, mask].reshape(-1)
-        chain = self.chain[:, mask, :].reshape(-1, chain.shape[-1])
+        chain = self.chain[:, mask, :].reshape(-1, self.chain.shape[-1])
         blobs = self.blobs[:, mask].reshape(-1)
 
         if delta_lnprob_cut:
@@ -577,7 +576,7 @@ class EmceeSampler(object):
             # we can get the archive from the emulator (should be consistent)
             data = data_gadget.Gadget_P1D(
                 archive=emulator.archive,
-                sim_label=sim_label,
+                input_sim=sim_label,
                 z_max=zmax,
                 data_cov_factor=config["data_cov_factor"],
                 data_cov_label=data_cov_label,
@@ -588,7 +587,7 @@ class EmceeSampler(object):
             if "extra_p1d_label" in config:
                 extra_data = data_gadget.Gadget_P1D(
                     archive=emulator.archive,
-                    sim_label=sim_label,
+                    input_sim=sim_label,
                     z_max=config["extra_p1d_zmax"],
                     data_cov_label=config["extra_p1d_label"],
                     polyfit_kmax_Mpc=emulator.kmax_Mpc,
@@ -608,7 +607,7 @@ class EmceeSampler(object):
                 data_cov_label = config["data_cov_label"]
             data = data_nyx.Nyx_P1D(
                 archive=emulator.archive,
-                sim_label=sim_label,
+                input_sim=sim_label,
                 z_max=zmax,
                 data_cov_factor=config["data_cov_factor"],
                 data_cov_label=data_cov_label,
@@ -619,7 +618,7 @@ class EmceeSampler(object):
             if "extra_p1d_label" in config:
                 extra_data = data_nyx.Nyx_P1D(
                     archive=emulator.archive,
-                    sim_label=sim_label,
+                    input_sim=sim_label,
                     z_max=config["extra_p1d_zmax"],
                     data_cov_label=config["extra_p1d_label"],
                     polyfit_kmax_Mpc=emulator.kmax_Mpc,
@@ -782,13 +781,13 @@ class EmceeSampler(object):
         if isinstance(self.like.data, data_gadget.Gadget_P1D):
             # using a data_gadget P1D (from Gadget sim)
             saveDict["data_type"] = "gadget"
-            saveDict["data_sim_label"] = self.like.data.sim_label
+            saveDict["data_sim_label"] = self.like.data.input_sim
             saveDict["data_cov_label"] = self.like.data.data_cov_label
             saveDict["data_cov_factor"] = self.like.data.data_cov_factor
         elif isinstance(self.like.data, data_nyx.Nyx_P1D):
             # using a data_nyx P1D (from Nyx sim)
             saveDict["data_type"] = "nyx"
-            saveDict["data_sim_label"] = self.like.data.sim_label
+            saveDict["data_sim_label"] = self.like.data.input_sim
             saveDict["data_cov_label"] = self.like.data.data_cov_label
             saveDict["data_cov_factor"] = self.like.data.data_cov_factor
         elif hasattr(self.like.data, "theory"):
@@ -848,22 +847,23 @@ class EmceeSampler(object):
         except:
             print("Can't plot lnprob")
         try:
-            for stat_best_fit in ["mean", "median", "mle"]:
-                self.plot_best_fit(
-                    residuals=residuals, stat_best_fit=stat_best_fit
-                )
+            self.plot_best_fit(residuals=residuals, stat_best_fit="mean")
         except:
             print("Can't plot best fit")
         try:
-            rand_posterior = self.plot_igm_histories(stat_best_fit="mle")
+            for stat_best_fit in ["mean", "mle"]:
+                rand_posterior = self.plot_igm_histories(
+                    stat_best_fit=stat_best_fit
+                )
         except:
             print("Can't plot IGM histories")
         try:
-            self.plot_best_fit(
-                residuals=residuals,
-                rand_posterior=rand_posterior,
-                stat_best_fit="mle",
-            )
+            for stat_best_fit in ["mean", "mle"]:
+                self.plot_best_fit(
+                    residuals=residuals,
+                    rand_posterior=rand_posterior,
+                    stat_best_fit=stat_best_fit,
+                )
         except:
             print("Can't plot best fit")
         try:
@@ -981,7 +981,7 @@ class EmceeSampler(object):
             "Using "
             + str(mask.shape[0])
             + " chains out of "
-            + str(lnprob.shape[1])
+            + str(self.lnprob.shape[1])
         )
 
         for ii in range(self.lnprob.shape[1]):
@@ -1053,52 +1053,62 @@ class EmceeSampler(object):
 
         return
 
-    def plot_igm_histories(self, nn=5000, stat_best_fit="mle"):
+    def plot_igm_histories(
+        self, nn=5000, stat_best_fit="mle", delta_lnprob_cut=None
+    ):
         """Plot IGM histories"""
 
         chain, lnprob, blobs = self.get_chain(delta_lnprob_cut=delta_lnprob_cut)
         mask = np.random.permutation(chain.shape[0])[:nn]
         rand_sample = chain[mask]
 
-        # fiducial IGM parameters
-        tau_eff_fid = self.like.theory.fid_igm["tau_eff"]
-        gamma_fid = self.like.theory.fid_igm["gamma"]
-        sigT_kms_fid = self.like.theory.fid_igm["sigT_kms"]
-        kF_kms_fid = self.like.theory.fid_igm["kF_kms"]
+        z = self.like.theory.fid_igm["z"]
 
-        # best-fiiting IGM parameters
+        # true IGM parameters
+        pars_true = {}
+        pars_true["tau_eff"] = self.like.theory.true_igm["tau_eff"]
+        pars_true["gamma"] = self.like.theory.true_igm["gamma"]
+        pars_true["sigT_kms"] = self.like.theory.true_igm["sigT_kms"]
+        pars_true["kF_kms"] = self.like.theory.true_igm["kF_kms"]
+
+        # fiducial IGM parameters
+        pars_fid = {}
+        pars_fid["tau_eff"] = self.like.theory.fid_igm["tau_eff"]
+        pars_fid["gamma"] = self.like.theory.fid_igm["gamma"]
+        pars_fid["sigT_kms"] = self.like.theory.fid_igm["sigT_kms"]
+        pars_fid["kF_kms"] = self.like.theory.fid_igm["kF_kms"]
+
+        # best-fitting IGM parameters
         best_value = self.get_best_fit(stat_best_fit=stat_best_fit)
         like_params = self.like.parameters_from_sampling_point(best_value)
         models = self.like.theory.update_igm_models(like_params)
 
-        z = self.like.theory.fid_igm["z"]
-        tau_eff_best = models["F_model"].get_tau_eff(z)
-        gamma_best = models["T_model"].get_gamma(z)
-        sigT_kms_best = models["T_model"].get_sigT_kms(z)
-        kF_kms_best = models["P_model"].get_kF_kms(z)
+        pars_best = {}
+        pars_best["tau_eff"] = models["F_model"].get_tau_eff(z)
+        pars_best["gamma"] = models["T_model"].get_gamma(z)
+        pars_best["sigT_kms"] = models["T_model"].get_sigT_kms(z)
+        pars_best["kF_kms"] = models["P_model"].get_kF_kms(z)
 
         # sample the chain to get errors on IGM parameters
-        res = {}
-        res["tau_eff"] = np.zeros((nn, len(z)))
-        res["gamma"] = np.zeros((nn, len(z)))
-        res["sigT_kms"] = np.zeros((nn, len(z)))
-        res["kF_kms"] = np.zeros((nn, len(z)))
+        pars_samp = {}
+        pars_samp["tau_eff"] = np.zeros((nn, len(z)))
+        pars_samp["gamma"] = np.zeros((nn, len(z)))
+        pars_samp["sigT_kms"] = np.zeros((nn, len(z)))
+        pars_samp["kF_kms"] = np.zeros((nn, len(z)))
         for ii in range(nn):
             like_params = self.like.parameters_from_sampling_point(
                 rand_sample[ii]
             )
             models = self.like.theory.update_igm_models(like_params)
-            res["tau_eff"][ii] = models["F_model"].get_tau_eff(z)
-            res["gamma"][ii] = models["T_model"].get_gamma(z)
-            res["sigT_kms"][ii] = models["T_model"].get_sigT_kms(z)
-            res["kF_kms"][ii] = models["P_model"].get_kF_kms(z)
+            pars_samp["tau_eff"][ii] = models["F_model"].get_tau_eff(z)
+            pars_samp["gamma"][ii] = models["T_model"].get_gamma(z)
+            pars_samp["sigT_kms"][ii] = models["T_model"].get_sigT_kms(z)
+            pars_samp["kF_kms"][ii] = models["P_model"].get_kF_kms(z)
 
         # plot the IGM histories
         fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
         ax = ax.reshape(-1)
 
-        arr_pars_fid = [tau_eff_fid, gamma_fid, sigT_kms_fid, kF_kms_fid]
-        arr_pars_best = [tau_eff_best, gamma_best, sigT_kms_best, kF_kms_best]
         arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
         latex_labs = [
             r"$\tau_\mathrm{eff}$",
@@ -1108,12 +1118,16 @@ class EmceeSampler(object):
         ]
 
         for ii in range(len(arr_labs)):
-            ax[ii].plot(z, arr_pars_fid[ii], "o:", label="fiducial")
+            if self.like.theory.true_sim_igm is not None:
+                ax[ii].plot(z, pars_true[arr_labs[ii]], "o:", label="true")
+            ax[ii].plot(z, pars_fid[arr_labs[ii]], "s--", label="fiducial")
             err = np.abs(
-                np.percentile(res[arr_labs[ii]], [16, 84], axis=0)
-                - arr_pars_best[ii]
+                np.percentile(pars_samp[arr_labs[ii]], [16, 84], axis=0)
+                - pars_best[arr_labs[ii]]
             )
-            ax[ii].errorbar(z, arr_pars_best[ii], err, label="best-fitting")
+            ax[ii].errorbar(
+                z, pars_best[arr_labs[ii]], err, label="best-fitting"
+            )
 
             ax[ii].set_ylabel(latex_labs[ii])
             if ii == 0:
