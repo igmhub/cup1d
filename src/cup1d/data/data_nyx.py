@@ -9,6 +9,7 @@ from cup1d.data import data_Chabanier2019
 from cup1d.data import data_QMLE_Ohio
 from cup1d.data import data_Karacayli2022
 
+
 class Nyx_P1D(BaseMockP1D):
     """Class to load a Nyx simulation as a mock data object.
     Can use PD2013 or Chabanier2019 covmats"""
@@ -59,14 +60,8 @@ class Nyx_P1D(BaseMockP1D):
                 archive.list_sim,
             )
 
-        # read P1D from simulation (nyx_central needs a hack)
-        if input_sim == "nyx_central":
-            ind_rescaling = 1  # fiducial rescaling not available
-        else:
-            ind_rescaling = None
-        self.testing_data = archive.get_testing_data(
-            input_sim, ind_rescaling=ind_rescaling, z_max=z_max
-        )
+        # read P1D from simulation
+        self.testing_data = archive.get_testing_data(input_sim, z_max=z_max)
         if len(self.testing_data) == 0:
             raise ValueError("could not set testing data", input_sim)
 
@@ -79,7 +74,7 @@ class Nyx_P1D(BaseMockP1D):
 
         # setup base class
         super().__init__(self, z, k, Pk, cov, add_noise=add_noise, seed=seed)
-        
+
         return
 
     def _load_p1d(self):
