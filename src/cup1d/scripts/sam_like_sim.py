@@ -49,6 +49,13 @@ def parse_args():
         required=True,
     )
     parser.add_argument(
+        "--igm_sim_label",
+        default=None,
+        type=str,
+        required=True,
+    )
+
+    parser.add_argument(
         "--drop_sim",
         default="False",
         choices=["True", "False"],
@@ -332,32 +339,23 @@ def sam_like_sim(args):
             z_min = 2
             z_max = 4.5
             # z_max = np.max(archive.list_sim_redshifts)
-            sim_igm = "mpg"
-            emu_type = "gp"
         elif args.training_set == "Cabayol23":
             archive = gadget_archive.GadgetArchive(postproc=args.training_set)
             set_P1D = data_gadget.Gadget_P1D
             z_min = 2
             z_max = 4.5
             # z_max = np.max(archive.list_sim_redshifts)
-            sim_igm = "mpg"
-            emu_type = "nn"
         elif args.training_set[:5] == "Nyx23":
             archive = nyx_archive.NyxArchive(nyx_version=args.training_set[6:])
             set_P1D = data_nyx.Nyx_P1D
             z_min = 2.2
             z_max = 4.5
             # z_max = np.max(archive.list_sim_redshifts)
-            sim_igm = "nyx"
-            emu_type = "nn"
         else:
             raise ValueError("Training_set not implemented")
     else:
         archive = args.archive
-        z_min = args.z_min
         z_max = args.z_max
-        sim_igm = args.sim_igm
-        emu_type = args.emu_type
         set_P1D = args.set_P1D
 
     if args.test_sim_label not in archive.list_sim:
@@ -403,8 +401,8 @@ def sam_like_sim(args):
     # set target P1D
     data = set_P1D(
         archive=archive,
-        sim_label=args.test_sim_label,
-        z_min=z_min,
+        input_sim=args.test_sim_label,
+        # z_min=z_min,
         z_max=z_max,
         data_cov_label=args.cov_label,
         polyfit_kmax_Mpc=polyfit_kmax_Mpc,
@@ -413,8 +411,8 @@ def sam_like_sim(args):
     if args.add_hires:
         extra_data = set_P1D(
             archive=archive,
-            sim_label=args.test_sim_label,
-            z_min=z_min,
+            input_sim=args.test_sim_label,
+            # z_min=z_min,
             z_max=z_max,
             data_cov_label="Karacayli2022",
             polyfit_kmax_Mpc=polyfit_kmax_Mpc,
@@ -439,8 +437,8 @@ def sam_like_sim(args):
         zs=data.z,
         emulator=emulator,
         free_param_names=free_parameters,
-        sim_igm=sim_igm,
-        emu_type=emu_type,
+        fid_sim_igm=args.igm_sim_label,
+        true_sim_igm=args.test_sim_label,
     )
     ## set like
     like = likelihood.Likelihood(
