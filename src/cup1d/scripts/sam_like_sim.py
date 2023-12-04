@@ -239,7 +239,7 @@ def path_sampler(args):
     else:
         flag_hires = "lres"
 
-    path = os.path.dirname(os.environ["CUP1D_PATH"]) + "/data/"
+    path = os.environ["LYA_DATA_PATH"]
     if os.path.isdir(path) == False:
         os.mkdir(path)
     path += "cup1d/"
