@@ -39,6 +39,7 @@ class ThermalModel(object):
                 )
             else:
                 fid_igm = igm_hist["mpg_central"]
+        self.fid_igm = fid_igm
 
         mask = fid_igm["gamma"] != 0
         if np.sum(mask) != fid_igm["gamma"].shape[0]:
@@ -242,7 +243,7 @@ class ThermalModel(object):
         """Return copy of model, updating values from list of parameters"""
 
         T = ThermalModel(
-            fid_fname=self.fid_fname,
+            fid_igm=self.fid_igm,
             z_T=self.z_T,
             ln_sigT_kms_coeff=copy.deepcopy(self.ln_sigT_kms_coeff),
             ln_gamma_coeff=copy.deepcopy(self.ln_gamma_coeff),

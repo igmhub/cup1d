@@ -67,7 +67,7 @@ class Theory(object):
             self.call_emulator = self.emulator.emulate_arr_p1d_Mpc
         else:
             self.get_emulator_calls = self.get_emulator_calls_gp
-            self.call_emulator = self.emulator.emulate_p1d_Mpc
+            self.call_emulator = self.emulate_arr_p1d_Mpc_gp
 
         self.emu_kp_Mpc = self.emulator.archive.kp_Mpc
 
@@ -170,6 +170,32 @@ class Theory(object):
                 return False
 
         return True
+
+    def emulate_arr_p1d_Mpc_gp(
+        self, model, logk_Mpc, return_covar=False, z=None
+    ):
+        """Wrapper for emulator calls for GP emulator (workaroud should be move to LaCE)"""
+
+        p1d = []
+        cov_p1d = []
+        k_Mpc = 10**logk_Mpc
+        for ii in range(len(model)):
+            if return_covar:
+                _p1d, _cov_p1d = self.emulator.emulate_p1d_Mpc(
+                    model[ii], k_Mpc[ii], z=z[ii], return_covar=return_covar
+                )
+                p1d.append(_p1d)
+                cov_p1d.append(_cov_p1d)
+            else:
+                p1d.append(
+                    self.emulator.emulate_p1d_Mpc(
+                        model[ii], k_Mpc[ii], z=z[ii], return_covar=return_covar
+                    )
+                )
+        if return_covar:
+            return p1d, cov_p1d
+        else:
+            return p1d
 
     def get_igm(self, sim_igm):
         """Load IGM history"""
@@ -543,11 +569,12 @@ class Theory(object):
                 else:
                     covars.append(cov_Mpc[iz] * M_of_z[iz] ** 2)
 
+        ind = np.argwhere((np.array(self.emulator.emu_params) == "mF"))[0, 0]
         # include multiplicate metal contamination
         for X_model_fid in self.metal_models:
             X_model = X_model_fid.get_new_model(like_params)
             for iz, z in enumerate(self.zs):
-                mF = emu_calls[iz]["mF"]
+                mF = emu_calls[iz][ind]
                 cont = X_model.get_contamination(z=z, k_kms=k_kms, mF=mF)
                 p1d_kms[iz] *= cont
 

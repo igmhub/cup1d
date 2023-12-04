@@ -37,6 +37,7 @@ class PressureModel(object):
                 )
             else:
                 fid_igm = igm_hist["mpg_central"]
+        self.fid_igm = fid_igm
 
         mask = fid_igm["tau_eff"] != 0
         if np.sum(mask) != fid_igm["tau_eff"].shape[0]:
@@ -150,7 +151,7 @@ class PressureModel(object):
         """Return copy of model, updating values from list of parameters"""
 
         kF = PressureModel(
-            fid_fname=self.fid_fname,
+            fid_igm=self.fid_igm,
             z_kF=self.z_kF,
             ln_kF_coeff=copy.deepcopy(self.ln_kF_coeff),
         )

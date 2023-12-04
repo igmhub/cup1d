@@ -73,7 +73,7 @@ class Nyx_P1D(BaseMockP1D):
         z, k, Pk, cov = self._load_p1d()
 
         # setup base class
-        super().__init__(self, z, k, Pk, cov, add_noise=add_noise, seed=seed)
+        super().__init__(z, k, Pk, cov, add_noise=add_noise, seed=seed)
 
         return
 

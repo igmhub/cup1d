@@ -5,6 +5,7 @@ from cup1d.data import data_Karacayli2022
 from cup1d.data import data_QMLE_Ohio
 from cup1d.likelihood import lya_theory
 
+
 class Mock_P1D(BaseMockP1D):
     """Class to generate a mock P1D from another P1D object and a theory"""
 
@@ -16,6 +17,7 @@ class Mock_P1D(BaseMockP1D):
         zmax=4.5,
         add_noise=False,
         seed=0,
+        fid_sim_igm="mpg_central",
         **kwargs
     ):
         """Copy data and replace P1D signal using theory
@@ -40,7 +42,9 @@ class Mock_P1D(BaseMockP1D):
             print("Using default emulator: Pedersen21")
 
         # setup and store theory (we will need it later)
-        self.theory = lya_theory.Theory(zs=data.z, emulator=emulator)
+        self.theory = lya_theory.Theory(
+            zs=data.z, emulator=emulator, fid_sim_igm=fid_sim_igm
+        )
 
         # at each z will update value of p1d
         Pk_kms = data.Pk_kms.copy()

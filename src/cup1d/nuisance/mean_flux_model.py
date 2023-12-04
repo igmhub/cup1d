@@ -35,6 +35,7 @@ class MeanFluxModel(object):
                 )
             else:
                 fid_igm = igm_hist["mpg_central"]
+        self.fid_igm = fid_igm
 
         mask = fid_igm["tau_eff"] != 0
         if np.sum(mask) != fid_igm["tau_eff"].shape[0]:
@@ -142,7 +143,7 @@ class MeanFluxModel(object):
         """Return copy of model, updating values from list of parameters"""
 
         mf = MeanFluxModel(
-            fid_fname=self.fid_fname,
+            fid_igm=self.fid_igm,
             z_tau=self.z_tau,
             ln_tau_coeff=copy.deepcopy(self.ln_tau_coeff),
         )
