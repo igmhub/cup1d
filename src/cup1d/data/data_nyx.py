@@ -60,14 +60,8 @@ class Nyx_P1D(BaseMockP1D):
                 archive.list_sim,
             )
 
-        # read P1D from simulation (nyx_central needs a hack)
-        if input_sim == "nyx_central":
-            ind_rescaling = 1  # fiducial rescaling not available
-        else:
-            ind_rescaling = None
-        self.testing_data = archive.get_testing_data(
-            input_sim, ind_rescaling=ind_rescaling, z_max=z_max
-        )
+        # read P1D from simulation
+        self.testing_data = archive.get_testing_data(input_sim, z_max=z_max)
         if len(self.testing_data) == 0:
             raise ValueError("could not set testing data", input_sim)
 
@@ -79,7 +73,9 @@ class Nyx_P1D(BaseMockP1D):
         z, k, Pk, cov = self._load_p1d()
 
         # setup base class
-        super().__init__(self, z, k, Pk, cov, add_noise=add_noise, seed=seed)
+        super().__init__(z, k, Pk, cov, add_noise=add_noise, seed=seed)
+
+        return
 
     def _load_p1d(self):
         # figure out dataset to mimic
@@ -136,7 +132,7 @@ class Nyx_P1D(BaseMockP1D):
                 sim_p1d_Mpc = sim_p1d_Mpc[1:]
 
             # use polyfit instead of actual P1D from sim (unless asked not to)
-            if self.polyfit_ndeg == None or self.polyfit_kmax_Mpc == None:
+            if (self.polyfit_ndeg is None) or (self.polyfit_kmax_Mpc is None):
                 # evaluate P1D in data wavenumbers (in velocity units)
                 interp_sim_Mpc = interp1d(sim_k_Mpc, sim_p1d_Mpc, "cubic")
                 sim_p1d_kms = interp_sim_Mpc(data_k_Mpc) * dkms_dMpc

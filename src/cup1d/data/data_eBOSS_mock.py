@@ -22,6 +22,8 @@ class P1D_eBOSS_mock(BaseMockP1D):
         - diag_cov: for now, use diagonal covariance
         - kmax_kms: limit to low-k where we trust emulator"""
 
+        self.input_sim = input_sim
+
         # read redshifts, wavenumbers, power spectra and covariance matrices
         z, k, Pk, cov = read_from_file(diag_cov, input_sim, kmax_kms=kmax_kms)
 

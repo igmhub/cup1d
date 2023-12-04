@@ -9,7 +9,6 @@ from cup1d.data import data_Chabanier2019
 from cup1d.data import data_QMLE_Ohio
 from cup1d.data import data_Karacayli2022
 
-
 class Gadget_P1D(BaseMockP1D):
     """Class to load an MP-Gadget simulation as a mock data object.
     Can use PD2013 or Chabanier2019 covmats"""
