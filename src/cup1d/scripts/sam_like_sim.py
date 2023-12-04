@@ -291,7 +291,7 @@ def sample(args, like, free_parameters):
     _ = sampler.run_sampler(
         args.n_burn_in, args.n_steps, log_func=_log_prob, parallel=True
     )
-    sampler.write_chain_to_file(plots=False)
+    sampler.write_chain_to_file()
 
 
 def sam_like_sim(args):
