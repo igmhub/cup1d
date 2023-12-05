@@ -10,6 +10,11 @@ from cup1d.data import data_gadget, data_nyx
 from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
 
 
+def fprint(*args, verbose=True):
+    if(verbose)
+        print(*args, flush=True)
+
+
 def parse_args():
     def str_to_bool(s):
         if s == "True":
@@ -125,13 +130,13 @@ def parse_args():
     #######################
     # print args
     args = parser.parse_args()
-    print("--- print options from parser ---")
-    print(args)
-    # print("----------")
-    # print(parser.format_help())
-    print("----------")
-    print(parser.format_values())
-    print("----------")
+    fprint("--- print options from parser ---")
+    fprint(args)
+    # fprint("----------")
+    # fprint(parser.format_help())
+    fprint("----------")
+    fprint(parser.format_values())
+    fprint("----------")
 
     args.drop_sim = str_to_bool(args.drop_sim)
     args.add_hires = str_to_bool(args.add_hires)
@@ -143,11 +148,11 @@ def parse_args():
     # # set output dir
     # if args.rootdir:
     #     rootdir = args.rootdir
-    #     print("set input rootdir", rootdir)
+    #     fprint("set input rootdir", rootdir)
     # else:
     #
     #     rootdir = os.environ["CUP1D_PATH"] + "/chains/"
-    #     print("use default rootdir", rootdir)
+    #     fprint("use default rootdir", rootdir)
     return args
 
 
@@ -186,7 +191,7 @@ def load_emu(
             _drop_sim = test_sim_label
         else:
             _drop_sim = None
-        print("Training emulator " + emulator_label)
+        fprint("Training emulator " + emulator_label)
         emulator = GPEmulator(
             training_set=label_training_set,
             emulator_label=emulator_label,
@@ -203,7 +208,7 @@ def load_emu(
         ):
             pass
         else:
-            print(
+            fprint(
                 "Combination of training_set ("
                 + label_training_set
                 + ") and emulator_label ("
@@ -219,7 +224,7 @@ def load_emu(
             _drop_sim = test_sim_label
         else:
             _drop_sim = None
-        print("Loading emulator " + emulator_label)
+        fprint("Loading emulator " + emulator_label)
         emulator = NNEmulator(
             archive=archive,
             training_set=label_training_set,
@@ -311,8 +316,8 @@ def sam_like_sim(args):
     #######################
     # load training set
     start = time.time()
-    print("----------")
-    print("Setting training set " + args.training_set)
+    fprint("----------")
+    fprint("Setting training set " + args.training_set)
 
     args.n_steps = 1000
     if args.cov_label == "Chabanier2019":
@@ -359,18 +364,18 @@ def sam_like_sim(args):
         set_P1D = args.set_P1D
 
     if args.test_sim_label not in archive.list_sim:
-        print(args.test_sim_label + " is not in part of " + args.training_set)
-        print("List of simulations available: ", archive.list_sim)
+        fprint(args.test_sim_label + " is not in part of " + args.training_set)
+        fprint("List of simulations available: ", archive.list_sim)
         sys.exit()
     end = time.time()
     multi_time = str(np.round(end - start, 2))
-    print("z in range ", z_min, ", ", z_max)
-    print("Training set loaded " + multi_time + " s")
+    fprint("z in range ", z_min, ", ", z_max)
+    fprint("Training set loaded " + multi_time + " s")
 
     #######################
     # set emulator
-    print("----------")
-    print("Setting emulator")
+    fprint("----------")
+    fprint("Setting emulator")
     start = time.time()
     if args.drop_sim:
         ## only drop sim if it was in the training set
@@ -388,7 +393,7 @@ def sam_like_sim(args):
         _drop_sim,
     )
     multi_time = str(np.round(time.time() - start, 2))
-    print("Emulator loaded " + multi_time + " s")
+    fprint("Emulator loaded " + multi_time + " s")
 
     if args.use_polyfit:
         polyfit_kmax_Mpc = emulator.kmax_Mpc
@@ -424,14 +429,14 @@ def sam_like_sim(args):
     #######################
     # set likelihood
     ## set cosmo free parameters
-    print("----------")
-    print("Set likelihood")
+    fprint("----------")
+    fprint("Set likelihood")
     free_parameters = ["As", "ns"]
-    print("Using {} parameters for IGM model".format(args.n_igm))
+    fprint("Using {} parameters for IGM model".format(args.n_igm))
     for ii in range(args.n_igm):
         for par in ["tau", "sigT_kms", "gamma", "kF"]:
             free_parameters.append("ln_{}_{}".format(par, ii))
-    print("free parameters", free_parameters)
+    fprint("free parameters", free_parameters)
     ## set theory
     theory = lya_theory.Theory(
         zs=data.z,
@@ -452,18 +457,18 @@ def sam_like_sim(args):
 
     #######################
     # sample likelihood
-    print("----------")
-    print("Sampler")
+    fprint("----------")
+    fprint("Sampler")
     start = time.time()
     sample(args, like, free_parameters)
     multi_time = str(np.round(time.time() - start, 2))
-    print("Sample in " + multi_time + " s")
-    print("")
-    print("")
+    fprint("Sample in " + multi_time + " s")
+    fprint("")
+    fprint("")
     multi_time = str(np.round(time.time() - start_all, 2))
-    print("Program took " + multi_time + " s")
-    print("")
-    print("")
+    fprint("Program took " + multi_time + " s")
+    fprint("")
+    fprint("")
 
 
 if __name__ == "__main__":
