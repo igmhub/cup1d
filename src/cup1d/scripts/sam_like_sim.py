@@ -109,15 +109,13 @@ def parse_args():
 
     parser.add_argument(
         "--verbose",
-        default=True,
-        choices=[True, False],
+        action="store_false",
         help="print information",
     )
 
     parser.add_argument(
         "--test",
-        default=False,
-        choices=[True, False],
+        action="store_true",
         help="Run test job",
     )
     # not implemented yet!
@@ -144,11 +142,11 @@ def parse_args():
     #######################
     # print args
     args = parser.parse_args()
-    fprint("--- print options from parser ---", args.verbose)
-    fprint(args, args.verbose)
-    fprint("----------", args.verbose)
-    fprint(parser.format_values(), args.verbose)
-    fprint("----------", args.verbose)
+    fprint("--- print options from parser ---", verbose=args.verbose)
+    fprint(args, verbose=args.verbose)
+    fprint("----------", verbose=args.verbose)
+    fprint(parser.format_values(), verbose=args.verbose)
+    fprint("----------", verbose=args.verbose)
 
     args.drop_sim = str_to_bool(args.drop_sim)
     args.add_hires = str_to_bool(args.add_hires)
@@ -195,7 +193,7 @@ def load_emu(
             _drop_sim = test_sim_label
         else:
             _drop_sim = None
-        fprint("Training emulator " + emulator_label, args.verbose)
+        fprint("Training emulator " + emulator_label, verbose=args.verbose)
         emulator = GPEmulator(
             training_set=label_training_set,
             emulator_label=emulator_label,
@@ -228,7 +226,7 @@ def load_emu(
             _drop_sim = test_sim_label
         else:
             _drop_sim = None
-        fprint("Loading emulator " + emulator_label, args.verbose)
+        fprint("Loading emulator " + emulator_label, verbose=args.verbose)
         emulator = NNEmulator(
             archive=archive,
             training_set=label_training_set,
@@ -320,8 +318,8 @@ def sam_like_sim(args):
     #######################
     # load training set
     start = time.time()
-    fprint("----------", args.verbose)
-    fprint("Setting training set " + args.training_set, args.verbose)
+    fprint("----------", verbose=args.verbose)
+    fprint("Setting training set " + args.training_set, verbose=args.verbose)
 
     args.n_steps = 1000
     if args.cov_label == "Chabanier2019":
@@ -374,21 +372,23 @@ def sam_like_sim(args):
     if args.test_sim_label not in archive.list_sim:
         fprint(
             args.test_sim_label + " is not in part of " + args.training_set,
-            args.verbose,
+            verbose=args.verbose,
         )
         fprint(
-            "List of simulations available: ", archive.list_sim, args.verbose
+            "List of simulations available: ",
+            archive.list_sim,
+            verbose=args.verbose,
         )
         sys.exit()
     end = time.time()
     multi_time = str(np.round(end - start, 2))
-    fprint("z in range ", z_min, ", ", z_max, args.verbose)
-    fprint("Training set loaded " + multi_time + " s", args.verbose)
+    fprint("z in range ", z_min, ", ", z_max, verbose=args.verbose)
+    fprint("Training set loaded " + multi_time + " s", verbose=args.verbose)
 
     #######################
     # set emulator
-    fprint("----------", args.verbose)
-    fprint("Setting emulator", args.verbose)
+    fprint("----------", verbose=args.verbose)
+    fprint("Setting emulator", verbose=args.verbose)
     start = time.time()
     if args.drop_sim:
         ## only drop sim if it was in the training set
@@ -406,7 +406,7 @@ def sam_like_sim(args):
         _drop_sim,
     )
     multi_time = str(np.round(time.time() - start, 2))
-    fprint("Emulator loaded " + multi_time + " s", args.verbose)
+    fprint("Emulator loaded " + multi_time + " s", verbose=args.verbose)
 
     if args.use_polyfit:
         polyfit_kmax_Mpc = emulator.kmax_Mpc
@@ -442,14 +442,17 @@ def sam_like_sim(args):
     #######################
     # set likelihood
     ## set cosmo free parameters
-    fprint("----------", args.verbose)
-    fprint("Set likelihood", args.verbose)
+    fprint("----------", verbose=args.verbose)
+    fprint("Set likelihood", verbose=args.verbose)
     free_parameters = ["As", "ns"]
-    fprint("Using {} parameters for IGM model".format(args.n_igm), args.verbose)
+    fprint(
+        "Using {} parameters for IGM model".format(args.n_igm),
+        verbose=args.verbose,
+    )
     for ii in range(args.n_igm):
         for par in ["tau", "sigT_kms", "gamma", "kF"]:
             free_parameters.append("ln_{}_{}".format(par, ii))
-    fprint("free parameters", free_parameters, args.verbose)
+    fprint("free parameters", free_parameters, verbose=args.verbose)
     ## set theory
     theory = lya_theory.Theory(
         zs=data.z,
@@ -470,18 +473,18 @@ def sam_like_sim(args):
 
     #######################
     # sample likelihood
-    fprint("----------", args.verbose)
-    fprint("Sampler", args.verbose)
+    fprint("----------", verbose=args.verbose)
+    fprint("Sampler", verbose=args.verbose)
     start = time.time()
     sample(args, like, free_parameters)
     multi_time = str(np.round(time.time() - start, 2))
-    fprint("Sample in " + multi_time + " s", args.verbose)
-    fprint("", args.verbose)
-    fprint("", args.verbose)
+    fprint("Sample in " + multi_time + " s", verbose=args.verbose)
+    fprint("", verbose=args.verbose)
+    fprint("", verbose=args.verbose)
     multi_time = str(np.round(time.time() - start_all, 2))
-    fprint("Program took " + multi_time + " s", args.verbose)
-    fprint("", args.verbose)
-    fprint("", args.verbose)
+    fprint("Program took " + multi_time + " s", verbose=args.verbose)
+    fprint("", verbose=args.verbose)
+    fprint("", verbose=args.verbose)
 
 
 if __name__ == "__main__":
