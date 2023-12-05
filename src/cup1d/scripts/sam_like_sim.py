@@ -1,6 +1,7 @@
-import os, sys, time
+import os, sys, time, psutil
 import numpy as np
 import configargparse
+import multiprocessing as mp
 
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
@@ -310,6 +311,21 @@ def sample(args, like, free_parameters):
 
 def sam_like_sim(args):
     """Sample the posterior distribution for a of a mock"""
+
+    nthreads = psutil.cpu_count(logical=True)
+    ncores = psutil.cpu_count(logical=False)
+    nthreads_per_core = nthreads // ncores
+    nthreads_available = len(os.sched_getaffinity(0))
+    ncores_available = nthreads_available // nthreads_per_core
+
+    assert nthreads == os.cpu_count()
+    assert nthreads == mp.cpu_count()
+
+    fprint(f"{nthreads=}", verbose=args.verbose)
+    fprint(f"{ncores=}", verbose=args.verbose)
+    fprint(f"{nthreads_per_core=}", verbose=args.verbose)
+    fprint(f"{nthreads_available=}", verbose=args.verbose)
+    fprint(f"{ncores_available=}", verbose=args.verbose)
 
     start_all = time.time()
 
