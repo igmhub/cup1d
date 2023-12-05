@@ -69,6 +69,7 @@ class EmceeSampler(object):
         rootdir=None,
         save_chain=True,
         progress=False,
+        get_autocorr=False,
     ):
         """Setup sampler from likelihood, or use default.
         If read_chain_file is provided, read pre-computed chain.
@@ -77,6 +78,7 @@ class EmceeSampler(object):
 
         self.verbose = verbose
         self.progress = progress
+        self.get_autocorr = get_autocorr
 
         if read_chain_file:
             if self.verbose:
@@ -194,18 +196,19 @@ class EmceeSampler(object):
                         % (sampler.iteration, burn_in + max_steps)
                     )
 
-                # Compute the autocorrelation time so far
-                # Using tol=0 means that we'll always get an estimate even
-                # if it isn't trustworthy
-                tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
-                self.autocorr = np.append(self.autocorr, np.mean(tau))
+                if self.get_autocorr:
+                    # Compute the autocorrelation time so far
+                    # Using tol=0 means that we'll always get an estimate even
+                    # if it isn't trustworthy
+                    tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
+                    self.autocorr = np.append(self.autocorr, np.mean(tau))
 
-                # Check convergence
-                converged = np.all(tau * 100 < sampler.iteration)
-                converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
-                if converged:
-                    break
-                old_tau = tau
+                    # Check convergence
+                    converged = np.all(tau * 100 < sampler.iteration)
+                    converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
+                    if converged:
+                        break
+                    old_tau = tau
         else:
             p0 = self.get_initial_walkers()
             with Pool() as pool:
@@ -235,27 +238,28 @@ class EmceeSampler(object):
                             % (sampler.iteration, burn_in + max_steps)
                         )
 
-                    # Compute the autocorrelation time so far
-                    # Using tol=0 means that we'll always get an estimate even
-                    # if it isn't trustworthy
-                    tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
-                    self.autocorr = np.append(self.autocorr, np.mean(tau))
+                    if self.get_autocorr:
+                        # Compute the autocorrelation time so far
+                        # Using tol=0 means that we'll always get an estimate even
+                        # if it isn't trustworthy
+                        tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
+                        self.autocorr = np.append(self.autocorr, np.mean(tau))
 
-                    # Check convergence
-                    converged = np.all(tau * 100 < sampler.iteration)
-                    converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
+                        # Check convergence
+                        converged = np.all(tau * 100 < sampler.iteration)
+                        converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
 
-                    ## Check if we are over time limit
-                    if timeout:
-                        if time.time() > time_end:
-                            print("Timed out")
+                        ## Check if we are over time limit
+                        if timeout:
+                            if time.time() > time_end:
+                                print("Timed out")
+                                break
+                        ## If not, only halt on convergence criterion if
+                        ## force_timeout is false
+                        if (force_timeout == False) and (converged == True):
+                            print("Chains have converged")
                             break
-                    ## If not, only halt on convergence criterion if
-                    ## force_timeout is false
-                    if (force_timeout == False) and (converged == True):
-                        print("Chains have converged")
-                        break
-                    old_tau = tau
+                        old_tau = tau
 
         ## Get samples, flat=False to be able to mask not converged chains latter
         self.lnprob = sampler.get_log_prob(
@@ -830,7 +834,8 @@ class EmceeSampler(object):
         # Sampler stuff
         saveDict["burn_in"] = self.burnin_nsteps
         saveDict["nwalkers"] = self.nwalkers
-        saveDict["autocorr"] = self.autocorr.tolist()
+        if self.get_autocorr:
+            saveDict["autocorr"] = self.autocorr.tolist()
 
         # Save dictionary to json file in the appropriate directory
         if self.save_directory is None:
@@ -870,10 +875,12 @@ class EmceeSampler(object):
             self.plot_prediction(residuals=residuals)
         except:
             print("Can't plot prediction")
-        try:
-            self.plot_autocorrelation_time()
-        except:
-            print("Can't plot autocorrelation time")
+
+        if self.get_autocorr:
+            try:
+                self.plot_autocorrelation_time()
+            except:
+                print("Can't plot autocorrelation time")
         try:
             _ = self.plot_corner(only_cosmo=True)
         except:
