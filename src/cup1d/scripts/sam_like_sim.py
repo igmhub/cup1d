@@ -9,6 +9,7 @@ from lace.emulator.nn_emulator import NNEmulator
 from lace.emulator.gp_emulator import GPEmulator
 from cup1d.data import data_gadget, data_nyx
 from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
+from lace.cosmo import camb_cosmo
 
 
 def fprint(*args, verbose=True):
@@ -49,7 +50,7 @@ def parse_args():
         required=True,
     )
     parser.add_argument(
-        "--test_sim_label",
+        "--mock_sim_label",
         default=None,
         type=str,
         required=True,
@@ -60,12 +61,18 @@ def parse_args():
         type=str,
         required=True,
     )
+    parser.add_argument(
+        "--cosmo_sim_label",
+        default=None,
+        type=str,
+        required=True,
+    )
 
     parser.add_argument(
         "--drop_sim",
         default="False",
         choices=["True", "False"],
-        help="Drop test_sim_label simulation from the training set",
+        help="Drop mock_sim_label simulation from the training set",
     )
 
     # P1D
@@ -102,6 +109,13 @@ def parse_args():
         default=2,
         help="Number of free parameters for IGM model",
     )
+
+    parser.add_argument(
+        "--version",
+        default="v1",
+        help="Version of the pipeline",
+    )
+
     parser.add_argument(
         "--prior_Gauss_rms",
         default=None,
@@ -169,20 +183,20 @@ def load_emu(
     archive,
     label_training_set,
     emulator_label,
-    test_sim_label,
+    mock_sim_label,
     drop_sim,
 ):
     def set_emu_path(
         label_training_set,
         emulator_label,
-        test_sim_label,
+        mock_sim_label,
         drop_sim,
     ):
         folder = "NNmodels/" + label_training_set + "/"
         # set file name
         fname = emulator_label
         if drop_sim != False:
-            fname += "_drop_sim_" + test_sim_label
+            fname += "_drop_sim_" + mock_sim_label
         fname += ".pt"
 
         return folder + fname
@@ -197,7 +211,7 @@ def load_emu(
                 + ") not allowed:"
             )
         if drop_sim:
-            _drop_sim = test_sim_label
+            _drop_sim = mock_sim_label
         else:
             _drop_sim = None
         fprint("Training emulator " + emulator_label, verbose=args.no_verbose)
@@ -227,10 +241,10 @@ def load_emu(
             raise ValueError(msg)
 
         emu_path = set_emu_path(
-            label_training_set, emulator_label, test_sim_label, drop_sim
+            label_training_set, emulator_label, mock_sim_label, drop_sim
         )
         if drop_sim:
-            _drop_sim = test_sim_label
+            _drop_sim = mock_sim_label
         else:
             _drop_sim = None
         fprint("Loading emulator " + emulator_label, verbose=args.no_verbose)
@@ -269,16 +283,24 @@ def path_sampler(args):
     path += "sampler/"
     if os.path.isdir(path) == False:
         os.mkdir(path)
+    path += args.version + "/"
+    if os.path.isdir(path) == False:
+        os.mkdir(path)
     path += args.training_set + "_" + flag_hires + "/"
     if os.path.isdir(path) == False:
         os.mkdir(path)
     path += (
-        args.emulator_label
-        + "_"
+        "emu_"
+        + args.emulator_label
+        + "_cov_"
         + args.cov_label
-        + "_"
-        + args.test_sim_label
-        + "_igm"
+        + "_mocksim_"
+        + args.mock_sim_label
+        + "_cosmosim_"
+        + args.cosmo_sim_label
+        + "_igmsim_"
+        + args.img_sim_label
+        + "_nigm_"
         + str(args.n_igm)
         + "_"
         + flag_drop
@@ -370,20 +392,23 @@ def sam_like_sim(args):
 
     if args.archive is None:
         if args.training_set == "Pedersen21":
-            archive = gadget_archive.GadgetArchive(postproc=args.training_set)
+            get_cosmo = camb_cosmo.get_cosmology_from_dictionary
             set_P1D = data_gadget.Gadget_P1D
+            archive = gadget_archive.GadgetArchive(postproc=args.training_set)
             z_min = 2
             z_max = 4.5
             # z_max = np.max(archive.list_sim_redshifts)
         elif args.training_set == "Cabayol23":
-            archive = gadget_archive.GadgetArchive(postproc=args.training_set)
+            get_cosmo = camb_cosmo.get_cosmology_from_dictionary
             set_P1D = data_gadget.Gadget_P1D
+            archive = gadget_archive.GadgetArchive(postproc=args.training_set)
             z_min = 2
             z_max = 4.5
             # z_max = np.max(archive.list_sim_redshifts)
         elif args.training_set[:5] == "Nyx23":
-            archive = nyx_archive.NyxArchive(nyx_version=args.training_set[6:])
+            get_cosmo = camb_cosmo.get_Nyx_cosmology
             set_P1D = data_nyx.Nyx_P1D
+            archive = nyx_archive.NyxArchive(nyx_version=args.training_set[6:])
             z_min = 2.2
             z_max = 4.5
             # z_max = np.max(archive.list_sim_redshifts)
@@ -393,10 +418,11 @@ def sam_like_sim(args):
         archive = args.archive
         z_max = args.z_max
         set_P1D = args.set_P1D
+        get_cosmo = args.get_cosmo
 
-    if args.test_sim_label not in archive.list_sim:
+    if args.mock_sim_label not in archive.list_sim:
         fprint(
-            args.test_sim_label + " is not in part of " + args.training_set,
+            args.mock_sim_label + " is not in part of " + args.training_set,
             verbose=args.no_verbose,
         )
         fprint(
@@ -407,7 +433,7 @@ def sam_like_sim(args):
         sys.exit()
     end = time.time()
     multi_time = str(np.round(end - start, 2))
-    fprint("z in range ", z_min, ", ", z_max, verbose=args.no_verbose)
+    # fprint("z in range ", z_min, ", ", z_max, verbose=args.no_verbose)
     fprint("Training set loaded " + multi_time + " s", verbose=args.no_verbose)
 
     #######################
@@ -417,7 +443,7 @@ def sam_like_sim(args):
     start = time.time()
     if args.drop_sim:
         ## only drop sim if it was in the training set
-        if args.test_sim_label in archive.list_sim_cube:
+        if args.mock_sim_label in archive.list_sim_cube:
             _drop_sim = True
         else:
             _drop_sim = False
@@ -427,7 +453,7 @@ def sam_like_sim(args):
         archive,
         args.training_set,
         args.emulator_label,
-        args.test_sim_label,
+        args.mock_sim_label,
         _drop_sim,
     )
     multi_time = str(np.round(time.time() - start, 2))
@@ -444,7 +470,7 @@ def sam_like_sim(args):
     # set target P1D
     data = set_P1D(
         archive=archive,
-        input_sim=args.test_sim_label,
+        input_sim=args.mock_sim_label,
         # z_min=z_min,
         z_max=z_max,
         data_cov_label=args.cov_label,
@@ -454,7 +480,7 @@ def sam_like_sim(args):
     if args.add_hires:
         extra_data = set_P1D(
             archive=archive,
-            input_sim=args.test_sim_label,
+            input_sim=args.mock_sim_label,
             # z_min=z_min,
             z_max=z_max,
             data_cov_label="Karacayli2022",
@@ -478,13 +504,19 @@ def sam_like_sim(args):
         for par in ["tau", "sigT_kms", "gamma", "kF"]:
             free_parameters.append("ln_{}_{}".format(par, ii))
     fprint("free parameters", free_parameters, verbose=args.no_verbose)
+
+    # set fiducial cosmology
+    testing_data = archive.get_testing_data(cosmo_sim_label, z_max=z_max)
+    cosmo_fid = get_cosmo(testing_data[0]["cosmo_params"])
+
     ## set theory
     theory = lya_theory.Theory(
         zs=data.z,
         emulator=emulator,
         free_param_names=free_parameters,
         fid_sim_igm=args.igm_sim_label,
-        true_sim_igm=args.test_sim_label,
+        true_sim_igm=args.mock_sim_label,
+        cosmo_fid=cosmo_fid,
     )
     ## set like
     like = likelihood.Likelihood(

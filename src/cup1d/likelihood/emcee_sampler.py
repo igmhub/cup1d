@@ -186,8 +186,6 @@ class EmceeSampler(object):
                 iterations=burn_in + max_steps,
                 progress=self.progress,
             ):
-                print(sampler.iteration, flush=True)
-
                 # Only check convergence every 100 steps
                 if sampler.iteration % 100 or sampler.iteration < burn_in + 1:
                     continue
@@ -195,7 +193,8 @@ class EmceeSampler(object):
                 if self.progress == False:
                     print(
                         "Step %d out of %d "
-                        % (sampler.iteration, burn_in + max_steps)
+                        % (sampler.iteration, burn_in + max_steps),
+                        flush=True,
                     )
 
                 if self.get_autocorr:
@@ -227,7 +226,6 @@ class EmceeSampler(object):
                 for sample in sampler.sample(
                     p0, iterations=burn_in + max_steps, progress=self.progress
                 ):
-                    print(sampler.iteration, flush=True)
                     # Only check convergence every 100 steps
                     if (
                         sampler.iteration % 100

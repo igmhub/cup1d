@@ -1,4 +1,4 @@
-""" This script calls sam_like_sim for a given set of simulations """
+""" This script calls sam_like_sim for a given set of options """
 
 import os, sys
 import numpy as np
@@ -176,7 +176,6 @@ def main():
         raise ValueError("Training_set not implemented")
 
     sim_avoid = [
-        # "nyx_3",
         "nyx_14",
         "nyx_15",
         "nyx_16",

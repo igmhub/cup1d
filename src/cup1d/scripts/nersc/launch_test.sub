@@ -1,0 +1,9 @@
+#!/bin/bash
+#SBATCH --qos=debug
+##SBATCH --account=desi
+#SBATCH --nodes=1
+#SBATCH --nstasks-per-node=1
+#SBATCH --ncpus-per-node=16
+#SBATCH --constraint=cpu
+
+srun --unbuffered python /global/homes/j/jjchaves/cup1d/src/cup1d/scripts/sam_like_sim.py --training_set Cabayol23 --emulator_label Cabayol23 --test_sim_label mpg_central --igm_sim_label mpg_central --drop_sim False --n_igm 0 --test
