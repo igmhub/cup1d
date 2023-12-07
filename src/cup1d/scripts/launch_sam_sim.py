@@ -52,8 +52,7 @@ class Args:
 
 def generate_batch_script(slurm_script_path, python_script_path, args):
     # SLURM script content
-    slurm_script_content = f"""
-    #!/bin/bash
+    slurm_script_content = f"""#!/bin/bash
     #SBATCH --qos=debug
     #SBATCH --account=desi
     #SBATCH --nodes=1
