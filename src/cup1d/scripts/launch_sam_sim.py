@@ -98,10 +98,6 @@ def main():
 
     out_path = os.environ["CUP1D_PATH"] + "src/cup1d/scripts/nersc/runs/"
 
-    generate_batch_script("a", python_script_path, out_path, 0, Args())
-
-    sys.exit()
-
     list_training_set = ["Pedersen21", "Cabayol23", "Nyx23_Oct2023"]
     emulator_label = [
         "Pedersen21",
@@ -200,7 +196,7 @@ def main():
 
             slurm_script_path = (
                 os.environ["CUP1D_PATH"]
-                + "src/cup1d/scripts/nersc/slurm"
+                + "src/cup1d/scripts/nersc/runs/slurm"
                 + str(seed)
                 + ".sub"
             )
