@@ -2,6 +2,7 @@ import os, sys
 import numpy as np
 from itertools import product
 import subprocess
+from textwrap import dedent
 
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
@@ -52,7 +53,8 @@ class Args:
 
 def generate_batch_script(slurm_script_path, python_script_path, args):
     # SLURM script content
-    slurm_script_content = f"""#!/bin/bash
+    slurm_script_content = dedent(
+        f"""#!/bin/bash
     #SBATCH --qos=debug
     #SBATCH --account=desi
     #SBATCH --nodes=1
@@ -75,6 +77,7 @@ def generate_batch_script(slurm_script_path, python_script_path, args):
     --emu_cov_factor {args.emu_cov_factor} \
     --no_parallel
     """
+    )
     print(slurm_script_content)
     return slurm_script_content
 
