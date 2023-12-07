@@ -77,6 +77,7 @@ def generate_batch_script(slurm_script_path, python_script_path, args):
     --no_parallel
     """
     print(slurm_script_content)
+    return slurm_script_content
 
 
 def launch_batch_script(slurm_script):
@@ -193,7 +194,11 @@ def main():
             )
             seed += 1
 
-            generate_batch_script(slurm_script_path, python_script_path, args)
+            slurm_script_content = generate_batch_script(
+                slurm_script_path, python_script_path, args
+            )
+            with open(slurm_script_path, "w") as slurm_script_file:
+                slurm_script_file.write(slurm_script_content)
             launch_batch_script(slurm_script_path)
 
             if seed == 2:
