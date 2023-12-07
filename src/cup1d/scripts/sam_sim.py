@@ -123,8 +123,8 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--no_verbose",
-        action="store_false",
+        "--verbose",
+        action="store_true",
         help="print information",
     )
 
@@ -135,8 +135,8 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--no_parallel",
-        action="store_false",
+        "--parallel",
+        action="store_true",
         help="Parallelize",
     )
     # not implemented yet!
@@ -163,11 +163,11 @@ def parse_args():
     #######################
     # print args
     args = parser.parse_args()
-    fprint("--- print options from parser ---", verbose=args.no_verbose)
-    fprint(args, verbose=args.no_verbose)
-    fprint("----------", verbose=args.no_verbose)
-    fprint(parser.format_values(), verbose=args.no_verbose)
-    fprint("----------", verbose=args.no_verbose)
+    fprint("--- print options from parser ---", verbose=args.verbose)
+    fprint(args, verbose=args.verbose)
+    fprint("----------", verbose=args.verbose)
+    fprint(parser.format_values(), verbose=args.verbose)
+    fprint("----------", verbose=args.verbose)
 
     args.drop_sim = str_to_bool(args.drop_sim)
     args.add_hires = str_to_bool(args.add_hires)
@@ -336,7 +336,7 @@ def sample(args, like, free_parameters):
         args.n_burn_in,
         args.n_steps,
         log_func=_log_prob,
-        parallel=args.no_parallel,
+        parallel=args.parallel,
     )
     sampler.write_chain_to_file()
 
@@ -354,14 +354,12 @@ def sam_sim(args):
     assert nthreads == os.cpu_count()
     assert nthreads == mp.cpu_count()
 
-    fprint(f"{nthreads=}", verbose=args.no_verbose)
-    fprint(f"{ncores=}", verbose=args.no_verbose)
-    fprint(f"{nthreads_per_core=}", verbose=args.no_verbose)
-    fprint(f"{nthreads_available=}", verbose=args.no_verbose)
-    fprint(f"{ncores_available=}", verbose=args.no_verbose)
-    fprint(
-        f"Number of OMP cores available: {omp_cores}", verbose=args.no_verbose
-    )
+    fprint(f"{nthreads=}", verbose=args.verbose)
+    fprint(f"{ncores=}", verbose=args.verbose)
+    fprint(f"{nthreads_per_core=}", verbose=args.verbose)
+    fprint(f"{nthreads_available=}", verbose=args.verbose)
+    fprint(f"{ncores_available=}", verbose=args.verbose)
+    fprint(f"Number of OMP cores available: {omp_cores}", verbose=args.verbose)
 
     start_all = time.time()
 
@@ -370,8 +368,8 @@ def sam_sim(args):
     #######################
     # load training set
     start = time.time()
-    fprint("----------", verbose=args.no_verbose)
-    fprint("Setting training set " + args.training_set, verbose=args.no_verbose)
+    fprint("----------", verbose=args.verbose)
+    fprint("Setting training set " + args.training_set, verbose=args.verbose)
 
     args.n_steps = 1000
     if args.cov_label == "Chabanier2019":
@@ -428,23 +426,23 @@ def sam_sim(args):
     if args.mock_sim_label not in archive.list_sim:
         fprint(
             args.mock_sim_label + " is not in part of " + args.training_set,
-            verbose=args.no_verbose,
+            verbose=args.verbose,
         )
         fprint(
             "List of simulations available: ",
             archive.list_sim,
-            verbose=args.no_verbose,
+            verbose=args.verbose,
         )
         sys.exit()
     end = time.time()
     multi_time = str(np.round(end - start, 2))
-    # fprint("z in range ", z_min, ", ", z_max, verbose=args.no_verbose)
-    fprint("Training set loaded " + multi_time + " s", verbose=args.no_verbose)
+    # fprint("z in range ", z_min, ", ", z_max, verbose=args.verbose)
+    fprint("Training set loaded " + multi_time + " s", verbose=args.verbose)
 
     #######################
     # set emulator
-    fprint("----------", verbose=args.no_verbose)
-    fprint("Setting emulator", verbose=args.no_verbose)
+    fprint("----------", verbose=args.verbose)
+    fprint("Setting emulator", verbose=args.verbose)
     start = time.time()
     if args.drop_sim:
         ## only drop sim if it was in the training set
@@ -461,11 +459,11 @@ def sam_sim(args):
         args.emulator_label,
         args.mock_sim_label,
         _drop_sim,
-        verbose=args.no_verbose,
+        verbose=args.verbose,
     )
 
     multi_time = str(np.round(time.time() - start, 2))
-    fprint("Emulator loaded " + multi_time + " s", verbose=args.no_verbose)
+    fprint("Emulator loaded " + multi_time + " s", verbose=args.verbose)
 
     if args.use_polyfit:
         polyfit_kmax_Mpc = emulator.kmax_Mpc
@@ -501,17 +499,17 @@ def sam_sim(args):
     #######################
     # set likelihood
     ## set cosmo free parameters
-    fprint("----------", verbose=args.no_verbose)
-    fprint("Set likelihood", verbose=args.no_verbose)
+    fprint("----------", verbose=args.verbose)
+    fprint("Set likelihood", verbose=args.verbose)
     free_parameters = ["As", "ns"]
     fprint(
         "Using {} parameters for IGM model".format(args.n_igm),
-        verbose=args.no_verbose,
+        verbose=args.verbose,
     )
     for ii in range(args.n_igm):
         for par in ["tau", "sigT_kms", "gamma", "kF"]:
             free_parameters.append("ln_{}_{}".format(par, ii))
-    fprint("free parameters", free_parameters, verbose=args.no_verbose)
+    fprint("free parameters", free_parameters, verbose=args.verbose)
 
     # set fiducial cosmology
     testing_data = archive.get_testing_data(args.cosmo_sim_label, z_max=z_max)
@@ -538,20 +536,20 @@ def sam_sim(args):
 
     #######################
     # sample likelihood
-    fprint("----------", verbose=args.no_verbose)
-    fprint("Sampler", verbose=args.no_verbose)
+    fprint("----------", verbose=args.verbose)
+    fprint("Sampler", verbose=args.verbose)
     start = time.time()
     sample(args, like, free_parameters)
     multi_time = str(np.round(time.time() - start, 2))
-    fprint("Sample in " + multi_time + " s", verbose=args.no_verbose)
-    fprint("", verbose=args.no_verbose)
-    fprint("", verbose=args.no_verbose)
+    fprint("Sample in " + multi_time + " s", verbose=args.verbose)
+    fprint("", verbose=args.verbose)
+    fprint("", verbose=args.verbose)
     multi_time = str(np.round(time.time() - start_all, 2))
-    fprint("Program took " + multi_time + " s", verbose=args.no_verbose)
-    fprint("", verbose=args.no_verbose)
-    fprint("", verbose=args.no_verbose)
+    fprint("Program took " + multi_time + " s", verbose=args.verbose)
+    fprint("", verbose=args.verbose)
+    fprint("", verbose=args.verbose)
 
 
 if __name__ == "__main__":
     args = parse_args()
-    sam_like_sim(args)
+    sam_sim(args)
