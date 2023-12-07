@@ -2,7 +2,7 @@ import os, sys
 import numpy as np
 from itertools import product
 import subprocess
-from textwrap import dedent
+import textwrap
 
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
@@ -51,31 +51,35 @@ class Args:
         return out
 
 
-def generate_batch_script(slurm_script_path, python_script_path, args):
+def generate_batch_script(
+    slurm_script_path, python_script_path, out_path, seed, args
+):
     # SLURM script content
-    slurm_script_content = dedent(
-        f"""#!/bin/bash
-    #SBATCH --qos=debug
-    #SBATCH --account=desi
-    #SBATCH --nodes=1
-    #SBATCH --nstasks-per-node=1
-    #SBATCH --cpus-per-task=32
-    #SBATCH --constraint=cpu
+    slurm_script_content = textwrap.dedent(
+        f"""\
+        #!/bin/bash
+        #SBATCH --qos=debug
+        #SBATCH --account=desi
+        #SBATCH --nodes=1
+        #SBATCH --nstasks-per-node=1
+        #SBATCH --cpus-per-task=32
+        #SBATCH --constraint=cpu
+        #SBATCH --output={out_path}output{seed}.log
+        #SBATCH --error={out_path}error{seed}.log
 
-    # Your Python script command with options
-    srun --unbuffered python {python_script_path} \
-    --training_set {args.training_set} \
-    --emulator_label {args.emulator_label} \
-    --drop_sim {args.drop_sim} \
-    --use_polyfit {args.use_polyfit} \
-    --mock_sim_label {args.mock_sim_label} \
-    --igm_sim_label {args.igm_sim_label} \
-    --cosmo_sim_label {args.cosmo_sim_label} \
-    --n_igm {args.n_igm} \
-    --add_hires {args.add_hires} \
-    --cov_label {args.cov_label} \
-    --emu_cov_factor {args.emu_cov_factor} \
-    --no_parallel
+        srun --unbuffered python {python_script_path}\
+        --training_set {args.training_set}\
+        --emulator_label {args.emulator_label}\
+        --drop_sim {args.drop_sim}\
+        --use_polyfit {args.use_polyfit}\
+        --mock_sim_label {args.mock_sim_label}\
+        --igm_sim_label {args.igm_sim_label}\
+        --cosmo_sim_label {args.cosmo_sim_label}\
+        --n_igm {args.n_igm}\
+        --add_hires {args.add_hires}\
+        --cov_label {args.cov_label}\
+        --emu_cov_factor {args.emu_cov_factor}\
+        --no_parallel
     """
     )
     print(slurm_script_content)
@@ -91,6 +95,12 @@ def main():
     python_script_path = (
         os.environ["CUP1D_PATH"] + "src/cup1d/scripts/sam_sim.py"
     )
+
+    out_path = os.environ["CUP1D_PATH"] + "src/cup1d/scripts/nersc/runs/"
+
+    generate_batch_script("a", python_script_path, out_path, 0, Args())
+
+    sys.exit()
 
     list_training_set = ["Pedersen21", "Cabayol23", "Nyx23_Oct2023"]
     emulator_label = [
@@ -197,7 +207,7 @@ def main():
             seed += 1
 
             slurm_script_content = generate_batch_script(
-                slurm_script_path, python_script_path, args
+                slurm_script_path, python_script_path, out_path, seed, args
             )
             with open(slurm_script_path, "w") as slurm_script_file:
                 slurm_script_file.write(slurm_script_content)
