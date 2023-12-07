@@ -1,11 +1,12 @@
 import os, sys
 import numpy as np
 from itertools import product
+import subprocess
 
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
 from cup1d.data import data_gadget, data_nyx
-from cup1d.scripts.sam_like_sim import sam_like_sim, path_sampler
+from cup1d.scripts.sam_sim import sam_sim, path_sampler
 from lace.cosmo import camb_cosmo
 
 
@@ -15,7 +16,7 @@ class Args:
         self.training_set = "Pedersen21"
         self.emulator_label = "Pedersen21"
         self.mock_sim_label = "mpg_central"
-        self.img_sim_label = "mpg_central"
+        self.igm_sim_label = "mpg_central"
         self.cosmo_sim_label = "mpg_central"
         self.drop_sim = True
         self.add_hires = False
@@ -49,7 +50,45 @@ class Args:
         return out
 
 
+def generate_batch_script(slurm_script_path, python_script_path, args):
+    # SLURM script content
+    slurm_script_content = f"""
+    #!/bin/bash
+    #SBATCH --qos=debug
+    #SBATCH --account=desi
+    #SBATCH --nodes=1
+    #SBATCH --nstasks-per-node=1
+    #SBATCH --cpus-per-task=32
+    #SBATCH --constraint=cpu
+
+    # Your Python script command with options
+    srun --unbuffered python {python_script_path} \
+    --training_set {args.training_set} \
+    --emulator_label {args.emulator_label} \
+    --drop_sim {args.drop_sim} \
+    --use_polyfit {args.use_polyfit} \
+    --mock_sim_label {args.mock_sim_label} \
+    --igm_sim_label {args.igm_sim_label} \
+    --cosmo_sim_label {args.cosmo_sim_label} \
+    --n_igm {args.n_igm} \
+    --add_hires {args.add_hires} \
+    --cov_label {args.cov_label} \
+    --emu_cov_factor {args.emu_cov_factor} \
+    --no_parallel
+    """
+    print(slurm_script_content)
+
+
+def launch_batch_script(slurm_script):
+    # Submit the SLURM job using subprocess
+    subprocess.run(["sbatch", slurm_script])
+
+
 def main():
+    python_script_path = (
+        os.environ["CUP1D_PATH"] + "src/cup1d/scripts/sam_sim.py"
+    )
+
     list_training_set = ["Pedersen21", "Cabayol23", "Nyx23_Oct2023"]
     emulator_label = [
         "Pedersen21",
@@ -115,6 +154,7 @@ def main():
         archive.list_sim,
     )
 
+    seed = 0
     for ind in combined_loop:
         igm_own, cosmo_own, drop_sim, n_igm, sim_label = ind
         if sim_label not in sim_avoid:
@@ -124,9 +164,11 @@ def main():
 
             args = Args()
             args.version = version
-            args.archive = archive
-            args.z_min = z_min
+            args.training_set = training_set
+            args.emulator_label = emulator_label
             args.z_max = z_max
+
+            args.mock_sim_label = sim_label
             if igm_own:
                 args.igm_sim_label = sim_label
             else:
@@ -136,30 +178,26 @@ def main():
             else:
                 args.cosmo_sim_label = sim_label[:3] + "_central"
 
-            args.set_P1D = set_P1D
-            args.get_cosmo = get_cosmo
-
-            args.training_set = training_set
-            args.emulator_label = emulator_label
             args.add_hires = add_hires
             args.use_polyfit = use_polyfit
             args.cov_label = cov_label
 
             args.drop_sim = drop_sim
             args.n_igm = n_igm
-            args.mock_sim_label = sim_label
 
-            path = path_sampler(args)
-            # check if run already done
-            if (override == False) & os.path.isfile(
-                path + "/chain_1/results.npy"
-            ):
-                print("Skipping: ", path)
-            else:
-                print("Running: ", path)
-                sam_sim(args)
-            print("bye!")
-            break
+            slurm_script_path = (
+                os.environ["CUP1D_PATH"]
+                + "src/cup1d/scripts/nersc/slurm"
+                + str(seed)
+                + ".sub"
+            )
+            seed += 1
+
+            generate_batch_script(slurm_script_path, python_script_path, args)
+            launch_batch_script(slurm_script_path)
+
+            if seed == 2:
+                break
 
 
 if __name__ == "__main__":
