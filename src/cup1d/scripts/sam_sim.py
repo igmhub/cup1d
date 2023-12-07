@@ -300,7 +300,7 @@ def path_sampler(args):
         + "_cosmosim_"
         + args.cosmo_sim_label
         + "_igmsim_"
-        + args.img_sim_label
+        + args.igm_sim_label
         + "_nigm_"
         + str(args.n_igm)
         + "_"
