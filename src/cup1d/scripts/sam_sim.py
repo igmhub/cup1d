@@ -349,6 +349,7 @@ def sam_sim(args):
     nthreads_per_core = nthreads // ncores
     nthreads_available = len(os.sched_getaffinity(0))
     ncores_available = nthreads_available // nthreads_per_core
+    omp_cores = os.environ.get("OMP_NUM_THREADS")
 
     assert nthreads == os.cpu_count()
     assert nthreads == mp.cpu_count()
@@ -358,6 +359,9 @@ def sam_sim(args):
     fprint(f"{nthreads_per_core=}", verbose=args.no_verbose)
     fprint(f"{nthreads_available=}", verbose=args.no_verbose)
     fprint(f"{ncores_available=}", verbose=args.no_verbose)
+    fprint(
+        f"Number of OMP cores available: {omp_cores}", verbose=args.no_verbose
+    )
 
     start_all = time.time()
 
@@ -450,6 +454,7 @@ def sam_sim(args):
             _drop_sim = False
     else:
         _drop_sim = False
+
     emulator = load_emu(
         archive,
         args.training_set,
@@ -458,6 +463,7 @@ def sam_sim(args):
         _drop_sim,
         verbose=args.no_verbose,
     )
+
     multi_time = str(np.round(time.time() - start, 2))
     fprint("Emulator loaded " + multi_time + " s", verbose=args.no_verbose)
 

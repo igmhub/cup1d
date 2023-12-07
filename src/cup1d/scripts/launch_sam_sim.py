@@ -61,7 +61,7 @@ def generate_batch_script(
         #SBATCH --qos=debug
         #SBATCH --account=desi
         #SBATCH --nodes=1
-        #SBATCH --nstasks-per-node=1
+        #SBATCH --ntasks-per-node=1
         #SBATCH --cpus-per-task=32
         #SBATCH --constraint=cpu
         #SBATCH --output={out_path}output{seed}.log
