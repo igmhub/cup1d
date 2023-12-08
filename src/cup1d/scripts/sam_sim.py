@@ -330,7 +330,7 @@ def sample(args, like, free_parameters):
     path = path_sampler(args)
 
     sampler = emcee_sampler.EmceeSampler(
-        like=like, rootdir=path, save_chain=False
+        like=like, rootdir=path, save_chain=False, nwalkers=args.nwalkers
     )
     _log_prob = set_log_prob(sampler)
 
@@ -394,6 +394,9 @@ def sam_sim(args):
     if args.test == True:
         args.n_steps = 10
         args.n_burn_in = 0
+        args.nwalkers = 50
+    else:
+        args.nwalkers = None
 
     if args.archive is None:
         if args.training_set == "Pedersen21":
