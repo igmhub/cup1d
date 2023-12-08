@@ -212,7 +212,7 @@ class EmceeSampler(object):
                     old_tau = tau
         else:
             p0 = self.get_initial_walkers()
-            mp.set_start_method("spawn")
+            mp.set_start_method("fork", force=True)
             with mp.Pool() as pool:
                 sampler = emcee.EnsembleSampler(
                     self.nwalkers,
