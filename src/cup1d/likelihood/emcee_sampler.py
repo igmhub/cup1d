@@ -217,15 +217,18 @@ class EmceeSampler(object):
                     self.nwalkers,
                     self.ndim,
                     log_func,
-                    pool=pool,
                     backend=self.backend,
                     blobs_dtype=self.blobs_dtype,
+                    pool=pool,
                 )
+                sampler.pool = pool
+                print(f"Number of threads being used: {pool._processes}")
                 if timeout:
                     time_end = time.time() + 3600 * timeout
                 for sample in sampler.sample(
                     p0, iterations=burn_in + max_steps, progress=self.progress
                 ):
+                    print(sampler.iteration)
                     # Only check convergence every 100 steps
                     if (
                         sampler.iteration % 100
@@ -262,6 +265,7 @@ class EmceeSampler(object):
                             break
                         old_tau = tau
 
+        print(f"Parallelization status: {sampler.pool is not None}")
         ## Get samples, flat=False to be able to mask not converged chains latter
         self.lnprob = sampler.get_log_prob(
             flat=False, discard=self.burnin_nsteps

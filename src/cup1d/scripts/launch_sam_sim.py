@@ -79,7 +79,8 @@ def generate_batch_script(
         --add_hires {args.add_hires}\
         --cov_label {args.cov_label}\
         --emu_cov_factor {args.emu_cov_factor}\
-        --verbose
+        --verbose\
+        --parallel
     """
     )
     print(slurm_script_content)
