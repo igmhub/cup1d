@@ -67,7 +67,7 @@ def generate_batch_script(
         #SBATCH --output={out_path}output{seed}.log
         #SBATCH --error={out_path}error{seed}.log
 
-        srun --unbuffered python {python_script_path}\
+        srun --unbuffered --cpu-bind=none python {python_script_path}\
         --training_set {args.training_set}\
         --emulator_label {args.emulator_label}\
         --drop_sim {args.drop_sim}\

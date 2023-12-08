@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import emcee
 import time
 import scipy.stats
-from multiprocessing import Pool
+import multiprocessing as mp
 import pandas as pd
 from chainconsumer import ChainConsumer, Chain, Truth
 
@@ -212,7 +212,8 @@ class EmceeSampler(object):
                     old_tau = tau
         else:
             p0 = self.get_initial_walkers()
-            with Pool() as pool:
+            mp.set_start_method("spawn")
+            with mp.Pool() as pool:
                 sampler = emcee.EnsembleSampler(
                     self.nwalkers,
                     self.ndim,
