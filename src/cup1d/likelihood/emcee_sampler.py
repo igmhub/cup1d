@@ -228,7 +228,7 @@ class EmceeSampler(object):
                 for sample in sampler.sample(
                     p0, iterations=burn_in + max_steps, progress=self.progress
                 ):
-                    print(sampler.iteration)
+                    print(sampler.iteration, flush=True)
                     # Only check convergence every 100 steps
                     if (
                         sampler.iteration % 100
