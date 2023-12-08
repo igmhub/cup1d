@@ -329,7 +329,9 @@ def sample(args, like, free_parameters):
 
     path = path_sampler(args)
 
-    sampler = emcee_sampler.EmceeSampler(like=like, rootdir=path)
+    sampler = emcee_sampler.EmceeSampler(
+        like=like, rootdir=path, save_chain=False
+    )
     _log_prob = set_log_prob(sampler)
 
     _ = sampler.run_sampler(

@@ -62,7 +62,7 @@ def generate_batch_script(
         #SBATCH --account=desi
         #SBATCH --nodes=1
         #SBATCH --ntasks-per-node=1
-        #SBATCH --cpus-per-task=32
+        #SBATCH --cpus-per-task=64
         #SBATCH --constraint=cpu
         #SBATCH --output={out_path}output{seed}.log
         #SBATCH --error={out_path}error{seed}.log
@@ -80,7 +80,8 @@ def generate_batch_script(
         --cov_label {args.cov_label}\
         --emu_cov_factor {args.emu_cov_factor}\
         --verbose\
-        --parallel
+        --parallel\
+        --test
     """
     )
     print(slurm_script_content)
@@ -210,8 +211,7 @@ def main():
                 slurm_script_file.write(slurm_script_content)
             launch_batch_script(slurm_script_path)
 
-            if seed == 2:
-                break
+            break
 
 
 if __name__ == "__main__":

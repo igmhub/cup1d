@@ -223,47 +223,49 @@ class EmceeSampler(object):
                 )
                 sampler.pool = pool
                 print(f"Number of threads being used: {pool._processes}")
-                if timeout:
-                    time_end = time.time() + 3600 * timeout
-                for sample in sampler.sample(
-                    p0, iterations=burn_in + max_steps, progress=self.progress
-                ):
-                    print(sampler.iteration, flush=True)
-                    # Only check convergence every 100 steps
-                    if (
-                        sampler.iteration % 100
-                        or sampler.iteration < burn_in + 1
-                    ):
-                        continue
+                sampler.run_mcmc(p0, burn_in + max_steps)
+                # if timeout:
+                #     time_end = time.time() + 3600 * timeout
 
-                    if self.progress == False:
-                        print(
-                            "Step %d out of %d "
-                            % (sampler.iteration, burn_in + max_steps)
-                        )
+                # for sample in sampler.sample(
+                #     p0, iterations=burn_in + max_steps, progress=self.progress
+                # ):
+                #     print(sampler.iteration, flush=True)
+                #     # Only check convergence every 100 steps
+                #     if (
+                #         sampler.iteration % 100
+                #         or sampler.iteration < burn_in + 1
+                #     ):
+                #         continue
 
-                    if self.get_autocorr:
-                        # Compute the autocorrelation time so far
-                        # Using tol=0 means that we'll always get an estimate even
-                        # if it isn't trustworthy
-                        tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
-                        self.autocorr = np.append(self.autocorr, np.mean(tau))
+                #     if self.progress == False:
+                #         print(
+                #             "Step %d out of %d "
+                #             % (sampler.iteration, burn_in + max_steps)
+                #         )
 
-                        # Check convergence
-                        converged = np.all(tau * 100 < sampler.iteration)
-                        converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
+                #     if self.get_autocorr:
+                #         # Compute the autocorrelation time so far
+                #         # Using tol=0 means that we'll always get an estimate even
+                #         # if it isn't trustworthy
+                #         tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
+                #         self.autocorr = np.append(self.autocorr, np.mean(tau))
 
-                        ## Check if we are over time limit
-                        if timeout:
-                            if time.time() > time_end:
-                                print("Timed out")
-                                break
-                        ## If not, only halt on convergence criterion if
-                        ## force_timeout is false
-                        if (force_timeout == False) and (converged == True):
-                            print("Chains have converged")
-                            break
-                        old_tau = tau
+                #         # Check convergence
+                #         converged = np.all(tau * 100 < sampler.iteration)
+                #         converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
+
+                #         ## Check if we are over time limit
+                #         if timeout:
+                #             if time.time() > time_end:
+                #                 print("Timed out")
+                #                 break
+                #         ## If not, only halt on convergence criterion if
+                #         ## force_timeout is false
+                #         if (force_timeout == False) and (converged == True):
+                #             print("Chains have converged")
+                #             break
+                #         old_tau = tau
 
         print(f"Parallelization status: {sampler.pool is not None}")
         ## Get samples, flat=False to be able to mask not converged chains latter
