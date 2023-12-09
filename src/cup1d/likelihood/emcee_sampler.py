@@ -23,8 +23,7 @@ from cup1d.data import (
     data_Karacayli2022,
 )
 from cup1d.likelihood import likelihood
-
-from cup1d.scripts.sam_sim import create_print_function
+from cup1d.utils.utils import create_print_function
 
 
 def purge_chains(ln_prop_chains, nsplit=7, abs_diff=5):

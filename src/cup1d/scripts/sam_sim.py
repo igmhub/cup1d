@@ -5,34 +5,12 @@ from mpi4py import MPI
 
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
+from lace.cosmo import camb_cosmo
 from lace.emulator.nn_emulator import NNEmulator
 from lace.emulator.gp_emulator import GPEmulator
 from cup1d.data import data_gadget, data_nyx
 from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
-from lace.cosmo import camb_cosmo
-
-
-def mpi_hello_world():
-    # Get the MPI communicator
-    comm = MPI.COMM_WORLD
-
-    # Get the rank and size of the MPI process
-    rank = comm.Get_rank()
-    size = comm.Get_size()
-
-    # Print a "Hello, World!" message from each MPI process
-    print(f"Hello from rank {rank} out of {size} processes.", flush=True)
-
-
-def create_print_function(verbose=True):
-    """Create a function to print messages"""
-    mpi_rank = MPI.COMM_WORLD.Get_rank() if MPI.COMM_WORLD.Get_size() > 1 else 0
-
-    def print_new(*args, verbose=True):
-        if verbose and mpi_rank == 0:
-            print(*args, flush=True)
-
-    return print_new
+from cup1d.utils.utils import create_print_function, mpi_hello_world
 
 
 def parse_args():
