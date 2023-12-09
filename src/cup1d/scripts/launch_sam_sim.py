@@ -1,14 +1,12 @@
-import os, sys
+import os, sys, time, subprocess, textwrap
 import numpy as np
 from itertools import product
-import subprocess
-import textwrap
 
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
+from lace.cosmo import camb_cosmo
 from cup1d.data import data_gadget, data_nyx
 from cup1d.scripts.sam_sim import sam_sim, path_sampler
-from lace.cosmo import camb_cosmo
 
 
 class Args:
@@ -210,11 +208,11 @@ def main():
                 + ".sub"
             )
 
-            if seed > 6:
+            if seed > 11:
                 while get_total_job_count() == max_jobs:
                     # Wait and check again after a delay if the limit is reached
                     print("Waiting for a job to finish")
-                    time.sleep(60)
+                    time.sleep(30)
 
                 slurm_script_content = generate_batch_script(
                     slurm_script_path, python_script_path, out_path, seed, args
