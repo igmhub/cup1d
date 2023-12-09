@@ -389,6 +389,10 @@ def sam_sim(args):
     else:
         args.nwalkers = None
 
+    args.n_steps = 100
+    args.n_burn_in = 0
+    args.nwalkers = 50
+
     if args.archive is None:
         if args.training_set == "Pedersen21":
             get_cosmo = camb_cosmo.get_cosmology_from_dictionary

@@ -79,8 +79,7 @@ def generate_batch_script(
         --cov_label {args.cov_label}\
         --emu_cov_factor {args.emu_cov_factor}\
         --verbose\
-        --parallel\
-        --test
+        --parallel
     """
     )
     print(slurm_script_content)
@@ -201,7 +200,6 @@ def main():
                 + str(seed)
                 + ".sub"
             )
-            seed += 1
 
             slurm_script_content = generate_batch_script(
                 slurm_script_path, python_script_path, out_path, seed, args
@@ -209,6 +207,8 @@ def main():
             with open(slurm_script_path, "w") as slurm_script_file:
                 slurm_script_file.write(slurm_script_content)
             launch_batch_script(slurm_script_path)
+
+            seed += 1
 
             break
 

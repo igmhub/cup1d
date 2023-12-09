@@ -88,6 +88,8 @@ class EmceeSampler(object):
         if self.parallel:
             comm = MPIPool().comm
             rank = comm.Get_rank()
+        else:
+            rank = 0
 
         self.fprint = create_print_function(self.verbose)
 
@@ -296,7 +298,6 @@ class EmceeSampler(object):
             #             break
             #         old_tau = tau
 
-        self.fprint(f"Parallelization status: {sampler.pool is not None}")
         ## Get samples, flat=False to be able to mask not converged chains latter
         self.lnprob = sampler.get_log_prob(
             flat=False, discard=self.burnin_nsteps
