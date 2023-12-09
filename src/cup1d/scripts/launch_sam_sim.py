@@ -210,8 +210,6 @@ def main():
 
             seed += 1
 
-            break
-
 
 if __name__ == "__main__":
     main()

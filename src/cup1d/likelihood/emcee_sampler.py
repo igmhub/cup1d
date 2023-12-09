@@ -984,14 +984,14 @@ class EmceeSampler(object):
         except:
             self.fprint("Can't plot best fit")
         try:
-            for stat_best_fit in ["mean", "mle"]:
+            for stat_best_fit in ["mean"]:
                 rand_posterior = self.plot_igm_histories(
                     stat_best_fit=stat_best_fit
                 )
         except:
             self.fprint("Can't plot IGM histories")
         try:
-            for stat_best_fit in ["mean", "mle"]:
+            for stat_best_fit in ["mean"]:
                 self.plot_best_fit(
                     residuals=residuals,
                     rand_posterior=rand_posterior,
@@ -1254,14 +1254,18 @@ class EmceeSampler(object):
 
         for ii in range(len(arr_labs)):
             if self.like.theory.true_sim_igm is not None:
-                ax[ii].plot(z, pars_true[arr_labs[ii]], "o:", label="true")
-            ax[ii].plot(z, pars_fid[arr_labs[ii]], "s--", label="fiducial")
+                ax[ii].plot(
+                    z, pars_true[arr_labs[ii]], "o:", label="true", alpha=0.5
+                )
+            ax[ii].plot(
+                z, pars_fid[arr_labs[ii]], "s--", label="fiducial", alpha=0.5
+            )
             err = np.abs(
                 np.percentile(pars_samp[arr_labs[ii]], [16, 84], axis=0)
                 - pars_best[arr_labs[ii]]
             )
             ax[ii].errorbar(
-                z, pars_best[arr_labs[ii]], err, label="best-fitting"
+                z, pars_best[arr_labs[ii]], err, label="best-fitting", alpha=0.5
             )
 
             ax[ii].set_ylabel(latex_labs[ii])
