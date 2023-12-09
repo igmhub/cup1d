@@ -58,7 +58,7 @@ def generate_batch_script(
     slurm_script_content = textwrap.dedent(
         f"""\
         #!/bin/bash
-        #SBATCH --qos=debug
+        #SBATCH --qos=regular
         #SBATCH --account=desi
         #SBATCH --nodes=1
         #SBATCH --ntasks-per-node=32
@@ -201,12 +201,13 @@ def main():
                 + ".sub"
             )
 
-            slurm_script_content = generate_batch_script(
-                slurm_script_path, python_script_path, out_path, seed, args
-            )
-            with open(slurm_script_path, "w") as slurm_script_file:
-                slurm_script_file.write(slurm_script_content)
-            launch_batch_script(slurm_script_path)
+            if seed > 4:
+                slurm_script_content = generate_batch_script(
+                    slurm_script_path, python_script_path, out_path, seed, args
+                )
+                with open(slurm_script_path, "w") as slurm_script_file:
+                    slurm_script_file.write(slurm_script_content)
+                launch_batch_script(slurm_script_path)
 
             seed += 1
 
