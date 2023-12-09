@@ -1,7 +1,7 @@
 import os, sys, time, psutil
 import numpy as np
 import configargparse
-import multiprocessing as mp
+from mpi4py import MPI
 
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
@@ -12,9 +12,27 @@ from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
 from lace.cosmo import camb_cosmo
 
 
-def fprint(*args, verbose=True):
-    if verbose:
-        print(*args, flush=True)
+def mpi_hello_world():
+    # Get the MPI communicator
+    comm = MPI.COMM_WORLD
+
+    # Get the rank and size of the MPI process
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    # Print a "Hello, World!" message from each MPI process
+    print(f"Hello from rank {rank} out of {size} processes.", flush=True)
+
+
+def create_print_function(verbose=True):
+    """Create a function to print messages"""
+    mpi_rank = MPI.COMM_WORLD.Get_rank() if MPI.COMM_WORLD.Get_size() > 1 else 0
+
+    def print_new(*args, verbose=True):
+        if verbose and mpi_rank == 0:
+            print(*args, flush=True)
+
+    return print_new
 
 
 def parse_args():
@@ -163,11 +181,14 @@ def parse_args():
     #######################
     # print args
     args = parser.parse_args()
-    fprint("--- print options from parser ---", verbose=args.verbose)
-    fprint(args, verbose=args.verbose)
-    fprint("----------", verbose=args.verbose)
-    fprint(parser.format_values(), verbose=args.verbose)
-    fprint("----------", verbose=args.verbose)
+    mpi_hello_world()
+
+    fprint = create_print_function(verbose=args.verbose)
+    fprint("--- print options from parser ---")
+    fprint(args)
+    fprint("----------")
+    fprint(parser.format_values())
+    fprint("----------")
 
     args.drop_sim = str_to_bool(args.drop_sim)
     args.add_hires = str_to_bool(args.add_hires)
@@ -185,7 +206,7 @@ def load_emu(
     emulator_label,
     mock_sim_label,
     drop_sim,
-    verbose=True,
+    fprint=print,
 ):
     def set_emu_path(
         label_training_set,
@@ -215,7 +236,7 @@ def load_emu(
             _drop_sim = mock_sim_label
         else:
             _drop_sim = None
-        fprint("Training emulator " + emulator_label, verbose=verbose)
+        fprint("Training emulator " + emulator_label)
         emulator = GPEmulator(
             training_set=label_training_set,
             emulator_label=emulator_label,
@@ -248,7 +269,7 @@ def load_emu(
             _drop_sim = mock_sim_label
         else:
             _drop_sim = None
-        fprint("Loading emulator " + emulator_label, verbose=verbose)
+        fprint("Loading emulator " + emulator_label)
         emulator = NNEmulator(
             archive=archive,
             training_set=label_training_set,
@@ -324,13 +345,18 @@ def set_log_prob(sampler):
     return log_prob
 
 
-def sample(args, like, free_parameters):
+def sample(args, like, free_parameters, fprint=print):
     """Sample the posterior distribution"""
 
     path = path_sampler(args)
+    fprint("\n" + "\n" + "Output in folder: " + path + "\n" + "\n")
 
     sampler = emcee_sampler.EmceeSampler(
-        like=like, rootdir=path, save_chain=False, nwalkers=args.nwalkers
+        like=like,
+        rootdir=path,
+        save_chain=False,
+        nwalkers=args.nwalkers,
+        parallel=args.parallel,
     )
     _log_prob = set_log_prob(sampler)
 
@@ -338,40 +364,27 @@ def sample(args, like, free_parameters):
         args.n_burn_in,
         args.n_steps,
         log_func=_log_prob,
-        parallel=args.parallel,
     )
-    sampler.write_chain_to_file()
+
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    if rank == 0:
+        sampler.write_chain_to_file()
 
 
 def sam_sim(args):
     """Sample the posterior distribution for a of a mock"""
 
-    nthreads = psutil.cpu_count(logical=True)
-    ncores = psutil.cpu_count(logical=False)
-    nthreads_per_core = nthreads // ncores
-    nthreads_available = len(os.sched_getaffinity(0))
-    ncores_available = nthreads_available // nthreads_per_core
-    omp_cores = os.environ.get("OMP_NUM_THREADS")
-
-    assert nthreads == os.cpu_count()
-    assert nthreads == mp.cpu_count()
-
-    fprint(f"{nthreads=}", verbose=args.verbose)
-    fprint(f"{ncores=}", verbose=args.verbose)
-    fprint(f"{nthreads_per_core=}", verbose=args.verbose)
-    fprint(f"{nthreads_available=}", verbose=args.verbose)
-    fprint(f"{ncores_available=}", verbose=args.verbose)
-    fprint(f"Number of OMP cores available: {omp_cores}", verbose=args.verbose)
+    #######################
+    fprint = create_print_function(verbose=args.verbose)
 
     start_all = time.time()
-
-    # os.environ["OMP_NUM_THREADS"] = "1"
 
     #######################
     # load training set
     start = time.time()
-    fprint("----------", verbose=args.verbose)
-    fprint("Setting training set " + args.training_set, verbose=args.verbose)
+    fprint("----------")
+    fprint("Setting training set " + args.training_set)
 
     args.n_steps = 1000
     if args.cov_label == "Chabanier2019":
@@ -441,13 +454,13 @@ def sam_sim(args):
         sys.exit()
     end = time.time()
     multi_time = str(np.round(end - start, 2))
-    # fprint("z in range ", z_min, ", ", z_max, verbose=args.verbose)
-    fprint("Training set loaded " + multi_time + " s", verbose=args.verbose)
+    # fprint("z in range ", z_min, ", ", z_max)
+    fprint("Training set loaded " + multi_time + " s")
 
     #######################
     # set emulator
-    fprint("----------", verbose=args.verbose)
-    fprint("Setting emulator", verbose=args.verbose)
+    fprint("----------")
+    fprint("Setting emulator")
     start = time.time()
     if args.drop_sim:
         ## only drop sim if it was in the training set
@@ -464,11 +477,11 @@ def sam_sim(args):
         args.emulator_label,
         args.mock_sim_label,
         _drop_sim,
-        verbose=args.verbose,
+        fprint=fprint,
     )
 
     multi_time = str(np.round(time.time() - start, 2))
-    fprint("Emulator loaded " + multi_time + " s", verbose=args.verbose)
+    fprint("Emulator loaded " + multi_time + " s")
 
     if args.use_polyfit:
         polyfit_kmax_Mpc = emulator.kmax_Mpc
@@ -504,8 +517,8 @@ def sam_sim(args):
     #######################
     # set likelihood
     ## set cosmo free parameters
-    fprint("----------", verbose=args.verbose)
-    fprint("Set likelihood", verbose=args.verbose)
+    fprint("----------")
+    fprint("Set likelihood")
     free_parameters = ["As", "ns"]
     fprint(
         "Using {} parameters for IGM model".format(args.n_igm),
@@ -514,7 +527,7 @@ def sam_sim(args):
     for ii in range(args.n_igm):
         for par in ["tau", "sigT_kms", "gamma", "kF"]:
             free_parameters.append("ln_{}_{}".format(par, ii))
-    fprint("free parameters", free_parameters, verbose=args.verbose)
+    fprint("free parameters", free_parameters)
 
     # set fiducial cosmology
     testing_data = archive.get_testing_data(args.cosmo_sim_label, z_max=z_max)
@@ -541,18 +554,18 @@ def sam_sim(args):
 
     #######################
     # sample likelihood
-    fprint("----------", verbose=args.verbose)
-    fprint("Sampler", verbose=args.verbose)
+    fprint("----------")
+    fprint("Sampler")
     start = time.time()
-    sample(args, like, free_parameters)
+    sample(args, like, free_parameters, fprint=fprint)
     multi_time = str(np.round(time.time() - start, 2))
-    fprint("Sample in " + multi_time + " s", verbose=args.verbose)
-    fprint("", verbose=args.verbose)
-    fprint("", verbose=args.verbose)
+    fprint("Sample in " + multi_time + " s")
+    fprint("")
+    fprint("")
     multi_time = str(np.round(time.time() - start_all, 2))
-    fprint("Program took " + multi_time + " s", verbose=args.verbose)
-    fprint("", verbose=args.verbose)
-    fprint("", verbose=args.verbose)
+    fprint("Program took " + multi_time + " s")
+    fprint("")
+    fprint("")
 
 
 if __name__ == "__main__":
