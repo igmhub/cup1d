@@ -224,10 +224,18 @@ class EmceeSampler(object):
                         break
                     old_tau = tau
         else:
+            if not MPIPool.enabled():
+                raise SystemError(
+                    "Tried to run with MPI but MPIPool not enabled!"
+                )
+
             with MPIPool() as pool:
                 if not pool.is_master():
                     pool.wait()
                     sys.exit(0)
+
+                print("\n Running with MPI on {0} cores \n".format(pool.size))
+
                 p0 = self.get_initial_walkers()
                 sampler = emcee.EnsembleSampler(
                     self.nwalkers,
