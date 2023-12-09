@@ -61,15 +61,12 @@ def generate_batch_script(
         #SBATCH --qos=debug
         #SBATCH --account=desi
         #SBATCH --nodes=1
-        #SBATCH --ntasks-per-node=1
-        #SBATCH --cpus-per-task=128
+        #SBATCH --ntasks-per-node=32
         #SBATCH --constraint=cpu
         #SBATCH --output={out_path}output{seed}.log
         #SBATCH --error={out_path}error{seed}.log
 
-        export OMP_NUM_THREADS=64
-
-        srun --unbuffered --cpu-bind=none python {python_script_path}\
+        mpiexec -n 32 python {python_script_path}\
         --training_set {args.training_set}\
         --emulator_label {args.emulator_label}\
         --drop_sim {args.drop_sim}\
