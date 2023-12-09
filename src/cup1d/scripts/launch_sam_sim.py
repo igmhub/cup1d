@@ -58,7 +58,7 @@ def generate_batch_script(
     slurm_script_content = textwrap.dedent(
         f"""\
         #!/bin/bash
-        #SBATCH --qos=regular
+        #SBATCH --qos=debug
         #SBATCH --account=desi
         #SBATCH --nodes=1
         #SBATCH --ntasks-per-node=32
@@ -86,12 +86,21 @@ def generate_batch_script(
     return slurm_script_content
 
 
+def get_total_job_count():
+    # Use squeue to get the count of total (running + pending) jobs for the current user
+    command = "squeue -h -u $USER | wc -l"
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    return int(result.stdout.strip())
+
+
 def launch_batch_script(slurm_script):
     # Submit the SLURM job using subprocess
     subprocess.run(["sbatch", slurm_script])
 
 
 def main():
+    max_jobs = 5
+
     python_script_path = (
         os.environ["CUP1D_PATH"] + "src/cup1d/scripts/sam_sim.py"
     )
@@ -201,7 +210,12 @@ def main():
                 + ".sub"
             )
 
-            if seed > 4:
+            if seed > 6:
+                while get_total_job_count() == max_jobs:
+                    # Wait and check again after a delay if the limit is reached
+                    print("Waiting for a job to finish")
+                    time.sleep(60)
+
                 slurm_script_content = generate_batch_script(
                     slurm_script_path, python_script_path, out_path, seed, args
                 )
