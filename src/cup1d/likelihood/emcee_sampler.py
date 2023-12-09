@@ -1,15 +1,14 @@
-import numpy as np
-import os
-import json
-import matplotlib.pyplot as plt
-import emcee
-import time
-import scipy.stats
+import os, time, emcee, json
 
-# import multiprocessing as mp
-from schwimmbad import MPIPool
+import scipy.stats
+import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 from chainconsumer import ChainConsumer, Chain, Truth
+
+# import multiprocessing as mp
+# from schwimmbad import MPIPool
+from mpi4py import MPI
 
 # our own modules
 from lace.cosmo import fit_linP, camb_cosmo
@@ -66,6 +65,8 @@ class EmceeSampler(object):
         self,
         like=None,
         nwalkers=None,
+        nsteps=None,
+        nburnin=None,
         read_chain_file=None,
         verbose=False,
         subfolder=None,
@@ -84,12 +85,15 @@ class EmceeSampler(object):
         self.verbose = verbose
         self.progress = progress
         self.get_autocorr = get_autocorr
+        self.burnin_nsteps = nburnin
 
         if self.parallel:
-            comm = MPIPool().comm
-            rank = comm.Get_rank()
+            self.comm = MPI.COMM_WORLD
+            self.rank = self.comm.Get_rank()
+            self.size = self.comm.Get_size()
         else:
-            rank = 0
+            self.rank = 0
+            self.size = 1
 
         self.fprint = create_print_function(self.verbose)
 
@@ -103,8 +107,9 @@ class EmceeSampler(object):
             # number of free parameters to sample
             self.ndim = len(self.like.free_params)
 
-            if rank == 0:
+            if self.rank == 0:
                 self._setup_chain_folder(rootdir, subfolder)
+
             if save_chain:
                 backend_string = self.save_directory + "/backend.h5"
                 self.backend = emcee.backends.HDFBackend(backend_string)
@@ -120,9 +125,39 @@ class EmceeSampler(object):
                         "nwalkers={} ; ndim={}".format(nwalkers, self.ndim)
                     )
                     raise ValueError("specified number of walkers too small")
+                self.nsteps = nsteps
             else:
-                self.nwalkers = 40 * self.ndim
-            self.fprint("setup with", self.nwalkers, "walkers")
+                max_walkers = 40 * self.ndim
+                min_walkers = 2 * self.ndim
+                nwalkers = max_walkers // self.size + 1
+                combined_steps = max_walkers * (nsteps + self.burnin_nsteps)
+
+                if nwalkers < min_walkers:
+                    nwalkers = min_walkers
+                    nsteps = (
+                        combined_steps // (nwalkers * self.size)
+                        - self.burnin_nsteps
+                    )
+
+                self.nwalkers = nwalkers
+                self.nsteps = nsteps
+
+            self.fprint(
+                "setup with ",
+                self.size,
+                " ranks, ",
+                self.nwalkers,
+                " walkers, and ",
+                self.nsteps,
+                " steps",
+            )
+            self.fprint(
+                "combined steps ",
+                self.nwalkers * self.size * (self.nsteps + self.burnin_nsteps),
+                "(should be close to ",
+                combined_steps,
+                ")",
+            )
 
         ## Set up list of parameter names in tex format for plotting
         self.paramstrings = []
@@ -163,10 +198,7 @@ class EmceeSampler(object):
 
     def run_sampler(
         self,
-        burn_in,
-        max_steps,
         log_func=None,
-        parallel=False,
         timeout=None,
         force_timeout=False,
     ):
@@ -176,14 +208,13 @@ class EmceeSampler(object):
               sampler for
             - force_timeout will continue to run the chains
               until timeout, regardless of convergence"""
+        if self.get_autocorr:
+            # We'll track how the average autocorrelation time estimate changes
+            self.autocorr = np.array([])
+            # This will be useful to testing convergence
+            old_tau = np.inf
 
-        self.burnin_nsteps = burn_in
-        # We'll track how the average autocorrelation time estimate changes
-        self.autocorr = np.array([])
-        # This will be useful to testing convergence
-        old_tau = np.inf
-
-        if parallel == False:
+        if self.parallel == False:
             ## Get initial walkers
             p0 = self.get_initial_walkers()
             if log_func is None:
@@ -197,24 +228,29 @@ class EmceeSampler(object):
             )
             for sample in sampler.sample(
                 p0,
-                iterations=burn_in + max_steps,
+                iterations=self.burnin_nsteps + self.nsteps,
                 progress=self.progress,
             ):
                 # Only check convergence every 100 steps
-                if sampler.iteration % 100 or sampler.iteration < burn_in + 1:
+                if (
+                    sampler.iteration % 100
+                    or sampler.iteration < self.burnin_nsteps + 1
+                ):
                     continue
 
                 if self.progress == False:
                     self.fprint(
                         "Step %d out of %d "
-                        % (sampler.iteration, burn_in + max_steps)
+                        % (sampler.iteration, self.burnin_nsteps + self.nsteps)
                     )
 
                 if self.get_autocorr:
                     # Compute the autocorrelation time so far
                     # Using tol=0 means that we'll always get an estimate even
                     # if it isn't trustworthy
-                    tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
+                    tau = sampler.get_autocorr_time(
+                        tol=0, discard=self.burnin_nsteps
+                    )
                     self.autocorr = np.append(self.autocorr, np.mean(tau))
 
                     # Check convergence
@@ -223,29 +259,84 @@ class EmceeSampler(object):
                     if converged:
                         break
                     old_tau = tau
+
+            ## Get samples, flat=False to be able to mask not converged chains latter
+            self.lnprob = sampler.get_log_prob(
+                flat=False, discard=self.burnin_nsteps
+            )
+            self.chain = sampler.get_chain(
+                flat=False, discard=self.burnin_nsteps
+            )
+            self.blobs = sampler.get_blobs(
+                flat=False, discard=self.burnin_nsteps
+            )
         else:
-            if not MPIPool.enabled():
-                raise SystemError(
-                    "Tried to run with MPI but MPIPool not enabled!"
-                )
+            # MPIPool does not work in nersc for whatever reason
+            # I need to get creative
 
-            with MPIPool() as pool:
-                if not pool.is_master():
-                    pool.wait()
-                    sys.exit(0)
+            np.random.seed(self.rank)
+            p0 = self.get_initial_walkers()
+            sampler = emcee.EnsembleSampler(
+                self.nwalkers, self.ndim, log_func, blobs_dtype=self.blobs_dtype
+            )
 
-                print("\n Running with MPI on {0} cores \n".format(pool.size))
+            for sample in sampler.sample(
+                p0, iterations=self.burnin_nsteps + self.nsteps
+            ):
+                # Only check convergence every 100 steps
+                if ((sampler.iteration + self.burnin_nsteps) % 100 == 0) & (
+                    sampler.iteration > self.burnin_nsteps + 1
+                ):
+                    self.fprint(
+                        "Step %d out of %d "
+                        % (sampler.iteration - self.burnin_nsteps, self.nsteps)
+                    )
 
-                p0 = self.get_initial_walkers()
-                sampler = emcee.EnsembleSampler(
-                    self.nwalkers,
-                    self.ndim,
-                    log_func,
-                    backend=self.backend,
-                    blobs_dtype=self.blobs_dtype,
-                    pool=pool,
-                )
-                sampler.run_mcmc(p0, burn_in + max_steps)
+            _lnprob = sampler.get_log_prob(
+                flat=False, discard=self.burnin_nsteps
+            )
+            _chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
+            _blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
+
+            if self.rank != 0:
+                self.comm.send(_lnprob, dest=0, tag=1000 + self.rank)
+                self.comm.send(_chain, dest=0, tag=2000 + self.rank)
+                self.comm.send(_blobs, dest=0, tag=3000 + self.rank)
+
+            if self.rank == 0:
+                chain = []
+                lnprob = []
+                blobs = []
+
+                lnprob.append(_lnprob)
+                chain.append(_chain)
+                blobs.append(_blobs)
+
+                for irank in range(1, self.size):
+                    self.fprint("Receiving from rank %d" % irank)
+                    lnprob.append(
+                        self.comm.recv(source=irank, tag=1000 + irank)
+                    )
+                    chain.append(self.comm.recv(source=irank, tag=2000 + irank))
+                    blobs.append(self.comm.recv(source=irank, tag=3000 + irank))
+
+                self.lnprob = np.concatenate(lnprob, axis=1)
+                self.chain = np.concatenate(chain, axis=1)
+                self.blobs = np.concatenate(blobs, axis=1)
+
+            # if not MPIPool.enabled():
+            #     raise SystemError(
+            #         "Tried to run with MPI but MPIPool not enabled!"
+            #     )
+
+            # with MPIPool() as pool:
+            #     if not pool.is_master():
+            #         pool.wait()
+            #         sys.exit(0)
+
+            #     print("\n Running with MPI on {0} cores \n".format(pool.size))
+
+            #     sampler.run_mcmc(p0, burn_in + max_steps)
             # sampler.pool = pool
             # print(f"Number of threads being used: {pool._processes}")
             # sampler.run_mcmc(p0, burn_in + max_steps)
@@ -305,13 +396,6 @@ class EmceeSampler(object):
             #             print("Chains have converged")
             #             break
             #         old_tau = tau
-
-        ## Get samples, flat=False to be able to mask not converged chains latter
-        self.lnprob = sampler.get_log_prob(
-            flat=False, discard=self.burnin_nsteps
-        )
-        self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
-        self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
 
         return sampler
 

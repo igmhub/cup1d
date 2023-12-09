@@ -327,26 +327,21 @@ def sample(args, like, free_parameters, fprint=print):
     """Sample the posterior distribution"""
 
     path = path_sampler(args)
-    fprint("\n" + "\n" + "Output in folder: " + path + "\n" + "\n")
+    fprint("\n\n Output in folder: " + path + "\n\n")
 
     sampler = emcee_sampler.EmceeSampler(
         like=like,
         rootdir=path,
         save_chain=False,
-        nwalkers=args.nwalkers,
+        nburnin=args.n_burn_in,
+        nsteps=args.n_steps,
         parallel=args.parallel,
     )
     _log_prob = set_log_prob(sampler)
 
-    _ = sampler.run_sampler(
-        args.n_burn_in,
-        args.n_steps,
-        log_func=_log_prob,
-    )
+    _ = sampler.run_sampler(log_func=_log_prob)
 
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    if rank == 0:
+    if MPI.COMM_WORLD.Get_rank() == 0:
         sampler.write_chain_to_file()
 
 
@@ -385,13 +380,6 @@ def sam_sim(args):
     if args.test == True:
         args.n_steps = 10
         args.n_burn_in = 0
-        args.nwalkers = 50
-    else:
-        args.nwalkers = None
-
-    args.n_steps = 100
-    args.n_burn_in = 0
-    args.nwalkers = 50
 
     if args.archive is None:
         if args.training_set == "Pedersen21":
