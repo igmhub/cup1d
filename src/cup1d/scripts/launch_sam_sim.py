@@ -208,7 +208,16 @@ def main():
                 + ".sub"
             )
 
-            if seed > 11:
+            if override:
+                run = True
+            else:
+                fsummary = path_sampler(args) + "chain1/results.npy"
+                if os.path.exists(fsummary):
+                    run = False
+                else:
+                    run = True
+
+            if run == True:
                 while get_total_job_count() == max_jobs:
                     # Wait and check again after a delay if the limit is reached
                     print("Waiting for a job to finish")
