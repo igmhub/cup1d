@@ -100,6 +100,17 @@ def parse_args():
         help="scale contribution of emulator covariance",
     )
     parser.add_argument(
+        "--add_noise",
+        action="store_true",
+        help="Add noise to P1D mock according to covariance matrix",
+    )
+    parser.add_argument(
+        "--seed_noise",
+        type=int,
+        default=0,
+        help="Seed for noise",
+    )
+    parser.add_argument(
         "--n_igm",
         type=int,
         default=2,
@@ -306,8 +317,11 @@ def path_sampler(args):
         + flag_drop
         + "_"
         + flag_poly
-        + "/"
     )
+    if args.add_noise:
+        path += "_noise_" + str(args.seed_noise)
+
+    path += "/"
     if os.path.isdir(path) == False:
         os.mkdir(path)
 
@@ -470,6 +484,8 @@ def sam_sim(args):
         data_cov_label=args.cov_label,
         polyfit_kmax_Mpc=polyfit_kmax_Mpc,
         polyfit_ndeg=polyfit_ndeg,
+        add_noise=args.add_noise,
+        seed=args.seed_noise,
     )
     if args.add_hires:
         extra_data = set_P1D(
@@ -480,6 +496,8 @@ def sam_sim(args):
             data_cov_label="Karacayli2022",
             polyfit_kmax_Mpc=polyfit_kmax_Mpc,
             polyfit_ndeg=polyfit_ndeg,
+            add_noise=args.add_noise,
+            seed=args.seed_noise,
         )
     else:
         extra_data = None

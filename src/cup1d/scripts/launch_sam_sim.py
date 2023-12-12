@@ -25,8 +25,10 @@ class Args:
         self.n_igm = 2
         self.prior_Gauss_rms = None
         self.test = False
-        self.no_parallel = True
-        self.no_verbose = True  # reverse
+        self.parallel = True
+        self.verbose = True
+        self.add_noise = True
+        self.seed_noise = 0
         self.par2save = [
             "training_set",
             "emulator_label",
@@ -78,6 +80,8 @@ def generate_batch_script(
         --emu_cov_factor {args.emu_cov_factor}\
         --verbose\
         --parallel
+        --add_noise
+        --seed_noise {args.seed_noise}
     """
     )
     print(slurm_script_content)
@@ -119,17 +123,30 @@ def main():
     training_set = "Cabayol23"
     emulator_label = "Cabayol23"
     add_hires = False
-    # use own IGM history or that of central simulation
-    arr_igm_own = [True, False]
-    # use own cosmo or that of central simulation
-    arr_cosmo_own = [True, False]
     # emulator_label = "Cabayol23_extended"
     # add_hires = True
+
+    # l1O or not?
+    # list_sim = archive.list_sim
+    list_sim = ["mpg_central"]
+
+    # use own IGM history or that of central simulation
+    # arr_igm_own = [True, False]
+    arr_igm_own = [True]
+
+    # use own cosmo or that of central simulation
+    # arr_cosmo_own = [True, False]
+    arr_cosmo_own = [True]
+
     use_polyfit = True
     cov_label = "Chabanier2019"
     arr_drop_sim = [True]
     arr_n_igm = [2]
     override = False
+
+    # noise to mock
+    add_noise = True
+    arr_seed_noise = np.arange(9) + 1
 
     # read archive from outside
     if training_set == "Pedersen21":
@@ -167,12 +184,13 @@ def main():
         arr_cosmo_own,
         arr_drop_sim,
         arr_n_igm,
-        archive.list_sim,
+        list_sim,
+        arr_seed_noise,
     )
 
-    seed = 0
+    seed = 200
     for ind in combined_loop:
-        igm_own, cosmo_own, drop_sim, n_igm, sim_label = ind
+        igm_own, cosmo_own, drop_sim, n_igm, sim_label, seed_noise = ind
         if sim_label not in sim_avoid:
             print("")
             print("external loop")
@@ -183,6 +201,8 @@ def main():
             args.training_set = training_set
             args.emulator_label = emulator_label
             args.z_max = z_max
+            args.add_noise = add_noise
+            args.seed_noise = seed_noise
 
             args.mock_sim_label = sim_label
             if igm_own:
