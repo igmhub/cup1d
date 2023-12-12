@@ -141,12 +141,12 @@ def main():
     use_polyfit = True
     cov_label = "Chabanier2019"
     arr_drop_sim = [True]
-    arr_n_igm = [2]
+    arr_n_igm = [0, 1]
     override = False
 
     # noise to mock
     add_noise = True
-    arr_seed_noise = np.arange(9) + 1
+    arr_seed_noise = np.arange(10)
 
     # read archive from outside
     if training_set == "Pedersen21":
