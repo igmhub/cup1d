@@ -8,28 +8,23 @@ from lace.archive import gadget_archive, nyx_archive
 from lace.cosmo import camb_cosmo
 from lace.emulator.nn_emulator import NNEmulator
 from lace.emulator.gp_emulator import GPEmulator
-from cup1d.data import data_gadget, data_nyx
+from cup1d.data import (
+    data_gadget,
+    data_nyx,
+    data_eBOSS_mock,
+    data_Chabanier2019,
+    data_Karacayli2022,
+    data_Karacayli2023,
+    data_Ravoux2023,
+)
 from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
 from cup1d.utils.utils import create_print_function, mpi_hello_world
 
 
 def parse_args():
-    def str_to_bool(s):
-        if s == "True":
-            return True
-        elif s == "False":
-            return False
 
     parser = configargparse.ArgumentParser(
         description="Passing options to sampler"
-    )
-
-    # archive and emulator
-    parser.add_argument(
-        "--training_set",
-        default=None,
-        choices=["Pedersen21", "Cabayol23", "Nyx23_Oct2023"],
-        required=True,
     )
 
     # emulator
@@ -66,22 +61,19 @@ def parse_args():
 
     parser.add_argument(
         "--drop_sim",
-        default="False",
-        choices=["True", "False"],
+        action="store_true",
         help="Drop mock_sim_label simulation from the training set",
     )
 
     # P1D
     parser.add_argument(
-        "--add_hires",
-        default="False",
-        choices=["True", "False"],
+        "--add_hires"
+        action="store_true",
         help="Include high-res data (Karacayli2022)",
     )
     parser.add_argument(
-        "--use_polyfit",
-        default="True",
-        choices=["True", "False"],
+        "--use_polyfit"
+        action="store_true",
         help="Fit data after fitting polynomial",
     )
 
@@ -91,13 +83,14 @@ def parse_args():
         type=str,
         default="Chabanier2019",
         choices=["Chabanier2019", "QMLE_Ohio"],
-        help="Data covariance to use, Chabanier2019 or QMLE_Ohio",
+        help="Data covariance",
     )
     parser.add_argument(
-        "--emu_cov_factor",
-        type=float,
-        default=0,
-        help="scale contribution of emulator covariance",
+        "--cov_label_hires",
+        type=str,
+        default="Karacayli2022",
+        choices=["Karacayli2022"],
+        help="Data covariance for high-res data",
     )
     parser.add_argument(
         "--add_noise",
@@ -119,7 +112,7 @@ def parse_args():
 
     parser.add_argument(
         "--version",
-        default="v1",
+        default="v2",
         help="Version of the pipeline",
     )
 
@@ -127,6 +120,13 @@ def parse_args():
         "--prior_Gauss_rms",
         default=None,
         help="Width of Gaussian prior",
+    )
+
+    parser.add_argument(
+        "--emu_cov_factor",
+        type=float,
+        default=0,
+        help="scale contribution of emulator covariance",
     )
 
     parser.add_argument(
@@ -147,24 +147,12 @@ def parse_args():
         help="Parallelize",
     )
     # not implemented yet!
-    # parser.add_argument(
-    #     "--vary_fiducial_cosmo",
-    #     default="False",
-    #     choices=["True", "False"],
-    #     help="Use as fiducial cosmology the one of the target mock",
-    # )
 
     # parser.add_argument(
     #     "--z_min", type=float, default=2.0, help="Minimum redshift"
     # )
     # parser.add_argument(
     #     "--z_max", type=float, default=4.5, help="Maximum redshift"
-    # )
-    # parser.add_argument(
-    #     "--cosmo_fid_label",
-    #     type=str,
-    #     default="default",
-    #     help="Fiducial cosmology to use (default,truth)",
     # )
 
     #######################
@@ -179,12 +167,49 @@ def parse_args():
     fprint(parser.format_values())
     fprint("----------")
 
-    args.drop_sim = str_to_bool(args.drop_sim)
-    args.add_hires = str_to_bool(args.add_hires)
-    args.use_polyfit = str_to_bool(args.use_polyfit)
     args.archive = None
 
+    # set label_training_set
+    if args.emulator_label == "Pedersen21":
+        args.training_set = "Pedersen21"
+    elif args.emulator_label == "Pedersen23":
+        args.training_set = "Cabayol23"
+    elif args.emulator_label == "Cabayol23":
+        args.training_set = "Cabayol23"
+    elif args.emulator_label == "Cabayol23_extended":
+        args.training_set = "Cabayol23"
+    elif args.emulator_label == "Nyx_v0":
+        args.training_set = "Nyx23_Oct2023"
+    elif args.emulator_label == "Nyx_v0_extended":
+        args.training_set = "Nyx23_Oct2023"
+
+    # set n_steps and n_burn_in
+    if args.test == True:
+        args.n_steps = 10
+        args.n_burn_in = 0
+    else:
+        args.n_steps = 1000
+        if args.cov_label == "Chabanier2019":
+            if args.n_igm == 0:
+                args.n_burn_in = 100
+            else:
+                args.n_burn_in = 500
+        elif args.cov_label == "QMLE_Ohio":
+            if args.n_igm == 0:
+                # TBD (need to check)
+                args.n_burn_in = 200
+            else:
+                args.n_burn_in = 1200
+        else:
+            if args.n_igm == 0:
+                args.n_burn_in = 200
+            else:
+                args.n_burn_in = 500
+
     assert "CUP1D_PATH" in os.environ, "Define CUP1D_PATH variable"
+
+    print(args.label_training_set)
+    sys.exit()
 
     return args
 
@@ -212,19 +237,14 @@ def load_emu(
 
         return folder + fname
 
+    # set drop_sim
+    if drop_sim:
+        _drop_sim = mock_sim_label
+    else:
+        _drop_sim = None
+
+    # set emulator
     if emulator_label == "Pedersen21":
-        if label_training_set != "Pedersen21":
-            raise (
-                "Combination of training_set ("
-                + label_training_set
-                + ") and emulator_label ("
-                + emulator_label
-                + ") not allowed:"
-            )
-        if drop_sim:
-            _drop_sim = mock_sim_label
-        else:
-            _drop_sim = None
         fprint("Training emulator " + emulator_label)
         emulator = GPEmulator(
             training_set=label_training_set,
@@ -232,32 +252,9 @@ def load_emu(
             drop_sim=_drop_sim,
         )
     else:
-        if (label_training_set == "Cabayol23") & (
-            (emulator_label == "Cabayol23")
-            | (emulator_label == "Cabayol23_extended")
-        ):
-            pass
-        elif (label_training_set[:5] == "Nyx23") & (
-            (emulator_label == "Nyx_v0") | (emulator_label == "Nyx_v0_extended")
-        ):
-            pass
-        else:
-            msg = (
-                "Combination of training_set ("
-                + label_training_set
-                + ") and emulator_label ("
-                + emulator_label
-                + ") not allowed:"
-            )
-            raise ValueError(msg)
-
         emu_path = set_emu_path(
             label_training_set, emulator_label, mock_sim_label, drop_sim
         )
-        if drop_sim:
-            _drop_sim = mock_sim_label
-        else:
-            _drop_sim = None
         fprint("Loading emulator " + emulator_label)
         emulator = NNEmulator(
             archive=archive,
@@ -297,20 +294,18 @@ def path_sampler(args):
     path += args.version + "/"
     if os.path.isdir(path) == False:
         os.mkdir(path)
-    path += args.training_set + "_" + flag_hires + "/"
+    path += "emu_" + args.emulator_label + "/"
     if os.path.isdir(path) == False:
         os.mkdir(path)
-    path += (
-        "emu_"
-        + args.emulator_label
-        + "_cov_"
-        + args.cov_label
-        + "_mocksim_"
+    path += "cov_" + args.cov_label + "_" + flag_hires + "/"
+    if os.path.isdir(path) == False:
+        os.mkdir(path)
+    path += ("mock_"
         + args.mock_sim_label
-        + "_cosmosim_"
-        + args.cosmo_sim_label
-        + "_igmsim_"
+        + "_igm_"
         + args.igm_sim_label
+        + "_cosmo_"
+        + args.cosmo_sim_label
         + "_nigm_"
         + str(args.n_igm)
         + "_"
@@ -320,7 +315,6 @@ def path_sampler(args):
     )
     if args.add_noise:
         path += "_noise_" + str(args.seed_noise)
-
     path += "/"
     if os.path.isdir(path) == False:
         os.mkdir(path)
@@ -368,86 +362,38 @@ def sam_sim(args):
     start_all = time.time()
 
     #######################
-    # load training set
+
+    # set training set
+
     start = time.time()
     fprint("----------")
     fprint("Setting training set " + args.training_set)
-
-    args.n_steps = 1000
-    if args.cov_label == "Chabanier2019":
-        if args.n_igm == 0:
-            args.n_burn_in = 75
-        else:
-            args.n_burn_in = 250
-    elif args.cov_label == "QMLE_Ohio":
-        if args.n_igm == 0:
-            # TBD (need to check)
-            args.n_burn_in = 200
-        else:
-            args.n_burn_in = 1200
-    else:
-        if args.n_igm == 0:
-            args.n_burn_in = 200
-        else:
-            args.n_burn_in = 500
-
-    if args.test == True:
-        args.n_steps = 10
-        args.n_burn_in = 0
-
     if args.archive is None:
-        if args.training_set == "Pedersen21":
-            get_cosmo = camb_cosmo.get_cosmology_from_dictionary
-            set_P1D = data_gadget.Gadget_P1D
+        # if calling the script from the command line
+        if (args.training_set == "Pedersen21") | (
+            args.training_set == "Cabayol23"
+        ):
             archive = gadget_archive.GadgetArchive(postproc=args.training_set)
-            z_min = 2
-            z_max = 4.5
-            # z_max = np.max(archive.list_sim_redshifts)
-        elif args.training_set == "Cabayol23":
-            get_cosmo = camb_cosmo.get_cosmology_from_dictionary
-            set_P1D = data_gadget.Gadget_P1D
-            archive = gadget_archive.GadgetArchive(postproc=args.training_set)
-            z_min = 2
-            z_max = 4.5
-            # z_max = np.max(archive.list_sim_redshifts)
         elif args.training_set[:5] == "Nyx23":
-            get_cosmo = camb_cosmo.get_Nyx_cosmology
-            set_P1D = data_nyx.Nyx_P1D
             archive = nyx_archive.NyxArchive(nyx_version=args.training_set[6:])
-            z_min = 2.2
-            z_max = 4.5
-            # z_max = np.max(archive.list_sim_redshifts)
         else:
             raise ValueError("Training_set not implemented")
     else:
+        # if calling the script from a python script (and providing an archive)
         archive = args.archive
-        z_max = args.z_max
-        set_P1D = args.set_P1D
-        get_cosmo = args.get_cosmo
-
-    if args.mock_sim_label not in archive.list_sim:
-        fprint(
-            args.mock_sim_label + " is not in part of " + args.training_set,
-            verbose=args.verbose,
-        )
-        fprint(
-            "List of simulations available: ",
-            archive.list_sim,
-            verbose=args.verbose,
-        )
-        sys.exit()
     end = time.time()
     multi_time = str(np.round(end - start, 2))
-    # fprint("z in range ", z_min, ", ", z_max)
     fprint("Training set loaded " + multi_time + " s")
 
     #######################
+
     # set emulator
+
     fprint("----------")
     fprint("Setting emulator")
     start = time.time()
     if args.drop_sim:
-        ## only drop sim if it was in the training set
+        # only drop sim if it is in the training set
         if args.mock_sim_label in archive.list_sim_cube:
             _drop_sim = True
         else:
@@ -464,9 +410,7 @@ def sam_sim(args):
         fprint=fprint,
     )
 
-    multi_time = str(np.round(time.time() - start, 2))
-    fprint("Emulator loaded " + multi_time + " s")
-
+    # Apply the same polyfit to the data as to the emulator
     if args.use_polyfit:
         polyfit_kmax_Mpc = emulator.kmax_Mpc
         polyfit_ndeg = emulator.ndeg
@@ -474,37 +418,128 @@ def sam_sim(args):
         polyfit_kmax_Mpc = None
         polyfit_ndeg = None
 
+    multi_time = str(np.round(time.time() - start, 2))
+    fprint("Emulator loaded " + multi_time + " s")
+
     #######################
-    # set target P1D
-    data = set_P1D(
-        archive=archive,
-        input_sim=args.mock_sim_label,
-        # z_min=z_min,
-        z_max=z_max,
-        data_cov_label=args.cov_label,
-        polyfit_kmax_Mpc=polyfit_kmax_Mpc,
-        polyfit_ndeg=polyfit_ndeg,
-        add_noise=args.add_noise,
-        seed=args.seed_noise,
-    )
-    if args.add_hires:
-        extra_data = set_P1D(
-            archive=archive,
+
+    # set P1D
+
+    if (args.mock_sim_label[:3] == "mpg") | (args.mock_sim_label[:3] == "nyx"):
+        if args.mock_sim_label in archive.list_sim:
+            archive_mock = archive
+        else:
+            if args.mock_sim_label[:3] == "mpg":
+                archive_mock = gadget_archive.GadgetArchive()
+            elif args.mock_sim_label[:3] == "nyx":
+                archive_mock = nyx_archive.NyxArchive()
+        if args.mock_sim_label[:3] == "mpg":
+            set_P1D = data_gadget.Gadget_P1D
+        elif args.mock_sim_label[:3] == "nyx":
+            set_P1D = data_nyx.Nyx_P1D
+
+        # set target P1D
+        data = set_P1D(
+            archive=archive_mock,
             input_sim=args.mock_sim_label,
             # z_min=z_min,
             z_max=z_max,
-            data_cov_label="Karacayli2022",
+            data_cov_label=args.cov_label,
             polyfit_kmax_Mpc=polyfit_kmax_Mpc,
             polyfit_ndeg=polyfit_ndeg,
             add_noise=args.add_noise,
             seed=args.seed_noise,
         )
+        if args.add_hires:
+            extra_data = set_P1D(
+                archive=archive_mock,
+                input_sim=args.mock_sim_label,
+                # z_min=z_min,
+                z_max=z_max,
+                data_cov_label=args.cov_label_hires,
+                polyfit_kmax_Mpc=polyfit_kmax_Mpc,
+                polyfit_ndeg=polyfit_ndeg,
+                add_noise=args.add_noise,
+                seed=args.seed_noise,
+            )
+        else:
+            extra_data = None
+
+        # reset all archives to free space
+        archive = archive_mock = None
+
+    elif args.mock_sim_label == "eBOSS_mock":
+        data = data_eBOSS_mock.P1D_eBOSS_mock(
+            add_noise=args.add_noise,
+            seed=args.seed_noise,
+        )
+        if args.add_hires:
+            raise ValueError("Hires not implemented for eBOSS_mock")
+        else:
+            extra_data = None
+    elif args.mock_sim_label == "Chabanier19":
+        data = data_Chabanier2019.P1D_Chabanier2019()
+        if args.add_hires:
+            extra_data = data_Karacayli2022.P1D_Karacayli2022()
+        else:
+            extra_data = None
+    elif args.mock_sim_label == "Ravoux23":
+        data = data_Ravoux2023.P1D_Ravoux23()
+        if args.add_hires:
+            extra_data = data_Karacayli2022.P1D_Karacayli2022()
+        else:
+            extra_data = None
+    elif args.mock_sim_label == "Karacayli23":
+        data = data_Karacayli2023.P1D_Karacayli2023()
+        if args.add_hires:
+            extra_data = data_Karacayli2022.P1D_Karacayli2022()
+        else:
+            extra_data = None
     else:
-        extra_data = None
+        raise ValueError(
+            f"mock_sim_label {args.mock_sim_label} not implemented"
+        )
 
     #######################
+
+    # set fiducial cosmology
+    if (args.cosmo_sim_label[:3] == "mpg") | (
+        args.cosmo_sim_label[:3] == "nyx"
+    ):
+        if args.cosmo_sim_label[:3] == "mpg":
+            fname = (
+                os.environ["LACE_REPO"]
+                + "src/lace/data/sim_suites/Australia20/mpg_emu_cosmo.npy"
+            )
+            get_cosmo = camb_cosmo.get_cosmology_from_dictionary
+        elif args.cosmo_sim_label[:3] == "nyx":
+            fname = os.environ["NYX_PATH"] + "nyx_emu_cosmo_Oct2023.npy"
+            get_cosmo = camb_cosmo.get_Nyx_cosmology
+
+        try:
+            data_cosmo = np.load(fname, allow_pickle=True)
+        except:
+            ValueError(f"{fname} not found")
+
+        cosmo_fid = None
+        for ii in range(len(data_cosmo)):
+            if data_cosmo[ii]["sim_label"] == args.cosmo_sim_label:
+                cosmo_fid = get_cosmo(data_cosmo[ii]["cosmo_params"])
+                break
+        if cosmo_fid is None:
+            raise ValueError(
+                f"Cosmo not found in {fname} for {args.cosmo_sim_label}"
+            )
+    else:
+        raise ValueError(
+            f"cosmo_sim_label {args.cosmo_sim_label} not implemented"
+        )
+
+    #######################
+
     # set likelihood
-    ## set cosmo free parameters
+
+    ## set cosmo and IGM parameters
     fprint("----------")
     fprint("Set likelihood")
     free_parameters = ["As", "ns"]
@@ -516,10 +551,6 @@ def sam_sim(args):
         for par in ["tau", "sigT_kms", "gamma", "kF"]:
             free_parameters.append("ln_{}_{}".format(par, ii))
     fprint("free parameters", free_parameters)
-
-    # set fiducial cosmology
-    testing_data = archive.get_testing_data(args.cosmo_sim_label, z_max=z_max)
-    cosmo_fid = get_cosmo(testing_data[0]["cosmo_params"])
 
     ## set theory
     theory = lya_theory.Theory(
@@ -541,19 +572,20 @@ def sam_sim(args):
     )
 
     #######################
+
     # sample likelihood
+
     fprint("----------")
     fprint("Sampler")
     start = time.time()
     sample(args, like, free_parameters, fprint=fprint)
     multi_time = str(np.round(time.time() - start, 2))
-    fprint("Sample in " + multi_time + " s")
-    fprint("")
-    fprint("")
+    fprint("Sample in " + multi_time + " s \n\n")
+
+    #######################
+
     multi_time = str(np.round(time.time() - start_all, 2))
-    fprint("Program took " + multi_time + " s")
-    fprint("")
-    fprint("")
+    fprint("Program took " + multi_time + " s \n\n")
 
 
 if __name__ == "__main__":
