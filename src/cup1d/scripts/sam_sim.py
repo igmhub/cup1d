@@ -22,7 +22,6 @@ from cup1d.utils.utils import create_print_function, mpi_hello_world
 
 
 def parse_args():
-
     parser = configargparse.ArgumentParser(
         description="Passing options to sampler"
     )
@@ -67,12 +66,12 @@ def parse_args():
 
     # P1D
     parser.add_argument(
-        "--add_hires"
+        "--add_hires",
         action="store_true",
         help="Include high-res data (Karacayli2022)",
     )
     parser.add_argument(
-        "--use_polyfit"
+        "--use_polyfit",
         action="store_true",
         help="Fit data after fitting polynomial",
     )
@@ -151,9 +150,9 @@ def parse_args():
     # parser.add_argument(
     #     "--z_min", type=float, default=2.0, help="Minimum redshift"
     # )
-    # parser.add_argument(
-    #     "--z_max", type=float, default=4.5, help="Maximum redshift"
-    # )
+    parser.add_argument(
+        "--z_max", type=float, default=4.5, help="Maximum redshift"
+    )
 
     #######################
     # print args
@@ -208,13 +207,10 @@ def parse_args():
 
     assert "CUP1D_PATH" in os.environ, "Define CUP1D_PATH variable"
 
-    print(args.label_training_set)
-    sys.exit()
-
     return args
 
 
-def load_emu(
+def set_emu(
     archive,
     label_training_set,
     emulator_label,
@@ -237,9 +233,12 @@ def load_emu(
 
         return folder + fname
 
-    # set drop_sim
     if drop_sim:
-        _drop_sim = mock_sim_label
+        # only drop sim if it is in the training set
+        if mock_sim_label in archive.list_sim_cube:
+            _drop_sim = mock_sim_label
+        else:
+            _drop_sim = None
     else:
         _drop_sim = None
 
@@ -300,7 +299,8 @@ def path_sampler(args):
     path += "cov_" + args.cov_label + "_" + flag_hires + "/"
     if os.path.isdir(path) == False:
         os.mkdir(path)
-    path += ("mock_"
+    path += (
+        "mock_"
         + args.mock_sim_label
         + "_igm_"
         + args.igm_sim_label
@@ -334,6 +334,9 @@ def set_log_prob(sampler):
 def sample(args, like, free_parameters, fprint=print):
     """Sample the posterior distribution"""
 
+    fprint("----------")
+    fprint("Sampler")
+
     path = path_sampler(args)
     fprint("\n\n Output in folder: " + path + "\n\n")
 
@@ -353,78 +356,17 @@ def sample(args, like, free_parameters, fprint=print):
         sampler.write_chain_to_file()
 
 
-def sam_sim(args):
-    """Sample the posterior distribution for a of a mock"""
-
-    #######################
-    fprint = create_print_function(verbose=args.verbose)
-
-    start_all = time.time()
-
-    #######################
-
-    # set training set
-
-    start = time.time()
-    fprint("----------")
-    fprint("Setting training set " + args.training_set)
-    if args.archive is None:
-        # if calling the script from the command line
-        if (args.training_set == "Pedersen21") | (
-            args.training_set == "Cabayol23"
-        ):
-            archive = gadget_archive.GadgetArchive(postproc=args.training_set)
-        elif args.training_set[:5] == "Nyx23":
-            archive = nyx_archive.NyxArchive(nyx_version=args.training_set[6:])
-        else:
-            raise ValueError("Training_set not implemented")
+def set_archive(args):
+    if (args.training_set == "Pedersen21") | (args.training_set == "Cabayol23"):
+        archive = gadget_archive.GadgetArchive(postproc=args.training_set)
+    elif args.training_set[:5] == "Nyx23":
+        archive = nyx_archive.NyxArchive(nyx_version=args.training_set[6:])
     else:
-        # if calling the script from a python script (and providing an archive)
-        archive = args.archive
-    end = time.time()
-    multi_time = str(np.round(end - start, 2))
-    fprint("Training set loaded " + multi_time + " s")
+        raise ValueError("Training_set not implemented")
+    return archive
 
-    #######################
 
-    # set emulator
-
-    fprint("----------")
-    fprint("Setting emulator")
-    start = time.time()
-    if args.drop_sim:
-        # only drop sim if it is in the training set
-        if args.mock_sim_label in archive.list_sim_cube:
-            _drop_sim = True
-        else:
-            _drop_sim = False
-    else:
-        _drop_sim = False
-
-    emulator = load_emu(
-        archive,
-        args.training_set,
-        args.emulator_label,
-        args.mock_sim_label,
-        _drop_sim,
-        fprint=fprint,
-    )
-
-    # Apply the same polyfit to the data as to the emulator
-    if args.use_polyfit:
-        polyfit_kmax_Mpc = emulator.kmax_Mpc
-        polyfit_ndeg = emulator.ndeg
-    else:
-        polyfit_kmax_Mpc = None
-        polyfit_ndeg = None
-
-    multi_time = str(np.round(time.time() - start, 2))
-    fprint("Emulator loaded " + multi_time + " s")
-
-    #######################
-
-    # set P1D
-
+def set_p1ds(args, archive):
     if (args.mock_sim_label[:3] == "mpg") | (args.mock_sim_label[:3] == "nyx"):
         if args.mock_sim_label in archive.list_sim:
             archive_mock = archive
@@ -443,10 +385,10 @@ def sam_sim(args):
             archive=archive_mock,
             input_sim=args.mock_sim_label,
             # z_min=z_min,
-            z_max=z_max,
+            z_max=args.z_max,
             data_cov_label=args.cov_label,
-            polyfit_kmax_Mpc=polyfit_kmax_Mpc,
-            polyfit_ndeg=polyfit_ndeg,
+            polyfit_kmax_Mpc=args.polyfit_kmax_Mpc,
+            polyfit_ndeg=args.polyfit_ndeg,
             add_noise=args.add_noise,
             seed=args.seed_noise,
         )
@@ -455,10 +397,10 @@ def sam_sim(args):
                 archive=archive_mock,
                 input_sim=args.mock_sim_label,
                 # z_min=z_min,
-                z_max=z_max,
+                z_max=args.z_max,
                 data_cov_label=args.cov_label_hires,
-                polyfit_kmax_Mpc=polyfit_kmax_Mpc,
-                polyfit_ndeg=polyfit_ndeg,
+                polyfit_kmax_Mpc=args.polyfit_kmax_Mpc,
+                polyfit_ndeg=args.polyfit_ndeg,
                 add_noise=args.add_noise,
                 seed=args.seed_noise,
             )
@@ -466,7 +408,7 @@ def sam_sim(args):
             extra_data = None
 
         # reset all archives to free space
-        archive = archive_mock = None
+        archive_mock = None
 
     elif args.mock_sim_label == "eBOSS_mock":
         data = data_eBOSS_mock.P1D_eBOSS_mock(
@@ -500,9 +442,10 @@ def sam_sim(args):
             f"mock_sim_label {args.mock_sim_label} not implemented"
         )
 
-    #######################
+    return data, extra_data
 
-    # set fiducial cosmology
+
+def set_fid_cosmo(args):
     if (args.cosmo_sim_label[:3] == "mpg") | (
         args.cosmo_sim_label[:3] == "nyx"
     ):
@@ -534,11 +477,10 @@ def sam_sim(args):
         raise ValueError(
             f"cosmo_sim_label {args.cosmo_sim_label} not implemented"
         )
+    return cosmo_fid
 
-    #######################
 
-    # set likelihood
-
+def set_like(args, emulator, data, extra_data, cosmo_fid, fprint=print):
     ## set cosmo and IGM parameters
     fprint("----------")
     fprint("Set likelihood")
@@ -561,6 +503,7 @@ def sam_sim(args):
         true_sim_igm=args.mock_sim_label,
         cosmo_fid=cosmo_fid,
     )
+
     ## set like
     like = likelihood.Likelihood(
         data=data,
@@ -571,12 +514,85 @@ def sam_sim(args):
         extra_p1d_data=extra_data,
     )
 
+    return like
+
+
+def sam_sim(args):
+    """Sample the posterior distribution for a of a mock"""
+
+    #######################
+    fprint = create_print_function(verbose=args.verbose)
+
+    start_all = time.time()
+
+    #######################
+
+    # set training set
+
+    start = time.time()
+    fprint("----------")
+    fprint("Setting training set " + args.training_set)
+    if args.archive is None:
+        # if calling the script from the command line
+        archive = set_archive(args)
+    else:
+        # if calling the script from a python script (and providing an archive)
+        archive = args.archive
+    end = time.time()
+    multi_time = str(np.round(end - start, 2))
+    fprint("Training set loaded " + multi_time + " s")
+
+    #######################
+
+    # set emulator
+
+    fprint("----------")
+    fprint("Setting emulator")
+    start = time.time()
+
+    emulator = set_emu(
+        archive,
+        args.training_set,
+        args.emulator_label,
+        args.mock_sim_label,
+        args.drop_sim,
+        fprint=fprint,
+    )
+
+    # Apply the same polyfit to the data as to the emulator
+    if args.use_polyfit:
+        args.polyfit_kmax_Mpc = emulator.kmax_Mpc
+        args.polyfit_ndeg = emulator.ndeg
+    else:
+        args.polyfit_kmax_Mpc = None
+        args.polyfit_ndeg = None
+
+    multi_time = str(np.round(time.time() - start, 2))
+    fprint("Emulator loaded " + multi_time + " s")
+
+    #######################
+
+    # set P1D
+
+    data, extra_data = set_p1ds(args, archive)
+    archive = None
+
+    #######################
+
+    # set fiducial cosmology
+
+    cosmo_fid = set_fid_cosmo(args)
+
+    #######################
+
+    # set likelihood
+
+    like = set_like(args, emulator, data, extra_data, cosmo_fid, fprint=print)
+
     #######################
 
     # sample likelihood
 
-    fprint("----------")
-    fprint("Sampler")
     start = time.time()
     sample(args, like, free_parameters, fprint=fprint)
     multi_time = str(np.round(time.time() - start, 2))
