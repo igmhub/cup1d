@@ -9,13 +9,14 @@ from cup1d.data import data_Chabanier2019
 from cup1d.data import data_QMLE_Ohio
 from cup1d.data import data_Karacayli2022
 
+
 class Gadget_P1D(BaseMockP1D):
     """Class to load an MP-Gadget simulation as a mock data object.
     Can use PD2013 or Chabanier2019 covmats"""
 
     def __init__(
         self,
-        archive,
+        testing_data,
         input_sim="mpg_central",
         z_max=None,
         data_cov_label="Chabanier2019",
@@ -27,8 +28,8 @@ class Gadget_P1D(BaseMockP1D):
         seed=0,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
-        - archive: p1d measurements from Gadget sims
-        - input_sim: check available options in archive
+        - testing_data: p1d measurements from Gadget sims
+        - input_sim: check available options in testing_data
         - z_max: maximum redshift to use in mock data
         - data_cov_label: P1D covariance to use (Chabanier2019 or PD2013)
         - data_cov_factor: multiply covariance by this factor
@@ -46,21 +47,9 @@ class Gadget_P1D(BaseMockP1D):
         self.polyfit_kmax_Mpc = polyfit_kmax_Mpc
         self.polyfit_ndeg = polyfit_ndeg
 
-        # read P1D from simulation
-        self.archive = archive
+        # store sim data
         self.input_sim = input_sim
-        try:
-            assert input_sim in archive.list_sim
-        except AssertionError:
-            raise ValueError(
-                "Simulation "
-                + input_sim
-                + " not included in the archive. Available options: ",
-                archive.list_sim,
-            )
-        self.testing_data = archive.get_testing_data(input_sim, z_max=z_max)
-        if len(self.testing_data) == 0:
-            raise ValueError("could not set testing data", input_sim)
+        self.testing_data = testing_data
 
         # store cosmology used in the simulation
         cosmo_params = self.testing_data[0]["cosmo_params"]

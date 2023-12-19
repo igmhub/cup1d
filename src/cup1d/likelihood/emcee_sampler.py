@@ -75,6 +75,7 @@ class EmceeSampler(object):
         progress=False,
         get_autocorr=False,
         parallel=False,
+        fix_cosmology=False,
     ):
         """Setup sampler from likelihood, or use default.
         If read_chain_file is provided, read pre-computed chain.
@@ -94,6 +95,8 @@ class EmceeSampler(object):
         else:
             self.rank = 0
             self.size = 1
+
+        self.fix_cosmology = fix_cosmology
 
         self.fprint = create_print_function(self.verbose)
 
@@ -292,6 +295,7 @@ class EmceeSampler(object):
                         % (sampler.iteration - self.burnin_nsteps, self.nsteps)
                     )
 
+            self.print(f"Rank {self.rank} done", flush=True)
             _lnprob = sampler.get_log_prob(
                 flat=False, discard=self.burnin_nsteps
             )
@@ -606,222 +610,222 @@ class EmceeSampler(object):
 
         return all_params, all_strings, lnprob
 
-    def read_chain_from_file(self, chain_number, rootdir, subfolder):
-        """Read chain from file, check parameters and setup likelihood"""
+    # def read_chain_from_file(self, chain_number, rootdir, subfolder):
+    #     """Read chain from file, check parameters and setup likelihood"""
 
-        if rootdir:
-            chain_location = rootdir
-        else:
-            assert "CUP1D_PATH" in os.environ, "export CUP1D_PATH"
-            chain_location = os.environ["CUP1D_PATH"] + "/chains/"
-        if subfolder:
-            self.save_directory = (
-                chain_location + "/" + subfolder + "/chain_" + str(chain_number)
-            )
-        else:
-            self.save_directory = chain_location + "/chain_" + str(chain_number)
+    #     if rootdir:
+    #         chain_location = rootdir
+    #     else:
+    #         assert "CUP1D_PATH" in os.environ, "export CUP1D_PATH"
+    #         chain_location = os.environ["CUP1D_PATH"] + "/chains/"
+    #     if subfolder:
+    #         self.save_directory = (
+    #             chain_location + "/" + subfolder + "/chain_" + str(chain_number)
+    #         )
+    #     else:
+    #         self.save_directory = chain_location + "/chain_" + str(chain_number)
 
-        with open(self.save_directory + "/config.json") as json_file:
-            config = json.load(json_file)
+    #     with open(self.save_directory + "/config.json") as json_file:
+    #         config = json.load(json_file)
 
-        self.fprint("Setup emulator")
+    #     self.fprint("Setup emulator")
 
-        # new runs specify emulator_label, old ones use Pedersen23
-        if "emulator_label" in config:
-            emulator_label = config["emulator_label"]
-        else:
-            emulator_label = "Pedersen23"
+    #     # new runs specify emulator_label, old ones use Pedersen23
+    #     if "emulator_label" in config:
+    #         emulator_label = config["emulator_label"]
+    #     else:
+    #         emulator_label = "Pedersen23"
 
-        # setup emulator based on emulator_label
-        if emulator_label == "Pedersen23":
-            # check consistency in old book-keepings
-            if "emu_type" in config:
-                if config["emu_type"] != "polyfit":
-                    raise ValueError("emu_type not polyfit", config["emu_type"])
-            # emulator_label='Pedersen23' would ignore kmax_Mpc
-            self.fprint("setup GP emulator used in Pedersen et al. (2023)")
-            emulator = gp_emulator.GPEmulator(
-                training_set="Pedersen21", kmax_Mpc=config["kmax_Mpc"]
-            )
-        elif emulator_label == "Cabayol23":
-            self.fprint(
-                "setup NN emulator used in Cabayol-Garcia et al. (2023)"
-            )
-            emulator = nn_emulator.NNEmulator(
-                training_set="Cabayol23", emulator_label="Cabayol23"
-            )
-        elif emulator_label == "Nyx":
-            self.fprint("setup NN emulator using Nyx simulations")
-            emulator = nn_emulator.NNEmulator(
-                training_set="Nyx23", emulator_label="Cabayol23_Nyx"
-            )
-        else:
-            raise ValueError("wrong emulator_label", emulator_label)
+    #     # setup emulator based on emulator_label
+    #     if emulator_label == "Pedersen23":
+    #         # check consistency in old book-keepings
+    #         if "emu_type" in config:
+    #             if config["emu_type"] != "polyfit":
+    #                 raise ValueError("emu_type not polyfit", config["emu_type"])
+    #         # emulator_label='Pedersen23' would ignore kmax_Mpc
+    #         self.fprint("setup GP emulator used in Pedersen et al. (2023)")
+    #         emulator = gp_emulator.GPEmulator(
+    #             training_set="Pedersen21", kmax_Mpc=config["kmax_Mpc"]
+    #         )
+    #     elif emulator_label == "Cabayol23":
+    #         self.fprint(
+    #             "setup NN emulator used in Cabayol-Garcia et al. (2023)"
+    #         )
+    #         emulator = nn_emulator.NNEmulator(
+    #             training_set="Cabayol23", emulator_label="Cabayol23"
+    #         )
+    #     elif emulator_label == "Nyx":
+    #         self.fprint("setup NN emulator using Nyx simulations")
+    #         emulator = nn_emulator.NNEmulator(
+    #             training_set="Nyx23", emulator_label="Cabayol23_Nyx"
+    #         )
+    #     else:
+    #         raise ValueError("wrong emulator_label", emulator_label)
 
-        # Figure out redshift range in data
-        if "z_list" in config:
-            z_list = config["z_list"]
-            zmin = min(z_list)
-            zmax = max(z_list)
-        else:
-            zmin = config["data_zmin"]
-            zmax = config["data_zmax"]
+    #     # Figure out redshift range in data
+    #     if "z_list" in config:
+    #         z_list = config["z_list"]
+    #         zmin = min(z_list)
+    #         zmax = max(z_list)
+    #     else:
+    #         zmin = config["data_zmin"]
+    #         zmax = config["data_zmax"]
 
-        # Setup mock data
-        if "data_type" in config:
-            data_type = config["data_type"]
-        else:
-            data_type = "gadget"
-        self.fprint("Setup data of type =", data_type)
-        if data_type == "mock":
-            # using a mock_data P1D (computed from theory)
-            data = mock_data.Mock_P1D(
-                emulator=emulator,
-                data_label=config["data_mock_label"],
-                zmin=zmin,
-                zmax=zmax,
-            )
-            # (optionally) setup extra P1D from high-resolution
-            if "extra_p1d_label" in config:
-                extra_data = mock_data.Mock_P1D(
-                    emulator=emulator,
-                    data_label=config["extra_p1d_label"],
-                    zmin=config["extra_p1d_zmin"],
-                    zmax=config["extra_p1d_zmax"],
-                )
-            else:
-                extra_data = None
-        elif data_type == "gadget":
-            # using a data_gadget P1D (from Gadget sim)
-            if "data_sim_number" in config:
-                sim_label = config["data_sim_number"]
-            else:
-                sim_label = config["data_sim_label"]
-            if not sim_label[:3] == "mpg":
-                sim_label = "mpg_" + sim_label
-            # check that sim is not from emulator suite
-            assert sim_label not in range(30)
-            # figure out p1d covariance used
-            if "data_year" in config:
-                data_cov_label = config["data_year"]
-            else:
-                data_cov_label = config["data_cov_label"]
-            # we can get the archive from the emulator (should be consistent)
-            data = data_gadget.Gadget_P1D(
-                archive=emulator.archive,
-                input_sim=sim_label,
-                z_max=zmax,
-                data_cov_factor=config["data_cov_factor"],
-                data_cov_label=data_cov_label,
-                polyfit_kmax_Mpc=emulator.kmax_Mpc,
-                polyfit_ndeg=emulator.ndeg,
-            )
-            # (optionally) setup extra P1D from high-resolution
-            if "extra_p1d_label" in config:
-                extra_data = data_gadget.Gadget_P1D(
-                    archive=emulator.archive,
-                    input_sim=sim_label,
-                    z_max=config["extra_p1d_zmax"],
-                    data_cov_label=config["extra_p1d_label"],
-                    polyfit_kmax_Mpc=emulator.kmax_Mpc,
-                    polyfit_ndeg=emulator.ndeg,
-                )
-            else:
-                extra_data = None
-        elif data_type == "nyx":
-            # using a data_nyx P1D (from Nyx sim)
-            sim_label = config["data_sim_label"]
-            # check that sim is not from emulator suite
-            assert sim_label not in range(15)
-            # figure out p1d covariance used
-            if "data_year" in config:
-                data_cov_label = config["data_year"]
-            else:
-                data_cov_label = config["data_cov_label"]
-            data = data_nyx.Nyx_P1D(
-                archive=emulator.archive,
-                input_sim=sim_label,
-                z_max=zmax,
-                data_cov_factor=config["data_cov_factor"],
-                data_cov_label=data_cov_label,
-                polyfit_kmax_Mpc=emulator.kmax_Mpc,
-                polyfit_ndeg=emulator.ndeg,
-            )
-            # (optionally) setup extra P1D from high-resolution
-            if "extra_p1d_label" in config:
-                extra_data = data_nyx.Nyx_P1D(
-                    archive=emulator.archive,
-                    input_sim=sim_label,
-                    z_max=config["extra_p1d_zmax"],
-                    data_cov_label=config["extra_p1d_label"],
-                    polyfit_kmax_Mpc=emulator.kmax_Mpc,
-                    polyfit_ndeg=emulator.ndeg,
-                )
-            else:
-                extra_data = None
-        elif data_type == "Chabanier2019":
-            data = data_Chabanier2019.P1D_Chabanier2019(zmin=zmin, zmax=zmax)
-            # (optionally) setup extra P1D from high-resolution
-            if "extra_p1d_label" in config:
-                if config["extra_p1d_label"] == "Karacayli2022":
-                    extra_data = data_Karacayli2022.P1D_Karacayli2022(
-                        diag_cov=True, kmax_kms=0.09, zmin=zmin, zmax=zmax
-                    )
-                else:
-                    raise ValueError("unknown extra_p1d_label", extra_p1d_label)
-            else:
-                extra_data = None
-        else:
-            raise ValueError("unknown data type")
+    #     # Setup mock data
+    #     if "data_type" in config:
+    #         data_type = config["data_type"]
+    #     else:
+    #         data_type = "gadget"
+    #     self.fprint("Setup data of type =", data_type)
+    #     if data_type == "mock":
+    #         # using a mock_data P1D (computed from theory)
+    #         data = mock_data.Mock_P1D(
+    #             emulator=emulator,
+    #             data_label=config["data_mock_label"],
+    #             zmin=zmin,
+    #             zmax=zmax,
+    #         )
+    #         # (optionally) setup extra P1D from high-resolution
+    #         if "extra_p1d_label" in config:
+    #             extra_data = mock_data.Mock_P1D(
+    #                 emulator=emulator,
+    #                 data_label=config["extra_p1d_label"],
+    #                 zmin=config["extra_p1d_zmin"],
+    #                 zmax=config["extra_p1d_zmax"],
+    #             )
+    #         else:
+    #             extra_data = None
+    #     elif data_type == "gadget":
+    #         # using a data_gadget P1D (from Gadget sim)
+    #         if "data_sim_number" in config:
+    #             sim_label = config["data_sim_number"]
+    #         else:
+    #             sim_label = config["data_sim_label"]
+    #         if not sim_label[:3] == "mpg":
+    #             sim_label = "mpg_" + sim_label
+    #         # check that sim is not from emulator suite
+    #         assert sim_label not in range(30)
+    #         # figure out p1d covariance used
+    #         if "data_year" in config:
+    #             data_cov_label = config["data_year"]
+    #         else:
+    #             data_cov_label = config["data_cov_label"]
+    #         # we can get the archive from the emulator (should be consistent)
+    #         data = data_gadget.Gadget_P1D(
+    #             archive=emulator.archive,
+    #             input_sim=sim_label,
+    #             z_max=zmax,
+    #             data_cov_factor=config["data_cov_factor"],
+    #             data_cov_label=data_cov_label,
+    #             polyfit_kmax_Mpc=emulator.kmax_Mpc,
+    #             polyfit_ndeg=emulator.ndeg,
+    #         )
+    #         # (optionally) setup extra P1D from high-resolution
+    #         if "extra_p1d_label" in config:
+    #             extra_data = data_gadget.Gadget_P1D(
+    #                 archive=emulator.archive,
+    #                 input_sim=sim_label,
+    #                 z_max=config["extra_p1d_zmax"],
+    #                 data_cov_label=config["extra_p1d_label"],
+    #                 polyfit_kmax_Mpc=emulator.kmax_Mpc,
+    #                 polyfit_ndeg=emulator.ndeg,
+    #             )
+    #         else:
+    #             extra_data = None
+    #     elif data_type == "nyx":
+    #         # using a data_nyx P1D (from Nyx sim)
+    #         sim_label = config["data_sim_label"]
+    #         # check that sim is not from emulator suite
+    #         assert sim_label not in range(15)
+    #         # figure out p1d covariance used
+    #         if "data_year" in config:
+    #             data_cov_label = config["data_year"]
+    #         else:
+    #             data_cov_label = config["data_cov_label"]
+    #         data = data_nyx.Nyx_P1D(
+    #             archive=emulator.archive,
+    #             input_sim=sim_label,
+    #             z_max=zmax,
+    #             data_cov_factor=config["data_cov_factor"],
+    #             data_cov_label=data_cov_label,
+    #             polyfit_kmax_Mpc=emulator.kmax_Mpc,
+    #             polyfit_ndeg=emulator.ndeg,
+    #         )
+    #         # (optionally) setup extra P1D from high-resolution
+    #         if "extra_p1d_label" in config:
+    #             extra_data = data_nyx.Nyx_P1D(
+    #                 archive=emulator.archive,
+    #                 input_sim=sim_label,
+    #                 z_max=config["extra_p1d_zmax"],
+    #                 data_cov_label=config["extra_p1d_label"],
+    #                 polyfit_kmax_Mpc=emulator.kmax_Mpc,
+    #                 polyfit_ndeg=emulator.ndeg,
+    #             )
+    #         else:
+    #             extra_data = None
+    #     elif data_type == "Chabanier2019":
+    #         data = data_Chabanier2019.P1D_Chabanier2019(zmin=zmin, zmax=zmax)
+    #         # (optionally) setup extra P1D from high-resolution
+    #         if "extra_p1d_label" in config:
+    #             if config["extra_p1d_label"] == "Karacayli2022":
+    #                 extra_data = data_Karacayli2022.P1D_Karacayli2022(
+    #                     diag_cov=True, kmax_kms=0.09, zmin=zmin, zmax=zmax
+    #                 )
+    #             else:
+    #                 raise ValueError("unknown extra_p1d_label", extra_p1d_label)
+    #         else:
+    #             extra_data = None
+    #     else:
+    #         raise ValueError("unknown data type")
 
-        # Setup free parameters
-        self.fprint("Setting up likelihood")
-        free_param_names = []
-        for item in config["free_params"]:
-            free_param_names.append(item[0])
-        free_param_limits = config["free_param_limits"]
+    #     # Setup free parameters
+    #     self.fprint("Setting up likelihood")
+    #     free_param_names = []
+    #     for item in config["free_params"]:
+    #         free_param_names.append(item[0])
+    #     free_param_limits = config["free_param_limits"]
 
-        # Setup fiducial cosmo and likelihood
-        cosmo_fid_label = config["cosmo_fid_label"]
-        self.like = likelihood.Likelihood(
-            data=data,
-            emulator=emulator,
-            free_param_names=free_param_names,
-            free_param_limits=free_param_limits,
-            prior_Gauss_rms=config["prior_Gauss_rms"],
-            emu_cov_factor=config["emu_cov_factor"],
-            cosmo_fid_label=cosmo_fid_label,
-            extra_p1d_data=extra_data,
-        )
+    #     # Setup fiducial cosmo and likelihood
+    #     cosmo_fid_label = config["cosmo_fid_label"]
+    #     self.like = likelihood.Likelihood(
+    #         data=data,
+    #         emulator=emulator,
+    #         free_param_names=free_param_names,
+    #         free_param_limits=free_param_limits,
+    #         prior_Gauss_rms=config["prior_Gauss_rms"],
+    #         emu_cov_factor=config["emu_cov_factor"],
+    #         cosmo_fid_label=cosmo_fid_label,
+    #         extra_p1d_data=extra_data,
+    #     )
 
-        # Verify we have a backend, and load it
-        assert os.path.isfile(
-            self.save_directory + "/backend.h5"
-        ), "Backend not found, can't load chains"
-        self.backend = emcee.backends.HDFBackend(
-            self.save_directory + "/backend.h5"
-        )
+    #     # Verify we have a backend, and load it
+    #     assert os.path.isfile(
+    #         self.save_directory + "/backend.h5"
+    #     ), "Backend not found, can't load chains"
+    #     self.backend = emcee.backends.HDFBackend(
+    #         self.save_directory + "/backend.h5"
+    #     )
 
-        ## Load chains - build a sampler object to access the backend
-        sampler = emcee.EnsembleSampler(
-            self.backend.shape[0],
-            self.backend.shape[1],
-            self.like.log_prob_and_blobs,
-            backend=self.backend,
-        )
+    #     ## Load chains - build a sampler object to access the backend
+    #     sampler = emcee.EnsembleSampler(
+    #         self.backend.shape[0],
+    #         self.backend.shape[1],
+    #         self.like.log_prob_and_blobs,
+    #         backend=self.backend,
+    #     )
 
-        self.burnin_nsteps = config["burn_in"]
-        self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
-        self.lnprob = sampler.get_log_prob(
-            flat=False, discard=self.burnin_nsteps
-        )
-        self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
+    #     self.burnin_nsteps = config["burn_in"]
+    #     self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
+    #     self.lnprob = sampler.get_log_prob(
+    #         flat=False, discard=self.burnin_nsteps
+    #     )
+    #     self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
 
-        self.ndim = len(self.like.free_params)
-        self.nwalkers = config["nwalkers"]
-        self.autocorr = np.asarray(config["autocorr"])
+    #     self.ndim = len(self.like.free_params)
+    #     self.nwalkers = config["nwalkers"]
+    #     self.autocorr = np.asarray(config["autocorr"])
 
-        return
+    #     return
 
     def _setup_chain_folder(self, rootdir=None, subfolder=None):
         """Set up a directory to save files for this sampler run"""
@@ -895,19 +899,21 @@ class EmceeSampler(object):
     def write_chain_to_file(self, residuals=True):
         """Write flat chain to file"""
 
+        ### XXX CHECK OUT THIS, improve!
+
         saveDict = {}
 
         # Emulator settings
         emulator = self.like.theory.emulator
         saveDict["kmax_Mpc"] = emulator.kmax_Mpc
-        if isinstance(emulator, gp_emulator.GPEmulator):
-            saveDict["emu_type"] = emulator.emu_type
-        else:
-            # this is dangerous, there might be different settings
-            if isinstance(emulator.archive, gadget_archive.GadgetArchive):
-                saveDict["emulator_label"] = "Cabayol23"
-            else:
-                saveDict["emulator_label"] = "Nyx"
+        # if isinstance(emulator, gp_emulator.GPEmulator):
+        #     saveDict["emu_type"] = emulator.emu_type
+        # else:
+        #     # this is dangerous, there might be different settings
+        #     if isinstance(emulator.archive, gadget_archive.GadgetArchive):
+        #         saveDict["emulator_label"] = "Cabayol23"
+        #     else:
+        #         saveDict["emulator_label"] = "Nyx"
 
         # Data settings
         if isinstance(self.like.data, data_gadget.Gadget_P1D):
@@ -1009,10 +1015,12 @@ class EmceeSampler(object):
                 self.plot_autocorrelation_time()
             except:
                 self.fprint("Can't plot autocorrelation time")
-        try:
-            _ = self.plot_corner(only_cosmo=True)
-        except:
-            self.fprint("Can't plot corner")
+
+        if self.fix_cosmology == False:
+            try:
+                _ = self.plot_corner(only_cosmo=True)
+            except:
+                self.fprint("Can't plot corner")
         try:
             summary = self.plot_corner()
         except:
@@ -1083,7 +1091,10 @@ class EmceeSampler(object):
         if only_cosmo:
             yesplot = np.array(["$\\Delta^2_\\star$", "$n_\\star$"])
         else:
-            yesplot = np.array(strings_plot)[:-4]
+            if self.fix_cosmology:
+                yesplot = np.array(strings_plot)[:-6]
+            else:
+                yesplot = np.array(strings_plot)[:-4]
 
         dict_pd = {}
         for ii, par in enumerate(strings_plot):
@@ -1197,7 +1208,8 @@ class EmceeSampler(object):
         mask = np.random.permutation(chain.shape[0])[:nn]
         rand_sample = chain[mask]
 
-        z = self.like.theory.fid_igm["z"]
+        z_igm = self.like.theory.fid_igm["z"]
+        z = np.array(self.like.data.z)
 
         # true IGM parameters
         pars_true = {}
@@ -1254,18 +1266,32 @@ class EmceeSampler(object):
 
         for ii in range(len(arr_labs)):
             if self.like.theory.true_sim_igm is not None:
+                _ = pars_true[arr_labs[ii]] != 0
                 ax[ii].plot(
-                    z, pars_true[arr_labs[ii]], "o:", label="true", alpha=0.5
+                    z_igm[_],
+                    pars_true[arr_labs[ii]][_],
+                    "o:",
+                    label="true",
+                    alpha=0.5,
                 )
+            _ = pars_fid[arr_labs[ii]] != 0
             ax[ii].plot(
-                z, pars_fid[arr_labs[ii]], "s--", label="fiducial", alpha=0.5
+                z_igm[_],
+                pars_fid[arr_labs[ii]][_],
+                "s--",
+                label="fiducial",
+                alpha=0.5,
             )
             err = np.abs(
                 np.percentile(pars_samp[arr_labs[ii]], [16, 84], axis=0)
                 - pars_best[arr_labs[ii]]
             )
             ax[ii].errorbar(
-                z, pars_best[arr_labs[ii]], err, label="best-fitting", alpha=0.5
+                z,
+                pars_best[arr_labs[ii]],
+                err,
+                label="best-fitting",
+                alpha=0.5,
             )
 
             ax[ii].set_ylabel(latex_labs[ii])

@@ -1,4 +1,3 @@
-
 from mpi4py import MPI
 
 
@@ -21,5 +20,7 @@ def create_print_function(verbose=True):
     def print_new(*args, verbose=True):
         if verbose and mpi_rank == 0:
             print(*args, flush=True)
+        else:
+            pass
 
     return print_new

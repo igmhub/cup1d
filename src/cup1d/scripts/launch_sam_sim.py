@@ -27,7 +27,7 @@ class Args:
         self.test = False
         self.parallel = True
         self.verbose = True
-        self.add_noise = True
+        self.add_noise = False
         self.seed_noise = 0
         self.par2save = [
             "training_set",
@@ -52,38 +52,52 @@ class Args:
 
 
 def generate_batch_script(
-    slurm_script_path, python_script_path, out_path, seed, args
+    slurm_script_path,
+    python_script_path,
+    out_path,
+    seed,
+    args,
+    n_tasks=32,
+    n_nodes=1,
+    qos="debug",
 ):
     # SLURM script content
     slurm_script_content = textwrap.dedent(
         f"""\
         #!/bin/bash
-        #SBATCH --qos=debug
+        #SBATCH --qos={qos}
         #SBATCH --account=desi
-        #SBATCH --nodes=1
-        #SBATCH --ntasks-per-node=32
+        #SBATCH --nodes={n_nodes}
+        #SBATCH --ntasks-per-node={n_tasks}
         #SBATCH --constraint=cpu
         #SBATCH --output={out_path}output{seed}.log
         #SBATCH --error={out_path}error{seed}.log
 
-        mpiexec -n 32 python {python_script_path}\
+        mpiexec -n {n_tasks} python {python_script_path}\
         --training_set {args.training_set}\
         --emulator_label {args.emulator_label}\
-        --drop_sim {args.drop_sim}\
-        --use_polyfit {args.use_polyfit}\
         --mock_sim_label {args.mock_sim_label}\
         --igm_sim_label {args.igm_sim_label}\
         --cosmo_sim_label {args.cosmo_sim_label}\
         --n_igm {args.n_igm}\
-        --add_hires {args.add_hires}\
         --cov_label {args.cov_label}\
         --emu_cov_factor {args.emu_cov_factor}\
-        --verbose\
-        --parallel\
-        --add_noise\
-        --seed_noise {args.seed_noise}
     """
     )
+    if args.drop_sim:
+        slurm_script_content += " --drop_sim"
+    if args.add_hires:
+        slurm_script_content += " --add_hires"
+    if args.use_polyfit:
+        slurm_script_content += " --use_polyfit"
+    if args.verbose:
+        slurm_script_content += " --verbose"
+    if args.parallel:
+        slurm_script_content += " --parallel"
+    if args.add_noise:
+        slurm_script_content += " --add_noise"
+        slurm_script_content += f" --seed_noise {args.seed_noise}"
+
     print(slurm_script_content)
     return slurm_script_content
 
@@ -101,7 +115,7 @@ def launch_batch_script(slurm_script):
 
 
 def main():
-    max_jobs = 5
+    qos = "debug"
 
     python_script_path = (
         os.environ["CUP1D_PATH"] + "src/cup1d/scripts/sam_sim.py"
@@ -228,6 +242,7 @@ def main():
                 + ".sub"
             )
 
+            # check if job has been run
             if override:
                 run = True
             else:
@@ -238,17 +253,38 @@ def main():
                     run = True
 
             if run == True:
-                while get_total_job_count() == max_jobs:
-                    # Wait and check again after a delay if the limit is reached
-                    print("Waiting for a job to finish")
-                    time.sleep(30)
+                if qos == "debug":
+                    max_jobs = 5  # max 5 submitted jobs at a time
+                    while get_total_job_count() >= max_jobs:
+                        # Wait and check again after a delay if the limit is reached
+                        print("Waiting for a job to finish")
+                        time.sleep(30)
 
-                slurm_script_content = generate_batch_script(
-                    slurm_script_path, python_script_path, out_path, seed, args
-                )
-                with open(slurm_script_path, "w") as slurm_script_file:
-                    slurm_script_file.write(slurm_script_content)
-                launch_batch_script(slurm_script_path)
+                    slurm_script_content = generate_batch_script(
+                        slurm_script_path,
+                        python_script_path,
+                        out_path,
+                        seed,
+                        args,
+                        qos=qos,
+                    )
+                    with open(slurm_script_path, "w") as slurm_script_file:
+                        slurm_script_file.write(slurm_script_content)
+                    launch_batch_script(slurm_script_path)
+                elif qos == "regular":
+                    slurm_script_content = generate_batch_script(
+                        slurm_script_path,
+                        python_script_path,
+                        out_path,
+                        seed,
+                        args,
+                        qos=qos,
+                    )
+                    with open(slurm_script_path, "w") as slurm_script_file:
+                        slurm_script_file.write(slurm_script_content)
+                    launch_batch_script(slurm_script_path)
+                else:
+                    raise ValueError("qos not implemented")
 
             seed += 1
 

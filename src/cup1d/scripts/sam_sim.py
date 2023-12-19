@@ -97,6 +97,12 @@ def parse_args():
         help="Add noise to P1D mock according to covariance matrix",
     )
     parser.add_argument(
+        "--n_steps",
+        type=int,
+        default=1000,
+        help="Steps of emcee chains",
+    )
+    parser.add_argument(
         "--seed_noise",
         type=int,
         default=0,
@@ -107,6 +113,11 @@ def parse_args():
         type=int,
         default=2,
         help="Number of free parameters for IGM model",
+    )
+    parser.add_argument(
+        "--fix_cosmo",
+        action="store_true",
+        help="Fix cosmological parameters while sampling",
     )
 
     parser.add_argument(
@@ -187,7 +198,6 @@ def parse_args():
         args.n_steps = 10
         args.n_burn_in = 0
     else:
-        args.n_steps = 1000
         if args.cov_label == "Chabanier2019":
             if args.n_igm == 0:
                 args.n_burn_in = 100
@@ -227,7 +237,7 @@ def set_emu(
         folder = "NNmodels/" + label_training_set + "/"
         # set file name
         fname = emulator_label
-        if drop_sim != False:
+        if drop_sim is not None:
             fname += "_drop_sim_" + mock_sim_label
         fname += ".pt"
 
@@ -252,7 +262,7 @@ def set_emu(
         )
     else:
         emu_path = set_emu_path(
-            label_training_set, emulator_label, mock_sim_label, drop_sim
+            label_training_set, emulator_label, mock_sim_label, _drop_sim
         )
         fprint("Loading emulator " + emulator_label)
         emulator = NNEmulator(
@@ -315,6 +325,8 @@ def path_sampler(args):
     )
     if args.add_noise:
         path += "_noise_" + str(args.seed_noise)
+    if args.fix_cosmo:
+        path += "_fix_cosmo"
     path += "/"
     if os.path.isdir(path) == False:
         os.mkdir(path)
@@ -331,7 +343,7 @@ def set_log_prob(sampler):
     return log_prob
 
 
-def sample(args, like, free_parameters, fprint=print):
+def sample(args, like, fprint=print):
     """Sample the posterior distribution"""
 
     fprint("----------")
@@ -347,6 +359,7 @@ def sample(args, like, free_parameters, fprint=print):
         nburnin=args.n_burn_in,
         nsteps=args.n_steps,
         parallel=args.parallel,
+        fix_cosmology=args.fix_cosmo,
     )
     _log_prob = set_log_prob(sampler)
 
@@ -366,15 +379,12 @@ def set_archive(args):
     return archive
 
 
-def set_p1ds(args, archive):
+def set_p1ds(args, testing_data=None):
     if (args.mock_sim_label[:3] == "mpg") | (args.mock_sim_label[:3] == "nyx"):
-        if args.mock_sim_label in archive.list_sim:
-            archive_mock = archive
-        else:
-            if args.mock_sim_label[:3] == "mpg":
-                archive_mock = gadget_archive.GadgetArchive()
-            elif args.mock_sim_label[:3] == "nyx":
-                archive_mock = nyx_archive.NyxArchive()
+        if testing_data is None:
+            raise ValueError(
+                f"You must provide testing_data to set_p1ds for {args.mock_sim_label} mock_sim_label"
+            )
         if args.mock_sim_label[:3] == "mpg":
             set_P1D = data_gadget.Gadget_P1D
         elif args.mock_sim_label[:3] == "nyx":
@@ -382,7 +392,7 @@ def set_p1ds(args, archive):
 
         # set target P1D
         data = set_P1D(
-            archive=archive_mock,
+            testing_data=testing_data,
             input_sim=args.mock_sim_label,
             # z_min=z_min,
             z_max=args.z_max,
@@ -394,7 +404,7 @@ def set_p1ds(args, archive):
         )
         if args.add_hires:
             extra_data = set_P1D(
-                archive=archive_mock,
+                testing_data=testing_data,
                 input_sim=args.mock_sim_label,
                 # z_min=z_min,
                 z_max=args.z_max,
@@ -407,9 +417,6 @@ def set_p1ds(args, archive):
         else:
             extra_data = None
 
-        # reset all archives to free space
-        archive_mock = None
-
     elif args.mock_sim_label == "eBOSS_mock":
         data = data_eBOSS_mock.P1D_eBOSS_mock(
             add_noise=args.add_noise,
@@ -419,6 +426,7 @@ def set_p1ds(args, archive):
             raise ValueError("Hires not implemented for eBOSS_mock")
         else:
             extra_data = None
+
     elif args.mock_sim_label == "Chabanier19":
         data = data_Chabanier2019.P1D_Chabanier2019()
         if args.add_hires:
@@ -484,14 +492,14 @@ def set_like(args, emulator, data, extra_data, cosmo_fid, fprint=print):
     ## set cosmo and IGM parameters
     fprint("----------")
     fprint("Set likelihood")
-    free_parameters = ["As", "ns"]
-    fprint(
-        "Using {} parameters for IGM model".format(args.n_igm),
-        verbose=args.verbose,
-    )
+    if args.fix_cosmo:
+        free_parameters = []
+    else:
+        free_parameters = ["As", "ns"]
+    fprint(f"Using {args.n_igm} parameters for IGM model")
     for ii in range(args.n_igm):
         for par in ["tau", "sigT_kms", "gamma", "kF"]:
-            free_parameters.append("ln_{}_{}".format(par, ii))
+            free_parameters.append(f"ln_{par}_{ii}")
     fprint("free parameters", free_parameters)
 
     ## set theory
@@ -520,44 +528,63 @@ def set_like(args, emulator, data, extra_data, cosmo_fid, fprint=print):
 def sam_sim(args):
     """Sample the posterior distribution for a of a mock"""
 
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
     #######################
     fprint = create_print_function(verbose=args.verbose)
 
-    start_all = time.time()
+    if rank == 0:
+        start_all = time.time()
 
     #######################
 
     # set training set
 
-    start = time.time()
-    fprint("----------")
-    fprint("Setting training set " + args.training_set)
-    if args.archive is None:
-        # if calling the script from the command line
-        archive = set_archive(args)
-    else:
-        # if calling the script from a python script (and providing an archive)
-        archive = args.archive
-    end = time.time()
-    multi_time = str(np.round(end - start, 2))
-    fprint("Training set loaded " + multi_time + " s")
+    if rank == 0:
+        start = time.time()
+        fprint("----------")
+        fprint("Setting training set " + args.training_set)
+        if args.archive is None:
+            # if calling the script from the command line
+            archive = set_archive(args)
+        else:
+            # if calling the script from a python script (and providing an archive)
+            # MAKE SURE YOU ONLY PASS IT FOR RANK 0
+            archive = args.archive
+        end = time.time()
+        multi_time = str(np.round(end - start, 2))
+        fprint("Training set loaded " + multi_time + " s")
 
     #######################
 
     # set emulator
+    if rank == 0:
+        fprint("----------")
+        fprint("Setting emulator")
+        start = time.time()
 
-    fprint("----------")
-    fprint("Setting emulator")
-    start = time.time()
+        emulator = set_emu(
+            archive,
+            args.training_set,
+            args.emulator_label,
+            args.mock_sim_label,
+            args.drop_sim,
+            fprint=fprint,
+        )
 
-    emulator = set_emu(
-        archive,
-        args.training_set,
-        args.emulator_label,
-        args.mock_sim_label,
-        args.drop_sim,
-        fprint=fprint,
-    )
+        multi_time = str(np.round(time.time() - start, 2))
+        fprint("Emulator loaded " + multi_time + " s")
+
+        # distribute emulator to all tasks
+        for irank in range(1, size):
+            comm.send(emulator, dest=irank, tag=irank)
+    else:
+        # receive emulator from task 0
+        emulator = comm.recv(source=0, tag=rank)
+
+    # send emulator to all tasks
 
     # Apply the same polyfit to the data as to the emulator
     if args.use_polyfit:
@@ -567,41 +594,89 @@ def sam_sim(args):
         args.polyfit_kmax_Mpc = None
         args.polyfit_ndeg = None
 
-    multi_time = str(np.round(time.time() - start, 2))
-    fprint("Emulator loaded " + multi_time + " s")
-
     #######################
 
     # set P1D
+    if rank == 0:
+        fprint("----------")
+        fprint("Setting P1D")
+        start = time.time()
 
-    data, extra_data = set_p1ds(args, archive)
-    archive = None
+        if (args.mock_sim_label[:3] == "mpg") | (
+            args.mock_sim_label[:3] == "nyx"
+        ):
+            if args.mock_sim_label in archive.list_sim:
+                archive_mock = archive
+            else:
+                if args.mock_sim_label[:3] == "mpg":
+                    archive_mock = gadget_archive.GadgetArchive()
+                elif args.mock_sim_label[:3] == "nyx":
+                    archive_mock = nyx_archive.NyxArchive()
+            try:
+                assert args.mock_sim_label in archive_mock.list_sim
+            except AssertionError:
+                raise ValueError(
+                    "Simulation "
+                    + args.mock_sim_label
+                    + " not included in the archive. Available options: ",
+                    archive_mock.list_sim,
+                )
+            else:
+                testing_data = archive_mock.get_testing_data(
+                    args.mock_sim_label, z_max=args.z_max
+                )
+            if len(testing_data) == 0:
+                raise ValueError(
+                    "could not set testing data from", args.mock_sim_label
+                )
+            # reset all archives to free space
+            archive = None
+            archive_mock = None
+        else:
+            archive = None
+            testing_data = None
+
+        # distribute testing_data to all tasks
+        for irank in range(1, size):
+            comm.send(testing_data, dest=irank, tag=irank + 1)
+    else:
+        # get testing_data from task 0
+        testing_data = comm.recv(source=0, tag=rank + 1)
+
+    data, extra_data = set_p1ds(args, testing_data=testing_data)
+
+    if rank == 0:
+        multi_time = str(np.round(time.time() - start, 2))
+        fprint("P1D set in " + multi_time + " s")
 
     #######################
 
-    # set fiducial cosmology
-
+    # set fiducial cosmology=
     cosmo_fid = set_fid_cosmo(args)
 
     #######################
 
     # set likelihood
-
-    like = set_like(args, emulator, data, extra_data, cosmo_fid, fprint=print)
+    like = set_like(args, emulator, data, extra_data, cosmo_fid, fprint=fprint)
 
     #######################
 
     # sample likelihood
 
-    start = time.time()
-    sample(args, like, free_parameters, fprint=fprint)
-    multi_time = str(np.round(time.time() - start, 2))
-    fprint("Sample in " + multi_time + " s \n\n")
+    if rank == 0:
+        start = time.time()
+
+    sample(args, like, fprint=fprint)
+
+    if rank == 0:
+        multi_time = str(np.round(time.time() - start, 2))
+        fprint("Sample in " + multi_time + " s \n\n")
 
     #######################
 
-    multi_time = str(np.round(time.time() - start_all, 2))
-    fprint("Program took " + multi_time + " s \n\n")
+    if rank == 0:
+        multi_time = str(np.round(time.time() - start_all, 2))
+        fprint("Program took " + multi_time + " s \n\n")
 
 
 if __name__ == "__main__":

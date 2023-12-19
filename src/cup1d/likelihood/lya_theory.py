@@ -69,7 +69,7 @@ class Theory(object):
             self.get_emulator_calls = self.get_emulator_calls_gp
             self.call_emulator = self.emulate_arr_p1d_Mpc_gp
 
-        self.emu_kp_Mpc = self.emulator.archive.kp_Mpc
+        self.emu_kp_Mpc = self.emulator.kp_Mpc
 
         # load fiducial IGM history (used for fitting)
         self.fid_sim_igm = fid_sim_igm

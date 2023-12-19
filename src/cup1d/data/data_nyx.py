@@ -16,7 +16,7 @@ class Nyx_P1D(BaseMockP1D):
 
     def __init__(
         self,
-        archive,
+        testing_data,
         input_sim="nyx_central",
         z_max=None,
         data_cov_label="Chabanier2019",
@@ -28,8 +28,8 @@ class Nyx_P1D(BaseMockP1D):
         seed=0,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
-        - archive: p1d measurements from Nyx sims
-        - input_sim: check available options in archive
+        - testing_data: p1d measurements from Nyx sims
+        - input_sim: check available options in testing_data
         - z_max: maximum redshift to use in mock data
         - data_cov_label: P1D covariance to use (Chabanier2019 or PD2013)
         - data_cov_factor: multiply covariance by this factor
@@ -47,23 +47,9 @@ class Nyx_P1D(BaseMockP1D):
         self.polyfit_kmax_Mpc = polyfit_kmax_Mpc
         self.polyfit_ndeg = polyfit_ndeg
 
-        # store archive
-        self.archive = archive
+        # store sim data
         self.input_sim = input_sim
-        try:
-            assert input_sim in archive.list_sim
-        except AssertionError:
-            raise ValueError(
-                "Simulation "
-                + input_sim
-                + " not included in the archive. Available options: ",
-                archive.list_sim,
-            )
-
-        # read P1D from simulation
-        self.testing_data = archive.get_testing_data(input_sim, z_max=z_max)
-        if len(self.testing_data) == 0:
-            raise ValueError("could not set testing data", input_sim)
+        self.testing_data = testing_data
 
         # store cosmology used in the simulation
         cosmo_params = self.testing_data[0]["cosmo_params"]
