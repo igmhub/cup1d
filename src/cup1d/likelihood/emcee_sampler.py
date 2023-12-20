@@ -98,10 +98,10 @@ class EmceeSampler(object):
 
         self.fix_cosmology = fix_cosmology
 
-        self.fprint = create_print_function(self.verbose)
+        self.print = create_print_function(self.verbose)
 
         if read_chain_file:
-            self.fprint("will read chain from file", read_chain_file)
+            self.print("will read chain from file", read_chain_file)
             assert not like, "likelihood specified but reading chain from file"
             self.read_chain_from_file(read_chain_file, rootdir, subfolder)
             self.burnin_pos = None
@@ -124,7 +124,7 @@ class EmceeSampler(object):
                 if nwalkers > 2 * self.ndim:
                     self.nwalkers = nwalkers
                 else:
-                    self.fprint(
+                    self.print(
                         "nwalkers={} ; ndim={}".format(nwalkers, self.ndim)
                     )
                     raise ValueError("specified number of walkers too small")
@@ -145,7 +145,7 @@ class EmceeSampler(object):
                 self.nwalkers = nwalkers
                 self.nsteps = nsteps
 
-            self.fprint(
+            self.print(
                 "setup with ",
                 self.size,
                 " ranks, ",
@@ -154,7 +154,7 @@ class EmceeSampler(object):
                 self.nsteps,
                 " steps",
             )
-            self.fprint(
+            self.print(
                 "combined steps ",
                 self.nwalkers * self.size * (self.nsteps + self.burnin_nsteps),
                 "(should be close to ",
@@ -242,7 +242,7 @@ class EmceeSampler(object):
                     continue
 
                 if self.progress == False:
-                    self.fprint(
+                    self.print(
                         "Step %d out of %d "
                         % (sampler.iteration, self.burnin_nsteps + self.nsteps)
                     )
@@ -290,12 +290,12 @@ class EmceeSampler(object):
                 if ((sampler.iteration + self.burnin_nsteps) % 100 == 0) & (
                     sampler.iteration > self.burnin_nsteps + 1
                 ):
-                    self.fprint(
+                    self.print(
                         "Step %d out of %d "
                         % (sampler.iteration - self.burnin_nsteps, self.nsteps)
                     )
 
-            self.print(f"Rank {self.rank} done", flush=True)
+            print(f"Rank {self.rank} done", flush=True)
             _lnprob = sampler.get_log_prob(
                 flat=False, discard=self.burnin_nsteps
             )
@@ -317,7 +317,7 @@ class EmceeSampler(object):
                 blobs.append(_blobs)
 
                 for irank in range(1, self.size):
-                    self.fprint("Receiving from rank %d" % irank)
+                    self.print("Receiving from rank %d" % irank)
                     lnprob.append(
                         self.comm.recv(source=irank, tag=1000 + irank)
                     )
@@ -441,7 +441,7 @@ class EmceeSampler(object):
                     continue
 
                 if self.progress == False:
-                    self.fprint(
+                    self.print(
                         "Step %d out of %d "
                         % (self.backend.iteration, start_step + max_steps)
                     )
@@ -457,11 +457,11 @@ class EmceeSampler(object):
                 converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
                 if force_timeout == False:
                     if converged:
-                        self.fprint("Chains have converged")
+                        self.print("Chains have converged")
                         break
                 if timeout:
                     if time.time() > time_end:
-                        self.fprint("Timed out")
+                        self.print("Timed out")
                         break
                 old_tau = tau
 
@@ -481,7 +481,7 @@ class EmceeSampler(object):
         ndim = self.ndim
         nwalkers = self.nwalkers
 
-        self.fprint("set %d walkers with %d dimensions" % (nwalkers, ndim))
+        self.print("set %d walkers with %d dimensions" % (nwalkers, ndim))
 
         if self.like.prior_Gauss_rms is None:
             p0 = np.random.rand(ndim * nwalkers).reshape((nwalkers, ndim))
@@ -532,7 +532,7 @@ class EmceeSampler(object):
             # total number and masked points in chain
             nt = len(lnprob)
             nm = sum(mask)
-            self.fprint("will keep {} \ {} points from chain".format(nm, nt))
+            self.print("will keep {} \ {} points from chain".format(nm, nt))
             chain = chain[mask]
             lnprob = lnprob[mask]
             blobs = blobs[mask]
@@ -602,7 +602,7 @@ class EmceeSampler(object):
             # Ordered strings for all parameters
             all_strings = self.paramstrings + blob_strings
         else:
-            self.fprint(
+            self.print(
                 "Unkown blob configuration, just returning sampled params"
             )
             all_params = chain
@@ -628,7 +628,7 @@ class EmceeSampler(object):
     #     with open(self.save_directory + "/config.json") as json_file:
     #         config = json.load(json_file)
 
-    #     self.fprint("Setup emulator")
+    #     self.print("Setup emulator")
 
     #     # new runs specify emulator_label, old ones use Pedersen23
     #     if "emulator_label" in config:
@@ -643,19 +643,19 @@ class EmceeSampler(object):
     #             if config["emu_type"] != "polyfit":
     #                 raise ValueError("emu_type not polyfit", config["emu_type"])
     #         # emulator_label='Pedersen23' would ignore kmax_Mpc
-    #         self.fprint("setup GP emulator used in Pedersen et al. (2023)")
+    #         self.print("setup GP emulator used in Pedersen et al. (2023)")
     #         emulator = gp_emulator.GPEmulator(
     #             training_set="Pedersen21", kmax_Mpc=config["kmax_Mpc"]
     #         )
     #     elif emulator_label == "Cabayol23":
-    #         self.fprint(
+    #         self.print(
     #             "setup NN emulator used in Cabayol-Garcia et al. (2023)"
     #         )
     #         emulator = nn_emulator.NNEmulator(
     #             training_set="Cabayol23", emulator_label="Cabayol23"
     #         )
     #     elif emulator_label == "Nyx":
-    #         self.fprint("setup NN emulator using Nyx simulations")
+    #         self.print("setup NN emulator using Nyx simulations")
     #         emulator = nn_emulator.NNEmulator(
     #             training_set="Nyx23", emulator_label="Cabayol23_Nyx"
     #         )
@@ -676,7 +676,7 @@ class EmceeSampler(object):
     #         data_type = config["data_type"]
     #     else:
     #         data_type = "gadget"
-    #     self.fprint("Setup data of type =", data_type)
+    #     self.print("Setup data of type =", data_type)
     #     if data_type == "mock":
     #         # using a mock_data P1D (computed from theory)
     #         data = mock_data.Mock_P1D(
@@ -779,7 +779,7 @@ class EmceeSampler(object):
     #         raise ValueError("unknown data type")
 
     #     # Setup free parameters
-    #     self.fprint("Setting up likelihood")
+    #     self.print("Setting up likelihood")
     #     free_param_names = []
     #     for item in config["free_params"]:
     #         free_param_names.append(item[0])
@@ -853,10 +853,10 @@ class EmceeSampler(object):
             else:
                 try:
                     os.mkdir(sampler_directory)
-                    self.fprint("Created directory:", sampler_directory)
+                    self.print("Created directory:", sampler_directory)
                     break
                 except FileExistsError:
-                    self.fprint("Race condition for:", sampler_directory)
+                    self.print("Race condition for:", sampler_directory)
                     # try again after one mili-second
                     time.sleep(0.001)
                     chain_count += 1
@@ -984,18 +984,18 @@ class EmceeSampler(object):
         try:
             mask_use = self.plot_lnprob()
         except:
-            self.fprint("Can't plot lnprob")
+            self.print("Can't plot lnprob")
         try:
             self.plot_best_fit(residuals=residuals, stat_best_fit="mean")
         except:
-            self.fprint("Can't plot best fit")
+            self.print("Can't plot best fit")
         try:
             for stat_best_fit in ["mean"]:
                 rand_posterior = self.plot_igm_histories(
                     stat_best_fit=stat_best_fit
                 )
         except:
-            self.fprint("Can't plot IGM histories")
+            self.print("Can't plot IGM histories")
         try:
             for stat_best_fit in ["mean"]:
                 self.plot_best_fit(
@@ -1004,27 +1004,27 @@ class EmceeSampler(object):
                     stat_best_fit=stat_best_fit,
                 )
         except:
-            self.fprint("Can't plot best fit")
+            self.print("Can't plot best fit")
         try:
             self.plot_prediction(residuals=residuals)
         except:
-            self.fprint("Can't plot prediction")
+            self.print("Can't plot prediction")
 
         if self.get_autocorr:
             try:
                 self.plot_autocorrelation_time()
             except:
-                self.fprint("Can't plot autocorrelation time")
+                self.print("Can't plot autocorrelation time")
 
         if self.fix_cosmology == False:
             try:
                 _ = self.plot_corner(only_cosmo=True)
             except:
-                self.fprint("Can't plot corner")
+                self.print("Can't plot corner")
         try:
             summary = self.plot_corner()
         except:
-            self.fprint("Can't plot corner")
+            self.print("Can't plot corner")
 
         dict_out = {}
         dict_out["summary"] = summary
@@ -1157,7 +1157,7 @@ class EmceeSampler(object):
         best_values = self.get_best_fit(
             delta_lnprob_cut=delta_lnprob_cut, stat_best_fit=stat_best_fit
         )
-        self.fprint("Best values:", best_values)
+        self.print("Best values:", best_values)
 
         plt.figure(figsize=figsize)
         plt.title("MCMC best fit")
