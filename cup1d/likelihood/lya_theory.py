@@ -2,6 +2,7 @@ import numpy as np
 import os
 import copy
 import matplotlib.pyplot as plt
+import lace
 from lace.cosmo import camb_cosmo
 from lace.cosmo import fit_linP
 from lace.emulator import gp_emulator
@@ -200,10 +201,8 @@ class Theory(object):
     def get_igm(self, sim_igm):
         """Load IGM history"""
         if sim_igm[:3] == "mpg":
-            fname = (
-                os.environ["LACE_REPO"]
-                + "/src/lace/data/sim_suites/Australia20/IGM_histories.npy"
-            )
+            repo = os.path.dirname(lace.__path__[0]) + "/"
+            fname = repo + "/data/sim_suites/Australia20/IGM_histories.npy"
         elif sim_igm[:3] == "nyx":
             fname = os.environ["NYX_PATH"] + "/IGM_histories.npy"
         else:
