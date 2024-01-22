@@ -11,6 +11,7 @@ from chainconsumer import ChainConsumer, Chain, Truth
 from mpi4py import MPI
 
 # our own modules
+import cup1d
 from lace.cosmo import fit_linP, camb_cosmo
 from lace.archive import gadget_archive
 from lace.emulator import gp_emulator, nn_emulator
@@ -833,8 +834,8 @@ class EmceeSampler(object):
         if rootdir:
             chain_location = rootdir
         else:
-            assert "CUP1D_PATH" in os.environ, "export CUP1D_PATH"
-            chain_location = os.environ["CUP1D_PATH"] + "/chains/"
+            repo = os.path.dirname(cup1d.__path__[0]) + "/"
+            chain_location = repo + "data/chains/"
         if subfolder:
             # If there is one, check if it exists, if not make it
             if not os.path.isdir(chain_location + "/" + subfolder):

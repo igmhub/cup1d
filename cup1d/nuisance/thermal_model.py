@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 import os
+import lace
 from scipy.interpolate import interp1d
 from lace.cosmo import thermal_broadening
 from cup1d.likelihood import likelihood_parameter
@@ -25,10 +26,8 @@ class ThermalModel(object):
         of the initial Latin hypercube in simulation space."""
 
         if fid_igm is None:
-            fname = (
-                os.environ["LACE_REPO"]
-                + "/src/lace/data/sim_suites/Australia20/IGM_histories.npy"
-            )
+            repo = os.path.dirname(lace.__path__[0]) + "/"
+            fname = repo + "data/sim_suites/Australia20/IGM_histories.npy"
             try:
                 igm_hist = np.load(fname, allow_pickle=True).item()
             except:

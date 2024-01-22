@@ -4,6 +4,7 @@ import configargparse
 from mpi4py import MPI
 
 # our own modules
+import lace
 from lace.archive import gadget_archive, nyx_archive
 from lace.cosmo import camb_cosmo
 from lace.emulator.nn_emulator import NNEmulator
@@ -214,8 +215,6 @@ def parse_args():
                 args.n_burn_in = 200
             else:
                 args.n_burn_in = 500
-
-    assert "CUP1D_PATH" in os.environ, "Define CUP1D_PATH variable"
 
     return args
 
@@ -458,10 +457,8 @@ def set_fid_cosmo(args):
         args.cosmo_sim_label[:3] == "nyx"
     ):
         if args.cosmo_sim_label[:3] == "mpg":
-            fname = (
-                os.environ["LACE_REPO"]
-                + "src/lace/data/sim_suites/Australia20/mpg_emu_cosmo.npy"
-            )
+            repo = os.path.dirname(lace.__path__[0]) + "/"
+            fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
             get_cosmo = camb_cosmo.get_cosmology_from_dictionary
         elif args.cosmo_sim_label[:3] == "nyx":
             fname = os.environ["NYX_PATH"] + "nyx_emu_cosmo_Oct2023.npy"
