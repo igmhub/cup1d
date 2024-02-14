@@ -1,15 +1,17 @@
-import numpy as np
-import os
-import json
-import matplotlib.pyplot as plt
-import emcee
-import time
+import os, time, emcee, json
+
 import scipy.stats
-from multiprocessing import Pool
+import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 from chainconsumer import ChainConsumer, Chain, Truth
 
+# import multiprocessing as mp
+# from schwimmbad import MPIPool
+from mpi4py import MPI
+
 # our own modules
+import cup1d
 from lace.cosmo import fit_linP, camb_cosmo
 from lace.archive import gadget_archive
 from lace.emulator import gp_emulator, nn_emulator
@@ -21,6 +23,7 @@ from cup1d.data import (
     data_Karacayli2022,
 )
 from cup1d.likelihood import likelihood
+from cup1d.utils.utils import create_print_function
 
 
 def purge_chains(ln_prop_chains, nsplit=7, abs_diff=5):
@@ -63,24 +66,43 @@ class EmceeSampler(object):
         self,
         like=None,
         nwalkers=None,
+        nsteps=None,
+        nburnin=None,
         read_chain_file=None,
         verbose=False,
         subfolder=None,
         rootdir=None,
         save_chain=True,
         progress=False,
+        get_autocorr=False,
+        parallel=False,
+        fix_cosmology=False,
     ):
         """Setup sampler from likelihood, or use default.
         If read_chain_file is provided, read pre-computed chain.
         rootdir allows user to search for saved chains in a different
         location to the code itself."""
 
+        self.parallel = parallel
         self.verbose = verbose
         self.progress = progress
+        self.get_autocorr = get_autocorr
+        self.burnin_nsteps = nburnin
+
+        if self.parallel:
+            self.comm = MPI.COMM_WORLD
+            self.rank = self.comm.Get_rank()
+            self.size = self.comm.Get_size()
+        else:
+            self.rank = 0
+            self.size = 1
+
+        self.fix_cosmology = fix_cosmology
+
+        self.print = create_print_function(self.verbose)
 
         if read_chain_file:
-            if self.verbose:
-                print("will read chain from file", read_chain_file)
+            self.print("will read chain from file", read_chain_file)
             assert not like, "likelihood specified but reading chain from file"
             self.read_chain_from_file(read_chain_file, rootdir, subfolder)
             self.burnin_pos = None
@@ -89,9 +111,10 @@ class EmceeSampler(object):
             # number of free parameters to sample
             self.ndim = len(self.like.free_params)
 
-            self.save_directory = None
-            if save_chain:
+            if self.rank == 0:
                 self._setup_chain_folder(rootdir, subfolder)
+
+            if save_chain:
                 backend_string = self.save_directory + "/backend.h5"
                 self.backend = emcee.backends.HDFBackend(backend_string)
             else:
@@ -102,11 +125,43 @@ class EmceeSampler(object):
                 if nwalkers > 2 * self.ndim:
                     self.nwalkers = nwalkers
                 else:
-                    print("nwalkers={} ; ndim={}".format(nwalkers, self.ndim))
+                    self.print(
+                        "nwalkers={} ; ndim={}".format(nwalkers, self.ndim)
+                    )
                     raise ValueError("specified number of walkers too small")
+                self.nsteps = nsteps
             else:
-                self.nwalkers = 40 * self.ndim
-            print("setup with", self.nwalkers, "walkers")
+                max_walkers = 40 * self.ndim
+                min_walkers = 2 * self.ndim
+                nwalkers = max_walkers // self.size + 1
+                combined_steps = max_walkers * (nsteps + self.burnin_nsteps)
+
+                if nwalkers < min_walkers:
+                    nwalkers = min_walkers
+                    nsteps = (
+                        combined_steps // (nwalkers * self.size)
+                        - self.burnin_nsteps
+                    )
+
+                self.nwalkers = nwalkers
+                self.nsteps = nsteps
+
+            self.print(
+                "setup with ",
+                self.size,
+                " ranks, ",
+                self.nwalkers,
+                " walkers, and ",
+                self.nsteps,
+                " steps",
+            )
+            self.print(
+                "combined steps ",
+                self.nwalkers * self.size * (self.nsteps + self.burnin_nsteps),
+                "(should be close to ",
+                combined_steps,
+                ")",
+            )
 
         ## Set up list of parameter names in tex format for plotting
         self.paramstrings = []
@@ -147,10 +202,7 @@ class EmceeSampler(object):
 
     def run_sampler(
         self,
-        burn_in,
-        max_steps,
         log_func=None,
-        parallel=False,
         timeout=None,
         force_timeout=False,
     ):
@@ -160,14 +212,13 @@ class EmceeSampler(object):
               sampler for
             - force_timeout will continue to run the chains
               until timeout, regardless of convergence"""
+        if self.get_autocorr:
+            # We'll track how the average autocorrelation time estimate changes
+            self.autocorr = np.array([])
+            # This will be useful to testing convergence
+            old_tau = np.inf
 
-        self.burnin_nsteps = burn_in
-        # We'll track how the average autocorrelation time estimate changes
-        self.autocorr = np.array([])
-        # This will be useful to testing convergence
-        old_tau = np.inf
-
-        if parallel == False:
+        if self.parallel == False:
             ## Get initial walkers
             p0 = self.get_initial_walkers()
             if log_func is None:
@@ -181,88 +232,175 @@ class EmceeSampler(object):
             )
             for sample in sampler.sample(
                 p0,
-                iterations=burn_in + max_steps,
+                iterations=self.burnin_nsteps + self.nsteps,
                 progress=self.progress,
             ):
                 # Only check convergence every 100 steps
-                if sampler.iteration % 100 or sampler.iteration < burn_in + 1:
+                if (
+                    sampler.iteration % 100
+                    or sampler.iteration < self.burnin_nsteps + 1
+                ):
                     continue
 
                 if self.progress == False:
-                    print(
+                    self.print(
                         "Step %d out of %d "
-                        % (sampler.iteration, burn_in + max_steps)
+                        % (sampler.iteration, self.burnin_nsteps + self.nsteps)
                     )
 
-                # Compute the autocorrelation time so far
-                # Using tol=0 means that we'll always get an estimate even
-                # if it isn't trustworthy
-                tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
-                self.autocorr = np.append(self.autocorr, np.mean(tau))
-
-                # Check convergence
-                converged = np.all(tau * 100 < sampler.iteration)
-                converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
-                if converged:
-                    break
-                old_tau = tau
-        else:
-            p0 = self.get_initial_walkers()
-            with Pool() as pool:
-                sampler = emcee.EnsembleSampler(
-                    self.nwalkers,
-                    self.ndim,
-                    log_func,
-                    pool=pool,
-                    backend=self.backend,
-                    blobs_dtype=self.blobs_dtype,
-                )
-                if timeout:
-                    time_end = time.time() + 3600 * timeout
-                for sample in sampler.sample(
-                    p0, iterations=burn_in + max_steps, progress=self.progress
-                ):
-                    # Only check convergence every 100 steps
-                    if (
-                        sampler.iteration % 100
-                        or sampler.iteration < burn_in + 1
-                    ):
-                        continue
-
-                    if self.progress == False:
-                        print(
-                            "Step %d out of %d "
-                            % (sampler.iteration, burn_in + max_steps)
-                        )
-
+                if self.get_autocorr:
                     # Compute the autocorrelation time so far
                     # Using tol=0 means that we'll always get an estimate even
                     # if it isn't trustworthy
-                    tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
+                    tau = sampler.get_autocorr_time(
+                        tol=0, discard=self.burnin_nsteps
+                    )
                     self.autocorr = np.append(self.autocorr, np.mean(tau))
 
                     # Check convergence
                     converged = np.all(tau * 100 < sampler.iteration)
                     converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
-
-                    ## Check if we are over time limit
-                    if timeout:
-                        if time.time() > time_end:
-                            print("Timed out")
-                            break
-                    ## If not, only halt on convergence criterion if
-                    ## force_timeout is false
-                    if (force_timeout == False) and (converged == True):
-                        print("Chains have converged")
+                    if converged:
                         break
                     old_tau = tau
 
-        ## Get samples, flat=False to be able to mask not converged chains latter
-        self.lnprob = sampler.get_log_prob(
-            flat=False, discard=self.burnin_nsteps
-        )
-        self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
-        self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
+            ## Get samples, flat=False to be able to mask not converged chains latter
+            self.lnprob = sampler.get_log_prob(
+                flat=False, discard=self.burnin_nsteps
+            )
+            self.chain = sampler.get_chain(
+                flat=False, discard=self.burnin_nsteps
+            )
+            self.blobs = sampler.get_blobs(
+                flat=False, discard=self.burnin_nsteps
+            )
+        else:
+            # MPIPool does not work in nersc for whatever reason
+            # I need to get creative
+
+            np.random.seed(self.rank)
+            p0 = self.get_initial_walkers()
+            sampler = emcee.EnsembleSampler(
+                self.nwalkers, self.ndim, log_func, blobs_dtype=self.blobs_dtype
+            )
+
+            for sample in sampler.sample(
+                p0, iterations=self.burnin_nsteps + self.nsteps
+            ):
+                # Only check convergence every 100 steps
+                if ((sampler.iteration + self.burnin_nsteps) % 100 == 0) & (
+                    sampler.iteration > self.burnin_nsteps + 1
+                ):
+                    self.print(
+                        "Step %d out of %d "
+                        % (sampler.iteration - self.burnin_nsteps, self.nsteps)
+                    )
+
+            print(f"Rank {self.rank} done", flush=True)
+            _lnprob = sampler.get_log_prob(
+                flat=False, discard=self.burnin_nsteps
+            )
+            _chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
+            _blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
+
+            if self.rank != 0:
+                self.comm.send(_lnprob, dest=0, tag=1000 + self.rank)
+                self.comm.send(_chain, dest=0, tag=2000 + self.rank)
+                self.comm.send(_blobs, dest=0, tag=3000 + self.rank)
+
+            if self.rank == 0:
+                chain = []
+                lnprob = []
+                blobs = []
+
+                lnprob.append(_lnprob)
+                chain.append(_chain)
+                blobs.append(_blobs)
+
+                for irank in range(1, self.size):
+                    self.print("Receiving from rank %d" % irank)
+                    lnprob.append(
+                        self.comm.recv(source=irank, tag=1000 + irank)
+                    )
+                    chain.append(self.comm.recv(source=irank, tag=2000 + irank))
+                    blobs.append(self.comm.recv(source=irank, tag=3000 + irank))
+
+                self.lnprob = np.concatenate(lnprob, axis=1)
+                self.chain = np.concatenate(chain, axis=1)
+                self.blobs = np.concatenate(blobs, axis=1)
+
+            # if not MPIPool.enabled():
+            #     raise SystemError(
+            #         "Tried to run with MPI but MPIPool not enabled!"
+            #     )
+
+            # with MPIPool() as pool:
+            #     if not pool.is_master():
+            #         pool.wait()
+            #         sys.exit(0)
+
+            #     print("\n Running with MPI on {0} cores \n".format(pool.size))
+
+            #     sampler.run_mcmc(p0, burn_in + max_steps)
+            # sampler.pool = pool
+            # print(f"Number of threads being used: {pool._processes}")
+            # sampler.run_mcmc(p0, burn_in + max_steps)
+            # p0 = self.get_initial_walkers()
+            # mp.set_start_method("spawn")
+            # with mp.Pool() as pool:
+            #     sampler = emcee.EnsembleSampler(
+            #         self.nwalkers,
+            #         self.ndim,
+            #         log_func,
+            #         backend=self.backend,
+            #         blobs_dtype=self.blobs_dtype,
+            #         pool=pool,
+            #     )
+            #     sampler.pool = pool
+            #     print(f"Number of threads being used: {pool._processes}")
+            #     sampler.run_mcmc(p0, burn_in + max_steps)
+            # if timeout:
+            #     time_end = time.time() + 3600 * timeout
+
+            # for sample in sampler.sample(
+            #     p0, iterations=burn_in + max_steps, progress=self.progress
+            # ):
+            #     print(sampler.iteration, flush=True)
+            #     # Only check convergence every 100 steps
+            #     if (
+            #         sampler.iteration % 100
+            #         or sampler.iteration < burn_in + 1
+            #     ):
+            #         continue
+
+            #     if self.progress == False:
+            #         print(
+            #             "Step %d out of %d "
+            #             % (sampler.iteration, burn_in + max_steps)
+            #         )
+
+            #     if self.get_autocorr:
+            #         # Compute the autocorrelation time so far
+            #         # Using tol=0 means that we'll always get an estimate even
+            #         # if it isn't trustworthy
+            #         tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
+            #         self.autocorr = np.append(self.autocorr, np.mean(tau))
+
+            #         # Check convergence
+            #         converged = np.all(tau * 100 < sampler.iteration)
+            #         converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
+
+            #         ## Check if we are over time limit
+            #         if timeout:
+            #             if time.time() > time_end:
+            #                 print("Timed out")
+            #                 break
+            #         ## If not, only halt on convergence criterion if
+            #         ## force_timeout is false
+            #         if (force_timeout == False) and (converged == True):
+            #             print("Chains have converged")
+            #             break
+            #         old_tau = tau
 
         return sampler
 
@@ -304,7 +442,7 @@ class EmceeSampler(object):
                     continue
 
                 if self.progress == False:
-                    print(
+                    self.print(
                         "Step %d out of %d "
                         % (self.backend.iteration, start_step + max_steps)
                     )
@@ -320,11 +458,11 @@ class EmceeSampler(object):
                 converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
                 if force_timeout == False:
                     if converged:
-                        print("Chains have converged")
+                        self.print("Chains have converged")
                         break
                 if timeout:
                     if time.time() > time_end:
-                        print("Timed out")
+                        self.print("Timed out")
                         break
                 old_tau = tau
 
@@ -344,8 +482,7 @@ class EmceeSampler(object):
         ndim = self.ndim
         nwalkers = self.nwalkers
 
-        if self.verbose:
-            print("set %d walkers with %d dimensions" % (nwalkers, ndim))
+        self.print("set %d walkers with %d dimensions" % (nwalkers, ndim))
 
         if self.like.prior_Gauss_rms is None:
             p0 = np.random.rand(ndim * nwalkers).reshape((nwalkers, ndim))
@@ -396,8 +533,7 @@ class EmceeSampler(object):
             # total number and masked points in chain
             nt = len(lnprob)
             nm = sum(mask)
-            if self.verbose:
-                print("will keep {} \ {} points from chain".format(nm, nt))
+            self.print("will keep {} \ {} points from chain".format(nm, nt))
             chain = chain[mask]
             lnprob = lnprob[mask]
             blobs = blobs[mask]
@@ -467,229 +603,230 @@ class EmceeSampler(object):
             # Ordered strings for all parameters
             all_strings = self.paramstrings + blob_strings
         else:
-            print("Unkown blob configuration, just returning sampled params")
+            self.print(
+                "Unkown blob configuration, just returning sampled params"
+            )
             all_params = chain
             all_strings = self.paramstrings
 
         return all_params, all_strings, lnprob
 
-    def read_chain_from_file(self, chain_number, rootdir, subfolder):
-        """Read chain from file, check parameters and setup likelihood"""
+    # def read_chain_from_file(self, chain_number, rootdir, subfolder):
+    #     """Read chain from file, check parameters and setup likelihood"""
 
-        if rootdir:
-            chain_location = rootdir
-        else:
-            assert "CUP1D_PATH" in os.environ, "export CUP1D_PATH"
-            chain_location = os.environ["CUP1D_PATH"] + "/chains/"
-        if subfolder:
-            self.save_directory = (
-                chain_location + "/" + subfolder + "/chain_" + str(chain_number)
-            )
-        else:
-            self.save_directory = chain_location + "/chain_" + str(chain_number)
+    #     if rootdir:
+    #         chain_location = rootdir
+    #     else:
+    #         assert "CUP1D_PATH" in os.environ, "export CUP1D_PATH"
+    #         chain_location = os.environ["CUP1D_PATH"] + "/chains/"
+    #     if subfolder:
+    #         self.save_directory = (
+    #             chain_location + "/" + subfolder + "/chain_" + str(chain_number)
+    #         )
+    #     else:
+    #         self.save_directory = chain_location + "/chain_" + str(chain_number)
 
-        with open(self.save_directory + "/config.json") as json_file:
-            config = json.load(json_file)
+    #     with open(self.save_directory + "/config.json") as json_file:
+    #         config = json.load(json_file)
 
-        if self.verbose:
-            print("Setup emulator")
+    #     self.print("Setup emulator")
 
-        # new runs specify emulator_label, old ones use Pedersen23
-        if "emulator_label" in config:
-            emulator_label = config["emulator_label"]
-        else:
-            emulator_label = "Pedersen23"
+    #     # new runs specify emulator_label, old ones use Pedersen23
+    #     if "emulator_label" in config:
+    #         emulator_label = config["emulator_label"]
+    #     else:
+    #         emulator_label = "Pedersen23"
 
-        # setup emulator based on emulator_label
-        if emulator_label == "Pedersen23":
-            # check consistency in old book-keepings
-            if "emu_type" in config:
-                if config["emu_type"] != "polyfit":
-                    raise ValueError("emu_type not polyfit", config["emu_type"])
-            # emulator_label='Pedersen23' would ignore kmax_Mpc
-            print("setup GP emulator used in Pedersen et al. (2023)")
-            emulator = gp_emulator.GPEmulator(
-                training_set="Pedersen21", kmax_Mpc=config["kmax_Mpc"]
-            )
-        elif emulator_label == "Cabayol23":
-            print("setup NN emulator used in Cabayol-Garcia et al. (2023)")
-            emulator = nn_emulator.NNEmulator(
-                training_set="Cabayol23", emulator_label="Cabayol23"
-            )
-        elif emulator_label == "Nyx":
-            print("setup NN emulator using Nyx simulations")
-            emulator = nn_emulator.NNEmulator(
-                training_set="Nyx23", emulator_label="Cabayol23_Nyx"
-            )
-        else:
-            raise ValueError("wrong emulator_label", emulator_label)
+    #     # setup emulator based on emulator_label
+    #     if emulator_label == "Pedersen23":
+    #         # check consistency in old book-keepings
+    #         if "emu_type" in config:
+    #             if config["emu_type"] != "polyfit":
+    #                 raise ValueError("emu_type not polyfit", config["emu_type"])
+    #         # emulator_label='Pedersen23' would ignore kmax_Mpc
+    #         self.print("setup GP emulator used in Pedersen et al. (2023)")
+    #         emulator = gp_emulator.GPEmulator(
+    #             training_set="Pedersen21", kmax_Mpc=config["kmax_Mpc"]
+    #         )
+    #     elif emulator_label == "Cabayol23":
+    #         self.print(
+    #             "setup NN emulator used in Cabayol-Garcia et al. (2023)"
+    #         )
+    #         emulator = nn_emulator.NNEmulator(
+    #             training_set="Cabayol23", emulator_label="Cabayol23"
+    #         )
+    #     elif emulator_label == "Nyx":
+    #         self.print("setup NN emulator using Nyx simulations")
+    #         emulator = nn_emulator.NNEmulator(
+    #             training_set="Nyx23", emulator_label="Cabayol23_Nyx"
+    #         )
+    #     else:
+    #         raise ValueError("wrong emulator_label", emulator_label)
 
-        # Figure out redshift range in data
-        if "z_list" in config:
-            z_list = config["z_list"]
-            zmin = min(z_list)
-            zmax = max(z_list)
-        else:
-            zmin = config["data_zmin"]
-            zmax = config["data_zmax"]
+    #     # Figure out redshift range in data
+    #     if "z_list" in config:
+    #         z_list = config["z_list"]
+    #         zmin = min(z_list)
+    #         zmax = max(z_list)
+    #     else:
+    #         zmin = config["data_zmin"]
+    #         zmax = config["data_zmax"]
 
-        # Setup mock data
-        if "data_type" in config:
-            data_type = config["data_type"]
-        else:
-            data_type = "gadget"
-        if self.verbose:
-            print("Setup data of type =", data_type)
-        if data_type == "mock":
-            # using a mock_data P1D (computed from theory)
-            data = mock_data.Mock_P1D(
-                emulator=emulator,
-                data_label=config["data_mock_label"],
-                zmin=zmin,
-                zmax=zmax,
-            )
-            # (optionally) setup extra P1D from high-resolution
-            if "extra_p1d_label" in config:
-                extra_data = mock_data.Mock_P1D(
-                    emulator=emulator,
-                    data_label=config["extra_p1d_label"],
-                    zmin=config["extra_p1d_zmin"],
-                    zmax=config["extra_p1d_zmax"],
-                )
-            else:
-                extra_data = None
-        elif data_type == "gadget":
-            # using a data_gadget P1D (from Gadget sim)
-            if "data_sim_number" in config:
-                sim_label = config["data_sim_number"]
-            else:
-                sim_label = config["data_sim_label"]
-            if not sim_label[:3] == "mpg":
-                sim_label = "mpg_" + sim_label
-            # check that sim is not from emulator suite
-            assert sim_label not in range(30)
-            # figure out p1d covariance used
-            if "data_year" in config:
-                data_cov_label = config["data_year"]
-            else:
-                data_cov_label = config["data_cov_label"]
-            # we can get the archive from the emulator (should be consistent)
-            data = data_gadget.Gadget_P1D(
-                archive=emulator.archive,
-                input_sim=sim_label,
-                z_max=zmax,
-                data_cov_factor=config["data_cov_factor"],
-                data_cov_label=data_cov_label,
-                polyfit_kmax_Mpc=emulator.kmax_Mpc,
-                polyfit_ndeg=emulator.ndeg,
-            )
-            # (optionally) setup extra P1D from high-resolution
-            if "extra_p1d_label" in config:
-                extra_data = data_gadget.Gadget_P1D(
-                    archive=emulator.archive,
-                    input_sim=sim_label,
-                    z_max=config["extra_p1d_zmax"],
-                    data_cov_label=config["extra_p1d_label"],
-                    polyfit_kmax_Mpc=emulator.kmax_Mpc,
-                    polyfit_ndeg=emulator.ndeg,
-                )
-            else:
-                extra_data = None
-        elif data_type == "nyx":
-            # using a data_nyx P1D (from Nyx sim)
-            sim_label = config["data_sim_label"]
-            # check that sim is not from emulator suite
-            assert sim_label not in range(15)
-            # figure out p1d covariance used
-            if "data_year" in config:
-                data_cov_label = config["data_year"]
-            else:
-                data_cov_label = config["data_cov_label"]
-            data = data_nyx.Nyx_P1D(
-                archive=emulator.archive,
-                input_sim=sim_label,
-                z_max=zmax,
-                data_cov_factor=config["data_cov_factor"],
-                data_cov_label=data_cov_label,
-                polyfit_kmax_Mpc=emulator.kmax_Mpc,
-                polyfit_ndeg=emulator.ndeg,
-            )
-            # (optionally) setup extra P1D from high-resolution
-            if "extra_p1d_label" in config:
-                extra_data = data_nyx.Nyx_P1D(
-                    archive=emulator.archive,
-                    input_sim=sim_label,
-                    z_max=config["extra_p1d_zmax"],
-                    data_cov_label=config["extra_p1d_label"],
-                    polyfit_kmax_Mpc=emulator.kmax_Mpc,
-                    polyfit_ndeg=emulator.ndeg,
-                )
-            else:
-                extra_data = None
-        elif data_type == "Chabanier2019":
-            data = data_Chabanier2019.P1D_Chabanier2019(zmin=zmin, zmax=zmax)
-            # (optionally) setup extra P1D from high-resolution
-            if "extra_p1d_label" in config:
-                if config["extra_p1d_label"] == "Karacayli2022":
-                    extra_data = data_Karacayli2022.P1D_Karacayli2022(
-                        diag_cov=True, kmax_kms=0.09, zmin=zmin, zmax=zmax
-                    )
-                else:
-                    raise ValueError("unknown extra_p1d_label", extra_p1d_label)
-            else:
-                extra_data = None
-        else:
-            raise ValueError("unknown data type")
+    #     # Setup mock data
+    #     if "data_type" in config:
+    #         data_type = config["data_type"]
+    #     else:
+    #         data_type = "gadget"
+    #     self.print("Setup data of type =", data_type)
+    #     if data_type == "mock":
+    #         # using a mock_data P1D (computed from theory)
+    #         data = mock_data.Mock_P1D(
+    #             emulator=emulator,
+    #             data_label=config["data_mock_label"],
+    #             zmin=zmin,
+    #             zmax=zmax,
+    #         )
+    #         # (optionally) setup extra P1D from high-resolution
+    #         if "extra_p1d_label" in config:
+    #             extra_data = mock_data.Mock_P1D(
+    #                 emulator=emulator,
+    #                 data_label=config["extra_p1d_label"],
+    #                 zmin=config["extra_p1d_zmin"],
+    #                 zmax=config["extra_p1d_zmax"],
+    #             )
+    #         else:
+    #             extra_data = None
+    #     elif data_type == "gadget":
+    #         # using a data_gadget P1D (from Gadget sim)
+    #         if "data_sim_number" in config:
+    #             sim_label = config["data_sim_number"]
+    #         else:
+    #             sim_label = config["data_sim_label"]
+    #         if not sim_label[:3] == "mpg":
+    #             sim_label = "mpg_" + sim_label
+    #         # check that sim is not from emulator suite
+    #         assert sim_label not in range(30)
+    #         # figure out p1d covariance used
+    #         if "data_year" in config:
+    #             data_cov_label = config["data_year"]
+    #         else:
+    #             data_cov_label = config["data_cov_label"]
+    #         # we can get the archive from the emulator (should be consistent)
+    #         data = data_gadget.Gadget_P1D(
+    #             archive=emulator.archive,
+    #             input_sim=sim_label,
+    #             z_max=zmax,
+    #             data_cov_factor=config["data_cov_factor"],
+    #             data_cov_label=data_cov_label,
+    #             polyfit_kmax_Mpc=emulator.kmax_Mpc,
+    #             polyfit_ndeg=emulator.ndeg,
+    #         )
+    #         # (optionally) setup extra P1D from high-resolution
+    #         if "extra_p1d_label" in config:
+    #             extra_data = data_gadget.Gadget_P1D(
+    #                 archive=emulator.archive,
+    #                 input_sim=sim_label,
+    #                 z_max=config["extra_p1d_zmax"],
+    #                 data_cov_label=config["extra_p1d_label"],
+    #                 polyfit_kmax_Mpc=emulator.kmax_Mpc,
+    #                 polyfit_ndeg=emulator.ndeg,
+    #             )
+    #         else:
+    #             extra_data = None
+    #     elif data_type == "nyx":
+    #         # using a data_nyx P1D (from Nyx sim)
+    #         sim_label = config["data_sim_label"]
+    #         # check that sim is not from emulator suite
+    #         assert sim_label not in range(15)
+    #         # figure out p1d covariance used
+    #         if "data_year" in config:
+    #             data_cov_label = config["data_year"]
+    #         else:
+    #             data_cov_label = config["data_cov_label"]
+    #         data = data_nyx.Nyx_P1D(
+    #             archive=emulator.archive,
+    #             input_sim=sim_label,
+    #             z_max=zmax,
+    #             data_cov_factor=config["data_cov_factor"],
+    #             data_cov_label=data_cov_label,
+    #             polyfit_kmax_Mpc=emulator.kmax_Mpc,
+    #             polyfit_ndeg=emulator.ndeg,
+    #         )
+    #         # (optionally) setup extra P1D from high-resolution
+    #         if "extra_p1d_label" in config:
+    #             extra_data = data_nyx.Nyx_P1D(
+    #                 archive=emulator.archive,
+    #                 input_sim=sim_label,
+    #                 z_max=config["extra_p1d_zmax"],
+    #                 data_cov_label=config["extra_p1d_label"],
+    #                 polyfit_kmax_Mpc=emulator.kmax_Mpc,
+    #                 polyfit_ndeg=emulator.ndeg,
+    #             )
+    #         else:
+    #             extra_data = None
+    #     elif data_type == "Chabanier2019":
+    #         data = data_Chabanier2019.P1D_Chabanier2019(zmin=zmin, zmax=zmax)
+    #         # (optionally) setup extra P1D from high-resolution
+    #         if "extra_p1d_label" in config:
+    #             if config["extra_p1d_label"] == "Karacayli2022":
+    #                 extra_data = data_Karacayli2022.P1D_Karacayli2022(
+    #                     diag_cov=True, kmax_kms=0.09, zmin=zmin, zmax=zmax
+    #                 )
+    #             else:
+    #                 raise ValueError("unknown extra_p1d_label", extra_p1d_label)
+    #         else:
+    #             extra_data = None
+    #     else:
+    #         raise ValueError("unknown data type")
 
-        # Setup free parameters
-        if self.verbose:
-            print("Setting up likelihood")
-        free_param_names = []
-        for item in config["free_params"]:
-            free_param_names.append(item[0])
-        free_param_limits = config["free_param_limits"]
+    #     # Setup free parameters
+    #     self.print("Setting up likelihood")
+    #     free_param_names = []
+    #     for item in config["free_params"]:
+    #         free_param_names.append(item[0])
+    #     free_param_limits = config["free_param_limits"]
 
-        # Setup fiducial cosmo and likelihood
-        cosmo_fid_label = config["cosmo_fid_label"]
-        self.like = likelihood.Likelihood(
-            data=data,
-            emulator=emulator,
-            free_param_names=free_param_names,
-            free_param_limits=free_param_limits,
-            prior_Gauss_rms=config["prior_Gauss_rms"],
-            emu_cov_factor=config["emu_cov_factor"],
-            cosmo_fid_label=cosmo_fid_label,
-            extra_p1d_data=extra_data,
-        )
+    #     # Setup fiducial cosmo and likelihood
+    #     cosmo_fid_label = config["cosmo_fid_label"]
+    #     self.like = likelihood.Likelihood(
+    #         data=data,
+    #         emulator=emulator,
+    #         free_param_names=free_param_names,
+    #         free_param_limits=free_param_limits,
+    #         prior_Gauss_rms=config["prior_Gauss_rms"],
+    #         emu_cov_factor=config["emu_cov_factor"],
+    #         cosmo_fid_label=cosmo_fid_label,
+    #         extra_p1d_data=extra_data,
+    #     )
 
-        # Verify we have a backend, and load it
-        assert os.path.isfile(
-            self.save_directory + "/backend.h5"
-        ), "Backend not found, can't load chains"
-        self.backend = emcee.backends.HDFBackend(
-            self.save_directory + "/backend.h5"
-        )
+    #     # Verify we have a backend, and load it
+    #     assert os.path.isfile(
+    #         self.save_directory + "/backend.h5"
+    #     ), "Backend not found, can't load chains"
+    #     self.backend = emcee.backends.HDFBackend(
+    #         self.save_directory + "/backend.h5"
+    #     )
 
-        ## Load chains - build a sampler object to access the backend
-        sampler = emcee.EnsembleSampler(
-            self.backend.shape[0],
-            self.backend.shape[1],
-            self.like.log_prob_and_blobs,
-            backend=self.backend,
-        )
+    #     ## Load chains - build a sampler object to access the backend
+    #     sampler = emcee.EnsembleSampler(
+    #         self.backend.shape[0],
+    #         self.backend.shape[1],
+    #         self.like.log_prob_and_blobs,
+    #         backend=self.backend,
+    #     )
 
-        self.burnin_nsteps = config["burn_in"]
-        self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
-        self.lnprob = sampler.get_log_prob(
-            flat=False, discard=self.burnin_nsteps
-        )
-        self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
+    #     self.burnin_nsteps = config["burn_in"]
+    #     self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
+    #     self.lnprob = sampler.get_log_prob(
+    #         flat=False, discard=self.burnin_nsteps
+    #     )
+    #     self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
 
-        self.ndim = len(self.like.free_params)
-        self.nwalkers = config["nwalkers"]
-        self.autocorr = np.asarray(config["autocorr"])
+    #     self.ndim = len(self.like.free_params)
+    #     self.nwalkers = config["nwalkers"]
+    #     self.autocorr = np.asarray(config["autocorr"])
 
-        return
+    #     return
 
     def _setup_chain_folder(self, rootdir=None, subfolder=None):
         """Set up a directory to save files for this sampler run"""
@@ -697,8 +834,8 @@ class EmceeSampler(object):
         if rootdir:
             chain_location = rootdir
         else:
-            assert "CUP1D_PATH" in os.environ, "export CUP1D_PATH"
-            chain_location = os.environ["CUP1D_PATH"] + "/chains/"
+            repo = os.path.dirname(cup1d.__path__[0]) + "/"
+            chain_location = repo + "data/chains/"
         if subfolder:
             # If there is one, check if it exists, if not make it
             if not os.path.isdir(chain_location + "/" + subfolder):
@@ -717,10 +854,10 @@ class EmceeSampler(object):
             else:
                 try:
                     os.mkdir(sampler_directory)
-                    print("Created directory:", sampler_directory)
+                    self.print("Created directory:", sampler_directory)
                     break
                 except FileExistsError:
-                    print("Race condition for:", sampler_directory)
+                    self.print("Race condition for:", sampler_directory)
                     # try again after one mili-second
                     time.sleep(0.001)
                     chain_count += 1
@@ -763,19 +900,21 @@ class EmceeSampler(object):
     def write_chain_to_file(self, residuals=True):
         """Write flat chain to file"""
 
+        ### XXX CHECK OUT THIS, improve!
+
         saveDict = {}
 
         # Emulator settings
         emulator = self.like.theory.emulator
         saveDict["kmax_Mpc"] = emulator.kmax_Mpc
-        if isinstance(emulator, gp_emulator.GPEmulator):
-            saveDict["emu_type"] = emulator.emu_type
-        else:
-            # this is dangerous, there might be different settings
-            if isinstance(emulator.archive, gadget_archive.GadgetArchive):
-                saveDict["emulator_label"] = "Cabayol23"
-            else:
-                saveDict["emulator_label"] = "Nyx"
+        # if isinstance(emulator, gp_emulator.GPEmulator):
+        #     saveDict["emu_type"] = emulator.emu_type
+        # else:
+        #     # this is dangerous, there might be different settings
+        #     if isinstance(emulator.archive, gadget_archive.GadgetArchive):
+        #         saveDict["emulator_label"] = "Cabayol23"
+        #     else:
+        #         saveDict["emulator_label"] = "Nyx"
 
         # Data settings
         if isinstance(self.like.data, data_gadget.Gadget_P1D):
@@ -830,7 +969,8 @@ class EmceeSampler(object):
         # Sampler stuff
         saveDict["burn_in"] = self.burnin_nsteps
         saveDict["nwalkers"] = self.nwalkers
-        saveDict["autocorr"] = self.autocorr.tolist()
+        if self.get_autocorr:
+            saveDict["autocorr"] = self.autocorr.tolist()
 
         # Save dictionary to json file in the appropriate directory
         if self.save_directory is None:
@@ -845,43 +985,47 @@ class EmceeSampler(object):
         try:
             mask_use = self.plot_lnprob()
         except:
-            print("Can't plot lnprob")
+            self.print("Can't plot lnprob")
         try:
             self.plot_best_fit(residuals=residuals, stat_best_fit="mean")
         except:
-            print("Can't plot best fit")
+            self.print("Can't plot best fit")
         try:
-            for stat_best_fit in ["mean", "mle"]:
+            for stat_best_fit in ["mean"]:
                 rand_posterior = self.plot_igm_histories(
                     stat_best_fit=stat_best_fit
                 )
         except:
-            print("Can't plot IGM histories")
+            self.print("Can't plot IGM histories")
         try:
-            for stat_best_fit in ["mean", "mle"]:
+            for stat_best_fit in ["mean"]:
                 self.plot_best_fit(
                     residuals=residuals,
                     rand_posterior=rand_posterior,
                     stat_best_fit=stat_best_fit,
                 )
         except:
-            print("Can't plot best fit")
+            self.print("Can't plot best fit")
         try:
             self.plot_prediction(residuals=residuals)
         except:
-            print("Can't plot prediction")
-        try:
-            self.plot_autocorrelation_time()
-        except:
-            print("Can't plot autocorrelation time")
-        try:
-            _ = self.plot_corner(only_cosmo=True)
-        except:
-            print("Can't plot corner")
+            self.print("Can't plot prediction")
+
+        if self.get_autocorr:
+            try:
+                self.plot_autocorrelation_time()
+            except:
+                self.print("Can't plot autocorrelation time")
+
+        if self.fix_cosmology == False:
+            try:
+                _ = self.plot_corner(only_cosmo=True)
+            except:
+                self.print("Can't plot corner")
         try:
             summary = self.plot_corner()
         except:
-            print("Can't plot corner")
+            self.print("Can't plot corner")
 
         dict_out = {}
         dict_out["summary"] = summary
@@ -948,7 +1092,10 @@ class EmceeSampler(object):
         if only_cosmo:
             yesplot = np.array(["$\\Delta^2_\\star$", "$n_\\star$"])
         else:
-            yesplot = np.array(strings_plot)[:-4]
+            if self.fix_cosmology:
+                yesplot = np.array(strings_plot)[:-6]
+            else:
+                yesplot = np.array(strings_plot)[:-4]
 
         dict_pd = {}
         for ii, par in enumerate(strings_plot):
@@ -1011,7 +1158,7 @@ class EmceeSampler(object):
         best_values = self.get_best_fit(
             delta_lnprob_cut=delta_lnprob_cut, stat_best_fit=stat_best_fit
         )
-        print("Best values:", best_values)
+        self.print("Best values:", best_values)
 
         plt.figure(figsize=figsize)
         plt.title("MCMC best fit")
@@ -1062,7 +1209,8 @@ class EmceeSampler(object):
         mask = np.random.permutation(chain.shape[0])[:nn]
         rand_sample = chain[mask]
 
-        z = self.like.theory.fid_igm["z"]
+        z_igm = self.like.theory.fid_igm["z"]
+        z = np.array(self.like.data.z)
 
         # true IGM parameters
         pars_true = {}
@@ -1119,14 +1267,32 @@ class EmceeSampler(object):
 
         for ii in range(len(arr_labs)):
             if self.like.theory.true_sim_igm is not None:
-                ax[ii].plot(z, pars_true[arr_labs[ii]], "o:", label="true")
-            ax[ii].plot(z, pars_fid[arr_labs[ii]], "s--", label="fiducial")
+                _ = pars_true[arr_labs[ii]] != 0
+                ax[ii].plot(
+                    z_igm[_],
+                    pars_true[arr_labs[ii]][_],
+                    "o:",
+                    label="true",
+                    alpha=0.5,
+                )
+            _ = pars_fid[arr_labs[ii]] != 0
+            ax[ii].plot(
+                z_igm[_],
+                pars_fid[arr_labs[ii]][_],
+                "s--",
+                label="fiducial",
+                alpha=0.5,
+            )
             err = np.abs(
                 np.percentile(pars_samp[arr_labs[ii]], [16, 84], axis=0)
                 - pars_best[arr_labs[ii]]
             )
             ax[ii].errorbar(
-                z, pars_best[arr_labs[ii]], err, label="best-fitting"
+                z,
+                pars_best[arr_labs[ii]],
+                err,
+                label="best-fitting",
+                alpha=0.5,
             )
 
             ax[ii].set_ylabel(latex_labs[ii])

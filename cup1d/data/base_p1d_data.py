@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -7,7 +8,7 @@ import cup1d
 class BaseDataP1D(object):
     """Base class to store measurements of the 1D power spectrum"""
 
-    BASEDIR = f"{cup1d.__path__[0]}/data_files/p1d_measurements/"
+    BASEDIR = os.path.dirname(cup1d.__path__[0]) + "/data/p1d_measurements/"
 
     def __init__(self, z, k_kms, Pk_kms, cov_Pk_kms):
         """Construct base P1D class, from measured power and covariance"""

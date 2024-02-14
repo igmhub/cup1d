@@ -6,32 +6,28 @@ This repository contains some tools to perform the last steps of a cosmological 
 
 It uses the LaCE emulator (https://github.com/igmhub/LaCE), and some extra tools to run MCMC analyses on cosmological and IGM parameters for a mock P1D measurement.
 
-If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es)
+If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es) or Jonas Chaves-Montero (jchaves@ifae.es).
  
 
 ### Installation
 
-Start a fresh environment:
+- Create a new conda environment. It is usually better to follow python version one or two behind. In January 2024, the latest is 3.12, so we recommend 3.11.
 
 ```
-conda create -n cup1d python=3.10
+conda create -n cup1d python=3.11 camb mpich
 conda activate cup1d
 ```
+- Install cup1d:
 
-Clone the cup1d repo, set a CUP1D_PATH environment variable pointing to it:
+```Follow the instructions from https://github.com/igmhub/cup1d```
 
-```
-cd $CUP1D_PATH
-pip install -e .
-```
-
-Note: This will replace your local LaCE installation if you have any. To use your editable LaCE installation, uninstall LaCE and reinstall your own copy.
+- Clone the cup1d repo and perform an *editable* installation:
 
 ```
-pip uninstall lace
-cd $LACE_PATH
-pip install -e .
-```
+git clone https://github.com/igmhub/cup1d.git
+cd cup1d
+pip install -e .[jupyter]
+``` 
 
 ### Notebooks / tutorials
 

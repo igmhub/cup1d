@@ -1,0 +1,12 @@
+#!/bin/bash
+#SBATCH --qos=regular
+#SBATCH --time=24
+##SBATCH --account=desi
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=128
+#SBATCH --constraint=cpu
+
+source /global/homes/j/jjchaves/miniconda3/bin/activate lace
+
+srun --unbuffered python /global/homes/j/jjchaves/cup1d/src/cup1d/scripts/sam_like_sim.py --training_set Cabayol23 --emulator_label Cabayol23 --test_sim_label mpg_central --igm_sim_label mpg_central --drop_sim False --n_igm 0

@@ -1,6 +1,7 @@
 import json
 import numpy as np
 import os
+import lace
 from lace.setup_simulations import read_genic
 from lace.cosmo import camb_cosmo, fit_linP, thermal_broadening
 from lace.utils import poly_p1d
@@ -41,8 +42,7 @@ class TestSimulation(object):
           emulator linear power parameters
         """
 
-        assert "LACE_REPO" in os.environ, "export LACE_REPO"
-        repo = os.environ["LACE_REPO"]
+        repo = os.path.dirname(lace.__path__[0]) + "/data/sim_suites/"
 
         if type(sim_label) == int:
             self.fulldir = repo + basedir + "sim_pair_" + str(sim_label)
