@@ -54,6 +54,7 @@ jupyter = [
 
 [tool.setuptools.packages.find]
 include = ["cup1d"]
+namespaces = false
 
 [project.urls]
 Homepage="https://github.com/igmhub/cup1d"
