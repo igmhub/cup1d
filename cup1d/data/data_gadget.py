@@ -18,7 +18,6 @@ class Gadget_P1D(BaseMockP1D):
         self,
         testing_data,
         input_sim="mpg_central",
-        z_max=None,
         data_cov_label="Chabanier2019",
         data_cov_factor=1.0,
         add_syst=True,
@@ -108,6 +107,7 @@ class Gadget_P1D(BaseMockP1D):
             iz = len(z_sim) - 1 - iiz
             z = z_sim[iz]
             # convert Mpc to km/s
+            # XXX check this, it is stored!
             dkms_dMpc = sim_camb_results.hubble_parameter(z) / (1 + z)
             data_k_Mpc = k_kms * dkms_dMpc
 
