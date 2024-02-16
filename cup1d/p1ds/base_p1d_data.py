@@ -3,12 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import cup1d
+from lace.utils.smoothing_manager import apply_smoothing
 
 
 class BaseDataP1D(object):
     """Base class to store measurements of the 1D power spectrum"""
 
-    BASEDIR = os.path.dirname(cup1d.__path__[0]) + "/data/p1d_measurements/"
+    BASEDIR = cup1d.__path__[0] + "/data/p1d_measurements/"
 
     def __init__(self, z, k_kms, Pk_kms, cov_Pk_kms):
         """Construct base P1D class, from measured power and covariance"""
@@ -52,6 +53,23 @@ class BaseDataP1D(object):
             self.cov_Pk_kms[i] = self.cov_Pk_kms[i][Ncull:, Ncull:]
 
         return
+
+    def set_smoothing(self):
+        """Smooth data"""
+
+        list_data_Mpc = []
+        for ii in range(len(self.z)):
+            data = {}
+            data["k_Mpc"] = self.k_kms * self.dkms_dMpc[ii]
+            data["p1d_Mpc"] = self.Pk_kms[ii] * self.dkms_dMpc[ii]
+            list_data_Mpc.append(data)
+
+        apply_smoothing(self.emulator, list_data_Mpc)
+
+        for ii in range(len(self.z)):
+            self.Pk_kms[ii] = (
+                list_data_Mpc[ii]["p1d_Mpc_smooth"] / self.dkms_dMpc[ii]
+            )
 
     def plot_p1d(self, use_dimensionless=True, xlog=False, ylog=True):
         """Plot P1D mesurement. If use_dimensionless, plot k*P(k)/pi."""

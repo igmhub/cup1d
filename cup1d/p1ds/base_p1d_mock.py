@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import cup1d
-from cup1d.data.base_p1d_data import BaseDataP1D
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class BaseMockP1D(BaseDataP1D):

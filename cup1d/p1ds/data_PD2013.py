@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-from cup1d.data.base_p1d_data import BaseDataP1D, _drop_zbins
+from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
 
 
 class P1D_PD2013(BaseDataP1D):

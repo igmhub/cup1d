@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-from cup1d.data.base_p1d_data import BaseDataP1D
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Irsic2017(BaseDataP1D):

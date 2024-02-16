@@ -5,7 +5,7 @@ import lace
 from lace.setup_simulations import read_genic
 from lace.cosmo import camb_cosmo, fit_linP, thermal_broadening
 from lace.utils import poly_p1d
-from cup1d.data import read_gadget
+from cup1d.p1ds import read_gadget
 from cup1d.nuisance import thermal_model
 
 

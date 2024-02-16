@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas
 
-from cup1d.data.base_p1d_data import BaseDataP1D, _drop_zbins
+from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
 
 
 class P1D_QMLE_Ohio(BaseDataP1D):

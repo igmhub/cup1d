@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from cup1d.data.base_p1d_data import BaseDataP1D
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Walther2018(BaseDataP1D):

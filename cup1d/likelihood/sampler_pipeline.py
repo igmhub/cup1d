@@ -10,7 +10,7 @@ import lace
 from lace.archive import gadget_archive, nyx_archive
 from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.data import (
+from cup1d.p1ds import (
     data_gadget,
     data_nyx,
     data_eBOSS_mock,
@@ -216,12 +216,6 @@ class SamplerPipeline(object):
         fprint = create_print_function(verbose=args.verbose)
         ###################
 
-        self.out_folder = self.path_sampler(
-            drop_sim=_drop_sim,
-            apply_smoothing=args.apply_smoothing,
-            flag_hires=flag_hires,
-        )
-
         ## set training set (only for rank 0)
         if rank == 0:
             start_all = time.time()
@@ -276,12 +270,12 @@ class SamplerPipeline(object):
             fprint("Setting P1D")
             start = time.time()
 
-            data = {}
+            data = {"P1Ds": None, "extra_P1Ds": None}
             data["P1Ds"] = self.set_P1D(
                 archive,
                 emulator,
                 args.mock_label,
-                args.cov_label,
+                cov_label=args.cov_label,
                 apply_smoothing=args.apply_smoothing,
                 z_min=args.z_min,
                 z_max=args.z_max,
@@ -289,11 +283,11 @@ class SamplerPipeline(object):
                 seed_noise=args.seed_noise,
             )
             if args.add_high_res:
-                data["extra_P1D"] = self.set_P1D_hires(
+                data["extra_P1Ds"] = self.set_P1D_hires(
                     archive,
                     emulator,
                     args.mock_label_hires,
-                    args.cov_label_hires,
+                    cov_label=args.cov_label_hires,
                     apply_smoothing=args.apply_smoothing,
                     z_min=args.z_min,
                     z_max=args.z_max,
@@ -311,7 +305,7 @@ class SamplerPipeline(object):
             multi_time = str(np.round(time.time() - start, 2))
             fprint("P1D set in " + multi_time + " s")
 
-        # reset all archives to free space
+        # reset archives to free space
         archive = None
 
         #######################
@@ -326,7 +320,17 @@ class SamplerPipeline(object):
         fprint("Setting likelihood")
 
         like = self.set_like(
-            emulator, data["P1D"], data["extra_P1D"], cosmo_fid, fprint=fprint
+            emulator,
+            data["P1Ds"],
+            data["extra_P1Ds"],
+            args.mock_label,
+            args.igm_sim_label,
+            args.n_igm,
+            cosmo_fid,
+            fix_cosmo=args.fix_cosmo,
+            fprint=fprint,
+            prior_Gauss_rms=args.prior_Gauss_rms,
+            emu_cov_factor=args.emu_cov_factor,
         )
 
         self.set_emcee_options(
@@ -344,9 +348,23 @@ class SamplerPipeline(object):
             fprint("Setting sampler")
             fprint("-------")
 
-        self.set_sampler(
-            self, like, fix_cosmo=args.fix_cosmo, parallel=args.parallel
-        )
+            self.out_folder = self.path_sampler(
+                args.emulator_label,
+                args.mock_label,
+                args.igm_sim_label,
+                args.n_igm,
+                args.cosmo_sim_label,
+                args.cov_label,
+                version=args.version,
+                drop_sim=_drop_sim,
+                apply_smoothing=args.apply_smoothing,
+                add_hires=args.add_hires,
+                add_noise=args.add_noise,
+                seed_noise=args.seed_noise,
+                fix_cosmo=args.fix_cosmo,
+            )
+
+        self.set_sampler(like, fix_cosmo=args.fix_cosmo, parallel=args.parallel)
 
         #######################
 
@@ -356,27 +374,32 @@ class SamplerPipeline(object):
 
     def path_sampler(
         self,
-        version,
         emulator_label,
+        mock_label,
+        igm_sim_label,
+        n_igm,
+        cosmo_sim_label,
         cov_label,
-        drop_sim,
-        apply_smoothing,
-        flag_hires,
-        add_noise,
-        seed_noise,
+        version="v3",
+        drop_sim=None,
+        apply_smoothing=True,
+        add_hires=False,
+        add_noise=False,
+        seed_noise=0,
+        fix_cosmo=False,
     ):
         if drop_sim is not None:
-            flag_drop = "drop"
+            flag_drop = "_drop"
         else:
             flag_drop = ""
 
         if apply_smoothing:
-            flag_smooth = "smooth"
+            flag_smooth = "_smooth"
         else:
             flag_smooth = ""
 
         if add_hires:
-            flag_hires = "hires"
+            flag_hires = "_hires"
         else:
             flag_hires = ""
 
@@ -399,22 +422,20 @@ class SamplerPipeline(object):
         path += "emu_" + emulator_label + "/"
         if os.path.isdir(path) == False:
             os.mkdir(path)
-        path += "cov_" + cov_label + "_" + flag_hires + "/"
+        path += "cov_" + cov_label + flag_hires + "/"
         if os.path.isdir(path) == False:
             os.mkdir(path)
 
         path += (
             "mock_"
-            + args.mock_label
+            + mock_label
             + "_igm_"
-            + args.igm_sim_label
+            + igm_sim_label
             + "_cosmo_"
-            + args.cosmo_sim_label
+            + cosmo_sim_label
             + "_nigm_"
-            + str(args.n_igm)
-            + "_"
+            + str(n_igm)
             + flag_drop
-            + "_"
             + flag_smooth
         )
 
@@ -472,6 +493,7 @@ class SamplerPipeline(object):
                         self.n_burn_in = 500
 
     def set_P1D(
+        self,
         archive,
         emulator,
         mock_label,
@@ -579,6 +601,7 @@ class SamplerPipeline(object):
         return data
 
     def set_P1D_hires(
+        self,
         archive,
         emulator,
         mock_label_hires,
@@ -697,11 +720,13 @@ class SamplerPipeline(object):
         return cosmo_fid
 
     def set_like(
+        self,
         emulator,
         data,
         data_hires,
         mock_label,
         igm_sim_label,
+        n_igm,
         cosmo_fid,
         fix_cosmo=False,
         fprint=print,

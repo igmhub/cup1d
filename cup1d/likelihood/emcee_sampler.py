@@ -15,7 +15,7 @@ import cup1d
 from lace.cosmo import fit_linP, camb_cosmo
 from lace.archive import gadget_archive
 from lace.emulator import gp_emulator, nn_emulator
-from cup1d.data import (
+from cup1d.p1ds import (
     data_nyx,
     data_gadget,
     mock_data,

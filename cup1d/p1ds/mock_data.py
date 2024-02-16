@@ -1,8 +1,6 @@
 from lace.emulator import gp_emulator
-from cup1d.data.base_p1d_mock import BaseMockP1D
-from cup1d.data import data_Chabanier2019
-from cup1d.data import data_Karacayli2022
-from cup1d.data import data_QMLE_Ohio
+from cup1d.p1ds.base_p1d_mock import BaseMockP1D
+from cup1d.p1ds import data_Chabanier2019, data_Karacayli2022, data_QMLE_Ohio
 from cup1d.likelihood import lya_theory
 
 
