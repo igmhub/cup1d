@@ -47,15 +47,16 @@ class Gadget_P1D(BaseMockP1D):
         self.add_syst = add_syst
         self.data_cov_factor = data_cov_factor
         self.data_cov_label = data_cov_label
-        self.emulator = emulator
-
-        # polyfit settings
-        self.polyfit_kmax_Mpc = polyfit_kmax_Mpc
-        self.polyfit_ndeg = polyfit_ndeg
 
         # store sim data
         self.input_sim = input_sim
-        self.testing_data = testing_data
+
+        if apply_smoothing & (emulator is not None):
+            self.testing_data = super().set_smoothing_Mpc(
+                emulator, testing_data
+            )
+        else:
+            self.testing_data = testing_data
 
         # store cosmology used in the simulation
         dkms_dMpc = []

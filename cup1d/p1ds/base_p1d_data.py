@@ -54,7 +54,7 @@ class BaseDataP1D(object):
 
         return
 
-    def set_smoothing(self):
+    def set_smoothing_kms(self, emulator):
         """Smooth data"""
 
         list_data_Mpc = []
@@ -64,12 +64,24 @@ class BaseDataP1D(object):
             data["p1d_Mpc"] = self.Pk_kms[ii] * self.dkms_dMpc[ii]
             list_data_Mpc.append(data)
 
-        apply_smoothing(self.emulator, list_data_Mpc)
+        apply_smoothing(emulator, list_data_Mpc)
 
         for ii in range(len(self.z)):
             self.Pk_kms[ii] = (
                 list_data_Mpc[ii]["p1d_Mpc_smooth"] / self.dkms_dMpc[ii]
             )
+
+    def set_smoothing_Mpc(self, emulator, list_data_Mpc):
+        """Smooth data"""
+
+        apply_smoothing(emulator, list_data_Mpc)
+        for ii in range(len(list_data_Mpc)):
+            if "p1d_Mpc_smooth" in list_data_Mpc[ii]:
+                list_data_Mpc[ii]["p1d_Mpc"] = list_data_Mpc[ii][
+                    "p1d_Mpc_smooth"
+                ]
+
+        return list_data_Mpc
 
     def plot_p1d(self, use_dimensionless=True, xlog=False, ylog=True):
         """Plot P1D mesurement. If use_dimensionless, plot k*P(k)/pi."""
