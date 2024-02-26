@@ -1,5 +1,4 @@
-import configargparse
-from cup1d.utils.utils import create_print_function, mpi_hello_world
+from cup1d.utils.utils import create_print_function
 
 import os, sys, time
 import numpy as np
@@ -20,187 +19,6 @@ from cup1d.p1ds import (
     data_Ravoux2023,
 )
 from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
-
-
-def parse_args():
-    parser = configargparse.ArgumentParser(
-        description="Passing options to sampler"
-    )
-
-    # emulator
-    parser.add_argument(
-        "--emulator_label",
-        default=None,
-        choices=[
-            "Pedersen21_ext",
-            "Pedersen23_ext",
-            "k_bin_sm",
-            "Cabayol23",
-            "Cabayol23_extended",
-            "Nyx_v0",
-            "Nyx_v0_extended",
-        ],
-        required=True,
-        help="Type of emulator to be used",
-    )
-    parser.add_argument(
-        "--mock_label",
-        default=None,
-        type=str,
-        required=True,
-        help="Input simulation to create mock P1Ds",
-    )
-    parser.add_argument(
-        "--z_min",
-        type=float,
-        default=2,
-        help="Minimum redshift of P1D measurements to be analyzed",
-    )
-    parser.add_argument(
-        "--z_max",
-        type=float,
-        default=4.5,
-        help="Maximum redshift of P1D measurements to be analyzed",
-    )
-    parser.add_argument(
-        "--igm_sim_label",
-        default=None,
-        type=str,
-        required=True,
-        help="Input simulation to set fiducial IGM model",
-    )
-    parser.add_argument(
-        "--n_igm",
-        type=int,
-        default=2,
-        help="Number of free parameters for IGM model",
-    )
-    parser.add_argument(
-        "--cosmo_sim_label",
-        default=None,
-        type=str,
-        required=True,
-        help="Input simulation to set fiducial cosmology",
-    )
-
-    parser.add_argument(
-        "--drop_sim",
-        action="store_true",
-        help="Drop mock_label simulation from the training set",
-    )
-
-    # P1D
-    parser.add_argument(
-        "--add_hires",
-        action="store_true",
-        help="Include high-res data (Karacayli2022)",
-    )
-    parser.add_argument(
-        "--use_polyfit",
-        action="store_true",
-        help="Fit data after fitting polynomial",
-    )
-
-    # likelihood
-    parser.add_argument(
-        "--cov_label",
-        type=str,
-        default="Chabanier2019",
-        choices=["Chabanier2019", "QMLE_Ohio"],
-        help="Data covariance",
-    )
-    parser.add_argument(
-        "--cov_label_hires",
-        type=str,
-        default="Karacayli2022",
-        choices=["Karacayli2022"],
-        help="Data covariance for high-res data",
-    )
-    parser.add_argument(
-        "--add_noise",
-        action="store_true",
-        help="Add noise to P1D mock according to covariance matrix",
-    )
-    parser.add_argument(
-        "--seed_noise",
-        type=int,
-        default=0,
-        help="Seed for noise",
-    )
-    parser.add_argument(
-        "--fix_cosmo",
-        action="store_true",
-        help="Fix cosmological parameters while sampling",
-    )
-
-    parser.add_argument(
-        "--version",
-        default="v3",
-        help="Version of the pipeline",
-    )
-
-    parser.add_argument(
-        "--n_steps",
-        type=int,
-        default=1000,
-        help="Steps of emcee chains",
-    )
-    parser.add_argument(
-        "--prior_Gauss_rms",
-        default=None,
-        help="Width of Gaussian prior",
-    )
-    parser.add_argument(
-        "--emu_cov_factor",
-        type=float,
-        default=0,
-        help="scale contribution of emulator covariance",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="print information",
-    )
-
-    parser.add_argument(
-        "--test",
-        action="store_true",
-        help="Run test job",
-    )
-
-    parser.add_argument(
-        "--parallel",
-        action="store_true",
-        help="Parallelize",
-    )
-
-    #######################
-    # print args
-    args = parser.parse_args()
-    mpi_hello_world()
-
-    fprint = create_print_function(verbose=args.verbose)
-    fprint("--- print options from parser ---")
-    fprint(args)
-    fprint("----------")
-    fprint(parser.format_values())
-    fprint("----------")
-
-    args.archive = None
-    dict_training_set = {
-        "Pedersen21": "Pedersen21",
-        "Pedersen23": "Cabayol23",
-        "Pedersen21_ext": "Cabayol23",
-        "Pedersen23_ext": "Cabayol23",
-        "k_bin_sm": "Cabayol23",
-        "Cabayol23": "Cabayol23",
-        "Cabayol23_extended": "Cabayol23",
-        "Nyx_v0": "Nyx23_Oct2023",
-        "Nyx_v0_extended": "Nyx23_Oct2023",
-    }
-    args.training_set = training_set_for_emulator[args.emulator_label]
-
-    return args
 
 
 class SamplerPipeline(object):
@@ -237,14 +55,14 @@ class SamplerPipeline(object):
         #######################
 
         ## set emulator
-        _drop_sim = None
-        if args.drop_sim & (args.mock_label in archive.list_sim_cube):
-            _drop_sim = args.mock_label
-
         if rank == 0:
             fprint("----------")
             fprint("Setting emulator")
             start = time.time()
+
+            _drop_sim = None
+            if args.drop_sim & (args.data_label in archive.list_sim_cube):
+                _drop_sim = args.data_label
 
             emulator = set_emulator(
                 emulator_label=args.emulator_label,
@@ -274,7 +92,7 @@ class SamplerPipeline(object):
             data["P1Ds"] = self.set_P1D(
                 archive,
                 emulator,
-                args.mock_label,
+                args.data_label,
                 cov_label=args.cov_label,
                 apply_smoothing=args.apply_smoothing,
                 z_min=args.z_min,
@@ -282,11 +100,11 @@ class SamplerPipeline(object):
                 add_noise=args.add_noise,
                 seed_noise=args.seed_noise,
             )
-            if args.add_high_res:
+            if args.add_hires:
                 data["extra_P1Ds"] = self.set_P1D_hires(
                     archive,
                     emulator,
-                    args.mock_label_hires,
+                    args.data_label_hires,
                     cov_label=args.cov_label_hires,
                     apply_smoothing=args.apply_smoothing,
                     z_min=args.z_min,
@@ -296,10 +114,10 @@ class SamplerPipeline(object):
                 )
             # distribute data to all tasks
             for irank in range(1, size):
-                comm.send(data, dest=irank, tag=irank + 1)
+                comm.send(data, dest=irank, tag=irank + 1001)
         else:
             # get testing_data from task 0
-            data = comm.recv(source=0, tag=rank + 1)
+            data = comm.recv(source=0, tag=rank + 1001)
 
         if rank == 0:
             multi_time = str(np.round(time.time() - start, 2))
@@ -311,7 +129,7 @@ class SamplerPipeline(object):
         #######################
 
         # set fiducial cosmology
-        cosmo_fid = self.set_fid_cosmo(cosmo_sim_label=args.cosmo_sim_label)
+        cosmo_fid = self.set_fid_cosmo(cosmo_label=args.cosmo_label)
 
         #######################
 
@@ -323,8 +141,8 @@ class SamplerPipeline(object):
             emulator,
             data["P1Ds"],
             data["extra_P1Ds"],
-            args.mock_label,
-            args.igm_sim_label,
+            args.data_label,
+            args.igm_label,
             args.n_igm,
             cosmo_fid,
             fix_cosmo=args.fix_cosmo,
@@ -350,10 +168,10 @@ class SamplerPipeline(object):
 
             self.out_folder = self.path_sampler(
                 args.emulator_label,
-                args.mock_label,
-                args.igm_sim_label,
+                args.data_label,
+                args.igm_label,
                 args.n_igm,
-                args.cosmo_sim_label,
+                args.cosmo_label,
                 args.cov_label,
                 version=args.version,
                 drop_sim=_drop_sim,
@@ -363,6 +181,13 @@ class SamplerPipeline(object):
                 seed_noise=args.seed_noise,
                 fix_cosmo=args.fix_cosmo,
             )
+
+            # distribute out_folder to all tasks
+            for irank in range(1, size):
+                comm.send(self.out_folder, dest=irank, tag=irank + 10001)
+        else:
+            # get testing_data from task 0
+            self.out_folder = comm.recv(source=0, tag=rank + 10001)
 
         self.set_sampler(like, fix_cosmo=args.fix_cosmo, parallel=args.parallel)
 
@@ -375,10 +200,10 @@ class SamplerPipeline(object):
     def path_sampler(
         self,
         emulator_label,
-        mock_label,
-        igm_sim_label,
+        data_label,
+        igm_label,
         n_igm,
-        cosmo_sim_label,
+        cosmo_label,
         cov_label,
         version="v3",
         drop_sim=None,
@@ -428,11 +253,11 @@ class SamplerPipeline(object):
 
         path += (
             "mock_"
-            + mock_label
+            + data_label
             + "_igm_"
-            + igm_sim_label
+            + igm_label
             + "_cosmo_"
-            + cosmo_sim_label
+            + cosmo_label
             + "_nigm_"
             + str(n_igm)
             + flag_drop
@@ -462,18 +287,18 @@ class SamplerPipeline(object):
         return archive
 
     def set_emcee_options(
-        self, cov_label, n_igm, n_steps=None, n_burn_in=None, test=False
+        self, cov_label, n_igm, n_steps=0, n_burn_in=0, test=False
     ):
         if test == True:
             self.n_steps = 10
             self.n_burn_in = 0
         else:
-            if n_steps is not None:
+            if n_steps != 0:
                 self.n_steps = n_steps
             else:
                 self.n_steps = 1000
 
-            if n_burn_in is not None:
+            if n_burn_in != 0:
                 self.n_burn_in = n_burn_in
             else:
                 if cov_label == "Chabanier2019":
@@ -496,7 +321,7 @@ class SamplerPipeline(object):
         self,
         archive,
         emulator,
-        mock_label,
+        data_label,
         cov_label=None,
         apply_smoothing=None,
         z_min=0,
@@ -510,7 +335,7 @@ class SamplerPipeline(object):
         ----------
         archive : object
             Archive object containing P1D data
-        mock_label : str
+        data_label : str
             Label of simulation/dataset used to generate mock data
         cov_label : str, optional
             Label of covariance matrix
@@ -522,42 +347,42 @@ class SamplerPipeline(object):
             Maximum redshift of P1D measurements
         """
 
-        if (mock_label[:3] == "mpg") | (mock_label[:3] == "nyx"):
+        if (data_label[:3] == "mpg") | (data_label[:3] == "nyx"):
             # check if we need to load another archive
-            if mock_label in archive.list_sim:
+            if data_label in archive.list_sim:
                 archive_mock = archive
             else:
-                if mock_label[:3] == "mpg":
+                if data_label[:3] == "mpg":
                     archive_mock = set_archive(training_set="Cabayol23")
-                elif mock_label[:3] == "nyx":
+                elif data_label[:3] == "nyx":
                     archive_mock = set_archive(training_set="Nyx24_Feb2024")
 
-            if mock_label not in archive_mock.list_sim:
+            if data_label not in archive_mock.list_sim:
                 raise ValueError(
-                    mock_label + " not available in archive ",
+                    data_label + " not available in archive ",
                     archive_mock.list_sim,
                 )
             ###################
 
             # set noise free P1Ds in Mpc
-            p1d_ideal = archive_mock.get_testing_data(mock_label)
+            p1d_ideal = archive_mock.get_testing_data(data_label)
             if len(p1d_ideal) == 0:
-                raise ValueError("Could not set P1D data for", mock_label)
+                raise ValueError("Could not set P1D data for", data_label)
             else:
                 archive_mock = None
             ###################
 
             # set P1Ds in kms
-            if mock_label[:3] == "mpg":
+            if data_label[:3] == "mpg":
                 set_p1d_from_mock = data_gadget.Gadget_P1D
-            elif mock_label[:3] == "nyx":
+            elif data_label[:3] == "nyx":
                 set_p1d_from_mock = data_nyx.Nyx_P1D
 
             data = set_p1d_from_mock(
                 z_min=z_min,
                 z_max=z_max,
                 testing_data=p1d_ideal,
-                input_sim=mock_label,
+                input_sim=data_label,
                 data_cov_label=cov_label,
                 emulator=emulator,
                 apply_smoothing=apply_smoothing,
@@ -565,7 +390,7 @@ class SamplerPipeline(object):
                 seed=seed_noise,
             )
 
-        elif mock_label == "eBOSS_mock":
+        elif data_label == "eBOSS_mock":
             data = data_eBOSS_mock.P1D_eBOSS_mock(
                 z_min=z_min,
                 z_max=z_max,
@@ -574,21 +399,21 @@ class SamplerPipeline(object):
                 add_noise=add_noise,
                 seed=seed_noise,
             )
-        elif mock_label == "Chabanier19":
+        elif data_label == "Chabanier19":
             data = data_Chabanier2019.P1D_Chabanier2019(
                 z_min=z_min,
                 z_max=z_max,
                 emulator=emulator,
                 apply_smoothing=apply_smoothing,
             )
-        elif mock_label == "Ravoux23":
+        elif data_label == "Ravoux23":
             data = data_Ravoux2023.P1D_Ravoux23(
                 z_min=z_min,
                 z_max=z_max,
                 emulator=emulator,
                 apply_smoothing=apply_smoothing,
             )
-        elif mock_label == "Karacayli23":
+        elif data_label == "Karacayli23":
             data = data_Karacayli2023.P1D_Karacayli2023(
                 z_min=z_min,
                 z_max=z_max,
@@ -596,7 +421,7 @@ class SamplerPipeline(object):
                 apply_smoothing=apply_smoothing,
             )
         else:
-            raise ValueError(f"mock_label {mock_label} not implemented")
+            raise ValueError(f"data_label {data_label} not implemented")
 
         return data
 
@@ -604,7 +429,7 @@ class SamplerPipeline(object):
         self,
         archive,
         emulator,
-        mock_label_hires,
+        data_label_hires,
         extra_cov_label,
         apply_smoothing=None,
         z_min=0,
@@ -618,7 +443,7 @@ class SamplerPipeline(object):
         ----------
         archive : object
             Archive object containing P1D data
-        mock_label : str
+        data_label : str
             Label of simulation/dataset used to generate mock data
         cov_label : str
             Label of covariance matrix
@@ -630,44 +455,44 @@ class SamplerPipeline(object):
             Maximum redshift of P1D measurements
         """
 
-        if (mock_label[:3] == "mpg") | (mock_label[:3] == "nyx"):
+        if (data_label[:3] == "mpg") | (data_label[:3] == "nyx"):
             # check if we need to load another archive
-            if mock_label in archive.list_sim:
+            if data_label in archive.list_sim:
                 archive_mock = archive
             else:
-                if mock_label[:3] == "mpg":
+                if data_label[:3] == "mpg":
                     archive_mock = set_archive(training_set="Cabayol23")
-                elif mock_label[:3] == "nyx":
+                elif data_label[:3] == "nyx":
                     archive_mock = set_archive(training_set="Nyx24_Feb2024")
 
-            if mock_label not in archive_mock.list_sim:
+            if data_label not in archive_mock.list_sim:
                 raise ValueError(
-                    mock_label + " not available in archive ",
+                    data_label + " not available in archive ",
                     archive_mock.list_sim,
                 )
             ###################
 
             # set noise free P1Ds in Mpc
             p1d_ideal = archive_mock.get_testing_data(
-                mock_label, z_min=z_min, z_max=z_max
+                data_label, z_min=z_min, z_max=z_max
             )
             if len(p1d_ideal) == 0:
-                raise ValueError("Could not set P1D data for", mock_label)
+                raise ValueError("Could not set P1D data for", data_label)
             else:
                 archive_mock = None
             ###################
 
             # set P1Ds in kms
-            if mock_label[:3] == "mpg":
+            if data_label[:3] == "mpg":
                 set_p1d_from_mock = data_gadget.Gadget_P1D
-            elif mock_label[:3] == "nyx":
+            elif data_label[:3] == "nyx":
                 set_p1d_from_mock = data_nyx.Nyx_P1D
 
             data_hires = set_p1d_from_mock(
                 z_min=z_min,
                 z_max=z_max,
                 testing_data=p1d_ideal,
-                input_sim=mock_label_hires,
+                input_sim=data_label_hires,
                 data_cov_label=extra_cov_label,
                 emulator=emulator,
                 apply_smoothing=apply_smoothing,
@@ -675,7 +500,7 @@ class SamplerPipeline(object):
                 seed=seed_noise,
             )
 
-        elif mock_label_hires == "Karacayli22":
+        elif data_label_hires == "Karacayli22":
             data_hires = data_Karacayli2022.P1D_Karacayli2022(
                 z_min=z_min,
                 z_max=z_max,
@@ -684,18 +509,18 @@ class SamplerPipeline(object):
             )
         else:
             raise ValueError(
-                f"mock_label_hires {mock_label_hires} not implemented"
+                f"data_label_hires {data_label_hires} not implemented"
             )
 
         return data_hires
 
-    def set_fid_cosmo(self, cosmo_sim_label="mpg_central"):
-        if (cosmo_sim_label[:3] == "mpg") | (cosmo_sim_label[:3] == "nyx"):
-            if cosmo_sim_label[:3] == "mpg":
+    def set_fid_cosmo(self, cosmo_label="mpg_central"):
+        if (cosmo_label[:3] == "mpg") | (cosmo_label[:3] == "nyx"):
+            if cosmo_label[:3] == "mpg":
                 repo = os.path.dirname(lace.__path__[0]) + "/"
                 fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
                 get_cosmo = camb_cosmo.get_cosmology_from_dictionary
-            elif cosmo_sim_label[:3] == "nyx":
+            elif cosmo_label[:3] == "nyx":
                 fname = os.environ["NYX_PATH"] + "nyx_emu_cosmo_Oct2023.npy"
                 get_cosmo = camb_cosmo.get_Nyx_cosmology
 
@@ -706,17 +531,15 @@ class SamplerPipeline(object):
 
             cosmo_fid = None
             for ii in range(len(data_cosmo)):
-                if data_cosmo[ii]["sim_label"] == cosmo_sim_label:
+                if data_cosmo[ii]["sim_label"] == cosmo_label:
                     cosmo_fid = get_cosmo(data_cosmo[ii]["cosmo_params"])
                     break
             if cosmo_fid is None:
                 raise ValueError(
-                    f"Cosmo not found in {fname} for {cosmo_sim_label}"
+                    f"Cosmo not found in {fname} for {cosmo_label}"
                 )
         else:
-            raise ValueError(
-                f"cosmo_sim_label {cosmo_sim_label} not implemented"
-            )
+            raise ValueError(f"cosmo_label {cosmo_label} not implemented")
         return cosmo_fid
 
     def set_like(
@@ -724,8 +547,8 @@ class SamplerPipeline(object):
         emulator,
         data,
         data_hires,
-        mock_label,
-        igm_sim_label,
+        data_label,
+        igm_label,
         n_igm,
         cosmo_fid,
         fix_cosmo=False,
@@ -751,8 +574,8 @@ class SamplerPipeline(object):
             zs=data.z,
             emulator=emulator,
             free_param_names=free_parameters,
-            fid_sim_igm=igm_sim_label,
-            true_sim_igm=mock_label,
+            fid_sim_igm=igm_label,
+            true_sim_igm=data_label,
             cosmo_fid=cosmo_fid,
         )
 
