@@ -21,6 +21,84 @@ from cup1d.p1ds import (
 from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
 
 
+def path_sampler(
+    emulator_label,
+    data_label,
+    igm_label,
+    n_igm,
+    cosmo_label,
+    cov_label,
+    version="v3",
+    drop_sim=None,
+    apply_smoothing=True,
+    add_hires=False,
+    add_noise=False,
+    seed_noise=0,
+    fix_cosmo=False,
+):
+    if drop_sim is not None:
+        flag_drop = "_drop"
+    else:
+        flag_drop = ""
+
+    if apply_smoothing:
+        flag_smooth = "_smooth"
+    else:
+        flag_smooth = ""
+
+    if add_hires:
+        flag_hires = "_hires"
+    else:
+        flag_hires = ""
+
+    try:
+        path = os.environ["LYA_DATA_PATH"]
+    except:
+        raise ValueError("LYA_DATA_PATH not set as environment variable")
+
+    if os.path.isdir(path) == False:
+        os.mkdir(path)
+    path += "cup1d/"
+    if os.path.isdir(path) == False:
+        os.mkdir(path)
+    path += "sampler/"
+    if os.path.isdir(path) == False:
+        os.mkdir(path)
+    path += version + "/"
+    if os.path.isdir(path) == False:
+        os.mkdir(path)
+    path += "emu_" + emulator_label + "/"
+    if os.path.isdir(path) == False:
+        os.mkdir(path)
+    path += "cov_" + cov_label + flag_hires + "/"
+    if os.path.isdir(path) == False:
+        os.mkdir(path)
+
+    path += (
+        "mock_"
+        + data_label
+        + "_igm_"
+        + igm_label
+        + "_cosmo_"
+        + cosmo_label
+        + "_nigm_"
+        + str(n_igm)
+        + flag_drop
+        + flag_smooth
+    )
+
+    if add_noise:
+        path += "_noise_" + str(seed_noise)
+    if fix_cosmo:
+        path += "_fix_cosmo"
+    path += "/"
+
+    if os.path.isdir(path) == False:
+        os.mkdir(path)
+
+    return path
+
+
 class SamplerPipeline(object):
     """Full pipeline for extracting cosmology from P1D using sampler"""
 
@@ -75,10 +153,10 @@ class SamplerPipeline(object):
 
             # distribute emulator to all ranks
             for irank in range(1, size):
-                comm.send(emulator, dest=irank, tag=irank)
+                comm.send(emulator, dest=irank, tag=(irank + 1) * 7)
         else:
             # receive emulator from ranks 0
-            emulator = comm.recv(source=0, tag=rank)
+            emulator = comm.recv(source=0, tag=(rank + 1) * 7)
 
         #######################
 
@@ -114,17 +192,14 @@ class SamplerPipeline(object):
                 )
             # distribute data to all tasks
             for irank in range(1, size):
-                comm.send(data, dest=irank, tag=irank + 1001)
+                comm.send(data, dest=irank, tag=(irank + 1) * 11)
         else:
             # get testing_data from task 0
-            data = comm.recv(source=0, tag=rank + 1001)
+            data = comm.recv(source=0, tag=(rank + 1) * 11)
 
         if rank == 0:
             multi_time = str(np.round(time.time() - start, 2))
             fprint("P1D set in " + multi_time + " s")
-
-        # reset archives to free space
-        archive = None
 
         #######################
 
@@ -166,7 +241,7 @@ class SamplerPipeline(object):
             fprint("Setting sampler")
             fprint("-------")
 
-            self.out_folder = self.path_sampler(
+            self.out_folder = path_sampler(
                 args.emulator_label,
                 args.data_label,
                 args.igm_label,
@@ -184,10 +259,10 @@ class SamplerPipeline(object):
 
             # distribute out_folder to all tasks
             for irank in range(1, size):
-                comm.send(self.out_folder, dest=irank, tag=irank + 10001)
+                comm.send(self.out_folder, dest=irank, tag=(irank + 1) * 13)
         else:
             # get testing_data from task 0
-            self.out_folder = comm.recv(source=0, tag=rank + 10001)
+            self.out_folder = comm.recv(source=0, tag=(rank + 1) * 13)
 
         self.set_sampler(like, fix_cosmo=args.fix_cosmo, parallel=args.parallel)
 
@@ -197,93 +272,13 @@ class SamplerPipeline(object):
             multi_time = str(np.round(time.time() - start_all, 2))
             fprint("Setting the sampler took " + multi_time + " s \n\n")
 
-    def path_sampler(
-        self,
-        emulator_label,
-        data_label,
-        igm_label,
-        n_igm,
-        cosmo_label,
-        cov_label,
-        version="v3",
-        drop_sim=None,
-        apply_smoothing=True,
-        add_hires=False,
-        add_noise=False,
-        seed_noise=0,
-        fix_cosmo=False,
-    ):
-        if drop_sim is not None:
-            flag_drop = "_drop"
-        else:
-            flag_drop = ""
-
-        if apply_smoothing:
-            flag_smooth = "_smooth"
-        else:
-            flag_smooth = ""
-
-        if add_hires:
-            flag_hires = "_hires"
-        else:
-            flag_hires = ""
-
-        try:
-            path = os.environ["LYA_DATA_PATH"]
-        except:
-            raise ValueError("LYA_DATA_PATH not set as environment variable")
-
-        if os.path.isdir(path) == False:
-            os.mkdir(path)
-        path += "cup1d/"
-        if os.path.isdir(path) == False:
-            os.mkdir(path)
-        path += "sampler/"
-        if os.path.isdir(path) == False:
-            os.mkdir(path)
-        path += version + "/"
-        if os.path.isdir(path) == False:
-            os.mkdir(path)
-        path += "emu_" + emulator_label + "/"
-        if os.path.isdir(path) == False:
-            os.mkdir(path)
-        path += "cov_" + cov_label + flag_hires + "/"
-        if os.path.isdir(path) == False:
-            os.mkdir(path)
-
-        path += (
-            "mock_"
-            + data_label
-            + "_igm_"
-            + igm_label
-            + "_cosmo_"
-            + cosmo_label
-            + "_nigm_"
-            + str(n_igm)
-            + flag_drop
-            + flag_smooth
-        )
-
-        if add_noise:
-            path += "_noise_" + str(seed_noise)
-        if fix_cosmo:
-            path += "_fix_cosmo"
-        path += "/"
-
-        if os.path.isdir(path) == False:
-            os.mkdir(path)
-
-        return path
+        comm.Barrier()
 
     def set_archive(self, training_set):
-        if (training_set == "Pedersen21") | (training_set == "Cabayol23"):
-            archive = gadget_archive.GadgetArchive(postproc=training_set)
-        elif training_set[:3] == "Nyx":
+        if training_set[:3] == "Nyx":
             archive = nyx_archive.NyxArchive(nyx_version=training_set[6:])
         else:
-            raise ValueError(
-                "Training set " + training_set + " not implemented"
-            )
+            archive = gadget_archive.GadgetArchive(postproc=training_set)
         return archive
 
     def set_emcee_options(
