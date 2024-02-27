@@ -114,6 +114,8 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
+    # print_2_file
+
     fprint = create_print_function(verbose=True)
 
     # general info
@@ -295,31 +297,42 @@ def main():
             )
             args.check_emulator_label()
 
-            path = path_sampler(
-                emulator_label=args.emulator_label,
-                data_label=args.data_label,
-                igm_label=args.igm_label,
-                n_igm=args.n_igm,
-                cosmo_label=args.cosmo_label,
-                cov_label=args.cov_label,
-                version=args.version,
-                drop_sim=args.drop_sim,
-                apply_smoothing=args.apply_smoothing,
-                add_hires=args.add_hires,
-                add_noise=args.add_noise,
-                seed_noise=args.seed_noise,
-                fix_cosmo=args.fix_cosmo,
-            )
-            # check if run already done
-            if (override == False) & os.path.isfile(
-                path + "/chain_1/results.npy"
-            ):
-                fprint("Skipping: ", path)
+            if rank == 0:
+                path = path_sampler(
+                    emulator_label=args.emulator_label,
+                    data_label=args.data_label,
+                    igm_label=args.igm_label,
+                    n_igm=args.n_igm,
+                    cosmo_label=args.cosmo_label,
+                    cov_label=args.cov_label,
+                    version=args.version,
+                    drop_sim=args.drop_sim,
+                    apply_smoothing=args.apply_smoothing,
+                    add_hires=args.add_hires,
+                    add_noise=args.add_noise,
+                    seed_noise=args.seed_noise,
+                    fix_cosmo=args.fix_cosmo,
+                )
+                # check if run already done
+                if (override == False) & os.path.isfile(
+                    path + "/chain_1/results.npy"
+                ):
+                    fprint("Skipping: ", path)
+                    run = False
+                else:
+                    fprint("Running: ", path)
+                    run = True
+
+                for irank in range(1, size):
+                    comm.send(run, dest=irank, tag=(irank + 1) * 17)
             else:
-                fprint("Running: ", path)
-                comm.Barrier()
+                run = comm.recv(source=0, tag=(rank + 1) * 17)
+
+            comm.Barrier()
+            if run:
                 pip = SamplerPipeline(args)
                 pip.run_sampler()
+                comm.Barrier()
 
     fprint("End of the program")
 

@@ -272,8 +272,6 @@ class SamplerPipeline(object):
             multi_time = str(np.round(time.time() - start_all, 2))
             fprint("Setting the sampler took " + multi_time + " s \n\n")
 
-        comm.Barrier()
-
     def set_archive(self, training_set):
         if training_set[:3] == "Nyx":
             archive = nyx_archive.NyxArchive(nyx_version=training_set[6:])
