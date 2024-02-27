@@ -161,10 +161,10 @@ def main():
     # list of options to set
     version = "v3"
     arr_emulator_label = [
-        "Pedersen21",
+        # "Pedersen21",
         "Pedersen23_ext",
-        # "CH24",
-        # "Cabayol23",
+        "CH24",
+        "Cabayol23",
     ]
     # use l1O or test sim to set mock (True) or whatever sim is specified
     arr_mock_own = [True]
