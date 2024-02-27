@@ -37,7 +37,7 @@ class Args:
         emu_cov_factor=0,
         verbose=True,
         test=False,
-        parallel=False,
+        parallel=True,
         n_burn_in=0,
         n_steps=0,
     ):
