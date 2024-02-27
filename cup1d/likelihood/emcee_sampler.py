@@ -566,6 +566,7 @@ class EmceeSampler(object):
         plt.ylabel(r"mean $\hat{\tau}$")
         if self.save_directory is not None:
             plt.savefig(self.save_directory + "/autocorr_time.pdf")
+            plt.close()
         else:
             plt.show()
 
@@ -1115,6 +1116,7 @@ class EmceeSampler(object):
                 plt.savefig(self.save_directory + "/corner_cosmo.pdf")
             else:
                 plt.savefig(self.save_directory + "/corner.pdf")
+            plt.close()
         else:
             fig.show()
 
@@ -1138,6 +1140,7 @@ class EmceeSampler(object):
         # save to file
         if self.save_directory is not None:
             plt.savefig(self.save_directory + "/lnprob.pdf")
+            plt.close()
 
         return mask_use
 
@@ -1175,6 +1178,7 @@ class EmceeSampler(object):
             else:
                 fname = "best_fit_" + stat_best_fit + "_err_posterior"
             plt.savefig(self.save_directory + "/" + fname + ".pdf")
+            plt.close()
         else:
             plt.show()
 
@@ -1195,6 +1199,7 @@ class EmceeSampler(object):
 
         if self.save_directory is not None:
             plt.savefig(self.save_directory + "/fiducial.pdf")
+            plt.close()
         else:
             plt.show()
 
@@ -1309,6 +1314,7 @@ class EmceeSampler(object):
             plt.savefig(
                 self.save_directory + "/IGM_histories_" + stat_best_fit + ".pdf"
             )
+            plt.close()
 
         return rand_sample
 
