@@ -22,8 +22,8 @@ class Gadget_P1D(BaseMockP1D):
         emulator=None,
         apply_smoothing=True,
         input_sim="mpg_central",
-        z_min=None,
-        z_max=None,
+        z_min=0,
+        z_max=10,
         data_cov_label="Chabanier2019",
         data_cov_factor=1.0,
         add_syst=True,
@@ -31,6 +31,7 @@ class Gadget_P1D(BaseMockP1D):
         polyfit_ndeg=5,
         add_noise=False,
         seed=0,
+        fprint=print,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
         - testing_data: p1d measurements from Gadget sims
@@ -53,9 +54,10 @@ class Gadget_P1D(BaseMockP1D):
 
         if apply_smoothing & (emulator is not None):
             self.testing_data = super().set_smoothing_Mpc(
-                emulator, testing_data
+                emulator, testing_data, fprint=fprint
             )
         else:
+            fprint("No smoothing is applied")
             self.testing_data = testing_data
 
         # store cosmology used in the simulation
@@ -71,7 +73,16 @@ class Gadget_P1D(BaseMockP1D):
         z, k, Pk, cov = self._load_p1d()
 
         # setup base class
-        super().__init__(z, k, Pk, cov, add_noise=add_noise, seed=seed)
+        super().__init__(
+            z,
+            k,
+            Pk,
+            cov,
+            add_noise=add_noise,
+            seed=seed,
+            z_min=z_min,
+            z_max=z_max,
+        )
 
         return
 

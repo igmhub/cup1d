@@ -1,3 +1,5 @@
+# P1D data from fiducial eBOSS mock, created using nyx_central
+
 import os
 
 import pandas
@@ -12,8 +14,8 @@ class P1D_eBOSS_mock(BaseMockP1D):
         self,
         diag_cov=False,
         kmax_kms=None,
-        zmin=None,
-        zmax=None,
+        z_min=None,
+        z_max=None,
         input_sim="nyx_central",
         add_noise=False,
         seed=0,
@@ -27,11 +29,16 @@ class P1D_eBOSS_mock(BaseMockP1D):
         # read redshifts, wavenumbers, power spectra and covariance matrices
         z, k, Pk, cov = read_from_file(diag_cov, input_sim, kmax_kms=kmax_kms)
 
-        # drop low-z or high-z bins
-        if zmin or zmax:
-            z, k, Pk, cov = _drop_zbins(z, k, Pk, cov, zmin, zmax)
-
-        super().__init__(z, k, Pk, cov, add_noise=add_noise, seed=seed)
+        super().__init__(
+            z,
+            k,
+            Pk,
+            cov,
+            add_noise=add_noise,
+            seed=seed,
+            z_min=zmin,
+            z_max=zmax,
+        )
 
         return
 

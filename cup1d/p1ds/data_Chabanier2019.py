@@ -1,13 +1,21 @@
 import numpy as np
 import os
 
-from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Chabanier2019(BaseDataP1D):
     """Class containing P1D from Chabanier et al. (2019)."""
 
-    def __init__(self, zmin=None, zmax=None, add_syst=True):
+    def __init__(
+        self,
+        z_min=0,
+        z_max=10,
+        add_syst=True,
+        emulator=None,
+        apply_smoothing=False,
+        fprint=print,
+    ):
         """Read measured P1D from Chabanier et al. (2019)."""
 
         # folder storing P1D measurements
@@ -16,11 +24,12 @@ class P1D_Chabanier2019(BaseDataP1D):
         # read redshifts, wavenumbers, power spectra and covariance matrices
         z, k, Pk, cov = read_from_file(datadir, add_syst)
 
-        # drop low-z or high-z bins
-        if zmin or zmax:
-            z, k, Pk, cov = _drop_zbins(z, k, Pk, cov, zmin, zmax)
+        super().__init__(z, k, Pk, cov, z_min=z_min, z_max=z_max)
 
-        super().__init__(z, k, Pk, cov)
+        if apply_smoothing & (emulator is not None):
+            super().set_smoothing_kms(emulator, fprint=fprint)
+        else:
+            fprint("No smoothing is applied")
 
         return
 

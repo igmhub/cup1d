@@ -11,8 +11,13 @@ class BaseDataP1D(object):
 
     BASEDIR = os.path.dirname(cup1d.__path__[0]) + "/data/p1d_measurements/"
 
-    def __init__(self, z, k_kms, Pk_kms, cov_Pk_kms):
+    def __init__(self, z, k_kms, Pk_kms, cov_Pk_kms, z_min=0, z_max=10):
         """Construct base P1D class, from measured power and covariance"""
+
+        # drop zbins below z_min and above z_max
+        z, k_kms, Pk_kms, cov_Pk_kms = _drop_zbins(
+            z, k_kms, Pk_kms, cov_Pk_kms, z_min, z_max
+        )
 
         self.z = z
         self.k_kms = k_kms
@@ -54,7 +59,7 @@ class BaseDataP1D(object):
 
         return
 
-    def set_smoothing_kms(self, emulator):
+    def set_smoothing_kms(self, emulator, fprint=print):
         """Smooth data"""
 
         list_data_Mpc = []
@@ -64,17 +69,17 @@ class BaseDataP1D(object):
             data["p1d_Mpc"] = self.Pk_kms[ii] * self.dkms_dMpc[ii]
             list_data_Mpc.append(data)
 
-        apply_smoothing(emulator, list_data_Mpc)
+        apply_smoothing(emulator, list_data_Mpc, fprint=fprint)
 
         for ii in range(len(self.z)):
             self.Pk_kms[ii] = (
                 list_data_Mpc[ii]["p1d_Mpc_smooth"] / self.dkms_dMpc[ii]
             )
 
-    def set_smoothing_Mpc(self, emulator, list_data_Mpc):
+    def set_smoothing_Mpc(self, emulator, list_data_Mpc, fprint=print):
         """Smooth data"""
 
-        apply_smoothing(emulator, list_data_Mpc)
+        apply_smoothing(emulator, list_data_Mpc, fprint=fprint)
         for ii in range(len(list_data_Mpc)):
             if "p1d_Mpc_smooth" in list_data_Mpc[ii]:
                 list_data_Mpc[ii]["p1d_Mpc"] = list_data_Mpc[ii][
@@ -118,28 +123,15 @@ class BaseDataP1D(object):
 def _drop_zbins(z_in, k_in, Pk_in, cov_in, zmin, zmax):
     """Drop redshift bins below zmin or above zmax"""
 
-    # size of input arrays
-    Nz_in = len(z_in)
-    Nk = len(k_in)
+    z_in = np.array(z_in)
+    ind = np.argwhere((z_in >= zmin) & (z_in <= zmax))[:, 0]
 
-    # figure out how many z to keep
-    keep = np.ones(Nz_in, dtype=bool)
-    if zmin:
-        keep = np.logical_and(keep, z_in >= zmin)
-    if zmax:
-        keep = np.logical_and(keep, z_in <= zmax)
-    Nz_out = np.sum(keep)
-
-    # setup new arrays
-    z_out = np.empty(Nz_out)
-    Pk_out = np.empty((Nz_out, Nk))
+    z_out = np.zeros((len(ind)))
+    Pk_out = np.zeros((len(ind), len(k_in)))
     cov_out = []
-    i = 0
-    for j in range(Nz_in):
-        if keep[j]:
-            z_out[i] = z_in[j]
-            Pk_out[i] = Pk_in[j]
-            Pk_out[i] = Pk_in[j]
-            cov_out.append(cov_in[j])
-            i += 1
+    for ii, jj in enumerate(ind):
+        z_out[ii] = z_in[jj]
+        Pk_out[ii] = Pk_in[jj]
+        cov_out.append(cov_in[jj])
+
     return z_out, k_in, Pk_out, cov_out

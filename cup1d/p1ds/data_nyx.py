@@ -22,8 +22,8 @@ class Nyx_P1D(BaseMockP1D):
         emulator=None,
         apply_smoothing=True,
         input_sim="nyx_central",
-        z_min=None,
-        z_max=None,
+        z_min=0,
+        z_max=10,
         data_cov_label="Chabanier2019",
         data_cov_factor=1.0,
         add_syst=True,
@@ -64,7 +64,16 @@ class Nyx_P1D(BaseMockP1D):
         z, k, Pk, cov = self._load_p1d()
 
         # setup base class
-        super().__init__(z, k, Pk, cov, add_noise=add_noise, seed=seed)
+        super().__init__(
+            z,
+            k,
+            Pk,
+            cov,
+            add_noise=add_noise,
+            seed=seed,
+            z_min=z_min,
+            z_max=z_max,
+        )
 
         return
 

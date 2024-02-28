@@ -5,7 +5,7 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
 
 
 class P1D_PD2013(BaseDataP1D):
-    def __init__(self, zmin=None, zmax=None, use_FFT=True, add_syst=True):
+    def __init__(self, z_min=None, z_max=None, use_FFT=True, add_syst=True):
         """Read measured P1D from files, either FFT or likelihood version."""
 
         # folder storing P1D measurement
@@ -17,11 +17,7 @@ class P1D_PD2013(BaseDataP1D):
         else:
             z, k, Pk, cov = self.read_like_from_file(datadir, add_syst)
 
-        # drop low-z or high-z bins
-        if zmin or zmax:
-            z, k, Pk, cov = _drop_zbins(z, k, Pk, cov, zmin, zmax)
-
-        super().__init__(z, k, Pk, cov)
+        super().__init__(z, k, Pk, cov, z_min=z_min, z_max=z_max)
 
         return
 

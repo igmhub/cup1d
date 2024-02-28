@@ -1,13 +1,13 @@
 import numpy as np
 import os
 
-from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Ravoux2023(BaseDataP1D):
     """Class containing P1D from Ravoux et al. (2023)."""
 
-    def __init__(self, zmin=None, zmax=None, velunits=True):
+    def __init__(self, z_min=None, z_max=None, velunits=True):
         """Read measured P1D from Ravoux et al. (2023)."""
 
         # folder storing P1D measurements
@@ -16,11 +16,7 @@ class P1D_Ravoux2023(BaseDataP1D):
         # read redshifts, wavenumbers, power spectra and covariance matrices
         z, k, Pk, cov = read_from_file(datadir, velunits)
 
-        # drop low-z or high-z bins
-        if zmin or zmax:
-            z, k, Pk, cov = _drop_zbins(z, k, Pk, cov, zmin, zmax)
-
-        super().__init__(z, k, Pk, cov)
+        super().__init__(z, k, Pk, cov, z_min=z_min, z_max=z_max)
 
         return
 

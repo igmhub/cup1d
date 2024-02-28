@@ -8,7 +8,17 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 class BaseMockP1D(BaseDataP1D):
     """Base class to store mock measurements of the 1D power spectrum"""
 
-    def __init__(self, z, k_kms, Pk_kms, cov_Pk_kms, add_noise=False, seed=0):
+    def __init__(
+        self,
+        z,
+        k_kms,
+        Pk_kms,
+        cov_Pk_kms,
+        add_noise=False,
+        seed=0,
+        z_min=0,
+        z_max=10,
+    ):
         """Construct base P1D class, from measured power and covariance"""
 
         if add_noise:
@@ -18,7 +28,9 @@ class BaseMockP1D(BaseDataP1D):
         else:
             Pk_perturb_kms = Pk_kms
 
-        super().__init__(z, k_kms, Pk_perturb_kms, cov_Pk_kms)
+        super().__init__(
+            z, k_kms, Pk_perturb_kms, cov_Pk_kms, z_min=z_min, z_max=z_max
+        )
 
     def get_Pk_iz_perturbed(self, Pk_kms, cov_Pk_kms, nsamples=1, seed=0):
         """Perturb data by adding Gaussian noise according to the covariance matrix"""

@@ -7,7 +7,7 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
 
 
 class P1D_Karacayli2022(BaseDataP1D):
-    def __init__(self, diag_cov=True, kmax_kms=0.09, zmin=None, zmax=None):
+    def __init__(self, diag_cov=True, kmax_kms=0.09, z_min=0, z_max=10):
         """Read measured P1D from file.
         - diag_cov: for now, use diagonal covariance
         - kmax_kms: limit to low-k where we trust emulator"""
@@ -15,11 +15,7 @@ class P1D_Karacayli2022(BaseDataP1D):
         # read redshifts, wavenumbers, power spectra and covariance matrices
         z, k, Pk, cov = read_from_file(diag_cov, kmax_kms)
 
-        # drop low-z or high-z bins
-        if zmin or zmax:
-            z, k, Pk, cov = _drop_zbins(z, k, Pk, cov, zmin, zmax)
-
-        super().__init__(z, k, Pk, cov)
+        super().__init__(z, k, Pk, cov, z_min=z_min, z_max=z_max)
 
         return
 

@@ -1,3 +1,5 @@
+"""Class to generate a mock P1D from another P1D object and an emulator"""
+
 from lace.emulator import gp_emulator
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 from cup1d.p1ds import data_Chabanier2019, data_Karacayli2022, data_QMLE_Ohio
@@ -11,8 +13,8 @@ class Mock_P1D(BaseMockP1D):
         self,
         emulator=None,
         data_label="Chabanier2019",
-        zmin=2.0,
-        zmax=4.5,
+        z_min=0,
+        z_max=10,
         add_noise=False,
         seed=0,
         fid_sim_igm="mpg_central",
@@ -26,11 +28,17 @@ class Mock_P1D(BaseMockP1D):
         # load original data
         self.data_label = data_label
         if data_label == "Chabanier2019":
-            data = data_Chabanier2019.P1D_Chabanier2019(zmin=zmin, zmax=zmax)
+            data = data_Chabanier2019.P1D_Chabanier2019(
+                z_min=z_min, z_max=z_max
+            )
         elif data_label == "QMLE_Ohio":
-            data = data_QMLE_Ohio.P1D_QMLE_Ohio(zmin=zmin, zmax=zmax, **kwargs)
+            data = data_QMLE_Ohio.P1D_QMLE_Ohio(
+                z_min=z_min, z_max=z_max, **kwargs
+            )
         elif data_label == "Karacayli2022":
-            data = data_Karacayli2022.P1D_Karacayli2022(zmin=zmin, zmax=zmax)
+            data = data_Karacayli2022.P1D_Karacayli2022(
+                z_min=z_min, z_max=z_max
+            )
         else:
             raise ValueError("Unknown data_label", data_label)
 

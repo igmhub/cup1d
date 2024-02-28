@@ -110,6 +110,7 @@ class SamplerPipeline(object):
 
         # create print function (only for rank 0)
         fprint = create_print_function(verbose=args.verbose)
+        self.fprint = fprint
         ###################
 
         ## set training set (only for rank 0)
@@ -167,7 +168,7 @@ class SamplerPipeline(object):
             start = time.time()
 
             data = {"P1Ds": None, "extra_P1Ds": None}
-            data["P1Ds"] = self.set_P1D(
+            data["P1Ds"], true_sim_igm = self.set_P1D(
                 archive,
                 emulator,
                 args.data_label,
@@ -177,6 +178,10 @@ class SamplerPipeline(object):
                 z_max=args.z_max,
                 add_noise=args.add_noise,
                 seed_noise=args.seed_noise,
+            )
+            fprint(
+                "Set " + str(len(data["P1Ds"].z)) + " P1Ds at z = ",
+                data["P1Ds"].z,
             )
             if args.add_hires:
                 data["extra_P1Ds"] = self.set_P1D_hires(
@@ -189,6 +194,10 @@ class SamplerPipeline(object):
                     z_max=args.z_max,
                     add_noise=args.add_noise,
                     seed_noise=args.seed_noise,
+                )
+                fprint(
+                    "Set " + str(len(data["extra_P1Ds"].z)) + " P1Ds at z = ",
+                    data["extra_P1Ds"].z,
                 )
             # distribute data to all tasks
             for irank in range(1, size):
@@ -216,7 +225,7 @@ class SamplerPipeline(object):
             emulator,
             data["P1Ds"],
             data["extra_P1Ds"],
-            args.data_label,
+            true_sim_igm,
             args.igm_label,
             args.n_igm,
             cosmo_fid,
@@ -341,6 +350,7 @@ class SamplerPipeline(object):
         """
 
         if (data_label[:3] == "mpg") | (data_label[:3] == "nyx"):
+            true_sim_igm = data_label
             # check if we need to load another archive
             if data_label in archive.list_sim:
                 archive_mock = archive
@@ -384,6 +394,7 @@ class SamplerPipeline(object):
             )
 
         elif data_label == "eBOSS_mock":
+            true_sim_igm = None
             data = data_eBOSS_mock.P1D_eBOSS_mock(
                 z_min=z_min,
                 z_max=z_max,
@@ -393,6 +404,7 @@ class SamplerPipeline(object):
                 seed=seed_noise,
             )
         elif data_label == "Chabanier19":
+            true_sim_igm = None
             data = data_Chabanier2019.P1D_Chabanier2019(
                 z_min=z_min,
                 z_max=z_max,
@@ -400,6 +412,7 @@ class SamplerPipeline(object):
                 apply_smoothing=apply_smoothing,
             )
         elif data_label == "Ravoux23":
+            true_sim_igm = None
             data = data_Ravoux2023.P1D_Ravoux23(
                 z_min=z_min,
                 z_max=z_max,
@@ -407,6 +420,7 @@ class SamplerPipeline(object):
                 apply_smoothing=apply_smoothing,
             )
         elif data_label == "Karacayli23":
+            true_sim_igm = None
             data = data_Karacayli2023.P1D_Karacayli2023(
                 z_min=z_min,
                 z_max=z_max,
@@ -416,7 +430,7 @@ class SamplerPipeline(object):
         else:
             raise ValueError(f"data_label {data_label} not implemented")
 
-        return data
+        return data, true_sim_igm
 
     def set_P1D_hires(
         self,
@@ -491,6 +505,7 @@ class SamplerPipeline(object):
                 apply_smoothing=apply_smoothing,
                 add_noise=add_noise,
                 seed=seed_noise,
+                fprint=fprint,
             )
 
         elif data_label_hires == "Karacayli22":
@@ -540,7 +555,7 @@ class SamplerPipeline(object):
         emulator,
         data,
         data_hires,
-        data_label,
+        true_sim_igm,
         igm_label,
         n_igm,
         cosmo_fid,
@@ -568,7 +583,7 @@ class SamplerPipeline(object):
             emulator=emulator,
             free_param_names=free_parameters,
             fid_sim_igm=igm_label,
-            true_sim_igm=data_label,
+            true_sim_igm=true_sim_igm,
             cosmo_fid=cosmo_fid,
         )
 
@@ -606,7 +621,25 @@ class SamplerPipeline(object):
         self._log_prob = set_log_prob(self.sampler)
 
     def run_sampler(self):
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+
+        if rank == 0:
+            start = time.time()
+            self.fprint("----------")
+            self.fprint("Running sampler")
+
         self.sampler.run_sampler(log_func=self._log_prob)
 
-        if MPI.COMM_WORLD.Get_rank() == 0:
+        if rank == 0:
+            end = time.time()
+            multi_time = str(np.round(end - start, 2))
+            self.fprint("Sampler run in " + multi_time + " s")
+
+            start = time.time()
+            self.fprint("----------")
+            self.fprint("Saving data")
             self.sampler.write_chain_to_file()
+            end = time.time()
+            multi_time = str(np.round(end - start, 2))
+            self.fprint("Data saved in " + multi_time + " s")

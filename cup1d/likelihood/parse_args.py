@@ -92,6 +92,7 @@ def parse_args():
         type=str,
         default="Chabanier2019",
         choices=["Chabanier2019", "QMLE_Ohio"],
+        required=False,
         help="Data covariance",
     )
     parser.add_argument(
@@ -99,6 +100,7 @@ def parse_args():
         type=str,
         default="Karacayli2022",
         choices=["Karacayli2022"],
+        required=False,
         help="Data covariance for high-res data",
     )
     parser.add_argument(
