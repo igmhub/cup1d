@@ -111,6 +111,7 @@ class SamplerPipeline(object):
         # create print function (only for rank 0)
         fprint = create_print_function(verbose=args.verbose)
         self.fprint = fprint
+        self.explore = args.explore
         ###################
 
         ## set training set (only for rank 0)
@@ -279,12 +280,7 @@ class SamplerPipeline(object):
             # get testing_data from task 0
             self.out_folder = comm.recv(source=0, tag=(rank + 1) * 13)
 
-        self.set_sampler(
-            like,
-            fix_cosmo=args.fix_cosmo,
-            parallel=args.parallel,
-            explore=args.explore,
-        )
+        self.set_sampler(like, fix_cosmo=args.fix_cosmo, parallel=args.parallel)
 
         #######################
 
@@ -619,7 +615,7 @@ class SamplerPipeline(object):
 
         return like
 
-    def set_sampler(self, like, fix_cosmo=False, parallel=True, explore=False):
+    def set_sampler(self, like, fix_cosmo=False, parallel=True):
         """Sample the posterior distribution"""
 
         def log_prob(theta):
@@ -636,7 +632,7 @@ class SamplerPipeline(object):
             nburnin=self.n_burn_in,
             nsteps=self.n_steps,
             parallel=parallel,
-            explore=explore,
+            explore=self.explore,
             fix_cosmology=fix_cosmo,
         )
         self._log_prob = set_log_prob(self.sampler)
@@ -657,17 +653,18 @@ class SamplerPipeline(object):
             multi_time = str(np.round(end - start, 2))
             self.fprint("Sampler run in " + multi_time + " s")
 
-            self.fprint("----------")
-            self.fprint("Running minimizer")
-            start = time.time()
             # improve best fit from sampler using minimize
-            ind = np.argmax(self.sampler.lnprob.reshape(-1))
-            nparam = self.sampler.chain.shape[-1]
-            p0 = self.sampler.chain.reshape(-1, nparam)[ind, :]
-            self.sampler.run_minimizer(log_func=self._log_prob, p0=p0)
-            end = time.time()
-            multi_time = str(np.round(end - start, 2))
-            self.fprint("Minimizer run in " + multi_time + " s")
+            if self.explore == False:
+                self.fprint("----------")
+                self.fprint("Running minimizer")
+                start = time.time()
+                ind = np.argmax(self.sampler.lnprob.reshape(-1))
+                nparam = self.sampler.chain.shape[-1]
+                p0 = self.sampler.chain.reshape(-1, nparam)[ind, :]
+                self.sampler.run_minimizer(log_func=self._log_prob, p0=p0)
+                end = time.time()
+                multi_time = str(np.round(end - start, 2))
+                self.fprint("Minimizer run in " + multi_time + " s")
 
             start = time.time()
             self.fprint("----------")

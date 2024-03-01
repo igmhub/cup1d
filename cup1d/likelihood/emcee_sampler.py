@@ -1061,8 +1061,9 @@ class EmceeSampler(object):
             all_param[:, :-4], [16, 50, 84], axis=0
         ).T
 
-        dict_out["param_mle"] = self.mle
-        dict_out["lnprob_mle"] = self.lnprop_mle
+        if self.explore == False:
+            dict_out["param_mle"] = self.mle
+            dict_out["lnprob_mle"] = self.lnprop_mle
 
         np.save(self.save_directory + "/results.npy", dict_out)
         np.save(self.save_directory + "/chain.npy", all_param[:, :-4])
