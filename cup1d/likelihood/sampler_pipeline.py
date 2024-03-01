@@ -161,6 +161,11 @@ class SamplerPipeline(object):
 
         #######################
 
+        # set fiducial cosmology
+        cosmo_fid = self.set_fid_cosmo(cosmo_label=args.cosmo_label)
+
+        #######################
+
         # set P1D
         if rank == 0:
             fprint("----------")
@@ -172,12 +177,14 @@ class SamplerPipeline(object):
                 archive,
                 emulator,
                 args.data_label,
+                cosmo_fid,
                 cov_label=args.cov_label,
                 apply_smoothing=args.apply_smoothing,
                 z_min=args.z_min,
                 z_max=args.z_max,
                 add_noise=args.add_noise,
                 seed_noise=args.seed_noise,
+                fprint=fprint,
             )
             fprint(
                 "Set " + str(len(data["P1Ds"].z)) + " P1Ds at z = ",
@@ -188,12 +195,14 @@ class SamplerPipeline(object):
                     archive,
                     emulator,
                     args.data_label_hires,
+                    cosmo_fid,
                     cov_label=args.cov_label_hires,
                     apply_smoothing=args.apply_smoothing,
                     z_min=args.z_min,
                     z_max=args.z_max,
                     add_noise=args.add_noise,
                     seed_noise=args.seed_noise,
+                    fprint=fprint,
                 )
                 fprint(
                     "Set " + str(len(data["extra_P1Ds"].z)) + " P1Ds at z = ",
@@ -202,18 +211,15 @@ class SamplerPipeline(object):
             # distribute data to all tasks
             for irank in range(1, size):
                 comm.send(data, dest=irank, tag=(irank + 1) * 11)
+                comm.send(true_sim_igm, dest=irank, tag=(irank + 1) * 23)
         else:
             # get testing_data from task 0
             data = comm.recv(source=0, tag=(rank + 1) * 11)
+            true_sim_igm = comm.recv(source=0, tag=(rank + 1) * 23)
 
         if rank == 0:
             multi_time = str(np.round(time.time() - start, 2))
             fprint("P1D set in " + multi_time + " s")
-
-        #######################
-
-        # set fiducial cosmology
-        cosmo_fid = self.set_fid_cosmo(cosmo_label=args.cosmo_label)
 
         #######################
 
@@ -273,7 +279,12 @@ class SamplerPipeline(object):
             # get testing_data from task 0
             self.out_folder = comm.recv(source=0, tag=(rank + 1) * 13)
 
-        self.set_sampler(like, fix_cosmo=args.fix_cosmo, parallel=args.parallel)
+        self.set_sampler(
+            like,
+            fix_cosmo=args.fix_cosmo,
+            parallel=args.parallel,
+            explore=args.explore,
+        )
 
         #######################
 
@@ -324,12 +335,14 @@ class SamplerPipeline(object):
         archive,
         emulator,
         data_label,
+        cosmo_fid,
         cov_label=None,
         apply_smoothing=None,
         z_min=0,
         z_max=10,
         add_noise=False,
         seed_noise=0,
+        fprint=print,
     ):
         """Set P1D data
 
@@ -394,6 +407,7 @@ class SamplerPipeline(object):
             )
 
         elif data_label == "eBOSS_mock":
+            # need to be tested
             true_sim_igm = None
             data = data_eBOSS_mock.P1D_eBOSS_mock(
                 z_min=z_min,
@@ -406,27 +420,31 @@ class SamplerPipeline(object):
         elif data_label == "Chabanier19":
             true_sim_igm = None
             data = data_Chabanier2019.P1D_Chabanier2019(
-                z_min=z_min,
-                z_max=z_max,
-                emulator=emulator,
-                apply_smoothing=apply_smoothing,
+                z_min=z_min, z_max=z_max
             )
+            dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
+            kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
+            dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
+            kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
+            data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
         elif data_label == "Ravoux23":
             true_sim_igm = None
-            data = data_Ravoux2023.P1D_Ravoux23(
-                z_min=z_min,
-                z_max=z_max,
-                emulator=emulator,
-                apply_smoothing=apply_smoothing,
-            )
+            data = data_Ravoux2023.P1D_Ravoux23(z_min=z_min, z_max=z_max)
+            dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
+            kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
+            dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
+            kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
+            data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
         elif data_label == "Karacayli23":
             true_sim_igm = None
             data = data_Karacayli2023.P1D_Karacayli2023(
-                z_min=z_min,
-                z_max=z_max,
-                emulator=emulator,
-                apply_smoothing=apply_smoothing,
+                z_min=z_min, z_max=z_max
             )
+            dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
+            kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
+            dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
+            kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
+            data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
         else:
             raise ValueError(f"data_label {data_label} not implemented")
 
@@ -436,6 +454,7 @@ class SamplerPipeline(object):
         self,
         archive,
         emulator,
+        cosmo_fid,
         data_label_hires,
         extra_cov_label,
         apply_smoothing=None,
@@ -443,6 +462,7 @@ class SamplerPipeline(object):
         z_max=10,
         add_noise=False,
         seed_noise=0,
+        fprint=print,
     ):
         """Set P1D data
 
@@ -599,7 +619,7 @@ class SamplerPipeline(object):
 
         return like
 
-    def set_sampler(self, like, fix_cosmo=False, parallel=True):
+    def set_sampler(self, like, fix_cosmo=False, parallel=True, explore=False):
         """Sample the posterior distribution"""
 
         def log_prob(theta):
@@ -616,6 +636,7 @@ class SamplerPipeline(object):
             nburnin=self.n_burn_in,
             nsteps=self.n_steps,
             parallel=parallel,
+            explore=explore,
             fix_cosmology=fix_cosmo,
         )
         self._log_prob = set_log_prob(self.sampler)
@@ -635,6 +656,18 @@ class SamplerPipeline(object):
             end = time.time()
             multi_time = str(np.round(end - start, 2))
             self.fprint("Sampler run in " + multi_time + " s")
+
+            self.fprint("----------")
+            self.fprint("Running minimizer")
+            start = time.time()
+            # improve best fit from sampler using minimize
+            ind = np.argmax(self.sampler.lnprob.reshape(-1))
+            nparam = self.sampler.chain.shape[-1]
+            p0 = self.sampler.chain.reshape(-1, nparam)[ind, :]
+            self.sampler.run_minimizer(log_func=self._log_prob, p0=p0)
+            end = time.time()
+            multi_time = str(np.round(end - start, 2))
+            self.fprint("Minimizer run in " + multi_time + " s")
 
             start = time.time()
             self.fprint("----------")

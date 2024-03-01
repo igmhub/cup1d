@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 import cup1d
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
+from lace.utils.smoothing_manager import apply_smoothing
 
 
 class BaseMockP1D(BaseDataP1D):
@@ -48,3 +49,32 @@ class BaseMockP1D(BaseDataP1D):
                 Pk_iz_perturb.append(_)
 
         return Pk_iz_perturb
+
+    def set_smoothing_kms(self, emulator, fprint=print):
+        """Smooth data in 1/(km/s)"""
+
+        list_data_Mpc = []
+        for ii in range(len(self.z)):
+            data = {}
+            data["k_Mpc"] = self.k_kms * self.dkms_dMpc[ii]
+            data["p1d_Mpc"] = self.Pk_kms[ii] * self.dkms_dMpc[ii]
+            list_data_Mpc.append(data)
+
+        apply_smoothing(emulator, list_data_Mpc, fprint=fprint)
+
+        for ii in range(len(self.z)):
+            self.Pk_kms[ii] = (
+                list_data_Mpc[ii]["p1d_Mpc_smooth"] / self.dkms_dMpc[ii]
+            )
+
+    def set_smoothing_Mpc(self, emulator, list_data_Mpc, fprint=print):
+        """Smooth data in 1/Mpc"""
+
+        apply_smoothing(emulator, list_data_Mpc, fprint=fprint)
+        for ii in range(len(list_data_Mpc)):
+            if "p1d_Mpc_smooth" in list_data_Mpc[ii]:
+                list_data_Mpc[ii]["p1d_Mpc"] = list_data_Mpc[ii][
+                    "p1d_Mpc_smooth"
+                ]
+
+        return list_data_Mpc

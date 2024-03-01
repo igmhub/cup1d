@@ -1,21 +1,14 @@
 import numpy as np
 import os
 
+from cup1d.likelihood import CAMB_model
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Chabanier2019(BaseDataP1D):
     """Class containing P1D from Chabanier et al. (2019)."""
 
-    def __init__(
-        self,
-        z_min=0,
-        z_max=10,
-        add_syst=True,
-        emulator=None,
-        apply_smoothing=False,
-        fprint=print,
-    ):
+    def __init__(self, z_min=0, z_max=10, add_syst=True):
         """Read measured P1D from Chabanier et al. (2019)."""
 
         # folder storing P1D measurements
@@ -25,11 +18,6 @@ class P1D_Chabanier2019(BaseDataP1D):
         z, k, Pk, cov = read_from_file(datadir, add_syst)
 
         super().__init__(z, k, Pk, cov, z_min=z_min, z_max=z_max)
-
-        if apply_smoothing & (emulator is not None):
-            super().set_smoothing_kms(emulator, fprint=fprint)
-        else:
-            fprint("No smoothing is applied")
 
         return
 

@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.interpolate import interp1d
 
-from lace.utils import poly_p1d
 from lace.cosmo import camb_cosmo
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 from cup1d.p1ds import (
@@ -27,8 +26,6 @@ class Gadget_P1D(BaseMockP1D):
         data_cov_label="Chabanier2019",
         data_cov_factor=1.0,
         add_syst=True,
-        polyfit_kmax_Mpc=4.0,
-        polyfit_ndeg=5,
         add_noise=False,
         seed=0,
         fprint=print,
@@ -40,8 +37,6 @@ class Gadget_P1D(BaseMockP1D):
         - data_cov_label: P1D covariance to use (Chabanier2019 or PD2013)
         - data_cov_factor: multiply covariance by this factor
         - add_syst: Include systematic estimates in covariance matrices
-        - polyfit_kmax_Mpc: kmax to use in polyfit (None for no polyfit)
-        - polyfit_ndeg: poly degree to use in polyfit (None for no polyfit)
         """
 
         # covariance matrix settings
@@ -66,6 +61,7 @@ class Gadget_P1D(BaseMockP1D):
             dkms_dMpc.append(testing_data[ii]["dkms_dMpc"])
         self.dkms_dMpc = np.array(dkms_dMpc)
 
+        # store cosmology used in the simulation
         cosmo_params = self.testing_data[0]["cosmo_params"]
         self.sim_cosmo = camb_cosmo.get_cosmology_from_dictionary(cosmo_params)
 

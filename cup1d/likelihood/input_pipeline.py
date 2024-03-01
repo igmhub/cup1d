@@ -150,6 +150,12 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--explore",
+        action="store_true",
+        help="Save all chains",
+    )
+
+    parser.add_argument(
         "--parallel",
         action="store_true",
         help="Parallelize",
@@ -183,7 +189,7 @@ def parse_args():
     args.archive = None
     dict_training_set = {
         "Pedersen21": "Pedersen21",
-        "Pedersen23": "Cabayol23",
+        "Pedersen23": "Pedersen21",
         "Pedersen21_ext": "Cabayol23",
         "Pedersen23_ext": "Cabayol23",
         "CH24": "Cabayol23",
@@ -211,3 +217,102 @@ def parse_args():
         args.apply_smoothing = args.apply_smoothing
 
     return args
+
+
+class Args:
+    def __init__(
+        self,
+        archive=None,
+        training_set="Pedersen21",
+        emulator_label="Pedersen21",
+        data_label="mpg_central",
+        z_min=2,
+        z_max=4.5,
+        igm_label="mpg_central",
+        n_igm=2,
+        cosmo_label="mpg_central",
+        drop_sim=False,
+        add_hires=False,
+        apply_smoothing=None,
+        cov_label="Chabanier2019",
+        cov_label_hires="Karacayli2022",
+        add_noise=False,
+        seed_noise=0,
+        fix_cosmo=False,
+        version="v3",
+        prior_Gauss_rms=None,
+        emu_cov_factor=0,
+        verbose=True,
+        test=False,
+        explore=False,
+        parallel=True,
+        n_burn_in=0,
+        n_steps=0,
+    ):
+        # see sam_sim to see what each parameter means
+        self.archive = archive
+        self.training_set = training_set
+        self.emulator_label = emulator_label
+        self.data_label = data_label
+        self.z_min = z_min
+        self.z_max = z_max
+        self.igm_label = igm_label
+        self.n_igm = n_igm
+        self.cosmo_label = cosmo_label
+        self.drop_sim = drop_sim
+        self.add_hires = add_hires
+        self.apply_smoothing = apply_smoothing
+        self.cov_label = cov_label
+        self.cov_label_hires = cov_label_hires
+        self.add_noise = add_noise
+        self.seed_noise = seed_noise
+        self.fix_cosmo = fix_cosmo
+        self.version = version
+        self.prior_Gauss_rms = prior_Gauss_rms
+        self.emu_cov_factor = emu_cov_factor
+        self.verbose = verbose
+        self.test = test
+        self.explore = explore
+        self.parallel = parallel
+        self.n_burn_in = n_burn_in
+        self.n_steps = n_steps
+
+        self.par2save = [
+            "emulator_label",
+            "data_label",
+            "z_min",
+            "z_max",
+            "igm_label",
+            "n_igm",
+            "cosmo_label",
+            "drop_sim",
+            "add_hires",
+            "apply_smoothing",
+            "add_noise",
+            "fix_cosmo",
+            "cov_label",
+            "cov_label_hires",
+        ]
+
+    def save(self):
+        out = {}
+        for par in self.par2save:
+            out[par] = getattr(self, par)
+        return out
+
+    def check_emulator_label(self):
+        avail_emulator_label = [
+            "Pedersen21",
+            "Pedersen23",
+            "Pedersen21_ext",
+            "Pedersen23_ext",
+            "CH24",
+            "Cabayol23",
+            "Cabayol23_extended",
+            "Nyx_v0",
+            "Nyx_v0_extended",
+        ]
+        if self.emulator_label not in avail_emulator_label:
+            raise ValueError(
+                "emulator_label " + self.emulator_label + " not implemented"
+            )

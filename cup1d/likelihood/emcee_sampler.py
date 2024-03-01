@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from chainconsumer import ChainConsumer, Chain, Truth
+from warnings import warn
 
 # import multiprocessing as mp
 # from schwimmbad import MPIPool
@@ -76,6 +77,7 @@ class EmceeSampler(object):
         progress=False,
         get_autocorr=False,
         parallel=False,
+        explore=False,
         fix_cosmology=False,
     ):
         """Setup sampler from likelihood, or use default.
@@ -84,6 +86,7 @@ class EmceeSampler(object):
         location to the code itself."""
 
         self.parallel = parallel
+        self.explore = explore
         self.verbose = verbose
         self.progress = progress
         self.get_autocorr = get_autocorr
@@ -173,6 +176,7 @@ class EmceeSampler(object):
 
         # Figure out what extra information will be provided as blobs
         self.blobs_dtype = self.like.theory.get_blobs_dtype()
+        self.mle = None
 
     def set_truth(self):
         """Set up dictionary with true values of cosmological
@@ -329,80 +333,97 @@ class EmceeSampler(object):
                 self.chain = np.concatenate(chain, axis=1)
                 self.blobs = np.concatenate(blobs, axis=1)
 
-            # if not MPIPool.enabled():
-            #     raise SystemError(
-            #         "Tried to run with MPI but MPIPool not enabled!"
-            #     )
+        # if not MPIPool.enabled():
+        #     raise SystemError(
+        #         "Tried to run with MPI but MPIPool not enabled!"
+        #     )
 
-            # with MPIPool() as pool:
-            #     if not pool.is_master():
-            #         pool.wait()
-            #         sys.exit(0)
+        # with MPIPool() as pool:
+        #     if not pool.is_master():
+        #         pool.wait()
+        #         sys.exit(0)
 
-            #     print("\n Running with MPI on {0} cores \n".format(pool.size))
+        #     print("\n Running with MPI on {0} cores \n".format(pool.size))
 
-            #     sampler.run_mcmc(p0, burn_in + max_steps)
-            # sampler.pool = pool
-            # print(f"Number of threads being used: {pool._processes}")
-            # sampler.run_mcmc(p0, burn_in + max_steps)
-            # p0 = self.get_initial_walkers()
-            # mp.set_start_method("spawn")
-            # with mp.Pool() as pool:
-            #     sampler = emcee.EnsembleSampler(
-            #         self.nwalkers,
-            #         self.ndim,
-            #         log_func,
-            #         backend=self.backend,
-            #         blobs_dtype=self.blobs_dtype,
-            #         pool=pool,
-            #     )
-            #     sampler.pool = pool
-            #     print(f"Number of threads being used: {pool._processes}")
-            #     sampler.run_mcmc(p0, burn_in + max_steps)
-            # if timeout:
-            #     time_end = time.time() + 3600 * timeout
+        #     sampler.run_mcmc(p0, burn_in + max_steps)
+        # sampler.pool = pool
+        # print(f"Number of threads being used: {pool._processes}")
+        # sampler.run_mcmc(p0, burn_in + max_steps)
+        # p0 = self.get_initial_walkers()
+        # mp.set_start_method("spawn")
+        # with mp.Pool() as pool:
+        #     sampler = emcee.EnsembleSampler(
+        #         self.nwalkers,
+        #         self.ndim,
+        #         log_func,
+        #         backend=self.backend,
+        #         blobs_dtype=self.blobs_dtype,
+        #         pool=pool,
+        #     )
+        #     sampler.pool = pool
+        #     print(f"Number of threads being used: {pool._processes}")
+        #     sampler.run_mcmc(p0, burn_in + max_steps)
+        # if timeout:
+        #     time_end = time.time() + 3600 * timeout
 
-            # for sample in sampler.sample(
-            #     p0, iterations=burn_in + max_steps, progress=self.progress
-            # ):
-            #     print(sampler.iteration, flush=True)
-            #     # Only check convergence every 100 steps
-            #     if (
-            #         sampler.iteration % 100
-            #         or sampler.iteration < burn_in + 1
-            #     ):
-            #         continue
+        # for sample in sampler.sample(
+        #     p0, iterations=burn_in + max_steps, progress=self.progress
+        # ):
+        #     print(sampler.iteration, flush=True)
+        #     # Only check convergence every 100 steps
+        #     if (
+        #         sampler.iteration % 100
+        #         or sampler.iteration < burn_in + 1
+        #     ):
+        #         continue
 
-            #     if self.progress == False:
-            #         print(
-            #             "Step %d out of %d "
-            #             % (sampler.iteration, burn_in + max_steps)
-            #         )
+        #     if self.progress == False:
+        #         print(
+        #             "Step %d out of %d "
+        #             % (sampler.iteration, burn_in + max_steps)
+        #         )
 
-            #     if self.get_autocorr:
-            #         # Compute the autocorrelation time so far
-            #         # Using tol=0 means that we'll always get an estimate even
-            #         # if it isn't trustworthy
-            #         tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
-            #         self.autocorr = np.append(self.autocorr, np.mean(tau))
+        #     if self.get_autocorr:
+        #         # Compute the autocorrelation time so far
+        #         # Using tol=0 means that we'll always get an estimate even
+        #         # if it isn't trustworthy
+        #         tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
+        #         self.autocorr = np.append(self.autocorr, np.mean(tau))
 
-            #         # Check convergence
-            #         converged = np.all(tau * 100 < sampler.iteration)
-            #         converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
+        #         # Check convergence
+        #         converged = np.all(tau * 100 < sampler.iteration)
+        #         converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
 
-            #         ## Check if we are over time limit
-            #         if timeout:
-            #             if time.time() > time_end:
-            #                 print("Timed out")
-            #                 break
-            #         ## If not, only halt on convergence criterion if
-            #         ## force_timeout is false
-            #         if (force_timeout == False) and (converged == True):
-            #             print("Chains have converged")
-            #             break
-            #         old_tau = tau
+        #         ## Check if we are over time limit
+        #         if timeout:
+        #             if time.time() > time_end:
+        #                 print("Timed out")
+        #                 break
+        #         ## If not, only halt on convergence criterion if
+        #         ## force_timeout is false
+        #         if (force_timeout == False) and (converged == True):
+        #             print("Chains have converged")
+        #             break
+        #         old_tau = tau
 
         return sampler
+
+    def run_minimizer(self, log_func=None, p0=None):
+        def log_func_minimize(pp):
+            return -log_func(pp)[0]
+
+        """After run_sampler"""
+
+        res = scipy.optimize.minimize(
+            log_func_minimize, p0, method="Nelder-Mead"
+        )
+        if res.success == False:
+            self.mle = p0
+            warn("Minimization failed")
+        else:
+            self.mle = res.x
+        self.lnprop_mle = log_func(self.mle)[0]
+        print("Minimization improved:", log_func(p0)[0], self.lnprop_mle)
 
     def resume_sampler(
         self, max_steps, log_func=None, timeout=None, force_timeout=False
@@ -521,7 +542,10 @@ class EmceeSampler(object):
         - if delta_lnprob_cut is set, use it to remove low-prob islands"""
 
         # mask walkers not converged
-        mask, _ = purge_chains(self.lnprob)
+        if self.explore == False:
+            mask, _ = purge_chains(self.lnprob)
+        else:
+            mask = np.ones(len(self.lnprob.shape[1]), dtype=bool)
         lnprob = self.lnprob[:, mask].reshape(-1)
         chain = self.chain[:, mask, :].reshape(-1, self.chain.shape[-1])
         blobs = self.blobs[:, mask].reshape(-1)
@@ -901,8 +925,6 @@ class EmceeSampler(object):
     def write_chain_to_file(self, residuals=True):
         """Write flat chain to file"""
 
-        ### XXX CHECK OUT THIS, improve!
-
         saveDict = {}
 
         # Emulator settings
@@ -987,6 +1009,7 @@ class EmceeSampler(object):
             mask_use = self.plot_lnprob()
         except:
             self.print("Can't plot lnprob")
+
         try:
             self.plot_best_fit(residuals=residuals, stat_best_fit="mean")
         except:
@@ -1024,12 +1047,11 @@ class EmceeSampler(object):
             except:
                 self.print("Can't plot corner")
         try:
-            summary = self.plot_corner()
+            dict_out["summary"] = self.plot_corner()
         except:
             self.print("Can't plot corner")
 
         dict_out = {}
-        dict_out["summary"] = summary
         dict_out["walkers_survive"] = mask_use
         dict_out["truth"] = self.truth
 
@@ -1039,14 +1061,12 @@ class EmceeSampler(object):
             all_param[:, :-4], [16, 50, 84], axis=0
         ).T
 
-        ind = np.argmax(lnprob)
-        dict_out["param_ml"] = all_param[ind, :-4]
-        dict_out["lnprob_ml"] = lnprob[ind]
+        dict_out["param_mle"] = self.mle
+        dict_out["lnprob_mle"] = self.lnprop_mle
+
         np.save(self.save_directory + "/results.npy", dict_out)
         np.save(self.save_directory + "/chain.npy", all_param[:, :-4])
         np.save(self.save_directory + "/lnprob.npy", lnprob)
-
-        return
 
     def plot_histograms(self, cube=False, delta_lnprob_cut=None):
         """Make histograms for all dimensions, using re-normalized values if
@@ -1113,6 +1133,19 @@ class EmceeSampler(object):
 
         if self.save_directory is not None:
             if only_cosmo:
+                # plot mle value
+                if self.mle is not None:
+                    fig.axes[2].scatter(
+                        self.mle[-2],
+                        self.mle[-1],
+                        s=100,
+                        color="C1",
+                        marker="x",
+                        zorder=10,
+                    )
+                    fig.axes[0].axvline(self.mle[-2], color="C1", ls="--")
+                    fig.axes[3].axvline(self.mle[-1], color="C1", ls="--")
+
                 plt.savefig(self.save_directory + "/corner_cosmo.pdf")
             else:
                 plt.savefig(self.save_directory + "/corner.pdf")
