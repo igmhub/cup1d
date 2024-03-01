@@ -545,7 +545,7 @@ class EmceeSampler(object):
         if self.explore == False:
             mask, _ = purge_chains(self.lnprob)
         else:
-            mask = np.ones(len(self.lnprob.shape[1]), dtype=bool)
+            mask = np.ones(self.lnprob.shape[1], dtype=bool)
         lnprob = self.lnprob[:, mask].reshape(-1)
         chain = self.chain[:, mask, :].reshape(-1, self.chain.shape[-1])
         blobs = self.blobs[:, mask].reshape(-1)
