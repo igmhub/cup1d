@@ -218,10 +218,6 @@ def parse_args():
         else:
             args.apply_smoothing = False
 
-    print(args.apply_smoothing)
-
-    sys.exit()
-
     return args
 
 
