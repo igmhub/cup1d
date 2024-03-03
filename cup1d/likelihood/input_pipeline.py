@@ -1,4 +1,4 @@
-import os
+import sys, os
 import configargparse
 from cup1d.utils.utils import create_print_function, mpi_hello_world
 
@@ -81,7 +81,6 @@ def parse_args():
     parser.add_argument(
         "--apply_smoothing",
         default=None,
-        type=bool,
         required=False,
         help="Apply smoothing to data, None for whatever is best for selected emulator",
     )
@@ -214,7 +213,14 @@ def parse_args():
     if args.apply_smoothing is None:
         args.apply_smoothing = dict_apply_smoothing[args.emulator_label]
     else:
-        args.apply_smoothing = args.apply_smoothing
+        if args.apply_smoothing == "True":
+            args.apply_smoothing = True
+        else:
+            args.apply_smoothing = False
+
+    print(args.apply_smoothing)
+
+    sys.exit()
 
     return args
 
