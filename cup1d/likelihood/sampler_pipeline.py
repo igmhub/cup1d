@@ -243,6 +243,7 @@ class SamplerPipeline(object):
         )
 
         self.set_emcee_options(
+            args.data_label,
             args.cov_label,
             args.n_igm,
             n_steps=args.n_steps,
@@ -296,33 +297,40 @@ class SamplerPipeline(object):
         return archive
 
     def set_emcee_options(
-        self, cov_label, n_igm, n_steps=0, n_burn_in=0, test=False
+        self,
+        data_label,
+        cov_label,
+        n_igm,
+        n_steps=0,
+        n_burn_in=0,
+        test=False,
     ):
+        # set steps
         if test == True:
             self.n_steps = 10
-            self.n_burn_in = 0
         else:
             if n_steps != 0:
                 self.n_steps = n_steps
             else:
-                self.n_steps = 1000
+                if data_label == "Chabanier19":
+                    self.n_steps = 4000
+                else:
+                    self.n_steps = 1000
 
+        # set burn-in
+        if test == True:
+            self.n_burn_in = 0
+        else:
             if n_burn_in != 0:
                 self.n_burn_in = n_burn_in
             else:
-                if cov_label == "Chabanier2019":
-                    if n_igm == 0:
-                        self.n_burn_in = 100
-                    else:
-                        self.n_burn_in = 500
-                elif cov_label == "QMLE_Ohio":
-                    if n_igm == 0:
-                        self.n_burn_in = 200
-                    else:
-                        self.n_burn_in = 1200
+                if data_label == "Chabanier19":
+                    self.n_burn_in = 1000
                 else:
-                    if n_igm == 0:
-                        self.n_burn_in = 100
+                    if cov_label == "Chabanier2019":
+                        self.n_burn_in = 500
+                    elif cov_label == "QMLE_Ohio":
+                        self.n_burn_in = 1200
                     else:
                         self.n_burn_in = 500
 
