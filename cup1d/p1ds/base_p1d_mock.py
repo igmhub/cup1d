@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from warnings import warn
 
 import cup1d
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
@@ -23,6 +24,7 @@ class BaseMockP1D(BaseDataP1D):
         """Construct base P1D class, from measured power and covariance"""
 
         if add_noise:
+            warn("Perturbing data by adding Gaussian noise")
             Pk_perturb_kms = self.get_Pk_iz_perturbed(
                 Pk_kms, cov_Pk_kms, seed=seed
             )

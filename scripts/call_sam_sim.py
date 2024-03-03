@@ -69,8 +69,8 @@ def main():
     arr_emulator_label = [
         # "Pedersen21",
         "Pedersen23_ext",
-        "CH24",
-        "Cabayol23",
+        # "CH24",
+        # "Cabayol23",
     ]
     # use l1O or test sim to set mock (True) or whatever sim is specified
     arr_mock_own = [True]
@@ -87,7 +87,10 @@ def main():
     arr_drop_sim = [True]
     arr_n_igm = [2]
     # add noise to mock data (False for no noise, any int for noise seed)
-    arr_add_noise = [False]
+    # for l1O
+    # arr_add_noise = [False]
+    # for MC mocks
+    arr_add_noise = np.arange(100)
     # Fix cosmological parameters while sampling
     fix_cosmo = False
     override = False
@@ -111,9 +114,12 @@ def main():
             # all
             # list_sim = archive.list_sim
             # training sims
-            list_sim = archive.list_sim_cube
+            # for l1O
+            # list_sim = archive.list_sim_cube
+            list_sim = ["mpg_central"]
             # testing sims
             list_sim_test = archive.list_sim_test
+            # list_sim_test = ["mpg_central"]
             for irank in range(1, size):
                 comm.send(list_sim, dest=irank, tag=(irank + 1) * 3)
                 comm.send(list_sim_test, dest=irank, tag=(irank + 1) * 5)
@@ -139,7 +145,7 @@ def main():
                 cosmo_own,
                 drop_sim,
                 n_igm,
-                add_noise,
+                _add_noise,
                 sim_label,
             ) = ind
 
@@ -177,10 +183,11 @@ def main():
             else:
                 apply_smoothing = do_apply_smoothing
 
-            if add_noise is not False:
+            if _add_noise is not False:
                 add_noise = True
-                seed_noise = add_noise
+                seed_noise = _add_noise
             else:
+                add_noise = False
                 seed_noise = 0
 
             args = Args(
