@@ -408,12 +408,13 @@ class EmceeSampler(object):
 
         return sampler
 
-    def run_minimizer(self, log_func=None, p0=None):
+    def run_minimizer(self, log_func=None, p0=None, cube=False):
         def log_func_minimize(pp):
             return -log_func(pp)[0]
 
         """After run_sampler"""
 
+        lnprob_ini = log_func(p0)[0]
         res = scipy.optimize.minimize(
             log_func_minimize, p0, method="Nelder-Mead"
         )
@@ -423,7 +424,13 @@ class EmceeSampler(object):
         else:
             self.mle = res.x
         self.lnprop_mle = log_func(self.mle)[0]
-        print("Minimization improved:", log_func(p0)[0], self.lnprop_mle)
+
+        if cube == False:
+            for ii in range(self.ndim):
+                self.mle[ii] = self.like.free_params[ii].value_from_cube(
+                    self.mle[ii]
+                )
+        print("Minimization improved:", lnprob_ini, self.lnprop_mle)
 
     def resume_sampler(
         self, max_steps, log_func=None, timeout=None, force_timeout=False
