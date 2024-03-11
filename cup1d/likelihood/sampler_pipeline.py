@@ -313,7 +313,7 @@ class SamplerPipeline(object):
                 self.n_steps = n_steps
             else:
                 if data_label == "Chabanier19":
-                    self.n_steps = 4000
+                    self.n_steps = 6000
                 else:
                     self.n_steps = 1000
 
