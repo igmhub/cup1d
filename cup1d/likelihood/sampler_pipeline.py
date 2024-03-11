@@ -662,7 +662,7 @@ class SamplerPipeline(object):
             self.fprint("Sampler run in " + multi_time + " s")
 
             # improve best fit from sampler using minimize
-            if self.test == False:
+            if self.explore == False:
                 self.fprint("----------")
                 self.fprint("Running minimizer")
                 start = time.time()
