@@ -1011,52 +1011,71 @@ class EmceeSampler(object):
         # save config info in plain text as well
         self._write_dict_to_text(saveDict)
 
-        # plots
-        try:
-            mask_use = self.plot_lnprob()
-        except:
-            self.print("Can't plot lnprob")
+        tries = False
 
-        try:
+        if tries:
+            # plots
+            try:
+                mask_use = self.plot_lnprob()
+            except:
+                self.print("Can't plot lnprob")
+
+            try:
+                self.plot_best_fit(residuals=residuals, stat_best_fit="mean")
+            except:
+                self.print("Can't plot best fit")
+            try:
+                for stat_best_fit in ["mean"]:
+                    rand_posterior = self.plot_igm_histories(
+                        stat_best_fit=stat_best_fit
+                    )
+            except:
+                self.print("Can't plot IGM histories")
+            try:
+                for stat_best_fit in ["mean"]:
+                    self.plot_best_fit(
+                        residuals=residuals,
+                        rand_posterior=rand_posterior,
+                        stat_best_fit=stat_best_fit,
+                    )
+            except:
+                self.print("Can't plot best fit")
+            try:
+                self.plot_prediction(residuals=residuals)
+            except:
+                self.print("Can't plot prediction")
+
+            if self.get_autocorr:
+                try:
+                    self.plot_autocorrelation_time()
+                except:
+                    self.print("Can't plot autocorrelation time")
+
+            if self.fix_cosmology == False:
+                try:
+                    _ = self.plot_corner(only_cosmo=True)
+                except:
+                    self.print("Can't plot corner")
+            try:
+                dict_out["summary"] = self.plot_corner()
+            except:
+                self.print("Can't plot corner")
+        else:
+            mask_use = self.plot_lnprob()
             self.plot_best_fit(residuals=residuals, stat_best_fit="mean")
-        except:
-            self.print("Can't plot best fit")
-        try:
             for stat_best_fit in ["mean"]:
                 rand_posterior = self.plot_igm_histories(
                     stat_best_fit=stat_best_fit
                 )
-        except:
-            self.print("Can't plot IGM histories")
-        try:
-            for stat_best_fit in ["mean"]:
                 self.plot_best_fit(
                     residuals=residuals,
                     rand_posterior=rand_posterior,
                     stat_best_fit=stat_best_fit,
                 )
-        except:
-            self.print("Can't plot best fit")
-        try:
-            self.plot_prediction(residuals=residuals)
-        except:
-            self.print("Can't plot prediction")
-
-        if self.get_autocorr:
-            try:
-                self.plot_autocorrelation_time()
-            except:
-                self.print("Can't plot autocorrelation time")
-
-        if self.fix_cosmology == False:
-            try:
+                self.plot_prediction(residuals=residuals)
+            if self.fix_cosmology == False:
                 _ = self.plot_corner(only_cosmo=True)
-            except:
-                self.print("Can't plot corner")
-        try:
             dict_out["summary"] = self.plot_corner()
-        except:
-            self.print("Can't plot corner")
 
         dict_out = {}
         dict_out["walkers_survive"] = mask_use
