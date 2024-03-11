@@ -548,14 +548,18 @@ class Theory(object):
         logk_Mpc = np.zeros((Nz, len(k_kms)))
         for iz in range(Nz):
             logk_Mpc[iz] = np.log10(k_kms * M_of_z[iz])
+        if hasattr(self.emulator, "nhidden"):
+            kin_Mpc = 10**logk_Mpc
+        else:
+            kin_Mpc = logk_Mpc
 
         if return_covar:
             p1d_Mpc, cov_Mpc = self.call_emulator(
-                emu_calls, logk_Mpc, return_covar=True, z=self.zs
+                emu_calls, kin_Mpc, return_covar=True, z=self.zs
             )
         else:
             p1d_Mpc = self.call_emulator(
-                emu_calls, logk_Mpc, return_covar=False, z=self.zs
+                emu_calls, kin_Mpc, return_covar=False, z=self.zs
             )
 
         p1d_kms = []
