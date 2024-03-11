@@ -1011,19 +1011,23 @@ class EmceeSampler(object):
         # save config info in plain text as well
         self._write_dict_to_text(saveDict)
 
-        tries = False
+        tries = True
 
+        dict_out = {}
         if tries:
             # plots
             try:
                 mask_use = self.plot_lnprob()
             except:
                 self.print("Can't plot lnprob")
+            else:
+                mask_use = None
 
             try:
                 self.plot_best_fit(residuals=residuals, stat_best_fit="mean")
             except:
                 self.print("Can't plot best fit")
+
             try:
                 for stat_best_fit in ["mean"]:
                     rand_posterior = self.plot_igm_histories(
@@ -1031,6 +1035,7 @@ class EmceeSampler(object):
                     )
             except:
                 self.print("Can't plot IGM histories")
+
             try:
                 for stat_best_fit in ["mean"]:
                     self.plot_best_fit(
@@ -1040,6 +1045,7 @@ class EmceeSampler(object):
                     )
             except:
                 self.print("Can't plot best fit")
+
             try:
                 self.plot_prediction(residuals=residuals)
             except:
@@ -1056,6 +1062,7 @@ class EmceeSampler(object):
                     _ = self.plot_corner(only_cosmo=True)
                 except:
                     self.print("Can't plot corner")
+
             try:
                 dict_out["summary"] = self.plot_corner()
             except:
@@ -1077,7 +1084,6 @@ class EmceeSampler(object):
                 _ = self.plot_corner(only_cosmo=True)
             dict_out["summary"] = self.plot_corner()
 
-        dict_out = {}
         dict_out["walkers_survive"] = mask_use
         dict_out["truth"] = self.truth
 
@@ -1156,23 +1162,24 @@ class EmceeSampler(object):
         c.add_chain(chain)
         summary = c.analysis.get_summary()["a"]
         c.add_truth(Truth(location=self.truth, line_style=":", color="black"))
+
         fig = c.plotter.plot(figsize=(12, 12))
+        if only_cosmo:
+            # plot mle value
+            if self.mle is not None:
+                fig.axes[2].scatter(
+                    self.mle[-2],
+                    self.mle[-1],
+                    s=100,
+                    color="C1",
+                    marker="x",
+                    zorder=10,
+                )
+                fig.axes[0].axvline(self.mle[-2], color="C1", ls="--")
+                fig.axes[3].axvline(self.mle[-1], color="C1", ls="--")
 
         if self.save_directory is not None:
             if only_cosmo:
-                # plot mle value
-                if self.mle is not None:
-                    fig.axes[2].scatter(
-                        self.mle[-2],
-                        self.mle[-1],
-                        s=100,
-                        color="C1",
-                        marker="x",
-                        zorder=10,
-                    )
-                    fig.axes[0].axvline(self.mle[-2], color="C1", ls="--")
-                    fig.axes[3].axvline(self.mle[-1], color="C1", ls="--")
-
                 plt.savefig(self.save_directory + "/corner_cosmo.pdf")
             else:
                 plt.savefig(self.save_directory + "/corner.pdf")
@@ -1271,6 +1278,7 @@ class EmceeSampler(object):
         """Plot IGM histories"""
 
         chain, lnprob, blobs = self.get_chain(delta_lnprob_cut=delta_lnprob_cut)
+        nn = min(chain.shape[0], nn)
         mask = np.random.permutation(chain.shape[0])[:nn]
         rand_sample = chain[mask]
 

@@ -221,6 +221,9 @@ def parse_args():
         else:
             args.apply_smoothing = False
 
+    if args.test:
+        args.explore = True
+
     return args
 
 
