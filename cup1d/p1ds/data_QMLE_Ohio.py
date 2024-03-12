@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas
 
-from cup1d.data.base_p1d_data import BaseDataP1D, _drop_zbins
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_QMLE_Ohio(BaseDataP1D):
@@ -11,8 +11,8 @@ class P1D_QMLE_Ohio(BaseDataP1D):
         diag_cov=True,
         kmin_kms=0.001,
         kmax_kms=0.04,
-        zmin=None,
-        zmax=None,
+        z_min=0,
+        z_max=10,
         version="ohio-v0",
         filename=None,
         noise_syst=0,
@@ -28,11 +28,7 @@ class P1D_QMLE_Ohio(BaseDataP1D):
             diag_cov, kmin_kms, kmax_kms, version, filename, noise_syst
         )
 
-        # drop low-z or high-z bins
-        if zmin or zmax:
-            z, k, Pk, cov = _drop_zbins(z, k, Pk, cov, zmin, zmax)
-
-        super().__init__(z, k, Pk, cov)
+        super().__init__(z, k, Pk, cov, z_min=z_min, z_max=z_max)
 
         return
 

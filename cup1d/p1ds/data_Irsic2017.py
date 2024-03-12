@@ -1,13 +1,13 @@
 import os
 import numpy as np
 
-from cup1d.data.base_p1d_data import BaseDataP1D
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Irsic2017(BaseDataP1D):
     """Class containing P1D from Irsic et al. (2017)."""
 
-    def __init__(self, add_syst=True, ignore_zcov=True):
+    def __init__(self, z_min=0, z_max=10, add_syst=True, ignore_zcov=True):
         """Read measured P1D from Irsic et al. (2017).
         - add_syst=True will include systematic errors to covariance.
         - ignore_zcov=False will include covariance between z bins."""
@@ -19,7 +19,7 @@ class P1D_Irsic2017(BaseDataP1D):
             datadir, add_syst, ignore_zcov
         )
 
-        super().__init__(z, k_kms, Pk_kms, cov_Pk_kms)
+        super().__init__(z, k_kms, Pk_kms, cov_Pk_kms, z_min=z_min, z_max=z_max)
 
         return
 

@@ -1,17 +1,40 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from warnings import warn
 
-import cup1d
+from cup1d.utils.utils import get_path_cup1d
+
+
+def _drop_zbins(z_in, k_in, Pk_in, cov_in, zmin, zmax):
+    """Drop redshift bins below zmin or above zmax"""
+
+    z_in = np.array(z_in)
+    ind = np.argwhere((z_in >= zmin) & (z_in <= zmax))[:, 0]
+
+    z_out = np.zeros((len(ind)))
+    Pk_out = np.zeros((len(ind), len(k_in)))
+    cov_out = []
+    for ii, jj in enumerate(ind):
+        z_out[ii] = z_in[jj]
+        Pk_out[ii] = Pk_in[jj]
+        cov_out.append(cov_in[jj])
+
+    return z_out, k_in, Pk_out, cov_out
 
 
 class BaseDataP1D(object):
     """Base class to store measurements of the 1D power spectrum"""
 
-    BASEDIR = os.path.dirname(cup1d.__path__[0]) + "/data/p1d_measurements/"
+    BASEDIR = get_path_cup1d() + "/data/p1d_measurements/"
 
-    def __init__(self, z, k_kms, Pk_kms, cov_Pk_kms):
+    def __init__(self, z, k_kms, Pk_kms, cov_Pk_kms, z_min=0, z_max=10):
         """Construct base P1D class, from measured power and covariance"""
+
+        # drop zbins below z_min and above z_max
+        z, k_kms, Pk_kms, cov_Pk_kms = _drop_zbins(
+            z, k_kms, Pk_kms, cov_Pk_kms, z_min, z_max
+        )
 
         self.z = z
         self.k_kms = k_kms
@@ -36,22 +59,33 @@ class BaseDataP1D(object):
 
         return self.icov_Pk_kms[iz]
 
-    def _cull_data(self, kmin_kms):
-        """Remove bins with wavenumber k < kmin_kms"""
+    def cull_data(self, kmin_kms=0, kmax_kms=10):
+        """Remove bins with wavenumber k < kmin_kms and k > kmin_kms"""
 
-        if kmin_kms is None:
+        if (kmin_kms is None) & (kmax_kms is None):
             return
+        else:
+            old_kmin_kms = self.k_kms[0]
+            old_kmax_kms = self.k_kms[-1]
 
         # figure out number of bins to cull
-        Ncull = np.sum(self.k_kms < kmin_kms)
+        ind = np.argwhere((self.k_kms >= kmin_kms) & (self.k_kms <= kmax_kms))[
+            :, 0
+        ]
+        sli = slice(ind[0], ind[-1] + 1)
 
         # cull wavenumbers, power spectra, and covariances
-        self.k_kms = self.k_kms[Ncull:]
-        self.Pk_kms = self.Pk_kms[:, Ncull:]
+        self.k_kms = self.k_kms[sli]
+        self.Pk_kms = self.Pk_kms[:, sli]
         for i in range(len(self.z)):
-            self.cov_Pk_kms[i] = self.cov_Pk_kms[i][Ncull:, Ncull:]
+            self.cov_Pk_kms[i] = self.cov_Pk_kms[i][sli, sli]
+            self.icov_Pk_kms[i] = self.icov_Pk_kms[i][sli, sli]
 
-        return
+        new_kmin_kms = self.k_kms[0]
+        new_kmax_kms = self.k_kms[-1]
+        msg = f"Culling k_kms from {str(np.round(old_kmin_kms,3))} and {str(np.round(old_kmax_kms,3))}"
+        msg += f" to {str(np.round(new_kmin_kms,3))} and {str(np.round(new_kmax_kms,3))}"
+        warn(msg)
 
     def plot_p1d(self, use_dimensionless=True, xlog=False, ylog=True):
         """Plot P1D mesurement. If use_dimensionless, plot k*P(k)/pi."""
@@ -83,33 +117,3 @@ class BaseDataP1D(object):
         else:
             plt.ylabel("P(k) [km/s]")
         plt.show()
-
-
-def _drop_zbins(z_in, k_in, Pk_in, cov_in, zmin, zmax):
-    """Drop redshift bins below zmin or above zmax"""
-
-    # size of input arrays
-    Nz_in = len(z_in)
-    Nk = len(k_in)
-
-    # figure out how many z to keep
-    keep = np.ones(Nz_in, dtype=bool)
-    if zmin:
-        keep = np.logical_and(keep, z_in >= zmin)
-    if zmax:
-        keep = np.logical_and(keep, z_in <= zmax)
-    Nz_out = np.sum(keep)
-
-    # setup new arrays
-    z_out = np.empty(Nz_out)
-    Pk_out = np.empty((Nz_out, Nk))
-    cov_out = []
-    i = 0
-    for j in range(Nz_in):
-        if keep[j]:
-            z_out[i] = z_in[j]
-            Pk_out[i] = Pk_in[j]
-            Pk_out[i] = Pk_in[j]
-            cov_out.append(cov_in[j])
-            i += 1
-    return z_out, k_in, Pk_out, cov_out

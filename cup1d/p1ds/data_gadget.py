@@ -1,41 +1,42 @@
 import numpy as np
 from scipy.interpolate import interp1d
 
-from lace.utils import poly_p1d
 from lace.cosmo import camb_cosmo
-from cup1d.data.base_p1d_mock import BaseMockP1D
-from cup1d.data import data_PD2013
-from cup1d.data import data_Chabanier2019
-from cup1d.data import data_QMLE_Ohio
-from cup1d.data import data_Karacayli2022
+from cup1d.p1ds.base_p1d_mock import BaseMockP1D
+from cup1d.p1ds import (
+    data_PD2013,
+    data_Chabanier2019,
+    data_QMLE_Ohio,
+    data_Karacayli2022,
+)
 
 
-class Nyx_P1D(BaseMockP1D):
-    """Class to load a Nyx simulation as a mock data object.
+class Gadget_P1D(BaseMockP1D):
+    """Class to load an MP-Gadget simulation as a mock data object.
     Can use PD2013 or Chabanier2019 covmats"""
 
     def __init__(
         self,
         testing_data,
-        input_sim="nyx_central",
-        z_max=None,
+        emulator=None,
+        apply_smoothing=True,
+        input_sim="mpg_central",
+        z_min=0,
+        z_max=10,
         data_cov_label="Chabanier2019",
         data_cov_factor=1.0,
         add_syst=True,
-        polyfit_kmax_Mpc=4.0,
-        polyfit_ndeg=5,
         add_noise=False,
         seed=0,
+        fprint=print,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
-        - testing_data: p1d measurements from Nyx sims
+        - testing_data: p1d measurements from Gadget sims
         - input_sim: check available options in testing_data
         - z_max: maximum redshift to use in mock data
         - data_cov_label: P1D covariance to use (Chabanier2019 or PD2013)
         - data_cov_factor: multiply covariance by this factor
         - add_syst: Include systematic estimates in covariance matrices
-        - polyfit_kmax_Mpc: kmax to use in polyfit (None for no polyfit)
-        - polyfit_ndeg: poly degree to use in polyfit (None for no polyfit)
         """
 
         # covariance matrix settings
@@ -43,23 +44,41 @@ class Nyx_P1D(BaseMockP1D):
         self.data_cov_factor = data_cov_factor
         self.data_cov_label = data_cov_label
 
-        # polyfit settings
-        self.polyfit_kmax_Mpc = polyfit_kmax_Mpc
-        self.polyfit_ndeg = polyfit_ndeg
-
         # store sim data
         self.input_sim = input_sim
-        self.testing_data = testing_data
+
+        if apply_smoothing & (emulator is not None):
+            self.testing_data = super().set_smoothing_Mpc(
+                emulator, testing_data, fprint=fprint
+            )
+        else:
+            fprint("No smoothing is applied")
+            self.testing_data = testing_data
+
+        # store cosmology used in the simulation
+        dkms_dMpc = []
+        for ii in range(len(testing_data)):
+            dkms_dMpc.append(testing_data[ii]["dkms_dMpc"])
+        self.dkms_dMpc = np.array(dkms_dMpc)
 
         # store cosmology used in the simulation
         cosmo_params = self.testing_data[0]["cosmo_params"]
-        self.sim_cosmo = camb_cosmo.get_Nyx_cosmology(cosmo_params)
+        self.sim_cosmo = camb_cosmo.get_cosmology_from_dictionary(cosmo_params)
 
         # setup P1D using covariance and testing sim
         z, k, Pk, cov = self._load_p1d()
 
         # setup base class
-        super().__init__(z, k, Pk, cov, add_noise=add_noise, seed=seed)
+        super().__init__(
+            z,
+            k,
+            Pk,
+            cov,
+            add_noise=add_noise,
+            seed=seed,
+            z_min=z_min,
+            z_max=z_max,
+        )
 
         return
 
@@ -81,15 +100,9 @@ class Nyx_P1D(BaseMockP1D):
 
         # get redshifts in testing simulation
         z_sim = np.array([data["z"] for data in self.testing_data])
-        zmin_sim = min(z_sim)
-
-        # use simulation cosmology to convert units
-        sim_camb_results = camb_cosmo.get_camb_results(self.sim_cosmo)
 
         # unit conversion, at zmin to get lowest possible k_min_kms
-        dkms_dMpc_zmin = sim_camb_results.hubble_parameter(zmin_sim) / (
-            1 + zmin_sim
-        )
+        dkms_dMpc_zmin = self.dkms_dMpc[np.argmin(z_sim)]
 
         # Get k_min for the sim data & cut k values below that
         k_min_Mpc = self.testing_data[0]["k_Mpc"][0]
@@ -101,37 +114,27 @@ class Nyx_P1D(BaseMockP1D):
 
         Pk_kms = []
         cov = []
-        # Set P1D and covariance for each redshift (from low-z to high-z)
-        for iz, z in enumerate(z_sim):
+        zs = []
+        for iz in range(len(z_sim)):
+            z = z_sim[iz]
+
             # convert Mpc to km/s
-            dkms_dMpc = sim_camb_results.hubble_parameter(z) / (1 + z)
-            data_k_Mpc = k_kms * dkms_dMpc
+            data_k_Mpc = k_kms * self.dkms_dMpc[iz]
 
             # find testing data for this redshift
-            test_data = self.testing_data[iz]
-            sim_k_Mpc = test_data["k_Mpc"]
-            sim_p1d_Mpc = test_data["p1d_Mpc"]
+            sim_k_Mpc = self.testing_data[iz]["k_Mpc"].copy()
+            sim_p1d_Mpc = self.testing_data[iz]["p1d_Mpc"].copy()
 
             # mask k=0 if present
             if sim_k_Mpc[0] == 0:
                 sim_k_Mpc = sim_k_Mpc[1:]
                 sim_p1d_Mpc = sim_p1d_Mpc[1:]
 
-            # use polyfit instead of actual P1D from sim (unless asked not to)
-            if (self.polyfit_ndeg is None) or (self.polyfit_kmax_Mpc is None):
-                # evaluate P1D in data wavenumbers (in velocity units)
-                interp_sim_Mpc = interp1d(sim_k_Mpc, sim_p1d_Mpc, "cubic")
-                sim_p1d_kms = interp_sim_Mpc(data_k_Mpc) * dkms_dMpc
-            else:
-                fit_p1d = poly_p1d.PolyP1D(
-                    sim_k_Mpc,
-                    sim_p1d_Mpc,
-                    kmin_Mpc=1e-10,
-                    kmax_Mpc=self.polyfit_kmax_Mpc,
-                    deg=self.polyfit_ndeg,
-                )
-                # evalute polyfit to data wavenumbers
-                sim_p1d_kms = fit_p1d.P_Mpc(data_k_Mpc) * dkms_dMpc
+            interp_sim_Mpc = interp1d(sim_k_Mpc, sim_p1d_Mpc, "cubic")
+            sim_p1d_kms = interp_sim_Mpc(data_k_Mpc) * self.dkms_dMpc[iz]
+
+            # append redshift, p1d and covar
+            zs.append(z)
             Pk_kms.append(sim_p1d_kms)
 
             # Now get covariance from the nearest z bin in data
@@ -140,4 +143,4 @@ class Nyx_P1D(BaseMockP1D):
             cov_mat = self.data_cov_factor * cov_mat[Ncull:, Ncull:]
             cov.append(cov_mat)
 
-        return z_sim, k_kms, Pk_kms, cov
+        return zs, k_kms, Pk_kms, cov

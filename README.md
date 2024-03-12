@@ -14,7 +14,7 @@ If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es
 - Create a new conda environment. It is usually better to follow python version one or two behind. In January 2024, the latest is 3.12, so we recommend 3.11.
 
 ```
-conda create -n cup1d python=3.11 camb mpich
+conda create -n cup1d python=3.11 camb mpich mpi4py
 conda activate cup1d
 ```
 - Install cup1d:

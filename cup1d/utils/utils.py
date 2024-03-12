@@ -1,4 +1,6 @@
 from mpi4py import MPI
+import os
+import cup1d
 
 
 def mpi_hello_world():
@@ -24,3 +26,12 @@ def create_print_function(verbose=True):
             pass
 
     return print_new
+
+
+def get_path_cup1d():
+    path_cup1d = os.path.dirname(cup1d.__path__[0])
+    if "cup1d" in path_cup1d:
+        pass
+    else:
+        path_cup1d += "/cup1d"
+    return path_cup1d

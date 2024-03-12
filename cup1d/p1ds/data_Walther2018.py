@@ -1,12 +1,12 @@
 import os
 import numpy as np
-from cup1d.data.base_p1d_data import BaseDataP1D
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Walther2018(BaseDataP1D):
     """Class containing P1D from Walther et al. (2018)."""
 
-    def __init__(self):
+    def __init__(self, z_min=0, z_max=10):
         """Read measured P1D from Walther et al. (2018)."""
 
         # folder storing P1D measurement
@@ -14,7 +14,7 @@ class P1D_Walther2018(BaseDataP1D):
 
         z, k_kms, Pk_kms, cov_Pk_kms = read_from_file(datadir)
 
-        super().__init__(z, k_kms, Pk_kms, cov_Pk_kms)
+        super().__init__(z, k_kms, Pk_kms, cov_Pk_kms, z_min=z_min, z_max=z_max)
 
         return
 

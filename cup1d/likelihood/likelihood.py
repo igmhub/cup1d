@@ -56,7 +56,8 @@ class Likelihood(object):
         self.min_log_like = min_log_like
         self.data = data
         # (optionally) get rid of low-k data points
-        self.data._cull_data(kmin_kms)
+        if kmin_kms is not None:
+            self.data.cull_data(kmin_kms)
 
         assert cosmo_fid_label == "default", "wrong settings"
         self.theory = theory

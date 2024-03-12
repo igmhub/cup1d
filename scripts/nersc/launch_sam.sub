@@ -9,4 +9,5 @@
 
 source /global/homes/j/jjchaves/miniconda3/bin/activate lace
 
-srun --unbuffered python /global/homes/j/jjchaves/cup1d/src/cup1d/scripts/sam_like_sim.py --training_set Cabayol23 --emulator_label Cabayol23 --test_sim_label mpg_central --igm_sim_label mpg_central --drop_sim False --n_igm 0
+# srun --unbuffered python /global/homes/j/jjchaves/cup1d/src/cup1d/scripts/sam_like_sim.py --training_set Cabayol23 --emulator_label Cabayol23 --test_sim_label mpg_central --igm_sim_label mpg_central --drop_sim False --n_igm 0
+srun --unbuffered python /global/homes/j/jjchaves/cup1d/src/cup1d/scripts/sam_sim.py --emulator_label Pedersen21 --data_label mpg_central --igm_label mpg_central --cosmo_label mpg_central --n_igm 2  --cov_label Chabanier2019 --verbose --parallel
