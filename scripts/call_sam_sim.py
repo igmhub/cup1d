@@ -92,9 +92,9 @@ def main():
     arr_n_igm = [2]
     # add noise to mock data (False for no noise, any int for noise seed)
     # for l1O
-    # arr_add_noise = [False]
+    arr_add_noise = [False]
     # for MC mocks
-    arr_add_noise = np.arange(100)
+    # arr_add_noise = np.arange(100)
     # Fix cosmological parameters while sampling
     fix_cosmo = False
     override = False
