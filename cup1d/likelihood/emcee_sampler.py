@@ -428,15 +428,23 @@ class EmceeSampler(object):
         else:
             mle = res.x
 
-        self.lnprop_mle = log_func(mle)[0]
+        self.mle_cube = mle
+        mle_no_cube = mle.copy()
+        for ii, par in enumerate(self.like.free_params):
+            mle_no_cube[ii] = par.value_from_cube(mle[ii])
+        self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(mle)
+
+        # Array for all parameters
+        all_params = np.hstack([mle_no_cube, np.array(blobs)])
+        # Ordered strings for all parameters
+        all_strings = self.paramstrings + blob_strings
 
         self.mle = {}
-        self.mle_cube = {}
-        for ii, par in enumerate(self.like.free_params):
-            self.mle[par.name] = par.value_from_cube(mle[ii])
-            self.mle_cube[par.name] = mle[ii]
+        for ii, par in enumerate(all_strings):
+            self.mle[par] = all_params[ii]
 
         print("Minimization improved:", lnprob_ini, self.lnprop_mle)
+        print("MLE:", self.mle)
 
     def resume_sampler(
         self, max_steps, log_func=None, timeout=None, force_timeout=False
@@ -1172,8 +1180,8 @@ class EmceeSampler(object):
         chain = Chain(samples=pd_data, name="a")
         c.add_chain(chain)
         summary = c.analysis.get_summary()["a"]
-        c.add_truth(Truth(location=self.truth, line_style=":", color="C0"))
-        c.add_truth(Truth(location=self.mle, line_style="--", color="C1"))
+        c.add_truth(Truth(location=self.truth, line_style="-", color="k"))
+        c.add_truth(Truth(location=self.mle, line_style=":", color="C1"))
 
         fig = c.plotter.plot(figsize=(12, 12))
 
