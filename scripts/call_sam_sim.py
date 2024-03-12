@@ -30,6 +30,7 @@ def main():
         "Pedersen23_ext": "Cabayol23",
         "CH24": "Cabayol23",
         "Cabayol23": "Cabayol23",
+        "Cabayol23+": "Cabayol23",
         "Cabayol23_extended": "Cabayol23",
         "Nyx_v0": "Nyx23_Oct2023",
         "Nyx_v0_extended": "Nyx23_Oct2023",
@@ -41,6 +42,7 @@ def main():
         "Pedersen23_ext": False,
         "CH24": False,
         "Cabayol23": False,
+        "Cabayol23+": False,
     }
     dict_apply_smoothing = {
         "Pedersen21": False,
@@ -49,6 +51,7 @@ def main():
         "Pedersen23_ext": True,
         "CH24": True,
         "Cabayol23": True,
+        "Cabayol23+": True,
         "Cabayol23_extended": True,
         "Nyx_v0": True,
         "Nyx_v0_extended": True,
@@ -68,9 +71,10 @@ def main():
     version = "v3"
     arr_emulator_label = [
         # "Pedersen21",
-        "Pedersen23_ext",
+        # "Pedersen23_ext",
         # "CH24",
         # "Cabayol23",
+        "Cabayol23+",
     ]
     # use l1O or test sim to set mock (True) or whatever sim is specified
     arr_mock_own = [True]
@@ -112,11 +116,11 @@ def main():
                 # z_min = 1.9
                 # z_max = 4.6
             # all
-            # list_sim = archive.list_sim
+            list_sim = archive.list_sim
             # training sims
             # for l1O
             # list_sim = archive.list_sim_cube
-            list_sim = ["mpg_central"]
+            # list_sim = ["mpg_central"]
             # testing sims
             list_sim_test = archive.list_sim_test
             # list_sim_test = ["mpg_central"]

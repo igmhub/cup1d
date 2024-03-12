@@ -419,17 +419,23 @@ class EmceeSampler(object):
             log_func_minimize, p0, method="Nelder-Mead"
         )
         if res.success == False:
-            self.mle = p0
-            warn("Minimization failed")
+            res = scipy.optimize.minimize(log_func_minimize, p0, method="BFGS")
+            if res.success == False:
+                mle = p0
+                warn("Minimization failed")
+            else:
+                mle = res.x
         else:
-            self.mle = res.x
-        self.lnprop_mle = log_func(self.mle)[0]
+            mle = res.x
 
-        if cube == False:
-            for ii in range(self.ndim):
-                self.mle[ii] = self.like.free_params[ii].value_from_cube(
-                    self.mle[ii]
-                )
+        self.lnprop_mle = log_func(mle)[0]
+
+        self.mle = {}
+        self.mle_cube = {}
+        for ii, par in enumerate(self.like.free_params):
+            self.mle[par.name] = par.value_from_cube(mle[ii])
+            self.mle_cube[par.name] = mle[ii]
+
         print("Minimization improved:", lnprob_ini, self.lnprop_mle)
 
     def resume_sampler(
@@ -917,13 +923,19 @@ class EmceeSampler(object):
         in unit likelihood space.
             - if delta_lnprob_cut is set, use only high-prob points"""
 
-        chain, lnprob, blobs = self.get_chain(delta_lnprob_cut=delta_lnprob_cut)
         if stat_best_fit == "mean":
+            chain, lnprob, blobs = self.get_chain(
+                delta_lnprob_cut=delta_lnprob_cut
+            )
             best_values = np.mean(chain, axis=0)
         elif stat_best_fit == "median":
+            chain, lnprob, blobs = self.get_chain(
+                delta_lnprob_cut=delta_lnprob_cut
+            )
             best_values = np.median(chain, axis=0)
         elif stat_best_fit == "mle":
-            best_values = chain[np.argmax(lnprob)]
+            # best_values = chain[np.argmax(lnprob)]
+            best_values = self.mle_cube
         else:
             raise ValueError(stat_best_fit + " not implemented")
 
@@ -1029,7 +1041,7 @@ class EmceeSampler(object):
                 self.print("Can't plot best fit")
 
             try:
-                for stat_best_fit in ["mean"]:
+                for stat_best_fit in ["mle"]:
                     rand_posterior = self.plot_igm_histories(
                         stat_best_fit=stat_best_fit
                     )
@@ -1037,7 +1049,7 @@ class EmceeSampler(object):
                 self.print("Can't plot IGM histories")
 
             try:
-                for stat_best_fit in ["mean"]:
+                for stat_best_fit in ["mle"]:
                     self.plot_best_fit(
                         residuals=residuals,
                         rand_posterior=rand_posterior,
@@ -1093,9 +1105,8 @@ class EmceeSampler(object):
             all_param[:, :-4], [16, 50, 84], axis=0
         ).T
 
-        if self.explore == False:
-            dict_out["param_mle"] = self.mle
-            dict_out["lnprob_mle"] = self.lnprop_mle
+        dict_out["param_mle"] = self.mle
+        dict_out["lnprob_mle"] = self.lnprop_mle
 
         np.save(self.save_directory + "/results.npy", dict_out)
         np.save(self.save_directory + "/chain.npy", all_param[:, :-4])
@@ -1161,22 +1172,10 @@ class EmceeSampler(object):
         chain = Chain(samples=pd_data, name="a")
         c.add_chain(chain)
         summary = c.analysis.get_summary()["a"]
-        c.add_truth(Truth(location=self.truth, line_style=":", color="black"))
+        c.add_truth(Truth(location=self.truth, line_style=":", color="C0"))
+        c.add_truth(Truth(location=self.mle, line_style="--", color="C1"))
 
         fig = c.plotter.plot(figsize=(12, 12))
-        if only_cosmo:
-            # plot mle value
-            if self.mle is not None:
-                fig.axes[2].scatter(
-                    self.mle[-2],
-                    self.mle[-1],
-                    s=100,
-                    color="C1",
-                    marker="x",
-                    zorder=10,
-                )
-                fig.axes[0].axvline(self.mle[-2], color="C1", ls="--")
-                fig.axes[3].axvline(self.mle[-1], color="C1", ls="--")
 
         if self.save_directory is not None:
             if only_cosmo:
@@ -1228,7 +1227,6 @@ class EmceeSampler(object):
         best_values = self.get_best_fit(
             delta_lnprob_cut=delta_lnprob_cut, stat_best_fit=stat_best_fit
         )
-        self.print("Best values:", best_values)
 
         plt.figure(figsize=figsize)
         plt.title("MCMC best fit")

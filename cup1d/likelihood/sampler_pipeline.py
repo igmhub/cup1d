@@ -662,17 +662,17 @@ class SamplerPipeline(object):
             self.fprint("Sampler run in " + multi_time + " s")
 
             # improve best fit from sampler using minimize
-            if self.explore == False:
-                self.fprint("----------")
-                self.fprint("Running minimizer")
-                start = time.time()
-                ind = np.argmax(self.sampler.lnprob.reshape(-1))
-                nparam = self.sampler.chain.shape[-1]
-                p0 = self.sampler.chain.reshape(-1, nparam)[ind, :]
-                self.sampler.run_minimizer(log_func=self._log_prob, p0=p0)
-                end = time.time()
-                multi_time = str(np.round(end - start, 2))
-                self.fprint("Minimizer run in " + multi_time + " s")
+
+            self.fprint("----------")
+            self.fprint("Running minimizer")
+            start = time.time()
+            ind = np.argmax(self.sampler.lnprob.reshape(-1))
+            nparam = self.sampler.chain.shape[-1]
+            p0 = self.sampler.chain.reshape(-1, nparam)[ind, :]
+            self.sampler.run_minimizer(log_func=self._log_prob, p0=p0)
+            end = time.time()
+            multi_time = str(np.round(end - start, 2))
+            self.fprint("Minimizer run in " + multi_time + " s")
 
             start = time.time()
             self.fprint("----------")
