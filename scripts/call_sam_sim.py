@@ -71,10 +71,10 @@ def main():
     version = "v3"
     arr_emulator_label = [
         # "Pedersen21",
-        # "Pedersen23_ext",
+        "Pedersen23_ext",
         # "CH24",
         # "Cabayol23",
-        "Cabayol23+",
+        # "Cabayol23+",
     ]
     # use l1O or test sim to set mock (True) or whatever sim is specified
     arr_mock_own = [True]
@@ -89,7 +89,7 @@ def main():
     # None for whatever is best for emulator
     do_apply_smoothing = None
     arr_drop_sim = [True]
-    arr_n_igm = [2]
+    arr_n_igm = [0]
     # add noise to mock data (False for no noise, any int for noise seed)
     # for l1O
     arr_add_noise = [False]
