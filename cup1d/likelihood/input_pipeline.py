@@ -4,6 +4,14 @@ from cup1d.utils.utils import create_print_function, mpi_hello_world
 
 
 def parse_args():
+    """
+    Parse input arguments
+
+    Returns
+    -------
+    args : Namespace
+        Namespace of input arguments
+    """
     parser = configargparse.ArgumentParser(
         description="Passing options to sampler"
     )
@@ -228,6 +236,10 @@ def parse_args():
 
 
 class Args:
+    """
+    Class to store input arguments
+    """
+
     def __init__(
         self,
         archive=None,
