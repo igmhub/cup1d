@@ -1,12 +1,17 @@
 # mpiexec -n 4 python sam_sim.py --emulator_label Pedersen21 --data_label mpg_central --igm_label mpg_central --cosmo_label mpg_central --n_igm 2  --cov_label Chabanier2019 --verbose --parallel
 
 import os
-from cup1d.likelihood.input_pipeline import parse_args
+from cup1d.likelihood.input_pipeline import parse_args, SamplerPipeline
 
 
 def sam_sim(args):
-    """Sample the posterior distribution for a of a mock"""
-    from cup1d.likelihood.sampler_pipeline import SamplerPipeline
+    """Sample the posterior distribution for a of a mock
+
+    Parameters
+    ----------
+    args : Namespace
+        Command line arguments. See cup1d.likelihood.input_pipeline.parse_args()
+    """
 
     pip = SamplerPipeline(args)
     pip.run_sampler()

@@ -21,6 +21,331 @@ from cup1d.p1ds import (
 from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
 
 
+def set_archive(training_set):
+    """Set archive
+
+    Parameters
+    ----------
+    training_set : str
+
+    Returns
+    -------
+    archive : object
+
+    """
+    if training_set[:3] == "Nyx":
+        archive = nyx_archive.NyxArchive(nyx_version=training_set[6:])
+    else:
+        archive = gadget_archive.GadgetArchive(postproc=training_set)
+    return archive
+
+
+def set_P1D(
+    archive,
+    emulator,
+    data_label,
+    cosmo_fid,
+    cov_label=None,
+    apply_smoothing=None,
+    z_min=0,
+    z_max=10,
+    add_noise=False,
+    seed_noise=0,
+    fprint=print,
+):
+    """Set P1D data
+
+    Parameters
+    ----------
+    archive : object
+        Archive object containing P1D data
+    data_label : str
+        Label of simulation/dataset used to generate mock data
+    cov_label : str, optional
+        Label of covariance matrix
+    apply_smoothing : bool or None
+        If True, apply smoothing to P1D. If None, do what is best for the input emulator
+    z_min : float
+        Minimum redshift of P1D measurements
+    z_max : float
+        Maximum redshift of P1D measurements
+
+    Returns
+    -------
+    data : object
+        P1D data
+    true_sim_igm : str
+        Label of simulation/dataset used to generate mock data
+    """
+
+    if (data_label[:3] == "mpg") | (data_label[:3] == "nyx"):
+        true_sim_igm = data_label
+        # check if we need to load another archive
+        if data_label in archive.list_sim:
+            archive_mock = archive
+        else:
+            if data_label[:3] == "mpg":
+                archive_mock = set_archive(training_set="Cabayol23")
+            elif data_label[:3] == "nyx":
+                archive_mock = set_archive(training_set="Nyx24_Feb2024")
+
+        if data_label not in archive_mock.list_sim:
+            raise ValueError(
+                data_label + " not available in archive ",
+                archive_mock.list_sim,
+            )
+        ###################
+
+        # set noise free P1Ds in Mpc
+        p1d_ideal = archive_mock.get_testing_data(data_label)
+        if len(p1d_ideal) == 0:
+            raise ValueError("Could not set P1D data for", data_label)
+        else:
+            archive_mock = None
+        ###################
+
+        # set P1Ds in kms
+        if data_label[:3] == "mpg":
+            set_p1d_from_mock = data_gadget.Gadget_P1D
+        elif data_label[:3] == "nyx":
+            set_p1d_from_mock = data_nyx.Nyx_P1D
+
+        data = set_p1d_from_mock(
+            z_min=z_min,
+            z_max=z_max,
+            testing_data=p1d_ideal,
+            input_sim=data_label,
+            data_cov_label=cov_label,
+            emulator=emulator,
+            apply_smoothing=apply_smoothing,
+            add_noise=add_noise,
+            seed=seed_noise,
+        )
+
+    elif data_label == "eBOSS_mock":
+        # need to be tested
+        true_sim_igm = None
+        data = data_eBOSS_mock.P1D_eBOSS_mock(
+            z_min=z_min,
+            z_max=z_max,
+            emulator=emulator,
+            apply_smoothing=apply_smoothing,
+            add_noise=add_noise,
+            seed=seed_noise,
+        )
+    elif data_label == "Chabanier19":
+        true_sim_igm = None
+        data = data_Chabanier2019.P1D_Chabanier2019(z_min=z_min, z_max=z_max)
+        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
+        kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
+        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
+        kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
+        data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
+    elif data_label == "Ravoux23":
+        true_sim_igm = None
+        data = data_Ravoux2023.P1D_Ravoux23(z_min=z_min, z_max=z_max)
+        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
+        kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
+        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
+        kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
+        data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
+    elif data_label == "Karacayli23":
+        true_sim_igm = None
+        data = data_Karacayli2023.P1D_Karacayli2023(z_min=z_min, z_max=z_max)
+        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
+        kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
+        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
+        kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
+        data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
+    else:
+        raise ValueError(f"data_label {data_label} not implemented")
+
+    return data, true_sim_igm
+
+
+def set_P1D_hires(
+    archive,
+    emulator,
+    cosmo_fid,
+    data_label_hires,
+    extra_cov_label,
+    apply_smoothing=None,
+    z_min=0,
+    z_max=10,
+    add_noise=False,
+    seed_noise=0,
+    fprint=print,
+):
+    """Set P1D data
+
+    Parameters
+    ----------
+    archive : object
+        Archive object containing P1D data
+    data_label : str
+        Label of simulation/dataset used to generate mock data
+    cov_label : str
+        Label of covariance matrix
+    apply_smoothing : bool or None
+        If True, apply smoothing to P1D. If None, do what is best for the input emulator
+    z_min : float
+        Minimum redshift of P1D measurements
+    z_max : float
+        Maximum redshift of P1D measurements
+
+    Returns
+    -------
+    data : object
+        P1D data
+    true_sim_igm : str
+        Label of simulation/dataset used to generate mock data
+    """
+
+    if (data_label[:3] == "mpg") | (data_label[:3] == "nyx"):
+        # check if we need to load another archive
+        if data_label in archive.list_sim:
+            archive_mock = archive
+        else:
+            if data_label[:3] == "mpg":
+                archive_mock = set_archive(training_set="Cabayol23")
+            elif data_label[:3] == "nyx":
+                archive_mock = set_archive(training_set="Nyx24_Feb2024")
+
+        if data_label not in archive_mock.list_sim:
+            raise ValueError(
+                data_label + " not available in archive ",
+                archive_mock.list_sim,
+            )
+        ###################
+
+        # set noise free P1Ds in Mpc
+        p1d_ideal = archive_mock.get_testing_data(
+            data_label, z_min=z_min, z_max=z_max
+        )
+        if len(p1d_ideal) == 0:
+            raise ValueError("Could not set P1D data for", data_label)
+        else:
+            archive_mock = None
+        ###################
+
+        # set P1Ds in kms
+        if data_label[:3] == "mpg":
+            set_p1d_from_mock = data_gadget.Gadget_P1D
+        elif data_label[:3] == "nyx":
+            set_p1d_from_mock = data_nyx.Nyx_P1D
+
+        data_hires = set_p1d_from_mock(
+            z_min=z_min,
+            z_max=z_max,
+            testing_data=p1d_ideal,
+            input_sim=data_label_hires,
+            data_cov_label=extra_cov_label,
+            emulator=emulator,
+            apply_smoothing=apply_smoothing,
+            add_noise=add_noise,
+            seed=seed_noise,
+            fprint=fprint,
+        )
+
+    elif data_label_hires == "Karacayli22":
+        data_hires = data_Karacayli2022.P1D_Karacayli2022(
+            z_min=z_min,
+            z_max=z_max,
+            emulator=emulator,
+            apply_smoothing=apply_smoothing,
+        )
+    else:
+        raise ValueError(f"data_label_hires {data_label_hires} not implemented")
+
+    return data_hires
+
+
+def set_fid_cosmo(cosmo_label="mpg_central"):
+    """Set fiducial cosmology
+
+    Parameters
+    ----------
+    cosmo_label : str
+
+    Returns
+    -------
+    cosmo_fid : object
+    """
+    if (cosmo_label[:3] == "mpg") | (cosmo_label[:3] == "nyx"):
+        if cosmo_label[:3] == "mpg":
+            repo = os.path.dirname(lace.__path__[0]) + "/"
+            fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
+            get_cosmo = camb_cosmo.get_cosmology_from_dictionary
+        elif cosmo_label[:3] == "nyx":
+            fname = os.environ["NYX_PATH"] + "nyx_emu_cosmo_Oct2023.npy"
+            get_cosmo = camb_cosmo.get_Nyx_cosmology
+
+        try:
+            data_cosmo = np.load(fname, allow_pickle=True)
+        except:
+            ValueError(f"{fname} not found")
+
+        cosmo_fid = None
+        for ii in range(len(data_cosmo)):
+            if data_cosmo[ii]["sim_label"] == cosmo_label:
+                cosmo_fid = get_cosmo(data_cosmo[ii]["cosmo_params"])
+                break
+        if cosmo_fid is None:
+            raise ValueError(f"Cosmo not found in {fname} for {cosmo_label}")
+    else:
+        raise ValueError(f"cosmo_label {cosmo_label} not implemented")
+    return cosmo_fid
+
+
+def set_like(
+    emulator,
+    data,
+    data_hires,
+    true_sim_igm,
+    igm_label,
+    n_igm,
+    cosmo_fid,
+    fix_cosmo=False,
+    fprint=print,
+    prior_Gauss_rms=None,
+    emu_cov_factor=0,
+):
+    ## set cosmo and IGM parameters
+    if fix_cosmo:
+        free_parameters = []
+    else:
+        free_parameters = ["As", "ns"]
+
+    fprint(f"Using {n_igm} parameters for IGM model")
+    for ii in range(n_igm):
+        for par in ["tau", "sigT_kms", "gamma", "kF"]:
+            free_parameters.append(f"ln_{par}_{ii}")
+
+    fprint("free parameters", free_parameters)
+
+    ## set theory
+    theory = lya_theory.Theory(
+        zs=data.z,
+        emulator=emulator,
+        free_param_names=free_parameters,
+        fid_sim_igm=igm_label,
+        true_sim_igm=true_sim_igm,
+        cosmo_fid=cosmo_fid,
+    )
+
+    ## set like
+    like = likelihood.Likelihood(
+        data=data,
+        theory=theory,
+        free_param_names=free_parameters,
+        prior_Gauss_rms=prior_Gauss_rms,
+        emu_cov_factor=emu_cov_factor,
+        extra_p1d_data=data_hires,
+    )
+
+    return like
+
+
 def path_sampler(
     emulator_label,
     data_label,
@@ -122,7 +447,7 @@ class SamplerPipeline(object):
             fprint("Setting training set " + args.training_set)
             if args.archive is None:
                 # when calling the script from the command line
-                archive = self.set_archive(args.training_set)
+                archive = set_archive(args.training_set)
             else:
                 archive = args.archive
             end = time.time()
@@ -162,19 +487,19 @@ class SamplerPipeline(object):
 
         #######################
 
-        # set fiducial cosmology
+        ## set fiducial cosmology
         cosmo_fid = self.set_fid_cosmo(cosmo_label=args.cosmo_label)
 
         #######################
 
-        # set P1D
+        ## set P1D
         if rank == 0:
             fprint("----------")
             fprint("Setting P1D")
             start = time.time()
 
             data = {"P1Ds": None, "extra_P1Ds": None}
-            data["P1Ds"], true_sim_igm = self.set_P1D(
+            data["P1Ds"], true_sim_igm = set_P1D(
                 archive,
                 emulator,
                 args.data_label,
@@ -192,7 +517,7 @@ class SamplerPipeline(object):
                 data["P1Ds"].z,
             )
             if args.add_hires:
-                data["extra_P1Ds"] = self.set_P1D_hires(
+                data["extra_P1Ds"] = set_P1D_hires(
                     archive,
                     emulator,
                     args.data_label_hires,
@@ -228,7 +553,7 @@ class SamplerPipeline(object):
         fprint("----------")
         fprint("Setting likelihood")
 
-        like = self.set_like(
+        like = set_like(
             emulator,
             data["P1Ds"],
             data["extra_P1Ds"],
@@ -289,13 +614,6 @@ class SamplerPipeline(object):
             multi_time = str(np.round(time.time() - start_all, 2))
             fprint("Setting the sampler took " + multi_time + " s \n\n")
 
-    def set_archive(self, training_set):
-        if training_set[:3] == "Nyx":
-            archive = nyx_archive.NyxArchive(nyx_version=training_set[6:])
-        else:
-            archive = gadget_archive.GadgetArchive(postproc=training_set)
-        return archive
-
     def set_emcee_options(
         self,
         data_label,
@@ -333,295 +651,6 @@ class SamplerPipeline(object):
                         self.n_burn_in = 1200
                     else:
                         self.n_burn_in = 500
-
-    def set_P1D(
-        self,
-        archive,
-        emulator,
-        data_label,
-        cosmo_fid,
-        cov_label=None,
-        apply_smoothing=None,
-        z_min=0,
-        z_max=10,
-        add_noise=False,
-        seed_noise=0,
-        fprint=print,
-    ):
-        """Set P1D data
-
-        Parameters
-        ----------
-        archive : object
-            Archive object containing P1D data
-        data_label : str
-            Label of simulation/dataset used to generate mock data
-        cov_label : str, optional
-            Label of covariance matrix
-        apply_smoothing : bool or None
-            If True, apply smoothing to P1D. If None, do what is best for the input emulator
-        z_min : float
-            Minimum redshift of P1D measurements
-        z_max : float
-            Maximum redshift of P1D measurements
-        """
-
-        if (data_label[:3] == "mpg") | (data_label[:3] == "nyx"):
-            true_sim_igm = data_label
-            # check if we need to load another archive
-            if data_label in archive.list_sim:
-                archive_mock = archive
-            else:
-                if data_label[:3] == "mpg":
-                    archive_mock = set_archive(training_set="Cabayol23")
-                elif data_label[:3] == "nyx":
-                    archive_mock = set_archive(training_set="Nyx24_Feb2024")
-
-            if data_label not in archive_mock.list_sim:
-                raise ValueError(
-                    data_label + " not available in archive ",
-                    archive_mock.list_sim,
-                )
-            ###################
-
-            # set noise free P1Ds in Mpc
-            p1d_ideal = archive_mock.get_testing_data(data_label)
-            if len(p1d_ideal) == 0:
-                raise ValueError("Could not set P1D data for", data_label)
-            else:
-                archive_mock = None
-            ###################
-
-            # set P1Ds in kms
-            if data_label[:3] == "mpg":
-                set_p1d_from_mock = data_gadget.Gadget_P1D
-            elif data_label[:3] == "nyx":
-                set_p1d_from_mock = data_nyx.Nyx_P1D
-
-            data = set_p1d_from_mock(
-                z_min=z_min,
-                z_max=z_max,
-                testing_data=p1d_ideal,
-                input_sim=data_label,
-                data_cov_label=cov_label,
-                emulator=emulator,
-                apply_smoothing=apply_smoothing,
-                add_noise=add_noise,
-                seed=seed_noise,
-            )
-
-        elif data_label == "eBOSS_mock":
-            # need to be tested
-            true_sim_igm = None
-            data = data_eBOSS_mock.P1D_eBOSS_mock(
-                z_min=z_min,
-                z_max=z_max,
-                emulator=emulator,
-                apply_smoothing=apply_smoothing,
-                add_noise=add_noise,
-                seed=seed_noise,
-            )
-        elif data_label == "Chabanier19":
-            true_sim_igm = None
-            data = data_Chabanier2019.P1D_Chabanier2019(
-                z_min=z_min, z_max=z_max
-            )
-            dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
-            kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
-            dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
-            kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
-            data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
-        elif data_label == "Ravoux23":
-            true_sim_igm = None
-            data = data_Ravoux2023.P1D_Ravoux23(z_min=z_min, z_max=z_max)
-            dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
-            kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
-            dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
-            kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
-            data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
-        elif data_label == "Karacayli23":
-            true_sim_igm = None
-            data = data_Karacayli2023.P1D_Karacayli2023(
-                z_min=z_min, z_max=z_max
-            )
-            dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
-            kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
-            dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
-            kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
-            data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
-        else:
-            raise ValueError(f"data_label {data_label} not implemented")
-
-        return data, true_sim_igm
-
-    def set_P1D_hires(
-        self,
-        archive,
-        emulator,
-        cosmo_fid,
-        data_label_hires,
-        extra_cov_label,
-        apply_smoothing=None,
-        z_min=0,
-        z_max=10,
-        add_noise=False,
-        seed_noise=0,
-        fprint=print,
-    ):
-        """Set P1D data
-
-        Parameters
-        ----------
-        archive : object
-            Archive object containing P1D data
-        data_label : str
-            Label of simulation/dataset used to generate mock data
-        cov_label : str
-            Label of covariance matrix
-        apply_smoothing : bool or None
-            If True, apply smoothing to P1D. If None, do what is best for the input emulator
-        z_min : float
-            Minimum redshift of P1D measurements
-        z_max : float
-            Maximum redshift of P1D measurements
-        """
-
-        if (data_label[:3] == "mpg") | (data_label[:3] == "nyx"):
-            # check if we need to load another archive
-            if data_label in archive.list_sim:
-                archive_mock = archive
-            else:
-                if data_label[:3] == "mpg":
-                    archive_mock = set_archive(training_set="Cabayol23")
-                elif data_label[:3] == "nyx":
-                    archive_mock = set_archive(training_set="Nyx24_Feb2024")
-
-            if data_label not in archive_mock.list_sim:
-                raise ValueError(
-                    data_label + " not available in archive ",
-                    archive_mock.list_sim,
-                )
-            ###################
-
-            # set noise free P1Ds in Mpc
-            p1d_ideal = archive_mock.get_testing_data(
-                data_label, z_min=z_min, z_max=z_max
-            )
-            if len(p1d_ideal) == 0:
-                raise ValueError("Could not set P1D data for", data_label)
-            else:
-                archive_mock = None
-            ###################
-
-            # set P1Ds in kms
-            if data_label[:3] == "mpg":
-                set_p1d_from_mock = data_gadget.Gadget_P1D
-            elif data_label[:3] == "nyx":
-                set_p1d_from_mock = data_nyx.Nyx_P1D
-
-            data_hires = set_p1d_from_mock(
-                z_min=z_min,
-                z_max=z_max,
-                testing_data=p1d_ideal,
-                input_sim=data_label_hires,
-                data_cov_label=extra_cov_label,
-                emulator=emulator,
-                apply_smoothing=apply_smoothing,
-                add_noise=add_noise,
-                seed=seed_noise,
-                fprint=fprint,
-            )
-
-        elif data_label_hires == "Karacayli22":
-            data_hires = data_Karacayli2022.P1D_Karacayli2022(
-                z_min=z_min,
-                z_max=z_max,
-                emulator=emulator,
-                apply_smoothing=apply_smoothing,
-            )
-        else:
-            raise ValueError(
-                f"data_label_hires {data_label_hires} not implemented"
-            )
-
-        return data_hires
-
-    def set_fid_cosmo(self, cosmo_label="mpg_central"):
-        if (cosmo_label[:3] == "mpg") | (cosmo_label[:3] == "nyx"):
-            if cosmo_label[:3] == "mpg":
-                repo = os.path.dirname(lace.__path__[0]) + "/"
-                fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
-                get_cosmo = camb_cosmo.get_cosmology_from_dictionary
-            elif cosmo_label[:3] == "nyx":
-                fname = os.environ["NYX_PATH"] + "nyx_emu_cosmo_Oct2023.npy"
-                get_cosmo = camb_cosmo.get_Nyx_cosmology
-
-            try:
-                data_cosmo = np.load(fname, allow_pickle=True)
-            except:
-                ValueError(f"{fname} not found")
-
-            cosmo_fid = None
-            for ii in range(len(data_cosmo)):
-                if data_cosmo[ii]["sim_label"] == cosmo_label:
-                    cosmo_fid = get_cosmo(data_cosmo[ii]["cosmo_params"])
-                    break
-            if cosmo_fid is None:
-                raise ValueError(
-                    f"Cosmo not found in {fname} for {cosmo_label}"
-                )
-        else:
-            raise ValueError(f"cosmo_label {cosmo_label} not implemented")
-        return cosmo_fid
-
-    def set_like(
-        self,
-        emulator,
-        data,
-        data_hires,
-        true_sim_igm,
-        igm_label,
-        n_igm,
-        cosmo_fid,
-        fix_cosmo=False,
-        fprint=print,
-        prior_Gauss_rms=None,
-        emu_cov_factor=0,
-    ):
-        ## set cosmo and IGM parameters
-        if fix_cosmo:
-            free_parameters = []
-        else:
-            free_parameters = ["As", "ns"]
-
-        fprint(f"Using {n_igm} parameters for IGM model")
-        for ii in range(n_igm):
-            for par in ["tau", "sigT_kms", "gamma", "kF"]:
-                free_parameters.append(f"ln_{par}_{ii}")
-
-        fprint("free parameters", free_parameters)
-
-        ## set theory
-        theory = lya_theory.Theory(
-            zs=data.z,
-            emulator=emulator,
-            free_param_names=free_parameters,
-            fid_sim_igm=igm_label,
-            true_sim_igm=true_sim_igm,
-            cosmo_fid=cosmo_fid,
-        )
-
-        ## set like
-        like = likelihood.Likelihood(
-            data=data,
-            theory=theory,
-            free_param_names=free_parameters,
-            prior_Gauss_rms=prior_Gauss_rms,
-            emu_cov_factor=emu_cov_factor,
-            extra_p1d_data=data_hires,
-        )
-
-        return like
 
     def set_sampler(self, like, fix_cosmo=False, parallel=True):
         """Sample the posterior distribution"""

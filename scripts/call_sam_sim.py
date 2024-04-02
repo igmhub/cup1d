@@ -63,6 +63,7 @@ def main():
         "nyx_17",
         "nyx_seed",
         "nyx_wdm",
+        # "mpg_5",
     ]
 
     #############################################################################
@@ -89,7 +90,7 @@ def main():
     # None for whatever is best for emulator
     do_apply_smoothing = None
     arr_drop_sim = [True]
-    arr_n_igm = [2]
+    arr_n_igm = [0]
     # add noise to mock data (False for no noise, any int for noise seed)
     # for l1O
     arr_add_noise = [False]

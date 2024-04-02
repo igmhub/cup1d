@@ -14,7 +14,7 @@ If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es
 - Create a new conda environment. It is usually better to follow python version one or two behind. In January 2024, the latest is 3.12, so we recommend 3.11.
 
 ```
-conda create -n cup1d python=3.11 camb mpich mpi4py
+conda create -n cup1d -c conda-forge python=3.11 camb mpich mpi4py fdasrsf pip=24.0
 conda activate cup1d
 ```
 - Install cup1d:
@@ -29,19 +29,19 @@ cd cup1d
 pip install -e .[jupyter]
 ``` 
 
+- You also need to install the LaCE emulator. Follow the instructions in https://github.com/igmhub/LaCE
+
 ### Notebooks / tutorials
 
-You can start by plotting the many P1D measurements stored in the repo, by looking at `notebooks/p1d_measurements`
+You can run the notebooks in `notebooks`. You can find the main tutorial to run your own analysis in `notebooks/tutorials/sample_sim.ipynb`
+
+You can also plot many P1D measurements stored in the repo, by looking at `notebooks/p1d_measurements`
 
 You can also redo old neutrino mass constraints by importance sampling WMAP and Planck chains, following `notebooks/planck`
 
 You can also play with the LaCE emulator with the notebooks in `notebooks/emulator`
 
-Finally, you can run your own analysis on mock data following the notebooks in `notebooks/likelihood`
-
 
 ### Forecasting script
 
-You can run the script under scripts/forecast.py to forecast the constraints on linear power parameters for a given P1D covariance.
-
-It marginalizes over 8 nuisance parameters, so it might take a while to run!
+You can use the script scripts/sam_sim.py to run you own analyses. It is fully parallelized using MPI.
