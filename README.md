@@ -14,7 +14,7 @@ If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es
 - Create a new conda environment. It is usually better to follow python version one or two behind. In January 2024, the latest is 3.12, so we recommend 3.11.
 
 ```
-conda create -n cup1d python=3.11 camb mpich mpi4py
+conda create -n cup1d -c conda-forge python=3.11 camb mpich mpi4py fdasrsf pip=24.0
 conda activate cup1d
 ```
 - Install cup1d:
@@ -28,6 +28,8 @@ git clone https://github.com/igmhub/cup1d.git
 cd cup1d
 pip install -e .[jupyter]
 ``` 
+
+- You also need to install the LaCE emulator. Follow the instructions in https://github.com/igmhub/LaCE
 
 ### Notebooks / tutorials
 
