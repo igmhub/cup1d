@@ -488,7 +488,7 @@ class SamplerPipeline(object):
         #######################
 
         ## set fiducial cosmology
-        cosmo_fid = self.set_fid_cosmo(cosmo_label=args.cosmo_label)
+        cosmo_fid = set_fid_cosmo(cosmo_label=args.cosmo_label)
 
         #######################
 

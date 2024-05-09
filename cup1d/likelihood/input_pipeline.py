@@ -27,9 +27,9 @@ def parse_args():
             "Pedersen23_ext",
             "CH24",
             "Cabayol23",
-            "Cabayol23+",
+            "Cabayol23+",  # best for mpg
             "Cabayol23_extended",
-            "Nyx_v0",
+            "Nyx_v0",  # best for nyx
             "Nyx_v0_extended",
         ],
         required=True,
