@@ -22,15 +22,19 @@ def parse_args():
         default=None,
         choices=[
             "Pedersen21",
-            "Pedersen23",
             "Pedersen21_ext",
+            "Pedersen21_ext8",
+            "Pedersen23",
             "Pedersen23_ext",
+            "Pedersen23_ext8",
             "CH24",
             "Cabayol23",
-            "Cabayol23+",  # best for mpg
             "Cabayol23_extended",
-            "Nyx_v0",  # best for nyx
-            "Nyx_v0_extended",
+            "Cabayol23+",  # recommended for mpg
+            "Cabayol23+_extended",  # recommended for mpg small scales
+            "Nyx_v0",
+            # "Nyx_v0_extended",
+            "Nyx_alphap",  # recommended for nyx
         ],
         required=True,
         help="Type of emulator to be used",
@@ -197,27 +201,35 @@ def parse_args():
     args.archive = None
     dict_training_set = {
         "Pedersen21": "Pedersen21",
-        "Pedersen23": "Pedersen21",
         "Pedersen21_ext": "Cabayol23",
+        "Pedersen21_ext8": "Cabayol23",
+        "Pedersen23": "Pedersen21",
         "Pedersen23_ext": "Cabayol23",
+        "Pedersen23_ext8": "Cabayol23",
         "CH24": "Cabayol23",
         "Cabayol23": "Cabayol23",
-        "Cabayol23+": "Cabayol23",
         "Cabayol23_extended": "Cabayol23",
+        "Cabayol23+": "Cabayol23",
+        "Cabayol23+_extended": "Cabayol23",
         "Nyx_v0": "Nyx23_Oct2023",
-        "Nyx_v0_extended": "Nyx23_Oct2023",
+        # "Nyx_v0_extended": "Nyx23_Oct2023",
+        "Nyx_alphap": "Nyx23_Oct2023",
     }
     dict_apply_smoothing = {
         "Pedersen21": False,
-        "Pedersen23": True,
         "Pedersen21_ext": False,
+        "Pedersen21_ext8": False,
+        "Pedersen23": True,
         "Pedersen23_ext": True,
+        "Pedersen23_ext8": True,
         "CH24": True,
         "Cabayol23": True,
-        "Cabayol23+": True,
         "Cabayol23_extended": True,
+        "Cabayol23+": True,
+        "Cabayol23+_extended": True,
         "Nyx_v0": True,
-        "Nyx_v0_extended": True,
+        # "Nyx_v0_extended": True,
+        "Nyx_alphap": True,
     }
 
     args.training_set = dict_training_set[args.emulator_label]
@@ -323,15 +335,19 @@ class Args:
     def check_emulator_label(self):
         avail_emulator_label = [
             "Pedersen21",
-            "Pedersen23",
             "Pedersen21_ext",
+            "Pedersen21_ext8",
+            "Pedersen23",
             "Pedersen23_ext",
+            "Pedersen23_ext8",
             "CH24",
             "Cabayol23",
-            "Cabayol23+",
             "Cabayol23_extended",
+            "Cabayol23+",
+            "Cabayol23+_extended",
             "Nyx_v0",
-            "Nyx_v0_extended",
+            # "Nyx_v0_extended",
+            "Nyx_alphap",
         ]
         if self.emulator_label not in avail_emulator_label:
             raise ValueError(
