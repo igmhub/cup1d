@@ -14,12 +14,15 @@ If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es
 - Create a new conda environment. It is usually better to follow python version one or two behind. In January 2024, the latest is 3.12, so we recommend 3.11.
 
 ```
-conda create -n cup1d -c conda-forge python=3.11 camb mpich mpi4py fdasrsf pip=24.0
+conda create -n cup1d -c conda-forge python=3.11
 conda activate cup1d
 ```
-- Install cup1d:
 
-```Follow the instructions from https://github.com/igmhub/cup1d```
+- You need to compile ``mpi4py`` package on NERSC (see [here](https://docs.nersc.gov/development/languages/python/parallel-python/#mpi4py-in-your-custom-conda-environment)).
+
+```
+MPICC="cc -shared" pip install --force-reinstall --no-cache-dir --no-binary=mpi4py mpi4py
+```
 
 - Clone the cup1d repo and perform an *editable* installation:
 
@@ -28,6 +31,7 @@ git clone https://github.com/igmhub/cup1d.git
 cd cup1d
 pip install -e .[jupyter]
 ``` 
+This will also install Jupyter.
 
 - You also need to install the LaCE emulator. Follow the instructions in https://github.com/igmhub/LaCE
 
