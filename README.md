@@ -26,10 +26,24 @@ conda activate cup1d
 ```
 git clone https://github.com/igmhub/cup1d.git
 cd cup1d
-pip install -e .[jupyter]
+pip install -e
 ``` 
 
-- You also need to install the LaCE emulator. Follow the instructions in https://github.com/igmhub/LaCE
+- You also need to install the LaCE emulator. The instructions are in https://github.com/igmhub/LaCE, but repeat these below to avoid misunderstandings
+
+```
+git clone https://github.com/igmhub/LaCE.git
+cd LacE
+pip install -e .[explicit]
+pip install -e .[gpy]
+``` 
+
+- If you want to use notebooks via JupyterHub, you'll also need to download `ipykernel`:
+
+```
+pip install ipykernel
+python -m ipykernel install --user --name cup1d --display-name cup1d
+```
 
 ### Notebooks / tutorials
 
