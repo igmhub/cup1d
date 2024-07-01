@@ -45,6 +45,22 @@ pip install ipykernel
 python -m ipykernel install --user --name cup1d --display-name cup1d
 ```
 
+#### Nyx users:
+
+- You may need to add the Nyx path as an enviroment variable in your notebook kernel. The first is done writting in the kernel.json file:
+
+```
+ "env": {
+  "NYX_PATH":"path_to_Nyx"
+ }
+```
+
+For convenience, you could also add the Nyx path as an environment variable. The Nyx data is located at NERSC in 
+
+```
+NYX_PATH="/global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/"
+```
+
 ### Notebooks / tutorials
 
 You can run the notebooks in `notebooks`. You can find the main tutorial to run your own analysis in `notebooks/tutorials/sample_sim.ipynb`
