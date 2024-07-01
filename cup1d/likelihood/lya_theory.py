@@ -88,8 +88,12 @@ class Theory(object):
             cosmo_fid = camb_cosmo.get_cosmology()
 
         # setup CAMB object for the fiducial cosmology and precompute some things
+        if self.z_star not in self.zs:
+            _zs = np.append(self.zs, self.z_star)
+        else:
+            _zs = self.zs
         self.cosmo_model_fid = CAMB_model.CAMBModel(
-            zs=np.append(self.zs, self.z_star),
+            zs=_zs,
             cosmo=cosmo_fid,
             z_star=self.z_star,
             kp_kms=self.kp_kms,
@@ -576,10 +580,16 @@ class Theory(object):
                     covars.append(cov_Mpc[iz] * M_of_z[iz] ** 2)
 
         # include multiplicate metal contamination
+        if "mF" in emu_calls[0]:
+            ind = "mF"
+        else:
+            ind = np.argwhere((np.array(self.emulator.emu_params) == "mF"))[
+                0, 0
+            ]
         for X_model_fid in self.metal_models:
             X_model = X_model_fid.get_new_model(like_params)
             for iz, z in enumerate(self.zs):
-                mF = emu_calls[iz]["mF"]
+                mF = emu_calls[iz][ind]
                 cont = X_model.get_contamination(z=z, k_kms=k_kms, mF=mF)
                 p1d_kms[iz] *= cont
 
