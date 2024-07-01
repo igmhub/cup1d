@@ -383,7 +383,7 @@ class Theory(object):
             print(emu_params)
 
         # setup IGM models using list of likelihood parameters
-        igm_models = self.get_igm_models(like_params)
+        igm_models = self.update_igm_models(like_params)
         F_model = igm_models["F_model"]
         T_model = igm_models["T_model"]
         P_model = igm_models["P_model"]
