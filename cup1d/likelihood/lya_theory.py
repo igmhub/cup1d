@@ -89,7 +89,10 @@ class Theory(object):
 
         # setup CAMB object for the fiducial cosmology and precompute some things
         self.cosmo_model_fid = CAMB_model.CAMBModel(
-            zs=self.zs, cosmo=cosmo_fid, z_star=self.z_star, kp_kms=self.kp_kms
+            zs=np.append(self.zs, self.z_star),
+            cosmo=cosmo_fid,
+            z_star=self.z_star,
+            kp_kms=self.kp_kms,
         )
         self.linP_Mpc_params_fid = self.cosmo_model_fid.get_linP_Mpc_params(
             kp_Mpc=self.emu_kp_Mpc

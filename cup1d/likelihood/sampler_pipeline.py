@@ -136,6 +136,7 @@ def set_P1D(
     elif data_label == "Chabanier19":
         true_sim_igm = None
         data = data_Chabanier2019.P1D_Chabanier2019(z_min=z_min, z_max=z_max)
+        print(data.z)
         dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
         kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
         dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
