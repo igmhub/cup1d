@@ -201,37 +201,37 @@ def set_P1D_hires(
         Label of simulation/dataset used to generate mock data
     """
 
-    if (data_label[:3] == "mpg") | (data_label[:3] == "nyx"):
+    if (data_label_hires[:3] == "mpg") | (data_label_hires[:3] == "nyx"):
         # check if we need to load another archive
-        if data_label in archive.list_sim:
+        if data_label_hires in archive.list_sim:
             archive_mock = archive
         else:
-            if data_label[:3] == "mpg":
+            if data_label_hires[:3] == "mpg":
                 archive_mock = set_archive(training_set="Cabayol23")
-            elif data_label[:3] == "nyx":
+            elif data_label_hires[:3] == "nyx":
                 archive_mock = set_archive(training_set="Nyx24_Feb2024")
 
-        if data_label not in archive_mock.list_sim:
+        if data_label_hires not in archive_mock.list_sim:
             raise ValueError(
-                data_label + " not available in archive ",
+                data_label_hires + " not available in archive ",
                 archive_mock.list_sim,
             )
         ###################
 
         # set noise free P1Ds in Mpc
         p1d_ideal = archive_mock.get_testing_data(
-            data_label, z_min=z_min, z_max=z_max
+            data_label_hires, z_min=z_min, z_max=z_max
         )
         if len(p1d_ideal) == 0:
-            raise ValueError("Could not set P1D data for", data_label)
+            raise ValueError("Could not set P1D data for", data_label_hires)
         else:
             archive_mock = None
         ###################
 
         # set P1Ds in kms
-        if data_label[:3] == "mpg":
+        if data_label_hires[:3] == "mpg":
             set_p1d_from_mock = data_gadget.Gadget_P1D
-        elif data_label[:3] == "nyx":
+        elif data_label_hires[:3] == "nyx":
             set_p1d_from_mock = data_nyx.Nyx_P1D
 
         data_hires = set_p1d_from_mock(
@@ -248,12 +248,15 @@ def set_P1D_hires(
         )
 
     elif data_label_hires == "Karacayli22":
+        true_sim_igm = None
         data_hires = data_Karacayli2022.P1D_Karacayli2022(
-            z_min=z_min,
-            z_max=z_max,
-            emulator=emulator,
-            apply_smoothing=apply_smoothing,
+            z_min=z_min, z_max=z_max
         )
+        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data_hires.z))
+        kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
+        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data_hires.z))
+        kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
+        data_hires.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
     else:
         raise ValueError(f"data_label_hires {data_label_hires} not implemented")
 
