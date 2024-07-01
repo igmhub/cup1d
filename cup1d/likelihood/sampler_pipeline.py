@@ -309,6 +309,7 @@ def set_like(
     n_igm,
     cosmo_fid,
     fix_cosmo=False,
+    add_metals=False,
     fprint=print,
     prior_Gauss_rms=None,
     emu_cov_factor=0,
@@ -323,6 +324,8 @@ def set_like(
     for ii in range(n_igm):
         for par in ["tau", "sigT_kms", "gamma", "kF"]:
             free_parameters.append(f"ln_{par}_{ii}")
+        if add_metals:
+            free_parameters.append(f"ln_SiIII_{ii}")
 
     fprint("free parameters", free_parameters)
 

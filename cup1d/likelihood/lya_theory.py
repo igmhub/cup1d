@@ -572,12 +572,11 @@ class Theory(object):
                 else:
                     covars.append(cov_Mpc[iz] * M_of_z[iz] ** 2)
 
-        ind = np.argwhere((np.array(self.emulator.emu_params) == "mF"))[0, 0]
         # include multiplicate metal contamination
         for X_model_fid in self.metal_models:
             X_model = X_model_fid.get_new_model(like_params)
             for iz, z in enumerate(self.zs):
-                mF = emu_calls[iz][ind]
+                mF = emu_calls[iz]["mF"]
                 cont = X_model.get_contamination(z=z, k_kms=k_kms, mF=mF)
                 p1d_kms[iz] *= cont
 

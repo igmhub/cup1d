@@ -131,6 +131,11 @@ def parse_args():
         action="store_true",
         help="Fix cosmological parameters while sampling",
     )
+    parser.add_argument(
+        "--add_metals",
+        action="store_true",
+        help="Add SiIII metal contamination",
+    )
 
     parser.add_argument(
         "--version",
@@ -262,6 +267,7 @@ class Args:
         z_max=4.5,
         igm_label="mpg_central",
         n_igm=2,
+        add_metals=False,
         cosmo_label="mpg_central",
         drop_sim=False,
         add_hires=False,
@@ -290,6 +296,7 @@ class Args:
         self.z_max = z_max
         self.igm_label = igm_label
         self.n_igm = n_igm
+        self.add_metals = add_metals
         self.cosmo_label = cosmo_label
         self.drop_sim = drop_sim
         self.add_hires = add_hires
@@ -321,6 +328,7 @@ class Args:
             "add_hires",
             "apply_smoothing",
             "add_noise",
+            "add_metals",
             "fix_cosmo",
             "cov_label",
             "cov_label_hires",
