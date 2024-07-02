@@ -165,7 +165,7 @@ def set_P1D(
             + "fiducial_lym1d_p1d_qmleformat_IC.txt"
         )
         data = data_QMLE_Ohio.P1D_QMLE_Ohio(
-            filename=folder + file, z_min=z_min, z_max=z_max
+            filename=file, z_min=z_min, z_max=z_max
         )
         dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
         kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
