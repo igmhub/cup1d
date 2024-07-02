@@ -17,6 +17,7 @@ from cup1d.p1ds import (
     data_Karacayli2022,
     data_Karacayli2023,
     data_Ravoux2023,
+    data_QMLE_Ohio,
 )
 from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
 
@@ -136,7 +137,6 @@ def set_P1D(
     elif data_label == "Chabanier19":
         true_sim_igm = None
         data = data_Chabanier2019.P1D_Chabanier2019(z_min=z_min, z_max=z_max)
-        print(data.z)
         dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
         kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
         dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
@@ -153,6 +153,18 @@ def set_P1D(
     elif data_label == "Karacayli23":
         true_sim_igm = None
         data = data_Karacayli2023.P1D_Karacayli2023(z_min=z_min, z_max=z_max)
+        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
+        kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
+        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
+        kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
+        data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
+    elif data_label == "challenge_v0":
+        true_sim_igm = None
+        folder = os.environ["NYX_PATH"] + "/challenge/MockChallenge-v0.1/"
+        file = "fiducial_lym1d_p1d_qmleformat_IC.txt"
+        data = data_QMLE_Ohio.P1D_QMLE_Ohio(
+            filename=folder + file, z_min=z_min, z_max=z_max
+        )
         dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
         kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
         dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))

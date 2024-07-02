@@ -650,7 +650,7 @@ class EmceeSampler(object):
             all_strings = self.paramstrings + blob_strings
         else:
             self.print(
-                "Unkown blob configuration, just returning sampled params"
+                "Unknown blob configuration, just returning sampled params"
             )
             all_params = chain
             all_strings = self.paramstrings
@@ -986,7 +986,7 @@ class EmceeSampler(object):
         elif isinstance(self.like.data, data_Chabanier2019.P1D_Chabanier2019):
             saveDict["data_type"] = "Chabanier2019"
         else:
-            raise ValueError("unknown data type")
+            saveDict["data_type"] = "other"
         saveDict["data_zmin"] = min(self.like.theory.zs)
         saveDict["data_zmax"] = max(self.like.theory.zs)
 
@@ -1163,12 +1163,18 @@ class EmceeSampler(object):
             delta_lnprob_cut=delta_lnprob_cut
         )
         if only_cosmo:
+            # if "$\\alpha_\\star$" in strings_plot:
+            #     yesplot = np.array(
+            #         ["$\\Delta^2_\\star$", "$n_\\star$", "$\\alpha_\\star$"]
+            #     )
+            # else:
             yesplot = np.array(["$\\Delta^2_\\star$", "$n_\\star$"])
         else:
-            if self.fix_cosmology:
-                yesplot = np.array(strings_plot)[:-6]
-            else:
-                yesplot = np.array(strings_plot)[:-4]
+            # if self.fix_cosmology:
+            #     yesplot = np.array(strings_plot)[:-6]
+            # else:
+            diff = np.max(params_plot, axis=0) - np.min(params_plot, axis=0)
+            yesplot = np.array(strings_plot)[diff != 0]
 
         dict_pd = {}
         for ii, par in enumerate(strings_plot):
@@ -1180,7 +1186,8 @@ class EmceeSampler(object):
         chain = Chain(samples=pd_data, name="a")
         c.add_chain(chain)
         summary = c.analysis.get_summary()["a"]
-        c.add_truth(Truth(location=self.truth, line_style="-", color="k"))
+        if self.truth is not None:
+            c.add_truth(Truth(location=self.truth, line_style="-", color="k"))
         c.add_truth(Truth(location=self.mle, line_style=":", color="C1"))
 
         fig = c.plotter.plot(figsize=(12, 12))

@@ -95,7 +95,6 @@ class Gadget_P1D(BaseMockP1D):
         else:
             raise ValueError("Unknown data_cov_label", self.data_cov_label)
 
-        k_kms = data.k_kms
         z_data = data.z
 
         # get redshifts in testing simulation
@@ -109,17 +108,20 @@ class Gadget_P1D(BaseMockP1D):
         if k_min_Mpc == 0:
             k_min_Mpc = self.testing_data[0]["k_Mpc"][1]
         k_min_kms = k_min_Mpc / dkms_dMpc_zmin
-        Ncull = np.sum(k_kms < k_min_kms)
-        k_kms = k_kms[Ncull:]
 
+        k_kms = []
         Pk_kms = []
         cov = []
         zs = []
         for iz in range(len(z_sim)):
             z = z_sim[iz]
 
+            Ncull = np.sum(data.k_kms[iz] < k_min_kms)
+            _k_kms = data.k_kms[iz][Ncull:]
+            k_kms.append(_k_kms)
+
             # convert Mpc to km/s
-            data_k_Mpc = k_kms * self.dkms_dMpc[iz]
+            data_k_Mpc = np.array(_k_kms) * self.dkms_dMpc[iz]
 
             # find testing data for this redshift
             sim_k_Mpc = self.testing_data[iz]["k_Mpc"].copy()
