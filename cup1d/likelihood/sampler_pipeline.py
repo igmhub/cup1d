@@ -160,8 +160,10 @@ def set_P1D(
         data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
     elif data_label == "challenge_v0":
         true_sim_igm = None
-        folder = os.environ["NYX_PATH"] + "/challenge/MockChallenge-v0.1/"
-        file = "fiducial_lym1d_p1d_qmleformat_IC.txt"
+        file = (
+            os.environ["CHALLENGE_PATH"]
+            + "fiducial_lym1d_p1d_qmleformat_IC.txt"
+        )
         data = data_QMLE_Ohio.P1D_QMLE_Ohio(
             filename=folder + file, z_min=z_min, z_max=z_max
         )
