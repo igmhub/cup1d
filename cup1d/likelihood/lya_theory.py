@@ -488,7 +488,7 @@ class Theory(object):
             X_model = X_model_fid.get_new_model(like_params)
             for iz, z in enumerate(self.zs):
                 mF = emu_calls[iz][ind]
-                cont = X_model.get_contamination(z=z, k_kms=k_kms, mF=mF)
+                cont = X_model.get_contamination(z=z, k_kms=k_kms[iz], mF=mF)
                 p1d_kms[iz] *= cont
 
         # decide what to return, and return it
