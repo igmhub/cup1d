@@ -548,7 +548,7 @@ class Likelihood(object):
                     k_kms[iz],
                     p1d_data * k_kms[iz] / np.pi,
                     color=col,
-                    yerr=p1d_err * k_kms / np.pi,
+                    yerr=p1d_err * k_kms[iz] / np.pi,
                     fmt="o",
                     ms="4",
                     label="z=" + str(np.round(z, 2)),
@@ -559,7 +559,7 @@ class Likelihood(object):
                     color=col,
                     linestyle="dashed",
                 )
-                if return_covar | rand_posterior is not None:
+                if return_covar | (rand_posterior is not None):
                     plt.fill_between(
                         k_emu_kms[iz],
                         (p1d_theory + err_theory) * k_emu_kms[iz] / np.pi,
