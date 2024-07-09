@@ -53,6 +53,7 @@ def set_P1D(
     add_noise=False,
     seed_noise=0,
     fprint=print,
+    cull_data=False,
 ):
     """Set P1D data
 
@@ -70,6 +71,8 @@ def set_P1D(
         Minimum redshift of P1D measurements
     z_max : float
         Maximum redshift of P1D measurements
+    cull_data : bool
+        If True, cull data outside of k range from emulator
 
     Returns
     -------
@@ -137,27 +140,12 @@ def set_P1D(
     elif data_label == "Chabanier19":
         true_sim_igm = None
         data = data_Chabanier2019.P1D_Chabanier2019(z_min=z_min, z_max=z_max)
-        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
-        kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
-        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
-        kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
-        data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
     elif data_label == "Ravoux23":
         true_sim_igm = None
         data = data_Ravoux2023.P1D_Ravoux23(z_min=z_min, z_max=z_max)
-        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
-        kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
-        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
-        kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
-        data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
     elif data_label == "Karacayli23":
         true_sim_igm = None
         data = data_Karacayli2023.P1D_Karacayli2023(z_min=z_min, z_max=z_max)
-        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
-        kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
-        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
-        kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
-        data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
     elif data_label == "challenge_v0":
         true_sim_igm = None
         file = (
@@ -167,13 +155,15 @@ def set_P1D(
         data = data_QMLE_Ohio.P1D_QMLE_Ohio(
             filename=file, z_min=z_min, z_max=z_max
         )
+    else:
+        raise ValueError(f"data_label {data_label} not implemented")
+
+    if cull_data:
         dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
         kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
         dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
         kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
         data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
-    else:
-        raise ValueError(f"data_label {data_label} not implemented")
 
     return data, true_sim_igm
 
@@ -190,6 +180,7 @@ def set_P1D_hires(
     add_noise=False,
     seed_noise=0,
     fprint=print,
+    cull_data=False,
 ):
     """Set P1D data
 
@@ -267,13 +258,15 @@ def set_P1D_hires(
         data_hires = data_Karacayli2022.P1D_Karacayli2022(
             z_min=z_min, z_max=z_max
         )
+    else:
+        raise ValueError(f"data_label_hires {data_label_hires} not implemented")
+
+    if cull_data:
         dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data_hires.z))
         kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
         dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data_hires.z))
         kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
         data_hires.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
-    else:
-        raise ValueError(f"data_label_hires {data_label_hires} not implemented")
 
     return data_hires
 
@@ -324,6 +317,7 @@ def set_like(
     n_igm,
     cosmo_fid,
     fix_cosmo=False,
+    vary_alphas=False,
     add_metals=False,
     fprint=print,
     prior_Gauss_rms=None,
@@ -333,7 +327,10 @@ def set_like(
     if fix_cosmo:
         free_parameters = []
     else:
-        free_parameters = ["As", "ns"]
+        if vary_alphas:
+            free_parameters = ["As", "ns", "nrun"]
+        else:
+            free_parameters = ["As", "ns"]
 
     fprint(f"Using {n_igm} parameters for IGM model")
     for ii in range(n_igm):
@@ -381,6 +378,7 @@ def path_sampler(
     add_noise=False,
     seed_noise=0,
     fix_cosmo=False,
+    vary_alphas=False,
 ):
     if drop_sim is not None:
         flag_drop = "_drop"
@@ -437,6 +435,8 @@ def path_sampler(
         path += "_noise_" + str(seed_noise)
     if fix_cosmo:
         path += "_fix_cosmo"
+    if vary_alphas:
+        path += "_vary_alphas"
     path += "/"
 
     if os.path.isdir(path) == False:
