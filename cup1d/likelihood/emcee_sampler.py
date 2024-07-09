@@ -1295,11 +1295,11 @@ class EmceeSampler(object):
         mask = np.random.permutation(chain.shape[0])[:nn]
         rand_sample = chain[mask]
 
-        z_igm = self.like.theory.fid_igm["z"]
         z = np.array(self.like.data.z)
 
         # true IGM parameters
         pars_true = {}
+        pars_true["z_igm"] = self.like.theory.fid_igm["z"]
         pars_true["tau_eff"] = self.like.theory.true_igm["tau_eff"]
         pars_true["gamma"] = self.like.theory.true_igm["gamma"]
         pars_true["sigT_kms"] = self.like.theory.true_igm["sigT_kms"]
@@ -1307,10 +1307,11 @@ class EmceeSampler(object):
 
         # fiducial IGM parameters
         pars_fid = {}
-        pars_fid["tau_eff"] = self.like.theory.fid_igm["tau_eff"]
-        pars_fid["gamma"] = self.like.theory.fid_igm["gamma"]
-        pars_fid["sigT_kms"] = self.like.theory.fid_igm["sigT_kms"]
-        pars_fid["kF_kms"] = self.like.theory.fid_igm["kF_kms"]
+        pars_fid["z_igm"] = self.like.theory.P_model_fid.fid_z
+        pars_fid["tau_eff"] = self.like.theory.F_model_fid.fid_tau_eff
+        pars_fid["gamma"] = self.like.theory.T_model_fid.fid_gamma
+        pars_fid["sigT_kms"] = self.like.theory.T_model_fid.fid_sigT_kms
+        pars_fid["kF_kms"] = self.like.theory.P_model_fid.fid_kF
 
         # best-fitting IGM parameters
         best_value = self.get_best_fit(stat_best_fit=stat_best_fit)
@@ -1355,7 +1356,7 @@ class EmceeSampler(object):
             if self.like.theory.true_sim_igm is not None:
                 _ = pars_true[arr_labs[ii]] != 0
                 ax[ii].plot(
-                    z_igm[_],
+                    pars_true["z_igm"][_],
                     pars_true[arr_labs[ii]][_],
                     "o:",
                     label="true",
@@ -1363,7 +1364,7 @@ class EmceeSampler(object):
                 )
             _ = pars_fid[arr_labs[ii]] != 0
             ax[ii].plot(
-                z_igm[_],
+                pars_fid["z_igm"][_],
                 pars_fid[arr_labs[ii]][_],
                 "s--",
                 label="fiducial",

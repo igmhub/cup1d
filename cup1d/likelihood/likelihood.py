@@ -452,7 +452,7 @@ class Likelihood(object):
         rand_posterior=None,
         show=False,
         sampling_p1d=100,
-        return_covar=False,  # temporary
+        return_covar=False,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""

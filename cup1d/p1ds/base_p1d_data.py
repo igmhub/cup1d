@@ -107,7 +107,7 @@ class BaseDataP1D(object):
                 k_kms,
                 fact * Pk_kms,
                 yerr=fact * err_Pk_kms,
-                label="z = {}".format(self.z[i]),
+                label="z = {}".format(np.round(self.z[i], 3)),
             )
 
         plt.legend()

@@ -95,8 +95,6 @@ class Gadget_P1D(BaseMockP1D):
         else:
             raise ValueError("Unknown data_cov_label", self.data_cov_label)
 
-        z_data = data.z
-
         # get redshifts in testing simulation
         z_sim = np.array([data["z"] for data in self.testing_data])
 
@@ -115,9 +113,10 @@ class Gadget_P1D(BaseMockP1D):
         zs = []
         for iz in range(len(z_sim)):
             z = z_sim[iz]
+            iz_data = np.argmin(abs(data.z - z))
 
-            Ncull = np.sum(data.k_kms[iz] < k_min_kms)
-            _k_kms = data.k_kms[iz][Ncull:]
+            Ncull = np.sum(data.k_kms[iz_data] < k_min_kms)
+            _k_kms = data.k_kms[iz_data][Ncull:]
             k_kms.append(_k_kms)
 
             # convert Mpc to km/s
@@ -140,7 +139,7 @@ class Gadget_P1D(BaseMockP1D):
             Pk_kms.append(sim_p1d_kms)
 
             # Now get covariance from the nearest z bin in data
-            cov_mat = data.get_cov_iz(np.argmin(abs(z_data - z)))
+            cov_mat = data.get_cov_iz(iz_data)
             # Cull low k cov data and multiply by input factor
             cov_mat = self.data_cov_factor * cov_mat[Ncull:, Ncull:]
             cov.append(cov_mat)

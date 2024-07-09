@@ -277,6 +277,7 @@ class Args:
         add_noise=False,
         seed_noise=0,
         fix_cosmo=False,
+        vary_alphas=False,
         version="v3",
         prior_Gauss_rms=None,
         emu_cov_factor=0,
@@ -306,6 +307,7 @@ class Args:
         self.add_noise = add_noise
         self.seed_noise = seed_noise
         self.fix_cosmo = fix_cosmo
+        self.vary_alphas = vary_alphas
         self.version = version
         self.prior_Gauss_rms = prior_Gauss_rms
         self.emu_cov_factor = emu_cov_factor
