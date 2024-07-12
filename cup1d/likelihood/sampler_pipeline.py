@@ -656,7 +656,7 @@ class SamplerPipeline(object):
                 if data_label == "Chabanier19":
                     self.n_steps = 2000
                 else:
-                    self.n_steps = 1000
+                    self.n_steps = 1250
 
         # set burn-in
         if test == True:
@@ -666,14 +666,14 @@ class SamplerPipeline(object):
                 self.n_burn_in = n_burn_in
             else:
                 if data_label == "Chabanier19":
-                    self.n_burn_in = 1000
+                    self.n_burn_in = 2000
                 else:
                     if cov_label == "Chabanier2019":
-                        self.n_burn_in = 1000
+                        self.n_burn_in = 1500
                     elif cov_label == "QMLE_Ohio":
-                        self.n_burn_in = 1200
+                        self.n_burn_in = 1500
                     else:
-                        self.n_burn_in = 1000
+                        self.n_burn_in = 1500
 
     def set_sampler(self, like, fix_cosmo=False, parallel=True):
         """Sample the posterior distribution"""
