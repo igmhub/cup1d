@@ -583,6 +583,7 @@ class SamplerPipeline(object):
             args.n_igm,
             cosmo_fid,
             fix_cosmo=args.fix_cosmo,
+            vary_alphas=args.vary_alphas,
             fprint=fprint,
             prior_Gauss_rms=args.prior_Gauss_rms,
             emu_cov_factor=args.emu_cov_factor,
@@ -618,6 +619,7 @@ class SamplerPipeline(object):
                 add_noise=args.add_noise,
                 seed_noise=args.seed_noise,
                 fix_cosmo=args.fix_cosmo,
+                vary_alphas=args.vary_alphas,
             )
 
             # distribute out_folder to all tasks

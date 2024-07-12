@@ -291,13 +291,10 @@ class EmceeSampler(object):
             for sample in sampler.sample(
                 p0, iterations=self.burnin_nsteps + self.nsteps
             ):
-                # Only check convergence every 100 steps
-                if ((sampler.iteration + self.burnin_nsteps) % 100 == 0) & (
-                    sampler.iteration > self.burnin_nsteps + 1
-                ):
+                if sampler.iteration % 100 == 0:
                     self.print(
                         "Step %d out of %d "
-                        % (sampler.iteration - self.burnin_nsteps, self.nsteps)
+                        % (sampler.iteration, self.nsteps + self.burnin_nsteps)
                     )
 
             print(f"Rank {self.rank} done", flush=True)
@@ -418,6 +415,7 @@ class EmceeSampler(object):
         res = scipy.optimize.minimize(
             log_func_minimize, p0, method="Nelder-Mead"
         )
+        print(res)
         if res.success == False:
             res = scipy.optimize.minimize(log_func_minimize, p0, method="BFGS")
             if res.success == False:
@@ -638,9 +636,9 @@ class EmceeSampler(object):
                 (
                     np.vstack(blobs["Delta2_star"]),
                     np.vstack(blobs["n_star"]),
+                    np.vstack(blobs["alpha_star"]),
                     np.vstack(blobs["f_star"]),
                     np.vstack(blobs["g_star"]),
-                    np.vstack(blobs["alpha_star"]),
                     np.vstack(blobs["H0"]),
                 )
             )
@@ -1046,7 +1044,7 @@ class EmceeSampler(object):
             try:
                 self.plot_best_fit(residuals=residuals, stat_best_fit="mean")
             except:
-                self.print("Can't plot best fit")
+                self.print("Can't plot best fit: mean")
 
             try:
                 for stat_best_fit in ["mle"]:
@@ -1064,7 +1062,7 @@ class EmceeSampler(object):
                         stat_best_fit=stat_best_fit,
                     )
             except:
-                self.print("Can't plot best fit")
+                self.print("Can't plot best fit: mle")
 
             try:
                 self.plot_prediction(residuals=residuals)
@@ -1163,16 +1161,11 @@ class EmceeSampler(object):
             delta_lnprob_cut=delta_lnprob_cut
         )
         if only_cosmo:
-            # if "$\\alpha_\\star$" in strings_plot:
-            #     yesplot = np.array(
-            #         ["$\\Delta^2_\\star$", "$n_\\star$", "$\\alpha_\\star$"]
-            #     )
-            # else:
-            yesplot = np.array(["$\\Delta^2_\\star$", "$n_\\star$"])
+            yesplot = ["$\\Delta^2_\\star$", "$n_\\star$"]
+            for param in self.like.free_params:
+                if param.name == "nrun":
+                    yesplot.append("$\\alpha_\\star$")
         else:
-            # if self.fix_cosmology:
-            #     yesplot = np.array(strings_plot)[:-6]
-            # else:
             diff = np.max(params_plot, axis=0) - np.min(params_plot, axis=0)
             yesplot = np.array(strings_plot)[diff != 0]
 
@@ -1183,12 +1176,27 @@ class EmceeSampler(object):
         pd_data = pd.DataFrame(data=dict_pd)
 
         c = ChainConsumer()
-        chain = Chain(samples=pd_data, name="a")
+        chain = Chain(
+            samples=pd_data,
+            name="a",
+        )
         c.add_chain(chain)
         summary = c.analysis.get_summary()["a"]
         if self.truth is not None:
-            c.add_truth(Truth(location=self.truth, line_style="-", color="k"))
-        c.add_truth(Truth(location=self.mle, line_style=":", color="C1"))
+            c.add_truth(
+                Truth(
+                    location=self.truth,
+                    line_style="--",
+                    color="C1",
+                )
+            )
+        c.add_truth(
+            Truth(
+                location=self.mle,
+                line_style=":",
+                color="C2",
+            )
+        )
 
         fig = c.plotter.plot(figsize=(12, 12))
 
@@ -1473,9 +1481,9 @@ cosmo_params = [
 blob_strings = [
     "$\Delta^2_\star$",
     "$n_\star$",
+    "$\\alpha_\star$",
     "$f_\star$",
     "$g_\star$",
-    "$\\alpha_\star$",
     "$H_0$",
 ]
 

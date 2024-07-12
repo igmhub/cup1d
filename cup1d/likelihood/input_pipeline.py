@@ -132,6 +132,11 @@ def parse_args():
         help="Fix cosmological parameters while sampling",
     )
     parser.add_argument(
+        "--vary_alphas",
+        action="store_true",
+        help="Fit running power spectrum",
+    )
+    parser.add_argument(
         "--add_metals",
         action="store_true",
         help="Add SiIII metal contamination",
@@ -177,6 +182,7 @@ def parse_args():
         action="store_true",
         help="Parallelize",
     )
+
     parser.add_argument(
         "--n_burn_in",
         type=int,
