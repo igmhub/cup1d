@@ -5,7 +5,7 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
 
 
 class P1D_PD2013(BaseDataP1D):
-    def __init__(self, z_min=None, z_max=None, use_FFT=True, add_syst=True):
+    def __init__(self, z_min=0, z_max=10, use_FFT=True, add_syst=True):
         """Read measured P1D from files, either FFT or likelihood version."""
 
         # folder storing P1D measurement

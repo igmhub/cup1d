@@ -6,11 +6,11 @@ from warnings import warn
 from cup1d.utils.utils import get_path_cup1d
 
 
-def _drop_zbins(z_in, k_in, Pk_in, cov_in, zmin, zmax):
-    """Drop redshift bins below zmin or above zmax"""
+def _drop_zbins(z_in, k_in, Pk_in, cov_in, z_min, z_max):
+    """Drop redshift bins below z_min or above z_max"""
 
     z_in = np.array(z_in)
-    ind = np.argwhere((z_in >= zmin) & (z_in <= zmax))[:, 0]
+    ind = np.argwhere((z_in >= z_min) & (z_in <= z_max))[:, 0]
     z_out = z_in[ind]
 
     k_out = []

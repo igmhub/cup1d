@@ -15,7 +15,7 @@ from cup1d.p1ds import (
     data_eBOSS_mock,
     data_Chabanier2019,
     data_Karacayli2022,
-    data_Karacayli2023,
+    data_Karacayli2024,
     data_Ravoux2023,
     data_QMLE_Ohio,
 )
@@ -142,10 +142,10 @@ def set_P1D(
         data = data_Chabanier2019.P1D_Chabanier2019(z_min=z_min, z_max=z_max)
     elif data_label == "Ravoux23":
         true_sim_igm = None
-        data = data_Ravoux2023.P1D_Ravoux23(z_min=z_min, z_max=z_max)
-    elif data_label == "Karacayli23":
+        data = data_Ravoux2023.P1D_Ravoux2023(z_min=z_min, z_max=z_max)
+    elif data_label == "Karacayli24":
         true_sim_igm = None
-        data = data_Karacayli2023.P1D_Karacayli2023(z_min=z_min, z_max=z_max)
+        data = data_Karacayli2024.P1D_Karacayli2024(z_min=z_min, z_max=z_max)
     elif data_label == "challenge_v0":
         true_sim_igm = None
         file = (
