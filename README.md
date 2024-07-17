@@ -45,6 +45,14 @@ pip install ipykernel
 python -m ipykernel install --user --name cup1d --display-name cup1d
 ```
 
+#### NERSC users:
+
+- You need to compile ``mpi4py`` package on NERSC (see [here](https://docs.nersc.gov/development/languages/python/parallel-python/#mpi4py-in-your-custom-conda-environment)).
+
+```
+MPICC="cc -shared" pip install --force-reinstall --no-cache-dir --no-binary=mpi4py mpi4py
+```
+
 #### Nyx users:
 
 - You may need to add the Nyx path as an enviroment variable in your notebook kernel. The first is done writting in the kernel.json file:

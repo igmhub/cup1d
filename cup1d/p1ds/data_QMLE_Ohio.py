@@ -65,43 +65,28 @@ class P1D_QMLE_Ohio(BaseDataP1D):
         ).to_records(index=False)
         # z k1 k2 kc Pfid ThetaP Pest ErrorP d b t
         zbins = np.unique(data["z"])
-        kbins = np.unique(data["kc"])
-        Nk = kbins.size
-        Nz = zbins.size
-        Pk = data["Pest"].reshape(Nz, Nk)
+        Nz = zbins.shape[0]
 
-        assert Nk * Nz == data.size
-
-        # will keep only wavenumbers with kmin_kms <= k <= kmax_kms
-        drop_lowk = kbins < kmin_kms
-        Nlk = np.sum(drop_lowk)
-        if Nlk > 0:
-            print(Nlk, "low-k bins not included")
-
-        drop_highk = kbins > kmax_kms
-        Nhk = np.sum(drop_highk)
-        if Nhk > 0:
-            print(Nhk, "high-k bins not included")
-
-        kbins = kbins[Nlk : Nk - Nhk]
-        Pk = Pk[:, Nlk : Nk - Nhk]
-
-        # now read covariance matrix
-        assert diag_cov, "implement code to read full covariance"
-
-        # for now only use diagonal elements
+        k = []
+        Pk = []
         cov = []
-        for i in range(Nz):
-            err = data["ErrorP"][i * Nk : (i + 1) * Nk]
-            var = err[Nlk : Nk - Nhk] ** 2
+
+        for z in zbins:
+            mask = np.argwhere(
+                (data["z"] == z)
+                & (data["kc"] > kmin_kms)
+                & (data["kc"] < kmax_kms)
+            )[:, 0]
+
+            k.append(data["kc"][mask])
+            Pk.append(data["Pest"][mask])
+
+            var = data["ErrorP"][mask] ** 2
             C = np.diag(var)
             if noise_syst > 0:
-                pnoise = (
-                    noise_syst
-                    * data["b"][i * Nk : (i + 1) * Nk][Nlk : Nk - Nhk]
-                )
+                pnoise = noise_syst * data["b"][mask]
                 C += np.outer(pnoise, pnoise)
 
             cov.append(C)
 
-        return zbins, kbins, Pk, cov
+        return zbins, k, Pk, cov

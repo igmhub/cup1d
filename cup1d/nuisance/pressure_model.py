@@ -20,6 +20,8 @@ class PressureModel(object):
         ln_kF_coeff=None,
         free_param_names=None,
         fid_igm=None,
+        order_extra=3,
+        smoothing=False,
     ):
         """Construct model with central redshift and (x2,x1,x0) polynomial."""
 
@@ -38,31 +40,39 @@ class PressureModel(object):
                 fid_igm = igm_hist["mpg_central"]
         self.fid_igm = fid_igm
 
-        mask = fid_igm["tau_eff"] != 0
-        if np.sum(mask) != fid_igm["tau_eff"].shape[0]:
-            print(
-                "The fiducial value of tau_eff is zero for z: ",
-                fid_igm["z"][mask == False],
-            )
-        if np.sum(mask) > 0:
-            self.fid_z = fid_igm["z"][mask]
-            self.fid_tau_eff = fid_igm["tau_eff"][mask]
-        else:
-            raise ValueError("No non-zero tau_eff in fiducial IGM")
-
         mask = fid_igm["kF_kms"] != 0
-        if np.sum(mask) != fid_igm["kF_kms"].shape[0]:
+        if np.sum(mask) == 0:
+            raise ValueError("No non-zero kF in fiducial IGM")
+        elif np.sum(mask) != fid_igm["kF_kms"].shape[0]:
             print(
                 "The fiducial value of kF is zero for z: ",
                 fid_igm["z"][mask == False],
             )
-        if np.sum(mask) > 0:
-            self.fid_z = fid_igm["z"][mask]
-            self.fid_kF = fid_igm["kF_kms"][mask]
-        else:
-            raise ValueError("No non-zero kF in fiducial IGM")
 
-        self.fid_kF_interp = interp1d(self.fid_z, self.fid_kF, kind="cubic")
+        # fit power law
+        pfit = np.polyfit(
+            fid_igm["z"][mask], fid_igm["kF_kms"][mask], order_extra
+        )
+        p = np.poly1d(pfit)
+        _ = fid_igm["z"] != 0
+        self.fid_z = fid_igm["z"][_]
+        self.fid_kF = fid_igm["kF_kms"][_]
+
+        # use poly fit to interpolate when data is missing (needed for Nyx)
+        mask2 = self.fid_kF == 0
+        self.fid_kF[mask2] = p(self.fid_z[mask2])
+
+        # extrapolate to z=2 and 5.4
+        z_to_inter = np.concatenate([[1.9], self.fid_z, [5.5]])
+        igm_to_inter = np.zeros_like(z_to_inter)
+        igm_to_inter[0] = p(z_to_inter[0])
+        if smoothing:
+            igm_to_inter[1:-1] = p(z_to_inter[1:-1])
+        else:
+            igm_to_inter[1:-1] = self.fid_kF
+        igm_to_inter[-1] = p(z_to_inter[-1])
+
+        self.fid_kF_interp = interp1d(z_to_inter, igm_to_inter, kind="cubic")
 
         self.z_kF = z_kF
         if ln_kF_coeff:

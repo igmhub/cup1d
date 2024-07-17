@@ -20,6 +20,7 @@ class ThermalModel(object):
         ln_gamma_coeff=None,
         free_param_names=None,
         fid_igm=None,
+        order_extra=2,
     ):
         """Model the redshift evolution of the thermal broadening scale and gamma.
         We use a power law rescaling around a fiducial simulation at the centre
@@ -53,7 +54,11 @@ class ThermalModel(object):
                 fid_igm["z"][mask == False],
             )
 
-        mask = (fid_igm["gamma"] != 0) & (fid_igm["sigT_kms"] != 0)
+        mask = (
+            (fid_igm["gamma"] != 0)
+            & (fid_igm["sigT_kms"] != 0)
+            & (fid_igm["z"] != 0)
+        )
         if np.sum(mask) > 0:
             self.fid_z = fid_igm["z"][mask]
             self.fid_gamma = fid_igm["gamma"][mask]
@@ -61,12 +66,26 @@ class ThermalModel(object):
         else:
             raise ValueError("No non-zero gamma and sigT_kms in fiducial IGM")
 
-        self.fid_gamma_interp = interp1d(
-            self.fid_z, self.fid_gamma, kind="cubic"
-        )
+        # extrapolate to z=1.9
+        pfit = np.polyfit(self.fid_z[:3], self.fid_gamma[:3], order_extra)
+        p = np.poly1d(pfit)
+        z_to_inter = np.concatenate([[1.9], self.fid_z])
+        igm_to_inter = np.zeros_like(z_to_inter)
+        igm_to_inter[0] = p(z_to_inter[0])
+        igm_to_inter[1:] = self.fid_gamma
+        self.fid_gamma_interp = interp1d(z_to_inter, igm_to_inter, kind="cubic")
+
+        # extrapolate to z=1.9
+        pfit = np.polyfit(self.fid_z[:3], self.fid_sigT_kms[:3], order_extra)
+        p = np.poly1d(pfit)
+        z_to_inter = np.concatenate([[1.9], self.fid_z])
+        igm_to_inter = np.zeros_like(z_to_inter)
+        igm_to_inter[0] = p(z_to_inter[0])
+        igm_to_inter[1:] = self.fid_sigT_kms
         self.fid_sigT_kms_interp = interp1d(
-            self.fid_z, self.fid_sigT_kms, kind="cubic"
+            z_to_inter, igm_to_inter, kind="cubic"
         )
+
         self.z_T = z_T
 
         # figure out parameters for sigT_kms (T0)
