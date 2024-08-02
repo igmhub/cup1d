@@ -28,7 +28,7 @@ class Theory(object):
         P_model_fid=None,
         z_star=3.0,
         kp_kms=0.009,
-        include_metals=[],
+        metal_models=[],
         cosmo_fid=None,
         free_param_names=None,
         fid_sim_igm="mpg_central",
@@ -42,7 +42,7 @@ class Theory(object):
             - F_model_fid: fiducial mean flux model
             - T_model_fid: fiducial thermal model
             - P_model_fid: fiducial pressure model
-            - include_metals: list of metal labels to include
+            - metal_models: list of metal models to include
             - cosmo_fid: fiducial cosmology used for fixed parameters
             - fid_sim_igm: IGM model assumed
             - true_sim_igm: if not None, true IGM model of the mock
@@ -137,8 +137,8 @@ class Theory(object):
 
         # check whether we want to include metal contamination models
         self.metal_models = []
-        for metal_label in include_metals:
-            X_model = metal_model.MetalModel(metal_label=metal_label)
+        for model in metal_models:
+            X_model = copy.deepcopy(model)
             self.metal_models.append(X_model)
         # temporary hack
         if free_param_names:
@@ -153,7 +153,7 @@ class Theory(object):
                 # you have at least one free parameter for metals
                 if len(self.metal_models) > 0:
                     raise ValueError(
-                        "either pass include_metals or free_params"
+                        "either pass metal_models or free_params"
                     )
                 X_model = metal_model.MetalModel(
                     metal_label="SiIII", free_param_names=free_param_names
@@ -554,8 +554,9 @@ class Theory(object):
             "T_model": self.T_model_emcee,
             "P_model": self.P_model_emcee,
         }
-
+ 
         return models
+
 
     def plot_p1d(self, k_kms, like_params=[], plot_every_iz=1):
         """Emulate and plot P1D in velocity units, for all redshift bins,

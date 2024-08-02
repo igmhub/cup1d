@@ -69,9 +69,6 @@ class Likelihood(object):
 
         # extra P1D likelihood from, e.g., HIRES
         if extra_p1d_data:
-            include_metals = []
-            for metal in self.theory.metal_models:
-                include_metals.append(metal.metal_label)
             # new theory, since we might need different zs
             extra_theory = lya_theory.Theory(
                 zs=extra_p1d_data.z,
@@ -80,7 +77,7 @@ class Likelihood(object):
                 F_model_fid=self.theory.F_model_fid,
                 T_model_fid=self.theory.T_model_fid,
                 P_model_fid=self.theory.P_model_fid,
-                include_metals=include_metals,
+                metal_models=self.theory.metal_models,
                 verbose=verbose,
             )
             self.extra_p1d_like = Likelihood(
