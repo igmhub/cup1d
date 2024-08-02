@@ -10,6 +10,7 @@ from cup1d.nuisance import mean_flux_model
 from cup1d.nuisance import thermal_model
 from cup1d.nuisance import pressure_model
 from cup1d.nuisance import metal_model
+from cup1d.nuisance import hcd_model_McDonald2005
 from cup1d.likelihood import CAMB_model
 
 
@@ -29,6 +30,7 @@ class Theory(object):
         z_star=3.0,
         kp_kms=0.009,
         metal_models=[],
+        hcd_model_fid=None,
         cosmo_fid=None,
         free_param_names=None,
         fid_sim_igm="mpg_central",
@@ -43,6 +45,7 @@ class Theory(object):
             - T_model_fid: fiducial thermal model
             - P_model_fid: fiducial pressure model
             - metal_models: list of metal models to include
+            - hcd_model_fid: fiducial model for HCD contamination
             - cosmo_fid: fiducial cosmology used for fixed parameters
             - fid_sim_igm: IGM model assumed
             - true_sim_igm: if not None, true IGM model of the mock
@@ -159,6 +162,14 @@ class Theory(object):
                     metal_label="SiIII", free_param_names=free_param_names
                 )
                 self.metal_models.append(X_model)
+
+        # setup HCD model
+        if hcd_model_fid:
+            self.hcd_model_fid = copy.deepcopy(hcd_model_fid)
+        else:
+            # close to zero HCD contamination
+            self.hcd_model_fid = hcd_model_McDonald2005.HCD_Model_McDonald2005(
+                    free_param_names=free_param_names)
 
     def fixed_background(self, like_params):
         """Check if any of the input likelihood parameters would change
@@ -491,6 +502,12 @@ class Theory(object):
                 cont = X_model.get_contamination(z=z, k_kms=k_kms[iz], mF=mF)
                 p1d_kms[iz] *= cont
 
+        # include HCD contamination
+        for iz, z in enumerate(self.zs):
+            hcd_model = self.hcd_model_fid.get_new_model(like_params)
+            cont = hcd_model.get_contamination(z=z, k_kms=k_kms[iz])
+            p1d_kms[iz] *= cont 
+
         # decide what to return, and return it
         if return_covar:
             if return_blob:
@@ -523,6 +540,10 @@ class Theory(object):
         for metal in self.metal_models:
             for par in metal.get_parameters():
                 params.append(par)
+
+        # get parameters from HCD contamination models
+        for par in self.hcd_model_fid.get_parameters():
+            params.append(par)
 
         if self.verbose:
             print("got parameters")
