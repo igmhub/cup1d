@@ -6,12 +6,13 @@ import numpy as np
 from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
 
 
-class P1D_Karacayli2023(BaseDataP1D):
+class P1D_Karacayli2024(BaseDataP1D):
     def __init__(self, diag_cov=False, kmax_nyq=0.5, z_min=2.19, z_max=10):
         """Read measured P1D from file.
         - diag_cov: for now, use diagonal covariance
-        - zmin: z=2.0 bin is not recommended by Karacayli2023
-        - kmax_nyq: High k cut wrt the Nyquist frequency."""
+        - kmax_nyq: High k cut wrt the Nyquist frequency
+        - z_min: z=2.0 bin is not recommended by Karacayli2024
+        - z_max: maximum redshift to include """
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         z, k, Pk, cov = read_from_file(diag_cov, kmax_nyq)
@@ -25,7 +26,7 @@ def read_from_file(diag_cov, kmax_nyq):
     """Read file containing P1D"""
 
     # folder storing P1D measurement
-    datadir = BaseDataP1D.BASEDIR + "/Karacayli2023/"
+    datadir = BaseDataP1D.BASEDIR + "/Karacayli2024/"
     fname = datadir + "/desi-edrp-lyasb1subt-p1d-detailed-results.txt"
 
     with open(fname) as _:

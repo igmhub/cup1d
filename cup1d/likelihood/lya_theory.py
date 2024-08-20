@@ -10,6 +10,7 @@ from cup1d.nuisance import mean_flux_model
 from cup1d.nuisance import thermal_model
 from cup1d.nuisance import pressure_model
 from cup1d.nuisance import metal_model
+from cup1d.nuisance import hcd_model_McDonald2005
 from cup1d.likelihood import CAMB_model
 
 
@@ -28,7 +29,8 @@ class Theory(object):
         P_model_fid=None,
         z_star=3.0,
         kp_kms=0.009,
-        include_metals=[],
+        metal_models=[],
+        hcd_model_fid=None,
         cosmo_fid=None,
         free_param_names=None,
         fid_sim_igm="mpg_central",
@@ -42,7 +44,8 @@ class Theory(object):
             - F_model_fid: fiducial mean flux model
             - T_model_fid: fiducial thermal model
             - P_model_fid: fiducial pressure model
-            - include_metals: list of metal labels to include
+            - metal_models: list of metal models to include
+            - hcd_model_fid: fiducial model for HCD contamination
             - cosmo_fid: fiducial cosmology used for fixed parameters
             - fid_sim_igm: IGM model assumed
             - true_sim_igm: if not None, true IGM model of the mock
@@ -61,14 +64,6 @@ class Theory(object):
             print("Using default emulator: Pedersen21")
         else:
             self.emulator = emulator
-
-        # guess if emulator is GP or NN
-        if hasattr(self.emulator, "nhidden"):
-            self.get_emulator_calls = self.get_emulator_calls_nn
-            self.call_emulator = self.emulator.emulate_arr_p1d_Mpc
-        else:
-            self.get_emulator_calls = self.get_emulator_calls_gp
-            self.call_emulator = self.emulate_arr_p1d_Mpc_gp
 
         self.emu_kp_Mpc = self.emulator.kp_Mpc
 
@@ -145,8 +140,8 @@ class Theory(object):
 
         # check whether we want to include metal contamination models
         self.metal_models = []
-        for metal_label in include_metals:
-            X_model = metal_model.MetalModel(metal_label=metal_label)
+        for model in metal_models:
+            X_model = copy.deepcopy(model)
             self.metal_models.append(X_model)
         # temporary hack
         if free_param_names:
@@ -161,12 +156,20 @@ class Theory(object):
                 # you have at least one free parameter for metals
                 if len(self.metal_models) > 0:
                     raise ValueError(
-                        "either pass include_metals or free_params"
+                        "either pass metal_models or free_params"
                     )
                 X_model = metal_model.MetalModel(
                     metal_label="SiIII", free_param_names=free_param_names
                 )
                 self.metal_models.append(X_model)
+
+        # setup HCD model
+        if hcd_model_fid:
+            self.hcd_model_fid = copy.deepcopy(hcd_model_fid)
+        else:
+            # close to zero HCD contamination
+            self.hcd_model_fid = hcd_model_McDonald2005.HCD_Model_McDonald2005(
+                    free_param_names=free_param_names)
 
     def fixed_background(self, like_params):
         """Check if any of the input likelihood parameters would change
@@ -179,27 +182,21 @@ class Theory(object):
 
         return True
 
-    def emulate_arr_p1d_Mpc_gp(
-        self, model, logk_Mpc, return_covar=False, z=None
-    ):
+    def emulate_arr_p1d_Mpc(self, model, k_Mpc, return_covar=False, z=None):
         """Wrapper for emulator calls for GP emulator (workaroud should be move to LaCE)"""
 
         p1d = []
         cov_p1d = []
-        k_Mpc = 10**logk_Mpc
         for ii in range(len(model)):
+            _res = self.emulator.emulate_p1d_Mpc(
+                model[ii], k_Mpc[ii], z=z[ii], return_covar=return_covar
+            )
             if return_covar:
-                _p1d, _cov_p1d = self.emulator.emulate_p1d_Mpc(
-                    model[ii], k_Mpc[ii], z=z[ii], return_covar=return_covar
-                )
-                p1d.append(_p1d)
-                cov_p1d.append(_cov_p1d)
+                p1d.append(_res[0])
+                cov_p1d.append(_res[1])
             else:
-                p1d.append(
-                    self.emulator.emulate_p1d_Mpc(
-                        model[ii], k_Mpc[ii], z=z[ii], return_covar=return_covar
-                    )
-                )
+                p1d.append(_res)
+
         if return_covar:
             return p1d, cov_p1d
         else:
@@ -288,7 +285,7 @@ class Theory(object):
 
         return linP_Mpc_params
 
-    def get_emulator_calls_nn(
+    def get_emulator_calls(
         self, like_params=[], return_M_of_z=True, return_blob=False
     ):
         """Compute models that will be emulated, one per redshift bin.
@@ -334,105 +331,22 @@ class Theory(object):
         # loop over redshifts and store emulator calls
         emu_calls = []
         Nz = len(self.zs)
-        emu_calls = np.zeros((Nz, len(self.emulator.emu_params)))
         for iz, z in enumerate(self.zs):
-            for jj, param in enumerate(self.emulator.emu_params):
-                if (
-                    (param == "Delta2_p")
-                    | (param == "n_p")
-                    | (param == "alpha_p")
-                ):
-                    emu_calls[iz, jj] = linP_Mpc_params[iz][param]
-                elif param == "mF":
-                    emu_calls[iz, jj] = F_model.get_mean_flux(z)
-                elif param == "gamma":
-                    emu_calls[iz, jj] = T_model.get_gamma(z)
-                elif param == "sigT_Mpc":
-                    sigT_kms = T_model.get_sigT_kms(z)
-                    emu_calls[iz, jj] = sigT_kms / M_of_zs[iz]
-                elif param == "kF_Mpc":
-                    kF_kms = P_model.get_kF_kms(z)
-                    emu_calls[iz, jj] = kF_kms * M_of_zs[iz]
-                elif param == "lambda_P":
-                    kF_kms = P_model.get_kF_kms(z)
-                    emu_calls[iz, jj] = 1000 / (kF_kms * M_of_zs[iz])
-
-        if return_M_of_z == True:
-            if return_blob:
-                return emu_calls, M_of_zs, blob
-            else:
-                return emu_calls, M_of_zs
-        else:
-            if return_blob:
-                return emu_calls, blob
-            else:
-                return emu_calls
-
-    def get_emulator_calls_gp(
-        self, like_params=[], return_M_of_z=True, return_blob=False
-    ):
-        """Compute models that will be emulated, one per redshift bin.
-        - like_params identify likelihood parameters to use.
-        - return_M_of_z will also return conversion from Mpc to km/s
-        - return_blob will return extra information about the call."""
-
-        # useful while debugging Nyx emulator
-        emu_params = self.emulator.emu_params
-        if self.verbose:
-            print("list of parameters expected by the emulator")
-            print(emu_params)
-
-        # setup IGM models using list of likelihood parameters
-        igm_models = self.update_igm_models(like_params)
-        F_model = igm_models["F_model"]
-        T_model = igm_models["T_model"]
-        P_model = igm_models["P_model"]
-
-        # compute linear power parameters at all redshifts, and H(z) / (1+z)
-        if self.fixed_background(like_params):
-            # use background and transfer functions from fiducial cosmology
-            if self.verbose:
-                print("recycle transfer function")
-            linP_Mpc_params = self.get_linP_Mpc_params_from_fiducial(
-                like_params
-            )
-            M_of_zs = self.cosmo_model_fid.get_M_of_zs()
-            if return_blob:
-                blob = self.get_blob_fixed_background(like_params)
-        else:
-            # setup a new CAMB_model from like_params
-            if self.verbose:
-                print("create new CAMB_model")
-            camb_model = self.cosmo_model_fid.get_new_model(like_params)
-            linP_Mpc_params = camb_model.get_linP_Mpc_params(
-                kp_Mpc=self.emu_kp_Mpc
-            )
-            M_of_zs = camb_model.get_M_of_zs()
-            if return_blob:
-                blob = self.get_blob(camb_model=camb_model)
-
-        # loop over redshifts and store emulator calls
-        emu_calls = []
-        Nz = len(self.zs)
-        for iz, z in enumerate(self.zs):
-            # emulator parameters for linear power, at this redshift (in Mpc)
-            model = linP_Mpc_params[iz]
+            emu_call = linP_Mpc_params[iz]
             # emulator parameters for nuisance models, at this redshift
-            model["mF"] = F_model.get_mean_flux(z)
-            model["gamma"] = T_model.get_gamma(z)
+            emu_call["mF"] = F_model.get_mean_flux(z)
+            emu_call["gamma"] = T_model.get_gamma(z)
             sigT_kms = T_model.get_sigT_kms(z)
-            model["sigT_Mpc"] = sigT_kms / M_of_zs[iz]
+            emu_call["sigT_Mpc"] = sigT_kms / M_of_zs[iz]
             kF_kms = P_model.get_kF_kms(z)
             kF_Mpc = kF_kms * M_of_zs[iz]
-            # figure out type of pressure emu_param being used
             if "kF_Mpc" in emu_params:
-                model["kF_Mpc"] = kF_Mpc
+                emu_call["kF_Mpc"] = kF_Mpc
             elif "lambda_P" in emu_params:
-                lamP_kpc = 1000 / kF_Mpc
-                model["lambda_P"] = lamP_kpc
+                emu_call["lambda_P"] = 1000 / kF_Mpc
             if self.verbose:
-                print(iz, z, "model", model)
-            emu_calls.append(model)
+                print(iz, z, "emu_call", emu_call)
+            emu_calls.append(emu_call)
 
         if return_M_of_z == True:
             if return_blob:
@@ -541,33 +455,28 @@ class Theory(object):
             raise ValueError("no emulator provided")
 
         # figure out emulator calls, one per redshift
+        _res = self.get_emulator_calls(
+            like_params=like_params, return_M_of_z=True, return_blob=return_blob
+        )
         if return_blob:
-            emu_calls, M_of_z, blob = self.get_emulator_calls(
-                like_params=like_params, return_M_of_z=True, return_blob=True
-            )
+            emu_calls, M_of_z, blob = _res
         else:
-            emu_calls, M_of_z = self.get_emulator_calls(
-                like_params=like_params, return_M_of_z=True, return_blob=False
-            )
+            emu_calls, M_of_z = _res
 
         # compute input k to emulator
         Nz = len(self.zs)
-        logk_Mpc = np.zeros((Nz, len(k_kms)))
+        kin_Mpc = []
         for iz in range(Nz):
-            logk_Mpc[iz] = np.log10(k_kms * M_of_z[iz])
-        if hasattr(self.emulator, "nhidden"):
-            kin_Mpc = 10**logk_Mpc
-        else:
-            kin_Mpc = logk_Mpc
+            k_Mpc = k_kms[iz] * M_of_z[iz]
+            kin_Mpc.append(k_Mpc)
 
+        _res = self.emulate_arr_p1d_Mpc(
+            emu_calls, kin_Mpc, return_covar=return_covar, z=self.zs
+        )
         if return_covar:
-            p1d_Mpc, cov_Mpc = self.call_emulator(
-                emu_calls, kin_Mpc, return_covar=True, z=self.zs
-            )
+            p1d_Mpc, cov_Mpc = _res
         else:
-            p1d_Mpc = self.call_emulator(
-                emu_calls, kin_Mpc, return_covar=False, z=self.zs
-            )
+            p1d_Mpc = _res
 
         p1d_kms = []
         covars = []
@@ -590,8 +499,14 @@ class Theory(object):
             X_model = X_model_fid.get_new_model(like_params)
             for iz, z in enumerate(self.zs):
                 mF = emu_calls[iz][ind]
-                cont = X_model.get_contamination(z=z, k_kms=k_kms, mF=mF)
+                cont = X_model.get_contamination(z=z, k_kms=k_kms[iz], mF=mF)
                 p1d_kms[iz] *= cont
+
+        # include HCD contamination
+        for iz, z in enumerate(self.zs):
+            hcd_model = self.hcd_model_fid.get_new_model(like_params)
+            cont = hcd_model.get_contamination(z=z, k_kms=k_kms[iz])
+            p1d_kms[iz] *= cont 
 
         # decide what to return, and return it
         if return_covar:
@@ -626,6 +541,10 @@ class Theory(object):
             for par in metal.get_parameters():
                 params.append(par)
 
+        # get parameters from HCD contamination models
+        for par in self.hcd_model_fid.get_parameters():
+            params.append(par)
+
         if self.verbose:
             print("got parameters")
             for par in params:
@@ -656,8 +575,9 @@ class Theory(object):
             "T_model": self.T_model_emcee,
             "P_model": self.P_model_emcee,
         }
-
+ 
         return models
+
 
     def plot_p1d(self, k_kms, like_params=[], plot_every_iz=1):
         """Emulate and plot P1D in velocity units, for all redshift bins,

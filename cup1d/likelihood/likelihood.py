@@ -69,9 +69,6 @@ class Likelihood(object):
 
         # extra P1D likelihood from, e.g., HIRES
         if extra_p1d_data:
-            include_metals = []
-            for metal in self.theory.metal_models:
-                include_metals.append(metal.metal_label)
             # new theory, since we might need different zs
             extra_theory = lya_theory.Theory(
                 zs=extra_p1d_data.z,
@@ -80,7 +77,7 @@ class Likelihood(object):
                 F_model_fid=self.theory.F_model_fid,
                 T_model_fid=self.theory.T_model_fid,
                 P_model_fid=self.theory.P_model_fid,
-                include_metals=include_metals,
+                metal_models=self.theory.metal_models,
                 verbose=verbose,
             )
             self.extra_p1d_like = Likelihood(
@@ -282,23 +279,22 @@ class Likelihood(object):
 
         # ask emulator prediction for P1D in each bin
         if self.emu_cov_factor == 0:
+            return_covar = False
+        else:
+            return_covar = True
+        _res = self.get_p1d_kms(
+            k_kms, values, return_covar=return_covar, return_blob=return_blob
+        )
+        if self.emu_cov_factor == 0:
             if return_blob:
-                emu_p1d, blob = self.get_p1d_kms(
-                    k_kms, values, return_covar=False, return_blob=True
-                )
+                emu_p1d, blob = _res
             else:
-                emu_p1d = self.get_p1d_kms(
-                    k_kms, values, return_covar=False, return_blob=False
-                )
+                emu_p1d = _res
         else:
             if return_blob:
-                emu_p1d, emu_covar, blob = self.get_p1d_kms(
-                    k_kms, values, return_covar=True, return_blob=True
-                )
+                emu_p1d, emu_covar, blob = _res
             else:
-                emu_p1d, emu_covar = self.get_p1d_kms(
-                    k_kms, values, return_covar=True, return_blob=False
-                )
+                emu_p1d, emu_covar = _res
 
         if self.verbose:
             print("got P1D from emulator")
@@ -452,34 +448,40 @@ class Likelihood(object):
         plot_fname=None,
         rand_posterior=None,
         show=False,
+        sampling_p1d=100,
+        return_covar=False,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
 
         # get measured bins from data
         k_kms = self.data.k_kms
-        k_emu_kms = np.logspace(np.log10(min(k_kms)), np.log10(max(k_kms)), 500)
         zs = self.data.z
         Nz = len(zs)
+        k_emu_kms = []
+        for iz in range(Nz):
+            _k = np.logspace(
+                np.log10(min(k_kms[iz])), np.log10(max(k_kms[iz])), sampling_p1d
+            )
+            k_emu_kms.append(_k)
 
         # figure out y range for plot
         ymin = 1e10
         ymax = -1e10
 
         # ask emulator prediction for P1D in each bin
-        emu_p1d, emu_cov = self.get_p1d_kms(
-            k_emu_kms, values, return_covar=True
-        )
+        _res = self.get_p1d_kms(k_emu_kms, values, return_covar=return_covar)
+        if return_covar:
+            emu_p1d, emu_cov = _res
+        else:
+            emu_p1d = _res
+
+        # to be updated
         if rand_posterior is not None:
             rand_emu = np.zeros((rand_posterior.shape[0], Nz, len(k_emu_kms)))
             for ii in range(rand_posterior.shape[0]):
                 rand_emu[ii] = self.get_p1d_kms(k_emu_kms, rand_posterior[ii])
             err_posterior = np.std(rand_emu, axis=0)
-
-        # like_params = self.parameters_from_sampling_point(values)
-        # emu_calls = self.theory.get_emulator_calls(like_params)
-        # if self.verbose:
-        # print("got P1D from emulator")
 
         # plot only few redshifts for clarity
         for iz in range(0, Nz, plot_every_iz):
@@ -490,8 +492,9 @@ class Likelihood(object):
             p1d_err = np.sqrt(np.diag(p1d_cov))
             p1d_theory = emu_p1d[iz]
             if rand_posterior is None:
-                cov_theory = emu_cov[iz]
-                err_theory = np.sqrt(np.diag(cov_theory))
+                if return_covar:
+                    cov_theory = emu_cov[iz]
+                    err_theory = np.sqrt(np.diag(cov_theory))
             else:
                 err_theory = err_posterior[iz]
 
@@ -509,11 +512,11 @@ class Likelihood(object):
 
             if residuals:
                 # interpolate theory to data kp values
-                model = np.interp(k_kms, k_emu_kms, p1d_theory)
+                model = np.interp(k_kms[iz], k_emu_kms[iz], p1d_theory)
                 # shift data in y axis for clarity
                 yshift = yshift
                 plt.errorbar(
-                    k_kms,
+                    k_kms[iz],
                     p1d_data / model + yshift,
                     color=col,
                     yerr=p1d_err / model,
@@ -524,43 +527,45 @@ class Likelihood(object):
                 ymin = min(ymin, min(p1d_data / model + yshift))
                 ymax = max(ymax, max(p1d_data / model + yshift))
                 plt.plot(
-                    k_emu_kms,
+                    k_emu_kms[iz],
                     p1d_theory / p1d_theory + yshift,
                     color=col,
                     linestyle="dashed",
                 )
-                plt.fill_between(
-                    k_emu_kms,
-                    (p1d_theory + err_theory) / p1d_theory + yshift,
-                    (p1d_theory - err_theory) / p1d_theory + yshift,
-                    alpha=0.35,
-                    color=col,
-                )
+                if return_covar | (rand_posterior is not None):
+                    plt.fill_between(
+                        k_emu_kms[iz],
+                        (p1d_theory + err_theory) / p1d_theory + yshift,
+                        (p1d_theory - err_theory) / p1d_theory + yshift,
+                        alpha=0.35,
+                        color=col,
+                    )
             else:
                 plt.errorbar(
-                    k_kms,
-                    p1d_data * k_kms / np.pi,
+                    k_kms[iz],
+                    p1d_data * k_kms[iz] / np.pi,
                     color=col,
-                    yerr=p1d_err * k_kms / np.pi,
+                    yerr=p1d_err * k_kms[iz] / np.pi,
                     fmt="o",
                     ms="4",
                     label="z=" + str(np.round(z, 2)),
                 )
                 plt.plot(
-                    k_emu_kms,
-                    (p1d_theory * k_emu_kms) / np.pi,
+                    k_emu_kms[iz],
+                    (p1d_theory * k_emu_kms[iz]) / np.pi,
                     color=col,
                     linestyle="dashed",
                 )
-                plt.fill_between(
-                    k_emu_kms,
-                    (p1d_theory + err_theory) * k_emu_kms / np.pi,
-                    (p1d_theory - err_theory) * k_emu_kms / np.pi,
-                    alpha=0.35,
-                    color=col,
-                )
-                ymin = min(ymin, min(p1d_data * k_kms / np.pi))
-                ymax = max(ymax, max(p1d_data * k_kms / np.pi))
+                if return_covar | (rand_posterior is not None):
+                    plt.fill_between(
+                        k_emu_kms[iz],
+                        (p1d_theory + err_theory) * k_emu_kms[iz] / np.pi,
+                        (p1d_theory - err_theory) * k_emu_kms[iz] / np.pi,
+                        alpha=0.35,
+                        color=col,
+                    )
+                ymin = min(ymin, min(p1d_data * k_kms[iz] / np.pi))
+                ymax = max(ymax, max(p1d_data * k_kms[iz] / np.pi))
 
         if residuals:
             plt.ylabel(r"$P_{\rm 1D}(z,k_\parallel)$ residuals")
@@ -574,7 +579,7 @@ class Likelihood(object):
         plt.plot(-10, -10, linestyle=":", label="Fit", color="k")
         plt.legend()
         plt.xlabel(r"$k_\parallel$ [s/km]")
-        plt.xlim(min(k_kms) - 0.001, max(k_kms) + 0.001)
+        plt.xlim(min(k_kms[iz]) - 0.001, max(k_kms[iz]) + 0.001)
         plt.tight_layout()
         if plot_fname:
             plt.savefig(plot_fname)

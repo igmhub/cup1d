@@ -18,6 +18,8 @@ class MeanFluxModel(object):
         ln_tau_coeff=None,
         free_param_names=None,
         fid_igm=None,
+        order_extra=2,
+        smoothing=False,
     ):
         """Construct model as a rescaling around a fiducial mean flux"""
 
@@ -37,20 +39,38 @@ class MeanFluxModel(object):
         self.fid_igm = fid_igm
 
         mask = fid_igm["tau_eff"] != 0
-        if np.sum(mask) != fid_igm["tau_eff"].shape[0]:
+        if np.sum(mask) == 0:
+            raise ValueError("No non-zero tau_eff in fiducial IGM")
+        elif np.sum(mask) != fid_igm["tau_eff"].shape[0]:
             print(
                 "The fiducial value of tau_eff is zero for z: ",
                 fid_igm["z"][mask == False],
             )
-        if np.sum(mask) > 0:
-            self.fid_z = fid_igm["z"][mask]
-            self.fid_tau_eff = fid_igm["tau_eff"][mask]
-        else:
-            raise ValueError("No non-zero tau_eff in fiducial IGM")
 
-        self.fid_tau_interp = interp1d(
-            self.fid_z, self.fid_tau_eff, kind="cubic"
+        # fit power law
+        pfit = np.polyfit(
+            fid_igm["z"][mask], np.log(fid_igm["tau_eff"][mask]), order_extra
         )
+        p = np.poly1d(pfit)
+        _ = fid_igm["z"] != 0
+        self.fid_z = fid_igm["z"][_]
+        self.fid_tau_eff = fid_igm["tau_eff"][_]
+
+        # use poly fit to interpolate when data is missing (needed for Nyx)
+        mask2 = self.fid_tau_eff == 0
+        self.fid_tau_eff[mask2] = np.exp(p(self.fid_z[mask2]))
+
+        # extrapolate to z=2 and 5.4
+        z_to_inter = np.concatenate([[1.9], self.fid_z, [5.5]])
+        igm_to_inter = np.zeros_like(z_to_inter)
+        igm_to_inter[0] = np.exp(p(z_to_inter[0]))
+        if smoothing:
+            igm_to_inter[1:-1] = np.exp(p(z_to_inter[1:-1]))
+        else:
+            igm_to_inter[1:-1] = self.fid_tau_eff
+        igm_to_inter[-1] = np.exp(p(z_to_inter[-1]))
+
+        self.fid_tau_interp = interp1d(z_to_inter, igm_to_inter, kind="cubic")
 
         self.z_tau = z_tau
         if ln_tau_coeff:

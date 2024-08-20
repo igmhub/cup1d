@@ -14,8 +14,8 @@ class P1D_eBOSS_mock(BaseMockP1D):
         self,
         diag_cov=False,
         kmax_kms=None,
-        z_min=None,
-        z_max=None,
+        z_min=0,
+        z_max=10,
         input_sim="nyx_central",
         add_noise=False,
         seed=0,
@@ -36,8 +36,8 @@ class P1D_eBOSS_mock(BaseMockP1D):
             cov,
             add_noise=add_noise,
             seed=seed,
-            z_min=zmin,
-            z_max=zmax,
+            z_min=z_min,
+            z_max=z_max,
         )
 
         return

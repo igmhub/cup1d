@@ -7,7 +7,7 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 class P1D_Ravoux2023(BaseDataP1D):
     """Class containing P1D from Ravoux et al. (2023)."""
 
-    def __init__(self, z_min=None, z_max=None, velunits=True):
+    def __init__(self, z_min=0, z_max=10, velunits=True):
         """Read measured P1D from Ravoux et al. (2023)."""
 
         # folder storing P1D measurements

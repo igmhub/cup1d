@@ -291,13 +291,10 @@ class EmceeSampler(object):
             for sample in sampler.sample(
                 p0, iterations=self.burnin_nsteps + self.nsteps
             ):
-                # Only check convergence every 100 steps
-                if ((sampler.iteration + self.burnin_nsteps) % 100 == 0) & (
-                    sampler.iteration > self.burnin_nsteps + 1
-                ):
+                if sampler.iteration % 100 == 0:
                     self.print(
                         "Step %d out of %d "
-                        % (sampler.iteration - self.burnin_nsteps, self.nsteps)
+                        % (sampler.iteration, self.nsteps + self.burnin_nsteps)
                     )
 
             print(f"Rank {self.rank} done", flush=True)
@@ -418,6 +415,7 @@ class EmceeSampler(object):
         res = scipy.optimize.minimize(
             log_func_minimize, p0, method="Nelder-Mead"
         )
+        print(res)
         if res.success == False:
             res = scipy.optimize.minimize(log_func_minimize, p0, method="BFGS")
             if res.success == False:
@@ -638,9 +636,9 @@ class EmceeSampler(object):
                 (
                     np.vstack(blobs["Delta2_star"]),
                     np.vstack(blobs["n_star"]),
+                    np.vstack(blobs["alpha_star"]),
                     np.vstack(blobs["f_star"]),
                     np.vstack(blobs["g_star"]),
-                    np.vstack(blobs["alpha_star"]),
                     np.vstack(blobs["H0"]),
                 )
             )
@@ -650,7 +648,7 @@ class EmceeSampler(object):
             all_strings = self.paramstrings + blob_strings
         else:
             self.print(
-                "Unkown blob configuration, just returning sampled params"
+                "Unknown blob configuration, just returning sampled params"
             )
             all_params = chain
             all_strings = self.paramstrings
@@ -986,7 +984,7 @@ class EmceeSampler(object):
         elif isinstance(self.like.data, data_Chabanier2019.P1D_Chabanier2019):
             saveDict["data_type"] = "Chabanier2019"
         else:
-            raise ValueError("unknown data type")
+            saveDict["data_type"] = "other"
         saveDict["data_zmin"] = min(self.like.theory.zs)
         saveDict["data_zmax"] = max(self.like.theory.zs)
 
@@ -1046,7 +1044,7 @@ class EmceeSampler(object):
             try:
                 self.plot_best_fit(residuals=residuals, stat_best_fit="mean")
             except:
-                self.print("Can't plot best fit")
+                self.print("Can't plot best fit: mean")
 
             try:
                 for stat_best_fit in ["mle"]:
@@ -1064,7 +1062,7 @@ class EmceeSampler(object):
                         stat_best_fit=stat_best_fit,
                     )
             except:
-                self.print("Can't plot best fit")
+                self.print("Can't plot best fit: mle")
 
             try:
                 self.plot_prediction(residuals=residuals)
@@ -1163,12 +1161,13 @@ class EmceeSampler(object):
             delta_lnprob_cut=delta_lnprob_cut
         )
         if only_cosmo:
-            yesplot = np.array(["$\\Delta^2_\\star$", "$n_\\star$"])
+            yesplot = ["$\\Delta^2_\\star$", "$n_\\star$"]
+            for param in self.like.free_params:
+                if param.name == "nrun":
+                    yesplot.append("$\\alpha_\\star$")
         else:
-            if self.fix_cosmology:
-                yesplot = np.array(strings_plot)[:-6]
-            else:
-                yesplot = np.array(strings_plot)[:-4]
+            diff = np.max(params_plot, axis=0) - np.min(params_plot, axis=0)
+            yesplot = np.array(strings_plot)[diff != 0]
 
         dict_pd = {}
         for ii, par in enumerate(strings_plot):
@@ -1177,11 +1176,27 @@ class EmceeSampler(object):
         pd_data = pd.DataFrame(data=dict_pd)
 
         c = ChainConsumer()
-        chain = Chain(samples=pd_data, name="a")
+        chain = Chain(
+            samples=pd_data,
+            name="a",
+        )
         c.add_chain(chain)
         summary = c.analysis.get_summary()["a"]
-        c.add_truth(Truth(location=self.truth, line_style="-", color="k"))
-        c.add_truth(Truth(location=self.mle, line_style=":", color="C1"))
+        if self.truth is not None:
+            c.add_truth(
+                Truth(
+                    location=self.truth,
+                    line_style="--",
+                    color="C1",
+                )
+            )
+        c.add_truth(
+            Truth(
+                location=self.mle,
+                line_style=":",
+                color="C2",
+            )
+        )
 
         fig = c.plotter.plot(figsize=(12, 12))
 
@@ -1288,11 +1303,11 @@ class EmceeSampler(object):
         mask = np.random.permutation(chain.shape[0])[:nn]
         rand_sample = chain[mask]
 
-        z_igm = self.like.theory.fid_igm["z"]
         z = np.array(self.like.data.z)
 
         # true IGM parameters
         pars_true = {}
+        pars_true["z_igm"] = self.like.theory.fid_igm["z"]
         pars_true["tau_eff"] = self.like.theory.true_igm["tau_eff"]
         pars_true["gamma"] = self.like.theory.true_igm["gamma"]
         pars_true["sigT_kms"] = self.like.theory.true_igm["sigT_kms"]
@@ -1300,10 +1315,11 @@ class EmceeSampler(object):
 
         # fiducial IGM parameters
         pars_fid = {}
-        pars_fid["tau_eff"] = self.like.theory.fid_igm["tau_eff"]
-        pars_fid["gamma"] = self.like.theory.fid_igm["gamma"]
-        pars_fid["sigT_kms"] = self.like.theory.fid_igm["sigT_kms"]
-        pars_fid["kF_kms"] = self.like.theory.fid_igm["kF_kms"]
+        pars_fid["z_igm"] = self.like.theory.P_model_fid.fid_z
+        pars_fid["tau_eff"] = self.like.theory.F_model_fid.fid_tau_eff
+        pars_fid["gamma"] = self.like.theory.T_model_fid.fid_gamma
+        pars_fid["sigT_kms"] = self.like.theory.T_model_fid.fid_sigT_kms
+        pars_fid["kF_kms"] = self.like.theory.P_model_fid.fid_kF
 
         # best-fitting IGM parameters
         best_value = self.get_best_fit(stat_best_fit=stat_best_fit)
@@ -1348,7 +1364,7 @@ class EmceeSampler(object):
             if self.like.theory.true_sim_igm is not None:
                 _ = pars_true[arr_labs[ii]] != 0
                 ax[ii].plot(
-                    z_igm[_],
+                    pars_true["z_igm"][_],
                     pars_true[arr_labs[ii]][_],
                     "o:",
                     label="true",
@@ -1356,7 +1372,7 @@ class EmceeSampler(object):
                 )
             _ = pars_fid[arr_labs[ii]] != 0
             ax[ii].plot(
-                z_igm[_],
+                pars_fid["z_igm"][_],
                 pars_fid[arr_labs[ii]][_],
                 "s--",
                 label="fiducial",
@@ -1465,9 +1481,9 @@ cosmo_params = [
 blob_strings = [
     "$\Delta^2_\star$",
     "$n_\star$",
+    "$\\alpha_\star$",
     "$f_\star$",
     "$g_\star$",
-    "$\\alpha_\star$",
     "$H_0$",
 ]
 
