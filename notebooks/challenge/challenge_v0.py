@@ -32,7 +32,7 @@ from cup1d.p1ds import (
     data_eBOSS_mock,
     data_Chabanier2019,
     data_Karacayli2022,
-    data_Karacayli2023,
+    data_Karacayli2024,
     data_Ravoux2023,
 )
 from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
