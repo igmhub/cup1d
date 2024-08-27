@@ -38,6 +38,14 @@ pip install -e .[explicit]
 pip install -e .[gpy]
 ``` 
 
+#### Notebooks:
+
+- All notebooks in the repository are in .py format. To generate the .ipynb version, run:
+
+```
+jupytext --to ipynb notebooks/*/*.py
+```
+
 - If you want to use notebooks via JupyterHub, you'll also need to download `ipykernel`:
 
 ```
@@ -71,7 +79,7 @@ NYX_PATH="/global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/"
 
 ### Notebooks / tutorials
 
-You can run the notebooks in `notebooks`. You can find the main tutorial to run your own analysis in `notebooks/tutorials/sample_sim.ipynb`
+You can run the notebooks in `notebooks`. You can find the main tutorial to run your own analysis in `notebooks/tutorials/sample_sim.py`
 
 You can also plot many P1D measurements stored in the repo, by looking at `notebooks/p1d_measurements`
 
