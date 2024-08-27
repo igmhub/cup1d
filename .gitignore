@@ -1,8 +1,6 @@
 cup1d.egg-info/
-data/chains
-notebooks/.ipynb_checkpoints/
-notebooks/*/.ipynb_checkpoints/
-notebooks/*.ipynb
-notebooks/*/*.ipynb
-*/__pycache__/
-*/*/__pycache__/
+chain_*/
+.ipynb_checkpoints
+*.ipynb
+__pycache__
+*.png
