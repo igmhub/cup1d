@@ -93,16 +93,21 @@ class PressureModel(object):
         assert len(self.ln_kF_coeff) == len(self.params), "size mismatch"
         return len(self.ln_kF_coeff)
 
-    def power_law_scaling(self, z):
+    def power_law_scaling(self, z, like_params=[]):
         """Power law rescaling around z_tau"""
+
+        ln_kF_coeff = self.get_kF_coeffs(like_params=like_params)
+
         xz = np.log((1 + z) / (1 + self.z_kF))
         ln_poly = np.poly1d(self.ln_kF_coeff)
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_kF_kms(self, z):
+    def get_kF_kms(self, z, like_params=[]):
         """kF_kms at the input redshift"""
-        kF_kms = self.power_law_scaling(z) * self.fid_kF_interp(z)
+        kF_kms = self.power_law_scaling(
+            z, like_params=like_params
+        ) * self.fid_kF_interp(z)
         return kF_kms
 
     def set_parameters(self):
@@ -135,34 +140,62 @@ class PressureModel(object):
 
         return self.params
 
-    def update_parameters(self, like_params):
-        """Look for pressure parameters in list of parameters"""
+    def get_kF_coeffs(self, like_params=[]):
+        """Return list of mean flux coefficients"""
+        if like_params:
+            ln_kF_coeff = self.ln_kF_coeff.copy()
+            Npar = 0
+            array_names = []
+            for par in like_params:
+                if "ln_kF" in par.name:
+                    Npar += 1
+                    array_names.append(par.name)
+            array_names = np.array(array_names)
 
-        Npar = self.get_Nparam()
+            if Npar != len(self.params):
+                raise ValueError("number of params mismatch in get_kF_coeffs")
 
-        # loop over likelihood parameters
-        for like_par in like_params:
-            if "ln_kF" not in like_par.name:
-                continue
-            # make sure you find the parameter
-            found = False
-            # loop over parameters in pressure model
-            for ip in range(len(self.params)):
-                if self.params[ip].name == like_par.name:
-                    assert found == False, "can not update parameter twice"
-                    self.ln_kF_coeff[Npar - ip - 1] = like_par.value
-                    found = True
-            assert found == True, "could not update parameter " + like_par.name
+            for ip in range(Npar):
+                _ = np.argwhere(self.params[ip].name == array_names)[:, 0]
+                if len(_) != 1:
+                    raise ValueError(
+                        "could not update parameter" + self.params[ip].name
+                    )
+                else:
+                    ln_kF_coeff[Npar - ip - 1] = like_params[_[0]].value
+        else:
+            ln_kF_coeff = self.ln_kF_coeff
 
-        return
+        return ln_kF_coeff
 
-    def get_new_model(self, like_params=[]):
-        """Return copy of model, updating values from list of parameters"""
+    # def update_parameters(self, like_params):
+    #     """Look for pressure parameters in list of parameters"""
 
-        kF = PressureModel(
-            fid_igm=self.fid_igm,
-            z_kF=self.z_kF,
-            ln_kF_coeff=copy.deepcopy(self.ln_kF_coeff),
-        )
-        kF.update_parameters(like_params)
-        return kF
+    #     Npar = self.get_Nparam()
+
+    #     # loop over likelihood parameters
+    #     for like_par in like_params:
+    #         if "ln_kF" not in like_par.name:
+    #             continue
+    #         # make sure you find the parameter
+    #         found = False
+    #         # loop over parameters in pressure model
+    #         for ip in range(len(self.params)):
+    #             if self.params[ip].name == like_par.name:
+    #                 assert found == False, "can not update parameter twice"
+    #                 self.ln_kF_coeff[Npar - ip - 1] = like_par.value
+    #                 found = True
+    #         assert found == True, "could not update parameter " + like_par.name
+
+    #     return
+
+    # def get_new_model(self, like_params=[]):
+    #     """Return copy of model, updating values from list of parameters"""
+
+    #     kF = PressureModel(
+    #         fid_igm=self.fid_igm,
+    #         z_kF=self.z_kF,
+    #         ln_kF_coeff=copy.deepcopy(self.ln_kF_coeff),
+    #     )
+    #     kF.update_parameters(like_params)
+    #     return kF

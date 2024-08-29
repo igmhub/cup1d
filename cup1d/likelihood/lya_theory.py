@@ -24,13 +24,13 @@ class Theory(object):
         zs,
         emulator=None,
         verbose=False,
-        F_model_fid=None,
-        T_model_fid=None,
-        P_model_fid=None,
+        F_model=None,
+        T_model=None,
+        P_model=None,
+        hcd_model=None,
         z_star=3.0,
         kp_kms=0.009,
         metal_models=[],
-        hcd_model_fid=None,
         cosmo_fid=None,
         free_param_names=None,
         fid_sim_igm="mpg_central",
@@ -41,11 +41,11 @@ class Theory(object):
             - zs: redshifts that will be evaluated
             - emulator: object to interpolate simulated p1d
             - verbose: print information, useful to debug
-            - F_model_fid: fiducial mean flux model
-            - T_model_fid: fiducial thermal model
-            - P_model_fid: fiducial pressure model
+            - F_model: mean flux model
+            - T_model: thermal model
+            - P_model: pressure model
             - metal_models: list of metal models to include
-            - hcd_model_fid: fiducial model for HCD contamination
+            - hcd_model: model for HCD contamination
             - cosmo_fid: fiducial cosmology used for fixed parameters
             - fid_sim_igm: IGM model assumed
             - true_sim_igm: if not None, true IGM model of the mock
@@ -71,7 +71,7 @@ class Theory(object):
         self.fid_sim_igm = fid_sim_igm
         self.fid_igm = self.get_igm(fid_sim_igm)
 
-        # load true IGM history
+        # load true IGM history (if any)
         if true_sim_igm is not None:
             self.true_sim_igm = true_sim_igm
             self.true_igm = self.get_igm(true_sim_igm)
@@ -99,44 +99,27 @@ class Theory(object):
         self.M_of_zs = self.cosmo_model_fid.get_M_of_zs()
 
         # setup fiducial IGM models (from Gadget sims if not specified)
-        if F_model_fid:
-            self.F_model_fid = F_model_fid
+        if F_model is not None:
+            self.F_model = F_model
         else:
-            self.F_model_fid = mean_flux_model.MeanFluxModel(
+            self.F_model = mean_flux_model.MeanFluxModel(
                 free_param_names=free_param_names,
                 fid_igm=self.fid_igm,
             )
-        if T_model_fid:
-            self.T_model_fid = T_model_fid
+        if T_model:
+            self.T_model = T_model
         else:
-            self.T_model_fid = thermal_model.ThermalModel(
+            self.T_model = thermal_model.ThermalModel(
                 free_param_names=free_param_names,
                 fid_igm=self.fid_igm,
             )
-        if P_model_fid:
-            self.P_model_fid = P_model_fid
+        if P_model:
+            self.P_model = P_model
         else:
-            self.P_model_fid = pressure_model.PressureModel(
+            self.P_model = pressure_model.PressureModel(
                 free_param_names=free_param_names,
                 fid_igm=self.fid_igm,
             )
-        self.F_model_emcee = copy.deepcopy(self.F_model_fid)
-        self.T_model_emcee = copy.deepcopy(self.T_model_fid)
-        self.P_model_emcee = copy.deepcopy(self.P_model_fid)
-
-        # if self.true_sim_igm is not None:
-        #     self.F_model_true = mean_flux_model.MeanFluxModel(
-        #         free_param_names=free_param_names,
-        #         fid_igm=self.true_igm,
-        #     )
-        #     self.T_model_true = thermal_model.ThermalModel(
-        #         free_param_names=free_param_names,
-        #         fid_igm=self.true_igm,
-        #     )
-        #     self.P_model_true = pressure_model.PressureModel(
-        #         free_param_names=free_param_names,
-        #         fid_igm=self.true_igm,
-        #     )
 
         # check whether we want to include metal contamination models
         self.metal_models = []
@@ -162,11 +145,11 @@ class Theory(object):
                 self.metal_models.append(X_model)
 
         # setup HCD model
-        if hcd_model_fid:
-            self.hcd_model_fid = copy.deepcopy(hcd_model_fid)
+        if hcd_model:
+            self.hcd_model = copy.deepcopy(hcd_model)
         else:
             # close to zero HCD contamination
-            self.hcd_model_fid = hcd_model_McDonald2005.HCD_Model_McDonald2005(
+            self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
                 free_param_names=free_param_names
             )
 
@@ -292,12 +275,6 @@ class Theory(object):
         - return_M_of_z will also return conversion from Mpc to km/s
         - return_blob will return extra information about the call."""
 
-        # setup IGM models using list of likelihood parameters
-        igm_models = self.update_igm_models(like_params)
-        F_model = igm_models["F_model"]
-        T_model = igm_models["T_model"]
-        P_model = igm_models["P_model"]
-
         # compute linear power parameters at all redshifts, and H(z) / (1+z)
         if self.fixed_background(like_params):
             # use background and transfer functions from fiducial cosmology
@@ -329,15 +306,28 @@ class Theory(object):
                 for ii in range(len(linP_Mpc_params)):
                     emu_call[key][ii] = linP_Mpc_params[ii][key]
             elif key == "mF":
-                emu_call[key] = F_model.get_mean_flux(self.zs)
+                emu_call[key] = self.F_model.get_mean_flux(
+                    self.zs, like_params=like_params
+                )
             elif key == "gamma":
-                emu_call[key] = T_model.get_gamma(self.zs)
+                emu_call[key] = self.T_model.get_gamma(
+                    self.zs, like_params=like_params
+                )
             elif key == "sigT_Mpc":
-                emu_call[key] = T_model.get_sigT_kms(self.zs) / M_of_zs
+                emu_call[key] = (
+                    self.T_model.get_sigT_kms(self.zs, like_params=like_params)
+                    / M_of_zs
+                )
             elif key == "kF_Mpc":
-                emu_call[key] = P_model.get_kF_kms(self.zs) * M_of_zs
+                emu_call[key] = (
+                    self.P_model.get_kF_kms(self.zs, like_params=like_params)
+                    * M_of_zs
+                )
             elif key == "lambda_P":
-                emu_call[key] = 1000 / (P_model.get_kF_kms(self.zs) * M_of_zs)
+                emu_call[key] = 1000 / (
+                    self.P_model.get_kF_kms(self.zs, like_params=like_params)
+                    * M_of_zs
+                )
             else:
                 raise ValueError(
                     "Not a theory model for emulator parameter", key
@@ -490,7 +480,8 @@ class Theory(object):
                         * M_of_z[iz] ** 2
                     )
 
-        # include multiplicate metal contamination
+        # include multiplicative metal contamination
+        # NEED TO BE UPDATED AS THE OTHER MODELS
         for X_model_fid in self.metal_models:
             X_model = X_model_fid.get_new_model(like_params)
             for iz, z in enumerate(self.zs):
@@ -500,8 +491,9 @@ class Theory(object):
                 p1d_kms[iz] *= cont
 
         # include HCD contamination
+        # NEED TO BE UPDATED AS THE OTHER MODELS
         for iz, z in enumerate(self.zs):
-            hcd_model = self.hcd_model_fid.get_new_model(like_params)
+            hcd_model = self.hcd_model.get_new_model(like_params)
             cont = hcd_model.get_contamination(z=z, k_kms=k_kms[iz])
             p1d_kms[iz] *= cont
 
@@ -524,13 +516,13 @@ class Theory(object):
         params = self.cosmo_model_fid.get_likelihood_parameters()
 
         # get parameters from nuisance IGM models
-        for par in self.F_model_fid.get_parameters():
+        for par in self.F_model.get_parameters():
             params.append(par)
-        for par in self.T_model_fid.get_sigT_kms_parameters():
+        for par in self.T_model.get_sigT_kms_parameters():
             params.append(par)
-        for par in self.T_model_fid.get_gamma_parameters():
+        for par in self.T_model.get_gamma_parameters():
             params.append(par)
-        for par in self.P_model_fid.get_parameters():
+        for par in self.P_model.get_parameters():
             params.append(par)
 
         # get parameters from metal contamination models
@@ -539,7 +531,7 @@ class Theory(object):
                 params.append(par)
 
         # get parameters from HCD contamination models
-        for par in self.hcd_model_fid.get_parameters():
+        for par in self.hcd_model.get_parameters():
             params.append(par)
 
         if self.verbose:
@@ -548,32 +540,6 @@ class Theory(object):
                 print(par.info_str())
 
         return params
-
-    def get_igm_models(self, like_params=[]):
-        """Setup IGM models from input list of likelihood parameters"""
-
-        F_model = self.F_model_fid.get_new_model(like_params)
-        T_model = self.T_model_fid.get_new_model(like_params)
-        P_model = self.P_model_fid.get_new_model(like_params)
-
-        models = {"F_model": F_model, "T_model": T_model, "P_model": P_model}
-
-        return models
-
-    def update_igm_models(self, like_params=[]):
-        """Setup IGM models from input list of likelihood parameters"""
-
-        self.F_model_emcee.update_parameters(like_params)
-        self.T_model_emcee.update_parameters(like_params)
-        self.P_model_emcee.update_parameters(like_params)
-
-        models = {
-            "F_model": self.F_model_emcee,
-            "T_model": self.T_model_emcee,
-            "P_model": self.P_model_emcee,
-        }
-
-        return models
 
     def plot_p1d(self, k_kms, like_params=[], plot_every_iz=1):
         """Emulate and plot P1D in velocity units, for all redshift bins,
