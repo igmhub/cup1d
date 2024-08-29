@@ -47,6 +47,12 @@ def parse_args():
         help="Input simulation to create mock P1Ds",
     )
     parser.add_argument(
+        "--data_label_hires",
+        default=None,
+        type=str,
+        help="Input simulation to create mock P1Ds",
+    )
+    parser.add_argument(
         "--z_min",
         type=float,
         default=2,
@@ -89,7 +95,7 @@ def parse_args():
     parser.add_argument(
         "--add_hires",
         action="store_true",
-        help="Include high-res data (Karacayli2022)",
+        help="Include high-res data",
     )
     parser.add_argument(
         "--apply_smoothing",
@@ -269,6 +275,7 @@ class Args:
         training_set="Pedersen21",
         emulator_label="Pedersen21",
         data_label="mpg_central",
+        data_label_hires="mpg_central",
         z_min=2,
         z_max=4.5,
         igm_label="mpg_central",
@@ -299,6 +306,7 @@ class Args:
         self.training_set = training_set
         self.emulator_label = emulator_label
         self.data_label = data_label
+        self.data_label_hires = data_label_hires
         self.z_min = z_min
         self.z_max = z_max
         self.igm_label = igm_label
@@ -327,6 +335,7 @@ class Args:
         self.par2save = [
             "emulator_label",
             "data_label",
+            "data_label_hires",
             "z_min",
             "z_max",
             "igm_label",

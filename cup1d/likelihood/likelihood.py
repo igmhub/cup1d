@@ -29,7 +29,7 @@ class Likelihood(object):
         prior_Gauss_rms=0.2,
         kmin_kms=None,
         emu_cov_factor=1,
-        extra_p1d_data=None,
+        extra_data=None,
         min_log_like=-1e100,
     ):
         """Setup likelihood from theory and data. Options:
@@ -55,6 +55,7 @@ class Likelihood(object):
         self.cosmo_fid_label = cosmo_fid_label
         self.min_log_like = min_log_like
         self.data = data
+        self.extra_data = extra_data
         # (optionally) get rid of low-k data points
         if kmin_kms is not None:
             self.data.cull_data(kmin_kms)
@@ -67,33 +68,35 @@ class Likelihood(object):
         if verbose:
             print(len(self.free_params), "free parameters")
 
-        # extra P1D likelihood from, e.g., HIRES
-        if extra_p1d_data:
-            # new theory, since we might need different zs
-            extra_theory = lya_theory.Theory(
-                zs=extra_p1d_data.z,
-                emulator=self.theory.emulator,
-                cosmo_fid=self.theory.cosmo_model_fid.cosmo,
-                F_model_fid=self.theory.F_model_fid,
-                T_model_fid=self.theory.T_model_fid,
-                P_model_fid=self.theory.P_model_fid,
-                metal_models=self.theory.metal_models,
-                verbose=verbose,
-            )
-            self.extra_p1d_like = Likelihood(
-                data=extra_p1d_data,
-                theory=extra_theory,
-                emulator=None,
-                free_param_names=free_param_names,
-                free_param_limits=free_param_limits,
-                verbose=verbose,
-                prior_Gauss_rms=prior_Gauss_rms,
-                kmin_kms=kmin_kms,
-                emu_cov_factor=emu_cov_factor,
-                extra_p1d_data=None,
-            )
-        else:
-            self.extra_p1d_like = None
+        # # extra P1D likelihood from, e.g., HIRES
+        # if extra_p1d_data:
+        #     # new theory, since we might need different zs
+        #     extra_theory = lya_theory.Theory(
+        #         zs=extra_p1d_data.z,
+        #         emulator=self.theory.emulator,
+        #         cosmo_fid=self.theory.cosmo_model_fid.cosmo,
+        #         F_model=self.theory.F_model,
+        #         T_model=self.theory.T_model,
+        #         P_model=self.theory.P_model,
+        #         metal_models=self.theory.metal_models,
+        #         verbose=verbose,
+        #     )
+        #     self.extra_p1d_like = Likelihood(
+        #         data=extra_p1d_data,
+        #         theory=extra_theory,
+        #         emulator=None,
+        #         free_param_names=free_param_names,
+        #         free_param_limits=free_param_limits,
+        #         verbose=verbose,
+        #         prior_Gauss_rms=prior_Gauss_rms,
+        #         kmin_kms=kmin_kms,
+        #         emu_cov_factor=emu_cov_factor,
+        #         extra_p1d_data=None,
+        #     )
+        # else:
+        #     self.extra_p1d_like = None
+
+        self.extra_p1d_like = None
 
         # sometimes we want to know the true theory (when working with mocks)
         self.set_truth()
@@ -236,12 +239,20 @@ class Likelihood(object):
         self.truth["g_star"] = linP_sim["g_star"]
 
     def get_p1d_kms(
-        self, k_kms=None, values=None, return_covar=False, return_blob=False
+        self,
+        zs=None,
+        k_kms=None,
+        values=None,
+        return_covar=False,
+        return_blob=False,
     ):
         """Compute theoretical prediction for 1D P(k)"""
 
         if k_kms is None:
             k_kms = self.data.k_kms
+
+        if zs is None:
+            zs = self.data.z
 
         # translate sampling point (in unit cube) to parameter values
         if values is not None:
@@ -250,6 +261,7 @@ class Likelihood(object):
             like_params = []
 
         return self.theory.get_p1d_kms(
+            zs,
             k_kms,
             like_params=like_params,
             return_covar=return_covar,
@@ -272,69 +284,97 @@ class Likelihood(object):
         """Compute log(likelihood), including determinant of covariance
         unless you are setting ignore_log_det_cov=True."""
 
-        # get measured bins from data
-        k_kms = self.data.k_kms
-        zs = self.data.z
-        Nz = len(zs)
-
         # ask emulator prediction for P1D in each bin
         if self.emu_cov_factor == 0:
             return_covar = False
         else:
             return_covar = True
+
         _res = self.get_p1d_kms(
-            k_kms, values, return_covar=return_covar, return_blob=return_blob
+            self.data.z,
+            self.data.k_kms,
+            values,
+            return_covar=return_covar,
+            return_blob=return_blob,
         )
-        if self.emu_cov_factor == 0:
-            if return_blob:
-                emu_p1d, blob = _res
-            else:
-                emu_p1d = _res
-        else:
+        if return_covar:
             if return_blob:
                 emu_p1d, emu_covar, blob = _res
             else:
                 emu_p1d, emu_covar = _res
+        else:
+            if return_blob:
+                emu_p1d, blob = _res
+            else:
+                emu_p1d = _res
+
+        if self.extra_data is not None:
+            length = 2
+            _res_hi = self.get_p1d_kms(
+                self.extra_data.z,
+                self.extra_data.k_kms,
+                values,
+                return_covar=return_covar,
+                return_blob=False,
+            )
+            if return_covar:
+                emu_p1d_extra, emu_covar_extra = _res_hi
+            else:
+                emu_p1d_extra = _res_hi
+        else:
+            length = 1
 
         if self.verbose:
             print("got P1D from emulator")
 
         # compute log like contribution from each redshift bin
         log_like = 0
+        # loop over low and high res data
+        for ii in range(length):
+            if ii == 0:
+                emu_p1d_use = emu_p1d
+                data = self.data
+                if return_covar:
+                    emu_covar_use = emu_covar
+            else:
+                emu_p1d_use = emu_p1d_extra
+                data = self.extra_data
+                if return_covar:
+                    emu_covar_use = emu_covar_extra
 
-        for iz in range(Nz):
-            # acess data for this redshift
-            z = zs[iz]
-            # make sure that theory is valid
-            if emu_p1d[iz] is None:
+            # loop over redshift bins
+            for iz in range(len(data.z)):
+                # acess data for this redshift
+                z = data.z[iz]
+                # make sure that theory is valid
+                if emu_p1d_use[iz] is None:
+                    if self.verbose:
+                        print(z, "theory did not emulate p1d")
+                    return None
                 if self.verbose:
-                    print(z, "theory did not emulate p1d")
-                return None
-            if self.verbose:
-                print("compute chi2 for z={}".format(z))
-            # get data
-            p1d = self.data.get_Pk_iz(iz)
-            # add covariance from emulator
-            if self.emu_cov_factor == 0:
-                icov = self.data.get_icov_iz(iz)
-            else:
-                icov = np.linalg.inv(
-                    self.data.get_cov_iz(iz)
-                    + self.emu_cov_factor * emu_covar[iz]
-                )
+                    print("compute chi2 for z={}".format(z))
+                # get data
+                p1d = data.get_Pk_iz(iz)
+                # add covariance from emulator
+                if return_covar:
+                    icov = np.linalg.inv(
+                        data.get_cov_iz(iz) + emu_cov_factor * emu_covar_use[iz]
+                    )
+                else:
+                    icov = data.get_icov_iz(iz)
 
-            # compute chi2 for this redshift bin
-            diff = p1d - emu_p1d[iz]
-            chi2_z = np.dot(np.dot(icov, diff), diff)
-            # check whether to add determinant of covariance as well
-            if ignore_log_det_cov:
-                log_like_z = -0.5 * chi2_z
-            else:
-                log_det_cov = np.log(np.abs(1 / np.linalg.det(icov)))
-                log_like_z = -0.5 * (chi2_z + log_det_cov)
-            log_like += log_like_z
-            if self.verbose:
-                print("added {} to log_like".format(log_like_z))
+                # compute chi2 for this redshift bin
+                diff = p1d - emu_p1d_use[iz]
+                chi2_z = np.dot(np.dot(icov, diff), diff)
+                # check whether to add determinant of covariance as well
+                if ignore_log_det_cov:
+                    log_like_z = -0.5 * chi2_z
+                else:
+                    log_det_cov = np.log(np.abs(1 / np.linalg.det(icov)))
+                    log_like_z = -0.5 * (chi2_z + log_det_cov)
+                log_like += log_like_z
+                if self.verbose:
+                    print("added {} to log_like".format(log_like_z))
 
         if return_blob:
             return log_like, blob
@@ -455,130 +495,203 @@ class Likelihood(object):
         plot only few redshift bins"""
 
         # get measured bins from data
-        k_kms = self.data.k_kms
-        zs = self.data.z
-        Nz = len(zs)
+        Nz = len(self.data.z)
         k_emu_kms = np.zeros((Nz, sampling_p1d))
         for iz in range(Nz):
             k_emu_kms[iz] = np.logspace(
-                np.log10(min(k_kms[iz])), np.log10(max(k_kms[iz])), sampling_p1d
+                np.log10(min(self.data.k_kms[iz])),
+                np.log10(max(self.data.k_kms[iz])),
+                sampling_p1d,
             )
+        if self.extra_data is not None:
+            Nz = len(self.extra_data.z)
+            k_emu_kms_extra = np.zeros((Nz, sampling_p1d))
+            for iz in range(Nz):
+                k_emu_kms_extra[iz] = np.logspace(
+                    np.log10(min(self.extra_data.k_kms[iz])),
+                    np.log10(max(self.extra_data.k_kms[iz])),
+                    sampling_p1d,
+                )
+
+        _res = self.get_p1d_kms(
+            self.data.z, k_emu_kms, values, return_covar=return_covar
+        )
+        if return_covar:
+            emu_p1d, emu_cov = _res
+        else:
+            emu_p1d = _res
+        if self.extra_data is not None:
+            _res = self.get_p1d_kms(
+                self.extra_data.z,
+                k_emu_kms_extra,
+                values,
+                return_covar=return_covar,
+            )
+            if return_covar:
+                emu_p1d_extra, emu_cov_extra = _res
+            else:
+                emu_p1d_extra = _res
 
         # figure out y range for plot
         ymin = 1e10
         ymax = -1e10
 
-        # ask emulator prediction for P1D in each bin
-        _res = self.get_p1d_kms(k_emu_kms, values, return_covar=return_covar)
-        if return_covar:
-            emu_p1d, emu_cov = _res
-        else:
-            emu_p1d = _res
-
-        # to be updated
         if rand_posterior is not None:
+            Nz = len(self.data.z)
             rand_emu = np.zeros((rand_posterior.shape[0], Nz, len(k_emu_kms)))
             for ii in range(rand_posterior.shape[0]):
-                rand_emu[ii] = self.get_p1d_kms(k_emu_kms, rand_posterior[ii])
+                rand_emu[ii] = self.get_p1d_kms(
+                    self.data.z, k_emu_kms, rand_posterior[ii]
+                )
             err_posterior = np.std(rand_emu, axis=0)
 
-        # plot only few redshifts for clarity
-        for iz in range(0, Nz, plot_every_iz):
-            # acess data for this redshift
-            z = zs[iz]
-            p1d_data = self.data.get_Pk_iz(iz)
-            p1d_cov = self.data.get_cov_iz(iz)
-            p1d_err = np.sqrt(np.diag(p1d_cov))
-            p1d_theory = emu_p1d[iz]
-            if rand_posterior is None:
-                if return_covar:
-                    cov_theory = emu_cov[iz]
-                    err_theory = np.sqrt(np.diag(cov_theory))
-            else:
-                err_theory = err_posterior[iz]
+            if self.extra_data is not None:
+                Nz = len(self.extra_data.z)
+                rand_emu_extra = np.zeros(
+                    (rand_posterior.shape[0], Nz, len(k_emu_kms_extra))
+                )
+                for ii in range(rand_posterior.shape[0]):
+                    rand_emu_extra[ii] = self.get_p1d_kms(
+                        self.extra_data.z, k_emu_kms_extra, rand_posterior[ii]
+                    )
+                err_posterior_extra = np.std(rand_emu_extra, axis=0)
 
-            if p1d_theory is None:
-                if self.verbose:
-                    print(z, "emulator did not provide P1D")
-                continue
-            # plot everything
-            if Nz > 1:
-                col = plt.cm.jet(iz / (Nz - 1))
-                yshift = iz / (Nz - 1)
+        if self.extra_data is None:
+            fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+            length = 1
+        else:
+            fig, ax = plt.subplots(2, 1, figsize=(8, 8))
+            length = 2
+
+        for ii in range(length):
+            if ii == 0:
+                data = self.data
+                emu_p1d_use = emu_p1d
+                k_emu_kms_use = k_emu_kms
+                if return_covar:
+                    emu_cov_use = emu_cov
+                if rand_posterior is not None:
+                    err_posterior_use = err_posterior
             else:
-                col = "blue"
-                yshift = 0
+                data = self.extra_data
+                emu_p1d_use = emu_p1d_extra
+                k_emu_kms_use = k_emu_kms_extra
+                if return_covar:
+                    emu_cov_use = emu_cov_extra
+                if rand_posterior is not None:
+                    err_posterior_use = err_posterior_extra
+            zs = data.z
+            k_kms = data.k_kms
+            Nz = len(zs)
+
+            # plot only few redshifts for clarity
+            for iz in range(0, Nz, plot_every_iz):
+                # access data for this redshift
+                z = zs[iz]
+                p1d_data = data.get_Pk_iz(iz)
+                p1d_cov = data.get_cov_iz(iz)
+                p1d_err = np.sqrt(np.diag(p1d_cov))
+                p1d_theory = emu_p1d_use[iz]
+                if rand_posterior is None:
+                    if return_covar:
+                        cov_theory = emu_cov_use[iz]
+                        err_theory = np.sqrt(np.diag(cov_theory))
+                else:
+                    err_theory = err_posterior_use[iz]
+
+                if p1d_theory is None:
+                    if self.verbose:
+                        print(z, "emulator did not provide P1D")
+                    continue
+                # plot everything
+                if Nz > 1:
+                    col = plt.cm.jet(iz / (Nz - 1))
+                    yshift = iz / (Nz - 1)
+                else:
+                    col = "blue"
+                    yshift = 0
+
+                if residuals:
+                    # interpolate theory to data kp values
+                    model = np.interp(k_kms[iz], k_emu_kms_use[iz], p1d_theory)
+                    # shift data in y axis for clarity
+                    ax[ii].errorbar(
+                        k_kms[iz],
+                        p1d_data / model + yshift,
+                        color=col,
+                        yerr=p1d_err / model,
+                        fmt="o",
+                        ms="4",
+                        label="z=" + str(np.round(z, 2)),
+                    )
+                    ymin = min(ymin, min(p1d_data / model + yshift))
+                    ymax = max(ymax, max(p1d_data / model + yshift))
+                    ax[ii].plot(
+                        k_emu_kms_use[iz],
+                        p1d_theory / p1d_theory + yshift,
+                        color=col,
+                        linestyle="dashed",
+                    )
+                    if return_covar | (rand_posterior is not None):
+                        ax[ii].fill_between(
+                            k_emu_kms_use[iz],
+                            (p1d_theory + err_theory) / p1d_theory + yshift,
+                            (p1d_theory - err_theory) / p1d_theory + yshift,
+                            alpha=0.35,
+                            color=col,
+                        )
+                else:
+                    ax[ii].errorbar(
+                        k_kms[iz],
+                        p1d_data * k_kms[iz] / np.pi,
+                        color=col,
+                        yerr=p1d_err * k_kms[iz] / np.pi,
+                        fmt="o",
+                        ms="4",
+                        label="z=" + str(np.round(z, 2)),
+                    )
+                    ax[ii].plot(
+                        k_emu_kms_use[iz],
+                        (p1d_theory * k_emu_kms_use[iz]) / np.pi,
+                        color=col,
+                        linestyle="dashed",
+                    )
+                    if return_covar | (rand_posterior is not None):
+                        ax[ii].fill_between(
+                            k_emu_kms_use[iz],
+                            (p1d_theory + err_theory)
+                            * k_emu_kms_use[iz]
+                            / np.pi,
+                            (p1d_theory - err_theory)
+                            * k_emu_kms_use[iz]
+                            / np.pi,
+                            alpha=0.35,
+                            color=col,
+                        )
+                    ymin = min(ymin, min(p1d_data * k_kms[iz] / np.pi))
+                    ymax = max(ymax, max(p1d_data * k_kms[iz] / np.pi))
+
+            ax[ii].plot(
+                k_emu_kms_use[iz][0], 1, linestyle="-", label="Data", color="k"
+            )
+            ax[ii].plot(
+                k_emu_kms_use[iz][0], 1, linestyle=":", label="Fit", color="k"
+            )
+            ax[ii].legend()
+
+            # ax[ii].set_xlim(min(k_kms[iz]) - 0.001, max(k_kms[iz]) + 0.001)
+            ax[ii].set_xlabel(r"$k_\parallel$ [s/km]")
 
             if residuals:
-                # interpolate theory to data kp values
-                model = np.interp(k_kms[iz], k_emu_kms[iz], p1d_theory)
-                # shift data in y axis for clarity
-                yshift = yshift
-                plt.errorbar(
-                    k_kms[iz],
-                    p1d_data / model + yshift,
-                    color=col,
-                    yerr=p1d_err / model,
-                    fmt="o",
-                    ms="4",
-                    label="z=" + str(np.round(z, 2)),
-                )
-                ymin = min(ymin, min(p1d_data / model + yshift))
-                ymax = max(ymax, max(p1d_data / model + yshift))
-                plt.plot(
-                    k_emu_kms[iz],
-                    p1d_theory / p1d_theory + yshift,
-                    color=col,
-                    linestyle="dashed",
-                )
-                if return_covar | (rand_posterior is not None):
-                    plt.fill_between(
-                        k_emu_kms[iz],
-                        (p1d_theory + err_theory) / p1d_theory + yshift,
-                        (p1d_theory - err_theory) / p1d_theory + yshift,
-                        alpha=0.35,
-                        color=col,
-                    )
+                ax[ii].set_ylabel(r"$P_{\rm 1D}(z,k_\parallel)$ residuals")
+                # ax[ii].set_ylim(ymin - 0.1, ymax + 0.1)
             else:
-                plt.errorbar(
-                    k_kms[iz],
-                    p1d_data * k_kms[iz] / np.pi,
-                    color=col,
-                    yerr=p1d_err * k_kms[iz] / np.pi,
-                    fmt="o",
-                    ms="4",
-                    label="z=" + str(np.round(z, 2)),
+                # ax[ii].set_ylim(0.8 * ymin, 1.2 * ymax)
+                ax[ii].set_yscale("log")
+                ax[ii].set_ylabel(
+                    r"$k_\parallel \, P_{\rm 1D}(z,k_\parallel) / \pi$"
                 )
-                plt.plot(
-                    k_emu_kms[iz],
-                    (p1d_theory * k_emu_kms[iz]) / np.pi,
-                    color=col,
-                    linestyle="dashed",
-                )
-                if return_covar | (rand_posterior is not None):
-                    plt.fill_between(
-                        k_emu_kms[iz],
-                        (p1d_theory + err_theory) * k_emu_kms[iz] / np.pi,
-                        (p1d_theory - err_theory) * k_emu_kms[iz] / np.pi,
-                        alpha=0.35,
-                        color=col,
-                    )
-                ymin = min(ymin, min(p1d_data * k_kms[iz] / np.pi))
-                ymax = max(ymax, max(p1d_data * k_kms[iz] / np.pi))
 
-        if residuals:
-            plt.ylabel(r"$P_{\rm 1D}(z,k_\parallel)$ residuals")
-            plt.ylim(ymin - 0.1, ymax + 0.1)
-        else:
-            plt.yscale("log")
-            plt.ylabel(r"$k_\parallel \, P_{\rm 1D}(z,k_\parallel) / \pi$")
-            plt.ylim(0.8 * ymin, 1.2 * ymax)
-
-        plt.plot(-10, -10, linestyle="-", label="Data", color="k")
-        plt.plot(-10, -10, linestyle=":", label="Fit", color="k")
-        plt.legend()
-        plt.xlabel(r"$k_\parallel$ [s/km]")
-        plt.xlim(min(k_kms[iz]) - 0.001, max(k_kms[iz]) + 0.001)
         plt.tight_layout()
         if plot_fname:
             plt.savefig(plot_fname)

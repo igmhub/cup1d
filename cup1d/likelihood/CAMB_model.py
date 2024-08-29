@@ -177,7 +177,7 @@ class CAMBModel(object):
 
         return M_of_zs
 
-    def get_new_model(self, like_params):
+    def get_new_model(self, zs, like_params):
         """For an arbitrary list of like_params, return a new CAMBModel"""
 
         # store a dictionary with parameters set to input values
@@ -196,4 +196,4 @@ class CAMBModel(object):
             camb_param_dict, cosmo_fid=self.cosmo
         )
 
-        return CAMBModel(zs=copy.deepcopy(self.zs), cosmo=new_cosmo)
+        return CAMBModel(zs=zs, cosmo=new_cosmo)

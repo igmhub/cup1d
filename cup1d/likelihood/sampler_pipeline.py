@@ -171,9 +171,9 @@ def set_P1D(
 def set_P1D_hires(
     archive,
     emulator,
-    cosmo_fid,
     data_label_hires,
-    extra_cov_label,
+    cosmo_fid,
+    cov_label_hires=None,
     apply_smoothing=None,
     z_min=0,
     z_max=10,
@@ -245,7 +245,7 @@ def set_P1D_hires(
             z_max=z_max,
             testing_data=p1d_ideal,
             input_sim=data_label_hires,
-            data_cov_label=extra_cov_label,
+            data_cov_label=cov_label_hires,
             emulator=emulator,
             apply_smoothing=apply_smoothing,
             add_noise=add_noise,
@@ -342,8 +342,13 @@ def set_like(
     fprint("free parameters", free_parameters)
 
     ## set theory
+    if data_hires is not None:
+        zs_hires = data_hires.z
+    else:
+        zs_hires = None
     theory = lya_theory.Theory(
         zs=data.z,
+        zs_hires=zs_hires,
         emulator=emulator,
         free_param_names=free_parameters,
         fid_sim_igm=igm_label,
@@ -353,12 +358,12 @@ def set_like(
 
     ## set like
     like = likelihood.Likelihood(
-        data=data,
-        theory=theory,
+        data,
+        theory,
+        extra_data=data_hires,
         free_param_names=free_parameters,
         prior_Gauss_rms=prior_Gauss_rms,
         emu_cov_factor=emu_cov_factor,
-        extra_p1d_data=data_hires,
     )
 
     return like
