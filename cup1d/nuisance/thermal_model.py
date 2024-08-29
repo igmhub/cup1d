@@ -132,38 +132,46 @@ class ThermalModel(object):
         ), "size mismatch"
         return len(self.ln_gamma_coeff)
 
-    def power_law_scaling_gamma(self, z):
+    def power_law_scaling_gamma(self, z, like_params=[]):
         """Power law rescaling around z_T"""
+
+        ln_gamma_coeff = self.get_gamma_coeffs(like_params=like_params)
+
         xz = np.log((1 + z) / (1 + self.z_T))
-        ln_poly = np.poly1d(self.ln_gamma_coeff)
+        ln_poly = np.poly1d(ln_gamma_coeff)
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def power_law_scaling_sigT_kms(self, z):
+    def power_law_scaling_sigT_kms(self, z, like_params=[]):
         """Power law rescaling around z_T"""
+
+        ln_sigT_kms_coeff = self.get_sigT_coeffs(like_params=like_params)
+
         xz = np.log((1 + z) / (1 + self.z_T))
-        ln_poly = np.poly1d(self.ln_sigT_kms_coeff)
+        ln_poly = np.poly1d(ln_sigT_kms_coeff)
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_sigT_kms(self, z):
+    def get_sigT_kms(self, z, like_params=[]):
         """sigT_kms at the input redshift"""
         sigT_kms = self.power_law_scaling_sigT_kms(
-            z
+            z, like_params=like_params
         ) * self.fid_sigT_kms_interp(z)
         return sigT_kms
 
-    def get_T0(self, z):
+    def get_T0(self, z, like_params=[]):
         """T_0 at the input redshift"""
         sigT_kms = self.power_law_scaling_sigT_kms(
-            z
+            z, like_params=like_params
         ) * self.fid_sigT_kms_interp(z)
         T0 = thermal_broadening.T0_from_broadening_kms(sigT_kms)
         return T0
 
-    def get_gamma(self, z):
+    def get_gamma(self, z, like_params=[]):
         """gamma at the input redshift"""
-        gamma = self.power_law_scaling_gamma(z) * self.fid_gamma_interp(z)
+        gamma = self.power_law_scaling_gamma(
+            z, like_params=like_params
+        ) * self.fid_gamma_interp(z)
         return gamma
 
     def set_sigT_kms_parameters(self):
@@ -217,54 +225,116 @@ class ThermalModel(object):
         """Return gamma likelihood parameters from the thermal model"""
         return self.gamma_params
 
-    def update_parameters(self, like_params):
-        """Look for thermal parameters in list of parameters"""
+    # def update_parameters(self, like_params):
+    #     """Look for thermal parameters in list of parameters"""
 
-        Npar_sigT_kms = self.get_sigT_kms_Nparam()
-        Npar_gamma = self.get_gamma_Nparam()
+    #     Npar_sigT_kms = self.get_sigT_kms_Nparam()
+    #     Npar_gamma = self.get_gamma_Nparam()
 
-        # loop over likelihood parameters
-        for like_par in like_params:
-            if "ln_sigT_kms" in like_par.name:
-                # make sure you find the parameter
-                found = False
-                # loop over T0 parameters in thermal model
-                for ip in range(len(self.sigT_kms_params)):
-                    if self.sigT_kms_params[ip].name == like_par.name:
-                        assert found == False, "can not update parameter twice"
-                        self.ln_sigT_kms_coeff[
-                            Npar_sigT_kms - ip - 1
-                        ] = like_par.value
-                        # self.ln_sigT_kms_coeff[ip]=like_par.value
-                        found = True
-                assert found == True, (
-                    "could not update parameter " + like_par.name
+    #     # loop over likelihood parameters
+    #     for like_par in like_params:
+    #         if "ln_sigT_kms" in like_par.name:
+    #             # make sure you find the parameter
+    #             found = False
+    #             # loop over T0 parameters in thermal model
+    #             for ip in range(len(self.sigT_kms_params)):
+    #                 if self.sigT_kms_params[ip].name == like_par.name:
+    #                     assert found == False, "can not update parameter twice"
+    #                     self.ln_sigT_kms_coeff[
+    #                         Npar_sigT_kms - ip - 1
+    #                     ] = like_par.value
+    #                     # self.ln_sigT_kms_coeff[ip]=like_par.value
+    #                     found = True
+    #             assert found == True, (
+    #                 "could not update parameter " + like_par.name
+    #             )
+    #         elif "ln_gamma" in like_par.name:
+    #             # make sure you find the parameter
+    #             found = False
+    #             # loop over gamma parameters in thermal model
+    #             for ip in range(len(self.gamma_params)):
+    #                 if self.gamma_params[ip].name == like_par.name:
+    #                     assert found == False, "can not update parameter twice"
+    #                     self.ln_gamma_coeff[
+    #                         Npar_gamma - ip - 1
+    #                     ] = like_par.value
+    #                     found = True
+    #             assert found == True, (
+    #                 "could not update parameter " + like_par.name
+    #             )
+
+    #     return
+
+    # def get_new_model(self, like_params=[]):
+    #     """Return copy of model, updating values from list of parameters"""
+
+    #     T = ThermalModel(
+    #         fid_igm=self.fid_igm,
+    #         z_T=self.z_T,
+    #         ln_sigT_kms_coeff=copy.deepcopy(self.ln_sigT_kms_coeff),
+    #         ln_gamma_coeff=copy.deepcopy(self.ln_gamma_coeff),
+    #     )
+    #     T.update_parameters(like_params)
+    #     return T
+
+    def get_sigT_coeffs(self, like_params=[]):
+        """Return list of sigT coefficients"""
+        if like_params:
+            ln_sigT_kms_coeff = self.ln_sigT_kms_coeff.copy()
+            Npar = 0
+            array_names = []
+            for par in like_params:
+                if "ln_sigT_kms" in par.name:
+                    Npar += 1
+                    array_names.append(par.name)
+            array_names = np.array(array_names)
+
+            if Npar != len(self.sigT_kms_params):
+                raise ValueError("number of params mismatch in get_sigT_coeffs")
+
+            for ip in range(Npar):
+                _ = np.argwhere(self.sigT_kms_params[ip].name == array_names)[
+                    :, 0
+                ]
+                if len(_) != 1:
+                    raise ValueError(
+                        "could not update parameter"
+                        + self.sigT_kms_params[ip].name
+                    )
+                else:
+                    ln_sigT_kms_coeff[Npar - ip - 1] = like_params[_[0]].value
+        else:
+            ln_sigT_kms_coeff = self.ln_sigT_kms_coeff
+
+        return ln_sigT_kms_coeff
+
+    def get_gamma_coeffs(self, like_params=[]):
+        """Return list of gamma coefficients"""
+        if like_params:
+            ln_gamma_coeff = self.ln_gamma_coeff.copy()
+            Npar = 0
+            array_names = []
+            for par in like_params:
+                if "ln_gamma" in par.name:
+                    Npar += 1
+                    array_names.append(par.name)
+            array_names = np.array(array_names)
+
+            if Npar != len(self.gamma_params):
+                raise ValueError(
+                    "number of params mismatch in get_gamma_coeffs"
                 )
-            elif "ln_gamma" in like_par.name:
-                # make sure you find the parameter
-                found = False
-                # loop over gamma parameters in thermal model
-                for ip in range(len(self.gamma_params)):
-                    if self.gamma_params[ip].name == like_par.name:
-                        assert found == False, "can not update parameter twice"
-                        self.ln_gamma_coeff[
-                            Npar_gamma - ip - 1
-                        ] = like_par.value
-                        found = True
-                assert found == True, (
-                    "could not update parameter " + like_par.name
-                )
 
-        return
+            for ip in range(Npar):
+                _ = np.argwhere(self.gamma_params[ip].name == array_names)[:, 0]
+                if len(_) != 1:
+                    raise ValueError(
+                        "could not update parameter"
+                        + self.gamma_params[ip].name
+                    )
+                else:
+                    ln_gamma_coeff[Npar - ip - 1] = like_params[_[0]].value
+        else:
+            ln_gamma_coeff = self.ln_gamma_coeff
 
-    def get_new_model(self, like_params=[]):
-        """Return copy of model, updating values from list of parameters"""
-
-        T = ThermalModel(
-            fid_igm=self.fid_igm,
-            z_T=self.z_T,
-            ln_sigT_kms_coeff=copy.deepcopy(self.ln_sigT_kms_coeff),
-            ln_gamma_coeff=copy.deepcopy(self.ln_gamma_coeff),
-        )
-        T.update_parameters(like_params)
-        return T
+        return ln_gamma_coeff

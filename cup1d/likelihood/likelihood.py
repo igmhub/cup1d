@@ -458,12 +458,11 @@ class Likelihood(object):
         k_kms = self.data.k_kms
         zs = self.data.z
         Nz = len(zs)
-        k_emu_kms = []
+        k_emu_kms = np.zeros((Nz, sampling_p1d))
         for iz in range(Nz):
-            _k = np.logspace(
+            k_emu_kms[iz] = np.logspace(
                 np.log10(min(k_kms[iz])), np.log10(max(k_kms[iz])), sampling_p1d
             )
-            k_emu_kms.append(_k)
 
         # figure out y range for plot
         ymin = 1e10
