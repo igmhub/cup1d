@@ -155,9 +155,7 @@ class Theory(object):
             if len(metal_param_names) > 0:
                 # you have at least one free parameter for metals
                 if len(self.metal_models) > 0:
-                    raise ValueError(
-                        "either pass metal_models or free_params"
-                    )
+                    raise ValueError("either pass metal_models or free_params")
                 X_model = metal_model.MetalModel(
                     metal_label="SiIII", free_param_names=free_param_names
                 )
@@ -169,7 +167,8 @@ class Theory(object):
         else:
             # close to zero HCD contamination
             self.hcd_model_fid = hcd_model_McDonald2005.HCD_Model_McDonald2005(
-                    free_param_names=free_param_names)
+                free_param_names=free_param_names
+            )
 
     def fixed_background(self, like_params):
         """Check if any of the input likelihood parameters would change
@@ -293,12 +292,6 @@ class Theory(object):
         - return_M_of_z will also return conversion from Mpc to km/s
         - return_blob will return extra information about the call."""
 
-        # useful while debugging Nyx emulator
-        emu_params = self.emulator.emu_params
-        if self.verbose:
-            print("list of parameters expected by the emulator")
-            print(emu_params)
-
         # setup IGM models using list of likelihood parameters
         igm_models = self.update_igm_models(like_params)
         F_model = igm_models["F_model"]
@@ -329,35 +322,37 @@ class Theory(object):
                 blob = self.get_blob(camb_model=camb_model)
 
         # loop over redshifts and store emulator calls
-        emu_calls = []
-        Nz = len(self.zs)
-        for iz, z in enumerate(self.zs):
-            emu_call = linP_Mpc_params[iz]
-            # emulator parameters for nuisance models, at this redshift
-            emu_call["mF"] = F_model.get_mean_flux(z)
-            emu_call["gamma"] = T_model.get_gamma(z)
-            sigT_kms = T_model.get_sigT_kms(z)
-            emu_call["sigT_Mpc"] = sigT_kms / M_of_zs[iz]
-            kF_kms = P_model.get_kF_kms(z)
-            kF_Mpc = kF_kms * M_of_zs[iz]
-            if "kF_Mpc" in emu_params:
-                emu_call["kF_Mpc"] = kF_Mpc
-            elif "lambda_P" in emu_params:
-                emu_call["lambda_P"] = 1000 / kF_Mpc
-            if self.verbose:
-                print(iz, z, "emu_call", emu_call)
-            emu_calls.append(emu_call)
+        emu_call = {}
+        for key in self.emulator.emu_params:
+            if (key == "Delta2_p") | (key == "n_p") | (key == "alpha_p"):
+                emu_call[key] = np.zeros(len(self.zs))
+                for ii in range(len(linP_Mpc_params)):
+                    emu_call[key][ii] = linP_Mpc_params[ii][key]
+            elif key == "mF":
+                emu_call[key] = F_model.get_mean_flux(self.zs)
+            elif key == "gamma":
+                emu_call[key] = T_model.get_gamma(self.zs)
+            elif key == "sigT_Mpc":
+                emu_call[key] = T_model.get_sigT_kms(self.zs) / M_of_zs
+            elif key == "kF_Mpc":
+                emu_call[key] = P_model.get_kF_kms(self.zs) * M_of_zs
+            elif key == "lambda_P":
+                emu_call[key] = 1000 / (P_model.get_kF_kms(self.zs) * M_of_zs)
+            else:
+                raise ValueError(
+                    "Not a theory model for emulator parameter", key
+                )
 
         if return_M_of_z == True:
             if return_blob:
-                return emu_calls, M_of_zs, blob
+                return emu_call, M_of_zs, blob
             else:
-                return emu_calls, M_of_zs
+                return emu_call, M_of_zs
         else:
             if return_blob:
-                return emu_calls, blob
+                return emu_call, blob
             else:
-                return emu_calls
+                return emu_call
 
     def get_blobs_dtype(self):
         """Return the format of the extra information (blobs) returned
@@ -459,19 +454,23 @@ class Theory(object):
             like_params=like_params, return_M_of_z=True, return_blob=return_blob
         )
         if return_blob:
-            emu_calls, M_of_z, blob = _res
+            emu_call, M_of_z, blob = _res
         else:
-            emu_calls, M_of_z = _res
+            emu_call, M_of_z = _res
 
         # compute input k to emulator
         Nz = len(self.zs)
-        kin_Mpc = []
+        length = 0
         for iz in range(Nz):
-            k_Mpc = k_kms[iz] * M_of_z[iz]
-            kin_Mpc.append(k_Mpc)
+            if len(k_kms[iz]) > length:
+                length = len(k_kms[iz])
 
-        _res = self.emulate_arr_p1d_Mpc(
-            emu_calls, kin_Mpc, return_covar=return_covar, z=self.zs
+        kin_Mpc = np.zeros((Nz, length))
+        for iz in range(Nz):
+            kin_Mpc[iz, : len(k_kms[iz])] = k_kms[iz] * M_of_z[iz]
+
+        _res = self.emulator.emulate_p1d_Mpc(
+            emu_call, kin_Mpc, return_covar=return_covar, z=self.zs
         )
         if return_covar:
             p1d_Mpc, cov_Mpc = _res
@@ -481,32 +480,30 @@ class Theory(object):
         p1d_kms = []
         covars = []
         for iz in range(Nz):
-            p1d_kms.append(p1d_Mpc[iz] * M_of_z[iz])
+            p1d_kms.append(p1d_Mpc[iz][: len(k_kms[iz])] * M_of_z[iz])
             if return_covar:
                 if cov_Mpc is None:
                     covars.append(None)
                 else:
-                    covars.append(cov_Mpc[iz] * M_of_z[iz] ** 2)
+                    covars.append(
+                        cov_Mpc[iz][: len(k_kms[iz]), : len(k_kms[iz])]
+                        * M_of_z[iz] ** 2
+                    )
 
         # include multiplicate metal contamination
-        if "mF" in emu_calls[0]:
-            ind = "mF"
-        else:
-            ind = np.argwhere((np.array(self.emulator.emu_params) == "mF"))[
-                0, 0
-            ]
         for X_model_fid in self.metal_models:
             X_model = X_model_fid.get_new_model(like_params)
             for iz, z in enumerate(self.zs):
-                mF = emu_calls[iz][ind]
-                cont = X_model.get_contamination(z=z, k_kms=k_kms[iz], mF=mF)
+                cont = X_model.get_contamination(
+                    z=z, k_kms=k_kms[iz], mF=emu_call["mF"][iz]
+                )
                 p1d_kms[iz] *= cont
 
         # include HCD contamination
         for iz, z in enumerate(self.zs):
             hcd_model = self.hcd_model_fid.get_new_model(like_params)
             cont = hcd_model.get_contamination(z=z, k_kms=k_kms[iz])
-            p1d_kms[iz] *= cont 
+            p1d_kms[iz] *= cont
 
         # decide what to return, and return it
         if return_covar:
@@ -575,9 +572,8 @@ class Theory(object):
             "T_model": self.T_model_emcee,
             "P_model": self.P_model_emcee,
         }
- 
-        return models
 
+        return models
 
     def plot_p1d(self, k_kms, like_params=[], plot_every_iz=1):
         """Emulate and plot P1D in velocity units, for all redshift bins,
@@ -594,7 +590,12 @@ class Theory(object):
             p1d = emu_p1d[iz]
             # plot everything
             col = plt.cm.jet(iz / (Nz - 1))
-            plt.plot(k_kms, p1d * k_kms / np.pi, color=col, label="z=%.1f" % z)
+            plt.plot(
+                k_kms[iz],
+                p1d * k_kms[iz] / np.pi,
+                color=col,
+                label="z=%.1f" % z,
+            )
         plt.yscale("log")
         plt.legend()
         plt.xlabel("k [s/km]")
