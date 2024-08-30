@@ -42,14 +42,15 @@ from lace.emulator.emulator_manager import set_emulator
 from cup1d.p1ds import (
     data_gadget,
     data_nyx,
+    mock_data,
     data_eBOSS_mock,
     data_Chabanier2019,
     data_Karacayli2022,
-    data_Karacayli2023,
+    data_Karacayli2024,
     data_Ravoux2023,
 )
 from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
-from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_fid_cosmo, set_like
+from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_P1D_hires, set_fid_cosmo, set_like
 from cup1d.likelihood.input_pipeline import Args
 
 # %% [markdown]
@@ -58,21 +59,38 @@ from cup1d.likelihood.input_pipeline import Args
 # Info about these and other arguments in cup1d.likelihood.input_pipeline.py
 
 # %%
+args.data_label_hires
+
+# %%
 # set output directory for this test
 output_dir = "."
 
-# args = Args(emulator_label="Pedersen21")
+args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
+
+args.data_label="mock_Chabanier2019"
+args.data_label_hires = "mock_Karacayli22"
+# args.data_label="mpg_central"
+# args.data_label_hires="mpg_central"
+
+args.cosmo_label="mpg_central"
+args.igm_label="mpg_central"
+args.vary_alphas=False
+
+# args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
+# args.data_label="nyx_central"
+# args.cosmo_label="nyx_central"
+# args.igm_label="nyx_central"
+# args.vary_alphas=True
+
 args.n_igm=0
 args.n_steps=50
 args.n_burn_in=10
+args.z_max=4.5
 args.parallel=False
 args.explore=True
-args.vary_alphas=True
-args.data_label="nyx_central"
-args.cosmo_label="nyx_central"
-args.igm_label="nyx_central"
+args.add_metals=False
+args.add_hires=True
 
 # %% [markdown]
 # ### Set archive
@@ -108,11 +126,29 @@ data["P1Ds"], true_sim_igm = set_P1D(
     args.data_label,
     cosmo_fid,
     cov_label=args.cov_label,
-    apply_smoothing=False
+    igm_label=args.igm_label,
+    apply_smoothing=False,
+    z_min=args.z_min,
+    z_max=args.z_max,
 )
+
+if(args.add_hires):
+    data["extra_P1Ds"] = set_P1D_hires(
+        archive,
+        emulator,
+        args.data_label_hires,
+        cosmo_fid,
+        cov_label_hires=args.cov_label_hires,
+        igm_label=args.igm_label,
+        apply_smoothing=False,
+        z_min=args.z_min,
+        z_max=args.z_max,
+    )
 
 # %%
 data["P1Ds"].plot_p1d()
+if(args.add_hires):
+    data["extra_P1Ds"].plot_p1d()
 
 # %% [markdown]
 # ### Set likelihood
@@ -126,8 +162,12 @@ like = set_like(
     args.igm_label,
     args.n_igm,
     cosmo_fid,
-    vary_alphas=args.vary_alphas
+    vary_alphas=args.vary_alphas,
+    add_metals=args.add_metals
 )
+
+# %%
+# like.theory.plot_p1d(data["P1Ds"].k_kms, k_kms_hires=data["extra_P1Ds"].k_kms, plot_every_iz=2)
 
 # %% [markdown]
 # Plot residual between P1D data and emulator for fiducial cosmology (should be the same in this case)
@@ -185,7 +225,13 @@ p0 = sampler.chain.reshape(-1, nparam)[ind, :]
 sampler.run_minimizer(log_func=_log_prob, p0=p0)
 
 # %%
-# sampler.run_minimizer(log_func=_log_prob, p0=np.array([0.5, 0.5, 0.5]))
+# %%time
+p0 = np.zeros(len(like.free_params)) + 0.5
+sampler.run_minimizer(log_func=_log_prob, p0=p0)
+
+# %%
+As 2.006055e-09 7.4e-10 4.11e-09
+ns 0.967565 0.68 1.32
 
 # %% [markdown]
 # ### Get plots

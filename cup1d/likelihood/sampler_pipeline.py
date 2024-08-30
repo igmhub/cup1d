@@ -18,6 +18,7 @@ from cup1d.p1ds import (
     data_Karacayli2024,
     data_Ravoux2023,
     data_QMLE_Ohio,
+    mock_data,
 )
 from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
 
@@ -52,6 +53,7 @@ def set_P1D(
     z_max=10,
     add_noise=False,
     seed_noise=0,
+    igm_label=None,
     fprint=print,
     cull_data=False,
 ):
@@ -125,7 +127,19 @@ def set_P1D(
             add_noise=add_noise,
             seed=seed_noise,
         )
-
+    elif data_label[:5] == "mock_":
+        # mock data from emulator
+        true_sim_igm = igm_label
+        data = mock_data.Mock_P1D(
+            emulator,
+            data_label=data_label[5:],
+            fid_sim_igm=true_sim_igm,
+            z_min=z_min,
+            z_max=z_max,
+            add_noise=add_noise,
+            seed=seed_noise,
+            cosmo_fid=cosmo_fid,
+        )
     elif data_label == "eBOSS_mock":
         # need to be tested
         true_sim_igm = None
@@ -178,6 +192,7 @@ def set_P1D_hires(
     z_min=0,
     z_max=10,
     add_noise=False,
+    igm_label=None,
     seed_noise=0,
     fprint=print,
     cull_data=False,
@@ -252,7 +267,18 @@ def set_P1D_hires(
             seed=seed_noise,
             fprint=fprint,
         )
-
+    elif data_label_hires[:5] == "mock_":
+        # mock data from emulator
+        data_hires = mock_data.Mock_P1D(
+            emulator,
+            data_label=data_label_hires[5:],
+            fid_sim_igm=igm_label,
+            z_min=z_min,
+            z_max=z_max,
+            add_noise=add_noise,
+            seed=seed_noise,
+            cosmo_fid=cosmo_fid,
+        )
     elif data_label_hires == "Karacayli22":
         true_sim_igm = None
         data_hires = data_Karacayli2022.P1D_Karacayli2022(
