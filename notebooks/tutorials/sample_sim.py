@@ -59,17 +59,14 @@ from cup1d.likelihood.input_pipeline import Args
 # Info about these and other arguments in cup1d.likelihood.input_pipeline.py
 
 # %%
-args.data_label_hires
-
-# %%
 # set output directory for this test
 output_dir = "."
 
 args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 
-args.data_label="mock_Chabanier2019"
-args.data_label_hires = "mock_Karacayli22"
+args.data_label="mock_Karacayli2024"
+args.data_label_hires = "mock_Karacayli2022"
 # args.data_label="mpg_central"
 # args.data_label_hires="mpg_central"
 
@@ -83,14 +80,15 @@ args.vary_alphas=False
 # args.igm_label="nyx_central"
 # args.vary_alphas=True
 
-args.n_igm=0
+args.n_igm=2
 args.n_steps=50
 args.n_burn_in=10
 args.z_max=4.5
 args.parallel=False
 args.explore=True
 args.add_metals=False
-args.add_hires=True
+# args.add_hires=True
+args.add_hires=False
 
 # %% [markdown]
 # ### Set archive
@@ -167,12 +165,36 @@ like = set_like(
 )
 
 # %%
-# like.theory.plot_p1d(data["P1Ds"].k_kms, k_kms_hires=data["extra_P1Ds"].k_kms, plot_every_iz=2)
+# return parametes to call emulator!
+# input parameters to set model
+
+# %%
+param_new = []
+
+for p in like.free_params:
+    pnew = p.get_new_parameter(0.5)
+    pnew.set_without_cube(2.2e-9)
+    print(p.name, p.value, p.min_value, p.max_value)
+    print(pnew.name, pnew.value, pnew.min_value, pnew.max_value)
+    param_new.append(pnew)
+    break
+
+# %%
+_res = self.get_p1d_kms(
+            self.data.z, k_emu_kms, values, return_covar=return_covar
+        )
+
+# %%
+p.value_in_cube()
+
+# %%
+like.plot_p1d(residuals=True, plot_every_iz=2, values=sampler.mle_cube)
 
 # %% [markdown]
 # Plot residual between P1D data and emulator for fiducial cosmology (should be the same in this case)
 
 # %%
+like.plot_p1d(residuals=False, plot_every_iz=1)
 like.plot_p1d(residuals=True, plot_every_iz=2)
 
 # %% [markdown]
@@ -188,7 +210,7 @@ for p in like.free_params:
 
 # %%
 def log_prob(theta):
-    return log_prob.sampler.like.log_prob_and_blobs(theta)
+    return log_prob.sampler.like.get_chi2(theta)
 
 def set_log_prob(sampler):
     log_prob.sampler = sampler
@@ -204,7 +226,7 @@ sampler = emcee_sampler.EmceeSampler(
     explore=args.explore,
     fix_cosmology=args.fix_cosmo,
 )
-_log_prob = set_log_prob(sampler)
+_get_chi2 = set_log_prob(sampler)
 
 # %% [markdown]
 # ### Run sampler
@@ -227,11 +249,20 @@ sampler.run_minimizer(log_func=_log_prob, p0=p0)
 # %%
 # %%time
 p0 = np.zeros(len(like.free_params)) + 0.5
-sampler.run_minimizer(log_func=_log_prob, p0=p0)
+sampler.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
+
+# %%
+# %%time
+sampler.run_minimizer(log_func_minimize=_get_chi2, nsamples=8)
 
 # %%
 As 2.006055e-09 7.4e-10 4.11e-09
 ns 0.967565 0.68 1.32
+
+# %%
+# like.plot_p1d(residuals=False, plot_every_iz=1, values=sampler.mle_cube)
+like.plot_p1d(residuals=True, plot_every_iz=2, values=sampler.mle_cube)
+# like.plot_p1d(residuals=True, plot_every_iz=2, values=ptruth)
 
 # %% [markdown]
 # ### Get plots

@@ -146,11 +146,14 @@ class PressureModel(object):
             ln_kF_coeff = self.ln_kF_coeff.copy()
             Npar = 0
             array_names = []
+            array_values = []
             for par in like_params:
                 if "ln_kF" in par.name:
                     Npar += 1
                     array_names.append(par.name)
+                    array_values.append(par.value)
             array_names = np.array(array_names)
+            array_values = np.array(array_values)
 
             if Npar != len(self.params):
                 raise ValueError("number of params mismatch in get_kF_coeffs")
@@ -162,7 +165,7 @@ class PressureModel(object):
                         "could not update parameter" + self.params[ip].name
                     )
                 else:
-                    ln_kF_coeff[Npar - ip - 1] = like_params[_[0]].value
+                    ln_kF_coeff[Npar - ip - 1] = array_values[_[0]]
         else:
             ln_kF_coeff = self.ln_kF_coeff
 

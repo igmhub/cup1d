@@ -46,6 +46,11 @@ class LikelihoodParameter(object):
 
         return self.min_value + x * (self.max_value - self.min_value)
 
+    def err_from_cube(self, err):
+        """Return scaled covariance"""
+
+        return err * (self.max_value - self.min_value)
+
     def get_new_parameter(self, value_in_cube):
         """Return copy of parameter, with updated value from cube"""
 

@@ -151,13 +151,13 @@ def set_P1D(
             add_noise=add_noise,
             seed=seed_noise,
         )
-    elif data_label == "Chabanier19":
+    elif data_label == "Chabanier2019":
         true_sim_igm = None
         data = data_Chabanier2019.P1D_Chabanier2019(z_min=z_min, z_max=z_max)
-    elif data_label == "Ravoux23":
+    elif data_label == "Ravoux2023":
         true_sim_igm = None
         data = data_Ravoux2023.P1D_Ravoux2023(z_min=z_min, z_max=z_max)
-    elif data_label == "Karacayli24":
+    elif data_label == "Karacayli2024":
         true_sim_igm = None
         data = data_Karacayli2024.P1D_Karacayli2024(z_min=z_min, z_max=z_max)
     elif data_label == "challenge_v0":
@@ -279,7 +279,7 @@ def set_P1D_hires(
             seed=seed_noise,
             cosmo_fid=cosmo_fid,
         )
-    elif data_label_hires == "Karacayli22":
+    elif data_label_hires == "Karacayli2022":
         true_sim_igm = None
         data_hires = data_Karacayli2022.P1D_Karacayli2022(
             z_min=z_min, z_max=z_max
@@ -684,7 +684,7 @@ class SamplerPipeline(object):
             if n_steps != 0:
                 self.n_steps = n_steps
             else:
-                if data_label == "Chabanier19":
+                if data_label == "Chabanier2019":
                     self.n_steps = 2000
                 else:
                     self.n_steps = 1250
@@ -696,7 +696,7 @@ class SamplerPipeline(object):
             if n_burn_in != 0:
                 self.n_burn_in = n_burn_in
             else:
-                if data_label == "Chabanier19":
+                if data_label == "Chabanier2019":
                     self.n_burn_in = 2000
                 else:
                     if cov_label == "Chabanier2019":

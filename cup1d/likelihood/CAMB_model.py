@@ -25,7 +25,7 @@ class CAMBModel(object):
         self.cached_camb_results = None
         # cache wavenumbers and linear power (at zs) when computed
         self.cached_linP_Mpc = None
-        # cache linear power parameters at (z_star,kp_kms)
+        # cache linear power parameters at (z_star, kp_kms)
         self.z_star = z_star
         self.kp_kms = kp_kms
         self.cached_linP_params = None
