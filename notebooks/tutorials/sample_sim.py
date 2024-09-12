@@ -164,29 +164,6 @@ like = set_like(
     add_metals=args.add_metals
 )
 
-# %%
-# return parametes to call emulator!
-# input parameters to set model
-
-# %%
-param_new = []
-
-for p in like.free_params:
-    pnew = p.get_new_parameter(0.5)
-    if(p == "As"):
-        pnew.set_without_cube(2.2e-9)
-    print(p.name, p.value, p.min_value, p.max_value)
-    print(pnew.value)
-    param_new.append(pnew)
-    # break
-
-# %%
-# param_new
-p1ds, params = like.get_p1d_kms(values=None, return_emu_params=True)
-
-# %%
-like.plot_p1d(residuals=True, plot_every_iz=2, values=sampler.mle_cube)
-
 # %% [markdown]
 # Plot residual between P1D data and emulator for fiducial cosmology (should be the same in this case)
 
@@ -247,14 +224,6 @@ sampler.run_minimizer(log_func=_log_prob, p0=p0)
 # %%time
 p0 = np.zeros(len(like.free_params)) + 0.5
 sampler.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
-
-# %%
-# %%time
-sampler.run_minimizer(log_func_minimize=_get_chi2, nsamples=8)
-
-# %%
-As 2.006055e-09 7.4e-10 4.11e-09
-ns 0.967565 0.68 1.32
 
 # %%
 # like.plot_p1d(residuals=False, plot_every_iz=1, values=sampler.mle_cube)
