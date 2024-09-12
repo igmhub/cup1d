@@ -446,7 +446,13 @@ class Theory(object):
         return (Delta2_star, n_star, alpha_star) + fid_blob[3:]
 
     def get_p1d_kms(
-        self, zs, k_kms, like_params=[], return_covar=False, return_blob=False
+        self,
+        zs,
+        k_kms,
+        like_params=[],
+        return_covar=False,
+        return_blob=False,
+        return_emu_params=False,
     ):
         """Emulate P1D in velocity units, for all redshift bins,
         as a function of input likelihood parameters.
@@ -518,16 +524,18 @@ class Theory(object):
             p1d_kms[iz] *= cont
 
         # decide what to return, and return it
+        out = [p1d_kms]
         if return_covar:
-            if return_blob:
-                return p1d_kms, covars, blob
-            else:
-                return p1d_kms, covars
+            out.append(covars)
+        if return_blob:
+            out.append(blob)
+        if return_emu_params:
+            out.append(emu_call)
+
+        if len(out) == 1:
+            return out[0]
         else:
-            if return_blob:
-                return p1d_kms, blob
-            else:
-                return p1d_kms
+            return out
 
     def get_parameters(self):
         """Return parameters in models, even if not free parameters"""

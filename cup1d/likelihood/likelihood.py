@@ -101,6 +101,12 @@ class Likelihood(object):
         # sometimes we want to know the true theory (when working with mocks)
         self.set_truth()
 
+        # p2 = like.free_params.copy()
+        # ptruth = np.zeros(len(like.free_params))
+        # for ii in range(len(p0)):
+        #     ptruth[ii] = like.free_params[ii].value_in_cube()
+        # print(ptruth)
+
         return
 
     def set_free_parameters(self, free_param_names, free_param_limits):
@@ -245,6 +251,7 @@ class Likelihood(object):
         values=None,
         return_covar=False,
         return_blob=False,
+        return_emu_params=False,
     ):
         """Compute theoretical prediction for 1D P(k)"""
 
@@ -266,6 +273,7 @@ class Likelihood(object):
             like_params=like_params,
             return_covar=return_covar,
             return_blob=return_blob,
+            return_emu_params=return_emu_params,
         )
 
     def get_chi2(self, values=None):

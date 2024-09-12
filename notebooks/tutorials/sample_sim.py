@@ -173,19 +173,16 @@ param_new = []
 
 for p in like.free_params:
     pnew = p.get_new_parameter(0.5)
-    pnew.set_without_cube(2.2e-9)
+    if(p == "As"):
+        pnew.set_without_cube(2.2e-9)
     print(p.name, p.value, p.min_value, p.max_value)
-    print(pnew.name, pnew.value, pnew.min_value, pnew.max_value)
+    print(pnew.value)
     param_new.append(pnew)
-    break
+    # break
 
 # %%
-_res = self.get_p1d_kms(
-            self.data.z, k_emu_kms, values, return_covar=return_covar
-        )
-
-# %%
-p.value_in_cube()
+# param_new
+p1ds, params = like.get_p1d_kms(values=None, return_emu_params=True)
 
 # %%
 like.plot_p1d(residuals=True, plot_every_iz=2, values=sampler.mle_cube)
