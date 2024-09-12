@@ -33,7 +33,9 @@ dependencies = [
     "getdist>=1.4.6",
     "iminuit>=2.24.0",
     "bottleneck>=1.3.7",
-    "jupyterlab"
+    "jupyterlab",
+    "pyDOE2",
+    "numdifftools"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

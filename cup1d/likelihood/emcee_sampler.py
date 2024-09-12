@@ -7,6 +7,9 @@ import pandas as pd
 from chainconsumer import ChainConsumer, Chain, Truth
 from warnings import warn
 
+import numdifftools as nd
+from pyDOE2 import lhs
+
 # import multiprocessing as mp
 # from schwimmbad import MPIPool
 from mpi4py import MPI
@@ -91,6 +94,8 @@ class EmceeSampler(object):
         self.progress = progress
         self.get_autocorr = get_autocorr
         self.burnin_nsteps = nburnin
+
+        self.param_dict = param_dict
 
         if self.parallel:
             self.comm = MPI.COMM_WORLD
@@ -405,32 +410,65 @@ class EmceeSampler(object):
 
         return sampler
 
-    def run_minimizer(self, log_func=None, p0=None, cube=False):
-        def log_func_minimize(pp):
-            return -log_func(pp)[0]
+    def run_minimizer(
+        self, log_func_minimize=None, p0=None, cube=False, nsamples=8
+    ):
+        # def log_func_minimize(pp):
+        #     return -log_func(pp)[0]
 
-        """After run_sampler"""
+        """Minimizer"""
 
-        lnprob_ini = log_func(p0)[0]
-        res = scipy.optimize.minimize(
-            log_func_minimize, p0, method="Nelder-Mead"
-        )
-        print(res)
-        if res.success == False:
-            res = scipy.optimize.minimize(log_func_minimize, p0, method="BFGS")
-            if res.success == False:
-                mle = p0
-                warn("Minimization failed")
-            else:
-                mle = res.x
+        if p0 is None:
+            arr_p0 = lhs(len(self.like.free_params), samples=nsamples)
+
+            mle = None
+            chi2 = 1e10
+
+            for ii in range(nsamples):
+                res = scipy.optimize.minimize(
+                    log_func_minimize,
+                    arr_p0[ii],
+                    method="Nelder-Mead",
+                )
+                if res.fun < chi2:
+                    chi2 = res.fun
+                    mle = res.x
+                # print("Minimization:", arr_p0[ii], res.fun, flush=True)
+
+            print("Minimization:", chi2, flush=True)
         else:
+            lnprob_ini = log_func_minimize(p0)
+            res = scipy.optimize.minimize(
+                log_func_minimize,
+                p0,
+                method="Nelder-Mead",
+            )
             mle = res.x
+            lnprob_end = res.fun
+            print("Minimization improved:", lnprob_ini, lnprob_end, flush=True)
+
+        # compute errors
+        hess = nd.Hessian(log_func_minimize)
+        try:
+            self.mle_cov_cube = 0.5 * np.linalg.inv(hess(mle))
+        except:
+            self.mle_cov_cube = None
 
         self.mle_cube = mle
         mle_no_cube = mle.copy()
-        for ii, par in enumerate(self.like.free_params):
-            mle_no_cube[ii] = par.value_from_cube(mle[ii])
-        self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(mle)
+        if self.mle_cov_cube is not None:
+            self.mle_cov = np.zeros((self.mle_cov_cube.shape))
+        for ii, par_i in enumerate(self.like.free_params):
+            scale_i = par_i.max_value - par_i.min_value
+            mle_no_cube[ii] = par_i.value_from_cube(mle[ii])
+            if self.mle_cov_cube is not None:
+                for jj, par_j in enumerate(self.like.free_params):
+                    scale_j = par_j.max_value - par_j.min_value
+                    self.mle_cov[ii, jj] = (
+                        self.mle_cov_cube[ii, jj] * scale_i * scale_j
+                    )
+
+        self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(self.mle_cube)
 
         # Array for all parameters
         all_params = np.hstack([mle_no_cube, np.array(blobs)])
@@ -441,8 +479,10 @@ class EmceeSampler(object):
         for ii, par in enumerate(all_strings):
             self.mle[par] = all_params[ii]
 
-        print("Minimization improved:", lnprob_ini, self.lnprop_mle)
-        print("MLE:", self.mle)
+        print("MLE:", self.mle, flush=True)
+        print("Pars fit:", mle_no_cube, flush=True)
+        if self.mle_cov_cube is not None:
+            print("Errors fit:", np.sqrt(np.diag(self.mle_cov)), flush=True)
 
     def resume_sampler(
         self, max_steps, log_func=None, timeout=None, force_timeout=False
@@ -1241,15 +1281,17 @@ class EmceeSampler(object):
         rand_posterior=None,
         delta_lnprob_cut=None,
         stat_best_fit="mean",
+        best_values=None,
     ):
         """Plot the P1D of the data and the emulator prediction
         for the MCMC best fit
         """
 
         ## Get best fit values for each parameter
-        best_values = self.get_best_fit(
-            delta_lnprob_cut=delta_lnprob_cut, stat_best_fit=stat_best_fit
-        )
+        if best_values is None:
+            best_values = self.get_best_fit(
+                delta_lnprob_cut=delta_lnprob_cut, stat_best_fit=stat_best_fit
+            )
 
         plt.figure(figsize=figsize)
         plt.title("MCMC best fit")

@@ -12,7 +12,7 @@ class P1D_Karacayli2024(BaseDataP1D):
         - diag_cov: for now, use diagonal covariance
         - kmax_nyq: High k cut wrt the Nyquist frequency
         - z_min: z=2.0 bin is not recommended by Karacayli2024
-        - z_max: maximum redshift to include """
+        - z_max: maximum redshift to include"""
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         z, k, Pk, cov = read_from_file(diag_cov, kmax_nyq)

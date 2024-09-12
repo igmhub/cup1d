@@ -283,11 +283,14 @@ class ThermalModel(object):
             ln_sigT_kms_coeff = self.ln_sigT_kms_coeff.copy()
             Npar = 0
             array_names = []
+            array_values = []
             for par in like_params:
                 if "ln_sigT_kms" in par.name:
                     Npar += 1
                     array_names.append(par.name)
+                    array_values.append(par.value)
             array_names = np.array(array_names)
+            array_values = np.array(array_values)
 
             if Npar != len(self.sigT_kms_params):
                 raise ValueError("number of params mismatch in get_sigT_coeffs")
@@ -302,7 +305,7 @@ class ThermalModel(object):
                         + self.sigT_kms_params[ip].name
                     )
                 else:
-                    ln_sigT_kms_coeff[Npar - ip - 1] = like_params[_[0]].value
+                    ln_sigT_kms_coeff[Npar - ip - 1] = array_values[_[0]]
         else:
             ln_sigT_kms_coeff = self.ln_sigT_kms_coeff
 
@@ -314,11 +317,14 @@ class ThermalModel(object):
             ln_gamma_coeff = self.ln_gamma_coeff.copy()
             Npar = 0
             array_names = []
+            array_values = []
             for par in like_params:
                 if "ln_gamma" in par.name:
                     Npar += 1
                     array_names.append(par.name)
+                    array_values.append(par.value)
             array_names = np.array(array_names)
+            array_values = np.array(array_values)
 
             if Npar != len(self.gamma_params):
                 raise ValueError(
@@ -333,7 +339,8 @@ class ThermalModel(object):
                         + self.gamma_params[ip].name
                     )
                 else:
-                    ln_gamma_coeff[Npar - ip - 1] = like_params[_[0]].value
+                    ln_gamma_coeff[Npar - ip - 1] = array_values[_[0]]
+
         else:
             ln_gamma_coeff = self.ln_gamma_coeff
 

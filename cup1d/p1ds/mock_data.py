@@ -1,8 +1,14 @@
 """Class to generate a mock P1D from another P1D object and an emulator"""
 
+import numpy as np
 from lace.emulator import gp_emulator
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
-from cup1d.p1ds import data_Chabanier2019, data_Karacayli2022, data_QMLE_Ohio
+from cup1d.p1ds import (
+    data_Chabanier2019,
+    data_Karacayli2022,
+    data_QMLE_Ohio,
+    data_Karacayli2024,
+)
 from cup1d.likelihood import lya_theory
 
 
@@ -21,6 +27,7 @@ class Mock_P1D(BaseMockP1D):
         cosmo_fid=None,
         zs=None,
         k_kms=None,
+        like_params=[],
     ):
         """Copy data and replace P1D signal using theory
 
@@ -57,8 +64,12 @@ class Mock_P1D(BaseMockP1D):
             data = data_QMLE_Ohio.P1D_QMLE_Ohio(
                 z_min=z_min, z_max=z_max, **kwargs
             )
-        elif data_label == "Karacayli22":
+        elif data_label == "Karacayli2022":
             data = data_Karacayli2022.P1D_Karacayli2022(
+                z_min=z_min, z_max=z_max
+            )
+        elif data_label == "Karacayli2024":
+            data = data_Karacayli2024.P1D_Karacayli2024(
                 z_min=z_min, z_max=z_max
             )
         else:
@@ -77,29 +88,27 @@ class Mock_P1D(BaseMockP1D):
                 "Providing zs and k_kms to create mock data is not implemented yet"
             )
 
-        # setup and store theory (we will need it later)
+        # remove nan values
+        for iz in range(len(zs)):
+            _ = np.argwhere(np.isfinite(np.diag(cov_Pk_kms[iz])))[:, 0]
+            k_kms[iz] = k_kms[iz][_]
+            Pk_kms[iz] = Pk_kms[iz][_]
+            cov_Pk_kms[iz] = cov_Pk_kms[iz][
+                slice(_[0], _[-1] + 1), slice(_[0], _[-1] + 1)
+            ]
+
+        # setup theory
         theory = lya_theory.Theory(
             zs=zs,
             emulator=emulator,
             fid_sim_igm=fid_sim_igm,
             cosmo_fid=cosmo_fid,
         )
-        # theory = lya_theory.Theory(
-        #     zs=data.z,
-        #     zs_hires=zs_hires,
-        #     emulator=emulator,
-        #     free_param_names=free_parameters,
-        #     fid_sim_igm=igm_label,
-        #     true_sim_igm=true_sim_igm,
-        #     cosmo_fid=cosmo_fid,
-        # )
 
         # evaluate theory at k_kms, for all redshifts
-        emu_p1d_kms = theory.get_p1d_kms(zs, k_kms)
+        emu_p1d_kms = theory.get_p1d_kms(zs, k_kms, like_params=like_params)
         for iz, z in enumerate(zs):
             Pk_kms[iz] = emu_p1d_kms[iz]
-
-        self.aa = theory
 
         super().__init__(
             z=zs,

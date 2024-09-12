@@ -96,10 +96,16 @@ class Likelihood(object):
         # else:
         #     self.extra_p1d_like = None
 
-        self.extra_p1d_like = None
+        # self.extra_p1d_like = None
 
         # sometimes we want to know the true theory (when working with mocks)
         self.set_truth()
+
+        # p2 = like.free_params.copy()
+        # ptruth = np.zeros(len(like.free_params))
+        # for ii in range(len(p0)):
+        #     ptruth[ii] = like.free_params[ii].value_in_cube()
+        # print(ptruth)
 
         return
 
@@ -245,6 +251,7 @@ class Likelihood(object):
         values=None,
         return_covar=False,
         return_blob=False,
+        return_emu_params=False,
     ):
         """Compute theoretical prediction for 1D P(k)"""
 
@@ -266,6 +273,7 @@ class Likelihood(object):
             like_params=like_params,
             return_covar=return_covar,
             return_blob=return_blob,
+            return_emu_params=return_emu_params,
         )
 
     def get_chi2(self, values=None):
@@ -389,7 +397,9 @@ class Likelihood(object):
 
         return max(self.min_log_like, log_like)
 
-    def compute_log_prob(self, values, return_blob=False):
+    def compute_log_prob(
+        self, values, return_blob=False, ignore_log_det_cov=False
+    ):
         """Compute log likelihood plus log priors for input values
         - if return_blob==True, it will return also extra information"""
 
@@ -407,19 +417,19 @@ class Likelihood(object):
         # compute log_like (option to ignore emulator covariance)
         if return_blob:
             log_like, blob = self.get_log_like(
-                values, ignore_log_det_cov=False, return_blob=True
+                values, ignore_log_det_cov=ignore_log_det_cov, return_blob=True
             )
         else:
             log_like = self.get_log_like(
-                values, ignore_log_det_cov=False, return_blob=False
+                values, ignore_log_det_cov=ignore_log_det_cov, return_blob=False
             )
 
-        # if required, add extra P1D likelihood from, e.g., HIRES
-        if self.extra_p1d_like:
-            extra_log_like = self.extra_p1d_like.get_log_like(
-                values, ignore_log_det_cov=False, return_blob=False
-            )
-            log_like += extra_log_like
+        # # if required, add extra P1D likelihood from, e.g., HIRES
+        # if self.extra_p1d_like:
+        #     extra_log_like = self.extra_p1d_like.get_log_like(
+        #         values, ignore_log_det_cov=False, return_blob=False
+        #     )
+        #     log_like += extra_log_like
 
         # regulate log-like (not NaN, not tiny)
         log_like = self.regulate_log_like(log_like)
@@ -429,15 +439,19 @@ class Likelihood(object):
         else:
             return log_like + log_prior
 
-    def log_prob(self, values):
+    def log_prob(self, values, ignore_log_det_cov=False):
         """Return log likelihood plus log priors"""
 
-        return self.compute_log_prob(values, return_blob=False)
+        return self.compute_log_prob(
+            values, return_blob=False, ignore_log_det_cov=ignore_log_det_cov
+        )
 
-    def log_prob_and_blobs(self, values):
+    def log_prob_and_blobs(self, values, ignore_log_det_cov=False):
         """Function used by emcee to get both log_prob and extra information"""
 
-        lnprob, blob = self.compute_log_prob(values, return_blob=True)
+        lnprob, blob = self.compute_log_prob(
+            values, return_blob=True, ignore_log_det_cov=ignore_log_det_cov
+        )
         # unpack tuple
         out = lnprob, *blob
         return out
@@ -559,6 +573,7 @@ class Likelihood(object):
         if self.extra_data is None:
             fig, ax = plt.subplots(1, 1, figsize=(8, 6))
             length = 1
+            ax = [ax]
         else:
             fig, ax = plt.subplots(2, 1, figsize=(8, 8))
             length = 2
@@ -627,20 +642,26 @@ class Likelihood(object):
                     ymin = min(ymin, min(p1d_data / model + yshift))
                     ymax = max(ymax, max(p1d_data / model + yshift))
                     ax[ii].plot(
-                        k_emu_kms_use[iz],
-                        p1d_theory / p1d_theory + yshift,
+                        k_kms[iz],
+                        model / model + yshift,
                         color=col,
                         linestyle="dashed",
                     )
                     if return_covar | (rand_posterior is not None):
+                        err_model = np.interp(
+                            k_kms[iz], k_emu_kms_use[iz], err_theory
+                        )
                         ax[ii].fill_between(
-                            k_emu_kms_use[iz],
-                            (p1d_theory + err_theory) / p1d_theory + yshift,
-                            (p1d_theory - err_theory) / p1d_theory + yshift,
+                            k_kms[iz],
+                            (model + err_model) / model + yshift,
+                            (model - err_model) / model + yshift,
                             alpha=0.35,
                             color=col,
                         )
                 else:
+                    _ = (k_emu_kms_use[iz] >= np.min(k_kms[iz]) * 0.9) & (
+                        k_emu_kms_use[iz] <= np.max(k_kms[iz]) * 1.1
+                    )
                     ax[ii].errorbar(
                         k_kms[iz],
                         p1d_data * k_kms[iz] / np.pi,
@@ -651,19 +672,19 @@ class Likelihood(object):
                         label="z=" + str(np.round(z, 2)),
                     )
                     ax[ii].plot(
-                        k_emu_kms_use[iz],
-                        (p1d_theory * k_emu_kms_use[iz]) / np.pi,
+                        k_emu_kms_use[iz][_],
+                        (p1d_theory[_] * k_emu_kms_use[iz][_]) / np.pi,
                         color=col,
                         linestyle="dashed",
                     )
                     if return_covar | (rand_posterior is not None):
                         ax[ii].fill_between(
-                            k_emu_kms_use[iz],
-                            (p1d_theory + err_theory)
-                            * k_emu_kms_use[iz]
+                            k_emu_kms_use[iz][_],
+                            (p1d_theory[_] + err_theory[_])
+                            * k_emu_kms_use[iz][_]
                             / np.pi,
-                            (p1d_theory - err_theory)
-                            * k_emu_kms_use[iz]
+                            (p1d_theory[_] - err_theory[_])
+                            * k_emu_kms_use[iz][_]
                             / np.pi,
                             alpha=0.35,
                             color=col,
@@ -686,7 +707,7 @@ class Likelihood(object):
                 ax[ii].set_ylabel(r"$P_{\rm 1D}(z,k_\parallel)$ residuals")
                 # ax[ii].set_ylim(ymin - 0.1, ymax + 0.1)
             else:
-                # ax[ii].set_ylim(0.8 * ymin, 1.2 * ymax)
+                ax[ii].set_ylim(0.8 * ymin, 1.2 * ymax)
                 ax[ii].set_yscale("log")
                 ax[ii].set_ylabel(
                     r"$k_\parallel \, P_{\rm 1D}(z,k_\parallel) / \pi$"

@@ -144,15 +144,19 @@ class MeanFluxModel(object):
 
     def get_tau_coeffs(self, like_params=[]):
         """Return list of mean flux coefficients"""
+
         if like_params:
             ln_tau_coeff = self.ln_tau_coeff.copy()
             Npar = 0
             array_names = []
+            array_values = []
             for par in like_params:
                 if "ln_tau" in par.name:
                     Npar += 1
                     array_names.append(par.name)
+                    array_values.append(par.value)
             array_names = np.array(array_names)
+            array_values = np.array(array_values)
 
             if Npar != len(self.params):
                 raise ValueError("number of params mismatch in get_tau_coeffs")
@@ -164,7 +168,7 @@ class MeanFluxModel(object):
                         "could not update parameter" + self.params[ip].name
                     )
                 else:
-                    ln_tau_coeff[Npar - ip - 1] = like_params[_[0]].value
+                    ln_tau_coeff[Npar - ip - 1] = array_values[_[0]]
         else:
             ln_tau_coeff = self.ln_tau_coeff
 
