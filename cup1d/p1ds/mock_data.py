@@ -102,13 +102,25 @@ class Mock_P1D(BaseMockP1D):
             zs=zs,
             emulator=emulator,
             fid_sim_igm=fid_sim_igm,
+            true_sim_igm=fid_sim_igm,
             cosmo_fid=cosmo_fid,
         )
 
         # evaluate theory at k_kms, for all redshifts
-        emu_p1d_kms = theory.get_p1d_kms(zs, k_kms, like_params=like_params)
+        out = theory.get_p1d_kms(
+            zs,
+            k_kms,
+            like_params=like_params,
+            return_emu_params=True,
+            return_blob=True,
+        )
+        p1ds, blob, emu_params = out
+
+        theory.set_truth()
+        self.truth = theory.truth
+
         for iz, z in enumerate(zs):
-            Pk_kms[iz] = emu_p1d_kms[iz]
+            Pk_kms[iz] = p1ds[iz]
 
         super().__init__(
             z=zs,

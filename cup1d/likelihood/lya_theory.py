@@ -172,6 +172,27 @@ class Theory(object):
 
         return True
 
+    def set_truth(self):
+        # setup fiducial cosmology
+        self.truth = {}
+
+        sim_cosmo = self.cosmo_model_fid["cosmo"].cosmo
+
+        self.truth["ombh2"] = sim_cosmo.ombh2
+        self.truth["omch2"] = sim_cosmo.omch2
+        self.truth["As"] = sim_cosmo.InitPower.As
+        self.truth["ns"] = sim_cosmo.InitPower.ns
+        self.truth["nrun"] = sim_cosmo.InitPower.nrun
+        self.truth["H0"] = sim_cosmo.H0
+        self.truth["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
+
+        blob_params = ["Delta2_star", "n_star", "alpha_star"]
+        blob = self.cosmo_model_fid["cosmo"].get_linP_params()
+        for ii in range(len(blob_params)):
+            self.truth[blob_params[ii]] = blob[blob_params[ii]]
+
+        self.truth["igm"] = self.true_igm
+
     def emulate_arr_p1d_Mpc(self, model, k_Mpc, return_covar=False, z=None):
         """Wrapper for emulator calls for GP emulator (workaroud should be move to LaCE)"""
 

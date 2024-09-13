@@ -22,7 +22,6 @@ class Likelihood(object):
         data,
         theory,
         emulator=None,
-        cosmo_fid_label="default",
         free_param_names=None,
         free_param_limits=None,
         verbose=False,
@@ -52,7 +51,6 @@ class Likelihood(object):
         self.verbose = verbose
         self.prior_Gauss_rms = prior_Gauss_rms
         self.emu_cov_factor = emu_cov_factor
-        self.cosmo_fid_label = cosmo_fid_label
         self.min_log_like = min_log_like
         self.data = data
         self.extra_data = extra_data
@@ -60,7 +58,6 @@ class Likelihood(object):
         if kmin_kms is not None:
             self.data.cull_data(kmin_kms)
 
-        assert cosmo_fid_label == "default", "wrong settings"
         self.theory = theory
 
         # setup parameters
@@ -68,44 +65,8 @@ class Likelihood(object):
         if verbose:
             print(len(self.free_params), "free parameters")
 
-        # # extra P1D likelihood from, e.g., HIRES
-        # if extra_p1d_data:
-        #     # new theory, since we might need different zs
-        #     extra_theory = lya_theory.Theory(
-        #         zs=extra_p1d_data.z,
-        #         emulator=self.theory.emulator,
-        #         cosmo_fid=self.theory.cosmo_model_fid.cosmo,
-        #         F_model=self.theory.F_model,
-        #         T_model=self.theory.T_model,
-        #         P_model=self.theory.P_model,
-        #         metal_models=self.theory.metal_models,
-        #         verbose=verbose,
-        #     )
-        #     self.extra_p1d_like = Likelihood(
-        #         data=extra_p1d_data,
-        #         theory=extra_theory,
-        #         emulator=None,
-        #         free_param_names=free_param_names,
-        #         free_param_limits=free_param_limits,
-        #         verbose=verbose,
-        #         prior_Gauss_rms=prior_Gauss_rms,
-        #         kmin_kms=kmin_kms,
-        #         emu_cov_factor=emu_cov_factor,
-        #         extra_p1d_data=None,
-        #     )
-        # else:
-        #     self.extra_p1d_like = None
-
-        # self.extra_p1d_like = None
-
         # sometimes we want to know the true theory (when working with mocks)
         self.set_truth()
-
-        # p2 = like.free_params.copy()
-        # ptruth = np.zeros(len(like.free_params))
-        # for ii in range(len(p0)):
-        #     ptruth[ii] = like.free_params[ii].value_in_cube()
-        # print(ptruth)
 
         return
 
@@ -195,54 +156,18 @@ class Likelihood(object):
 
         return cosmo_dict
 
-    def get_sim_cosmo(self):
-        """Check that we are running on mock data, and return sim cosmo"""
-
-        # different type of data will check for different sim cosmo
-        if hasattr(self.data, "theory"):
-            # using a mock_data P1D (computed from theory)
-            return self.data.theory.cosmo_model_fid.cosmo
-        elif hasattr(self.data, "sim_cosmo"):
-            # using new data_gadget module
-            return self.data.sim_cosmo
-        else:
-            # when working with real data can not return truth
-            return None
-
     def set_truth(self, z_star=3.0, kp_kms=0.009):
         """Store true cosmology from the simulation used to make mock data"""
 
         # access true cosmology used in mock data
-        sim_cosmo = self.get_sim_cosmo()
-        if sim_cosmo is None:
+        if hasattr(self.data, "truth") == False:
             print("will not store truth, working with real data")
             self.truth = None
             return
-        camb_results_sim = camb_cosmo.get_camb_results(sim_cosmo, zs=[z_star])
 
-        # store relevant parameters
         self.truth = {}
-        self.truth["ombh2"] = sim_cosmo.ombh2
-        self.truth["omch2"] = sim_cosmo.omch2
-        self.truth["As"] = sim_cosmo.InitPower.As
-        self.truth["ns"] = sim_cosmo.InitPower.ns
-        self.truth["nrun"] = sim_cosmo.InitPower.nrun
-        self.truth["H0"] = sim_cosmo.H0
-        self.truth["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
-        self.truth["cosmomc_theta"] = camb_results_sim.cosmomc_theta()
-
-        # Store truth for compressed parameters
-        linP_sim = fit_linP.parameterize_cosmology_kms(
-            cosmo=sim_cosmo,
-            camb_results=camb_results_sim,
-            z_star=z_star,
-            kp_kms=kp_kms,
-        )
-        self.truth["Delta2_star"] = linP_sim["Delta2_star"]
-        self.truth["n_star"] = linP_sim["n_star"]
-        self.truth["alpha_star"] = linP_sim["alpha_star"]
-        self.truth["f_star"] = linP_sim["f_star"]
-        self.truth["g_star"] = linP_sim["g_star"]
+        for par in self.data.truth:
+            self.truth[par] = self.data.truth[par]
 
     def get_p1d_kms(
         self,

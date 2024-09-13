@@ -93,7 +93,7 @@ def set_P1D(
             if data_label[:3] == "mpg":
                 archive_mock = set_archive(training_set="Cabayol23")
             elif data_label[:3] == "nyx":
-                archive_mock = set_archive(training_set="Nyx24_Feb2024")
+                archive_mock = set_archive(training_set="Nyx24_Oct2023")
 
         if data_label not in archive_mock.list_sim:
             raise ValueError(

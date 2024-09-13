@@ -1,7 +1,11 @@
+import os, sys
+
 import numpy as np
 from scipy.interpolate import interp1d
 
+import lace
 from lace.cosmo import camb_cosmo
+from cup1d.likelihood import CAMB_model
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 from cup1d.p1ds import (
     data_PD2013,
@@ -28,6 +32,8 @@ class Gadget_P1D(BaseMockP1D):
         add_syst=True,
         add_noise=False,
         seed=0,
+        z_star=3.0,
+        kp_kms=0.009,
         fprint=print,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
@@ -43,6 +49,8 @@ class Gadget_P1D(BaseMockP1D):
         self.add_syst = add_syst
         self.data_cov_factor = data_cov_factor
         self.data_cov_label = data_cov_label
+        self.z_star = z_star
+        self.kp_kms = kp_kms
 
         # store sim data
         self.input_sim = input_sim
@@ -61,9 +69,7 @@ class Gadget_P1D(BaseMockP1D):
             dkms_dMpc.append(testing_data[ii]["dkms_dMpc"])
         self.dkms_dMpc = np.array(dkms_dMpc)
 
-        # store cosmology used in the simulation
-        cosmo_params = self.testing_data[0]["cosmo_params"]
-        self.sim_cosmo = camb_cosmo.get_cosmology_from_dictionary(cosmo_params)
+        self._set_truth()
 
         # setup P1D using covariance and testing sim
         z, k, Pk, cov = self._load_p1d()
@@ -81,6 +87,73 @@ class Gadget_P1D(BaseMockP1D):
         )
 
         return
+
+    def _get_cosmo(self):
+        # get cosmology
+        repo = os.path.dirname(lace.__path__[0]) + "/"
+        fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
+        data_cosmo = np.load(fname, allow_pickle=True)
+
+        true_cosmo = None
+        for ii in range(len(data_cosmo)):
+            if data_cosmo[ii]["sim_label"] == self.input_sim:
+                true_cosmo = camb_cosmo.get_cosmology_from_dictionary(
+                    data_cosmo[ii]["cosmo_params"]
+                )
+                break
+        if true_cosmo is None:
+            raise ValueError(f"Cosmo not found in {fname} for {self.input_sim}")
+
+        return true_cosmo
+
+    def _get_igm(self):
+        """Load IGM history"""
+        repo = os.path.dirname(lace.__path__[0]) + "/"
+        fname = repo + "/data/sim_suites/Australia20/IGM_histories.npy"
+        igm_hist = np.load(fname, allow_pickle=True).item()
+        if self.input_sim not in igm_hist:
+            raise ValueError(
+                self.input_sim
+                + " not found in "
+                + fname
+                + r"\n Check out the LaCE script save_"
+                + self.input_sim[:3]
+                + "_IGM.py"
+            )
+        else:
+            true_igm = igm_hist[self.input_sim]
+
+        return true_igm
+
+    def _set_truth(self):
+        # get cosmology
+        sim_cosmo = self._get_cosmo()
+
+        cosmo_model = CAMB_model.CAMBModel(
+            zs=[self.z_star],
+            cosmo=sim_cosmo,
+            z_star=self.z_star,
+            kp_kms=self.kp_kms,
+        )
+
+        self.truth = {}
+
+        self.truth["ombh2"] = sim_cosmo.ombh2
+        self.truth["omch2"] = sim_cosmo.omch2
+        self.truth["As"] = sim_cosmo.InitPower.As
+        self.truth["ns"] = sim_cosmo.InitPower.ns
+        self.truth["nrun"] = sim_cosmo.InitPower.nrun
+        self.truth["H0"] = sim_cosmo.H0
+        self.truth["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
+
+        blob_params = ["Delta2_star", "n_star", "alpha_star"]
+        blob = cosmo_model.get_linP_params()
+        for ii in range(len(blob_params)):
+            self.truth[blob_params[ii]] = blob[blob_params[ii]]
+
+        true_igm = self._get_igm()
+
+        self.truth["igm"] = true_igm
 
     def _load_p1d(self):
         # figure out dataset to mimic

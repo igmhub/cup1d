@@ -67,7 +67,7 @@ args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 args.data_label="mock_Karacayli2024"
 args.data_label_hires = "mock_Karacayli2022"
-# args.data_label="mpg_central"
+args.data_label="nyx_central"
 # args.data_label_hires="mpg_central"
 
 args.cosmo_label="mpg_central"
@@ -148,6 +148,9 @@ data["P1Ds"].plot_p1d()
 if(args.add_hires):
     data["extra_P1Ds"].plot_p1d()
 
+# %%
+data["P1Ds"].plot_igm()
+
 # %% [markdown]
 # ### Set likelihood
 
@@ -166,6 +169,12 @@ like = set_like(
 
 # %% [markdown]
 # Plot residual between P1D data and emulator for fiducial cosmology (should be the same in this case)
+
+# %%
+data["P1Ds"].truth
+
+# %%
+like.truth
 
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1)

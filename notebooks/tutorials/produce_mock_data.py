@@ -40,6 +40,7 @@ output_dir = "."
 
 # provide name of emulator that we will use as input to generate mock data
 args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 # the wavelengths and covariance matrices are extracted from here 
 args.data_label="mock_Karacayli2024"
