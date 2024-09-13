@@ -35,7 +35,6 @@ class Theory(object):
         cosmo_fid=None,
         free_param_names=None,
         fid_sim_igm="mpg_central",
-        true_sim_igm=None,
     ):
         """Setup object to compute predictions for the 1D power spectrum.
         Inputs:
@@ -69,18 +68,7 @@ class Theory(object):
 
         self.emu_kp_Mpc = self.emulator.kp_Mpc
 
-        # load fiducial IGM history (used for fitting)
-        self.fid_sim_igm = fid_sim_igm
-        self.fid_igm = self.get_igm(fid_sim_igm)
-
-        # load true IGM history (if any)
-        if true_sim_igm is not None:
-            self.true_sim_igm = true_sim_igm
-            self.true_igm = self.get_igm(true_sim_igm)
-        else:
-            self.true_sim_igm = None
-
-        # setup fiducial cosmology
+        # setup fiducial cosmology (used for fitting)
         if not cosmo_fid:
             cosmo_fid = camb_cosmo.get_cosmology()
 
@@ -105,6 +93,10 @@ class Theory(object):
         self.cosmo_model_fid["M_of_zs"] = self.cosmo_model_fid[
             "cosmo"
         ].get_M_of_zs()
+
+        # load fiducial IGM history (used for fitting)
+        self.fid_sim_igm = fid_sim_igm
+        self.fid_igm = self.get_igm(fid_sim_igm)
 
         # setup fiducial IGM models (from Gadget sims if not specified)
         if F_model is not None:
@@ -171,27 +163,6 @@ class Theory(object):
                 return False
 
         return True
-
-    def set_truth(self):
-        # setup fiducial cosmology
-        self.truth = {}
-
-        sim_cosmo = self.cosmo_model_fid["cosmo"].cosmo
-
-        self.truth["ombh2"] = sim_cosmo.ombh2
-        self.truth["omch2"] = sim_cosmo.omch2
-        self.truth["As"] = sim_cosmo.InitPower.As
-        self.truth["ns"] = sim_cosmo.InitPower.ns
-        self.truth["nrun"] = sim_cosmo.InitPower.nrun
-        self.truth["H0"] = sim_cosmo.H0
-        self.truth["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
-
-        blob_params = ["Delta2_star", "n_star", "alpha_star"]
-        blob = self.cosmo_model_fid["cosmo"].get_linP_params()
-        for ii in range(len(blob_params)):
-            self.truth[blob_params[ii]] = blob[blob_params[ii]]
-
-        self.truth["igm"] = self.true_igm
 
     def emulate_arr_p1d_Mpc(self, model, k_Mpc, return_covar=False, z=None):
         """Wrapper for emulator calls for GP emulator (workaroud should be move to LaCE)"""

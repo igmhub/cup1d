@@ -67,7 +67,7 @@ args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 args.data_label="mock_Karacayli2024"
 args.data_label_hires = "mock_Karacayli2022"
-args.data_label="nyx_central"
+# args.data_label="mpg_central"
 # args.data_label_hires="mpg_central"
 
 args.cosmo_label="mpg_central"
@@ -118,11 +118,12 @@ cosmo_fid = set_fid_cosmo(cosmo_label=args.cosmo_label)
 
 # %%
 data = {"P1Ds": None, "extra_P1Ds": None}
-data["P1Ds"], true_sim_igm = set_P1D(
+data["P1Ds"] = set_P1D(
     archive,
     emulator,
     args.data_label,
     cosmo_fid,
+    true_sim_igm=args.igm_label,
     cov_label=args.cov_label,
     igm_label=args.igm_label,
     apply_smoothing=False,
@@ -159,7 +160,6 @@ like = set_like(
     emulator,
     data["P1Ds"],
     data["extra_P1Ds"],
-    true_sim_igm,
     args.igm_label,
     args.n_igm,
     cosmo_fid,
@@ -169,12 +169,6 @@ like = set_like(
 
 # %% [markdown]
 # Plot residual between P1D data and emulator for fiducial cosmology (should be the same in this case)
-
-# %%
-data["P1Ds"].truth
-
-# %%
-like.truth
 
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1)

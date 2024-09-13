@@ -2,6 +2,7 @@
 
 import numpy as np
 from lace.emulator import gp_emulator
+from lace.cosmo import camb_cosmo
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 from cup1d.p1ds import (
     data_Chabanier2019,
@@ -23,11 +24,10 @@ class Mock_P1D(BaseMockP1D):
         z_max=10,
         add_noise=False,
         seed=0,
-        fid_sim_igm="mpg_central",
-        cosmo_fid=None,
+        true_sim_igm="mpg_central",
+        true_cosmo=None,
         zs=None,
         k_kms=None,
-        like_params=[],
     ):
         """Copy data and replace P1D signal using theory
 
@@ -101,23 +101,14 @@ class Mock_P1D(BaseMockP1D):
         theory = lya_theory.Theory(
             zs=zs,
             emulator=emulator,
-            fid_sim_igm=fid_sim_igm,
-            true_sim_igm=fid_sim_igm,
-            cosmo_fid=cosmo_fid,
+            fid_sim_igm=true_sim_igm,
+            cosmo_fid=true_cosmo,
         )
 
         # evaluate theory at k_kms, for all redshifts
-        out = theory.get_p1d_kms(
-            zs,
-            k_kms,
-            like_params=like_params,
-            return_emu_params=True,
-            return_blob=True,
-        )
-        p1ds, blob, emu_params = out
+        p1ds = theory.get_p1d_kms(zs, k_kms)
 
-        theory.set_truth()
-        self.truth = theory.truth
+        self.set_truth(theory)
 
         for iz, z in enumerate(zs):
             Pk_kms[iz] = p1ds[iz]
@@ -132,3 +123,24 @@ class Mock_P1D(BaseMockP1D):
             z_min=z_min,
             z_max=z_max,
         )
+
+    def set_truth(self, theory):
+        # setup fiducial cosmology
+        self.truth = {}
+
+        sim_cosmo = theory.cosmo_model_fid["cosmo"].cosmo
+
+        self.truth["ombh2"] = sim_cosmo.ombh2
+        self.truth["omch2"] = sim_cosmo.omch2
+        self.truth["As"] = sim_cosmo.InitPower.As
+        self.truth["ns"] = sim_cosmo.InitPower.ns
+        self.truth["nrun"] = sim_cosmo.InitPower.nrun
+        self.truth["H0"] = sim_cosmo.H0
+        self.truth["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
+
+        blob_params = ["Delta2_star", "n_star", "alpha_star"]
+        blob = theory.cosmo_model_fid["cosmo"].get_linP_params()
+        for ii in range(len(blob_params)):
+            self.truth[blob_params[ii]] = blob[blob_params[ii]]
+
+        self.truth["igm"] = theory.fid_igm
