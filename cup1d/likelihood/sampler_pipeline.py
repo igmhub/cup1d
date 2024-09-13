@@ -54,7 +54,6 @@ def set_P1D(
     z_max=10,
     add_noise=False,
     seed_noise=0,
-    igm_label=None,
     fprint=print,
     cull_data=False,
 ):
@@ -187,7 +186,6 @@ def set_P1D_hires(
     z_min=0,
     z_max=10,
     add_noise=False,
-    igm_label=None,
     seed_noise=0,
     fprint=print,
     cull_data=False,
@@ -332,7 +330,7 @@ def set_like(
     emulator,
     data,
     data_hires,
-    igm_label,
+    fid_igm_label,
     n_igm,
     cosmo_fid,
     fix_cosmo=False,
@@ -370,7 +368,7 @@ def set_like(
         zs_hires=zs_hires,
         emulator=emulator,
         free_param_names=free_parameters,
-        fid_sim_igm=igm_label,
+        fid_sim_igm=fid_igm_label,
         cosmo_fid=cosmo_fid,
     )
 

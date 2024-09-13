@@ -169,6 +169,21 @@ class Likelihood(object):
         for par in self.data.truth:
             self.truth[par] = self.data.truth[par]
 
+        equal = True
+        for par in self.data.truth["igm"]:
+            if (
+                np.allclose(
+                    self.data.truth["igm"][par], self.theory.fid_igm[par]
+                )
+                == False
+            ):
+                equal = False
+                break
+        if equal:
+            for param in self.free_params:
+                if "ln_" in param.name:
+                    self.truth[param.name] = 0
+
     def get_p1d_kms(
         self,
         zs=None,
@@ -719,3 +734,62 @@ class Likelihood(object):
         plt.show()
 
         return
+
+    def plot_igm(self):
+        """Plot IGM histories"""
+
+        # true IGM parameters
+        if self.truth is not None:
+            pars_true = {}
+            pars_true["z_igm"] = self.truth["igm"]["z"]
+            pars_true["tau_eff"] = self.truth["igm"]["tau_eff"]
+            pars_true["gamma"] = self.truth["igm"]["gamma"]
+            pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
+            pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
+
+        pars_fid = {}
+        pars_fid["z_igm"] = self.theory.fid_igm["z"]
+        pars_fid["tau_eff"] = self.theory.fid_igm["tau_eff"]
+        pars_fid["gamma"] = self.theory.fid_igm["gamma"]
+        pars_fid["sigT_kms"] = self.theory.fid_igm["sigT_kms"]
+        pars_fid["kF_kms"] = self.theory.fid_igm["kF_kms"]
+
+        fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
+        ax = ax.reshape(-1)
+
+        arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
+        latex_labs = [
+            r"$\tau_\mathrm{eff}$",
+            r"$\gamma$",
+            r"$\sigma_T$",
+            r"$k_F$",
+        ]
+
+        for ii in range(len(arr_labs)):
+            if self.truth is not None:
+                _ = pars_true[arr_labs[ii]] != 0
+                ax[ii].plot(
+                    pars_true["z_igm"][_],
+                    pars_true[arr_labs[ii]][_],
+                    "o:",
+                    label="true",
+                )
+
+            _ = pars_fid[arr_labs[ii]] != 0
+            ax[ii].plot(
+                pars_fid["z_igm"][_],
+                pars_fid[arr_labs[ii]][_],
+                "s--",
+                label="fiducial",
+                alpha=0.5,
+            )
+
+            ax[ii].set_ylabel(latex_labs[ii])
+            if ii == 0:
+                ax[ii].set_yscale("log")
+                ax[ii].legend()
+
+            if (ii == 2) | (ii == 3):
+                ax[ii].set_xlabel(r"$z$")
+
+        plt.tight_layout()

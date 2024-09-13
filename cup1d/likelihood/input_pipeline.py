@@ -65,11 +65,18 @@ def parse_args():
         help="Maximum redshift of P1D measurements to be analyzed",
     )
     parser.add_argument(
-        "--igm_label",
+        "--fid_igm_label",
         default=None,
         type=str,
         required=True,
         help="Input simulation to set fiducial IGM model",
+    )
+    parser.add_argument(
+        "--true_igm_label",
+        default=None,
+        type=str,
+        required=True,
+        help="Input simulation to set IGM model to create mock",
     )
     parser.add_argument(
         "--n_igm",
@@ -278,7 +285,8 @@ class Args:
         data_label_hires="mpg_central",
         z_min=2,
         z_max=4.5,
-        igm_label="mpg_central",
+        fid_igm_label="mpg_central",
+        true_igm_label="mpg_central",
         n_igm=2,
         add_metals=False,
         cosmo_label="mpg_central",
@@ -309,7 +317,8 @@ class Args:
         self.data_label_hires = data_label_hires
         self.z_min = z_min
         self.z_max = z_max
-        self.igm_label = igm_label
+        self.true_igm_label = true_igm_label
+        self.fid_igm_label = fid_igm_label
         self.n_igm = n_igm
         self.add_metals = add_metals
         self.cosmo_label = cosmo_label
@@ -338,7 +347,8 @@ class Args:
             "data_label_hires",
             "z_min",
             "z_max",
-            "igm_label",
+            "fid_igm_label",
+            "true_igm_label",
             "n_igm",
             "cosmo_label",
             "drop_sim",

@@ -197,15 +197,12 @@ class EmceeSampler(object):
 
         # store truth for all parameters, with LaTeX keywords
         self.truth = {}
-        for param in cosmo_params:
-            param_string = param_dict[param]
-            self.truth[param_string] = like_truth[param]
-
-        # when using the IGM history of the analyzed simulation set to zero
-        if self.like.data.input_sim == self.like.theory.fid_sim_igm:
-            for param in self.like.free_params[2:]:
-                param_string = param_dict[param.name]
-                self.truth[param_string] = 0
+        for param in like_truth:
+            if param in param_dict:
+                param_string = param_dict[param]
+                self.truth[param_string] = like_truth[param]
+            else:
+                self.truth[param] = like_truth[param]
 
         return
 

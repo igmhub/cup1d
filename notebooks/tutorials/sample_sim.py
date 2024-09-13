@@ -66,12 +66,13 @@ args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 
 args.data_label="mock_Karacayli2024"
-args.data_label_hires = "mock_Karacayli2022"
+# args.data_label_hires = "mock_Karacayli2022"
 # args.data_label="mpg_central"
 # args.data_label_hires="mpg_central"
 
 args.cosmo_label="mpg_central"
-args.igm_label="mpg_central"
+args.true_igm_label="mpg_0"
+args.fid_igm_label="mpg_central"
 args.vary_alphas=False
 
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
@@ -123,9 +124,8 @@ data["P1Ds"] = set_P1D(
     emulator,
     args.data_label,
     cosmo_fid,
-    true_sim_igm=args.igm_label,
+    true_sim_igm=args.true_igm_label,
     cov_label=args.cov_label,
-    igm_label=args.igm_label,
     apply_smoothing=False,
     z_min=args.z_min,
     z_max=args.z_max,
@@ -137,8 +137,8 @@ if(args.add_hires):
         emulator,
         args.data_label_hires,
         cosmo_fid,
+        true_sim_igm=args.true_igm_label,
         cov_label_hires=args.cov_label_hires,
-        igm_label=args.igm_label,
         apply_smoothing=False,
         z_min=args.z_min,
         z_max=args.z_max,
@@ -160,7 +160,7 @@ like = set_like(
     emulator,
     data["P1Ds"],
     data["extra_P1Ds"],
-    args.igm_label,
+    args.fid_igm_label,
     args.n_igm,
     cosmo_fid,
     vary_alphas=args.vary_alphas,
@@ -173,6 +173,9 @@ like = set_like(
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1)
 like.plot_p1d(residuals=True, plot_every_iz=2)
+
+# %%
+like.plot_igm()
 
 # %% [markdown]
 # Priors for sampling parameters
