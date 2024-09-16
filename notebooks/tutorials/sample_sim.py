@@ -215,9 +215,9 @@ p0 = np.zeros(len(like.free_params)) + 0.5
 fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
 
 # %%
-# like.plot_p1d(residuals=False, plot_every_iz=1, values=sampler.mle_cube)
-like.plot_p1d(residuals=True, plot_every_iz=2, values=sampler.mle_cube)
-# like.plot_p1d(residuals=True, plot_every_iz=2, values=ptruth)
+fitter.plot_p1d(residuals=True, plot_every_iz=2)
+
+# fitter.plot_igm()
 
 # %% [markdown]
 # ### Get plots

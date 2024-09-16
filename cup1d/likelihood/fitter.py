@@ -977,7 +977,6 @@ class Fitter(object):
             )
             best_values = np.median(chain, axis=0)
         elif stat_best_fit == "mle":
-            # best_values = chain[np.argmax(lnprob)]
             best_values = self.mle_cube
         else:
             raise ValueError(stat_best_fit + " not implemented")
@@ -1079,7 +1078,7 @@ class Fitter(object):
                 mask_use = None
 
             try:
-                self.plot_best_fit(residuals=residuals, stat_best_fit="mean")
+                self.plot_p1d(residuals=residuals, stat_best_fit="mean")
             except:
                 self.print("Can't plot best fit: mean")
 
@@ -1093,7 +1092,7 @@ class Fitter(object):
 
             try:
                 for stat_best_fit in ["mle"]:
-                    self.plot_best_fit(
+                    self.plot_p1d(
                         residuals=residuals,
                         rand_posterior=rand_posterior,
                         stat_best_fit=stat_best_fit,
@@ -1124,12 +1123,12 @@ class Fitter(object):
                 self.print("Can't plot corner")
         else:
             mask_use = self.plot_lnprob()
-            self.plot_best_fit(residuals=residuals, stat_best_fit="mean")
+            self.plot_p1d(residuals=residuals, stat_best_fit="mean")
             for stat_best_fit in ["mean"]:
                 rand_posterior = self.plot_igm_histories(
                     stat_best_fit=stat_best_fit
                 )
-                self.plot_best_fit(
+                self.plot_p1d(
                     residuals=residuals,
                     rand_posterior=rand_posterior,
                     stat_best_fit=stat_best_fit,
@@ -1270,44 +1269,39 @@ class Fitter(object):
 
         return mask_use
 
-    def plot_best_fit(
+    def plot_p1d(
         self,
-        figsize=(8, 6),
+        values=None,
         plot_every_iz=1,
         residuals=False,
         rand_posterior=None,
-        delta_lnprob_cut=None,
-        stat_best_fit="mean",
-        best_values=None,
+        stat_best_fit="mle",
+        save_directory=None,
     ):
         """Plot the P1D of the data and the emulator prediction
         for the MCMC best fit
         """
 
         ## Get best fit values for each parameter
-        if best_values is None:
-            best_values = self.get_best_fit(
-                delta_lnprob_cut=delta_lnprob_cut, stat_best_fit=stat_best_fit
-            )
+        if values is None:
+            values = self.get_best_fit(stat_best_fit=stat_best_fit)
 
-        plt.figure(figsize=figsize)
-        plt.title("MCMC best fit")
-        self.like.plot_p1d(
-            values=best_values,
-            plot_every_iz=plot_every_iz,
-            residuals=residuals,
-            rand_posterior=rand_posterior,
-        )
-
-        if self.save_directory is not None:
+        if save_directory is not None:
             if rand_posterior is None:
                 fname = "best_fit_" + stat_best_fit + "_err_emu"
             else:
                 fname = "best_fit_" + stat_best_fit + "_err_posterior"
-            plt.savefig(self.save_directory + "/" + fname + ".pdf")
-            plt.close()
+            plot_fname = save_directory + "/" + fname + ".pdf"
         else:
-            plt.show()
+            plot_fname = None
+
+        self.like.plot_p1d(
+            values=values,
+            plot_every_iz=plot_every_iz,
+            residuals=residuals,
+            rand_posterior=rand_posterior,
+            plot_fname=plot_fname,
+        )
 
     def plot_prediction(
         self, figsize=(8, 6), values=None, plot_every_iz=1, residuals=False
