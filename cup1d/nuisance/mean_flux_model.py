@@ -53,8 +53,9 @@ class MeanFluxModel(object):
         )
         p = np.poly1d(pfit)
         _ = fid_igm["z"] != 0
-        self.fid_z = fid_igm["z"][_]
-        self.fid_tau_eff = fid_igm["tau_eff"][_]
+        ind = np.argsort(fid_igm["z"][_])
+        self.fid_z = fid_igm["z"][_][ind]
+        self.fid_tau_eff = fid_igm["tau_eff"][_][ind]
 
         # use poly fit to interpolate when data is missing (needed for Nyx)
         mask2 = self.fid_tau_eff == 0

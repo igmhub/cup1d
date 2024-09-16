@@ -60,9 +60,10 @@ class ThermalModel(object):
             & (fid_igm["z"] != 0)
         )
         if np.sum(mask) > 0:
-            self.fid_z = fid_igm["z"][mask]
-            self.fid_gamma = fid_igm["gamma"][mask]
-            self.fid_sigT_kms = fid_igm["sigT_kms"][mask]
+            ind = np.argsort(fid_igm["z"][mask])
+            self.fid_z = fid_igm["z"][mask][ind]
+            self.fid_gamma = fid_igm["gamma"][mask][ind]
+            self.fid_sigT_kms = fid_igm["sigT_kms"][mask][ind]
         else:
             raise ValueError("No non-zero gamma and sigT_kms in fiducial IGM")
 

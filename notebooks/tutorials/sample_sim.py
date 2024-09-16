@@ -61,6 +61,7 @@ args.data_label="mock_Karacayli2024"
 
 args.cosmo_label="mpg_central"
 args.true_igm_label="mpg_0"
+args.true_igm_label="mpg_central"
 args.fid_igm_label="mpg_central"
 args.vary_alphas=False
 
@@ -217,7 +218,8 @@ fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
 # %%
 fitter.plot_p1d(residuals=True, plot_every_iz=2)
 
-# fitter.plot_igm()
+# %%
+fitter.plot_igm()
 
 # %% [markdown]
 # ### Get plots

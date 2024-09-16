@@ -86,7 +86,7 @@ class BaseMockP1D(BaseDataP1D):
 
         # true IGM parameters
         pars_true = {}
-        pars_true["z_igm"] = self.truth["igm"]["z"]
+        pars_true["z_igm"] = self.truth["igm"]["z_igm"]
         pars_true["tau_eff"] = self.truth["igm"]["tau_eff"]
         pars_true["gamma"] = self.truth["igm"]["gamma"]
         pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]

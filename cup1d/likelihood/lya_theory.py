@@ -96,7 +96,7 @@ class Theory(object):
 
         # load fiducial IGM history (used for fitting)
         self.fid_sim_igm = fid_sim_igm
-        self.fid_igm = self.get_igm(fid_sim_igm)
+        fid_igm = self.get_igm(fid_sim_igm)
 
         # setup fiducial IGM models (from Gadget sims if not specified)
         if F_model is not None:
@@ -104,22 +104,29 @@ class Theory(object):
         else:
             self.F_model = mean_flux_model.MeanFluxModel(
                 free_param_names=free_param_names,
-                fid_igm=self.fid_igm,
+                fid_igm=fid_igm,
             )
         if T_model:
             self.T_model = T_model
         else:
             self.T_model = thermal_model.ThermalModel(
                 free_param_names=free_param_names,
-                fid_igm=self.fid_igm,
+                fid_igm=fid_igm,
             )
         if P_model:
             self.P_model = P_model
         else:
             self.P_model = pressure_model.PressureModel(
                 free_param_names=free_param_names,
-                fid_igm=self.fid_igm,
+                fid_igm=fid_igm,
             )
+
+        self.fid_igm = {}
+        self.fid_igm["z_igm"] = zs
+        self.fid_igm["tau_eff"] = self.F_model.get_tau_eff(zs)
+        self.fid_igm["gamma"] = self.T_model.get_gamma(zs)
+        self.fid_igm["sigT_kms"] = self.T_model.get_sigT_kms(zs)
+        self.fid_igm["kF_kms"] = self.P_model.get_kF_kms(zs)
 
         # check whether we want to include metal contamination models
         self.metal_models = []

@@ -55,8 +55,9 @@ class PressureModel(object):
         )
         p = np.poly1d(pfit)
         _ = fid_igm["z"] != 0
-        self.fid_z = fid_igm["z"][_]
-        self.fid_kF = fid_igm["kF_kms"][_]
+        ind = np.argsort(fid_igm["z"][_])
+        self.fid_z = fid_igm["z"][_][ind]
+        self.fid_kF = fid_igm["kF_kms"][_][ind]
 
         # use poly fit to interpolate when data is missing (needed for Nyx)
         mask2 = self.fid_kF == 0

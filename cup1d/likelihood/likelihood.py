@@ -741,14 +741,14 @@ class Likelihood(object):
         # true IGM parameters
         if self.truth is not None:
             pars_true = {}
-            pars_true["z_igm"] = self.truth["igm"]["z"]
+            pars_true["z_igm"] = self.truth["igm"]["z_igm"]
             pars_true["tau_eff"] = self.truth["igm"]["tau_eff"]
             pars_true["gamma"] = self.truth["igm"]["gamma"]
             pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
             pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
 
         pars_fid = {}
-        pars_fid["z_igm"] = self.theory.fid_igm["z"]
+        pars_fid["z_igm"] = self.theory.fid_igm["z_igm"]
         pars_fid["tau_eff"] = self.theory.fid_igm["tau_eff"]
         pars_fid["gamma"] = self.theory.fid_igm["gamma"]
         pars_fid["sigT_kms"] = self.theory.fid_igm["sigT_kms"]

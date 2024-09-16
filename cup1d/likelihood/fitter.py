@@ -1084,9 +1084,7 @@ class Fitter(object):
 
             try:
                 for stat_best_fit in ["mle"]:
-                    rand_posterior = self.plot_igm_histories(
-                        stat_best_fit=stat_best_fit
-                    )
+                    rand_posterior = self.plot_igm(stat_best_fit=stat_best_fit)
             except:
                 self.print("Can't plot IGM histories")
 
@@ -1125,9 +1123,7 @@ class Fitter(object):
             mask_use = self.plot_lnprob()
             self.plot_p1d(residuals=residuals, stat_best_fit="mean")
             for stat_best_fit in ["mean"]:
-                rand_posterior = self.plot_igm_histories(
-                    stat_best_fit=stat_best_fit
-                )
+                rand_posterior = self.plot_igm(stat_best_fit=stat_best_fit)
                 self.plot_p1d(
                     residuals=residuals,
                     rand_posterior=rand_posterior,
@@ -1326,60 +1322,67 @@ class Fitter(object):
 
         return
 
-    def plot_igm_histories(
-        self, nn=5000, stat_best_fit="mle", delta_lnprob_cut=None
-    ):
+    def plot_igm(self, value=None, rand_sample=None, stat_best_fit="mle"):
         """Plot IGM histories"""
 
-        chain, lnprob, blobs = self.get_chain(delta_lnprob_cut=delta_lnprob_cut)
-        nn = min(chain.shape[0], nn)
-        mask = np.random.permutation(chain.shape[0])[:nn]
-        rand_sample = chain[mask]
-
-        z = np.array(self.like.data.z)
-
         # true IGM parameters
-        pars_true = {}
-        pars_true["z_igm"] = self.like.theory.fid_igm["z"]
-        pars_true["tau_eff"] = self.like.theory.true_igm["tau_eff"]
-        pars_true["gamma"] = self.like.theory.true_igm["gamma"]
-        pars_true["sigT_kms"] = self.like.theory.true_igm["sigT_kms"]
-        pars_true["kF_kms"] = self.like.theory.true_igm["kF_kms"]
+        if self.like.truth is not None:
+            pars_true = {}
+            pars_true["z_igm"] = self.like.truth["igm"]["z_igm"]
+            pars_true["tau_eff"] = self.like.truth["igm"]["tau_eff"]
+            pars_true["gamma"] = self.like.truth["igm"]["gamma"]
+            pars_true["sigT_kms"] = self.like.truth["igm"]["sigT_kms"]
+            pars_true["kF_kms"] = self.like.truth["igm"]["kF_kms"]
 
         # fiducial IGM parameters
         pars_fid = {}
-        pars_fid["z_igm"] = self.like.theory.P_model_fid.fid_z
-        pars_fid["tau_eff"] = self.like.theory.F_model_fid.fid_tau_eff
-        pars_fid["gamma"] = self.like.theory.T_model_fid.fid_gamma
-        pars_fid["sigT_kms"] = self.like.theory.T_model_fid.fid_sigT_kms
-        pars_fid["kF_kms"] = self.like.theory.P_model_fid.fid_kF
+        pars_fid["z_igm"] = self.like.theory.fid_igm["z_igm"]
+        pars_fid["tau_eff"] = self.like.theory.fid_igm["tau_eff"]
+        pars_fid["gamma"] = self.like.theory.fid_igm["gamma"]
+        pars_fid["sigT_kms"] = self.like.theory.fid_igm["sigT_kms"]
+        pars_fid["kF_kms"] = self.like.theory.fid_igm["kF_kms"]
 
         # best-fitting IGM parameters
-        best_value = self.get_best_fit(stat_best_fit=stat_best_fit)
-        like_params = self.like.parameters_from_sampling_point(best_value)
-        models = self.like.theory.update_igm_models(like_params)
+        if value is None:
+            value = self.get_best_fit(stat_best_fit=stat_best_fit)
+        like_params = self.like.parameters_from_sampling_point(value)
 
         pars_best = {}
-        pars_best["tau_eff"] = models["F_model"].get_tau_eff(z)
-        pars_best["gamma"] = models["T_model"].get_gamma(z)
-        pars_best["sigT_kms"] = models["T_model"].get_sigT_kms(z)
-        pars_best["kF_kms"] = models["P_model"].get_kF_kms(z)
+        pars_best["z_igm"] = np.array(self.like.data.z)
+        pars_best["tau_eff"] = self.like.theory.F_model.get_tau_eff(
+            pars_best["z_igm"], like_params=like_params
+        )
+        pars_best["gamma"] = self.like.theory.T_model.get_gamma(
+            pars_best["z_igm"], like_params=like_params
+        )
+        pars_best["sigT_kms"] = self.like.theory.T_model.get_sigT_kms(
+            pars_best["z_igm"], like_params=like_params
+        )
+        pars_best["kF_kms"] = self.like.theory.P_model.get_kF_kms(
+            pars_best["z_igm"], like_params=like_params
+        )
 
-        # sample the chain to get errors on IGM parameters
-        pars_samp = {}
-        pars_samp["tau_eff"] = np.zeros((nn, len(z)))
-        pars_samp["gamma"] = np.zeros((nn, len(z)))
-        pars_samp["sigT_kms"] = np.zeros((nn, len(z)))
-        pars_samp["kF_kms"] = np.zeros((nn, len(z)))
-        for ii in range(nn):
-            like_params = self.like.parameters_from_sampling_point(
-                rand_sample[ii]
-            )
-            models = self.like.theory.update_igm_models(like_params)
-            pars_samp["tau_eff"][ii] = models["F_model"].get_tau_eff(z)
-            pars_samp["gamma"][ii] = models["T_model"].get_gamma(z)
-            pars_samp["sigT_kms"][ii] = models["T_model"].get_sigT_kms(z)
-            pars_samp["kF_kms"][ii] = models["P_model"].get_kF_kms(z)
+        if rand_sample is not None:
+            # chain, lnprob, blobs = self.get_chain()
+            # nn = min(chain.shape[0], nn)
+            # mask = np.random.permutation(chain.shape[0])[:nn]
+            # rand_sample = chain[mask]
+
+            # sample the chain to get errors on IGM parameters
+            pars_samp = {}
+            pars_samp["tau_eff"] = np.zeros((nn, len(z)))
+            pars_samp["gamma"] = np.zeros((nn, len(z)))
+            pars_samp["sigT_kms"] = np.zeros((nn, len(z)))
+            pars_samp["kF_kms"] = np.zeros((nn, len(z)))
+            for ii in range(nn):
+                like_params = self.like.parameters_from_sampling_point(
+                    rand_sample[ii]
+                )
+                models = self.like.theory.update_igm_models(like_params)
+                pars_samp["tau_eff"][ii] = models["F_model"].get_tau_eff(z)
+                pars_samp["gamma"][ii] = models["T_model"].get_gamma(z)
+                pars_samp["sigT_kms"][ii] = models["T_model"].get_sigT_kms(z)
+                pars_samp["kF_kms"][ii] = models["P_model"].get_kF_kms(z)
 
         # plot the IGM histories
         fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
@@ -1394,7 +1397,7 @@ class Fitter(object):
         ]
 
         for ii in range(len(arr_labs)):
-            if self.like.theory.true_sim_igm is not None:
+            if self.like.truth is not None:
                 _ = pars_true[arr_labs[ii]] != 0
                 ax[ii].plot(
                     pars_true["z_igm"][_],
@@ -1411,17 +1414,27 @@ class Fitter(object):
                 label="fiducial",
                 alpha=0.5,
             )
-            err = np.abs(
-                np.percentile(pars_samp[arr_labs[ii]], [16, 84], axis=0)
-                - pars_best[arr_labs[ii]]
-            )
-            ax[ii].errorbar(
-                z,
-                pars_best[arr_labs[ii]],
-                err,
-                label="best-fitting",
-                alpha=0.5,
-            )
+
+            _ = pars_best[arr_labs[ii]] != 0
+            if rand_sample is not None:
+                err = np.abs(
+                    np.percentile(pars_samp[arr_labs[ii]], [16, 84], axis=0)
+                    - pars_best[arr_labs[ii]]
+                )
+                ax[ii].errorbar(
+                    pars_best["z_igm"],
+                    pars_best[arr_labs[ii]],
+                    err,
+                    label="best-fitting",
+                    alpha=0.5,
+                )
+            else:
+                ax[ii].plot(
+                    pars_best["z_igm"][_],
+                    pars_best[arr_labs[ii]][_],
+                    label="fit",
+                    alpha=0.5,
+                )
 
             ax[ii].set_ylabel(latex_labs[ii])
             if ii == 0:
@@ -1433,13 +1446,11 @@ class Fitter(object):
 
         plt.tight_layout()
 
-        if self.save_directory is not None:
-            plt.savefig(
-                self.save_directory + "/IGM_histories_" + stat_best_fit + ".pdf"
-            )
-            plt.close()
-
-        return rand_sample
+        # if self.save_directory is not None:
+        #     plt.savefig(
+        #         self.save_directory + "/IGM_histories_" + stat_best_fit + ".pdf"
+        #     )
+        #     plt.close()
 
 
 ## Dictionary to convert likelihood parameters into latex strings
