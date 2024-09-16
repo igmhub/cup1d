@@ -63,7 +63,7 @@ def purge_chains(ln_prop_chains, nsplit=7, abs_diff=5):
     return keep, keep_not
 
 
-class EmceeSampler(object):
+class Fitter(object):
     """Wrapper around an emcee sampler for Lyman alpha likelihood"""
 
     def __init__(

@@ -35,22 +35,11 @@ import time, os, sys
 import matplotlib.pyplot as plt
 
 # our own modules
-import lace
-from lace.archive import gadget_archive, nyx_archive
 from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.p1ds import (
-    data_gadget,
-    data_nyx,
-    mock_data,
-    data_eBOSS_mock,
-    data_Chabanier2019,
-    data_Karacayli2022,
-    data_Karacayli2024,
-    data_Ravoux2023,
-)
-from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
-from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_P1D_hires, set_fid_cosmo, set_like
+from cup1d.likelihood import lya_theory, likelihood
+from cup1d.likelihood.fitter import Fitter
+from cup1d.likelihood.pipeline import set_archive, set_P1D, set_P1D_hires, set_fid_cosmo, set_like
 from cup1d.likelihood.input_pipeline import Args
 
 # %% [markdown]
@@ -186,17 +175,17 @@ for p in like.free_params:
 
 
 # %% [markdown]
-# ### Set sampler
+# ### Set fitter
 
 # %%
 def log_prob(theta):
-    return log_prob.sampler.like.get_chi2(theta)
+    return log_prob.fitter.like.get_chi2(theta)
 
-def set_log_prob(sampler):
-    log_prob.sampler = sampler
+def set_log_prob(fitter):
+    log_prob.fitter = fitter
     return log_prob
 
-sampler = emcee_sampler.EmceeSampler(
+fitter = Fitter(
     like=like,
     rootdir=output_dir,
     save_chain=False,
@@ -206,30 +195,24 @@ sampler = emcee_sampler.EmceeSampler(
     explore=args.explore,
     fix_cosmology=args.fix_cosmo,
 )
-_get_chi2 = set_log_prob(sampler)
+_get_chi2 = set_log_prob(fitter)
 
 # %% [markdown]
 # ### Run sampler
 # It takes less than 2 min on my laptop without any parallelization
 
 # %%
-# %%time
-_emcee_sam = sampler.run_sampler(log_func=_log_prob)
+run_sampler = False
+if run_sampler:
+    _emcee_sam = sampler.run_sampler(log_func=_get_chi2)
 
 # %% [markdown]
 # ### Run minimizer
 
 # %%
 # %%time
-ind = np.argmax(sampler.lnprob.reshape(-1))
-nparam = sampler.chain.shape[-1]
-p0 = sampler.chain.reshape(-1, nparam)[ind, :]
-sampler.run_minimizer(log_func=_log_prob, p0=p0)
-
-# %%
-# %%time
 p0 = np.zeros(len(like.free_params)) + 0.5
-sampler.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
+fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
 
 # %%
 # like.plot_p1d(residuals=False, plot_every_iz=1, values=sampler.mle_cube)

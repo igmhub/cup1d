@@ -26,7 +26,7 @@ import time, os, sys
 # our own modules
 from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_P1D_hires, set_like
+from cup1d.likelihood.pipeline import set_archive, set_P1D, set_P1D_hires, set_like
 from cup1d.likelihood.input_pipeline import Args
 
 # %% [markdown]
@@ -50,7 +50,9 @@ args.z_max=4.5
 # fiducial cosmology
 args.cosmo_label="mpg_central"
 #fiducial IGM history
-args.igm_label="mpg_central"
+args.fid_igm_label="mpg_central"
+# true IGM history (to create mock)
+args.true_igm_label="mpg_central"
 # number of free parameters scaling the fiducial IGM history
 args.n_igm=2
 # add metal contamination
@@ -97,13 +99,13 @@ cosmo_fid = camb_cosmo.get_cosmology(
 
 # %%
 data = {"P1Ds": None, "extra_P1Ds": None}
-data["P1Ds"], true_sim_igm = set_P1D(
+data["P1Ds"] = set_P1D(
     archive,
     emulator,
     args.data_label,
     cosmo_fid,
     cov_label=args.cov_label,
-    igm_label=args.igm_label,
+    true_sim_igm=args.true_igm_label,
     apply_smoothing=False,
     z_min=args.z_min,
     z_max=args.z_max,
@@ -116,7 +118,7 @@ if(args.add_hires):
         args.data_label_hires,
         cosmo_fid,
         cov_label_hires=args.cov_label_hires,
-        igm_label=args.igm_label,
+        true_sim_igm=args.true_igm_label,
         apply_smoothing=False,
         z_min=args.z_min,
         z_max=args.z_max,
@@ -135,8 +137,7 @@ like = set_like(
     emulator,
     data["P1Ds"],
     data["extra_P1Ds"],
-    true_sim_igm,
-    args.igm_label,
+    args.fid_igm_label,
     args.n_igm,
     cosmo_fid,
     vary_alphas=args.vary_alphas,
@@ -188,7 +189,7 @@ p1ds_kms_out = p1ds.copy()
 # %% [markdown]
 # ### Value of all cup1d parameters used to generate the data
 #
-# Cup1d put constraints on these parameters
+# Cup1d puts constraints on these parameters
 
 # %%
 blob_params = ["Delta2_star", "n_star", "alpha_star"]

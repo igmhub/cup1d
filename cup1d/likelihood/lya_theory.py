@@ -355,7 +355,7 @@ class Theory(object):
 
     def get_blobs_dtype(self):
         """Return the format of the extra information (blobs) returned
-        by get_p1d_kms and used in emcee_sampler."""
+        by get_p1d_kms and used in the fitter."""
 
         blobs_dtype = [
             ("Delta2_star", float),
@@ -368,7 +368,7 @@ class Theory(object):
         return blobs_dtype
 
     def get_blob(self, camb_model=None):
-        """Return extra information (blob) for the emcee_sampler."""
+        """Return extra information (blob) for the fitter."""
 
         if camb_model is None:
             Nblob = len(self.get_blobs_dtype())
@@ -449,7 +449,7 @@ class Theory(object):
         """Emulate P1D in velocity units, for all redshift bins,
         as a function of input likelihood parameters.
         It might also return a covariance from the emulator,
-        or a blob with extra information for the emcee_sampler."""
+        or a blob with extra information for the fitter."""
 
         if self.emulator is None:
             raise ValueError("no emulator provided")

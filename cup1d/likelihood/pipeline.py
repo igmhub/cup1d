@@ -20,7 +20,7 @@ from cup1d.p1ds import (
     data_QMLE_Ohio,
     mock_data,
 )
-from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
+from cup1d.likelihood import lya_theory, likelihood, fitter
 
 
 def set_archive(training_set):
@@ -466,7 +466,7 @@ def path_sampler(
     return path
 
 
-class SamplerPipeline(object):
+class Pipeline(object):
     """Full pipeline for extracting cosmology from P1D using sampler"""
 
     def __init__(self, args):
@@ -705,7 +705,7 @@ class SamplerPipeline(object):
             log_prob.sampler = sampler
             return log_prob
 
-        self.sampler = emcee_sampler.EmceeSampler(
+        self.fitter = fitter.EmceeSampler(
             like=like,
             rootdir=self.out_folder,
             save_chain=False,
@@ -715,9 +715,10 @@ class SamplerPipeline(object):
             explore=self.explore,
             fix_cosmology=fix_cosmo,
         )
-        self._log_prob = set_log_prob(self.sampler)
+        self._log_prob = set_log_prob(self.fitter)
 
     def run_sampler(self):
+        ### XXX put minimizer outsize
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
 
