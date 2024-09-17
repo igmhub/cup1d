@@ -26,6 +26,8 @@ class Mock_P1D(BaseMockP1D):
         seed=0,
         true_sim_igm="mpg_central",
         true_cosmo=None,
+        true_SiIII=-10,
+        true_HCD=-10,
         zs=None,
         k_kms=None,
     ):
@@ -102,7 +104,9 @@ class Mock_P1D(BaseMockP1D):
             zs=zs,
             emulator=emulator,
             fid_sim_igm=true_sim_igm,
-            cosmo_fid=true_cosmo,
+            fid_SiIII=true_SiIII,
+            fid_HCD=true_HCD,
+            fid_cosmo=true_cosmo,
         )
 
         # evaluate theory at k_kms, for all redshifts

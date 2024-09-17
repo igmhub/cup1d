@@ -85,11 +85,31 @@ def parse_args():
         help="Number of free parameters for IGM model",
     )
     parser.add_argument(
-        "--cosmo_label",
+        "--n_metals",
+        type=int,
+        default=0,
+        help="Number of free parameters for SiIII metal contamination",
+    )
+    parser.add_argument(
+        "--n_dla",
+        type=int,
+        default=0,
+        help="Number of free parameters for DLA contamination",
+    )
+
+    parser.add_argument(
+        "--fid_cosmo_label",
         default=None,
         type=str,
         required=True,
         help="Input simulation to set fiducial cosmology",
+    )
+    parser.add_argument(
+        "--true_cosmo_label",
+        default=None,
+        type=str,
+        required=True,
+        help="Input simulation to set true cosmology for mock",
     )
 
     parser.add_argument(
@@ -148,11 +168,6 @@ def parse_args():
         "--vary_alphas",
         action="store_true",
         help="Fit running power spectrum",
-    )
-    parser.add_argument(
-        "--add_metals",
-        action="store_true",
-        help="Add SiIII metal contamination",
     )
 
     parser.add_argument(
@@ -288,8 +303,10 @@ class Args:
         fid_igm_label="mpg_central",
         true_igm_label="mpg_central",
         n_igm=2,
-        add_metals=False,
-        cosmo_label="mpg_central",
+        n_metals=0,
+        n_dla=0,
+        fid_cosmo_label="mpg_central",
+        true_cosmo_label="mpg_central",
         drop_sim=False,
         add_hires=False,
         apply_smoothing=None,
@@ -320,8 +337,10 @@ class Args:
         self.true_igm_label = true_igm_label
         self.fid_igm_label = fid_igm_label
         self.n_igm = n_igm
-        self.add_metals = add_metals
-        self.cosmo_label = cosmo_label
+        self.n_metals = n_metals
+        self.n_dla = n_dla
+        self.fid_cosmo_label = fid_cosmo_label
+        self.true_cosmo_label = true_cosmo_label
         self.drop_sim = drop_sim
         self.add_hires = add_hires
         self.apply_smoothing = apply_smoothing
@@ -350,7 +369,10 @@ class Args:
             "fid_igm_label",
             "true_igm_label",
             "n_igm",
-            "cosmo_label",
+            "n_metals",
+            "n_dla",
+            "fid_cosmo_label",
+            "true_cosmo_label",
             "drop_sim",
             "add_hires",
             "apply_smoothing",

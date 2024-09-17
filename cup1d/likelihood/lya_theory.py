@@ -28,11 +28,14 @@ class Theory(object):
         F_model=None,
         T_model=None,
         P_model=None,
+        SiII_model=None,
+        SiIII_model=None,
         hcd_model=None,
         z_star=3.0,
         kp_kms=0.009,
-        metal_models=[],
-        cosmo_fid=None,
+        fid_cosmo=None,
+        fid_SiIII=-10,
+        fid_HCD=-10,
         free_param_names=None,
         fid_sim_igm="mpg_central",
     ):
@@ -46,7 +49,7 @@ class Theory(object):
             - P_model: pressure model
             - metal_models: list of metal models to include
             - hcd_model: model for HCD contamination
-            - cosmo_fid: fiducial cosmology used for fixed parameters
+            - fid_cosmo: fiducial cosmology used for fixed parameters
             - fid_sim_igm: IGM model assumed
             - true_sim_igm: if not None, true IGM model of the mock
         """
@@ -69,8 +72,8 @@ class Theory(object):
         self.emu_kp_Mpc = self.emulator.kp_Mpc
 
         # setup fiducial cosmology (used for fitting)
-        if not cosmo_fid:
-            cosmo_fid = camb_cosmo.get_cosmology()
+        if not fid_cosmo:
+            fid_cosmo = camb_cosmo.get_cosmology()
 
         # setup CAMB object for the fiducial cosmology and precompute some things
         if self.zs_hires is not None:
@@ -83,7 +86,7 @@ class Theory(object):
         self.cosmo_model_fid["zs"] = _zs
         self.cosmo_model_fid["cosmo"] = CAMB_model.CAMBModel(
             zs=_zs,
-            cosmo=cosmo_fid,
+            cosmo=fid_cosmo,
             z_star=self.z_star,
             kp_kms=self.kp_kms,
         )
@@ -128,30 +131,25 @@ class Theory(object):
         self.fid_igm["sigT_kms"] = self.T_model.get_sigT_kms(zs)
         self.fid_igm["kF_kms"] = self.P_model.get_kF_kms(zs)
 
-        # check whether we want to include metal contamination models
-        ## FOR ANDREU: could you make sure that the metal model works like the IGM models?
-        ## the interface is pretty different
+        # setup metal models
         self.metal_models = []
-        for model in metal_models:
-            X_model = copy.deepcopy(model)
-            self.metal_models.append(X_model)
-        # temporary hack
-        if free_param_names:
-            metal_param_names = []
-            for name in free_param_names:
-                if "ln_Si" in name:
-                    # for now we only know how to vary SiIII
-                    if "ln_SiIII_" not in name:
-                        raise ValueError("implement metal param", name)
-                    metal_param_names.append(name)
-            if len(metal_param_names) > 0:
-                # you have at least one free parameter for metals
-                if len(self.metal_models) > 0:
-                    raise ValueError("either pass metal_models or free_params")
-                X_model = metal_model.MetalModel(
-                    metal_label="SiIII", free_param_names=free_param_names
-                )
-                self.metal_models.append(X_model)
+        ### to be implemented!
+        # if SiII_model:
+        #     self.SiII_model = SiII_model
+        # else:
+        #     self.SiII_model = metal_model.MetalModel(
+        #         metal_label="SiII", free_param_names=free_param_names
+        #     )
+        # self.metal_models.append(self.SiII_model)
+        if SiIII_model:
+            self.SiIII_model = SiIII_model
+        else:
+            self.SiIII_model = metal_model.MetalModel(
+                metal_label="SiIII",
+                free_param_names=free_param_names,
+                fid_value=fid_SiIII,
+            )
+        self.metal_models.append(self.SiIII_model)
 
         # setup HCD model
         if hcd_model:
@@ -159,7 +157,8 @@ class Theory(object):
         else:
             # close to zero HCD contamination
             self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
-                free_param_names=free_param_names
+                free_param_names=free_param_names,
+                fid_value=fid_HCD,
             )
 
     def fixed_background(self, like_params):

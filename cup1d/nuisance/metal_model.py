@@ -12,6 +12,7 @@ class MetalModel(object):
         lambda_rest=None,
         z_X=3.0,
         ln_X_coeff=None,
+        fid_value=-10,
         free_param_names=None,
     ):
         """Model the evolution of a metal contamination (SiII or SiIII).
@@ -41,13 +42,14 @@ class MetalModel(object):
             if free_param_names:
                 # figure out number of free params for this metal line
                 param_tag = "ln_" + metal_label
-                print("metal tag", param_tag)
                 n_X = len([p for p in free_param_names if param_tag in p])
+                if n_X == 0:
+                    n_X = 1
             else:
                 n_X = 1
             # start with value from McDonald et al. (2006), and no z evolution
             self.ln_X_coeff = [0.0] * n_X
-            self.ln_X_coeff[-1] = np.log(0.011)
+            self.ln_X_coeff[-1] = fid_value
 
         # store list of likelihood parameters (might be fixed or free)
         self.set_parameters()
@@ -67,8 +69,8 @@ class MetalModel(object):
             name = "ln_" + self.metal_label + "_" + str(i)
             if i == 0:
                 # log of overall amplitude at z_X
-                xmin = -20
-                xmax = 0
+                xmin = -11
+                xmax = 5
             else:
                 xmin = -5
                 xmax = 5
@@ -153,4 +155,4 @@ class MetalModel(object):
         # v3 in McDonald et al. (2006)
         dv = self.get_dv_kms()
 
-        return (1 + a**2) + 2 * a * np.cos(dv * k_kms)
+        return 1 + a**2 + 2 * a * np.cos(dv * k_kms)

@@ -39,7 +39,15 @@ from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
 from cup1d.likelihood import lya_theory, likelihood
 from cup1d.likelihood.fitter import Fitter
-from cup1d.likelihood.pipeline import set_archive, set_P1D, set_P1D_hires, set_fid_cosmo, set_like
+
+from cup1d.likelihood.pipeline import (
+    set_archive,
+    set_P1D,
+    set_cosmo_from_sim,
+    set_free_like_parameters,
+    set_like,
+)
+
 from cup1d.likelihood.input_pipeline import Args
 
 # %% [markdown]
@@ -55,11 +63,12 @@ args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 
 args.data_label="mock_Karacayli2024"
-# args.data_label_hires = "mock_Karacayli2022"
+args.data_label_hires = "mock_Karacayli2022"
 # args.data_label="mpg_central"
 # args.data_label_hires="mpg_central"
 
-args.cosmo_label="mpg_central"
+args.true_cosmo_label="mpg_central"
+args.fid_cosmo_label="mpg_central"
 # args.true_igm_label="mpg_0"
 args.true_igm_label="mpg_central"
 args.fid_igm_label="mpg_central"
@@ -72,6 +81,9 @@ args.vary_alphas=False
 # args.vary_alphas=True
 
 args.n_igm=2
+args.n_metals=1
+args.n_dla=1
+
 args.n_steps=50
 args.n_burn_in=10
 args.z_max=4.5
@@ -100,7 +112,10 @@ emulator = set_emulator(
 # ### Set fiducial cosmology
 
 # %%
-cosmo_fid = set_fid_cosmo(cosmo_label=args.cosmo_label)
+fid_cosmo = set_cosmo_from_sim(cosmo_label=args.fid_cosmo_label)
+
+# only used when creating mock P1D data or culling data outside of k range from emulator
+true_cosmo = set_cosmo_from_sim(cosmo_label=args.true_cosmo_label)
 
 # %% [markdown]
 # ### Set P1D data
@@ -113,23 +128,23 @@ data["P1Ds"] = set_P1D(
     archive,
     emulator,
     args.data_label,
-    cosmo_fid,
+    true_cosmo,
     true_sim_igm=args.true_igm_label,
     cov_label=args.cov_label,
-    apply_smoothing=False,
     z_min=args.z_min,
     z_max=args.z_max,
+    true_SiIII=-10,
+    true_HCD=-10,
 )
 
 if(args.add_hires):
-    data["extra_P1Ds"] = set_P1D_hires(
+    data["extra_P1Ds"] = set_P1D(
         archive,
         emulator,
         args.data_label_hires,
-        cosmo_fid,
+        true_cosmo,
         true_sim_igm=args.true_igm_label,
-        cov_label_hires=args.cov_label_hires,
-        apply_smoothing=False,
+        cov_label=args.cov_label_hires,
         z_min=args.z_min,
         z_max=args.z_max,
     )
@@ -143,6 +158,14 @@ if(args.add_hires):
 data["P1Ds"].plot_igm()
 
 # %% [markdown]
+# ### Set likelihood parameters that we will vary
+
+# %%
+## set cosmo and IGM parameters
+free_parameters = set_free_like_parameters(args)
+free_parameters
+
+# %% [markdown]
 # ### Set likelihood
 
 # %%
@@ -151,8 +174,8 @@ like = set_like(
     data["P1Ds"],
     data["extra_P1Ds"],
     args.fid_igm_label,
-    args.n_igm,
-    cosmo_fid,
+    free_parameters,
+    fid_cosmo,
     vary_alphas=args.vary_alphas,
     add_metals=args.add_metals
 )
@@ -213,8 +236,8 @@ if run_sampler:
 # %%
 # %%time
 p0 = np.zeros(len(like.free_params)) + 0.5
-# fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
-fitter.run_minimizer(log_func_minimize=_get_chi2)
+fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
+# fitter.run_minimizer(log_func_minimize=_get_chi2)
 
 # %% [markdown]
 # error on cosmology is independent of the number of parameters

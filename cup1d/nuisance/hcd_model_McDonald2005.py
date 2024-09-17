@@ -10,28 +10,50 @@ class HCD_Model_McDonald2005(object):
     def __init__(
         self,
         z_0=3.0,
+        fid_value=-10,
         ln_A_damp_coeff=None,
         free_param_names=None,
     ):
         self.z_0 = z_0
         if ln_A_damp_coeff:
-            assert free_param_names is None
+            if free_param_names is not None:
+                raise ValueError("can not specify coeff and free_param_names")
             self.ln_A_damp_coeff = ln_A_damp_coeff
         else:
             if free_param_names:
                 # figure out number of HCD free params
                 n_hcd = len([p for p in free_param_names if "ln_A_damp_" in p])
-                if n_hcd > 0:
-                    self.ln_A_damp_coeff = [0.0] * n_hcd
-                else:
-                    # close to no contamination
-                    self.ln_A_damp_coeff = [-100]
+                if n_hcd == 0:
+                    n_hcd = 1
             else:
-                # to be fixed
-                # close to no contamination
-                self.ln_A_damp_coeff = [-100]
-        # store list of likelihood parameters (might be fixed or free)
+                n_hcd = 1
+
+            self.ln_A_damp_coeff = [0.0] * n_hcd
+            self.ln_A_damp_coeff[-1] = fid_value
+
         self.set_parameters()
+
+    def set_parameters(self):
+        """Setup likelihood parameters in the HCD model"""
+
+        self.params = []
+        Npar = len(self.ln_A_damp_coeff)
+        for i in range(Npar):
+            name = "ln_A_damp_" + str(i)
+            if i == 0:
+                xmin = -11
+                xmax = 5
+            else:
+                xmin = -1
+                xmax = 1
+            # note non-trivial order in coefficients
+            value = self.ln_A_damp_coeff[Npar - i - 1]
+            par = likelihood_parameter.LikelihoodParameter(
+                name=name, value=value, min_value=xmin, max_value=xmax
+            )
+            self.params.append(par)
+
+        return
 
     def get_Nparam(self):
         """Number of parameters in the model"""
@@ -56,28 +78,6 @@ class HCD_Model_McDonald2005(object):
         f_HCD = 0.018 + 1 / (15000 * k_kms - 8.9)
 
         return 1 + A_damp * f_HCD
-
-    def set_parameters(self):
-        """Setup likelihood parameters in the HCD model"""
-
-        self.params = []
-        Npar = len(self.ln_A_damp_coeff)
-        for i in range(Npar):
-            name = "ln_A_damp_" + str(i)
-            if i == 0:
-                xmin = -0.4
-                xmax = 0.4
-            else:
-                xmin = -1
-                xmax = 1
-            # note non-trivial order in coefficients
-            value = self.ln_A_damp_coeff[Npar - i - 1]
-            par = likelihood_parameter.LikelihoodParameter(
-                name=name, value=value, min_value=xmin, max_value=xmax
-            )
-            self.params.append(par)
-
-        return
 
     def get_parameters(self):
         """Return likelihood parameters for the HCD model"""
