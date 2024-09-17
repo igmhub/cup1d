@@ -61,7 +61,7 @@ args.data_label="mock_Karacayli2024"
 
 args.cosmo_label="mpg_central"
 args.true_igm_label="mpg_0"
-args.true_igm_label="mpg_central"
+# args.true_igm_label="mpg_central"
 args.fid_igm_label="mpg_central"
 args.vary_alphas=False
 
@@ -214,6 +214,14 @@ if run_sampler:
 # %%time
 p0 = np.zeros(len(like.free_params)) + 0.5
 fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
+
+# %%
+for par in fitter.mle:
+    if par in fitter.truth:
+        print(par, fitter.mle[par], fitter.truth[par], (fitter.mle[par]/fitter.truth[par]-1)*100)
+
+# %%
+fitter.mle_all
 
 # %%
 fitter.plot_p1d(residuals=True, plot_every_iz=2)

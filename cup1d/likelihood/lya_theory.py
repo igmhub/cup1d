@@ -226,7 +226,9 @@ class Theory(object):
 
         return fid_igm
 
-    def get_linP_Mpc_params_from_fiducial(self, zs, like_params):
+    def get_linP_Mpc_params_from_fiducial(
+        self, zs, like_params, return_derivs=False
+    ):
         """Recycle linP_Mpc_params from fiducial model, when only varying
         primordial power spectrum (As, ns, nrun)"""
 
@@ -274,7 +276,95 @@ class Theory(object):
                 }
             )
 
-        return linP_Mpc_params
+        if return_derivs:
+            val_derivs = {}
+            _ = np.argwhere(self.cosmo_model_fid["zs"] == self.z_star)[0, 0]
+            zlinP = self.cosmo_model_fid["linP_Mpc_params"][_]
+
+            val_derivs["Delta2star"] = zlinP["Delta2_p"] * np.exp(ln_ratio_A_p)
+            val_derivs["nstar"] = zlinP["n_p"] + delta_n_p
+            val_derivs["alphastar"] = zlinP["alpha_p"] + delta_alpha_p
+
+            val_derivs["der_alphastar_nrun"] = 1
+            val_derivs["der_alphastar_ns"] = 0
+            val_derivs["der_alphastar_As"] = 0
+
+            val_derivs["der_nstar_nrun"] = ln_kp_ks
+            val_derivs["der_nstar_ns"] = 1
+            val_derivs["der_nstar_As"] = 0
+
+            val_derivs["der_Delta2star_nrun"] = (
+                0.5 * val_derivs["Delta2star"] * ln_kp_ks**2
+            )
+            val_derivs["der_Delta2star_ns"] = (
+                val_derivs["Delta2star"] * ln_kp_ks
+            )
+            val_derivs["der_Delta2star_As"] = val_derivs["Delta2star"] / (
+                ratio_As * fid_As
+            )
+
+            return linP_Mpc_params, val_derivs
+        else:
+            return linP_Mpc_params
+
+    def get_err_linP_Mpc_params(self, like_params, covar):
+        """Get error on linP_Mpc_params"""
+
+        res = {}
+
+        _, der = self.get_linP_Mpc_params_from_fiducial(
+            [2.0], like_params, return_derivs=True
+        )
+
+        err_As = covar[0, 0]
+        err_ns = covar[1, 1]
+        err_ns_As = covar[0, 1]
+        if covar.shape[0] == 3:
+            err_nrun = covar[2, 2]
+            err_nrun_ns = covar[1, 2]
+            err_nrun_As = covar[0, 2]
+        else:
+            err_nrun = 0
+            err_nrun_ns = 0
+            err_nrun_As = 0
+
+        err_alphastar = (
+            der["der_alphastar_nrun"] ** 2 * err_nrun
+            + der["der_alphastar_ns"] ** 2 * err_ns
+            + der["der_alphastar_As"] ** 2 * err_As
+            + der["der_alphastar_nrun"] * der["der_alphastar_ns"] * err_nrun_ns
+            + der["der_alphastar_nrun"] * der["der_alphastar_As"] * err_nrun_As
+            + der["der_alphastar_ns"] * der["der_alphastar_As"] * err_ns_As
+        )
+        err_nstar = (
+            der["der_nstar_nrun"] ** 2 * err_nrun
+            + der["der_nstar_ns"] ** 2 * err_ns
+            + der["der_nstar_As"] ** 2 * err_As
+            + der["der_nstar_nrun"] * der["der_nstar_ns"] * err_nrun_ns
+            + der["der_nstar_nrun"] * der["der_nstar_As"] * err_nrun_As
+            + der["der_nstar_ns"] * der["der_nstar_As"] * err_ns_As
+        )
+        err_Delta2star = (
+            der["der_Delta2star_nrun"] ** 2 * err_nrun
+            + der["der_Delta2star_ns"] ** 2 * err_ns
+            + der["der_Delta2star_As"] ** 2 * err_As
+            + der["der_Delta2star_nrun"]
+            * der["der_Delta2star_ns"]
+            * err_nrun_ns
+            + der["der_Delta2star_nrun"]
+            * der["der_Delta2star_As"]
+            * err_nrun_As
+            + der["der_Delta2star_ns"] * der["der_Delta2star_As"] * err_ns_As
+        )
+
+        res["Delta2star"] = der["Delta2star"]
+        res["nstar"] = der["nstar"]
+        res["alphastar"] = der["alphastar"]
+        res["err_Delta2star"] = np.sqrt(err_Delta2star)
+        res["err_nstar"] = np.sqrt(err_nstar)
+        res["err_alphastar"] = np.sqrt(err_alphastar)
+
+        return res
 
     def get_emulator_calls(
         self, zs, like_params=[], return_M_of_z=True, return_blob=False

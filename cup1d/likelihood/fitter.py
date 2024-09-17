@@ -444,26 +444,13 @@ class Fitter(object):
             lnprob_end = res.fun
             print("Minimization improved:", lnprob_ini, lnprob_end, flush=True)
 
-        # compute errors
-        hess = nd.Hessian(log_func_minimize)
-        try:
-            self.mle_cov_cube = 0.5 * np.linalg.inv(hess(mle))
-        except:
-            self.mle_cov_cube = None
-
         self.mle_cube = mle
         mle_no_cube = mle.copy()
-        if self.mle_cov_cube is not None:
-            self.mle_cov = np.zeros((self.mle_cov_cube.shape))
         for ii, par_i in enumerate(self.like.free_params):
             scale_i = par_i.max_value - par_i.min_value
             mle_no_cube[ii] = par_i.value_from_cube(mle[ii])
-            if self.mle_cov_cube is not None:
-                for jj, par_j in enumerate(self.like.free_params):
-                    scale_j = par_j.max_value - par_j.min_value
-                    self.mle_cov[ii, jj] = (
-                        self.mle_cov_cube[ii, jj] * scale_i * scale_j
-                    )
+
+        self.mle_all = self.get_cosmo_err(log_func_minimize)
 
         self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(self.mle_cube)
 
@@ -480,6 +467,52 @@ class Fitter(object):
         print("Pars fit:", mle_no_cube, flush=True)
         if self.mle_cov_cube is not None:
             print("Errors fit:", np.sqrt(np.diag(self.mle_cov)), flush=True)
+
+    def get_cosmo_err(self, fun_minimize):
+        hess = nd.Hessian(fun_minimize)
+        ii = 0
+        for par_i in self.like.free_params:
+            if par_i.name == "As":
+                ii += 1
+            elif par_i.name == "ns":
+                ii += 1
+            elif par_i.name == "nrun":
+                ii += 1
+
+        if ii == 0:
+            return
+
+        cov = hess(self.mle_cube)[:ii, :ii]
+        mle_cov_cube = np.linalg.inv(cov)
+
+        mle_cov = np.zeros((3, 3))
+        for par_i in self.like.free_params:
+            if par_i.name == "As":
+                ii = 0
+            elif par_i.name == "ns":
+                ii = 1
+            elif par_i.name == "nrun":
+                ii = 2
+            else:
+                continue
+            scale_i = par_i.max_value - par_i.min_value
+            for par_j in self.like.free_params:
+                if par_j.name == "As":
+                    jj = 0
+                elif par_j.name == "ns":
+                    jj = 1
+                elif par_j.name == "nrun":
+                    jj = 2
+                else:
+                    continue
+                scale_j = par_j.max_value - par_j.min_value
+                mle_cov[ii, jj] = mle_cov_cube[ii, jj] * scale_i * scale_j
+
+        like_pars = self.like.parameters_from_sampling_point(self.mle_cube)
+
+        res = self.like.theory.get_err_linP_Mpc_params(like_pars, mle_cov)
+
+        return res
 
     def resume_sampler(
         self, max_steps, log_func=None, timeout=None, force_timeout=False
