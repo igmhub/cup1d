@@ -100,7 +100,7 @@ class PressureModel(object):
         ln_kF_coeff = self.get_kF_coeffs(like_params=like_params)
 
         xz = np.log((1 + z) / (1 + self.z_kF))
-        ln_poly = np.poly1d(self.ln_kF_coeff)
+        ln_poly = np.poly1d(ln_kF_coeff)
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 

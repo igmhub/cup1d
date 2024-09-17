@@ -63,9 +63,8 @@ class MetalModel(object):
 
         self.X_params = []
         Npar = len(self.ln_X_coeff)
-        param_tag = "ln_" + self.metal_label
         for i in range(Npar):
-            name = param_tag + "_" + str(i)
+            name = "ln_" + self.metal_label + "_" + str(i)
             if i == 0:
                 # log of overall amplitude at z_X
                 xmin = -20
@@ -85,52 +84,48 @@ class MetalModel(object):
         """Return likelihood parameters from the metal model"""
         return self.X_params
 
-    def update_parameters(self, like_params):
-        """Look for metal parameters in list of parameters"""
+    def get_X_coeffs(self, like_params=[]):
+        """Return list of coefficients for metal model"""
 
-        Npar = self.get_Nparam()
-        param_tag = "ln_" + self.metal_label
+        if like_params:
+            ln_X_coeff = self.ln_X_coeff.copy()
+            Npar = 0
+            array_names = []
+            array_values = []
+            for par in like_params:
+                if "ln_" + self.metal_label in par.name:
+                    Npar += 1
+                    array_names.append(par.name)
+                    array_values.append(par.value)
+            array_names = np.array(array_names)
+            array_values = np.array(array_values)
 
-        # loop over likelihood parameters
-        for like_par in like_params:
-            if param_tag in like_par.name:
-                # make sure you find the parameter
-                found = False
-                # loop over parameters in metal model
-                for ip in range(len(self.X_params)):
-                    if self.X_params[ip].name == like_par.name:
-                        if found:
-                            raise ValueError("can not update parameter twice")
-                        self.ln_X_coeff[Npar - ip - 1] = like_par.value
-                        found = True
-                if not found:
+            if Npar != len(self.X_params):
+                raise ValueError("number of params mismatch in get_X_coeffs")
+
+            for ip in range(Npar):
+                _ = np.argwhere(self.X_params[ip].name == array_names)[:, 0]
+                if len(_) != 1:
                     raise ValueError(
-                        "did not update parameter " + like_par.name
+                        "could not update parameter" + self.X_params[ip].name
                     )
+                else:
+                    ln_X_coeff[Npar - ip - 1] = array_values[_[0]]
+        else:
+            ln_X_coeff = self.ln_X_coeff
 
-        return
+        return ln_X_coeff
 
-    def get_new_model(self, like_params=[]):
-        """Return copy of model, updating values from list of parameters"""
-
-        X = MetalModel(
-            metal_label=self.metal_label,
-            lambda_rest=self.lambda_rest,
-            z_X=self.z_X,
-            ln_X_coeff=copy.deepcopy(self.ln_X_coeff),
-        )
-
-        X.update_parameters(like_params)
-        return X
-
-    def get_amplitude(self, z):
+    def get_amplitude(self, z, like_params=[]):
         """Amplitude of contamination at a given z"""
 
         # Note that this represents "f" in McDonald et al. (2006)
         # It is later rescaled by <F> to compute "a" in eq. (15)
 
+        ln_X_coeff = self.get_X_coeffs(like_params)
+
         xz = np.log((1 + z) / (1 + self.z_X))
-        ln_poly = np.poly1d(self.ln_X_coeff)
+        ln_poly = np.poly1d(ln_X_coeff)
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
@@ -147,13 +142,13 @@ class MetalModel(object):
 
         return dv_kms
 
-    def get_contamination(self, z, k_kms, mF):
+    def get_contamination(self, z, k_kms, mF, like_params=[]):
         """Multiplicative contamination at a given z and k (in s/km).
         The mean flux (mF) is used scale it (see McDonald et al. 2006)"""
 
         # Note that this represents "f" in McDonald et al. (2006)
         # It is later rescaled by <F> to compute "a" in eq. (15)
-        f = self.get_amplitude(z)
+        f = self.get_amplitude(z, like_params=like_params)
         a = f / (1 - mF)
         # v3 in McDonald et al. (2006)
         dv = self.get_dv_kms()

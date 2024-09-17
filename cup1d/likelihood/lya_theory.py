@@ -129,6 +129,8 @@ class Theory(object):
         self.fid_igm["kF_kms"] = self.P_model.get_kF_kms(zs)
 
         # check whether we want to include metal contamination models
+        ## FOR ANDREU: could you make sure that the metal model works like the IGM models?
+        ## the interface is pretty different
         self.metal_models = []
         for model in metal_models:
             X_model = copy.deepcopy(model)
@@ -153,7 +155,7 @@ class Theory(object):
 
         # setup HCD model
         if hcd_model:
-            self.hcd_model = copy.deepcopy(hcd_model)
+            self.hcd_model = hcd_model
         else:
             # close to zero HCD contamination
             self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
@@ -312,9 +314,7 @@ class Theory(object):
 
         res = {}
 
-        _, der = self.get_linP_Mpc_params_from_fiducial(
-            [2.0], like_params, return_derivs=True
-        )
+        _, der = self.get_blob_fixed_background(like_params, return_derivs=True)
 
         err_As = covar[0, 0]
         err_ns = covar[1, 1]
@@ -357,12 +357,12 @@ class Theory(object):
             + der["der_Delta2star_ns"] * der["der_Delta2star_As"] * err_ns_As
         )
 
-        res["Delta2star"] = der["Delta2star"]
-        res["nstar"] = der["nstar"]
-        res["alphastar"] = der["alphastar"]
-        res["err_Delta2star"] = np.sqrt(err_Delta2star)
-        res["err_nstar"] = np.sqrt(err_nstar)
-        res["err_alphastar"] = np.sqrt(err_alphastar)
+        res["Delta2_star"] = der["Delta2star"]
+        res["n_star"] = der["nstar"]
+        res["alpha_star"] = der["alphastar"]
+        res["err_Delta2_star"] = np.sqrt(err_Delta2star)
+        res["err_n_star"] = np.sqrt(err_nstar)
+        res["err_alpha_star"] = np.sqrt(err_alphastar)
 
         return res
 
@@ -404,7 +404,7 @@ class Theory(object):
             if return_blob:
                 blob = self.get_blob(camb_model=camb_model)
 
-        # loop over redshifts and store emulator calls
+        # store emulator calls
         emu_call = {}
         for key in self.emulator.emu_params:
             if (key == "Delta2_p") | (key == "n_p") | (key == "alpha_p"):
@@ -486,7 +486,7 @@ class Theory(object):
                 camb_model.cosmo.H0,
             )
 
-    def get_blob_fixed_background(self, like_params):
+    def get_blob_fixed_background(self, like_params, return_derivs=False):
         """Fast computation of blob when running with fixed background"""
 
         # make sure you are not changing the background expansion
@@ -532,7 +532,36 @@ class Theory(object):
         n_star = fid_blob[1] + delta_n_star
         Delta2_star = fid_blob[0] * np.exp(ln_ratio_A_star)
 
-        return (Delta2_star, n_star, alpha_star) + fid_blob[3:]
+        linP_Mpc_params = (Delta2_star, n_star, alpha_star) + fid_blob[3:]
+
+        if return_derivs:
+            val_derivs = {}
+
+            val_derivs["Delta2star"] = Delta2_star
+            val_derivs["nstar"] = n_star
+            val_derivs["alphastar"] = alpha_star
+
+            val_derivs["der_alphastar_nrun"] = 1
+            val_derivs["der_alphastar_ns"] = 0
+            val_derivs["der_alphastar_As"] = 0
+
+            val_derivs["der_nstar_nrun"] = ln_kp_ks
+            val_derivs["der_nstar_ns"] = 1
+            val_derivs["der_nstar_As"] = 0
+
+            val_derivs["der_Delta2star_nrun"] = (
+                0.5 * val_derivs["Delta2star"] * ln_kp_ks**2
+            )
+            val_derivs["der_Delta2star_ns"] = (
+                val_derivs["Delta2star"] * ln_kp_ks
+            )
+            val_derivs["der_Delta2star_As"] = val_derivs["Delta2star"] / (
+                ratio_As * fid_As
+            )
+
+            return linP_Mpc_params, val_derivs
+        else:
+            return linP_Mpc_params
 
     def get_p1d_kms(
         self,
@@ -596,20 +625,23 @@ class Theory(object):
                     )
 
         # include multiplicative metal contamination
-        # NEED TO BE UPDATED AS THE OTHER MODELS
-        for X_model_fid in self.metal_models:
-            X_model = X_model_fid.get_new_model(like_params)
+        for X_model in self.metal_models:
             for iz, z in enumerate(zs):
                 cont = X_model.get_contamination(
-                    z=z, k_kms=k_kms[iz], mF=emu_call["mF"][iz]
+                    z=z,
+                    k_kms=k_kms[iz],
+                    mF=emu_call["mF"][iz],
+                    like_params=like_params,
                 )
                 p1d_kms[iz] *= cont
 
         # include HCD contamination
-        # NEED TO BE UPDATED AS THE OTHER MODELS
         for iz, z in enumerate(zs):
-            hcd_model = self.hcd_model.get_new_model(like_params)
-            cont = hcd_model.get_contamination(z=z, k_kms=k_kms[iz])
+            cont = self.hcd_model.get_contamination(
+                z=z,
+                k_kms=k_kms[iz],
+                like_params=like_params,
+            )
             p1d_kms[iz] *= cont
 
         # decide what to return, and return it

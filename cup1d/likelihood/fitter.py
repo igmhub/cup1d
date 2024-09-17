@@ -407,16 +407,12 @@ class Fitter(object):
 
         return sampler
 
-    def run_minimizer(
-        self, log_func_minimize=None, p0=None, cube=False, nsamples=8
-    ):
-        # def log_func_minimize(pp):
-        #     return -log_func(pp)[0]
-
+    def run_minimizer(self, log_func_minimize=None, p0=None, nsamples=8):
         """Minimizer"""
+        npars = len(self.like.free_params)
 
         if p0 is None:
-            arr_p0 = lhs(len(self.like.free_params), samples=nsamples)
+            arr_p0 = lhs(npars, samples=nsamples)
 
             mle = None
             chi2 = 1e10
@@ -426,23 +422,47 @@ class Fitter(object):
                     log_func_minimize,
                     arr_p0[ii],
                     method="Nelder-Mead",
+                    bounds=((0.0, 1.0),) * npars,
                 )
                 if res.fun < chi2:
                     chi2 = res.fun
                     mle = res.x
-                # print("Minimization:", arr_p0[ii], res.fun, flush=True)
+
+            # start at the minimum
+            res = scipy.optimize.minimize(
+                log_func_minimize,
+                mle,
+                method="Nelder-Mead",
+                bounds=((0.0, 1.0),) * npars,
+            )
+            if res.fun < chi2:
+                chi2 = res.fun
+                mle = res.x
 
             print("Minimization:", chi2, flush=True)
         else:
-            lnprob_ini = log_func_minimize(p0)
-            res = scipy.optimize.minimize(
-                log_func_minimize,
-                p0,
-                method="Nelder-Mead",
-            )
-            mle = res.x
-            lnprob_end = res.fun
-            print("Minimization improved:", lnprob_ini, lnprob_end, flush=True)
+            chi2_ini = log_func_minimize(p0)
+
+            for ii in range(2):
+                if ii == 0:
+                    ini = p0.copy()
+                else:
+                    ini = mle.copy()
+
+                _ = ini <= 0
+                ini[_] = 0.01
+                _ = ini >= 1
+                ini[_] = 0.99
+
+                res = scipy.optimize.minimize(
+                    log_func_minimize,
+                    ini,
+                    method="Nelder-Mead",
+                    bounds=((0.0, 1.0),) * npars,
+                )
+                mle = res.x
+                chi2 = res.fun
+            print("Minimization improved:", chi2_ini, chi2, flush=True)
 
         self.mle_cube = mle
         mle_no_cube = mle.copy()
@@ -450,7 +470,10 @@ class Fitter(object):
             scale_i = par_i.max_value - par_i.min_value
             mle_no_cube[ii] = par_i.value_from_cube(mle[ii])
 
-        self.mle_all = self.get_cosmo_err(log_func_minimize)
+        print("Fit params cube:", self.mle_cube, flush=True)
+        print("Fit params no cube:", mle_no_cube, flush=True)
+
+        self.mle_cosmo = self.get_cosmo_err(log_func_minimize)
 
         self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(self.mle_cube)
 
@@ -463,10 +486,26 @@ class Fitter(object):
         for ii, par in enumerate(all_strings):
             self.mle[par] = all_params[ii]
 
-        print("MLE:", self.mle, flush=True)
-        print("Pars fit:", mle_no_cube, flush=True)
-        if self.mle_cov_cube is not None:
-            print("Errors fit:", np.sqrt(np.diag(self.mle_cov)), flush=True)
+        for par in self.mle_cosmo:
+            if par == "Delta2_star":
+                print("MLE, err")
+                if self.like.truth is not None:
+                    print("Truth, MLE - Truth")
+
+            if "err" in par:
+                continue
+            print(par)
+            print(
+                np.round(self.mle_cosmo[par], 5),
+                np.round(self.mle_cosmo["err_" + par], 5),
+            )
+            if self.like.truth is not None:
+                print(
+                    np.round(self.like.truth[par], 5),
+                    np.round(
+                        np.abs(self.like.truth[par] - self.mle_cosmo[par]), 5
+                    ),
+                )
 
     def get_cosmo_err(self, fun_minimize):
         hess = nd.Hessian(fun_minimize)

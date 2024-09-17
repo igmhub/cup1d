@@ -60,8 +60,8 @@ args.data_label="mock_Karacayli2024"
 # args.data_label_hires="mpg_central"
 
 args.cosmo_label="mpg_central"
-args.true_igm_label="mpg_0"
-# args.true_igm_label="mpg_central"
+# args.true_igm_label="mpg_0"
+args.true_igm_label="mpg_central"
 args.fid_igm_label="mpg_central"
 args.vary_alphas=False
 
@@ -77,7 +77,7 @@ args.n_burn_in=10
 args.z_max=4.5
 args.parallel=False
 args.explore=True
-args.add_metals=False
+args.add_metals=True
 # args.add_hires=True
 args.add_hires=False
 
@@ -213,15 +213,11 @@ if run_sampler:
 # %%
 # %%time
 p0 = np.zeros(len(like.free_params)) + 0.5
-fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
+# fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
+fitter.run_minimizer(log_func_minimize=_get_chi2)
 
-# %%
-for par in fitter.mle:
-    if par in fitter.truth:
-        print(par, fitter.mle[par], fitter.truth[par], (fitter.mle[par]/fitter.truth[par]-1)*100)
-
-# %%
-fitter.mle_all
+# %% [markdown]
+# error on cosmology is independent of the number of parameters
 
 # %%
 fitter.plot_p1d(residuals=True, plot_every_iz=2)
