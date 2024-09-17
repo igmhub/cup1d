@@ -35,7 +35,6 @@ class Theory(object):
         cosmo_fid=None,
         free_param_names=None,
         fid_sim_igm="mpg_central",
-        true_sim_igm=None,
     ):
         """Setup object to compute predictions for the 1D power spectrum.
         Inputs:
@@ -69,18 +68,7 @@ class Theory(object):
 
         self.emu_kp_Mpc = self.emulator.kp_Mpc
 
-        # load fiducial IGM history (used for fitting)
-        self.fid_sim_igm = fid_sim_igm
-        self.fid_igm = self.get_igm(fid_sim_igm)
-
-        # load true IGM history (if any)
-        if true_sim_igm is not None:
-            self.true_sim_igm = true_sim_igm
-            self.true_igm = self.get_igm(true_sim_igm)
-        else:
-            self.true_sim_igm = None
-
-        # setup fiducial cosmology
+        # setup fiducial cosmology (used for fitting)
         if not cosmo_fid:
             cosmo_fid = camb_cosmo.get_cosmology()
 
@@ -106,28 +94,39 @@ class Theory(object):
             "cosmo"
         ].get_M_of_zs()
 
+        # load fiducial IGM history (used for fitting)
+        self.fid_sim_igm = fid_sim_igm
+        fid_igm = self.get_igm(fid_sim_igm)
+
         # setup fiducial IGM models (from Gadget sims if not specified)
         if F_model is not None:
             self.F_model = F_model
         else:
             self.F_model = mean_flux_model.MeanFluxModel(
                 free_param_names=free_param_names,
-                fid_igm=self.fid_igm,
+                fid_igm=fid_igm,
             )
         if T_model:
             self.T_model = T_model
         else:
             self.T_model = thermal_model.ThermalModel(
                 free_param_names=free_param_names,
-                fid_igm=self.fid_igm,
+                fid_igm=fid_igm,
             )
         if P_model:
             self.P_model = P_model
         else:
             self.P_model = pressure_model.PressureModel(
                 free_param_names=free_param_names,
-                fid_igm=self.fid_igm,
+                fid_igm=fid_igm,
             )
+
+        self.fid_igm = {}
+        self.fid_igm["z_igm"] = zs
+        self.fid_igm["tau_eff"] = self.F_model.get_tau_eff(zs)
+        self.fid_igm["gamma"] = self.T_model.get_gamma(zs)
+        self.fid_igm["sigT_kms"] = self.T_model.get_sigT_kms(zs)
+        self.fid_igm["kF_kms"] = self.P_model.get_kF_kms(zs)
 
         # check whether we want to include metal contamination models
         self.metal_models = []
@@ -363,7 +362,7 @@ class Theory(object):
 
     def get_blobs_dtype(self):
         """Return the format of the extra information (blobs) returned
-        by get_p1d_kms and used in emcee_sampler."""
+        by get_p1d_kms and used in the fitter."""
 
         blobs_dtype = [
             ("Delta2_star", float),
@@ -376,7 +375,7 @@ class Theory(object):
         return blobs_dtype
 
     def get_blob(self, camb_model=None):
-        """Return extra information (blob) for the emcee_sampler."""
+        """Return extra information (blob) for the fitter."""
 
         if camb_model is None:
             Nblob = len(self.get_blobs_dtype())
@@ -457,7 +456,7 @@ class Theory(object):
         """Emulate P1D in velocity units, for all redshift bins,
         as a function of input likelihood parameters.
         It might also return a covariance from the emulator,
-        or a blob with extra information for the emcee_sampler."""
+        or a blob with extra information for the fitter."""
 
         if self.emulator is None:
             raise ValueError("no emulator provided")

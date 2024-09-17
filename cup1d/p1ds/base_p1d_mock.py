@@ -80,3 +80,43 @@ class BaseMockP1D(BaseDataP1D):
                 ]
 
         return list_data_Mpc
+
+    def plot_igm(self):
+        """Plot IGM histories"""
+
+        # true IGM parameters
+        pars_true = {}
+        pars_true["z_igm"] = self.truth["igm"]["z_igm"]
+        pars_true["tau_eff"] = self.truth["igm"]["tau_eff"]
+        pars_true["gamma"] = self.truth["igm"]["gamma"]
+        pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
+        pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
+
+        fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
+        ax = ax.reshape(-1)
+
+        arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
+        latex_labs = [
+            r"$\tau_\mathrm{eff}$",
+            r"$\gamma$",
+            r"$\sigma_T$",
+            r"$k_F$",
+        ]
+
+        for ii in range(len(arr_labs)):
+            _ = pars_true[arr_labs[ii]] != 0
+            ax[ii].plot(
+                pars_true["z_igm"][_],
+                pars_true[arr_labs[ii]][_],
+                "o:",
+                label="true",
+            )
+
+            ax[ii].set_ylabel(latex_labs[ii])
+            if ii == 0:
+                ax[ii].set_yscale("log")
+
+            if (ii == 2) | (ii == 3):
+                ax[ii].set_xlabel(r"$z$")
+
+        plt.tight_layout()

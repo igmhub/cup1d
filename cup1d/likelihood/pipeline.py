@@ -20,7 +20,7 @@ from cup1d.p1ds import (
     data_QMLE_Ohio,
     mock_data,
 )
-from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
+from cup1d.likelihood import lya_theory, likelihood, fitter
 
 
 def set_archive(training_set):
@@ -47,13 +47,13 @@ def set_P1D(
     emulator,
     data_label,
     cosmo_fid,
+    true_sim_igm=None,
     cov_label=None,
     apply_smoothing=None,
     z_min=0,
     z_max=10,
     add_noise=False,
     seed_noise=0,
-    igm_label=None,
     fprint=print,
     cull_data=False,
 ):
@@ -85,7 +85,6 @@ def set_P1D(
     """
 
     if (data_label[:3] == "mpg") | (data_label[:3] == "nyx"):
-        true_sim_igm = data_label
         # check if we need to load another archive
         if data_label in archive.list_sim:
             archive_mock = archive
@@ -93,7 +92,7 @@ def set_P1D(
             if data_label[:3] == "mpg":
                 archive_mock = set_archive(training_set="Cabayol23")
             elif data_label[:3] == "nyx":
-                archive_mock = set_archive(training_set="Nyx24_Feb2024")
+                archive_mock = set_archive(training_set="Nyx24_Oct2023")
 
         if data_label not in archive_mock.list_sim:
             raise ValueError(
@@ -129,20 +128,18 @@ def set_P1D(
         )
     elif data_label[:5] == "mock_":
         # mock data from emulator
-        true_sim_igm = igm_label
         data = mock_data.Mock_P1D(
             emulator,
             data_label=data_label[5:],
-            fid_sim_igm=true_sim_igm,
+            true_sim_igm=true_sim_igm,
             z_min=z_min,
             z_max=z_max,
             add_noise=add_noise,
             seed=seed_noise,
-            cosmo_fid=cosmo_fid,
+            true_cosmo=cosmo_fid,
         )
     elif data_label == "eBOSS_mock":
         # need to be tested
-        true_sim_igm = None
         data = data_eBOSS_mock.P1D_eBOSS_mock(
             z_min=z_min,
             z_max=z_max,
@@ -152,16 +149,12 @@ def set_P1D(
             seed=seed_noise,
         )
     elif data_label == "Chabanier2019":
-        true_sim_igm = None
         data = data_Chabanier2019.P1D_Chabanier2019(z_min=z_min, z_max=z_max)
     elif data_label == "Ravoux2023":
-        true_sim_igm = None
         data = data_Ravoux2023.P1D_Ravoux2023(z_min=z_min, z_max=z_max)
     elif data_label == "Karacayli2024":
-        true_sim_igm = None
         data = data_Karacayli2024.P1D_Karacayli2024(z_min=z_min, z_max=z_max)
     elif data_label == "challenge_v0":
-        true_sim_igm = None
         file = (
             os.environ["CHALLENGE_PATH"]
             + "fiducial_lym1d_p1d_qmleformat_IC.txt"
@@ -179,7 +172,7 @@ def set_P1D(
         kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
         data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
 
-    return data, true_sim_igm
+    return data
 
 
 def set_P1D_hires(
@@ -187,12 +180,12 @@ def set_P1D_hires(
     emulator,
     data_label_hires,
     cosmo_fid,
+    true_sim_igm=None,
     cov_label_hires=None,
     apply_smoothing=None,
     z_min=0,
     z_max=10,
     add_noise=False,
-    igm_label=None,
     seed_noise=0,
     fprint=print,
     cull_data=False,
@@ -272,15 +265,14 @@ def set_P1D_hires(
         data_hires = mock_data.Mock_P1D(
             emulator,
             data_label=data_label_hires[5:],
-            fid_sim_igm=igm_label,
+            true_sim_igm=true_sim_igm,
             z_min=z_min,
             z_max=z_max,
             add_noise=add_noise,
             seed=seed_noise,
-            cosmo_fid=cosmo_fid,
+            true_cosmo=cosmo_fid,
         )
     elif data_label_hires == "Karacayli2022":
-        true_sim_igm = None
         data_hires = data_Karacayli2022.P1D_Karacayli2022(
             z_min=z_min, z_max=z_max
         )
@@ -338,8 +330,7 @@ def set_like(
     emulator,
     data,
     data_hires,
-    true_sim_igm,
-    igm_label,
+    fid_igm_label,
     n_igm,
     cosmo_fid,
     fix_cosmo=False,
@@ -377,8 +368,7 @@ def set_like(
         zs_hires=zs_hires,
         emulator=emulator,
         free_param_names=free_parameters,
-        fid_sim_igm=igm_label,
-        true_sim_igm=true_sim_igm,
+        fid_sim_igm=fid_igm_label,
         cosmo_fid=cosmo_fid,
     )
 
@@ -476,7 +466,7 @@ def path_sampler(
     return path
 
 
-class SamplerPipeline(object):
+class Pipeline(object):
     """Full pipeline for extracting cosmology from P1D using sampler"""
 
     def __init__(self, args):
@@ -551,11 +541,12 @@ class SamplerPipeline(object):
             start = time.time()
 
             data = {"P1Ds": None, "extra_P1Ds": None}
-            data["P1Ds"], true_sim_igm = set_P1D(
+            data["P1Ds"] = set_P1D(
                 archive,
                 emulator,
                 args.data_label,
                 cosmo_fid,
+                true_sim_igm=args.igm_label,
                 cov_label=args.cov_label,
                 apply_smoothing=args.apply_smoothing,
                 z_min=args.z_min,
@@ -574,6 +565,7 @@ class SamplerPipeline(object):
                     emulator,
                     args.data_label_hires,
                     cosmo_fid,
+                    true_sim_igm=args.igm_label,
                     cov_label=args.cov_label_hires,
                     apply_smoothing=args.apply_smoothing,
                     z_min=args.z_min,
@@ -589,11 +581,9 @@ class SamplerPipeline(object):
             # distribute data to all tasks
             for irank in range(1, size):
                 comm.send(data, dest=irank, tag=(irank + 1) * 11)
-                comm.send(true_sim_igm, dest=irank, tag=(irank + 1) * 23)
         else:
             # get testing_data from task 0
             data = comm.recv(source=0, tag=(rank + 1) * 11)
-            true_sim_igm = comm.recv(source=0, tag=(rank + 1) * 23)
 
         if rank == 0:
             multi_time = str(np.round(time.time() - start, 2))
@@ -609,7 +599,6 @@ class SamplerPipeline(object):
             emulator,
             data["P1Ds"],
             data["extra_P1Ds"],
-            true_sim_igm,
             args.igm_label,
             args.n_igm,
             cosmo_fid,
@@ -716,7 +705,7 @@ class SamplerPipeline(object):
             log_prob.sampler = sampler
             return log_prob
 
-        self.sampler = emcee_sampler.EmceeSampler(
+        self.fitter = fitter.EmceeSampler(
             like=like,
             rootdir=self.out_folder,
             save_chain=False,
@@ -726,9 +715,10 @@ class SamplerPipeline(object):
             explore=self.explore,
             fix_cosmology=fix_cosmo,
         )
-        self._log_prob = set_log_prob(self.sampler)
+        self._log_prob = set_log_prob(self.fitter)
 
     def run_sampler(self):
+        ### XXX put minimizer outsize
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
 

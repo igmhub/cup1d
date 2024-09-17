@@ -35,22 +35,11 @@ import time, os, sys
 import matplotlib.pyplot as plt
 
 # our own modules
-import lace
-from lace.archive import gadget_archive, nyx_archive
 from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.p1ds import (
-    data_gadget,
-    data_nyx,
-    mock_data,
-    data_eBOSS_mock,
-    data_Chabanier2019,
-    data_Karacayli2022,
-    data_Karacayli2024,
-    data_Ravoux2023,
-)
-from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
-from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_P1D_hires, set_fid_cosmo, set_like
+from cup1d.likelihood import lya_theory, likelihood
+from cup1d.likelihood.fitter import Fitter
+from cup1d.likelihood.pipeline import set_archive, set_P1D, set_P1D_hires, set_fid_cosmo, set_like
 from cup1d.likelihood.input_pipeline import Args
 
 # %% [markdown]
@@ -66,12 +55,14 @@ args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 
 args.data_label="mock_Karacayli2024"
-args.data_label_hires = "mock_Karacayli2022"
+# args.data_label_hires = "mock_Karacayli2022"
 # args.data_label="mpg_central"
 # args.data_label_hires="mpg_central"
 
 args.cosmo_label="mpg_central"
-args.igm_label="mpg_central"
+args.true_igm_label="mpg_0"
+args.true_igm_label="mpg_central"
+args.fid_igm_label="mpg_central"
 args.vary_alphas=False
 
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
@@ -118,13 +109,13 @@ cosmo_fid = set_fid_cosmo(cosmo_label=args.cosmo_label)
 
 # %%
 data = {"P1Ds": None, "extra_P1Ds": None}
-data["P1Ds"], true_sim_igm = set_P1D(
+data["P1Ds"] = set_P1D(
     archive,
     emulator,
     args.data_label,
     cosmo_fid,
+    true_sim_igm=args.true_igm_label,
     cov_label=args.cov_label,
-    igm_label=args.igm_label,
     apply_smoothing=False,
     z_min=args.z_min,
     z_max=args.z_max,
@@ -136,8 +127,8 @@ if(args.add_hires):
         emulator,
         args.data_label_hires,
         cosmo_fid,
+        true_sim_igm=args.true_igm_label,
         cov_label_hires=args.cov_label_hires,
-        igm_label=args.igm_label,
         apply_smoothing=False,
         z_min=args.z_min,
         z_max=args.z_max,
@@ -148,6 +139,9 @@ data["P1Ds"].plot_p1d()
 if(args.add_hires):
     data["extra_P1Ds"].plot_p1d()
 
+# %%
+data["P1Ds"].plot_igm()
+
 # %% [markdown]
 # ### Set likelihood
 
@@ -156,8 +150,7 @@ like = set_like(
     emulator,
     data["P1Ds"],
     data["extra_P1Ds"],
-    true_sim_igm,
-    args.igm_label,
+    args.fid_igm_label,
     args.n_igm,
     cosmo_fid,
     vary_alphas=args.vary_alphas,
@@ -171,6 +164,9 @@ like = set_like(
 like.plot_p1d(residuals=False, plot_every_iz=1)
 like.plot_p1d(residuals=True, plot_every_iz=2)
 
+# %%
+like.plot_igm()
+
 # %% [markdown]
 # Priors for sampling parameters
 
@@ -180,17 +176,17 @@ for p in like.free_params:
 
 
 # %% [markdown]
-# ### Set sampler
+# ### Set fitter
 
 # %%
 def log_prob(theta):
-    return log_prob.sampler.like.get_chi2(theta)
+    return log_prob.fitter.like.get_chi2(theta)
 
-def set_log_prob(sampler):
-    log_prob.sampler = sampler
+def set_log_prob(fitter):
+    log_prob.fitter = fitter
     return log_prob
 
-sampler = emcee_sampler.EmceeSampler(
+fitter = Fitter(
     like=like,
     rootdir=output_dir,
     save_chain=False,
@@ -200,35 +196,30 @@ sampler = emcee_sampler.EmceeSampler(
     explore=args.explore,
     fix_cosmology=args.fix_cosmo,
 )
-_get_chi2 = set_log_prob(sampler)
+_get_chi2 = set_log_prob(fitter)
 
 # %% [markdown]
 # ### Run sampler
 # It takes less than 2 min on my laptop without any parallelization
 
 # %%
-# %%time
-_emcee_sam = sampler.run_sampler(log_func=_log_prob)
+run_sampler = False
+if run_sampler:
+    _emcee_sam = sampler.run_sampler(log_func=_get_chi2)
 
 # %% [markdown]
 # ### Run minimizer
 
 # %%
 # %%time
-ind = np.argmax(sampler.lnprob.reshape(-1))
-nparam = sampler.chain.shape[-1]
-p0 = sampler.chain.reshape(-1, nparam)[ind, :]
-sampler.run_minimizer(log_func=_log_prob, p0=p0)
-
-# %%
-# %%time
 p0 = np.zeros(len(like.free_params)) + 0.5
-sampler.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
+fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
 
 # %%
-# like.plot_p1d(residuals=False, plot_every_iz=1, values=sampler.mle_cube)
-like.plot_p1d(residuals=True, plot_every_iz=2, values=sampler.mle_cube)
-# like.plot_p1d(residuals=True, plot_every_iz=2, values=ptruth)
+fitter.plot_p1d(residuals=True, plot_every_iz=2)
+
+# %%
+fitter.plot_igm()
 
 # %% [markdown]
 # ### Get plots
