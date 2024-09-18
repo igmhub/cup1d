@@ -59,11 +59,12 @@ from cup1d.likelihood.input_pipeline import Args
 # set output directory for this test
 output_dir = "."
 
-args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
-# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 
 # args.data_label="mock_Karacayli2024"
 args.data_label="mock_Chabanier2019"
+# args.data_label="Chabanier2019"
 # args.data_label_hires = "mock_Karacayli2022"
 # args.data_label="mpg_central"
 # args.data_label_hires="mpg_central"
@@ -85,12 +86,14 @@ args.vary_alphas=False
 # from -11 to -4
 # for tests -5
 args.true_SiIII=-5
-args.fid_SiIII=-10
+args.fid_SiIII=-5
+args.true_SiII=-6
+args.fid_SiII=-10
 # args.true_SiII=-10
 # args.true_SiII=-10
 # from -7 to 0
 # for tests -1
-args.true_HCD=-1
+args.true_HCD=-2
 args.fid_HCD=-6
 
 
@@ -141,6 +144,7 @@ data["P1Ds"] = set_P1D(
     cov_label=args.cov_label,
     z_min=args.z_min,
     z_max=args.z_max,
+    true_SiII=args.true_SiII,
     true_SiIII=args.true_SiIII,
     true_HCD=args.true_HCD,
 )
@@ -155,6 +159,7 @@ if args.data_label_hires is not None:
         cov_label=args.cov_label_hires,
         z_min=args.z_min,
         z_max=args.z_max,
+        true_SiII=args.true_SiII,
         true_SiIII=args.true_SiIII,
         true_HCD=args.true_HCD,
     )
@@ -175,9 +180,9 @@ data["P1Ds"].truth
 
 # %%
 ## set cosmo and IGM parameters
-args.n_igm=1
+args.n_igm=0
 args.n_metals=1
-args.n_dla=1
+args.n_dla=0
 free_parameters = set_free_like_parameters(args)
 free_parameters
 
@@ -196,13 +201,6 @@ like = set_like(
     fid_SiIII=args.fid_SiIII,
     fid_HCD=args.fid_HCD,
 )
-
-# %%
-for par in like.free_params:
-    print(par.name)
-
-# %%
-like.truth
 
 # %% [markdown]
 # Plot residual between P1D data and emulator for fiducial cosmology (should be the same in this case)
@@ -264,7 +262,7 @@ if fitter.truth is None:
 else:
     p0 = np.array(list(fitter.truth["fit_cube"].values()))*1.01
 fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
-# fitter.run_minimizer(log_func_minimize=_get_chi2)
+# fitter.run_minimizer(log_func_minimize=_get_chi2, nsamples=16)
 
 # %%
 fitter.truth["fit"]
@@ -274,6 +272,9 @@ fitter.truth["fit"]
 
 # %%
 fitter.plot_p1d(residuals=True, plot_every_iz=2)
+
+# %% [markdown]
+# plot cloud of IGM from simulations!
 
 # %%
 fitter.plot_igm()

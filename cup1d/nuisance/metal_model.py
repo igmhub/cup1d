@@ -21,10 +21,9 @@ class MetalModel(object):
         # label identifying the metal line
         self.metal_label = metal_label
         if metal_label == "SiIII":
-            self.lambda_rest = 1206.50  # from McDonald et al. 2006)
-            if lambda_rest:
-                if lambda_rest != self.lambda_rest:
-                    raise ValueError("inconsistent lambda_rest")
+            self.lambda_rest = 1206.50  # from McDonald et al. 2006
+        elif metal_label == "SiII":
+            self.lambda_rest = 1192.5  # like in Chabanier+19, Karacali+24
         else:
             if lambda_rest is None:
                 raise ValueError("need to specify lambda_rest", metal_label)
@@ -41,7 +40,7 @@ class MetalModel(object):
         else:
             if free_param_names:
                 # figure out number of free params for this metal line
-                param_tag = "ln_" + metal_label
+                param_tag = "ln_" + metal_label + "_"
                 n_X = len([p for p in free_param_names if param_tag in p])
                 if n_X == 0:
                     n_X = 1
@@ -98,7 +97,7 @@ class MetalModel(object):
             array_names = []
             array_values = []
             for par in like_params:
-                if "ln_" + self.metal_label in par.name:
+                if "ln_" + self.metal_label + "_" in par.name:
                     Npar += 1
                     array_names.append(par.name)
                     array_values.append(par.value)

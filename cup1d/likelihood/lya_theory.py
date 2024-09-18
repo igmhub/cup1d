@@ -34,6 +34,7 @@ class Theory(object):
         z_star=3.0,
         kp_kms=0.009,
         fid_cosmo=None,
+        fid_SiII=-10,
         fid_SiIII=-10,
         fid_HCD=-6,
         free_param_names=None,
@@ -62,6 +63,7 @@ class Theory(object):
         self.z_star = z_star
         self.kp_kms = kp_kms
 
+        self.fid_SiII = fid_SiII
         self.fid_SiIII = fid_SiIII
         self.fid_HCD = fid_HCD
 
@@ -136,14 +138,6 @@ class Theory(object):
 
         # setup metal models
         self.metal_models = []
-        ### to be implemented!
-        # if SiII_model:
-        #     self.SiII_model = SiII_model
-        # else:
-        #     self.SiII_model = metal_model.MetalModel(
-        #         metal_label="SiII", free_param_names=free_param_names
-        #     )
-        # self.metal_models.append(self.SiII_model)
         if SiIII_model:
             self.SiIII_model = SiIII_model
         else:
@@ -153,6 +147,16 @@ class Theory(object):
                 fid_value=self.fid_SiIII,
             )
         self.metal_models.append(self.SiIII_model)
+
+        if SiII_model:
+            self.SiII_model = SiII_model
+        else:
+            self.SiII_model = metal_model.MetalModel(
+                metal_label="SiII",
+                free_param_names=free_param_names,
+                fid_value=self.fid_SiII,
+            )
+        self.metal_models.append(self.SiII_model)
 
         # setup HCD model
         if hcd_model:

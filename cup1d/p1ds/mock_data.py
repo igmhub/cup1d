@@ -26,6 +26,7 @@ class Mock_P1D(BaseMockP1D):
         seed=0,
         true_sim_igm="mpg_central",
         true_cosmo=None,
+        true_SiII=-10,
         true_SiIII=-10,
         true_HCD=-6,
         zs=None,
@@ -105,6 +106,7 @@ class Mock_P1D(BaseMockP1D):
             emulator=emulator,
             fid_sim_igm=true_sim_igm,
             fid_SiIII=true_SiIII,
+            fid_SiII=true_SiII,
             fid_HCD=true_HCD,
             fid_cosmo=true_cosmo,
         )
@@ -157,4 +159,5 @@ class Mock_P1D(BaseMockP1D):
         self.truth["igm"]["kF_kms"] = theory.P_model.get_kF_kms(zs)
 
         self.truth["ln_SiIII_0"] = theory.fid_SiIII
+        self.truth["ln_SiII_0"] = theory.fid_SiII
         self.truth["ln_A_damp_0"] = theory.fid_HCD

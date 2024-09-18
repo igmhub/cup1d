@@ -35,6 +35,7 @@ class Gadget_P1D(BaseMockP1D):
         seed=0,
         z_star=3.0,
         kp_kms=0.009,
+        true_SiII=-10,
         true_SiIII=-10,
         true_HCD=-6,
         fprint=print,
@@ -72,7 +73,9 @@ class Gadget_P1D(BaseMockP1D):
             dkms_dMpc.append(testing_data[ii]["dkms_dMpc"])
         self.dkms_dMpc = np.array(dkms_dMpc)
 
-        self._set_truth(true_SiIII=true_SiIII, true_HCD=true_HCD)
+        self._set_truth(
+            true_SiII=true_SiII, true_SiIII=true_SiIII, true_HCD=true_HCD
+        )
 
         # setup P1D using covariance and testing sim
         zs, k_kms, Pk_kms, cov = self._load_p1d()
@@ -84,6 +87,10 @@ class Gadget_P1D(BaseMockP1D):
             metal_label="SiIII",
             fid_value=true_SiIII,
         )
+        SiII_model = metal_model.MetalModel(
+            metal_label="SiII",
+            fid_value=true_SiII,
+        )
         # include HCD contamination
         hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
             fid_value=true_HCD,
@@ -94,8 +101,12 @@ class Gadget_P1D(BaseMockP1D):
             cont_SiIII = SiIII_model.get_contamination(
                 z=z, k_kms=k_kms[iz], mF=mF
             )
+            cont_SiII = SiII_model.get_contamination(
+                z=z, k_kms=k_kms[iz], mF=mF
+            )
             cont_HCD = hcd_model.get_contamination(z=z, k_kms=k_kms[iz])
-            Pk_kms[iz] = Pk_kms[iz] * cont_SiIII * cont_HCD
+            cont_total = cont_SiIII * cont_SiII * cont_HCD
+            Pk_kms[iz] *= cont_total
 
         # setup base class
         super().__init__(
@@ -148,7 +159,7 @@ class Gadget_P1D(BaseMockP1D):
 
         return true_igm
 
-    def _set_truth(self, true_SiIII=None, true_HCD=None):
+    def _set_truth(self, true_SiII=None, true_SiIII=None, true_HCD=None):
         # get cosmology
         sim_cosmo = self._get_cosmo()
 
@@ -179,6 +190,7 @@ class Gadget_P1D(BaseMockP1D):
         self.truth["igm"] = true_igm
 
         self.truth["ln_SiIII_0"] = true_SiIII
+        self.truth["ln_SiII_0"] = true_SiII
         self.truth["ln_A_damp_0"] = true_HCD
 
     def _load_p1d(self):

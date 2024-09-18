@@ -37,6 +37,7 @@ def set_free_like_parameters(params):
             free_parameters.append(f"ln_{par}_{ii}")
     for ii in range(params.n_metals):
         free_parameters.append(f"ln_SiIII_{ii}")
+        free_parameters.append(f"ln_SiII_{ii}")
     for ii in range(params.n_dla):
         free_parameters.append(f"ln_A_damp_{ii}")
 
@@ -76,6 +77,7 @@ def set_P1D(
     seed_noise=0,
     fprint=print,
     cull_data=False,
+    true_SiII=-10,
     true_SiIII=-10,
     true_HCD=-10,
 ):
@@ -147,6 +149,9 @@ def set_P1D(
             apply_smoothing=apply_smoothing,
             add_noise=add_noise,
             seed=seed_noise,
+            true_SiII=true_SiII,
+            true_SiIII=true_SiIII,
+            true_HCD=true_HCD,
         )
     elif data_label[:5] == "mock_":
         # mock data from emulator
@@ -154,6 +159,7 @@ def set_P1D(
             emulator,
             data_label=data_label[5:],
             true_sim_igm=true_sim_igm,
+            true_SiII=true_SiII,
             true_SiIII=true_SiIII,
             true_HCD=true_HCD,
             z_min=z_min,
