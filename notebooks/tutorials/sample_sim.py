@@ -59,13 +59,14 @@ from cup1d.likelihood.input_pipeline import Args
 # set output directory for this test
 output_dir = "."
 
-# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
-args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 
 # args.data_label="mock_Karacayli2024"
-args.data_label="mock_Chabanier2019"
+# args.data_label="mock_Chabanier2019"
 # args.data_label="Chabanier2019"
-# args.data_label_hires = "mock_Karacayli2022"
+args.data_label="Karacayli2024"
+args.data_label_hires = "Karacayli2022"
 # args.data_label="mpg_central"
 # args.data_label_hires="mpg_central"
 
@@ -85,17 +86,19 @@ args.vary_alphas=False
 
 # from -11 to -4
 # for tests -5
-args.true_SiIII=-5
+args.true_SiIII=-10
 args.fid_SiIII=-5
-args.true_SiII=-6
-args.fid_SiII=-10
-# args.true_SiII=-10
-# args.true_SiII=-10
+args.true_SiII=-10
+args.fid_SiII=-5
 # from -7 to 0
 # for tests -1
-args.true_HCD=-2
-args.fid_HCD=-6
+args.true_HCD=-6
+args.fid_HCD=-2
 
+# from -5 to 2
+# for tests 1
+args.true_SN=4
+args.fid_SN=0
 
 
 args.n_steps=50
@@ -122,6 +125,9 @@ emulator = set_emulator(
 # %% [markdown]
 # ### Set fiducial cosmology
 
+# %% [markdown]
+# ### planck label
+
 # %%
 fid_cosmo = set_cosmo_from_sim(cosmo_label=args.fid_cosmo_label)
 
@@ -147,6 +153,7 @@ data["P1Ds"] = set_P1D(
     true_SiII=args.true_SiII,
     true_SiIII=args.true_SiIII,
     true_HCD=args.true_HCD,
+    true_SN=args.true_SN,
 )
 
 if args.data_label_hires is not None:
@@ -162,6 +169,7 @@ if args.data_label_hires is not None:
         true_SiII=args.true_SiII,
         true_SiIII=args.true_SiIII,
         true_HCD=args.true_HCD,
+        true_SN=args.true_SN,
     )
 
 # %%
@@ -180,9 +188,11 @@ data["P1Ds"].truth
 
 # %%
 ## set cosmo and IGM parameters
-args.n_igm=0
+args.fix_cosmo=True
+args.n_igm=2
 args.n_metals=1
-args.n_dla=0
+args.n_dla=1
+args.n_sn=1
 free_parameters = set_free_like_parameters(args)
 free_parameters
 
@@ -199,7 +209,9 @@ like = set_like(
     fid_cosmo,
     vary_alphas=args.vary_alphas,
     fid_SiIII=args.fid_SiIII,
+    fid_SiII=args.fid_SiII,
     fid_HCD=args.fid_HCD,
+    fid_SN=args.fid_SN,
 )
 
 # %% [markdown]
@@ -207,7 +219,7 @@ like = set_like(
 
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1)
-like.plot_p1d(residuals=True, plot_every_iz=2)
+like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
 
 # %%
 like.plot_igm()
@@ -262,45 +274,22 @@ if fitter.truth is None:
 else:
     p0 = np.array(list(fitter.truth["fit_cube"].values()))*1.01
 fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
-# fitter.run_minimizer(log_func_minimize=_get_chi2, nsamples=16)
+# fitter.run_minimizer(log_func_minimize=_get_chi2, nsamples=8)
+
+# %%
+fitter.paramstrings
+
+# %%
+# chabrier // chabrier+hires // DES+hires
+# nigm=1, nmetal=1, ndla=0, nsn=0 // 553 // 1283. 
+# nigm=1, nmetal=1, ndla=1, nsn=1 // 550 
+# nigm=2, nmetal=1, ndla=1, nsn=1 // 406 // 799. // 1019.
+
+# %% [markdown]
+# # INTERNALLY in contamination models, if value smaller than X, return 1 without doing anything else
 
 # %%
 fitter.truth["fit"]
-
-# %%
-k = data["P1Ds"].k_kms[0]
-# k = np.logspace(-3, -1, 10)
-for z in range(2, 5):
-    
-    SN_damp = 1
-    k0 = 0.001
-    k1 = 0.02
-    # Supernovae SN
-    tmpLowk = [-0.06, -0.04, -0.02]
-    tmpHighk = [-0.01, -0.01, -0.01]
-    if z < 2.5:
-        d0 = tmpLowk[0]
-        d1 = tmpHighk[0]
-    elif z < 3.5:
-        d0 = tmpLowk[1]
-        d1 = tmpHighk[1]
-    else:
-        d0 = tmpLowk[2]
-        d1 = tmpHighk[2]
-    delta = d0 + (d1 - d0) * (k - k0) / (k1 - k0)
-    corSN = 1/(1.0 + delta * SN_damp)
-    plt.plot(k, corSN)
-plt.xscale("log")
-
-
-# N/Y Y/N * N
-
-# %%
-
-# %%
-
-# %% [markdown]
-# error on cosmology is independent of the number of parameters
 
 # %%
 fitter.plot_p1d(residuals=True, plot_every_iz=2)

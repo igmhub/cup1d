@@ -6,11 +6,14 @@ import lace
 from lace.cosmo import camb_cosmo
 from lace.cosmo import fit_linP
 from lace.emulator import gp_emulator
-from cup1d.nuisance import mean_flux_model
-from cup1d.nuisance import thermal_model
-from cup1d.nuisance import pressure_model
-from cup1d.nuisance import metal_model
-from cup1d.nuisance import hcd_model_McDonald2005
+from cup1d.nuisance import (
+    mean_flux_model,
+    thermal_model,
+    pressure_model,
+    metal_model,
+    hcd_model_McDonald2005,
+    SN_model,
+)
 from cup1d.likelihood import CAMB_model
 
 
@@ -38,7 +41,7 @@ class Theory(object):
         fid_SiII=-10,
         fid_SiIII=-10,
         fid_HCD=-6,
-        fid_SN=-5,
+        fid_SN=-10,
         free_param_names=None,
         fid_sim_igm="mpg_central",
     ):
@@ -641,25 +644,37 @@ class Theory(object):
                         * M_of_z[iz] ** 2
                     )
 
-        # include multiplicative metal contamination
-        for X_model in self.metal_models:
-            for iz, z in enumerate(zs):
+        for iz, z in enumerate(zs):
+            # include multiplicative metal contamination
+            cont_metals = 1
+            for X_model in self.metal_models:
                 cont = X_model.get_contamination(
                     z=z,
                     k_kms=k_kms[iz],
                     mF=emu_call["mF"][iz],
                     like_params=like_params,
                 )
-                p1d_kms[iz] *= cont
+                cont_metals *= cont
 
-        # include HCD contamination
-        for iz, z in enumerate(zs):
-            cont = self.hcd_model.get_contamination(
+            # include HCD contamination
+            cont_HCD = self.hcd_model.get_contamination(
                 z=z,
                 k_kms=k_kms[iz],
                 like_params=like_params,
             )
-            p1d_kms[iz] *= cont
+
+            # include SN contamination
+            _ = np.argwhere(self.cosmo_model_fid["zs"] == z)[0, 0]
+            M_of_z = self.cosmo_model_fid["M_of_zs"][_]
+            cont_SN = self.sn_model.get_contamination(
+                z=z,
+                k_Mpc=k_kms[iz] * M_of_z,
+                like_params=like_params,
+            )
+
+            cont_total = cont_metals * cont_HCD * cont_SN
+
+            p1d_kms[iz] *= cont_total
 
         # decide what to return, and return it
         out = [p1d_kms]
@@ -696,8 +711,12 @@ class Theory(object):
             for par in metal.get_parameters():
                 params.append(par)
 
-        # get parameters from HCD contamination models
+        # get parameters from HCD contamination model
         for par in self.hcd_model.get_parameters():
+            params.append(par)
+
+        # get parameters from SN contamination model
+        for par in self.sn_model.get_parameters():
             params.append(par)
 
         if self.verbose:

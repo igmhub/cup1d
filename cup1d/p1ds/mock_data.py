@@ -29,6 +29,7 @@ class Mock_P1D(BaseMockP1D):
         true_SiII=-10,
         true_SiIII=-10,
         true_HCD=-6,
+        true_SN=-5,
         zs=None,
         k_kms=None,
     ):
@@ -108,6 +109,7 @@ class Mock_P1D(BaseMockP1D):
             fid_SiIII=true_SiIII,
             fid_SiII=true_SiII,
             fid_HCD=true_HCD,
+            fid_SN=true_SN,
             fid_cosmo=true_cosmo,
         )
 
@@ -161,3 +163,4 @@ class Mock_P1D(BaseMockP1D):
         self.truth["ln_SiIII_0"] = theory.fid_SiIII
         self.truth["ln_SiII_0"] = theory.fid_SiII
         self.truth["ln_A_damp_0"] = theory.fid_HCD
+        self.truth["ln_SN_0"] = theory.fid_SN

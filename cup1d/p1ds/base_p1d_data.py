@@ -56,6 +56,13 @@ class BaseDataP1D(object):
         self.k_kms = k_kms
         self.Pk_kms = Pk_kms
         self.cov_Pk_kms = cov_Pk_kms
+
+        for iz in range(len(z)):
+            _ = np.argwhere(self.Pk_kms[iz] != 0)[-1, 0] + 1
+            self.k_kms[iz] = self.k_kms[iz][:_]
+            self.Pk_kms[iz] = self.Pk_kms[iz][:_]
+            self.cov_Pk_kms[iz] = self.cov_Pk_kms[iz][:_, :_]
+
         self.icov_Pk_kms = []
         for ii in range(len(z)):
             self.icov_Pk_kms.append(np.linalg.inv(cov_Pk_kms[ii]))

@@ -10,7 +10,7 @@ class SN_Model(object):
     def __init__(
         self,
         z_0=3.0,
-        fid_value=-5,
+        fid_value=-4,
         ln_SN_coeff=None,
         free_param_names=None,
     ):
@@ -41,10 +41,8 @@ class SN_Model(object):
         for i in range(Npar):
             name = "ln_SN_" + str(i)
             if i == 0:
-                # not optimized
-                xmin = -10
-                # not optimized
-                xmax = 0
+                xmin = -5
+                xmax = 2
             else:
                 # not optimized
                 xmin = -1
@@ -73,15 +71,17 @@ class SN_Model(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_Mpc, like_params=[]):
         """Multiplicative contamination caused by SNs"""
         SN_damp = self.get_SN_damp(z, like_params=like_params)
 
         # https://github.com/schoeneberg/lym1d/blob/160fc0c3e9f814be11e6dc90c226285ce2e6f9d3/src/lym1d/likelihood.py#L458
-        # Viel+13
+        # Viel+13 Fig 8 panel b
 
-        k0 = 0.001
-        k1 = 0.02
+        # k0 = 0.001
+        # k1 = 0.02
+        k0_Mpc = 0.07  # Mpc^-1
+        k1_Mpc = 1.4  # Mpc^-1
         # Supernovae SN
         tmpLowk = [-0.06, -0.04, -0.02]
         tmpHighk = [-0.01, -0.01, -0.01]
@@ -94,7 +94,7 @@ class SN_Model(object):
         else:
             d0 = tmpLowk[2]
             d1 = tmpHighk[2]
-        delta = d0 + (d1 - d0) * (k_kms - k0) / (k1 - k0)
+        delta = d0 + (d1 - d0) * (k_Mpc - k0_Mpc) / (k1_Mpc - k0_Mpc)
         corSN = 1 / (1.0 + delta * SN_damp)
 
         return corSN

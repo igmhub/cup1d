@@ -40,6 +40,8 @@ def set_free_like_parameters(params):
         free_parameters.append(f"ln_SiII_{ii}")
     for ii in range(params.n_dla):
         free_parameters.append(f"ln_A_damp_{ii}")
+    for ii in range(params.n_sn):
+        free_parameters.append(f"ln_SN_{ii}")
 
     return free_parameters
 
@@ -79,7 +81,8 @@ def set_P1D(
     cull_data=False,
     true_SiII=-10,
     true_SiIII=-10,
-    true_HCD=-10,
+    true_HCD=-6,
+    true_SN=-10,
 ):
     """Set P1D data
 
@@ -152,6 +155,7 @@ def set_P1D(
             true_SiII=true_SiII,
             true_SiIII=true_SiIII,
             true_HCD=true_HCD,
+            true_SN=true_SN,
         )
     elif data_label[:5] == "mock_":
         # mock data from emulator
@@ -162,6 +166,7 @@ def set_P1D(
             true_SiII=true_SiII,
             true_SiIII=true_SiIII,
             true_HCD=true_HCD,
+            true_SN=true_SN,
             z_min=z_min,
             z_max=z_max,
             add_noise=add_noise,
@@ -254,7 +259,9 @@ def set_like(
     fix_cosmo=False,
     vary_alphas=False,
     fid_SiIII=-10,
+    fid_SiII=-10,
     fid_HCD=-6,
+    fid_SN=-10,
     fprint=print,
     prior_Gauss_rms=None,
     emu_cov_factor=0,
@@ -272,7 +279,9 @@ def set_like(
         fid_sim_igm=fid_igm_label,
         fid_cosmo=fid_cosmo,
         fid_SiIII=fid_SiIII,
+        fid_SiII=fid_SiII,
         fid_HCD=fid_HCD,
+        fid_SN=fid_SN,
     )
 
     ## set like

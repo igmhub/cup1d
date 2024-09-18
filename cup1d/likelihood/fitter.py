@@ -486,6 +486,9 @@ class Fitter(object):
         for ii, par in enumerate(all_strings):
             self.mle[par] = all_params[ii]
 
+        if "star" not in self.paramstrings[0]:
+            return
+
         for par in self.mle_cosmo:
             if par == "Delta2_star":
                 print("MLE, err")
@@ -1567,6 +1570,8 @@ param_dict = {
     # each HCD contamination should have its own parameters here
     "ln_A_damp_0": "$\mathrm{ln}\,\mathrm{HCD}_0$",
     "ln_A_damp_1": "$\mathrm{ln}\,\mathrm{HCD}_1$",
+    "ln_SN_0": "$\mathrm{ln}\,\mathrm{SN}_0$",
+    "ln_SN_1": "$\mathrm{ln}\,\mathrm{SN}_1$",
     "H0": "$H_0$",
     "mnu": "$\Sigma m_\\nu$",
     "As": "$A_s$",

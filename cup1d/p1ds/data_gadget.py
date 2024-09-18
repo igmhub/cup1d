@@ -38,6 +38,7 @@ class Gadget_P1D(BaseMockP1D):
         true_SiII=-10,
         true_SiIII=-10,
         true_HCD=-6,
+        true_SN=-10,
         fprint=print,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
@@ -74,7 +75,10 @@ class Gadget_P1D(BaseMockP1D):
         self.dkms_dMpc = np.array(dkms_dMpc)
 
         self._set_truth(
-            true_SiII=true_SiII, true_SiIII=true_SiIII, true_HCD=true_HCD
+            true_SiII=true_SiII,
+            true_SiIII=true_SiIII,
+            true_HCD=true_HCD,
+            true_SN=true_SN,
         )
 
         # setup P1D using covariance and testing sim
@@ -159,7 +163,9 @@ class Gadget_P1D(BaseMockP1D):
 
         return true_igm
 
-    def _set_truth(self, true_SiII=None, true_SiIII=None, true_HCD=None):
+    def _set_truth(
+        self, true_SiII=None, true_SiIII=None, true_HCD=None, true_SN=None
+    ):
         # get cosmology
         sim_cosmo = self._get_cosmo()
 
@@ -192,6 +198,7 @@ class Gadget_P1D(BaseMockP1D):
         self.truth["ln_SiIII_0"] = true_SiIII
         self.truth["ln_SiII_0"] = true_SiII
         self.truth["ln_A_damp_0"] = true_HCD
+        self.truth["ln_SN_0"] = true_SN
 
     def _load_p1d(self):
         # figure out dataset to mimic
