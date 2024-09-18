@@ -13,6 +13,7 @@ from cup1d.p1ds import (
     data_QMLE_Ohio,
     data_Karacayli2022,
 )
+from cup1d.nuisance import metal_model, hcd_model_McDonald2005, mean_flux_model
 
 
 class Gadget_P1D(BaseMockP1D):
@@ -34,6 +35,8 @@ class Gadget_P1D(BaseMockP1D):
         seed=0,
         z_star=3.0,
         kp_kms=0.009,
+        true_SiIII=-10,
+        true_HCD=-6,
         fprint=print,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
@@ -69,16 +72,36 @@ class Gadget_P1D(BaseMockP1D):
             dkms_dMpc.append(testing_data[ii]["dkms_dMpc"])
         self.dkms_dMpc = np.array(dkms_dMpc)
 
-        self._set_truth()
+        self._set_truth(true_SiIII=true_SiIII, true_HCD=true_HCD)
 
         # setup P1D using covariance and testing sim
-        z, k, Pk, cov = self._load_p1d()
+        zs, k_kms, Pk_kms, cov = self._load_p1d()
+
+        # include metal contamination
+        # we need mean flux for metal model
+        F_model = mean_flux_model.MeanFluxModel(fid_igm=self.truth["igm"])
+        SiIII_model = metal_model.MetalModel(
+            metal_label="SiIII",
+            fid_value=true_SiIII,
+        )
+        # include HCD contamination
+        hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
+            fid_value=true_HCD,
+        )
+        # apply contaminants
+        for iz, z in enumerate(zs):
+            mF = F_model.get_mean_flux(z)
+            cont_SiIII = SiIII_model.get_contamination(
+                z=z, k_kms=k_kms[iz], mF=mF
+            )
+            cont_HCD = hcd_model.get_contamination(z=z, k_kms=k_kms[iz])
+            Pk_kms[iz] = Pk_kms[iz] * cont_SiIII * cont_HCD
 
         # setup base class
         super().__init__(
-            z,
-            k,
-            Pk,
+            zs,
+            k_kms,
+            Pk_kms,
             cov,
             add_noise=add_noise,
             seed=seed,
@@ -125,7 +148,7 @@ class Gadget_P1D(BaseMockP1D):
 
         return true_igm
 
-    def _set_truth(self):
+    def _set_truth(self, true_SiIII=None, true_HCD=None):
         # get cosmology
         sim_cosmo = self._get_cosmo()
 
@@ -154,6 +177,9 @@ class Gadget_P1D(BaseMockP1D):
         true_igm = self._get_igm()
 
         self.truth["igm"] = true_igm
+
+        self.truth["ln_SiIII_0"] = true_SiIII
+        self.truth["ln_A_damp_0"] = true_HCD
 
     def _load_p1d(self):
         # figure out dataset to mimic

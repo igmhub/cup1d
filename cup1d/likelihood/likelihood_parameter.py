@@ -17,6 +17,10 @@ class LikelihoodParameter(object):
         assert self.value is not None, "value not set in parameter " + self.name
         return (self.value - self.min_value) / (self.max_value - self.min_value)
 
+    def get_value_in_cube(self, value):
+        """Normalize parameter value to [0,1]."""
+        return (value - self.min_value) / (self.max_value - self.min_value)
+
     def set_from_cube(self, x):
         """Set parameter value from value in cube [0,1]."""
         value = self.value_from_cube(x)

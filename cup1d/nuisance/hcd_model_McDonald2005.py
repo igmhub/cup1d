@@ -10,7 +10,7 @@ class HCD_Model_McDonald2005(object):
     def __init__(
         self,
         z_0=3.0,
-        fid_value=-10,
+        fid_value=-6,
         ln_A_damp_coeff=None,
         free_param_names=None,
     ):
@@ -41,9 +41,12 @@ class HCD_Model_McDonald2005(object):
         for i in range(Npar):
             name = "ln_A_damp_" + str(i)
             if i == 0:
-                xmin = -11
-                xmax = 5
+                # no contamination
+                xmin = -7
+                # 30% contamination low k
+                xmax = 0
             else:
+                # not optimized
                 xmin = -1
                 xmax = 1
             # note non-trivial order in coefficients
@@ -99,7 +102,10 @@ class HCD_Model_McDonald2005(object):
             array_names = np.array(array_names)
             array_values = np.array(array_values)
 
-            if Npar != len(self.params):
+            # use fiducial value (no contamination)
+            if Npar == 0:
+                return self.ln_A_damp_coeff
+            elif Npar != len(self.params):
                 print(Npar, len(self.params))
                 raise ValueError(
                     "number of params mismatch in get_A_damp_coeffs"

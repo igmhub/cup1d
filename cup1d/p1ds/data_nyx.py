@@ -33,6 +33,8 @@ class Nyx_P1D(BaseMockP1D):
         seed=0,
         z_star=3.0,
         kp_kms=0.009,
+        true_SiIII=-10,
+        true_HCD=-6,
         fprint=print,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
@@ -50,6 +52,8 @@ class Nyx_P1D(BaseMockP1D):
         self.data_cov_label = data_cov_label
         self.z_star = z_star
         self.kp_kms = kp_kms
+        self.true_SiIII = true_SiIII
+        self.true_HCD = true_HCD
 
         # store sim data
         self.input_sim = input_sim
@@ -71,13 +75,33 @@ class Nyx_P1D(BaseMockP1D):
         self._set_truth()
 
         # setup P1D using covariance and testing sim
-        z, k, Pk, cov = self._load_p1d()
+        z, k_kms, Pk_kms, cov = self._load_p1d()
+
+        # include metal contamination
+        # we need mean flux for metal model
+        F_model = mean_flux_model.MeanFluxModel(fid_igm=self.truth["igm"])
+        SiIII_model = metal_model.MetalModel(
+            metal_label="SiIII",
+            fid_value=true_SiIII,
+        )
+        # include HCD contamination
+        hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
+            fid_value=true_HCD,
+        )
+        # apply contaminants
+        for iz, z in enumerate(zs):
+            mF = F_model.get_mean_flux(z)
+            cont_SiIII = SiIII_model.get_contamination(
+                z=z, k_kms=k_kms[iz], mF=mF
+            )
+            cont_HCD = hcd_model.get_contamination(z=z, k_kms=k_kms[iz])
+            Pk_kms[iz] = Pk_kms[iz] * cont_SiIII * cont_HCD
 
         # setup base class
         super().__init__(
             z,
-            k,
-            Pk,
+            k_kms,
+            Pk_kms,
             cov,
             add_noise=add_noise,
             seed=seed,
@@ -151,6 +175,9 @@ class Nyx_P1D(BaseMockP1D):
         true_igm = self._get_igm()
 
         self.truth["igm"] = true_igm
+
+        self.truth["ln_SiIII_0"] = self.true_SiIII
+        self.truth["ln_A_damp_0"] = self.true_HCD
 
     def _load_p1d(self):
         # figure out dataset to mimic

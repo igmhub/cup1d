@@ -69,9 +69,12 @@ class MetalModel(object):
             name = "ln_" + self.metal_label + "_" + str(i)
             if i == 0:
                 # log of overall amplitude at z_X
+                # no contamination
                 xmin = -11
-                xmax = 5
+                # max 10% contamination (oscillations)
+                xmax = -4
             else:
+                # not optimized
                 xmin = -5
                 xmax = 5
             # note non-trivial order in coefficients
@@ -102,7 +105,10 @@ class MetalModel(object):
             array_names = np.array(array_names)
             array_values = np.array(array_values)
 
-            if Npar != len(self.X_params):
+            # use fiducial value (no contamination)
+            if Npar == 0:
+                return self.ln_X_coeff
+            elif Npar != len(self.X_params):
                 raise ValueError("number of params mismatch in get_X_coeffs")
 
             for ip in range(Npar):

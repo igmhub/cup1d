@@ -1400,7 +1400,7 @@ class Fitter(object):
         # true IGM parameters
         if self.like.truth is not None:
             pars_true = {}
-            pars_true["z_igm"] = self.like.truth["igm"]["z_igm"]
+            pars_true["z"] = self.like.truth["igm"]["z"]
             pars_true["tau_eff"] = self.like.truth["igm"]["tau_eff"]
             pars_true["gamma"] = self.like.truth["igm"]["gamma"]
             pars_true["sigT_kms"] = self.like.truth["igm"]["sigT_kms"]
@@ -1408,7 +1408,7 @@ class Fitter(object):
 
         # fiducial IGM parameters
         pars_fid = {}
-        pars_fid["z_igm"] = self.like.theory.fid_igm["z_igm"]
+        pars_fid["z"] = self.like.theory.fid_igm["z"]
         pars_fid["tau_eff"] = self.like.theory.fid_igm["tau_eff"]
         pars_fid["gamma"] = self.like.theory.fid_igm["gamma"]
         pars_fid["sigT_kms"] = self.like.theory.fid_igm["sigT_kms"]
@@ -1420,18 +1420,18 @@ class Fitter(object):
         like_params = self.like.parameters_from_sampling_point(value)
 
         pars_best = {}
-        pars_best["z_igm"] = np.array(self.like.data.z)
+        pars_best["z"] = np.array(self.like.data.z)
         pars_best["tau_eff"] = self.like.theory.F_model.get_tau_eff(
-            pars_best["z_igm"], like_params=like_params
+            pars_best["z"], like_params=like_params
         )
         pars_best["gamma"] = self.like.theory.T_model.get_gamma(
-            pars_best["z_igm"], like_params=like_params
+            pars_best["z"], like_params=like_params
         )
         pars_best["sigT_kms"] = self.like.theory.T_model.get_sigT_kms(
-            pars_best["z_igm"], like_params=like_params
+            pars_best["z"], like_params=like_params
         )
         pars_best["kF_kms"] = self.like.theory.P_model.get_kF_kms(
-            pars_best["z_igm"], like_params=like_params
+            pars_best["z"], like_params=like_params
         )
 
         if rand_sample is not None:
@@ -1472,7 +1472,7 @@ class Fitter(object):
             if self.like.truth is not None:
                 _ = pars_true[arr_labs[ii]] != 0
                 ax[ii].plot(
-                    pars_true["z_igm"][_],
+                    pars_true["z"][_],
                     pars_true[arr_labs[ii]][_],
                     "o:",
                     label="true",
@@ -1480,7 +1480,7 @@ class Fitter(object):
                 )
             _ = pars_fid[arr_labs[ii]] != 0
             ax[ii].plot(
-                pars_fid["z_igm"][_],
+                pars_fid["z"][_],
                 pars_fid[arr_labs[ii]][_],
                 "s--",
                 label="fiducial",
@@ -1494,7 +1494,7 @@ class Fitter(object):
                     - pars_best[arr_labs[ii]]
                 )
                 ax[ii].errorbar(
-                    pars_best["z_igm"],
+                    pars_best["z"],
                     pars_best[arr_labs[ii]],
                     err,
                     label="best-fitting",
@@ -1502,7 +1502,7 @@ class Fitter(object):
                 )
             else:
                 ax[ii].plot(
-                    pars_best["z_igm"][_],
+                    pars_best["z"][_],
                     pars_best[arr_labs[ii]][_],
                     label="fit",
                     alpha=0.5,

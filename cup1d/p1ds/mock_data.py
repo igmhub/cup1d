@@ -27,7 +27,7 @@ class Mock_P1D(BaseMockP1D):
         true_sim_igm="mpg_central",
         true_cosmo=None,
         true_SiIII=-10,
-        true_HCD=-10,
+        true_HCD=-6,
         zs=None,
         k_kms=None,
     ):
@@ -150,8 +150,11 @@ class Mock_P1D(BaseMockP1D):
         self.truth["igm"] = {}
 
         zs = np.array(zs)
-        self.truth["igm"]["z_igm"] = zs
+        self.truth["igm"]["z"] = zs
         self.truth["igm"]["tau_eff"] = theory.F_model.get_tau_eff(zs)
         self.truth["igm"]["gamma"] = theory.T_model.get_gamma(zs)
         self.truth["igm"]["sigT_kms"] = theory.T_model.get_sigT_kms(zs)
         self.truth["igm"]["kF_kms"] = theory.P_model.get_kF_kms(zs)
+
+        self.truth["ln_SiIII_0"] = theory.fid_SiIII
+        self.truth["ln_A_damp_0"] = theory.fid_HCD

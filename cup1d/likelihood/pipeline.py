@@ -247,7 +247,8 @@ def set_like(
     fid_cosmo,
     fix_cosmo=False,
     vary_alphas=False,
-    add_metals=False,
+    fid_SiIII=-10,
+    fid_HCD=-6,
     fprint=print,
     prior_Gauss_rms=None,
     emu_cov_factor=0,
@@ -264,6 +265,8 @@ def set_like(
         free_param_names=free_parameters,
         fid_sim_igm=fid_igm_label,
         fid_cosmo=fid_cosmo,
+        fid_SiIII=fid_SiIII,
+        fid_HCD=fid_HCD,
     )
 
     ## set like
@@ -289,7 +292,7 @@ def path_sampler(
     version="v3",
     drop_sim=None,
     apply_smoothing=True,
-    add_hires=False,
+    data_label_hires=False,
     add_noise=False,
     seed_noise=0,
     fix_cosmo=False,
@@ -305,8 +308,8 @@ def path_sampler(
     else:
         flag_smooth = ""
 
-    if add_hires:
-        flag_hires = "_hires"
+    if data_label_hires:
+        flag_hires = "_" + data_label_hires
     else:
         flag_hires = ""
 
@@ -453,7 +456,7 @@ class Pipeline(object):
                 "Set " + str(len(data["P1Ds"].z)) + " P1Ds at z = ",
                 data["P1Ds"].z,
             )
-            if args.add_hires:
+            if args.data_label_hires is not None:
                 data["extra_P1Ds"] = set_P1D_hires(
                     archive,
                     emulator,
@@ -529,7 +532,7 @@ class Pipeline(object):
                 version=args.version,
                 drop_sim=_drop_sim,
                 apply_smoothing=args.apply_smoothing,
-                add_hires=args.add_hires,
+                data_label_hires=args.data_label_hires,
                 add_noise=args.add_noise,
                 seed_noise=args.seed_noise,
                 fix_cosmo=args.fix_cosmo,

@@ -169,7 +169,7 @@ class Likelihood(object):
         for par in self.data.truth:
             self.truth[par] = self.data.truth[par]
 
-        equal = True
+        equal_IGM = True
         for par in self.data.truth["igm"]:
             if (
                 np.allclose(
@@ -177,12 +177,40 @@ class Likelihood(object):
                 )
                 == False
             ):
-                equal = False
+                equal_IGM = False
                 break
-        if equal:
-            for param in self.free_params:
-                if "ln_" in param.name:
-                    self.truth[param.name] = 0
+
+        self.truth["fit"] = {}
+        self.truth["fit_cube"] = {}
+        pname2 = {"As": "Delta2_star", "ns": "n_star", "nrun": "alpha_star"}
+        for par in self.free_params:
+            if (
+                ("tau" in par.name)
+                | ("sigT" in par.name)
+                | ("gamma" in par.name)
+                | ("kF" in par.name)
+            ):
+                if equal_IGM:
+                    self.truth["fit"][par.name] = 0
+                    self.truth["fit_cube"][par.name] = par.get_value_in_cube(
+                        self.truth["fit"][par.name]
+                    )
+                else:
+                    self.truth["fit"][par.name] = np.infty
+                    self.truth["fit_cube"][par.name] = np.infty
+            elif (par.name == "As") | (par.name == "ns") | (par.name == "nrun"):
+                self.truth["fit"][par.name] = self.truth[par.name]
+                self.truth["fit_cube"][par.name] = par.get_value_in_cube(
+                    self.truth["fit"][par.name]
+                )
+                self.truth["fit"][pname2[par.name]] = self.truth[
+                    pname2[par.name]
+                ]
+            else:
+                self.truth["fit"][par.name] = self.truth[par.name]
+                self.truth["fit_cube"][par.name] = par.get_value_in_cube(
+                    self.truth["fit"][par.name]
+                )
 
     def get_p1d_kms(
         self,
@@ -444,6 +472,7 @@ class Likelihood(object):
         show=False,
         sampling_p1d=100,
         return_covar=False,
+        print_ratio=False,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
@@ -579,6 +608,8 @@ class Likelihood(object):
                         ms="4",
                         label="z=" + str(np.round(z, 2)),
                     )
+                    if print_ratio:
+                        print(p1d_data / model)
                     ymin = min(ymin, min(p1d_data / model + yshift))
                     ymax = max(ymax, max(p1d_data / model + yshift))
                     ax[ii].plot(
@@ -741,14 +772,14 @@ class Likelihood(object):
         # true IGM parameters
         if self.truth is not None:
             pars_true = {}
-            pars_true["z_igm"] = self.truth["igm"]["z_igm"]
+            pars_true["z"] = self.truth["igm"]["z"]
             pars_true["tau_eff"] = self.truth["igm"]["tau_eff"]
             pars_true["gamma"] = self.truth["igm"]["gamma"]
             pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
             pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
 
         pars_fid = {}
-        pars_fid["z_igm"] = self.theory.fid_igm["z_igm"]
+        pars_fid["z"] = self.theory.fid_igm["z"]
         pars_fid["tau_eff"] = self.theory.fid_igm["tau_eff"]
         pars_fid["gamma"] = self.theory.fid_igm["gamma"]
         pars_fid["sigT_kms"] = self.theory.fid_igm["sigT_kms"]
@@ -769,7 +800,7 @@ class Likelihood(object):
             if self.truth is not None:
                 _ = pars_true[arr_labs[ii]] != 0
                 ax[ii].plot(
-                    pars_true["z_igm"][_],
+                    pars_true["z"][_],
                     pars_true[arr_labs[ii]][_],
                     "o:",
                     label="true",
@@ -777,7 +808,7 @@ class Likelihood(object):
 
             _ = pars_fid[arr_labs[ii]] != 0
             ax[ii].plot(
-                pars_fid["z_igm"][_],
+                pars_fid["z"][_],
                 pars_fid[arr_labs[ii]][_],
                 "s--",
                 label="fiducial",

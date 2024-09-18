@@ -35,7 +35,7 @@ class Theory(object):
         kp_kms=0.009,
         fid_cosmo=None,
         fid_SiIII=-10,
-        fid_HCD=-10,
+        fid_HCD=-6,
         free_param_names=None,
         fid_sim_igm="mpg_central",
     ):
@@ -61,6 +61,9 @@ class Theory(object):
         # specify pivot point used in compressed parameters
         self.z_star = z_star
         self.kp_kms = kp_kms
+
+        self.fid_SiIII = fid_SiIII
+        self.fid_HCD = fid_HCD
 
         # setup emulator
         if emulator is None:
@@ -125,7 +128,7 @@ class Theory(object):
             )
 
         self.fid_igm = {}
-        self.fid_igm["z_igm"] = zs
+        self.fid_igm["z"] = zs
         self.fid_igm["tau_eff"] = self.F_model.get_tau_eff(zs)
         self.fid_igm["gamma"] = self.T_model.get_gamma(zs)
         self.fid_igm["sigT_kms"] = self.T_model.get_sigT_kms(zs)
@@ -147,7 +150,7 @@ class Theory(object):
             self.SiIII_model = metal_model.MetalModel(
                 metal_label="SiIII",
                 free_param_names=free_param_names,
-                fid_value=fid_SiIII,
+                fid_value=self.fid_SiIII,
             )
         self.metal_models.append(self.SiIII_model)
 
@@ -158,7 +161,7 @@ class Theory(object):
             # close to zero HCD contamination
             self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
                 free_param_names=free_param_names,
-                fid_value=fid_HCD,
+                fid_value=self.fid_HCD,
             )
 
     def fixed_background(self, like_params):

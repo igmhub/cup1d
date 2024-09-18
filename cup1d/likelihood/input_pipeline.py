@@ -91,6 +91,43 @@ def parse_args():
         help="Number of free parameters for SiIII metal contamination",
     )
     parser.add_argument(
+        "--true_SiIII",
+        type=float,
+        default=-10,
+        help="Metal contamination to create mock",
+    )
+    parser.add_argument(
+        "--fid_SiIII",
+        type=float,
+        default=-10,
+        help="Metal contamination to set fiducial",
+    )
+    parser.add_argument(
+        "--true_SiII",
+        type=float,
+        default=-10,
+        help="Metal contamination to create mock",
+    )
+    parser.add_argument(
+        "--fid_SiII",
+        type=float,
+        default=-10,
+        help="Metal contamination to set fiducial",
+    )
+    parser.add_argument(
+        "--true_HCD",
+        type=float,
+        default=-10,
+        help="HCD contamination to create mock",
+    )
+    parser.add_argument(
+        "--fid_HCD",
+        type=float,
+        default=-6,
+        help="HCD contamination to set fiducial",
+    )
+
+    parser.add_argument(
         "--n_dla",
         type=int,
         default=0,
@@ -119,11 +156,6 @@ def parse_args():
     )
 
     # P1D
-    parser.add_argument(
-        "--add_hires",
-        action="store_true",
-        help="Include high-res data",
-    )
     parser.add_argument(
         "--apply_smoothing",
         default=None,
@@ -297,7 +329,7 @@ class Args:
         training_set="Pedersen21",
         emulator_label="Pedersen21",
         data_label="mpg_central",
-        data_label_hires="mpg_central",
+        data_label_hires=None,
         z_min=2,
         z_max=4.5,
         fid_igm_label="mpg_central",
@@ -307,8 +339,13 @@ class Args:
         n_dla=0,
         fid_cosmo_label="mpg_central",
         true_cosmo_label="mpg_central",
+        fid_SiIII=-10,
+        true_SiIII=-10,
+        fid_SiII=-10,
+        true_SiII=-10,
+        fid_HCD=-6,
+        true_HCD=-6,
         drop_sim=False,
-        add_hires=False,
         apply_smoothing=None,
         cov_label="Chabanier2019",
         cov_label_hires="Karacayli2022",
@@ -339,10 +376,15 @@ class Args:
         self.n_igm = n_igm
         self.n_metals = n_metals
         self.n_dla = n_dla
+        self.fid_SiIII = fid_SiIII
+        self.true_SiIII = true_SiIII
+        self.fid_SiII = fid_SiII
+        self.true_SiII = true_SiII
+        self.fid_HCD = fid_HCD
+        self.true_HCD = true_HCD
         self.fid_cosmo_label = fid_cosmo_label
         self.true_cosmo_label = true_cosmo_label
         self.drop_sim = drop_sim
-        self.add_hires = add_hires
         self.apply_smoothing = apply_smoothing
         self.cov_label = cov_label
         self.cov_label_hires = cov_label_hires
@@ -371,13 +413,17 @@ class Args:
             "n_igm",
             "n_metals",
             "n_dla",
+            "fid_SiIII",
+            "true_SiIII",
+            "fid_SiII",
+            "true_SiII",
+            "fid_HCD",
+            "true_HCD",
             "fid_cosmo_label",
             "true_cosmo_label",
             "drop_sim",
-            "add_hires",
             "apply_smoothing",
             "add_noise",
-            "add_metals",
             "fix_cosmo",
             "cov_label",
             "cov_label_hires",
