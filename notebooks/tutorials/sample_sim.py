@@ -267,6 +267,38 @@ fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
 # %%
 fitter.truth["fit"]
 
+# %%
+k = data["P1Ds"].k_kms[0]
+# k = np.logspace(-3, -1, 10)
+for z in range(2, 5):
+    
+    SN_damp = 1
+    k0 = 0.001
+    k1 = 0.02
+    # Supernovae SN
+    tmpLowk = [-0.06, -0.04, -0.02]
+    tmpHighk = [-0.01, -0.01, -0.01]
+    if z < 2.5:
+        d0 = tmpLowk[0]
+        d1 = tmpHighk[0]
+    elif z < 3.5:
+        d0 = tmpLowk[1]
+        d1 = tmpHighk[1]
+    else:
+        d0 = tmpLowk[2]
+        d1 = tmpHighk[2]
+    delta = d0 + (d1 - d0) * (k - k0) / (k1 - k0)
+    corSN = 1/(1.0 + delta * SN_damp)
+    plt.plot(k, corSN)
+plt.xscale("log")
+
+
+# N/Y Y/N * N
+
+# %%
+
+# %%
+
 # %% [markdown]
 # error on cosmology is independent of the number of parameters
 

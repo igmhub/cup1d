@@ -31,12 +31,14 @@ class Theory(object):
         SiII_model=None,
         SiIII_model=None,
         hcd_model=None,
+        sn_model=None,
         z_star=3.0,
         kp_kms=0.009,
         fid_cosmo=None,
         fid_SiII=-10,
         fid_SiIII=-10,
         fid_HCD=-6,
+        fid_SN=-5,
         free_param_names=None,
         fid_sim_igm="mpg_central",
     ):
@@ -66,6 +68,7 @@ class Theory(object):
         self.fid_SiII = fid_SiII
         self.fid_SiIII = fid_SiIII
         self.fid_HCD = fid_HCD
+        self.fid_SN = fid_SN
 
         # setup emulator
         if emulator is None:
@@ -162,10 +165,18 @@ class Theory(object):
         if hcd_model:
             self.hcd_model = hcd_model
         else:
-            # close to zero HCD contamination
             self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
                 free_param_names=free_param_names,
                 fid_value=self.fid_HCD,
+            )
+
+        # setup SN model
+        if hcd_model:
+            self.sn_model = sn_model
+        else:
+            self.sn_model = SN_model.SN_Model(
+                free_param_names=free_param_names,
+                fid_value=self.fid_SN,
             )
 
     def fixed_background(self, like_params):
