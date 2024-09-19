@@ -43,7 +43,7 @@ from cup1d.likelihood.fitter import Fitter
 from cup1d.likelihood.pipeline import (
     set_archive,
     set_P1D,
-    set_cosmo_from_sim,
+    set_cosmo,
     set_free_like_parameters,
     set_like,
 )
@@ -61,21 +61,25 @@ output_dir = "."
 
 args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+# args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
 
 # args.data_label="mock_Karacayli2024"
-# args.data_label="mock_Chabanier2019"
-args.data_label="Chabanier2019"
+args.data_label="mock_Chabanier2019"
 # args.data_label="Karacayli2024"
-# args.data_label_hires = "Karacayli2022"
 # args.data_label="mpg_central"
 # args.data_label_hires="mpg_central"
 
+# args.data_label="Chabanier2019"
+# args.data_label_hires = "Karacayli2022"
+# args.z_max=4.1
+
 args.true_cosmo_label="mpg_central"
-args.fid_cosmo_label="mpg_central"
-# args.true_igm_label="mpg_0"
 args.true_igm_label="mpg_central"
+
+args.fid_cosmo_label="mpg_central"
+args.fid_cosmo_label="Planck18"
 args.fid_igm_label="mpg_central"
-args.vary_alphas=False
+
 
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
 # args.data_label="nyx_central"
@@ -87,23 +91,18 @@ args.vary_alphas=False
 # from -11 to -4
 # for tests -5
 args.true_SiIII=-10
-args.fid_SiIII=-5
 args.true_SiII=-10
-args.fid_SiII=-5
 # from -7 to 0
 # for tests -1
 args.true_HCD=-6
-args.fid_HCD=-2
 
 # from -5 to 2
 # for tests 1
-args.true_SN=4
-args.fid_SN=0
+args.true_SN=-4
 
 
 args.n_steps=50
 args.n_burn_in=10
-args.z_max=4.5
 args.parallel=False
 args.explore=True
 
@@ -125,14 +124,10 @@ emulator = set_emulator(
 # %% [markdown]
 # ### Set fiducial cosmology
 
-# %% [markdown]
-# ### planck label
-
 # %%
-fid_cosmo = set_cosmo_from_sim(cosmo_label=args.fid_cosmo_label)
-
+fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 # only used when creating mock P1D data or culling data outside of k range from emulator
-true_cosmo = set_cosmo_from_sim(cosmo_label=args.true_cosmo_label)
+true_cosmo = set_cosmo(cosmo_label=args.true_cosmo_label)
 
 # %% [markdown]
 # ### Set P1D data
@@ -188,8 +183,16 @@ data["P1Ds"].truth
 
 # %%
 ## set cosmo and IGM parameters
+
+args.fid_SN=-5
+args.fid_HCD=-5
+# args.fid_SiIII=-5
+args.fid_SiIII=-10
+args.fid_SiII=-10
+
+args.vary_alphas=False
 args.fix_cosmo=False
-args.n_igm=1
+args.n_igm=2
 args.n_metals=1
 args.n_dla=0
 args.n_sn=0
@@ -222,7 +225,13 @@ like.plot_p1d(residuals=False, plot_every_iz=1)
 like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
 
 # %%
-like.plot_igm()
+# for p in like.free_params:
+#     print(p.name, p.value, p.min_value, p.max_value)
+
+# like.free_params[7].value=1
+# like.plot_igm(cloud=True, free_params=like.free_params)
+
+# %%
 
 # %% [markdown]
 # Priors for sampling parameters
@@ -231,6 +240,8 @@ like.plot_igm()
 for p in like.free_params:
     print(p.name, p.value, p.min_value, p.max_value)
 
+
+# %%
 
 # %% [markdown]
 # ### Set fitter
@@ -264,55 +275,70 @@ run_sampler = False
 if run_sampler:
     _emcee_sam = sampler.run_sampler(log_func=_get_chi2)
 
+# %%
+fitter.truth
+
 # %% [markdown]
 # ### Run minimizer
 
 # %%
 # %%time
-if fitter.truth is None:
+if like.truth is None:
     p0 = np.zeros(len(like.free_params)) + 0.5
+    p0 = np.array(list(like.fid["fit_cube"].values()))
 else:
-    p0 = np.array(list(fitter.truth["fit_cube"].values()))*1.01
+    p0 = np.array(list(like.truth["like_params_cube"].values()))*1.01
 fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
-# fitter.run_minimizer(log_func_minimize=_get_chi2, nsamples=8)
+# fitter.run_minimizer(log_func_minimize=_get_chi2, nsamples=16)
+
+# %%
+like.
+
+# %%
+# mixed 598, 604 w/ w/o cosmo
+
+# %%
+like.fid["fit"]
 
 # %%
 fitter.paramstrings
 
 # %%
-# chabrier // chabrier+hires // DES+hires
+# chabrier // chabrier+hires // DESI+hires
 # nigm=1, nmetal=1, ndla=0, nsn=0 // 553 // 1283. 
-# free cosmo 439.
+# Lace free cosmo 439.
+# Nyx free cosmo 541
 # nigm=1, nmetal=1, ndla=1, nsn=1 // 550 
 # nigm=2, nmetal=1, ndla=1, nsn=1 // 406 // 799. // 1019.
-
-# %% [markdown]
-# # INTERNALLY in contamination models, if value smaller than X, return 1 without doing anything else
-
-# %% [markdown]
-# plot cloud of IGM models used for training, same goes for scatter-plot of Delta_star and n_star
-#
-# give fiducial as input
-
-# %%
-np.exp(3.047)*1e-10
+# Nyx free cosmo 444
 
 # %%
 fitter.truth["fit"]
 
 # %%
-fitter.plot_p1d(residuals=True, plot_every_iz=2)
-
-# %% [markdown]
-# plot cloud of IGM from simulations!
+fitter.plot_p1d(residuals=False, plot_every_iz=1)
 
 # %%
-fitter.plot_igm()
+fitter.plot_p1d(residuals=True, plot_every_iz=2)
+
+# %%
+fitter.plot_igm(cloud=True)
+
+# %%
+one redshift at a time, fixed cosmo
 
 # %% [markdown]
 # ### Get plots
 #
 # Get interesting plots, these are in the folder created with the output
+
+# %%
+fitter.like.theory.emulator.emulator_label
+
+# %%
+fitter.like.theory.emulator.training_data[0]["sim_label"]
+
+# %%
 
 # %%
 sampler.write_chain_to_file()

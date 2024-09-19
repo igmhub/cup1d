@@ -119,11 +119,17 @@ class PressureModel(object):
         for i in range(Npar):
             name = "ln_kF_" + str(i)
             if i == 0:
-                xmin = -2.0
-                xmax = 2.0
+                # xmin = -2.0
+                # xmax = 2.0
+                # approx inside training set
+                xmin = -0.2
+                xmax = 0.2
             elif i == 1:
-                xmin = -2.0
-                xmax = 6.0
+                # xmin = -2.0
+                # xmax = 6.0
+                # approx inside training set
+                xmin = -1.0
+                xmax = 1.0
             else:
                 xmin = -2.0
                 xmax = 6.0

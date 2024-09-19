@@ -1,3 +1,6 @@
+from cup1d.nuisance import metal_model, hcd_model_McDonald2005, SN_model
+
+
 class Contaminants(object):
     """Contains all IGM models"""
 
@@ -65,7 +68,7 @@ class Contaminants(object):
             cont = X_model.get_contamination(
                 z=z,
                 k_kms=k_kms,
-                mF=emu_call["mF"],
+                mF=mF,
                 like_params=like_params,
             )
             cont_metals *= cont
@@ -78,8 +81,6 @@ class Contaminants(object):
         )
 
         # include SN contamination
-        _ = np.argwhere(self.cosmo_model_fid["zs"] == z)[0, 0]
-        M_of_z = self.cosmo_model_fid["M_of_zs"][_]
         cont_SN = self.sn_model.get_contamination(
             z=z,
             k_Mpc=k_kms * M_of_z,

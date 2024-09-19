@@ -197,14 +197,11 @@ class Fitter(object):
 
         # store truth for all parameters, with LaTeX keywords
         self.truth = {}
-        for param in like_truth:
+        for param in like_truth["like_params"]:
             if param in param_dict:
-                param_string = param_dict[param]
-                self.truth[param_string] = like_truth[param]
+                self.truth[param_dict[param]] = like_truth["like_params"][param]
             else:
-                self.truth[param] = like_truth[param]
-
-        return
+                self.truth[param] = like_truth["like_params"][param]
 
     def run_sampler(
         self,
@@ -486,7 +483,7 @@ class Fitter(object):
         for ii, par in enumerate(all_strings):
             self.mle[par] = all_params[ii]
 
-        if "star" not in self.paramstrings[0]:
+        if "A_s" not in self.paramstrings[0]:
             return
 
         for par in self.mle_cosmo:
@@ -1397,7 +1394,9 @@ class Fitter(object):
 
         return
 
-    def plot_igm(self, value=None, rand_sample=None, stat_best_fit="mle"):
+    def plot_igm(
+        self, value=None, rand_sample=None, stat_best_fit="mle", cloud=False
+    ):
         """Plot IGM histories"""
 
         # true IGM parameters
@@ -1411,11 +1410,20 @@ class Fitter(object):
 
         # fiducial IGM parameters
         pars_fid = {}
-        pars_fid["z"] = self.like.theory.fid_igm["z"]
-        pars_fid["tau_eff"] = self.like.theory.fid_igm["tau_eff"]
-        pars_fid["gamma"] = self.like.theory.fid_igm["gamma"]
-        pars_fid["sigT_kms"] = self.like.theory.fid_igm["sigT_kms"]
-        pars_fid["kF_kms"] = self.like.theory.fid_igm["kF_kms"]
+        pars_fid["z"] = self.like.fid["igm"]["z"]
+        pars_fid["tau_eff"] = self.like.fid["igm"]["tau_eff"]
+        pars_fid["gamma"] = self.like.fid["igm"]["gamma"]
+        pars_fid["sigT_kms"] = self.like.fid["igm"]["sigT_kms"]
+        pars_fid["kF_kms"] = self.like.fid["igm"]["kF_kms"]
+
+        # all IGM histories in the training sample
+        if cloud:
+            emu_label_igm = self.like.theory.emulator.training_data[0][
+                "sim_label"
+            ]
+            all_emu_igm = self.like.theory.model_igm.get_igm(
+                emu_label_igm, return_all=True
+            )
 
         # best-fitting IGM parameters
         if value is None:
@@ -1424,16 +1432,16 @@ class Fitter(object):
 
         pars_best = {}
         pars_best["z"] = np.array(self.like.data.z)
-        pars_best["tau_eff"] = self.like.theory.F_model.get_tau_eff(
+        pars_best["tau_eff"] = self.like.theory.model_igm.F_model.get_tau_eff(
             pars_best["z"], like_params=like_params
         )
-        pars_best["gamma"] = self.like.theory.T_model.get_gamma(
+        pars_best["gamma"] = self.like.theory.model_igm.T_model.get_gamma(
             pars_best["z"], like_params=like_params
         )
-        pars_best["sigT_kms"] = self.like.theory.T_model.get_sigT_kms(
+        pars_best["sigT_kms"] = self.like.theory.model_igm.T_model.get_sigT_kms(
             pars_best["z"], like_params=like_params
         )
-        pars_best["kF_kms"] = self.like.theory.P_model.get_kF_kms(
+        pars_best["kF_kms"] = self.like.theory.model_igm.P_model.get_kF_kms(
             pars_best["z"], like_params=like_params
         )
 
@@ -1510,6 +1518,17 @@ class Fitter(object):
                     label="fit",
                     alpha=0.5,
                 )
+
+            if cloud:
+                for sim_label in all_emu_igm:
+                    if "reio" not in sim_label:
+                        _ = all_emu_igm[sim_label][arr_labs[ii]] != 0
+                        ax[ii].plot(
+                            all_emu_igm[sim_label]["z"][_],
+                            all_emu_igm[sim_label][arr_labs[ii]][_],
+                            color="black",
+                            alpha=0.2,
+                        )
 
             ax[ii].set_ylabel(latex_labs[ii])
             if ii == 0:

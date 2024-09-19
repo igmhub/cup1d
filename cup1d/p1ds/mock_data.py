@@ -11,6 +11,8 @@ from cup1d.p1ds import (
     data_Karacayli2024,
 )
 from cup1d.likelihood import lya_theory
+from cup1d.likelihood.model_contaminants import Contaminants
+from cup1d.likelihood.model_igm import IGM
 
 
 class Mock_P1D(BaseMockP1D):
@@ -102,15 +104,22 @@ class Mock_P1D(BaseMockP1D):
             ]
 
         # setup theory
-        theory = lya_theory.Theory(
-            zs=zs,
-            emulator=emulator,
+        model_igm = IGM(
+            zs,
             fid_sim_igm=true_sim_igm,
+        )
+        model_cont = Contaminants(
             fid_SiIII=true_SiIII,
             fid_SiII=true_SiII,
             fid_HCD=true_HCD,
             fid_SN=true_SN,
+        )
+        theory = lya_theory.Theory(
+            zs=zs,
+            emulator=emulator,
             fid_cosmo=true_cosmo,
+            model_igm=model_igm,
+            model_cont=model_cont,
         )
 
         # evaluate theory at k_kms, for all redshifts
@@ -138,29 +147,33 @@ class Mock_P1D(BaseMockP1D):
 
         sim_cosmo = theory.cosmo_model_fid["cosmo"].cosmo
 
-        self.truth["ombh2"] = sim_cosmo.ombh2
-        self.truth["omch2"] = sim_cosmo.omch2
-        self.truth["As"] = sim_cosmo.InitPower.As
-        self.truth["ns"] = sim_cosmo.InitPower.ns
-        self.truth["nrun"] = sim_cosmo.InitPower.nrun
-        self.truth["H0"] = sim_cosmo.H0
-        self.truth["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
+        self.truth["cosmo"] = {}
+        self.truth["cosmo"]["ombh2"] = sim_cosmo.ombh2
+        self.truth["cosmo"]["omch2"] = sim_cosmo.omch2
+        self.truth["cosmo"]["As"] = sim_cosmo.InitPower.As
+        self.truth["cosmo"]["ns"] = sim_cosmo.InitPower.ns
+        self.truth["cosmo"]["nrun"] = sim_cosmo.InitPower.nrun
+        self.truth["cosmo"]["H0"] = sim_cosmo.H0
+        self.truth["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
 
+        self.truth["linP"] = {}
         blob_params = ["Delta2_star", "n_star", "alpha_star"]
         blob = theory.cosmo_model_fid["cosmo"].get_linP_params()
         for ii in range(len(blob_params)):
-            self.truth[blob_params[ii]] = blob[blob_params[ii]]
+            self.truth["linP"][blob_params[ii]] = blob[blob_params[ii]]
 
         self.truth["igm"] = {}
-
         zs = np.array(zs)
         self.truth["igm"]["z"] = zs
-        self.truth["igm"]["tau_eff"] = theory.F_model.get_tau_eff(zs)
-        self.truth["igm"]["gamma"] = theory.T_model.get_gamma(zs)
-        self.truth["igm"]["sigT_kms"] = theory.T_model.get_sigT_kms(zs)
-        self.truth["igm"]["kF_kms"] = theory.P_model.get_kF_kms(zs)
+        self.truth["igm"]["tau_eff"] = theory.model_igm.F_model.get_tau_eff(zs)
+        self.truth["igm"]["gamma"] = theory.model_igm.T_model.get_gamma(zs)
+        self.truth["igm"]["sigT_kms"] = theory.model_igm.T_model.get_sigT_kms(
+            zs
+        )
+        self.truth["igm"]["kF_kms"] = theory.model_igm.P_model.get_kF_kms(zs)
 
-        self.truth["ln_SiIII_0"] = theory.fid_SiIII
-        self.truth["ln_SiII_0"] = theory.fid_SiII
-        self.truth["ln_A_damp_0"] = theory.fid_HCD
-        self.truth["ln_SN_0"] = theory.fid_SN
+        self.truth["cont"] = {}
+        self.truth["cont"]["ln_SiIII_0"] = theory.model_cont.fid_SiIII
+        self.truth["cont"]["ln_SiII_0"] = theory.model_cont.fid_SiII
+        self.truth["cont"]["ln_A_damp_0"] = theory.model_cont.fid_HCD
+        self.truth["cont"]["ln_SN_0"] = theory.model_cont.fid_SN

@@ -122,11 +122,17 @@ class MeanFluxModel(object):
         for i in range(Npar):
             name = "ln_tau_" + str(i)
             if i == 0:
-                xmin = -0.4
-                xmax = 0.4
+                # xmin = -0.4
+                # xmax = 0.4
+                # approx inside training set
+                xmin = -0.2
+                xmax = 0.2
             elif i == 1:
-                xmin = -1.6
-                xmax = 1.6
+                # xmin = -1.6
+                # xmax = 1.6
+                # approx inside training set
+                xmin = -1.0
+                xmax = 1.0
             else:
                 xmin = -1.6
                 xmax = 1.6

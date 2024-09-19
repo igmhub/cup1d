@@ -16,6 +16,7 @@ class HCD_Model_McDonald2005(object):
         free_param_names=None,
     ):
         self.z_0 = z_0
+        self.null_value = null_value
         if ln_A_damp_coeff:
             if free_param_names is not None:
                 raise ValueError("can not specify coeff and free_param_names")

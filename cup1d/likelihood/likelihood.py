@@ -49,6 +49,7 @@ class Likelihood(object):
         self.extra_data = extra_data
 
         self.theory = theory
+        self.theory.emu_cosmo_hc()
 
         # setup parameters
         self.set_free_parameters(free_param_names, free_param_limits)
@@ -58,7 +59,8 @@ class Likelihood(object):
         # sometimes we want to know the true theory (when working with mocks)
         self.set_truth()
 
-        return
+        # store also fiducial model
+        self.set_fid()
 
     def set_free_parameters(self, free_param_names, free_param_limits):
         """Setup likelihood parameters that we want to vary"""
@@ -163,15 +165,16 @@ class Likelihood(object):
         for par in self.data.truth["igm"]:
             if (
                 np.allclose(
-                    self.data.truth["igm"][par], self.theory.fid_igm[par]
+                    self.data.truth["igm"][par],
+                    self.theory.model_igm.fid_igm[par],
                 )
                 == False
             ):
                 equal_IGM = False
                 break
 
-        self.truth["fit"] = {}
-        self.truth["fit_cube"] = {}
+        self.truth["like_params"] = {}
+        self.truth["like_params_cube"] = {}
         pname2 = {"As": "Delta2_star", "ns": "n_star", "nrun": "alpha_star"}
         for par in self.free_params:
             if (
@@ -181,26 +184,62 @@ class Likelihood(object):
                 | ("kF" in par.name)
             ):
                 if equal_IGM:
-                    self.truth["fit"][par.name] = 0
-                    self.truth["fit_cube"][par.name] = par.get_value_in_cube(
-                        self.truth["fit"][par.name]
+                    self.truth["like_params"][par.name] = 0
+                    self.truth["like_params_cube"][
+                        par.name
+                    ] = par.get_value_in_cube(
+                        self.truth["like_params"][par.name]
                     )
                 else:
-                    self.truth["fit"][par.name] = np.infty
-                    self.truth["fit_cube"][par.name] = np.infty
+                    self.truth["like_params"][par.name] = np.infty
+                    self.truth["like_params_cube"][par.name] = np.infty
             elif (par.name == "As") | (par.name == "ns") | (par.name == "nrun"):
-                self.truth["fit"][par.name] = self.truth[par.name]
-                self.truth["fit_cube"][par.name] = par.get_value_in_cube(
-                    self.truth["fit"][par.name]
-                )
-                self.truth["fit"][pname2[par.name]] = self.truth[
-                    pname2[par.name]
+                self.truth["like_params"][par.name] = self.truth["cosmo"][
+                    par.name
                 ]
+                self.truth["like_params_cube"][
+                    par.name
+                ] = par.get_value_in_cube(self.truth["like_params"][par.name])
+                self.truth["like_params"][pname2[par.name]] = self.truth[
+                    "linP"
+                ][pname2[par.name]]
             else:
-                self.truth["fit"][par.name] = self.truth[par.name]
-                self.truth["fit_cube"][par.name] = par.get_value_in_cube(
-                    self.truth["fit"][par.name]
-                )
+                self.truth["like_params"][par.name] = self.truth["cont"][
+                    par.name
+                ]
+                self.truth["like_params_cube"][
+                    par.name
+                ] = par.get_value_in_cube(self.truth["like_params"][par.name])
+
+    def set_fid(self, z_star=3.0, kp_kms=0.009):
+        """Store fiducial cosmology assumed for the fit"""
+
+        self.fid = {}
+
+        sim_cosmo = self.theory.cosmo_model_fid["cosmo"].cosmo
+
+        self.fid["cosmo"] = {}
+        self.fid["cosmo"]["ombh2"] = sim_cosmo.ombh2
+        self.fid["cosmo"]["omch2"] = sim_cosmo.omch2
+        self.fid["cosmo"]["As"] = sim_cosmo.InitPower.As
+        self.fid["cosmo"]["ns"] = sim_cosmo.InitPower.ns
+        self.fid["cosmo"]["nrun"] = sim_cosmo.InitPower.nrun
+        self.fid["cosmo"]["H0"] = sim_cosmo.H0
+        self.fid["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
+
+        blob_params = ["Delta2_star", "n_star", "alpha_star"]
+        blob = self.theory.cosmo_model_fid["cosmo"].get_linP_params()
+
+        self.fid["igm"] = self.theory.model_igm.fid_igm
+        self.fid["fit"] = {}
+        self.fid["fit_cube"] = {}
+
+        pname2 = {"As": "Delta2_star", "ns": "n_star", "nrun": "alpha_star"}
+        for par in self.free_params:
+            self.fid["fit"][par.name] = par.value
+            self.fid["fit_cube"][par.name] = par.get_value_in_cube(par.value)
+            if (par.name == "As") | (par.name == "ns") | (par.name == "nrun"):
+                self.fid["fit"][pname2[par.name]] = blob[pname2[par.name]]
 
     def get_p1d_kms(
         self,
@@ -756,7 +795,7 @@ class Likelihood(object):
 
         return
 
-    def plot_igm(self):
+    def plot_igm(self, cloud=False, free_params=None):
         """Plot IGM histories"""
 
         # true IGM parameters
@@ -769,11 +808,35 @@ class Likelihood(object):
             pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
 
         pars_fid = {}
-        pars_fid["z"] = self.theory.fid_igm["z"]
-        pars_fid["tau_eff"] = self.theory.fid_igm["tau_eff"]
-        pars_fid["gamma"] = self.theory.fid_igm["gamma"]
-        pars_fid["sigT_kms"] = self.theory.fid_igm["sigT_kms"]
-        pars_fid["kF_kms"] = self.theory.fid_igm["kF_kms"]
+        pars_fid["z"] = self.fid["igm"]["z"]
+        pars_fid["tau_eff"] = self.fid["igm"]["tau_eff"]
+        pars_fid["gamma"] = self.fid["igm"]["gamma"]
+        pars_fid["sigT_kms"] = self.fid["igm"]["sigT_kms"]
+        pars_fid["kF_kms"] = self.fid["igm"]["kF_kms"]
+
+        # all IGM histories in the training sample
+        if cloud:
+            emu_label_igm = self.theory.emulator.training_data[0]["sim_label"]
+            all_emu_igm = self.theory.model_igm.get_igm(
+                emu_label_igm, return_all=True
+            )
+
+        if free_params is not None:
+            zs = self.fid["igm"]["z"]
+            pars_test = {}
+            pars_test["z"] = zs
+            pars_test["tau_eff"] = self.theory.model_igm.F_model.get_tau_eff(
+                zs, like_params=free_params
+            )
+            pars_test["gamma"] = self.theory.model_igm.T_model.get_gamma(
+                zs, like_params=free_params
+            )
+            pars_test["sigT_kms"] = self.theory.model_igm.T_model.get_sigT_kms(
+                zs, like_params=free_params
+            )
+            pars_test["kF_kms"] = self.theory.model_igm.P_model.get_kF_kms(
+                zs, like_params=free_params
+            )
 
         fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
         ax = ax.reshape(-1)
@@ -796,6 +859,15 @@ class Likelihood(object):
                     label="true",
                 )
 
+            if free_params is not None:
+                _ = pars_test[arr_labs[ii]] != 0
+                ax[ii].plot(
+                    pars_test["z"][_],
+                    pars_test[arr_labs[ii]][_],
+                    "r-",
+                    label="test",
+                )
+
             _ = pars_fid[arr_labs[ii]] != 0
             ax[ii].plot(
                 pars_fid["z"][_],
@@ -804,6 +876,17 @@ class Likelihood(object):
                 label="fiducial",
                 alpha=0.5,
             )
+
+            if cloud:
+                for sim_label in all_emu_igm:
+                    if "reio" not in sim_label:
+                        _ = all_emu_igm[sim_label][arr_labs[ii]] != 0
+                        ax[ii].plot(
+                            all_emu_igm[sim_label]["z"][_],
+                            all_emu_igm[sim_label][arr_labs[ii]][_],
+                            color="black",
+                            alpha=0.2,
+                        )
 
             ax[ii].set_ylabel(latex_labs[ii])
             if ii == 0:

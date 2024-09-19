@@ -1,3 +1,10 @@
+import os
+import lace
+import numpy as np
+
+from cup1d.nuisance import mean_flux_model, thermal_model, pressure_model
+
+
 class IGM(object):
     """Contains all IGM models"""
 
@@ -44,7 +51,7 @@ class IGM(object):
         self.fid_igm["sigT_kms"] = self.T_model.get_sigT_kms(zs)
         self.fid_igm["kF_kms"] = self.P_model.get_kF_kms(zs)
 
-    def get_igm(self, sim_igm):
+    def get_igm(self, sim_igm, return_all=False):
         """Load IGM history"""
         if sim_igm[:3] == "mpg":
             repo = os.path.dirname(lace.__path__[0]) + "/"
@@ -59,8 +66,8 @@ class IGM(object):
         except:
             raise ValueError(
                 fname
-                + "not found. You can produce it using LaCE"
-                + r"\n script save_"
+                + " not found. You can produce it using LaCE"
+                + r" script save_"
                 + sim_igm[:3]
                 + "_IGM.py"
             )
@@ -77,4 +84,7 @@ class IGM(object):
             else:
                 fid_igm = igm_hist[sim_igm]
 
-        return fid_igm
+        if return_all:
+            return igm_hist
+        else:
+            return fid_igm

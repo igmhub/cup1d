@@ -1,15 +1,14 @@
 import numpy as np
-import os
 import copy
 import matplotlib.pyplot as plt
-import lace
 from lace.cosmo import camb_cosmo
 from lace.cosmo import fit_linP
 from lace.emulator import gp_emulator
-from cup1d.model_contaminats import Contaminants
-from cup1d.model_igm import IGM
 
 from cup1d.likelihood import CAMB_model
+from cup1d.likelihood.model_contaminants import Contaminants
+from cup1d.likelihood.model_igm import IGM
+from cup1d.likelihood.pipeline import set_cosmo
 
 
 class Theory(object):
@@ -97,6 +96,38 @@ class Theory(object):
         self.cosmo_model_fid["M_of_zs"] = self.cosmo_model_fid[
             "cosmo"
         ].get_M_of_zs()
+
+    def emu_cosmo_hc(self):
+        """Return cosmological parameters of simulations used for training"""
+
+        # name of simulations used for training
+        list_sim_hc = self.emulator.archive.list_sim_cube
+        if list_sim_hc[0][:3] == "mpg":
+            get_cosmo = camb_cosmo.get_cosmology_from_dictionary
+        elif list_sim_hc[0][:3] == "nyx":
+            get_cosmo = camb_cosmo.get_Nyx_cosmology
+        else:
+            raise ValueError("Simulation not recognised")
+
+        # load the cosmology of these
+        cosmo_all = set_cosmo(cosmo_label=list_sim_hc[0], return_all=True)
+
+        linP_hc = np.zeros((len(list_sim_hc), 3))
+        for ii in range(len(list_sim_hc)):
+            if cosmo_all[ii]["sim_label"] in list_sim_hc:
+                cosmo = get_cosmo(cosmo_all[ii]["cosmo_params"])
+                _ = CAMB_model.CAMBModel(
+                    zs=[3.0],
+                    cosmo=cosmo,
+                    z_star=self.z_star,
+                    kp_kms=self.kp_kms,
+                )
+                linparams = _.get_linP_params()
+                linP_hc[ii, 0] = linparams["Delta2_star"]
+                linP_hc[ii, 1] = linparams["n_star"]
+                linP_hc[ii, 2] = linparams["alpha_star"]
+
+        self.linP_hc = linP_hc
 
     def fixed_background(self, like_params):
         """Check if any of the input likelihood parameters would change

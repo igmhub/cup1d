@@ -21,6 +21,8 @@ from cup1d.p1ds import (
     mock_data,
 )
 from cup1d.likelihood import lya_theory, likelihood, fitter
+from cup1d.likelihood.model_contaminants import Contaminants
+from cup1d.likelihood.model_igm import IGM
 
 
 def set_free_like_parameters(params):
@@ -212,7 +214,7 @@ def set_P1D(
     return data
 
 
-def set_cosmo_from_sim(cosmo_label="mpg_central"):
+def set_cosmo(cosmo_label="mpg_central", return_all=False):
     """Set fiducial cosmology
 
     Parameters
@@ -244,9 +246,26 @@ def set_cosmo_from_sim(cosmo_label="mpg_central"):
                 break
         if cosmo is None:
             raise ValueError(f"Cosmo not found in {fname} for {cosmo_label}")
+    elif cosmo_label == "Planck18":
+        cosmo = camb_cosmo.get_cosmology(
+            H0=67.66,
+            mnu=0.0,
+            omch2=0.119,
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
     else:
         raise ValueError(f"cosmo_label {cosmo_label} not implemented")
-    return cosmo
+
+    if return_all:
+        return data_cosmo
+    else:
+        return cosmo
 
 
 def set_like(
