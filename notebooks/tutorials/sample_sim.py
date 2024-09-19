@@ -64,9 +64,9 @@ args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 # args.data_label="mock_Karacayli2024"
 # args.data_label="mock_Chabanier2019"
-# args.data_label="Chabanier2019"
-args.data_label="Karacayli2024"
-args.data_label_hires = "Karacayli2022"
+args.data_label="Chabanier2019"
+# args.data_label="Karacayli2024"
+# args.data_label_hires = "Karacayli2022"
 # args.data_label="mpg_central"
 # args.data_label_hires="mpg_central"
 
@@ -188,11 +188,11 @@ data["P1Ds"].truth
 
 # %%
 ## set cosmo and IGM parameters
-args.fix_cosmo=True
-args.n_igm=2
+args.fix_cosmo=False
+args.n_igm=1
 args.n_metals=1
-args.n_dla=1
-args.n_sn=1
+args.n_dla=0
+args.n_sn=0
 free_parameters = set_free_like_parameters(args)
 free_parameters
 
@@ -282,11 +282,20 @@ fitter.paramstrings
 # %%
 # chabrier // chabrier+hires // DES+hires
 # nigm=1, nmetal=1, ndla=0, nsn=0 // 553 // 1283. 
+# free cosmo 439.
 # nigm=1, nmetal=1, ndla=1, nsn=1 // 550 
 # nigm=2, nmetal=1, ndla=1, nsn=1 // 406 // 799. // 1019.
 
 # %% [markdown]
 # # INTERNALLY in contamination models, if value smaller than X, return 1 without doing anything else
+
+# %% [markdown]
+# plot cloud of IGM models used for training, same goes for scatter-plot of Delta_star and n_star
+#
+# give fiducial as input
+
+# %%
+np.exp(3.047)*1e-10
 
 # %%
 fitter.truth["fit"]

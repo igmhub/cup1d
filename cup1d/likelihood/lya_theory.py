@@ -6,14 +6,9 @@ import lace
 from lace.cosmo import camb_cosmo
 from lace.cosmo import fit_linP
 from lace.emulator import gp_emulator
-from cup1d.nuisance import (
-    mean_flux_model,
-    thermal_model,
-    pressure_model,
-    metal_model,
-    hcd_model_McDonald2005,
-    SN_model,
-)
+from cup1d.model_contaminats import Contaminants
+from cup1d.model_igm import IGM
+
 from cup1d.likelihood import CAMB_model
 
 
@@ -27,23 +22,12 @@ class Theory(object):
         zs,
         zs_hires=None,
         emulator=None,
+        model_igm=None,
+        model_cont=None,
         verbose=False,
-        F_model=None,
-        T_model=None,
-        P_model=None,
-        SiII_model=None,
-        SiIII_model=None,
-        hcd_model=None,
-        sn_model=None,
         z_star=3.0,
         kp_kms=0.009,
         fid_cosmo=None,
-        fid_SiII=-10,
-        fid_SiIII=-10,
-        fid_HCD=-6,
-        fid_SN=-10,
-        free_param_names=None,
-        fid_sim_igm="mpg_central",
     ):
         """Setup object to compute predictions for the 1D power spectrum.
         Inputs:
@@ -68,19 +52,25 @@ class Theory(object):
         self.z_star = z_star
         self.kp_kms = kp_kms
 
-        self.fid_SiII = fid_SiII
-        self.fid_SiIII = fid_SiIII
-        self.fid_HCD = fid_HCD
-        self.fid_SN = fid_SN
-
         # setup emulator
         if emulator is None:
             self.emulator = gp_emulator.GPEmulator(training_set="Pedersen21")
             print("Using default emulator: Pedersen21")
         else:
             self.emulator = emulator
-
         self.emu_kp_Mpc = self.emulator.kp_Mpc
+
+        # setup model_igm
+        if model_igm is None:
+            self.model_igm = IGM(zs)
+        else:
+            self.model_igm = model_igm
+
+        # setup model_cont
+        if model_cont is None:
+            self.model_cont = Contaminants()
+        else:
+            self.model_cont = model_cont
 
         # setup fiducial cosmology (used for fitting)
         if not fid_cosmo:
@@ -108,80 +98,6 @@ class Theory(object):
             "cosmo"
         ].get_M_of_zs()
 
-        # load fiducial IGM history (used for fitting)
-        self.fid_sim_igm = fid_sim_igm
-        fid_igm = self.get_igm(fid_sim_igm)
-
-        # setup fiducial IGM models (from Gadget sims if not specified)
-        if F_model is not None:
-            self.F_model = F_model
-        else:
-            self.F_model = mean_flux_model.MeanFluxModel(
-                free_param_names=free_param_names,
-                fid_igm=fid_igm,
-            )
-        if T_model:
-            self.T_model = T_model
-        else:
-            self.T_model = thermal_model.ThermalModel(
-                free_param_names=free_param_names,
-                fid_igm=fid_igm,
-            )
-        if P_model:
-            self.P_model = P_model
-        else:
-            self.P_model = pressure_model.PressureModel(
-                free_param_names=free_param_names,
-                fid_igm=fid_igm,
-            )
-
-        self.fid_igm = {}
-        self.fid_igm["z"] = zs
-        self.fid_igm["tau_eff"] = self.F_model.get_tau_eff(zs)
-        self.fid_igm["gamma"] = self.T_model.get_gamma(zs)
-        self.fid_igm["sigT_kms"] = self.T_model.get_sigT_kms(zs)
-        self.fid_igm["kF_kms"] = self.P_model.get_kF_kms(zs)
-
-        # setup metal models
-        self.metal_models = []
-        if SiIII_model:
-            self.SiIII_model = SiIII_model
-        else:
-            self.SiIII_model = metal_model.MetalModel(
-                metal_label="SiIII",
-                free_param_names=free_param_names,
-                fid_value=self.fid_SiIII,
-            )
-        self.metal_models.append(self.SiIII_model)
-
-        if SiII_model:
-            self.SiII_model = SiII_model
-        else:
-            self.SiII_model = metal_model.MetalModel(
-                metal_label="SiII",
-                free_param_names=free_param_names,
-                fid_value=self.fid_SiII,
-            )
-        self.metal_models.append(self.SiII_model)
-
-        # setup HCD model
-        if hcd_model:
-            self.hcd_model = hcd_model
-        else:
-            self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
-                free_param_names=free_param_names,
-                fid_value=self.fid_HCD,
-            )
-
-        # setup SN model
-        if hcd_model:
-            self.sn_model = sn_model
-        else:
-            self.sn_model = SN_model.SN_Model(
-                free_param_names=free_param_names,
-                fid_value=self.fid_SN,
-            )
-
     def fixed_background(self, like_params):
         """Check if any of the input likelihood parameters would change
         the background expansion of the fiducial cosmology"""
@@ -192,61 +108,6 @@ class Theory(object):
                 return False
 
         return True
-
-    def emulate_arr_p1d_Mpc(self, model, k_Mpc, return_covar=False, z=None):
-        """Wrapper for emulator calls for GP emulator (workaroud should be move to LaCE)"""
-
-        p1d = []
-        cov_p1d = []
-        for ii in range(len(model)):
-            _res = self.emulator.emulate_p1d_Mpc(
-                model[ii], k_Mpc[ii], z=z[ii], return_covar=return_covar
-            )
-            if return_covar:
-                p1d.append(_res[0])
-                cov_p1d.append(_res[1])
-            else:
-                p1d.append(_res)
-
-        if return_covar:
-            return p1d, cov_p1d
-        else:
-            return p1d
-
-    def get_igm(self, sim_igm):
-        """Load IGM history"""
-        if sim_igm[:3] == "mpg":
-            repo = os.path.dirname(lace.__path__[0]) + "/"
-            fname = repo + "/data/sim_suites/Australia20/IGM_histories.npy"
-        elif sim_igm[:3] == "nyx":
-            fname = os.environ["NYX_PATH"] + "/IGM_histories.npy"
-        else:
-            raise ValueError("only mpg and nyx sim_igm implemented")
-
-        try:
-            igm_hist = np.load(fname, allow_pickle=True).item()
-        except:
-            raise ValueError(
-                fname
-                + "not found. You can produce it using LaCE"
-                + r"\n script save_"
-                + sim_igm[:3]
-                + "_IGM.py"
-            )
-        else:
-            if sim_igm not in igm_hist:
-                raise ValueError(
-                    sim_igm
-                    + " not found in "
-                    + fname
-                    + r"\n Check out the LaCE script save_"
-                    + sim_igm[:3]
-                    + "_IGM.py"
-                )
-            else:
-                fid_igm = igm_hist[sim_igm]
-
-        return fid_igm
 
     def get_linP_Mpc_params_from_fiducial(
         self, zs, like_params, return_derivs=False
@@ -432,26 +293,32 @@ class Theory(object):
                 for ii in range(len(linP_Mpc_params)):
                     emu_call[key][ii] = linP_Mpc_params[ii][key]
             elif key == "mF":
-                emu_call[key] = self.F_model.get_mean_flux(
+                emu_call[key] = self.model_igm.F_model.get_mean_flux(
                     zs, like_params=like_params
                 )
             elif key == "gamma":
-                emu_call[key] = self.T_model.get_gamma(
+                emu_call[key] = self.model_igm.T_model.get_gamma(
                     zs, like_params=like_params
                 )
             elif key == "sigT_Mpc":
                 emu_call[key] = (
-                    self.T_model.get_sigT_kms(zs, like_params=like_params)
+                    self.model_igm.T_model.get_sigT_kms(
+                        zs, like_params=like_params
+                    )
                     / M_of_zs
                 )
             elif key == "kF_Mpc":
                 emu_call[key] = (
-                    self.P_model.get_kF_kms(zs, like_params=like_params)
+                    self.model_igm.P_model.get_kF_kms(
+                        zs, like_params=like_params
+                    )
                     * M_of_zs
                 )
             elif key == "lambda_P":
                 emu_call[key] = 1000 / (
-                    self.P_model.get_kF_kms(zs, like_params=like_params)
+                    self.model_igm.P_model.get_kF_kms(
+                        zs, like_params=like_params
+                    )
                     * M_of_zs
                 )
             else:
@@ -538,6 +405,7 @@ class Theory(object):
         ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
 
         # get blob for fiducial cosmo
+        ### TODO: make this more efficient! Maybe directly storing the params?
         fid_blob = self.get_blob(self.cosmo_model_fid["cosmo"])
 
         # rescale blobs
@@ -597,9 +465,6 @@ class Theory(object):
         It might also return a covariance from the emulator,
         or a blob with extra information for the fitter."""
 
-        if self.emulator is None:
-            raise ValueError("no emulator provided")
-
         # figure out emulator calls
         _res = self.get_emulator_calls(
             zs,
@@ -612,25 +477,26 @@ class Theory(object):
         else:
             emu_call, M_of_z = _res
 
-        # compute input k to emulator
+        # compute input k to emulator in Mpc
         Nz = len(zs)
         length = 0
         for iz in range(Nz):
             if len(k_kms[iz]) > length:
                 length = len(k_kms[iz])
-
         kin_Mpc = np.zeros((Nz, length))
         for iz in range(Nz):
             kin_Mpc[iz, : len(k_kms[iz])] = k_kms[iz] * M_of_z[iz]
 
+        # call emulator
         _res = self.emulator.emulate_p1d_Mpc(
-            emu_call, kin_Mpc, return_covar=return_covar, z=self.zs
+            emu_call, kin_Mpc, return_covar=return_covar, z=zs
         )
         if return_covar:
             p1d_Mpc, cov_Mpc = _res
         else:
             p1d_Mpc = _res
 
+        # move from Mpc to kms
         p1d_kms = []
         covars = []
         for iz in range(Nz):
@@ -644,36 +510,15 @@ class Theory(object):
                         * M_of_z[iz] ** 2
                     )
 
+        # apply contaminants
         for iz, z in enumerate(zs):
-            # include multiplicative metal contamination
-            cont_metals = 1
-            for X_model in self.metal_models:
-                cont = X_model.get_contamination(
-                    z=z,
-                    k_kms=k_kms[iz],
-                    mF=emu_call["mF"][iz],
-                    like_params=like_params,
-                )
-                cont_metals *= cont
-
-            # include HCD contamination
-            cont_HCD = self.hcd_model.get_contamination(
-                z=z,
-                k_kms=k_kms[iz],
+            cont_total = self.model_cont.get_contamination(
+                z,
+                k_kms[iz],
+                emu_call["mF"][iz],
+                M_of_z[iz],
                 like_params=like_params,
             )
-
-            # include SN contamination
-            _ = np.argwhere(self.cosmo_model_fid["zs"] == z)[0, 0]
-            M_of_z = self.cosmo_model_fid["M_of_zs"][_]
-            cont_SN = self.sn_model.get_contamination(
-                z=z,
-                k_Mpc=k_kms[iz] * M_of_z,
-                like_params=like_params,
-            )
-
-            cont_total = cont_metals * cont_HCD * cont_SN
-
             p1d_kms[iz] *= cont_total
 
         # decide what to return, and return it
@@ -697,26 +542,26 @@ class Theory(object):
         params = self.cosmo_model_fid["cosmo"].get_likelihood_parameters()
 
         # get parameters from nuisance IGM models
-        for par in self.F_model.get_parameters():
+        for par in self.model_igm.F_model.get_parameters():
             params.append(par)
-        for par in self.T_model.get_sigT_kms_parameters():
+        for par in self.model_igm.T_model.get_sigT_kms_parameters():
             params.append(par)
-        for par in self.T_model.get_gamma_parameters():
+        for par in self.model_igm.T_model.get_gamma_parameters():
             params.append(par)
-        for par in self.P_model.get_parameters():
+        for par in self.model_igm.P_model.get_parameters():
             params.append(par)
 
         # get parameters from metal contamination models
-        for metal in self.metal_models:
+        for metal in self.model_cont.metal_models:
             for par in metal.get_parameters():
                 params.append(par)
 
         # get parameters from HCD contamination model
-        for par in self.hcd_model.get_parameters():
+        for par in self.model_cont.hcd_model.get_parameters():
             params.append(par)
 
         # get parameters from SN contamination model
-        for par in self.sn_model.get_parameters():
+        for par in self.model_cont.sn_model.get_parameters():
             params.append(par)
 
         if self.verbose:

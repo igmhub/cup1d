@@ -11,10 +11,12 @@ class SN_Model(object):
         self,
         z_0=3.0,
         fid_value=-4,
+        null_value=-4,
         ln_SN_coeff=None,
         free_param_names=None,
     ):
         self.z_0 = z_0
+        self.null_value = null_value
         if ln_SN_coeff:
             if free_param_names is not None:
                 raise ValueError("can not specify coeff and free_param_names")
@@ -65,39 +67,40 @@ class SN_Model(object):
         """Amplitude of HCD contamination around z_0"""
 
         ln_SN_coeff = self.get_SN_coeffs(like_params=like_params)
-
-        xz = np.log((1 + z) / (1 + self.z_0))
-        ln_poly = np.poly1d(ln_SN_coeff)
-        ln_out = ln_poly(xz)
-        return np.exp(ln_out)
+        if ln_SN_coeff[-1] <= self.null_value:
+            return 0
+        else:
+            xz = np.log((1 + z) / (1 + self.z_0))
+            ln_poly = np.poly1d(ln_SN_coeff)
+            ln_out = ln_poly(xz)
+            return np.exp(ln_out)
 
     def get_contamination(self, z, k_Mpc, like_params=[]):
         """Multiplicative contamination caused by SNs"""
         SN_damp = self.get_SN_damp(z, like_params=like_params)
-
-        # https://github.com/schoeneberg/lym1d/blob/160fc0c3e9f814be11e6dc90c226285ce2e6f9d3/src/lym1d/likelihood.py#L458
-        # Viel+13 Fig 8 panel b
-
-        # k0 = 0.001
-        # k1 = 0.02
-        k0_Mpc = 0.07  # Mpc^-1
-        k1_Mpc = 1.4  # Mpc^-1
-        # Supernovae SN
-        tmpLowk = [-0.06, -0.04, -0.02]
-        tmpHighk = [-0.01, -0.01, -0.01]
-        if z < 2.5:
-            d0 = tmpLowk[0]
-            d1 = tmpHighk[0]
-        elif z < 3.5:
-            d0 = tmpLowk[1]
-            d1 = tmpHighk[1]
+        if SN_damp == 0:
+            return 1
         else:
-            d0 = tmpLowk[2]
-            d1 = tmpHighk[2]
-        delta = d0 + (d1 - d0) * (k_Mpc - k0_Mpc) / (k1_Mpc - k0_Mpc)
-        corSN = 1 / (1.0 + delta * SN_damp)
+            # Viel+13 Fig 8 panel b
 
-        return corSN
+            k0_Mpc = 0.07  # Mpc^-1
+            k1_Mpc = 1.4  # Mpc^-1
+            # Supernovae SN
+            tmpLowk = [-0.06, -0.04, -0.02]
+            tmpHighk = [-0.01, -0.01, -0.01]
+            if z < 2.5:
+                d0 = tmpLowk[0]
+                d1 = tmpHighk[0]
+            elif z < 3.5:
+                d0 = tmpLowk[1]
+                d1 = tmpHighk[1]
+            else:
+                d0 = tmpLowk[2]
+                d1 = tmpHighk[2]
+            delta = d0 + (d1 - d0) * (k_Mpc - k0_Mpc) / (k1_Mpc - k0_Mpc)
+            corSN = 1 / (1.0 + delta * SN_damp)
+
+            return corSN
 
     def get_parameters(self):
         """Return likelihood parameters for the HCD model"""

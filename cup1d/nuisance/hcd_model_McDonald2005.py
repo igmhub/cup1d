@@ -11,6 +11,7 @@ class HCD_Model_McDonald2005(object):
         self,
         z_0=3.0,
         fid_value=-6,
+        null_value=-6,
         ln_A_damp_coeff=None,
         free_param_names=None,
     ):
@@ -67,20 +68,24 @@ class HCD_Model_McDonald2005(object):
         """Amplitude of HCD contamination around z_0"""
 
         ln_A_damp_coeff = self.get_A_damp_coeffs(like_params=like_params)
-
-        xz = np.log((1 + z) / (1 + self.z_0))
-        ln_poly = np.poly1d(ln_A_damp_coeff)
-        ln_out = ln_poly(xz)
-        return np.exp(ln_out)
+        if ln_A_damp_coeff[-1] < self.null_value:
+            return 0
+        else:
+            xz = np.log((1 + z) / (1 + self.z_0))
+            ln_poly = np.poly1d(ln_A_damp_coeff)
+            ln_out = ln_poly(xz)
+            return np.exp(ln_out)
 
     def get_contamination(self, z, k_kms, like_params=[]):
         """Multiplicative contamination caused by HCDs"""
         A_damp = self.get_A_damp(z, like_params=like_params)
-        # fitting function from Palanque-Delabrouille et al. (2015)
-        # that qualitatively describes Fig 2 of McDonald et al. (2005)
-        f_HCD = 0.018 + 1 / (15000 * k_kms - 8.9)
-
-        return 1 + A_damp * f_HCD
+        if A_damp == 0:
+            return 1
+        else:
+            # fitting function from Palanque-Delabrouille et al. (2015)
+            # that qualitatively describes Fig 2 of McDonald et al. (2005)
+            f_HCD = 0.018 + 1 / (15000 * k_kms - 8.9)
+            return 1 + A_damp * f_HCD
 
     def get_parameters(self):
         """Return likelihood parameters for the HCD model"""

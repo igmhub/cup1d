@@ -271,17 +271,26 @@ def set_like(
         zs_hires = data_hires.z
     else:
         zs_hires = None
-    theory = lya_theory.Theory(
-        zs=data.z,
-        zs_hires=zs_hires,
-        emulator=emulator,
+
+    model_igm = IGM(
+        data.z,
         free_param_names=free_parameters,
         fid_sim_igm=fid_igm_label,
-        fid_cosmo=fid_cosmo,
+    )
+    model_cont = Contaminants(
+        free_param_names=free_parameters,
         fid_SiIII=fid_SiIII,
         fid_SiII=fid_SiII,
         fid_HCD=fid_HCD,
         fid_SN=fid_SN,
+    )
+    theory = lya_theory.Theory(
+        zs=data.z,
+        zs_hires=zs_hires,
+        emulator=emulator,
+        fid_cosmo=fid_cosmo,
+        model_igm=model_igm,
+        model_cont=model_cont,
     )
 
     ## set like

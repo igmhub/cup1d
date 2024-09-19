@@ -21,12 +21,10 @@ class Likelihood(object):
         self,
         data,
         theory,
-        emulator=None,
         free_param_names=None,
         free_param_limits=None,
         verbose=False,
         prior_Gauss_rms=0.2,
-        kmin_kms=None,
         emu_cov_factor=1,
         extra_data=None,
         min_log_like=-1e100,
@@ -34,11 +32,6 @@ class Likelihood(object):
         """Setup likelihood from theory and data. Options:
         - data (required) is the data to model
         - theory (required) instance of lya_theory
-        - emulator (optional) only needed if theory not provided
-        - cosmo_fid_label (optional) to specify fiducial cosmology
-                    default: use default Planck-like cosmology
-                    truth: read true cosmology used in simulation
-                    look at cosmologies.py for more options
         - free_param_names is a list of param names, in any order
         - free_param_limits list of tuples, same order than free_param_names
         - if prior_Gauss_rms is None it will use uniform priors
@@ -54,9 +47,6 @@ class Likelihood(object):
         self.min_log_like = min_log_like
         self.data = data
         self.extra_data = extra_data
-        # (optionally) get rid of low-k data points
-        if kmin_kms is not None:
-            self.data.cull_data(kmin_kms)
 
         self.theory = theory
 

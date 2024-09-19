@@ -13,6 +13,7 @@ class MetalModel(object):
         z_X=3.0,
         ln_X_coeff=None,
         fid_value=-10,
+        null_value=-10,
         free_param_names=None,
     ):
         """Model the evolution of a metal contamination (SiII or SiIII).
@@ -31,6 +32,9 @@ class MetalModel(object):
 
         # power law pivot point
         self.z_X = z_X
+        # value below which no contamination (speed up model)
+        self.null_value = null_value
+        self.dv = self.get_dv_kms()
 
         # figure out parameters
         if ln_X_coeff:
@@ -131,10 +135,13 @@ class MetalModel(object):
 
         ln_X_coeff = self.get_X_coeffs(like_params)
 
-        xz = np.log((1 + z) / (1 + self.z_X))
-        ln_poly = np.poly1d(ln_X_coeff)
-        ln_out = ln_poly(xz)
-        return np.exp(ln_out)
+        if ln_X_coeff[-1] <= self.null_value:
+            return 0
+        else:
+            xz = np.log((1 + z) / (1 + self.z_X))
+            ln_poly = np.poly1d(ln_X_coeff)
+            ln_out = ln_poly(xz)
+            return np.exp(ln_out)
 
     def get_dv_kms(self):
         """Velocity separation where the contamination is stronger"""
@@ -145,6 +152,7 @@ class MetalModel(object):
 
         # we should properly compute this (check McDonald et al. 2006)
         # dv_kms = (lambda_lya-self.lambda_rest)/lambda_lya*c_kms
+        # v3 in McDonald et al. (2006)
         dv_kms = np.log(lambda_lya / self.lambda_rest) * c_kms
 
         return dv_kms
@@ -156,8 +164,8 @@ class MetalModel(object):
         # Note that this represents "f" in McDonald et al. (2006)
         # It is later rescaled by <F> to compute "a" in eq. (15)
         f = self.get_amplitude(z, like_params=like_params)
-        a = f / (1 - mF)
-        # v3 in McDonald et al. (2006)
-        dv = self.get_dv_kms()
-
-        return 1 + a**2 + 2 * a * np.cos(dv * k_kms)
+        if f == 0:
+            return 1
+        else:
+            a = f / (1 - mF)
+            return 1 + a**2 + 2 * a * np.cos(self.dv * k_kms)
