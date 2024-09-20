@@ -101,7 +101,7 @@ class Theory(object):
         """Return cosmological parameters of simulations used for training"""
 
         # name of simulations used for training
-        list_sim_hc = self.emulator.archive.list_sim_cube
+        list_sim_hc = self.emulator.list_sim_cube
         if list_sim_hc[0][:3] == "mpg":
             get_cosmo = camb_cosmo.get_cosmology_from_dictionary
         elif list_sim_hc[0][:3] == "nyx":

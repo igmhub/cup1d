@@ -21,6 +21,7 @@ class ThermalModel(object):
         free_param_names=None,
         fid_igm=None,
         order_extra=2,
+        priors=None,
     ):
         """Model the redshift evolution of the thermal broadening scale and gamma.
         We use a power law rescaling around a fiducial simulation at the centre
@@ -39,6 +40,7 @@ class ThermalModel(object):
                 )
             else:
                 fid_igm = igm_hist["mpg_central"]
+        self.priors = priors
         self.fid_igm = fid_igm
 
         mask = fid_igm["gamma"] != 0
@@ -182,18 +184,21 @@ class ThermalModel(object):
         Npar = len(self.ln_sigT_kms_coeff)
         for i in range(Npar):
             name = "ln_sigT_kms_" + str(i)
+            pname = "sigT_kms"
             if i == 0:
-                # xmin = -2.0
-                # xmax = 2.0
-                # approx inside training set
-                xmin = -0.25
-                xmax = 0.25
+                if self.priors is not None:
+                    xmin = self.priors[pname][-1][0]
+                    xmax = self.priors[pname][-1][1]
+                else:
+                    xmin = -0.25
+                    xmax = 0.25
             else:
-                # xmin = -5.0
-                # xmax = 5.0
-                # approx inside training set
-                xmin = -1.0
-                xmax = 1.0
+                if self.priors is not None:
+                    xmin = self.priors[pname][-2][0]
+                    xmax = self.priors[pname][-2][1]
+                else:
+                    xmin = -1.0
+                    xmax = 1.0
             # note non-trivial order in coefficients
             value = self.ln_sigT_kms_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
@@ -209,18 +214,21 @@ class ThermalModel(object):
         Npar = len(self.ln_gamma_coeff)
         for i in range(Npar):
             name = "ln_gamma_" + str(i)
+            pname = "gamma"
             if i == 0:
-                # xmin = -1.2
-                # xmax = 1.2
-                # approx inside training set
-                xmin = -0.25
-                xmax = 0.25
+                if self.priors is not None:
+                    xmin = self.priors[pname][-1][0]
+                    xmax = self.priors[pname][-1][1]
+                else:
+                    xmin = -0.25
+                    xmax = 0.25
             else:
-                # xmin = -2.5
-                # xmax = 2.5
-                # approx inside training set
-                xmin = -1.0
-                xmax = 1.0
+                if self.priors is not None:
+                    xmin = self.priors[pname][-2][0]
+                    xmax = self.priors[pname][-2][1]
+                else:
+                    xmin = -1.0
+                    xmax = 1.0
             # note non-trivial order in coefficients
             value = self.ln_gamma_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(

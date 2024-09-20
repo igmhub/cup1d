@@ -12,14 +12,43 @@ class IGM(object):
         self,
         zs,
         free_param_names=None,
+        z_pivot=3,
         F_model=None,
         T_model=None,
         P_model=None,
         fid_sim_igm="mpg_central",
+        list_sim_cube=None,
+        type_priors="hc",
     ):
         # load fiducial IGM history (used for fitting)
         self.fid_sim_igm = fid_sim_igm
+        self.z_pivot = z_pivot
+
         fid_igm = self.get_igm(fid_sim_igm)
+
+        # compute priors for this emulator
+        if list_sim_cube is None:
+            # default priors (hc for mpg)
+            self.priors = {
+                "tau_eff": [
+                    [-0.5912022429177898, 0.5912022429177898],
+                    [-0.1936758618341875, 0.20169231438172694],
+                ],
+                "gamma": [
+                    [-0.6257448015637526, 0.6257448015637526],
+                    [-0.2260619891767361, 0.19240662107387235],
+                ],
+                "sigT_kms": [
+                    [-0.5683643384807968, 0.5683643384807968],
+                    [-0.18454429411238835, 0.19555096875785932],
+                ],
+                "kF_kms": [
+                    [-0.5470878025948258, 0.5470878025948258],
+                    [-0.15974048204662275, 0.2061260371234787],
+                ],
+            }
+        else:
+            self.set_priors(fid_igm, list_sim_cube, type_priors=type_priors)
 
         # setup fiducial IGM models
         if F_model is not None:
@@ -28,6 +57,8 @@ class IGM(object):
             self.F_model = mean_flux_model.MeanFluxModel(
                 free_param_names=free_param_names,
                 fid_igm=fid_igm,
+                z_tau=z_pivot,
+                priors=self.priors,
             )
         if T_model:
             self.T_model = T_model
@@ -35,6 +66,8 @@ class IGM(object):
             self.T_model = thermal_model.ThermalModel(
                 free_param_names=free_param_names,
                 fid_igm=fid_igm,
+                z_T=z_pivot,
+                priors=self.priors,
             )
         if P_model:
             self.P_model = P_model
@@ -42,6 +75,8 @@ class IGM(object):
             self.P_model = pressure_model.PressureModel(
                 free_param_names=free_param_names,
                 fid_igm=fid_igm,
+                z_kF=z_pivot,
+                priors=self.priors,
             )
 
         self.fid_igm = {}
@@ -88,3 +123,44 @@ class IGM(object):
             return igm_hist
         else:
             return fid_igm
+
+    def set_priors(self, fid_igm, list_sim_cube, type_priors="hc"):
+        """Set priors for all IGM models"""
+
+        if type_priors == "hc":
+            percent = 95
+        elif type_priors == "data":
+            percent = 68
+        else:
+            raise ValueError("type_priors must be 'hc' or 'data'")
+
+        all_igm = self.get_igm(list_sim_cube[0], return_all=True)
+
+        self.priors = {}
+        for par in fid_igm:
+            if par == "z":
+                continue
+
+            res_div = np.zeros((len(list_sim_cube), 2))
+            for ii, sim in enumerate(list_sim_cube):
+                res_div[ii, 0] = np.abs(
+                    np.nanmax(all_igm[sim][par] / fid_igm[par])
+                )
+                res_div[ii, 1] = np.abs(
+                    np.nanmin(all_igm[sim][par] / fid_igm[par])
+                )
+            y0_max = np.abs(np.log(np.percentile(res_div[:, 0], percent)))
+            y0_min = np.abs(np.log(np.percentile(1 / res_div[:, 1], percent)))
+            y0_cen = 0.5 * (y0_max + y0_min)
+            y1 = y0_cen / np.log((1 + fid_igm["z"].max()) / (1 + self.z_pivot))
+            self.priors[par] = [[-y1, y1], [-y0_min * 1.05, y0_max * 1.05]]
+
+        # self.shift = {}
+        # # adjust prior to fiducial IGM history
+        # for par in cen_igm:
+        #     if par == "z":
+        #         continue
+
+        #     res_div = np.abs(np.median(fid_igm[par] / cen_igm[par]))
+        #     y0 = np.log(np.percentile(res_div, percent))
+        #     self.priors[par] = y0

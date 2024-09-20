@@ -500,12 +500,17 @@ class Fitter(object):
                 np.round(self.mle_cosmo["err_" + par], 5),
             )
             if self.like.truth is not None:
-                print(
-                    np.round(self.like.truth[par], 5),
-                    np.round(
-                        np.abs(self.like.truth[par] - self.mle_cosmo[par]), 5
-                    ),
-                )
+                if par in self.like.truth["like_params"]:
+                    print(
+                        np.round(self.like.truth["like_params"][par], 5),
+                        np.round(
+                            np.abs(
+                                self.like.truth["like_params"][par]
+                                - self.mle_cosmo[par]
+                            ),
+                            5,
+                        ),
+                    )
 
     def get_cosmo_err(self, fun_minimize):
         hess = nd.Hessian(fun_minimize)
@@ -1395,7 +1400,11 @@ class Fitter(object):
         return
 
     def plot_igm(
-        self, value=None, rand_sample=None, stat_best_fit="mle", cloud=False
+        self,
+        value=None,
+        rand_sample=None,
+        stat_best_fit="mle",
+        cloud=False,
     ):
         """Plot IGM histories"""
 
@@ -1485,7 +1494,7 @@ class Fitter(object):
                 ax[ii].plot(
                     pars_true["z"][_],
                     pars_true[arr_labs[ii]][_],
-                    "o:",
+                    "o",
                     label="true",
                     alpha=0.5,
                 )
@@ -1493,8 +1502,9 @@ class Fitter(object):
             ax[ii].plot(
                 pars_fid["z"][_],
                 pars_fid[arr_labs[ii]][_],
-                "s--",
+                "--",
                 label="fiducial",
+                lw=2,
                 alpha=0.5,
             )
 
@@ -1516,6 +1526,7 @@ class Fitter(object):
                     pars_best["z"][_],
                     pars_best[arr_labs[ii]][_],
                     label="fit",
+                    lw=2,
                     alpha=0.5,
                 )
 
@@ -1527,7 +1538,7 @@ class Fitter(object):
                             all_emu_igm[sim_label]["z"][_],
                             all_emu_igm[sim_label][arr_labs[ii]][_],
                             color="black",
-                            alpha=0.2,
+                            alpha=0.1,
                         )
 
             ax[ii].set_ylabel(latex_labs[ii])

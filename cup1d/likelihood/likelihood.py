@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import math
+from scipy.stats.distributions import chi2 as chi2_scipy
 from scipy.optimize import minimize
 
 from lace.cosmo import camb_cosmo
@@ -273,13 +274,14 @@ class Likelihood(object):
             return_emu_params=return_emu_params,
         )
 
-    def get_chi2(self, values=None):
+    def get_chi2(self, values=None, return_all=False):
         """Compute chi2 using data and theory, without adding
         emulator covariance"""
 
-        log_like = self.get_log_like(values, ignore_log_det_cov=True)
-        if log_like is None:
-            return None
+        log_like, chi2_all = self.get_log_like(values, ignore_log_det_cov=True)
+
+        if return_all:
+            return -2.0 * log_like, chi2_all
         else:
             return -2.0 * log_like
 
@@ -289,12 +291,13 @@ class Likelihood(object):
         """Compute log(likelihood), including determinant of covariance
         unless you are setting ignore_log_det_cov=True."""
 
-        # ask emulator prediction for P1D in each bin
+        # use emulator covariance
         if self.emu_cov_factor == 0:
             return_covar = False
         else:
             return_covar = True
 
+        # ask emulator prediction for P1D in each bin
         _res = self.get_p1d_kms(
             self.data.z,
             self.data.k_kms,
@@ -313,8 +316,10 @@ class Likelihood(object):
             else:
                 emu_p1d = _res
 
+        # use high-res data
         if self.extra_data is not None:
             length = 2
+            nz = np.max([len(self.data.z), len(self.extra_data.z)])
             _res_hi = self.get_p1d_kms(
                 self.extra_data.z,
                 self.extra_data.k_kms,
@@ -328,11 +333,10 @@ class Likelihood(object):
                 emu_p1d_extra = _res_hi
         else:
             length = 1
-
-        if self.verbose:
-            print("got P1D from emulator")
+            nz = len(self.data.z)
 
         # compute log like contribution from each redshift bin
+        chi2_all = np.zeros((length, nz))
         log_like = 0
         # loop over low and high res data
         for ii in range(length):
@@ -353,11 +357,8 @@ class Likelihood(object):
                 z = data.z[iz]
                 # make sure that theory is valid
                 if emu_p1d_use[iz] is None:
-                    if self.verbose:
-                        print(z, "theory did not emulate p1d")
-                    return None
-                if self.verbose:
-                    print("compute chi2 for z={}".format(z))
+                    raise ValueError("theory did not emulate P1D")
+
                 # get data
                 p1d = data.get_Pk_iz(iz)
                 # add covariance from emulator
@@ -371,6 +372,7 @@ class Likelihood(object):
                 # compute chi2 for this redshift bin
                 diff = p1d - emu_p1d_use[iz]
                 chi2_z = np.dot(np.dot(icov, diff), diff)
+                chi2_all[ii, iz] = chi2_z
                 # check whether to add determinant of covariance as well
                 if ignore_log_det_cov:
                     log_like_z = -0.5 * chi2_z
@@ -381,10 +383,10 @@ class Likelihood(object):
                 if self.verbose:
                     print("added {} to log_like".format(log_like_z))
 
+        out = [log_like, chi2_all]
         if return_blob:
-            return log_like, blob
-        else:
-            return log_like
+            out.append(blob)
+        return out
 
     def regulate_log_like(self, log_like):
         """Make sure that log_like is not NaN, nor tiny"""
@@ -413,20 +415,13 @@ class Likelihood(object):
 
         # compute log_like (option to ignore emulator covariance)
         if return_blob:
-            log_like, blob = self.get_log_like(
+            log_like, chi2_all, blob = self.get_log_like(
                 values, ignore_log_det_cov=ignore_log_det_cov, return_blob=True
             )
         else:
-            log_like = self.get_log_like(
+            log_like, chi2_all = self.get_log_like(
                 values, ignore_log_det_cov=ignore_log_det_cov, return_blob=False
             )
-
-        # # if required, add extra P1D likelihood from, e.g., HIRES
-        # if self.extra_p1d_like:
-        #     extra_log_like = self.extra_p1d_like.get_log_like(
-        #         values, ignore_log_det_cov=False, return_blob=False
-        #     )
-        #     log_like += extra_log_like
 
         # regulate log-like (not NaN, not tiny)
         log_like = self.regulate_log_like(log_like)
@@ -502,6 +497,7 @@ class Likelihood(object):
         sampling_p1d=100,
         return_covar=False,
         print_ratio=False,
+        print_chi2=True,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
@@ -544,6 +540,8 @@ class Likelihood(object):
             else:
                 emu_p1d_extra = _res
 
+        chi2, chi2_all = self.get_chi2(values=values, return_all=True)
+
         # figure out y range for plot
         ymin = 1e10
         ymax = -1e10
@@ -575,6 +573,26 @@ class Likelihood(object):
         else:
             fig, ax = plt.subplots(2, 1, figsize=(8, 8))
             length = 2
+
+        # print chi2
+        ndeg = 0
+        for iz in range(len(self.data.k_kms)):
+            ndeg += np.sum(self.data.Pk_kms[iz] != 0)
+        if self.extra_data is not None:
+            for iz in range(len(self.extra_data.k_kms)):
+                ndeg += np.sum(self.extra_data.Pk_kms[iz] != 0)
+        prob = chi2_scipy.sf(chi2, ndeg)
+        label = (
+            r"$\chi^2=$"
+            + str(np.round(chi2, 6))
+            + " (ndeg="
+            + str(ndeg)
+            + ", prob="
+            + str(np.round(prob * 100, 6))
+            + "%)"
+        )
+        if print_chi2:
+            ax[0].set_title(label, fontsize=14)
 
         for ii in range(length):
             if ii == 0:
@@ -637,6 +655,24 @@ class Likelihood(object):
                         ms="4",
                         label="z=" + str(np.round(z, 2)),
                     )
+
+                    # print chi2
+                    xpos = k_kms[iz][0]
+                    ypos = 0.92 + yshift
+                    ndeg = np.sum(p1d_data != 0)
+                    prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg)
+                    label = (
+                        r"$\chi^2=$"
+                        + str(np.round(chi2_all[ii, iz], 2))
+                        + " (ndeg="
+                        + str(ndeg)
+                        + ", prob="
+                        + str(np.round(prob * 100, 2))
+                        + "%)"
+                    )
+                    if print_chi2:
+                        ax[ii].text(xpos, ypos, label, fontsize=12)
+
                     if print_ratio:
                         print(p1d_data / model)
                     ymin = min(ymin, min(p1d_data / model + yshift))
@@ -671,6 +707,24 @@ class Likelihood(object):
                         ms="4",
                         label="z=" + str(np.round(z, 2)),
                     )
+
+                    # print chi2
+                    xpos = k_kms[iz][-1] + 0.001
+                    ypos = (p1d_theory[_] * k_emu_kms_use[iz][_] / np.pi)[-1]
+                    ndeg = np.sum(p1d_data != 0)
+                    prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg)
+                    label = (
+                        r"$\chi^2=$"
+                        + str(np.round(chi2_all[ii, iz], 2))
+                        + " ("
+                        + str(ndeg)
+                        + ", "
+                        + str(np.round(prob * 100, 2))
+                        + "%)"
+                    )
+                    if print_chi2:
+                        ax[ii].text(xpos, ypos, label, fontsize=8)
+
                     ax[ii].plot(
                         k_emu_kms_use[iz][_],
                         (p1d_theory[_] * k_emu_kms_use[iz][_]) / np.pi,
@@ -698,16 +752,19 @@ class Likelihood(object):
             ax[ii].plot(
                 k_emu_kms_use[iz][0], 1, linestyle=":", label="Fit", color="k"
             )
-            ax[ii].legend()
+            if residuals:
+                ax[ii].legend()
+            else:
+                ax[ii].legend(loc="lower right", ncol=4)
 
-            # ax[ii].set_xlim(min(k_kms[iz]) - 0.001, max(k_kms[iz]) + 0.001)
+            # ax[ii].set_xlim(min(k_kms[0]) - 0.001, max(k_kms[-1]) + 0.001)
             ax[ii].set_xlabel(r"$k_\parallel$ [s/km]")
 
             if residuals:
                 ax[ii].set_ylabel(r"$P_{\rm 1D}(z,k_\parallel)$ residuals")
-                # ax[ii].set_ylim(ymin - 0.1, ymax + 0.1)
+                ax[ii].set_ylim(ymin - 0.1, ymax + 0.1)
             else:
-                ax[ii].set_ylim(0.8 * ymin, 1.2 * ymax)
+                ax[ii].set_ylim(0.8 * ymin, 1.3 * ymax)
                 ax[ii].set_yscale("log")
                 ax[ii].set_ylabel(
                     r"$k_\parallel \, P_{\rm 1D}(z,k_\parallel) / \pi$"
@@ -722,78 +779,78 @@ class Likelihood(object):
 
         return
 
-    def overplot_emulator_calls(
-        self,
-        param_1,
-        param_2,
-        values=None,
-        tau_scalings=True,
-        temp_scalings=True,
-    ):
-        """For parameter pair (param1,param2), overplot emulator calls
-        with values stored in archive, color coded by redshift"""
+    # def overplot_emulator_calls(
+    #     self,
+    #     param_1,
+    #     param_2,
+    #     values=None,
+    #     tau_scalings=True,
+    #     temp_scalings=True,
+    # ):
+    #     """For parameter pair (param1,param2), overplot emulator calls
+    #     with values stored in archive, color coded by redshift"""
 
-        # mask post-process scalings (optional)
-        emu_data = self.theory.emulator.archive.data
-        Nemu = len(emu_data)
-        if not tau_scalings:
-            mask_tau = [x["scale_tau"] == 1.0 for x in emu_data]
-        else:
-            mask_tau = [True] * Nemu
-        if not temp_scalings:
-            mask_temp = [
-                (x["scale_T0"] == 1.0) & (x["scale_gamma"] == 1.0)
-                for x in emu_data
-            ]
-        else:
-            mask_temp = [True] * Nemu
+    #     # mask post-process scalings (optional)
+    #     emu_data = self.theory.emulator.archive.data
+    #     Nemu = len(emu_data)
+    #     if not tau_scalings:
+    #         mask_tau = [x["scale_tau"] == 1.0 for x in emu_data]
+    #     else:
+    #         mask_tau = [True] * Nemu
+    #     if not temp_scalings:
+    #         mask_temp = [
+    #             (x["scale_T0"] == 1.0) & (x["scale_gamma"] == 1.0)
+    #             for x in emu_data
+    #         ]
+    #     else:
+    #         mask_temp = [True] * Nemu
 
-        # figure out values of param_1,param_2 in archive
-        emu_1 = np.array(
-            [
-                emu_data[i][param_1]
-                for i in range(Nemu)
-                if (mask_tau[i] & mask_temp[i])
-            ]
-        )
-        emu_2 = np.array(
-            [
-                emu_data[i][param_2]
-                for i in range(Nemu)
-                if (mask_tau[i] & mask_temp[i])
-            ]
-        )
+    #     # figure out values of param_1,param_2 in archive
+    #     emu_1 = np.array(
+    #         [
+    #             emu_data[i][param_1]
+    #             for i in range(Nemu)
+    #             if (mask_tau[i] & mask_temp[i])
+    #         ]
+    #     )
+    #     emu_2 = np.array(
+    #         [
+    #             emu_data[i][param_2]
+    #             for i in range(Nemu)
+    #             if (mask_tau[i] & mask_temp[i])
+    #         ]
+    #     )
 
-        # translate sampling point (in unit cube) to parameter values
-        if values is not None:
-            like_params = self.parameters_from_sampling_point(values)
-        else:
-            like_params = []
-        emu_calls = self.theory.get_emulator_calls(like_params=like_params)
-        # figure out values of param_1,param_2 called
-        call_1 = [emu_call[param_1] for emu_call in emu_calls]
-        call_2 = [emu_call[param_2] for emu_call in emu_calls]
+    #     # translate sampling point (in unit cube) to parameter values
+    #     if values is not None:
+    #         like_params = self.parameters_from_sampling_point(values)
+    #     else:
+    #         like_params = []
+    #     emu_calls = self.theory.get_emulator_calls(like_params=like_params)
+    #     # figure out values of param_1,param_2 called
+    #     call_1 = [emu_call[param_1] for emu_call in emu_calls]
+    #     call_2 = [emu_call[param_2] for emu_call in emu_calls]
 
-        # overplot
-        zs = self.data.z
-        emu_z = np.array(
-            [
-                emu_data[i]["z"]
-                for i in range(Nemu)
-                if (mask_tau[i] & mask_temp[i])
-            ]
-        )
-        zmin = min(min(emu_z), min(zs))
-        zmax = max(max(emu_z), max(zs))
-        plt.scatter(emu_1, emu_2, c=emu_z, s=1, vmin=zmin, vmax=zmax)
-        plt.scatter(call_1, call_2, c=zs, s=50, vmin=zmin, vmax=zmax)
-        cbar = plt.colorbar()
-        cbar.set_label("Redshift", labelpad=+1)
-        plt.xlabel(param_1)
-        plt.ylabel(param_2)
-        plt.show()
+    #     # overplot
+    #     zs = self.data.z
+    #     emu_z = np.array(
+    #         [
+    #             emu_data[i]["z"]
+    #             for i in range(Nemu)
+    #             if (mask_tau[i] & mask_temp[i])
+    #         ]
+    #     )
+    #     zmin = min(min(emu_z), min(zs))
+    #     zmax = max(max(emu_z), max(zs))
+    #     plt.scatter(emu_1, emu_2, c=emu_z, s=1, vmin=zmin, vmax=zmax)
+    #     plt.scatter(call_1, call_2, c=zs, s=50, vmin=zmin, vmax=zmax)
+    #     cbar = plt.colorbar()
+    #     cbar.set_label("Redshift", labelpad=+1)
+    #     plt.xlabel(param_1)
+    #     plt.ylabel(param_2)
+    #     plt.show()
 
-        return
+    #     return
 
     def plot_igm(self, cloud=False, free_params=None):
         """Plot IGM histories"""
