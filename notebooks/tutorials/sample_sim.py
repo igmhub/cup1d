@@ -77,11 +77,11 @@ emulator = set_emulator(
 # #### Set either mock data or real data
 
 # %%
-forecast = False
-mock = False
-data = True
+choose_forecast = True
+choose_mock = False
+choose_data = False
 
-if forecast:
+if choose_forecast:
     # for forecast, just start label of observational data with mock
     args.data_label = "mock_Chabanier2019"
     # args.data_label="mock_Karacayli2024"
@@ -98,7 +98,7 @@ if forecast:
     args.true_HCD=[0, -6]
     # from -5 to 2
     args.true_SN=[0, -4]
-elif mock:
+elif choose_mock:
     # to analyze data from simulations
     args.data_label = "mpg_central"    
     # args.data_label="nyx_central"
@@ -107,7 +107,6 @@ elif mock:
 
     # provide cosmology only to cull the data
     args.true_cosmo_label="mpg_central"
-    true_cosmo = set_cosmo(cosmo_label=args.true_cosmo_label)
     
     # you need to provide contaminants
     # from -11 to -4
@@ -117,42 +116,29 @@ elif mock:
     args.true_HCD=[0, -6]
     # from -5 to 2
     args.true_SN=[0, -4]
-elif data:
+elif choose_data:
     args.data_label = "Chabanier2019"
     # args.data_label="Karacayli2024"
     args.data_label_hires = "Karacayli2022"
     args.z_max = 3.9
 
+# you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
 data["P1Ds"] = set_P1D(
-    archive,
-    emulator,
     args.data_label,
-    true_cosmo,
     args,
+    archive=archive,
+    emulator=emulator,
+    cull_data=False
 )
 if args.data_label_hires is not None:
     data["extra_P1Ds"] = set_P1D(
-        archive,
-        emulator,
         args.data_label_hires,
-        true_cosmo,
         args,
+        archive=archive,
+        emulator=emulator,
+        cull_data=False
     )
-    # true_sim_igm=args.true_igm_label,
-    # cov_label=args.cov_label,
-    # z_min=args.z_min,
-    # z_max=args.z_max,
-    # true_SiII=args.true_SiII,
-    # true_SiIII=args.true_SiIII,
-    # true_HCD=args.true_HCD,
-    # true_SN=args.true_SN,
-
-
-# %% [markdown]
-# ### Set P1D data
-
-# %%
 
 # %%
 data["P1Ds"].plot_p1d()
@@ -160,36 +146,33 @@ if args.data_label_hires is not None:
     data["extra_P1Ds"].plot_p1d()
 
 # %%
-data["P1Ds"].plot_igm()
-
-# %%
-data["P1Ds"].truth
+if choose_data == False:
+    data["P1Ds"].plot_igm()
 
 # %% [markdown]
 # #### Set fiducial/initial options for the fit
 
 # %%
+# cosmology
 args.fid_cosmo_label="mpg_central"
 # args.fid_cosmo_label="Planck18"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
+# IGM
 args.fid_igm_label="mpg_central"
 # args.fid_igm_label="nyx_central"
+if choose_data == False:
+    args.igm_priors = "hc"
+else:
+    args.type_priors = "data"
 
-# %% [markdown]
-# ### Set likelihood parameters that we will vary
-
-# %%
-arguments to likelihood, implement
-
-
-# %%
-
+# contaminants
 args.fid_SN=[0, -4]
 args.fid_HCD=[0, -6]
 args.fid_SiIII=[0, -5]
 args.fid_SiII=[0, -10]
 
+# parameters
 args.vary_alphas=False
 args.fix_cosmo=True
 args.n_tau=2
@@ -201,8 +184,6 @@ args.n_SiII = 1
 args.n_dla=0
 args.n_sn=0
 
-args.igm_priors = "hc"
-# args.type_priors = "data"
 
 free_parameters = set_free_like_parameters(args)
 free_parameters
@@ -221,24 +202,19 @@ like = set_like(
 )
 
 # %% [markdown]
-# Plot residual between P1D data and emulator for fiducial cosmology (should be the same in this case)
+# Compare data and fiducial/starting model
 
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
 like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
 
-# %%
-free_parameters
-
 # %% [markdown]
-# Priors for sampling parameters
+# Sampling parameters
 
 # %%
 for p in like.free_params:
     print(p.name, p.value, p.min_value, p.max_value)
 
-
-# %%
 
 # %% [markdown]
 # ### Set fitter
@@ -282,6 +258,10 @@ if run_sampler:
 # ### Run minimizer
 
 # %%
+like.truth["like_params_cube"]
+# add contaminants
+
+# %%
 # %%time
 if like.truth is None:
     # p0 = np.zeros(len(like.free_params)) + 0.5
@@ -290,6 +270,9 @@ else:
     p0 = np.array(list(like.truth["like_params_cube"].values()))*1.01
 fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=_get_chi2, nsamples=16)
+
+# %%
+len(fitter.like.free_params)
 
 # %%
 # no cosmo (w/o DLA and SN, metals=1) 894.451257059197

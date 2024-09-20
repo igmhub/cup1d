@@ -74,25 +74,7 @@ def set_archive(training_set):
     return archive
 
 
-def set_P1D(
-    archive,
-    emulator,
-    data_label,
-    true_cosmo,
-    true_sim_igm=None,
-    cov_label=None,
-    apply_smoothing=False,
-    z_min=0,
-    z_max=10,
-    add_noise=False,
-    seed_noise=0,
-    fprint=print,
-    cull_data=False,
-    true_SiII=-10,
-    true_SiIII=-10,
-    true_HCD=-6,
-    true_SN=-10,
-):
+def set_P1D(data_label, args, archive=None, emulator=None, cull_data=False):
     """Set P1D data
 
     Parameters
@@ -152,69 +134,88 @@ def set_P1D(
             set_p1d_from_mock = data_nyx.Nyx_P1D
 
         data = set_p1d_from_mock(
-            z_min=z_min,
-            z_max=z_max,
-            testing_data=p1d_ideal,
             input_sim=data_label,
-            data_cov_label=cov_label,
+            testing_data=p1d_ideal,
+            data_cov_label=args.cov_label,
             emulator=emulator,
-            apply_smoothing=apply_smoothing,
-            add_noise=add_noise,
-            seed=seed_noise,
-            true_SiII=true_SiII,
-            true_SiIII=true_SiIII,
-            true_HCD=true_HCD,
-            true_SN=true_SN,
+            apply_smoothing=args.apply_smoothing,
+            add_noise=args.add_noise,
+            seed=args.seed_noise,
+            true_SiII=args.true_SiII,
+            true_SiIII=args.true_SiIII,
+            true_HCD=args.true_HCD,
+            true_SN=args.true_SN,
+            z_min=args.z_min,
+            z_max=args.z_max,
         )
     elif data_label[:5] == "mock_":
+        true_cosmo = set_cosmo(cosmo_label=args.true_cosmo_label)
         # mock data from emulator
         data = mock_data.Mock_P1D(
             emulator,
             data_label=data_label[5:],
-            true_sim_igm=true_sim_igm,
-            true_SiII=true_SiII,
-            true_SiIII=true_SiIII,
-            true_HCD=true_HCD,
-            true_SN=true_SN,
-            z_min=z_min,
-            z_max=z_max,
-            add_noise=add_noise,
-            seed=seed_noise,
             true_cosmo=true_cosmo,
+            true_sim_igm=args.true_igm_label,
+            true_SiII=args.true_SiII,
+            true_SiIII=args.true_SiIII,
+            true_HCD=args.true_HCD,
+            true_SN=args.true_SN,
+            add_noise=args.add_noise,
+            seed=args.seed_noise,
+            z_min=args.z_min,
+            z_max=args.z_max,
         )
     elif data_label == "eBOSS_mock":
         # need to be tested
         data = data_eBOSS_mock.P1D_eBOSS_mock(
-            z_min=z_min,
-            z_max=z_max,
             emulator=emulator,
-            apply_smoothing=apply_smoothing,
-            add_noise=add_noise,
-            seed=seed_noise,
+            apply_smoothing=args.apply_smoothing,
+            true_SiII=args.true_SiII,
+            true_SiIII=args.true_SiIII,
+            true_HCD=args.true_HCD,
+            true_SN=args.true_SN,
+            add_noise=args.add_noise,
+            seed=args.seed_noise,
+            z_min=args.z_min,
+            z_max=args.z_max,
         )
     elif data_label == "Chabanier2019":
-        data = data_Chabanier2019.P1D_Chabanier2019(z_min=z_min, z_max=z_max)
+        data = data_Chabanier2019.P1D_Chabanier2019(
+            z_min=args.z_min, z_max=args.z_max
+        )
     elif data_label == "Ravoux2023":
-        data = data_Ravoux2023.P1D_Ravoux2023(z_min=z_min, z_max=z_max)
+        data = data_Ravoux2023.P1D_Ravoux2023(
+            z_min=args.z_min, z_max=args.z_max
+        )
     elif data_label == "Karacayli2024":
-        data = data_Karacayli2024.P1D_Karacayli2024(z_min=z_min, z_max=z_max)
+        data = data_Karacayli2024.P1D_Karacayli2024(
+            z_min=args.z_min, z_max=args.z_max
+        )
     elif data_label == "Karacayli2022":
-        data = data_Karacayli2022.P1D_Karacayli2022(z_min=z_min, z_max=z_max)
+        data = data_Karacayli2022.P1D_Karacayli2022(
+            z_min=args.z_min, z_max=args.z_max
+        )
     elif data_label == "challenge_v0":
         file = (
             os.environ["CHALLENGE_PATH"]
             + "fiducial_lym1d_p1d_qmleformat_IC.txt"
         )
         data = data_QMLE_Ohio.P1D_QMLE_Ohio(
-            filename=file, z_min=z_min, z_max=z_max
+            filename=file, z_min=args.z_min, z_max=args.z_max
         )
     else:
         raise ValueError(f"data_label {data_label} not implemented")
 
+    # cull data within emulator range
     if cull_data:
-        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(true_cosmo, z=np.min(data.z))
+        if args.true_cosmo_label is not None:
+            cosmo = set_cosmo(cosmo_label=args.true_cosmo_label)
+        else:
+            cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
+
+        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo, z=np.min(data.z))
         kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
-        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(true_cosmo, z=np.max(data.z))
+        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo, z=np.max(data.z))
         kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
         data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
 
