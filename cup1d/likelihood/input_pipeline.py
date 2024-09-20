@@ -334,20 +334,25 @@ class Args:
         z_max=4.5,
         fid_igm_label="mpg_central",
         true_igm_label="mpg_central",
-        n_igm=2,
-        n_metals=0,
+        n_tau=2,
+        n_sigT=2,
+        n_gamma=2,
+        n_kF=2,
+        n_SiIII=2,
+        n_SiII=1,
         n_dla=0,
         n_sn=0,
+        igm_priors="hc",
         fid_cosmo_label="mpg_central",
         true_cosmo_label="mpg_central",
-        fid_SiIII=-10,
-        true_SiIII=-10,
-        fid_SiII=-10,
-        true_SiII=-10,
-        fid_HCD=-6,
-        true_HCD=-6,
-        fid_SN=-5,
-        true_SN=-5,
+        fid_SiIII=[0, -10],
+        true_SiIII=[0, -10],
+        fid_SiII=[0, -10],
+        true_SiII=[0, -10],
+        fid_HCD=[0, -6],
+        true_HCD=[0, -6],
+        fid_SN=[0, -5],
+        true_SN=[0, -5],
         drop_sim=False,
         apply_smoothing=None,
         cov_label="Chabanier2019",
@@ -376,10 +381,15 @@ class Args:
         self.z_max = z_max
         self.true_igm_label = true_igm_label
         self.fid_igm_label = fid_igm_label
-        self.n_igm = n_igm
-        self.n_metals = n_metals
+        self.n_tau = n_tau
+        self.n_sigT = n_sigT
+        self.n_gamma = n_gamma
+        self.n_kF = n_kF
+        self.n_SiIII = n_SiIII
+        self.n_SiII = n_SiII
         self.n_dla = n_dla
         self.n_sn = n_sn
+        self.igm_priors = igm_priors
         self.fid_SiIII = fid_SiIII
         self.true_SiIII = true_SiIII
         self.fid_SiII = fid_SiII
@@ -408,41 +418,24 @@ class Args:
         self.n_burn_in = n_burn_in
         self.n_steps = n_steps
 
-        self.par2save = [
-            "emulator_label",
-            "data_label",
-            "data_label_hires",
-            "z_min",
-            "z_max",
-            "fid_igm_label",
-            "true_igm_label",
-            "n_igm",
-            "n_metals",
-            "n_dla",
-            "n_sn",
-            "fid_SiIII",
-            "true_SiIII",
-            "fid_SiII",
-            "true_SiII",
-            "fid_HCD",
-            "true_HCD",
-            "fid_SN",
-            "true_SN",
-            "fid_cosmo_label",
-            "true_cosmo_label",
-            "drop_sim",
-            "apply_smoothing",
-            "add_noise",
-            "fix_cosmo",
-            "cov_label",
-            "cov_label_hires",
-        ]
+    #     self.par2save = [
+    #         "emulator_label",
+    #         "data_label",
+    #         "data_label_hires",
+    #         "z_min",
+    #         "z_max",
+    #         "fid_igm_label",
+    #         "true_igm_label",
+    #         "fix_cosmo",
+    #         "cov_label",
+    #         "cov_label_hires",
+    #     ]
 
-    def save(self):
-        out = {}
-        for par in self.par2save:
-            out[par] = getattr(self, par)
-        return out
+    # def save(self):
+    #     out = {}
+    #     for par in self.par2save:
+    #         out[par] = getattr(self, par)
+    #     return out
 
     def check_emulator_label(self):
         avail_emulator_label = [

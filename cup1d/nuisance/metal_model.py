@@ -12,7 +12,7 @@ class MetalModel(object):
         lambda_rest=None,
         z_X=3.0,
         ln_X_coeff=None,
-        fid_value=-10,
+        fid_value=[0, -10],
         null_value=-10,
         free_param_names=None,
     ):
@@ -52,7 +52,9 @@ class MetalModel(object):
                 n_X = 1
             # start with value from McDonald et al. (2006), and no z evolution
             self.ln_X_coeff = [0.0] * n_X
-            self.ln_X_coeff[-1] = fid_value
+            self.ln_X_coeff[-1] = fid_value[-1]
+            if n_X == 2:
+                self.ln_X_coeff[-2] = fid_value[-2]
 
         # store list of likelihood parameters (might be fixed or free)
         self.set_parameters()
@@ -78,8 +80,8 @@ class MetalModel(object):
                 xmax = -4
             else:
                 # not optimized
-                xmin = -5
-                xmax = 5
+                xmin = -10
+                xmax = 10
             # note non-trivial order in coefficients
             value = self.ln_X_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(

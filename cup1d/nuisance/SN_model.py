@@ -10,7 +10,7 @@ class SN_Model(object):
     def __init__(
         self,
         z_0=3.0,
-        fid_value=-4,
+        fid_value=[0, -4],
         null_value=-4,
         ln_SN_coeff=None,
         free_param_names=None,
@@ -31,7 +31,9 @@ class SN_Model(object):
                 n_SN = 1
 
             self.ln_SN_coeff = [0.0] * n_SN
-            self.ln_SN_coeff[-1] = fid_value
+            self.ln_SN_coeff[-1] = fid_value[-1]
+            if n_SN == 2:
+                self.ln_SN_coeff[-2] = fid_value[-2]
 
         self.set_parameters()
 

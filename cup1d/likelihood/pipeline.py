@@ -26,6 +26,7 @@ from cup1d.likelihood.model_igm import IGM
 
 
 def set_free_like_parameters(params):
+    """Set free parameters for likelihood"""
     if params.fix_cosmo:
         free_parameters = []
     else:
@@ -34,11 +35,17 @@ def set_free_like_parameters(params):
         else:
             free_parameters = ["As", "ns"]
 
-    for ii in range(params.n_igm):
-        for par in ["tau", "sigT_kms", "gamma", "kF"]:
-            free_parameters.append(f"ln_{par}_{ii}")
-    for ii in range(params.n_metals):
+    for ii in range(params.n_tau):
+        free_parameters.append(f"ln_tau_{ii}")
+    for ii in range(params.n_sigT):
+        free_parameters.append(f"ln_sigT_kms_{ii}")
+    for ii in range(params.n_gamma):
+        free_parameters.append(f"ln_gamma_{ii}")
+    for ii in range(params.n_kF):
+        free_parameters.append(f"ln_kF_{ii}")
+    for ii in range(params.n_SiIII):
         free_parameters.append(f"ln_SiIII_{ii}")
+    for ii in range(params.n_SiII):
         free_parameters.append(f"ln_SiII_{ii}")
     for ii in range(params.n_dla):
         free_parameters.append(f"ln_A_damp_{ii}")
@@ -268,23 +275,7 @@ def set_cosmo(cosmo_label="mpg_central", return_all=False):
         return cosmo
 
 
-def set_like(
-    emulator,
-    data,
-    data_hires,
-    fid_igm_label,
-    free_parameters,
-    fid_cosmo,
-    fix_cosmo=False,
-    vary_alphas=False,
-    fid_SiIII=-10,
-    fid_SiII=-10,
-    fid_HCD=-6,
-    fid_SN=-10,
-    fprint=print,
-    prior_Gauss_rms=None,
-    emu_cov_factor=0,
-):
+def set_like(data, emulator, fid_cosmo, free_parameters, args, data_hires=None):
     ## set theory
     if data_hires is not None:
         zs_hires = data_hires.z
@@ -294,14 +285,16 @@ def set_like(
     model_igm = IGM(
         data.z,
         free_param_names=free_parameters,
-        fid_sim_igm=fid_igm_label,
+        fid_sim_igm=args.fid_igm_label,
+        list_sim_cube=emulator.list_sim_cube,
+        type_priors=args.igm_priors,
     )
     model_cont = Contaminants(
         free_param_names=free_parameters,
-        fid_SiIII=fid_SiIII,
-        fid_SiII=fid_SiII,
-        fid_HCD=fid_HCD,
-        fid_SN=fid_SN,
+        fid_SiIII=args.fid_SiIII,
+        fid_SiII=args.fid_SiII,
+        fid_HCD=args.fid_HCD,
+        fid_SN=args.fid_SN,
     )
     theory = lya_theory.Theory(
         zs=data.z,
@@ -318,8 +311,8 @@ def set_like(
         theory,
         extra_data=data_hires,
         free_param_names=free_parameters,
-        prior_Gauss_rms=prior_Gauss_rms,
-        emu_cov_factor=emu_cov_factor,
+        prior_Gauss_rms=args.prior_Gauss_rms,
+        emu_cov_factor=args.emu_cov_factor,
     )
 
     return like

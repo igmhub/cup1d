@@ -205,12 +205,20 @@ class Likelihood(object):
                     "linP"
                 ][pname2[par.name]]
             else:
-                self.truth["like_params"][par.name] = self.truth["cont"][
-                    par.name
-                ]
-                self.truth["like_params_cube"][
-                    par.name
-                ] = par.get_value_in_cube(self.truth["like_params"][par.name])
+                continue
+                # need to be fixed, [] for fiducial cont _0, should go each to 0, 1
+                if par.name in self.truth["cont"]:
+                    val = self.truth["cont"][par.name]
+                else:
+                    val = 0
+                self.truth["like_params"][par.name] = val
+                nn = len(self.truth["like_params"][par.name])
+                _par = np.zeros(nn)
+                for ii in range(nn):
+                    _par[ii] = par.get_value_in_cube(
+                        self.truth["like_params"][par.name][ii]
+                    )
+                self.truth["like_params_cube"][par.name] = _par
 
     def set_fid(self, z_star=3.0, kp_kms=0.009):
         """Store fiducial cosmology assumed for the fit"""
