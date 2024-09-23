@@ -896,14 +896,22 @@ class Likelihood(object):
 
             if cloud:
                 for sim_label in all_emu_igm:
-                    if "reio" not in sim_label:
-                        _ = all_emu_igm[sim_label][arr_labs[ii]] != 0
+                    _ = np.argwhere(all_emu_igm[sim_label][arr_labs[ii]] != 0)[
+                        :, 0
+                    ]
+                    if len(_) > 0:
                         ax[ii].plot(
                             all_emu_igm[sim_label]["z"][_],
                             all_emu_igm[sim_label][arr_labs[ii]][_],
                             color="black",
-                            alpha=0.2,
+                            alpha=0.1,
                         )
+                    if arr_labs[ii] == "gamma":
+                        if np.any(all_emu_igm[sim_label][arr_labs[ii]] > 2):
+                            print(sim_label)
+                            print(all_emu_igm[sim_label]["z"])
+                            print(all_emu_igm[sim_label][arr_labs[ii]])
+                            break
 
             ax[ii].set_ylabel(latex_labs[ii])
             if ii == 0:

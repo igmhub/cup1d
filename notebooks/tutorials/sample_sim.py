@@ -73,19 +73,34 @@ emulator = set_emulator(
     archive=archive,
 )
 
-if emulator_label == "Nyx_alphap":
+if emulator.emulator_label == "Nyx_alphap":
     emulator.list_sim_cube = archive.list_sim_cube
     emulator.list_sim_cube.remove("nyx_14")
 else:
     emulator.list_sim_cube = archive.list_sim_cube
 
+# %%
+# for ii, sim in enumerate(emulator.training_data):
+#     if(sim["sim_label"] == "nyx_13"):
+#         if(sim["z"] == 2.2):
+#             print(sim["sim_label"], sim["ind_rescaling"], sim["val_scaling"], sim["mF"])
+            
+
+# %%
+# import numpy as np
+# fil = "/home/jchaves/Proyectos/projects/lya/data/nyx/IGM_histories.npy"
+# res = np.load(fil, allow_pickle=True).item()
+
+# %%
+# res.keys()
+
 # %% [markdown]
 # #### Set either mock data or real data
 
 # %%
-choose_forecast = False
+choose_forecast = True
 choose_mock = False
-choose_data = True
+choose_data = False
 
 if choose_forecast:
     # for forecast, just start label of observational data with mock
@@ -93,7 +108,7 @@ if choose_forecast:
     # args.data_label="mock_Karacayli2024"
     args.data_label_hires = "mock_Karacayli2022"
 
-    # you need to provide true cosmology, IGM history, contaminants
+    # you need to provide true cosmology, IGM history, and contaminants
     # args.true_cosmo_label="mpg_central"
     args.true_cosmo_label="nyx_central"
     true_cosmo = set_cosmo(cosmo_label=args.true_cosmo_label)
@@ -277,7 +292,7 @@ if like.truth is None:
     # p0 = np.zeros(len(like.free_params)) + 0.5
     p0 = np.array(list(like.fid["fit_cube"].values()))
 else:
-    p0 = np.array(list(like.truth["like_params_cube"].values()))*1.
+    p0 = np.array(list(like.truth["like_params_cube"].values()))*1.05
 fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=_get_chi2, nsamples=16)
 
@@ -289,6 +304,70 @@ fitter.plot_p1d(residuals=True, plot_every_iz=2)
 
 # %%
 fitter.plot_igm(cloud=True)
+
+# %%
+nyx_0_3
+
+# %%
+read nyx
+
+# %%
+import h5py
+
+# %%
+nyx_file = "/home/jchaves/Proyectos/projects/lya/data/nyx/models_Nyx_Oct2023.hdf5"
+ff = h5py.File(nyx_file, "r")
+
+# %%
+sim_avail = list(ff.keys())
+sim_avail
+
+# %%
+
+# %%
+zkeys = list(ff["cosmo_grid_0"].keys())
+
+snap = ff["cosmo_grid_0"][zkeys[0]]
+list_scalings = list(snap.keys())
+
+z = np.zeros((len(list_scalings), len(zkeys)))
+fbar = np.zeros((len(list_scalings), len(zkeys)))
+
+for ii in range(len(list_scalings)):
+    for jj in range(len(zkeys)):
+        z[ii, jj] = float(zkeys[jj][-3:])
+        snap = ff["cosmo_grid_0"][zkeys[jj]]
+        if list_scalings[ii] in snap:
+            if "T_0" in snap[list_scalings[ii]].attrs.keys():
+                fbar[ii, jj] = snap[list_scalings[ii]].attrs["T_0"]            
+            else:
+                print(list_scalings[ii], zkeys[jj]) 
+    
+
+# %%
+for ii in range(len(list_scalings)):
+    if "new" in list_scalings[ii]:
+        col = "red"
+    elif "native" in list_scalings[ii]:
+        col = "k"
+    else:
+        col = "C1"
+    _ = np.argwhere(fbar[ii, :] != 0)[:,0]
+    if(len(_) > 0):
+        plt.plot(z[ii, _], fbar[ii, _], col, label=list_scalings[ii], alpha=0.75)
+# plt.legend()
+plt.xlabel("z")
+plt.ylabel("T_0")
+plt.savefig("nyx_T0.pdf")
+# plt.ylabel("gamma")
+# plt.savefig("nyx_gamma.pdf")
+
+# %%
+# ff["cosmo_grid_0"][zkeys[0]]
+zkeys[0]
+
+# %%
+like.plot_igm(cloud=True)
 
 # %%
 one redshift at a time, fixed cosmo

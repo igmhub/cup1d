@@ -106,23 +106,21 @@ class IGM(object):
                 + sim_igm[:3]
                 + "_IGM.py"
             )
+
+        if return_all:
+            return igm_hist
         else:
             if sim_igm not in igm_hist:
                 raise ValueError(
                     sim_igm
-                    + " not found in "
+                    + " string_split found in "
                     + fname
                     + r"\n Check out the LaCE script save_"
                     + sim_igm[:3]
                     + "_IGM.py"
                 )
             else:
-                fid_igm = igm_hist[sim_igm]
-
-        if return_all:
-            return igm_hist
-        else:
-            return fid_igm
+                return igm_hist[sim_igm]
 
     def set_priors(self, fid_igm, list_sim_cube, type_priors="hc"):
         """Set priors for all IGM models"""
@@ -140,25 +138,36 @@ class IGM(object):
         for par in fid_igm:
             if par == "z":
                 continue
-
-            res_div = np.zeros((len(list_sim_cube), 2))
-            for ii, sim in enumerate(list_sim_cube):
-                print(par, sim)
-                print(all_igm[sim][par])
-                print(fid_igm[par])
+            res_div = np.zeros((len(all_igm), 2))
+            for ii, sim in enumerate(all_igm):
+                string_split = sim.split("_")
+                sim_label = string_split[0] + "_" + string_split[1]
+                if sim_label not in list_sim_cube:
+                    continue
+                _ = np.argwhere((fid_igm[par] != 0) & (all_igm[sim][par] != 0))[
+                    :, 0
+                ]
+                if len(_) == 0:
+                    continue
                 res_div[ii, 0] = np.abs(
-                    np.nanmax(all_igm[sim][par] / fid_igm[par])
+                    np.max(all_igm[sim][par][_] / fid_igm[par][_])
                 )
                 res_div[ii, 1] = np.abs(
-                    np.nanmin(all_igm[sim][par] / fid_igm[par])
+                    np.min(all_igm[sim][par][_] / fid_igm[par][_])
                 )
-            y0_max = np.abs(np.log(np.nanpercentile(res_div[:, 0], percent)))
-            y0_min = np.abs(
-                np.log(np.nanpercentile(1 / res_div[:, 1], percent))
-            )
+
+            _ = np.argwhere(np.isfinite(res_div[:, 0]) & (res_div[:, 0] != 0))[
+                :, 0
+            ]
+            y0_max = np.abs(np.log(np.percentile(res_div[_, 0], percent)))
+            _ = np.argwhere(np.isfinite(res_div[:, 1]) & (res_div[:, 1] != 0))[
+                :, 0
+            ]
+            y0_min = np.abs(np.log(np.percentile(1 / res_div[_, 1], percent)))
             y0_cen = 0.5 * (y0_max + y0_min)
             y1 = y0_cen / np.log((1 + fid_igm["z"].max()) / (1 + self.z_pivot))
             self.priors[par] = [[-y1, y1], [-y0_min * 1.05, y0_max * 1.05]]
+            print(par, self.priors[par])
 
         # self.shift = {}
         # # adjust prior to fiducial IGM history
