@@ -205,20 +205,12 @@ class Likelihood(object):
                     "linP"
                 ][pname2[par.name]]
             else:
-                continue
-                # need to be fixed, [] for fiducial cont _0, should go each to 0, 1
-                if par.name in self.truth["cont"]:
-                    val = self.truth["cont"][par.name]
-                else:
-                    val = 0
-                self.truth["like_params"][par.name] = val
-                nn = len(self.truth["like_params"][par.name])
-                _par = np.zeros(nn)
-                for ii in range(nn):
-                    _par[ii] = par.get_value_in_cube(
-                        self.truth["like_params"][par.name][ii]
-                    )
-                self.truth["like_params_cube"][par.name] = _par
+                self.truth["like_params"][par.name] = self.truth["cont"][
+                    par.name
+                ]
+                self.truth["like_params_cube"][
+                    par.name
+                ] = par.get_value_in_cube(self.truth["cont"][par.name])
 
     def set_fid(self, z_star=3.0, kp_kms=0.009):
         """Store fiducial cosmology assumed for the fit"""
@@ -510,27 +502,8 @@ class Likelihood(object):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
 
-        # get measured bins from data
-        Nz = len(self.data.z)
-        k_emu_kms = np.zeros((Nz, sampling_p1d))
-        for iz in range(Nz):
-            k_emu_kms[iz] = np.logspace(
-                np.log10(min(self.data.k_kms[iz])),
-                np.log10(max(self.data.k_kms[iz])),
-                sampling_p1d,
-            )
-        if self.extra_data is not None:
-            Nz = len(self.extra_data.z)
-            k_emu_kms_extra = np.zeros((Nz, sampling_p1d))
-            for iz in range(Nz):
-                k_emu_kms_extra[iz] = np.logspace(
-                    np.log10(min(self.extra_data.k_kms[iz])),
-                    np.log10(max(self.extra_data.k_kms[iz])),
-                    sampling_p1d,
-                )
-
         _res = self.get_p1d_kms(
-            self.data.z, k_emu_kms, values, return_covar=return_covar
+            self.data.z, self.data.k_kms, values, return_covar=return_covar
         )
         if return_covar:
             emu_p1d, emu_cov = _res
@@ -539,7 +512,7 @@ class Likelihood(object):
         if self.extra_data is not None:
             _res = self.get_p1d_kms(
                 self.extra_data.z,
-                k_emu_kms_extra,
+                self.extra_data.k_kms,
                 values,
                 return_covar=return_covar,
             )
@@ -549,10 +522,6 @@ class Likelihood(object):
                 emu_p1d_extra = _res
 
         chi2, chi2_all = self.get_chi2(values=values, return_all=True)
-
-        # figure out y range for plot
-        ymin = 1e10
-        ymax = -1e10
 
         if rand_posterior is not None:
             Nz = len(self.data.z)
@@ -582,6 +551,10 @@ class Likelihood(object):
             fig, ax = plt.subplots(2, 1, figsize=(8, 8))
             length = 2
 
+        # figure out y range for plot
+        ymin = 1e10
+        ymax = -1e10
+
         # print chi2
         ndeg = 0
         for iz in range(len(self.data.k_kms)):
@@ -606,7 +579,6 @@ class Likelihood(object):
             if ii == 0:
                 data = self.data
                 emu_p1d_use = emu_p1d
-                k_emu_kms_use = k_emu_kms
                 if return_covar:
                     emu_cov_use = emu_cov
                 if rand_posterior is not None:
@@ -614,21 +586,21 @@ class Likelihood(object):
             else:
                 data = self.extra_data
                 emu_p1d_use = emu_p1d_extra
-                k_emu_kms_use = k_emu_kms_extra
                 if return_covar:
                     emu_cov_use = emu_cov_extra
                 if rand_posterior is not None:
                     err_posterior_use = err_posterior_extra
+
             zs = data.z
-            k_kms = data.k_kms
             Nz = len(zs)
 
             # plot only few redshifts for clarity
             for iz in range(0, Nz, plot_every_iz):
                 # access data for this redshift
                 z = zs[iz]
-                p1d_data = data.get_Pk_iz(iz)
-                p1d_cov = data.get_cov_iz(iz)
+                k_kms = data.k_kms[iz]
+                p1d_data = data.Pk_kms[iz]
+                p1d_cov = data.cov_Pk_kms[iz]
                 p1d_err = np.sqrt(np.diag(p1d_cov))
                 p1d_theory = emu_p1d_use[iz]
                 if rand_posterior is None:
@@ -638,10 +610,6 @@ class Likelihood(object):
                 else:
                     err_theory = err_posterior_use[iz]
 
-                if p1d_theory is None:
-                    if self.verbose:
-                        print(z, "emulator did not provide P1D")
-                    continue
                 # plot everything
                 if Nz > 1:
                     col = plt.cm.jet(iz / (Nz - 1))
@@ -651,21 +619,19 @@ class Likelihood(object):
                     yshift = 0
 
                 if residuals:
-                    # interpolate theory to data kp values
-                    model = np.interp(k_kms[iz], k_emu_kms_use[iz], p1d_theory)
                     # shift data in y axis for clarity
                     ax[ii].errorbar(
-                        k_kms[iz],
-                        p1d_data / model + yshift,
+                        k_kms,
+                        p1d_data / p1d_theory + yshift,
                         color=col,
-                        yerr=p1d_err / model,
+                        yerr=p1d_err / p1d_theory,
                         fmt="o",
                         ms="4",
                         label="z=" + str(np.round(z, 2)),
                     )
 
                     # print chi2
-                    xpos = k_kms[iz][0]
+                    xpos = k_kms[0]
                     ypos = 0.92 + yshift
                     ndeg = np.sum(p1d_data != 0)
                     prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg)
@@ -682,43 +648,37 @@ class Likelihood(object):
                         ax[ii].text(xpos, ypos, label, fontsize=12)
 
                     if print_ratio:
-                        print(p1d_data / model)
-                    ymin = min(ymin, min(p1d_data / model + yshift))
-                    ymax = max(ymax, max(p1d_data / model + yshift))
+                        print(p1d_data / p1d_theory)
+                    ymin = min(ymin, min(p1d_data / p1d_theory + yshift))
+                    ymax = max(ymax, max(p1d_data / p1d_theory + yshift))
                     ax[ii].plot(
-                        k_kms[iz],
-                        model / model + yshift,
+                        k_kms,
+                        p1d_theory / p1d_theory + yshift,
                         color=col,
                         linestyle="dashed",
                     )
                     if return_covar | (rand_posterior is not None):
-                        err_model = np.interp(
-                            k_kms[iz], k_emu_kms_use[iz], err_theory
-                        )
                         ax[ii].fill_between(
-                            k_kms[iz],
-                            (model + err_model) / model + yshift,
-                            (model - err_model) / model + yshift,
+                            k_kms,
+                            (p1d_theory + err_theory) / p1d_theory + yshift,
+                            (p1d_theory - err_theory) / p1d_theory + yshift,
                             alpha=0.35,
                             color=col,
                         )
                 else:
-                    _ = (k_emu_kms_use[iz] >= np.min(k_kms[iz]) * 0.9) & (
-                        k_emu_kms_use[iz] <= np.max(k_kms[iz]) * 1.1
-                    )
                     ax[ii].errorbar(
-                        k_kms[iz],
-                        p1d_data * k_kms[iz] / np.pi,
+                        k_kms,
+                        p1d_data * k_kms / np.pi,
                         color=col,
-                        yerr=p1d_err * k_kms[iz] / np.pi,
+                        yerr=p1d_err * k_kms / np.pi,
                         fmt="o",
                         ms="4",
                         label="z=" + str(np.round(z, 2)),
                     )
 
                     # print chi2
-                    xpos = k_kms[iz][-1] + 0.001
-                    ypos = (p1d_theory[_] * k_emu_kms_use[iz][_] / np.pi)[-1]
+                    xpos = k_kms[-1] + 0.001
+                    ypos = (p1d_theory * k_kms / np.pi)[-1]
                     ndeg = np.sum(p1d_data != 0)
                     prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg)
                     label = (
@@ -734,32 +694,24 @@ class Likelihood(object):
                         ax[ii].text(xpos, ypos, label, fontsize=8)
 
                     ax[ii].plot(
-                        k_emu_kms_use[iz][_],
-                        (p1d_theory[_] * k_emu_kms_use[iz][_]) / np.pi,
+                        k_kms,
+                        (p1d_theory * k_kms) / np.pi,
                         color=col,
                         linestyle="dashed",
                     )
                     if return_covar | (rand_posterior is not None):
                         ax[ii].fill_between(
-                            k_emu_kms_use[iz][_],
-                            (p1d_theory[_] + err_theory[_])
-                            * k_emu_kms_use[iz][_]
-                            / np.pi,
-                            (p1d_theory[_] - err_theory[_])
-                            * k_emu_kms_use[iz][_]
-                            / np.pi,
+                            k_kms,
+                            (p1d_theory + err_theory) * k_kms / np.pi,
+                            (p1d_theory - err_theory) * k_kms / np.pi,
                             alpha=0.35,
                             color=col,
                         )
-                    ymin = min(ymin, min(p1d_data * k_kms[iz] / np.pi))
-                    ymax = max(ymax, max(p1d_data * k_kms[iz] / np.pi))
+                    ymin = min(ymin, min(p1d_data * k_kms / np.pi))
+                    ymax = max(ymax, max(p1d_data * k_kms / np.pi))
 
-            ax[ii].plot(
-                k_emu_kms_use[iz][0], 1, linestyle="-", label="Data", color="k"
-            )
-            ax[ii].plot(
-                k_emu_kms_use[iz][0], 1, linestyle=":", label="Fit", color="k"
-            )
+            ax[ii].plot(k_kms[0], 1, linestyle="-", label="Data", color="k")
+            ax[ii].plot(k_kms[0], 1, linestyle=":", label="Fit", color="k")
             if residuals:
                 ax[ii].legend()
             else:
