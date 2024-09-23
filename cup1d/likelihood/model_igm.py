@@ -143,14 +143,19 @@ class IGM(object):
 
             res_div = np.zeros((len(list_sim_cube), 2))
             for ii, sim in enumerate(list_sim_cube):
+                print(par, sim)
+                print(all_igm[sim][par])
+                print(fid_igm[par])
                 res_div[ii, 0] = np.abs(
                     np.nanmax(all_igm[sim][par] / fid_igm[par])
                 )
                 res_div[ii, 1] = np.abs(
                     np.nanmin(all_igm[sim][par] / fid_igm[par])
                 )
-            y0_max = np.abs(np.log(np.percentile(res_div[:, 0], percent)))
-            y0_min = np.abs(np.log(np.percentile(1 / res_div[:, 1], percent)))
+            y0_max = np.abs(np.log(np.nanpercentile(res_div[:, 0], percent)))
+            y0_min = np.abs(
+                np.log(np.nanpercentile(1 / res_div[:, 1], percent))
+            )
             y0_cen = 0.5 * (y0_max + y0_min)
             y1 = y0_cen / np.log((1 + fid_igm["z"].max()) / (1 + self.z_pivot))
             self.priors[par] = [[-y1, y1], [-y0_min * 1.05, y0_max * 1.05]]

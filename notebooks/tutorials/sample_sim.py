@@ -63,8 +63,8 @@ from cup1d.likelihood.input_pipeline import Args
 output_dir = "."
 
 # args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
-args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-# args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
+# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
 
 archive = set_archive(args.training_set)
 
@@ -73,7 +73,11 @@ emulator = set_emulator(
     archive=archive,
 )
 
-emulator.list_sim_cube = archive.list_sim_cube
+if emulator_label == "Nyx_alphap":
+    emulator.list_sim_cube = archive.list_sim_cube
+    emulator.list_sim_cube.remove("nyx_14")
+else:
+    emulator.list_sim_cube = archive.list_sim_cube
 
 # %% [markdown]
 # #### Set either mock data or real data
@@ -90,9 +94,11 @@ if choose_forecast:
     args.data_label_hires = "mock_Karacayli2022"
 
     # you need to provide true cosmology, IGM history, contaminants
-    args.true_cosmo_label="mpg_central"
+    # args.true_cosmo_label="mpg_central"
+    args.true_cosmo_label="nyx_central"
     true_cosmo = set_cosmo(cosmo_label=args.true_cosmo_label)
-    args.true_igm_label="mpg_central"
+    # args.true_igm_label="mpg_central"
+    args.true_igm_label="nyx_central"
     # from -11 to -4
     args.true_SiIII=[0, -5]
     args.true_SiII=[0, -10]
@@ -102,13 +108,14 @@ if choose_forecast:
     args.true_SN=[0, -4]
 elif choose_mock:
     # to analyze data from simulations
-    args.data_label = "mpg_central"    
-    # args.data_label="nyx_central"
+    # args.data_label = "mpg_central"    
+    args.data_label="nyx_central"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
 
     # provide cosmology only to cull the data
-    args.true_cosmo_label="mpg_central"
+    # args.true_cosmo_label="mpg_central"
+    args.true_cosmo_label="nyx_central"
     
     # you need to provide contaminants
     # from -11 to -4
@@ -156,13 +163,14 @@ if choose_data == False:
 
 # %%
 # cosmology
-args.fid_cosmo_label="mpg_central"
+# args.fid_cosmo_label="mpg_central"
+args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="Planck18"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
-args.fid_igm_label="mpg_central"
-# args.fid_igm_label="nyx_central"
+# args.fid_igm_label="mpg_central"
+args.fid_igm_label="nyx_central"
 if choose_data == False:
     args.igm_priors = "hc"
 else:
@@ -202,6 +210,10 @@ like = set_like(
     args,
     data_hires=data["extra_P1Ds"]
 )
+
+# %%
+for p in like.free_params:
+    print(p.name, p.value, p.min_value, p.max_value)
 
 # %% [markdown]
 # Compare data and fiducial/starting model
