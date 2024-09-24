@@ -162,17 +162,10 @@ class Likelihood(object):
         for par in self.data.truth:
             self.truth[par] = self.data.truth[par]
 
-        equal_IGM = True
-        for par in self.data.truth["igm"]:
-            if (
-                np.allclose(
-                    self.data.truth["igm"][par],
-                    self.theory.model_igm.fid_igm[par],
-                )
-                == False
-            ):
-                equal_IGM = False
-                break
+        if self.data.truth["igm"]["label"] == self.theory.model_igm.fid_sim_igm:
+            equal_IGM = True
+        else:
+            equal_IGM = False
 
         self.truth["like_params"] = {}
         self.truth["like_params_cube"] = {}
@@ -873,6 +866,7 @@ class Likelihood(object):
                     pars_true["z"][_],
                     pars_true[arr_labs[ii]][_],
                     "o:",
+                    alpha=0.75,
                     label="true",
                 )
 
@@ -889,9 +883,10 @@ class Likelihood(object):
             ax[ii].plot(
                 pars_fid["z"][_],
                 pars_fid[arr_labs[ii]][_],
-                "s--",
+                "--",
                 label="fiducial",
-                alpha=0.5,
+                alpha=0.75,
+                lw=3,
             )
 
             if cloud:
@@ -900,18 +895,13 @@ class Likelihood(object):
                         :, 0
                     ]
                     if len(_) > 0:
-                        ax[ii].plot(
+                        ax[ii].scatter(
                             all_emu_igm[sim_label]["z"][_],
                             all_emu_igm[sim_label][arr_labs[ii]][_],
+                            marker=".",
                             color="black",
-                            alpha=0.1,
+                            alpha=0.05,
                         )
-                    if arr_labs[ii] == "gamma":
-                        if np.any(all_emu_igm[sim_label][arr_labs[ii]] > 2):
-                            print(sim_label)
-                            print(all_emu_igm[sim_label]["z"])
-                            print(all_emu_igm[sim_label][arr_labs[ii]])
-                            break
 
             ax[ii].set_ylabel(latex_labs[ii])
             if ii == 0:

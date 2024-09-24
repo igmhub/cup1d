@@ -122,7 +122,7 @@ class Mock_P1D(BaseMockP1D):
         # evaluate theory at k_kms, for all redshifts
         p1ds = theory.get_p1d_kms(zs, k_kms)
 
-        self.set_truth(theory, zs)
+        self.set_truth(theory, zs, true_sim_igm=true_sim_igm)
 
         for iz, z in enumerate(zs):
             Pk_kms[iz] = p1ds[iz]
@@ -138,7 +138,7 @@ class Mock_P1D(BaseMockP1D):
             z_max=z_max,
         )
 
-    def set_truth(self, theory, zs):
+    def set_truth(self, theory, zs, true_sim_igm=None):
         # setup fiducial cosmology
         self.truth = {}
 
@@ -160,6 +160,7 @@ class Mock_P1D(BaseMockP1D):
             self.truth["linP"][blob_params[ii]] = blob[blob_params[ii]]
 
         self.truth["igm"] = {}
+        self.truth["igm"]["label"] = true_sim_igm
         zs = np.array(zs)
         self.truth["igm"]["z"] = zs
         self.truth["igm"]["tau_eff"] = theory.model_igm.F_model.get_tau_eff(zs)

@@ -28,6 +28,15 @@ class IGM(object):
 
         # compute priors for this emulator
         if list_sim_cube is None:
+            default = True
+        # we use these if the fiducial IGM does not correspond to one of
+        # those used for training. We can fix this in the future
+        elif self.fid_sim_igm[:3] != list_sim_cube[0][:3]:
+            default = True
+        else:
+            default = False
+
+        if default:
             # default priors (hc for mpg)
             self.priors = {
                 "tau_eff": [
@@ -167,7 +176,6 @@ class IGM(object):
             y0_cen = 0.5 * (y0_max + y0_min)
             y1 = y0_cen / np.log((1 + fid_igm["z"].max()) / (1 + self.z_pivot))
             self.priors[par] = [[-y1, y1], [-y0_min * 1.05, y0_max * 1.05]]
-            print(par, self.priors[par])
 
         # self.shift = {}
         # # adjust prior to fiducial IGM history

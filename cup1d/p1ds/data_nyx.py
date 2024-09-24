@@ -12,6 +12,9 @@ from cup1d.p1ds import (
     data_QMLE_Ohio,
     data_Karacayli2022,
 )
+from cup1d.likelihood import lya_theory
+from cup1d.likelihood.model_contaminants import Contaminants
+from cup1d.likelihood.model_igm import IGM
 
 
 class Nyx_P1D(BaseMockP1D):
@@ -36,6 +39,7 @@ class Nyx_P1D(BaseMockP1D):
         true_SiII=-10,
         true_SiIII=-10,
         true_HCD=-6,
+        true_SN=-10,
         fprint=print,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
@@ -73,44 +77,37 @@ class Nyx_P1D(BaseMockP1D):
             dkms_dMpc.append(testing_data[ii]["dkms_dMpc"])
         self.dkms_dMpc = np.array(dkms_dMpc)
 
-        self._set_truth(
-            true_SiII=true_SiII, true_SiIII=true_SiIII, true_HCD=true_HCD
-        )
-
         # setup P1D using covariance and testing sim
-        z, k_kms, Pk_kms, cov = self._load_p1d()
+        zs, k_kms, Pk_kms, cov = self._load_p1d()
 
-        # include metal contamination
-        # we need mean flux for metal model
-        F_model = mean_flux_model.MeanFluxModel(fid_igm=self.truth["igm"])
-        SiIII_model = metal_model.MetalModel(
-            metal_label="SiIII",
-            fid_value=true_SiIII,
+        # setup theory
+        model_igm = IGM(np.array(zs), fid_sim_igm=input_sim)
+        model_cont = Contaminants(
+            fid_SiIII=true_SiIII,
+            fid_SiII=true_SiII,
+            fid_HCD=true_HCD,
+            fid_SN=true_SN,
         )
-        SiII_model = metal_model.MetalModel(
-            metal_label="SiII",
-            fid_value=true_SiII,
+        true_cosmo = self._get_cosmo()
+        theory = lya_theory.Theory(
+            zs=np.array(zs),
+            emulator=emulator,
+            fid_cosmo=true_cosmo,
+            model_igm=model_igm,
+            model_cont=model_cont,
         )
-        # include HCD contamination
-        hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
-            fid_value=true_HCD,
-        )
+        self.set_truth(theory, zs)
+
         # apply contaminants
         for iz, z in enumerate(zs):
-            mF = F_model.get_mean_flux(z)
-            cont_SiIII = SiIII_model.get_contamination(
-                z=z, k_kms=k_kms[iz], mF=mF
-            )
-            cont_SiII = SiII_model.get_contamination(
-                z=z, k_kms=k_kms[iz], mF=mF
-            )
-            cont_HCD = hcd_model.get_contamination(z=z, k_kms=k_kms[iz])
-            cont_total = cont_SiIII * cont_SiII * cont_HCD
+            mF = model_igm.F_model.get_mean_flux(z)
+            M_of_z = theory.cosmo_model_fid["M_of_zs"][iz]
+            cont_total = model_cont.get_contamination(z, k_kms[iz], mF, M_of_z)
             Pk_kms[iz] *= cont_total
 
         # setup base class
         super().__init__(
-            z,
+            zs,
             k_kms,
             Pk_kms,
             cov,
@@ -157,39 +154,52 @@ class Nyx_P1D(BaseMockP1D):
 
         return true_igm
 
-    def _set_truth(self, true_SiII=None, true_SiIII=None, true_HCD=None):
-        # get cosmology
-        sim_cosmo = self._get_cosmo()
-
-        cosmo_model = CAMB_model.CAMBModel(
-            zs=[self.z_star],
-            cosmo=sim_cosmo,
-            z_star=self.z_star,
-            kp_kms=self.kp_kms,
-        )
-
+    def set_truth(self, theory, zs):
+        # setup fiducial cosmology
         self.truth = {}
 
-        self.truth["ombh2"] = sim_cosmo.ombh2
-        self.truth["omch2"] = sim_cosmo.omch2
-        self.truth["As"] = sim_cosmo.InitPower.As
-        self.truth["ns"] = sim_cosmo.InitPower.ns
-        self.truth["nrun"] = sim_cosmo.InitPower.nrun
-        self.truth["H0"] = sim_cosmo.H0
-        self.truth["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
+        sim_cosmo = theory.cosmo_model_fid["cosmo"].cosmo
 
+        self.truth["cosmo"] = {}
+        self.truth["cosmo"]["ombh2"] = sim_cosmo.ombh2
+        self.truth["cosmo"]["omch2"] = sim_cosmo.omch2
+        self.truth["cosmo"]["As"] = sim_cosmo.InitPower.As
+        self.truth["cosmo"]["ns"] = sim_cosmo.InitPower.ns
+        self.truth["cosmo"]["nrun"] = sim_cosmo.InitPower.nrun
+        self.truth["cosmo"]["H0"] = sim_cosmo.H0
+        self.truth["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
+
+        self.truth["linP"] = {}
         blob_params = ["Delta2_star", "n_star", "alpha_star"]
-        blob = cosmo_model.get_linP_params()
+        blob = theory.cosmo_model_fid["cosmo"].get_linP_params()
         for ii in range(len(blob_params)):
-            self.truth[blob_params[ii]] = blob[blob_params[ii]]
+            self.truth["linP"][blob_params[ii]] = blob[blob_params[ii]]
 
-        true_igm = self._get_igm()
+        self.truth["igm"] = {}
+        zs = np.array(zs)
+        self.truth["igm"]["label"] = self.input_sim
+        self.truth["igm"]["z"] = zs
+        self.truth["igm"]["tau_eff"] = theory.model_igm.F_model.get_tau_eff(zs)
+        self.truth["igm"]["gamma"] = theory.model_igm.T_model.get_gamma(zs)
+        self.truth["igm"]["sigT_kms"] = theory.model_igm.T_model.get_sigT_kms(
+            zs
+        )
+        self.truth["igm"]["kF_kms"] = theory.model_igm.P_model.get_kF_kms(zs)
 
-        self.truth["igm"] = true_igm
-
-        self.truth["ln_SiIII_0"] = true_SiIII
-        self.truth["ln_SiII_0"] = true_SiII
-        self.truth["ln_A_damp_0"] = true_HCD
+        self.truth["cont"] = {}
+        for ii in range(2):
+            self.truth["cont"][
+                "ln_SiIII_" + str(ii)
+            ] = theory.model_cont.fid_SiIII[-1 - ii]
+            self.truth["cont"][
+                "ln_SiII_" + str(ii)
+            ] = theory.model_cont.fid_SiII[-1 - ii]
+            self.truth["cont"][
+                "ln_A_damp_" + str(ii)
+            ] = theory.model_cont.fid_HCD[-1 - ii]
+            self.truth["cont"]["ln_SN_" + str(ii)] = theory.model_cont.fid_SN[
+                -1 - ii
+            ]
 
     def _load_p1d(self):
         # figure out dataset to mimic

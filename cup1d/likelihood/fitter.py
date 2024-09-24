@@ -1494,9 +1494,9 @@ class Fitter(object):
                 ax[ii].plot(
                     pars_true["z"][_],
                     pars_true[arr_labs[ii]][_],
-                    "o",
+                    ":o",
                     label="true",
-                    alpha=0.5,
+                    alpha=0.75,
                 )
             _ = pars_fid[arr_labs[ii]] != 0
             ax[ii].plot(
@@ -1504,8 +1504,8 @@ class Fitter(object):
                 pars_fid[arr_labs[ii]][_],
                 "--",
                 label="fiducial",
-                lw=2,
-                alpha=0.5,
+                lw=3,
+                alpha=0.75,
             )
 
             _ = pars_best[arr_labs[ii]] != 0
@@ -1519,27 +1519,27 @@ class Fitter(object):
                     pars_best[arr_labs[ii]],
                     err,
                     label="best-fitting",
-                    alpha=0.5,
+                    alpha=0.75,
                 )
             else:
                 ax[ii].plot(
                     pars_best["z"][_],
                     pars_best[arr_labs[ii]][_],
                     label="fit",
-                    lw=2,
-                    alpha=0.5,
+                    lw=3,
+                    alpha=0.75,
                 )
 
             if cloud:
                 for sim_label in all_emu_igm:
-                    if "reio" not in sim_label:
-                        _ = all_emu_igm[sim_label][arr_labs[ii]] != 0
-                        ax[ii].plot(
-                            all_emu_igm[sim_label]["z"][_],
-                            all_emu_igm[sim_label][arr_labs[ii]][_],
-                            color="black",
-                            alpha=0.1,
-                        )
+                    _ = all_emu_igm[sim_label][arr_labs[ii]] != 0
+                    ax[ii].scatter(
+                        all_emu_igm[sim_label]["z"][_],
+                        all_emu_igm[sim_label][arr_labs[ii]][_],
+                        marker=".",
+                        color="black",
+                        alpha=0.05,
+                    )
 
             ax[ii].set_ylabel(latex_labs[ii])
             if ii == 0:

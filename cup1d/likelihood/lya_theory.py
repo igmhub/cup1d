@@ -299,7 +299,6 @@ class Theory(object):
                 _ = np.argwhere(self.cosmo_model_fid["zs"] == z)[0, 0]
                 M_of_zs.append(self.cosmo_model_fid["M_of_zs"][_])
             M_of_zs = np.array(M_of_zs)
-
             if return_blob:
                 blob = self.get_blob_fixed_background(like_params)
         else:

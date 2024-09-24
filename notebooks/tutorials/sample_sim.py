@@ -62,9 +62,10 @@ from cup1d.likelihood.input_pipeline import Args
 # set output directory for this test
 output_dir = "."
 
-# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
+# the nyx emulator has not properly been validated yet
+# args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
 
 archive = set_archive(args.training_set)
 
@@ -79,28 +80,13 @@ if emulator.emulator_label == "Nyx_alphap":
 else:
     emulator.list_sim_cube = archive.list_sim_cube
 
-# %%
-# for ii, sim in enumerate(emulator.training_data):
-#     if(sim["sim_label"] == "nyx_13"):
-#         if(sim["z"] == 2.2):
-#             print(sim["sim_label"], sim["ind_rescaling"], sim["val_scaling"], sim["mF"])
-            
-
-# %%
-# import numpy as np
-# fil = "/home/jchaves/Proyectos/projects/lya/data/nyx/IGM_histories.npy"
-# res = np.load(fil, allow_pickle=True).item()
-
-# %%
-# res.keys()
-
 # %% [markdown]
 # #### Set either mock data or real data
 
 # %%
-choose_forecast = True
+choose_forecast = False
 choose_mock = False
-choose_data = False
+choose_data = True
 
 if choose_forecast:
     # for forecast, just start label of observational data with mock
@@ -109,13 +95,13 @@ if choose_forecast:
     args.data_label_hires = "mock_Karacayli2022"
 
     # you need to provide true cosmology, IGM history, and contaminants
-    # args.true_cosmo_label="mpg_central"
-    args.true_cosmo_label="nyx_central"
+    args.true_cosmo_label="mpg_central"
+    # args.true_cosmo_label="nyx_central"
     true_cosmo = set_cosmo(cosmo_label=args.true_cosmo_label)
-    # args.true_igm_label="mpg_central"
-    args.true_igm_label="nyx_central"
+    args.true_igm_label="mpg_central"
+    # args.true_igm_label="nyx_central"
     # from -11 to -4
-    args.true_SiIII=[0, -5]
+    args.true_SiIII=[0, -10]
     args.true_SiII=[0, -10]
     # from -7 to 0
     args.true_HCD=[0, -6]
@@ -123,18 +109,18 @@ if choose_forecast:
     args.true_SN=[0, -4]
 elif choose_mock:
     # to analyze data from simulations
-    # args.data_label = "mpg_central"    
-    args.data_label="nyx_central"
+    args.data_label = "mpg_central"    
+    # args.data_label="nyx_central"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
 
     # provide cosmology only to cull the data
-    # args.true_cosmo_label="mpg_central"
-    args.true_cosmo_label="nyx_central"
+    args.true_cosmo_label="mpg_central"
+    # args.true_cosmo_label="nyx_central"
     
     # you need to provide contaminants
     # from -11 to -4
-    args.true_SiIII=[0, -5]
+    args.true_SiIII=[0, -10]
     args.true_SiII=[0, -10]
     # from -7 to 0
     args.true_HCD=[0, -6]
@@ -178,21 +164,21 @@ if choose_data == False:
 
 # %%
 # cosmology
-# args.fid_cosmo_label="mpg_central"
-args.fid_cosmo_label="nyx_central"
+args.fid_cosmo_label="mpg_central"
+# args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="Planck18"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
-# args.fid_igm_label="mpg_central"
-args.fid_igm_label="nyx_central"
+args.fid_igm_label="mpg_central"
+# args.fid_igm_label="nyx_central"
 if choose_data == False:
     args.igm_priors = "hc"
 else:
     args.type_priors = "data"
 
 # contaminants
-args.fid_SiIII=[0, -5]
+args.fid_SiIII=[0, -10]
 args.fid_SiII=[0, -10]
 args.fid_HCD=[0, -6]
 args.fid_SN=[0, -4]
@@ -226,6 +212,9 @@ like = set_like(
     data_hires=data["extra_P1Ds"]
 )
 
+# %% [markdown]
+# Sampling parameters
+
 # %%
 for p in like.free_params:
     print(p.name, p.value, p.min_value, p.max_value)
@@ -236,13 +225,6 @@ for p in like.free_params:
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
 like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
-
-# %% [markdown]
-# Sampling parameters
-
-# %%
-for p in like.free_params:
-    print(p.name, p.value, p.min_value, p.max_value)
 
 
 # %% [markdown]
@@ -306,71 +288,66 @@ fitter.plot_p1d(residuals=True, plot_every_iz=2)
 fitter.plot_igm(cloud=True)
 
 # %%
-nyx_0_3
-
-# %%
-read nyx
-
-# %%
-import h5py
-
-# %%
-nyx_file = "/home/jchaves/Proyectos/projects/lya/data/nyx/models_Nyx_Oct2023.hdf5"
-ff = h5py.File(nyx_file, "r")
-
-# %%
-sim_avail = list(ff.keys())
-sim_avail
-
-# %%
-
-# %%
-zkeys = list(ff["cosmo_grid_0"].keys())
-
-snap = ff["cosmo_grid_0"][zkeys[0]]
-list_scalings = list(snap.keys())
-
-z = np.zeros((len(list_scalings), len(zkeys)))
-fbar = np.zeros((len(list_scalings), len(zkeys)))
-
-for ii in range(len(list_scalings)):
-    for jj in range(len(zkeys)):
-        z[ii, jj] = float(zkeys[jj][-3:])
-        snap = ff["cosmo_grid_0"][zkeys[jj]]
-        if list_scalings[ii] in snap:
-            if "T_0" in snap[list_scalings[ii]].attrs.keys():
-                fbar[ii, jj] = snap[list_scalings[ii]].attrs["T_0"]            
-            else:
-                print(list_scalings[ii], zkeys[jj]) 
-    
-
-# %%
-for ii in range(len(list_scalings)):
-    if "new" in list_scalings[ii]:
-        col = "red"
-    elif "native" in list_scalings[ii]:
-        col = "k"
-    else:
-        col = "C1"
-    _ = np.argwhere(fbar[ii, :] != 0)[:,0]
-    if(len(_) > 0):
-        plt.plot(z[ii, _], fbar[ii, _], col, label=list_scalings[ii], alpha=0.75)
-# plt.legend()
-plt.xlabel("z")
-plt.ylabel("T_0")
-plt.savefig("nyx_T0.pdf")
-# plt.ylabel("gamma")
-# plt.savefig("nyx_gamma.pdf")
-
-# %%
-# ff["cosmo_grid_0"][zkeys[0]]
-zkeys[0]
-
-# %%
-like.plot_igm(cloud=True)
-
-# %%
-one redshift at a time, fixed cosmo
 
 # %%
 # sampler.write_chain_to_file()
+
+# %%
+# import h5py
+# nyx_file = "/home/jchaves/Proyectos/projects/lya/data/nyx/models_Nyx_Oct2023.hdf5"
+# ff = h5py.File(nyx_file, "r")
+# sim_avail = list(ff.keys())
+
+# zkeys = list(ff["cosmo_grid_0"].keys())
+
+# snap = ff["cosmo_grid_0"][zkeys[0]]
+# list_scalings = list(snap.keys())
+
+# z = np.zeros((len(list_scalings), len(zkeys)))
+# fbar = np.zeros((len(list_scalings), len(zkeys)))
+
+# for ii in range(len(list_scalings)):
+#     for jj in range(len(zkeys)):
+#         z[ii, jj] = float(zkeys[jj][-3:])
+#         snap = ff["cosmo_grid_0"][zkeys[jj]]
+#         if list_scalings[ii] in snap:
+#             if "T_0" in snap[list_scalings[ii]].attrs.keys():
+#                 fbar[ii, jj] = snap[list_scalings[ii]].attrs["T_0"]            
+#             else:
+#                 print(list_scalings[ii], zkeys[jj]) 
+
+
+# for ii in range(len(list_scalings)):
+#     if "new" in list_scalings[ii]:
+#         col = "red"
+#     elif "native" in list_scalings[ii]:
+#         col = "k"
+#     else:
+#         col = "C1"
+#     _ = np.argwhere(fbar[ii, :] != 0)[:,0]
+#     if(len(_) > 0):
+#         plt.plot(z[ii, _], fbar[ii, _], col, label=list_scalings[ii], alpha=0.75)
+# # plt.legend()
+# plt.xlabel("z")
+# plt.ylabel("T_0")
+# plt.savefig("nyx_T0.pdf")
+# # plt.ylabel("gamma")
+# # plt.savefig("nyx_gamma.pdf")
+
+# %%
+
+# %%
+# check IGM histories
+# zs=data["P1Ds"].z
+
+# plt.plot(zs, like.theory.model_igm.F_model.get_tau_eff(zs))
+# plt.plot(like.truth["igm"]["z"], like.truth["igm"]["tau_eff"], "--")
+
+# plt.plot(zs, like.theory.model_igm.T_model.get_sigT_kms(zs))
+# plt.plot(like.truth["igm"]["z"], like.truth["igm"]["sigT_kms"], "--")
+
+# plt.plot(zs, like.theory.model_igm.T_model.get_gamma(zs))
+# plt.plot(like.truth["igm"]["z"], like.truth["igm"]["gamma"], "--")
+
+# plt.plot(zs, like.theory.model_igm.P_model.get_kF_kms(zs))
+# plt.plot(like.truth["igm"]["z"], like.truth["igm"]["kF_kms"], "--")

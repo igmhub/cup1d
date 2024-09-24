@@ -96,7 +96,6 @@ class Gadget_P1D(BaseMockP1D):
             model_igm=model_igm,
             model_cont=model_cont,
         )
-
         self.set_truth(theory, zs)
 
         # apply contaminants
@@ -179,6 +178,7 @@ class Gadget_P1D(BaseMockP1D):
             self.truth["linP"][blob_params[ii]] = blob[blob_params[ii]]
 
         self.truth["igm"] = {}
+        self.truth["igm"]["label"] = self.input_sim
         zs = np.array(zs)
         self.truth["igm"]["z"] = zs
         self.truth["igm"]["tau_eff"] = theory.model_igm.F_model.get_tau_eff(zs)
