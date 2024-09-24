@@ -95,9 +95,7 @@ if choose_forecast:
     args.data_label_hires = "mock_Karacayli2022"
 
     # you need to provide true cosmology, IGM history, and contaminants
-    args.true_cosmo_label="mpg_central"
-    # args.true_cosmo_label="nyx_central"
-    true_cosmo = set_cosmo(cosmo_label=args.true_cosmo_label)
+    true_cosmo = set_cosmo(cosmo_label="mpg_central")
     args.true_igm_label="mpg_central"
     # args.true_igm_label="nyx_central"
     # from -11 to -4
@@ -107,7 +105,8 @@ if choose_forecast:
     args.true_HCD=[0, -6]
     # from -5 to 2
     args.true_SN=[0, -4]
-elif choose_mock:
+elif choose_mock:    
+    true_cosmo=None
     # to analyze data from simulations
     args.data_label = "mpg_central"    
     # args.data_label="nyx_central"
@@ -126,7 +125,8 @@ elif choose_mock:
     args.true_HCD=[0, -6]
     # from -5 to 2
     args.true_SN=[0, -4]
-elif choose_data:
+elif choose_data:    
+    true_cosmo=None
     args.data_label = "Chabanier2019"
     # args.data_label="Karacayli2024"
     args.data_label_hires = "Karacayli2022"
@@ -138,6 +138,7 @@ data["P1Ds"] = set_P1D(
     args.data_label,
     args,
     archive=archive,
+    true_cosmo=true_cosmo,
     emulator=emulator,
     cull_data=False
 )
@@ -146,6 +147,7 @@ if args.data_label_hires is not None:
         args.data_label_hires,
         args,
         archive=archive,
+        true_cosmo=true_cosmo,
         emulator=emulator,
         cull_data=False
     )

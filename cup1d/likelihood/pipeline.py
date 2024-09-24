@@ -74,7 +74,14 @@ def set_archive(training_set):
     return archive
 
 
-def set_P1D(data_label, args, archive=None, emulator=None, cull_data=False):
+def set_P1D(
+    data_label,
+    args,
+    archive=None,
+    true_cosmo=None,
+    emulator=None,
+    cull_data=False,
+):
     """Set P1D data
 
     Parameters
@@ -149,7 +156,6 @@ def set_P1D(data_label, args, archive=None, emulator=None, cull_data=False):
             z_max=args.z_max,
         )
     elif data_label[:5] == "mock_":
-        true_cosmo = set_cosmo(cosmo_label=args.true_cosmo_label)
         # mock data from emulator
         data = mock_data.Mock_P1D(
             emulator,
