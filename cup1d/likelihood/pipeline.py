@@ -21,6 +21,38 @@ from cup1d.p1ds import (
     mock_data,
 )
 from cup1d.likelihood import lya_theory, likelihood, fitter
+from cup1d.likelihood.model_contaminants import Contaminants
+from cup1d.likelihood.model_igm import IGM
+
+
+def set_free_like_parameters(params):
+    """Set free parameters for likelihood"""
+    if params.fix_cosmo:
+        free_parameters = []
+    else:
+        if params.vary_alphas:
+            free_parameters = ["As", "ns", "nrun"]
+        else:
+            free_parameters = ["As", "ns"]
+
+    for ii in range(params.n_tau):
+        free_parameters.append(f"ln_tau_{ii}")
+    for ii in range(params.n_sigT):
+        free_parameters.append(f"ln_sigT_kms_{ii}")
+    for ii in range(params.n_gamma):
+        free_parameters.append(f"ln_gamma_{ii}")
+    for ii in range(params.n_kF):
+        free_parameters.append(f"ln_kF_{ii}")
+    for ii in range(params.n_SiIII):
+        free_parameters.append(f"ln_SiIII_{ii}")
+    for ii in range(params.n_SiII):
+        free_parameters.append(f"ln_SiII_{ii}")
+    for ii in range(params.n_dla):
+        free_parameters.append(f"ln_A_damp_{ii}")
+    for ii in range(params.n_sn):
+        free_parameters.append(f"ln_SN_{ii}")
+
+    return free_parameters
 
 
 def set_archive(training_set):
@@ -43,18 +75,11 @@ def set_archive(training_set):
 
 
 def set_P1D(
-    archive,
-    emulator,
     data_label,
-    cosmo_fid,
-    true_sim_igm=None,
-    cov_label=None,
-    apply_smoothing=None,
-    z_min=0,
-    z_max=10,
-    add_noise=False,
-    seed_noise=0,
-    fprint=print,
+    args,
+    archive=None,
+    true_cosmo=None,
+    emulator=None,
     cull_data=False,
 ):
     """Set P1D data
@@ -116,180 +141,94 @@ def set_P1D(
             set_p1d_from_mock = data_nyx.Nyx_P1D
 
         data = set_p1d_from_mock(
-            z_min=z_min,
-            z_max=z_max,
-            testing_data=p1d_ideal,
             input_sim=data_label,
-            data_cov_label=cov_label,
+            testing_data=p1d_ideal,
+            data_cov_label=args.cov_label,
             emulator=emulator,
-            apply_smoothing=apply_smoothing,
-            add_noise=add_noise,
-            seed=seed_noise,
+            apply_smoothing=args.apply_smoothing,
+            add_noise=args.add_noise,
+            seed=args.seed_noise,
+            true_SiII=args.true_SiII,
+            true_SiIII=args.true_SiIII,
+            true_HCD=args.true_HCD,
+            true_SN=args.true_SN,
+            z_min=args.z_min,
+            z_max=args.z_max,
         )
     elif data_label[:5] == "mock_":
         # mock data from emulator
         data = mock_data.Mock_P1D(
             emulator,
             data_label=data_label[5:],
-            true_sim_igm=true_sim_igm,
-            z_min=z_min,
-            z_max=z_max,
-            add_noise=add_noise,
-            seed=seed_noise,
-            true_cosmo=cosmo_fid,
+            true_cosmo=true_cosmo,
+            true_sim_igm=args.true_igm_label,
+            true_SiII=args.true_SiII,
+            true_SiIII=args.true_SiIII,
+            true_HCD=args.true_HCD,
+            true_SN=args.true_SN,
+            add_noise=args.add_noise,
+            seed=args.seed_noise,
+            z_min=args.z_min,
+            z_max=args.z_max,
         )
     elif data_label == "eBOSS_mock":
         # need to be tested
         data = data_eBOSS_mock.P1D_eBOSS_mock(
-            z_min=z_min,
-            z_max=z_max,
             emulator=emulator,
-            apply_smoothing=apply_smoothing,
-            add_noise=add_noise,
-            seed=seed_noise,
+            apply_smoothing=args.apply_smoothing,
+            true_SiII=args.true_SiII,
+            true_SiIII=args.true_SiIII,
+            true_HCD=args.true_HCD,
+            true_SN=args.true_SN,
+            add_noise=args.add_noise,
+            seed=args.seed_noise,
+            z_min=args.z_min,
+            z_max=args.z_max,
         )
     elif data_label == "Chabanier2019":
-        data = data_Chabanier2019.P1D_Chabanier2019(z_min=z_min, z_max=z_max)
+        data = data_Chabanier2019.P1D_Chabanier2019(
+            z_min=args.z_min, z_max=args.z_max
+        )
     elif data_label == "Ravoux2023":
-        data = data_Ravoux2023.P1D_Ravoux2023(z_min=z_min, z_max=z_max)
+        data = data_Ravoux2023.P1D_Ravoux2023(
+            z_min=args.z_min, z_max=args.z_max
+        )
     elif data_label == "Karacayli2024":
-        data = data_Karacayli2024.P1D_Karacayli2024(z_min=z_min, z_max=z_max)
+        data = data_Karacayli2024.P1D_Karacayli2024(
+            z_min=args.z_min, z_max=args.z_max
+        )
+    elif data_label == "Karacayli2022":
+        data = data_Karacayli2022.P1D_Karacayli2022(
+            z_min=args.z_min, z_max=args.z_max
+        )
     elif data_label == "challenge_v0":
         file = (
             os.environ["CHALLENGE_PATH"]
             + "fiducial_lym1d_p1d_qmleformat_IC.txt"
         )
         data = data_QMLE_Ohio.P1D_QMLE_Ohio(
-            filename=file, z_min=z_min, z_max=z_max
+            filename=file, z_min=args.z_min, z_max=args.z_max
         )
     else:
         raise ValueError(f"data_label {data_label} not implemented")
 
+    # cull data within emulator range
     if cull_data:
-        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data.z))
+        if args.true_cosmo_label is not None:
+            cosmo = set_cosmo(cosmo_label=args.true_cosmo_label)
+        else:
+            cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
+
+        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo, z=np.min(data.z))
         kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
-        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data.z))
+        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo, z=np.max(data.z))
         kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
         data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
 
     return data
 
 
-def set_P1D_hires(
-    archive,
-    emulator,
-    data_label_hires,
-    cosmo_fid,
-    true_sim_igm=None,
-    cov_label_hires=None,
-    apply_smoothing=None,
-    z_min=0,
-    z_max=10,
-    add_noise=False,
-    seed_noise=0,
-    fprint=print,
-    cull_data=False,
-):
-    """Set P1D data
-
-    Parameters
-    ----------
-    archive : object
-        Archive object containing P1D data
-    data_label : str
-        Label of simulation/dataset used to generate mock data
-    cov_label : str
-        Label of covariance matrix
-    apply_smoothing : bool or None
-        If True, apply smoothing to P1D. If None, do what is best for the input emulator
-    z_min : float
-        Minimum redshift of P1D measurements
-    z_max : float
-        Maximum redshift of P1D measurements
-
-    Returns
-    -------
-    data : object
-        P1D data
-    true_sim_igm : str
-        Label of simulation/dataset used to generate mock data
-    """
-
-    if (data_label_hires[:3] == "mpg") | (data_label_hires[:3] == "nyx"):
-        # check if we need to load another archive
-        if data_label_hires in archive.list_sim:
-            archive_mock = archive
-        else:
-            if data_label_hires[:3] == "mpg":
-                archive_mock = set_archive(training_set="Cabayol23")
-            elif data_label_hires[:3] == "nyx":
-                archive_mock = set_archive(training_set="Nyx24_Feb2024")
-
-        if data_label_hires not in archive_mock.list_sim:
-            raise ValueError(
-                data_label_hires + " not available in archive ",
-                archive_mock.list_sim,
-            )
-        ###################
-
-        # set noise free P1Ds in Mpc
-        p1d_ideal = archive_mock.get_testing_data(
-            data_label_hires, z_min=z_min, z_max=z_max
-        )
-        if len(p1d_ideal) == 0:
-            raise ValueError("Could not set P1D data for", data_label_hires)
-        else:
-            archive_mock = None
-        ###################
-
-        # set P1Ds in kms
-        if data_label_hires[:3] == "mpg":
-            set_p1d_from_mock = data_gadget.Gadget_P1D
-        elif data_label_hires[:3] == "nyx":
-            set_p1d_from_mock = data_nyx.Nyx_P1D
-
-        data_hires = set_p1d_from_mock(
-            z_min=z_min,
-            z_max=z_max,
-            testing_data=p1d_ideal,
-            input_sim=data_label_hires,
-            data_cov_label=cov_label_hires,
-            emulator=emulator,
-            apply_smoothing=apply_smoothing,
-            add_noise=add_noise,
-            seed=seed_noise,
-            fprint=fprint,
-        )
-    elif data_label_hires[:5] == "mock_":
-        # mock data from emulator
-        data_hires = mock_data.Mock_P1D(
-            emulator,
-            data_label=data_label_hires[5:],
-            true_sim_igm=true_sim_igm,
-            z_min=z_min,
-            z_max=z_max,
-            add_noise=add_noise,
-            seed=seed_noise,
-            true_cosmo=cosmo_fid,
-        )
-    elif data_label_hires == "Karacayli2022":
-        data_hires = data_Karacayli2022.P1D_Karacayli2022(
-            z_min=z_min, z_max=z_max
-        )
-    else:
-        raise ValueError(f"data_label_hires {data_label_hires} not implemented")
-
-    if cull_data:
-        dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.min(data_hires.z))
-        kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
-        dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo_fid, z=np.max(data_hires.z))
-        kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
-        data_hires.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
-
-    return data_hires
-
-
-def set_fid_cosmo(cosmo_label="mpg_central"):
+def set_cosmo(cosmo_label="mpg_central", return_all=False):
     """Set fiducial cosmology
 
     Parameters
@@ -298,7 +237,7 @@ def set_fid_cosmo(cosmo_label="mpg_central"):
 
     Returns
     -------
-    cosmo_fid : object
+    cosmo : object
     """
     if (cosmo_label[:3] == "mpg") | (cosmo_label[:3] == "nyx"):
         if cosmo_label[:3] == "mpg":
@@ -314,62 +253,63 @@ def set_fid_cosmo(cosmo_label="mpg_central"):
         except:
             ValueError(f"{fname} not found")
 
-        cosmo_fid = None
+        cosmo = None
         for ii in range(len(data_cosmo)):
             if data_cosmo[ii]["sim_label"] == cosmo_label:
-                cosmo_fid = get_cosmo(data_cosmo[ii]["cosmo_params"])
+                cosmo = get_cosmo(data_cosmo[ii]["cosmo_params"])
                 break
-        if cosmo_fid is None:
+        if cosmo is None:
             raise ValueError(f"Cosmo not found in {fname} for {cosmo_label}")
+    elif cosmo_label == "Planck18":
+        cosmo = camb_cosmo.get_cosmology(
+            H0=67.66,
+            mnu=0.0,
+            omch2=0.119,
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
     else:
         raise ValueError(f"cosmo_label {cosmo_label} not implemented")
-    return cosmo_fid
 
-
-def set_like(
-    emulator,
-    data,
-    data_hires,
-    fid_igm_label,
-    n_igm,
-    cosmo_fid,
-    fix_cosmo=False,
-    vary_alphas=False,
-    add_metals=False,
-    fprint=print,
-    prior_Gauss_rms=None,
-    emu_cov_factor=0,
-):
-    ## set cosmo and IGM parameters
-    if fix_cosmo:
-        free_parameters = []
+    if return_all:
+        return data_cosmo
     else:
-        if vary_alphas:
-            free_parameters = ["As", "ns", "nrun"]
-        else:
-            free_parameters = ["As", "ns"]
+        return cosmo
 
-    fprint(f"Using {n_igm} parameters for IGM model")
-    for ii in range(n_igm):
-        for par in ["tau", "sigT_kms", "gamma", "kF"]:
-            free_parameters.append(f"ln_{par}_{ii}")
-        if add_metals:
-            free_parameters.append(f"ln_SiIII_{ii}")
 
-    fprint("free parameters", free_parameters)
-
+def set_like(data, emulator, fid_cosmo, free_parameters, args, data_hires=None):
     ## set theory
     if data_hires is not None:
         zs_hires = data_hires.z
     else:
         zs_hires = None
+
+    model_igm = IGM(
+        data.z,
+        free_param_names=free_parameters,
+        fid_sim_igm=args.fid_igm_label,
+        list_sim_cube=emulator.list_sim_cube,
+        type_priors=args.igm_priors,
+    )
+    model_cont = Contaminants(
+        free_param_names=free_parameters,
+        fid_SiIII=args.fid_SiIII,
+        fid_SiII=args.fid_SiII,
+        fid_HCD=args.fid_HCD,
+        fid_SN=args.fid_SN,
+    )
     theory = lya_theory.Theory(
         zs=data.z,
         zs_hires=zs_hires,
         emulator=emulator,
-        free_param_names=free_parameters,
-        fid_sim_igm=fid_igm_label,
-        cosmo_fid=cosmo_fid,
+        fid_cosmo=fid_cosmo,
+        model_igm=model_igm,
+        model_cont=model_cont,
     )
 
     ## set like
@@ -378,8 +318,8 @@ def set_like(
         theory,
         extra_data=data_hires,
         free_param_names=free_parameters,
-        prior_Gauss_rms=prior_Gauss_rms,
-        emu_cov_factor=emu_cov_factor,
+        prior_Gauss_rms=args.prior_Gauss_rms,
+        emu_cov_factor=args.emu_cov_factor,
     )
 
     return like
@@ -395,7 +335,7 @@ def path_sampler(
     version="v3",
     drop_sim=None,
     apply_smoothing=True,
-    add_hires=False,
+    data_label_hires=False,
     add_noise=False,
     seed_noise=0,
     fix_cosmo=False,
@@ -411,8 +351,8 @@ def path_sampler(
     else:
         flag_smooth = ""
 
-    if add_hires:
-        flag_hires = "_hires"
+    if data_label_hires:
+        flag_hires = "_" + data_label_hires
     else:
         flag_hires = ""
 
@@ -530,7 +470,7 @@ class Pipeline(object):
         #######################
 
         ## set fiducial cosmology
-        cosmo_fid = set_fid_cosmo(cosmo_label=args.cosmo_label)
+        fid_cosmo = set_fid_cosmo(cosmo_label=args.cosmo_label)
 
         #######################
 
@@ -545,7 +485,7 @@ class Pipeline(object):
                 archive,
                 emulator,
                 args.data_label,
-                cosmo_fid,
+                fid_cosmo,
                 true_sim_igm=args.igm_label,
                 cov_label=args.cov_label,
                 apply_smoothing=args.apply_smoothing,
@@ -559,12 +499,12 @@ class Pipeline(object):
                 "Set " + str(len(data["P1Ds"].z)) + " P1Ds at z = ",
                 data["P1Ds"].z,
             )
-            if args.add_hires:
+            if args.data_label_hires is not None:
                 data["extra_P1Ds"] = set_P1D_hires(
                     archive,
                     emulator,
                     args.data_label_hires,
-                    cosmo_fid,
+                    fid_cosmo,
                     true_sim_igm=args.igm_label,
                     cov_label=args.cov_label_hires,
                     apply_smoothing=args.apply_smoothing,
@@ -601,7 +541,7 @@ class Pipeline(object):
             data["extra_P1Ds"],
             args.igm_label,
             args.n_igm,
-            cosmo_fid,
+            fid_cosmo,
             fix_cosmo=args.fix_cosmo,
             vary_alphas=args.vary_alphas,
             fprint=fprint,
@@ -635,7 +575,7 @@ class Pipeline(object):
                 version=args.version,
                 drop_sim=_drop_sim,
                 apply_smoothing=args.apply_smoothing,
-                add_hires=args.add_hires,
+                data_label_hires=args.data_label_hires,
                 add_noise=args.add_noise,
                 seed_noise=args.seed_noise,
                 fix_cosmo=args.fix_cosmo,

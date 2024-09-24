@@ -20,6 +20,7 @@ class MeanFluxModel(object):
         fid_igm=None,
         order_extra=2,
         smoothing=False,
+        priors=None,
     ):
         """Construct model as a rescaling around a fiducial mean flux"""
 
@@ -37,6 +38,7 @@ class MeanFluxModel(object):
             else:
                 fid_igm = igm_hist["mpg_central"]
         self.fid_igm = fid_igm
+        self.priors = priors
 
         mask = fid_igm["tau_eff"] != 0
         if np.sum(mask) == 0:
@@ -121,15 +123,21 @@ class MeanFluxModel(object):
         Npar = len(self.ln_tau_coeff)
         for i in range(Npar):
             name = "ln_tau_" + str(i)
+            pname = "tau_eff"
             if i == 0:
-                xmin = -0.4
-                xmax = 0.4
-            elif i == 1:
-                xmin = -1.6
-                xmax = 1.6
+                if self.priors is not None:
+                    xmin = self.priors[pname][-1][0]
+                    xmax = self.priors[pname][-1][1]
+                else:
+                    xmin = -0.2
+                    xmax = 0.2
             else:
-                xmin = -1.6
-                xmax = 1.6
+                if self.priors is not None:
+                    xmin = self.priors[pname][-2][0]
+                    xmax = self.priors[pname][-2][1]
+                else:
+                    xmin = -0.5
+                    xmax = 0.5
             # note non-trivial order in coefficients
             value = self.ln_tau_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
@@ -174,35 +182,3 @@ class MeanFluxModel(object):
             ln_tau_coeff = self.ln_tau_coeff
 
         return ln_tau_coeff
-
-    # def update_parameters(self, like_params):
-    #     """Update mean flux values using input list of likelihood parameters"""
-
-    #     Npar = self.get_Nparam()
-
-    #     # loop over likelihood parameters
-    #     for like_par in like_params:
-    #         if "ln_tau" not in like_par.name:
-    #             continue
-    #         # make sure you find the parameter
-    #         found = False
-    #         # loop over parameters in mean flux model
-    #         for ip in range(len(self.params)):
-    #             if self.params[ip].name == like_par.name:
-    #                 assert found == False, "can not update parameter twice"
-    #                 self.ln_tau_coeff[Npar - ip - 1] = like_par.value
-    #                 found = True
-    #         assert found == True, "could not update parameter " + like_par.name
-
-    #     return
-
-    # def get_new_model(self, like_params=[]):
-    #     """Return copy of model, updating values from list of parameters"""
-
-    #     mf = MeanFluxModel(
-    #         fid_igm=self.fid_igm,
-    #         z_tau=self.z_tau,
-    #         ln_tau_coeff=copy.deepcopy(self.ln_tau_coeff),
-    #     )
-    #     mf.update_parameters(like_params)
-    #     return mf

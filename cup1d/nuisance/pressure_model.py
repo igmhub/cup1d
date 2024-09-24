@@ -22,6 +22,7 @@ class PressureModel(object):
         fid_igm=None,
         order_extra=3,
         smoothing=False,
+        priors=None,
     ):
         """Construct model with central redshift and (x2,x1,x0) polynomial."""
 
@@ -39,6 +40,7 @@ class PressureModel(object):
             else:
                 fid_igm = igm_hist["mpg_central"]
         self.fid_igm = fid_igm
+        self.priors = priors
 
         mask = fid_igm["kF_kms"] != 0
         if np.sum(mask) == 0:
@@ -100,7 +102,7 @@ class PressureModel(object):
         ln_kF_coeff = self.get_kF_coeffs(like_params=like_params)
 
         xz = np.log((1 + z) / (1 + self.z_kF))
-        ln_poly = np.poly1d(self.ln_kF_coeff)
+        ln_poly = np.poly1d(ln_kF_coeff)
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
@@ -118,15 +120,21 @@ class PressureModel(object):
         Npar = len(self.ln_kF_coeff)
         for i in range(Npar):
             name = "ln_kF_" + str(i)
+            pname = "kF_kms"
             if i == 0:
-                xmin = -2.0
-                xmax = 2.0
-            elif i == 1:
-                xmin = -2.0
-                xmax = 6.0
+                if self.priors is not None:
+                    xmin = self.priors[pname][-1][0]
+                    xmax = self.priors[pname][-1][1]
+                else:
+                    xmin = -0.2
+                    xmax = 0.2
             else:
-                xmin = -2.0
-                xmax = 6.0
+                if self.priors is not None:
+                    xmin = self.priors[pname][-2][0]
+                    xmax = self.priors[pname][-2][1]
+                else:
+                    xmin = -1.0
+                    xmax = 1.0
             # note non-trivial order in coefficients
             value = self.ln_kF_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(

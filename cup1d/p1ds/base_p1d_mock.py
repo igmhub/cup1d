@@ -86,7 +86,7 @@ class BaseMockP1D(BaseDataP1D):
 
         # true IGM parameters
         pars_true = {}
-        pars_true["z_igm"] = self.truth["igm"]["z_igm"]
+        pars_true["z"] = self.truth["igm"]["z"]
         pars_true["tau_eff"] = self.truth["igm"]["tau_eff"]
         pars_true["gamma"] = self.truth["igm"]["gamma"]
         pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
@@ -106,7 +106,7 @@ class BaseMockP1D(BaseDataP1D):
         for ii in range(len(arr_labs)):
             _ = pars_true[arr_labs[ii]] != 0
             ax[ii].plot(
-                pars_true["z_igm"][_],
+                pars_true["z"][_],
                 pars_true[arr_labs[ii]][_],
                 "o:",
                 label="true",

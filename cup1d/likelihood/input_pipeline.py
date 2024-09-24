@@ -85,11 +85,68 @@ def parse_args():
         help="Number of free parameters for IGM model",
     )
     parser.add_argument(
-        "--cosmo_label",
+        "--n_metals",
+        type=int,
+        default=0,
+        help="Number of free parameters for SiIII metal contamination",
+    )
+    parser.add_argument(
+        "--true_SiIII",
+        type=float,
+        default=-10,
+        help="Metal contamination to create mock",
+    )
+    parser.add_argument(
+        "--fid_SiIII",
+        type=float,
+        default=-10,
+        help="Metal contamination to set fiducial",
+    )
+    parser.add_argument(
+        "--true_SiII",
+        type=float,
+        default=-10,
+        help="Metal contamination to create mock",
+    )
+    parser.add_argument(
+        "--fid_SiII",
+        type=float,
+        default=-10,
+        help="Metal contamination to set fiducial",
+    )
+    parser.add_argument(
+        "--true_HCD",
+        type=float,
+        default=-10,
+        help="HCD contamination to create mock",
+    )
+    parser.add_argument(
+        "--fid_HCD",
+        type=float,
+        default=-6,
+        help="HCD contamination to set fiducial",
+    )
+
+    parser.add_argument(
+        "--n_dla",
+        type=int,
+        default=0,
+        help="Number of free parameters for DLA contamination",
+    )
+
+    parser.add_argument(
+        "--fid_cosmo_label",
         default=None,
         type=str,
         required=True,
         help="Input simulation to set fiducial cosmology",
+    )
+    parser.add_argument(
+        "--true_cosmo_label",
+        default=None,
+        type=str,
+        required=True,
+        help="Input simulation to set true cosmology for mock",
     )
 
     parser.add_argument(
@@ -99,11 +156,6 @@ def parse_args():
     )
 
     # P1D
-    parser.add_argument(
-        "--add_hires",
-        action="store_true",
-        help="Include high-res data",
-    )
     parser.add_argument(
         "--apply_smoothing",
         default=None,
@@ -148,11 +200,6 @@ def parse_args():
         "--vary_alphas",
         action="store_true",
         help="Fit running power spectrum",
-    )
-    parser.add_argument(
-        "--add_metals",
-        action="store_true",
-        help="Add SiIII metal contamination",
     )
 
     parser.add_argument(
@@ -282,17 +329,32 @@ class Args:
         training_set="Pedersen21",
         emulator_label="Pedersen21",
         data_label="mpg_central",
-        data_label_hires="mpg_central",
+        data_label_hires=None,
         z_min=2,
         z_max=4.5,
         fid_igm_label="mpg_central",
-        true_igm_label="mpg_central",
-        n_igm=2,
-        add_metals=False,
-        cosmo_label="mpg_central",
+        true_igm_label=None,
+        n_tau=2,
+        n_sigT=2,
+        n_gamma=2,
+        n_kF=2,
+        n_SiIII=2,
+        n_SiII=1,
+        n_dla=0,
+        n_sn=0,
+        igm_priors="hc",
+        fid_cosmo_label="mpg_central",
+        true_cosmo_label=None,
+        fid_SiIII=[0, -10],
+        true_SiIII=[0, -10],
+        fid_SiII=[0, -10],
+        true_SiII=[0, -10],
+        fid_HCD=[0, -6],
+        true_HCD=[0, -6],
+        fid_SN=[0, -5],
+        true_SN=[0, -5],
         drop_sim=False,
-        add_hires=False,
-        apply_smoothing=None,
+        apply_smoothing=False,
         cov_label="Chabanier2019",
         cov_label_hires="Karacayli2022",
         add_noise=False,
@@ -319,11 +381,26 @@ class Args:
         self.z_max = z_max
         self.true_igm_label = true_igm_label
         self.fid_igm_label = fid_igm_label
-        self.n_igm = n_igm
-        self.add_metals = add_metals
-        self.cosmo_label = cosmo_label
+        self.n_tau = n_tau
+        self.n_sigT = n_sigT
+        self.n_gamma = n_gamma
+        self.n_kF = n_kF
+        self.n_SiIII = n_SiIII
+        self.n_SiII = n_SiII
+        self.n_dla = n_dla
+        self.n_sn = n_sn
+        self.igm_priors = igm_priors
+        self.fid_SiIII = fid_SiIII
+        self.true_SiIII = true_SiIII
+        self.fid_SiII = fid_SiII
+        self.true_SiII = true_SiII
+        self.fid_HCD = fid_HCD
+        self.true_HCD = true_HCD
+        self.fid_SN = fid_SN
+        self.true_SN = true_SN
+        self.fid_cosmo_label = fid_cosmo_label
+        self.true_cosmo_label = true_cosmo_label
         self.drop_sim = drop_sim
-        self.add_hires = add_hires
         self.apply_smoothing = apply_smoothing
         self.cov_label = cov_label
         self.cov_label_hires = cov_label_hires
@@ -341,31 +418,24 @@ class Args:
         self.n_burn_in = n_burn_in
         self.n_steps = n_steps
 
-        self.par2save = [
-            "emulator_label",
-            "data_label",
-            "data_label_hires",
-            "z_min",
-            "z_max",
-            "fid_igm_label",
-            "true_igm_label",
-            "n_igm",
-            "cosmo_label",
-            "drop_sim",
-            "add_hires",
-            "apply_smoothing",
-            "add_noise",
-            "add_metals",
-            "fix_cosmo",
-            "cov_label",
-            "cov_label_hires",
-        ]
+    #     self.par2save = [
+    #         "emulator_label",
+    #         "data_label",
+    #         "data_label_hires",
+    #         "z_min",
+    #         "z_max",
+    #         "fid_igm_label",
+    #         "true_igm_label",
+    #         "fix_cosmo",
+    #         "cov_label",
+    #         "cov_label_hires",
+    #     ]
 
-    def save(self):
-        out = {}
-        for par in self.par2save:
-            out[par] = getattr(self, par)
-        return out
+    # def save(self):
+    #     out = {}
+    #     for par in self.par2save:
+    #         out[par] = getattr(self, par)
+    #     return out
 
     def check_emulator_label(self):
         avail_emulator_label = [

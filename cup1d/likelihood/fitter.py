@@ -197,14 +197,11 @@ class Fitter(object):
 
         # store truth for all parameters, with LaTeX keywords
         self.truth = {}
-        for param in like_truth:
+        for param in like_truth["like_params"]:
             if param in param_dict:
-                param_string = param_dict[param]
-                self.truth[param_string] = like_truth[param]
+                self.truth[param_dict[param]] = like_truth["like_params"][param]
             else:
-                self.truth[param] = like_truth[param]
-
-        return
+                self.truth[param] = like_truth["like_params"][param]
 
     def run_sampler(
         self,
@@ -407,16 +404,12 @@ class Fitter(object):
 
         return sampler
 
-    def run_minimizer(
-        self, log_func_minimize=None, p0=None, cube=False, nsamples=8
-    ):
-        # def log_func_minimize(pp):
-        #     return -log_func(pp)[0]
-
+    def run_minimizer(self, log_func_minimize=None, p0=None, nsamples=8):
         """Minimizer"""
+        npars = len(self.like.free_params)
 
         if p0 is None:
-            arr_p0 = lhs(len(self.like.free_params), samples=nsamples)
+            arr_p0 = lhs(npars, samples=nsamples)
 
             mle = None
             chi2 = 1e10
@@ -426,44 +419,58 @@ class Fitter(object):
                     log_func_minimize,
                     arr_p0[ii],
                     method="Nelder-Mead",
+                    bounds=((0.0, 1.0),) * npars,
                 )
                 if res.fun < chi2:
                     chi2 = res.fun
                     mle = res.x
-                # print("Minimization:", arr_p0[ii], res.fun, flush=True)
+
+            # start at the minimum
+            res = scipy.optimize.minimize(
+                log_func_minimize,
+                mle,
+                method="Nelder-Mead",
+                bounds=((0.0, 1.0),) * npars,
+            )
+            if res.fun < chi2:
+                chi2 = res.fun
+                mle = res.x
 
             print("Minimization:", chi2, flush=True)
         else:
-            lnprob_ini = log_func_minimize(p0)
-            res = scipy.optimize.minimize(
-                log_func_minimize,
-                p0,
-                method="Nelder-Mead",
-            )
-            mle = res.x
-            lnprob_end = res.fun
-            print("Minimization improved:", lnprob_ini, lnprob_end, flush=True)
+            chi2_ini = log_func_minimize(p0)
 
-        # compute errors
-        hess = nd.Hessian(log_func_minimize)
-        try:
-            self.mle_cov_cube = 0.5 * np.linalg.inv(hess(mle))
-        except:
-            self.mle_cov_cube = None
+            for ii in range(2):
+                if ii == 0:
+                    ini = p0.copy()
+                else:
+                    ini = mle.copy()
+
+                _ = ini <= 0
+                ini[_] = 0.01
+                _ = ini >= 1
+                ini[_] = 0.99
+
+                res = scipy.optimize.minimize(
+                    log_func_minimize,
+                    ini,
+                    method="Nelder-Mead",
+                    bounds=((0.0, 1.0),) * npars,
+                )
+                mle = res.x
+                chi2 = res.fun
+            print("Minimization improved:", chi2_ini, chi2, flush=True)
 
         self.mle_cube = mle
         mle_no_cube = mle.copy()
-        if self.mle_cov_cube is not None:
-            self.mle_cov = np.zeros((self.mle_cov_cube.shape))
         for ii, par_i in enumerate(self.like.free_params):
             scale_i = par_i.max_value - par_i.min_value
             mle_no_cube[ii] = par_i.value_from_cube(mle[ii])
-            if self.mle_cov_cube is not None:
-                for jj, par_j in enumerate(self.like.free_params):
-                    scale_j = par_j.max_value - par_j.min_value
-                    self.mle_cov[ii, jj] = (
-                        self.mle_cov_cube[ii, jj] * scale_i * scale_j
-                    )
+
+        print("Fit params cube:", self.mle_cube, flush=True)
+        print("Fit params no cube:", mle_no_cube, flush=True)
+
+        self.mle_cosmo = self.get_cosmo_err(log_func_minimize)
 
         self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(self.mle_cube)
 
@@ -476,10 +483,80 @@ class Fitter(object):
         for ii, par in enumerate(all_strings):
             self.mle[par] = all_params[ii]
 
-        print("MLE:", self.mle, flush=True)
-        print("Pars fit:", mle_no_cube, flush=True)
-        if self.mle_cov_cube is not None:
-            print("Errors fit:", np.sqrt(np.diag(self.mle_cov)), flush=True)
+        if "A_s" not in self.paramstrings[0]:
+            return
+
+        for par in self.mle_cosmo:
+            if par == "Delta2_star":
+                print("MLE, err")
+                if self.like.truth is not None:
+                    print("Truth, MLE - Truth")
+
+            if "err" in par:
+                continue
+            print(par)
+            print(
+                np.round(self.mle_cosmo[par], 5),
+                np.round(self.mle_cosmo["err_" + par], 5),
+            )
+            if self.like.truth is not None:
+                if par in self.like.truth["like_params"]:
+                    print(
+                        np.round(self.like.truth["like_params"][par], 5),
+                        np.round(
+                            np.abs(
+                                self.like.truth["like_params"][par]
+                                - self.mle_cosmo[par]
+                            ),
+                            5,
+                        ),
+                    )
+
+    def get_cosmo_err(self, fun_minimize):
+        hess = nd.Hessian(fun_minimize)
+        ii = 0
+        for par_i in self.like.free_params:
+            if par_i.name == "As":
+                ii += 1
+            elif par_i.name == "ns":
+                ii += 1
+            elif par_i.name == "nrun":
+                ii += 1
+
+        if ii == 0:
+            return
+
+        cov = hess(self.mle_cube)[:ii, :ii]
+        mle_cov_cube = np.linalg.inv(cov)
+
+        mle_cov = np.zeros((3, 3))
+        for par_i in self.like.free_params:
+            if par_i.name == "As":
+                ii = 0
+            elif par_i.name == "ns":
+                ii = 1
+            elif par_i.name == "nrun":
+                ii = 2
+            else:
+                continue
+            scale_i = par_i.max_value - par_i.min_value
+            for par_j in self.like.free_params:
+                if par_j.name == "As":
+                    jj = 0
+                elif par_j.name == "ns":
+                    jj = 1
+                elif par_j.name == "nrun":
+                    jj = 2
+                else:
+                    continue
+                scale_j = par_j.max_value - par_j.min_value
+                mle_cov[ii, jj] = mle_cov_cube[ii, jj] * scale_i * scale_j
+
+        like_pars = self.like.parameters_from_sampling_point(self.mle_cube)
+
+        res = self.like.theory.get_err_linP_Mpc_params(like_pars, mle_cov)
+
+        return res
 
     def resume_sampler(
         self, max_steps, log_func=None, timeout=None, force_timeout=False
@@ -1322,13 +1399,19 @@ class Fitter(object):
 
         return
 
-    def plot_igm(self, value=None, rand_sample=None, stat_best_fit="mle"):
+    def plot_igm(
+        self,
+        value=None,
+        rand_sample=None,
+        stat_best_fit="mle",
+        cloud=False,
+    ):
         """Plot IGM histories"""
 
         # true IGM parameters
         if self.like.truth is not None:
             pars_true = {}
-            pars_true["z_igm"] = self.like.truth["igm"]["z_igm"]
+            pars_true["z"] = self.like.truth["igm"]["z"]
             pars_true["tau_eff"] = self.like.truth["igm"]["tau_eff"]
             pars_true["gamma"] = self.like.truth["igm"]["gamma"]
             pars_true["sigT_kms"] = self.like.truth["igm"]["sigT_kms"]
@@ -1336,11 +1419,20 @@ class Fitter(object):
 
         # fiducial IGM parameters
         pars_fid = {}
-        pars_fid["z_igm"] = self.like.theory.fid_igm["z_igm"]
-        pars_fid["tau_eff"] = self.like.theory.fid_igm["tau_eff"]
-        pars_fid["gamma"] = self.like.theory.fid_igm["gamma"]
-        pars_fid["sigT_kms"] = self.like.theory.fid_igm["sigT_kms"]
-        pars_fid["kF_kms"] = self.like.theory.fid_igm["kF_kms"]
+        pars_fid["z"] = self.like.fid["igm"]["z"]
+        pars_fid["tau_eff"] = self.like.fid["igm"]["tau_eff"]
+        pars_fid["gamma"] = self.like.fid["igm"]["gamma"]
+        pars_fid["sigT_kms"] = self.like.fid["igm"]["sigT_kms"]
+        pars_fid["kF_kms"] = self.like.fid["igm"]["kF_kms"]
+
+        # all IGM histories in the training sample
+        if cloud:
+            emu_label_igm = self.like.theory.emulator.training_data[0][
+                "sim_label"
+            ]
+            all_emu_igm = self.like.theory.model_igm.get_igm(
+                emu_label_igm, return_all=True
+            )
 
         # best-fitting IGM parameters
         if value is None:
@@ -1348,18 +1440,18 @@ class Fitter(object):
         like_params = self.like.parameters_from_sampling_point(value)
 
         pars_best = {}
-        pars_best["z_igm"] = np.array(self.like.data.z)
-        pars_best["tau_eff"] = self.like.theory.F_model.get_tau_eff(
-            pars_best["z_igm"], like_params=like_params
+        pars_best["z"] = np.array(self.like.data.z)
+        pars_best["tau_eff"] = self.like.theory.model_igm.F_model.get_tau_eff(
+            pars_best["z"], like_params=like_params
         )
-        pars_best["gamma"] = self.like.theory.T_model.get_gamma(
-            pars_best["z_igm"], like_params=like_params
+        pars_best["gamma"] = self.like.theory.model_igm.T_model.get_gamma(
+            pars_best["z"], like_params=like_params
         )
-        pars_best["sigT_kms"] = self.like.theory.T_model.get_sigT_kms(
-            pars_best["z_igm"], like_params=like_params
+        pars_best["sigT_kms"] = self.like.theory.model_igm.T_model.get_sigT_kms(
+            pars_best["z"], like_params=like_params
         )
-        pars_best["kF_kms"] = self.like.theory.P_model.get_kF_kms(
-            pars_best["z_igm"], like_params=like_params
+        pars_best["kF_kms"] = self.like.theory.model_igm.P_model.get_kF_kms(
+            pars_best["z"], like_params=like_params
         )
 
         if rand_sample is not None:
@@ -1400,19 +1492,20 @@ class Fitter(object):
             if self.like.truth is not None:
                 _ = pars_true[arr_labs[ii]] != 0
                 ax[ii].plot(
-                    pars_true["z_igm"][_],
+                    pars_true["z"][_],
                     pars_true[arr_labs[ii]][_],
-                    "o:",
+                    ":o",
                     label="true",
-                    alpha=0.5,
+                    alpha=0.75,
                 )
             _ = pars_fid[arr_labs[ii]] != 0
             ax[ii].plot(
-                pars_fid["z_igm"][_],
+                pars_fid["z"][_],
                 pars_fid[arr_labs[ii]][_],
-                "s--",
+                "--",
                 label="fiducial",
-                alpha=0.5,
+                lw=3,
+                alpha=0.75,
             )
 
             _ = pars_best[arr_labs[ii]] != 0
@@ -1422,19 +1515,31 @@ class Fitter(object):
                     - pars_best[arr_labs[ii]]
                 )
                 ax[ii].errorbar(
-                    pars_best["z_igm"],
+                    pars_best["z"],
                     pars_best[arr_labs[ii]],
                     err,
                     label="best-fitting",
-                    alpha=0.5,
+                    alpha=0.75,
                 )
             else:
                 ax[ii].plot(
-                    pars_best["z_igm"][_],
+                    pars_best["z"][_],
                     pars_best[arr_labs[ii]][_],
                     label="fit",
-                    alpha=0.5,
+                    lw=3,
+                    alpha=0.75,
                 )
+
+            if cloud:
+                for sim_label in all_emu_igm:
+                    _ = all_emu_igm[sim_label][arr_labs[ii]] != 0
+                    ax[ii].scatter(
+                        all_emu_igm[sim_label]["z"][_],
+                        all_emu_igm[sim_label][arr_labs[ii]][_],
+                        marker=".",
+                        color="black",
+                        alpha=0.05,
+                    )
 
             ax[ii].set_ylabel(latex_labs[ii])
             if ii == 0:
@@ -1490,8 +1595,13 @@ param_dict = {
     # each metal contamination should have its own parameters here
     "ln_SiIII_0": "$\mathrm{ln}\,f^{SiIII}_0$",
     "ln_SiIII_1": "$\mathrm{ln}\,f^{SiIII}_1$",
-    # "ln_SiIII_0":"$\mathrm{ln}\,f^{\rm SiIII}_0$",
-    # "ln_SiIII_1":"$\mathrm{ln}\,f^{\rm SiIII}_1$",
+    "ln_SiII_0": "$\mathrm{ln}\,f^{SiII}_0$",
+    "ln_SiII_1": "$\mathrm{ln}\,f^{SiII}_1$",
+    # each HCD contamination should have its own parameters here
+    "ln_A_damp_0": "$\mathrm{ln}\,\mathrm{HCD}_0$",
+    "ln_A_damp_1": "$\mathrm{ln}\,\mathrm{HCD}_1$",
+    "ln_SN_0": "$\mathrm{ln}\,\mathrm{SN}_0$",
+    "ln_SN_1": "$\mathrm{ln}\,\mathrm{SN}_1$",
     "H0": "$H_0$",
     "mnu": "$\Sigma m_\\nu$",
     "As": "$A_s$",

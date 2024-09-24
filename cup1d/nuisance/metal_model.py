@@ -12,6 +12,8 @@ class MetalModel(object):
         lambda_rest=None,
         z_X=3.0,
         ln_X_coeff=None,
+        fid_value=[0, -10],
+        null_value=-10,
         free_param_names=None,
     ):
         """Model the evolution of a metal contamination (SiII or SiIII).
@@ -20,10 +22,9 @@ class MetalModel(object):
         # label identifying the metal line
         self.metal_label = metal_label
         if metal_label == "SiIII":
-            self.lambda_rest = 1206.50  # from McDonald et al. 2006)
-            if lambda_rest:
-                if lambda_rest != self.lambda_rest:
-                    raise ValueError("inconsistent lambda_rest")
+            self.lambda_rest = 1206.50  # from McDonald et al. 2006
+        elif metal_label == "SiII":
+            self.lambda_rest = 1192.5  # like in Chabanier+19, Karacali+24
         else:
             if lambda_rest is None:
                 raise ValueError("need to specify lambda_rest", metal_label)
@@ -31,6 +32,9 @@ class MetalModel(object):
 
         # power law pivot point
         self.z_X = z_X
+        # value below which no contamination (speed up model)
+        self.null_value = null_value
+        self.dv = self.get_dv_kms()
 
         # figure out parameters
         if ln_X_coeff:
@@ -40,14 +44,17 @@ class MetalModel(object):
         else:
             if free_param_names:
                 # figure out number of free params for this metal line
-                param_tag = "ln_" + metal_label
-                print("metal tag", param_tag)
+                param_tag = "ln_" + metal_label + "_"
                 n_X = len([p for p in free_param_names if param_tag in p])
+                if n_X == 0:
+                    n_X = 1
             else:
                 n_X = 1
             # start with value from McDonald et al. (2006), and no z evolution
             self.ln_X_coeff = [0.0] * n_X
-            self.ln_X_coeff[-1] = np.log(0.011)
+            self.ln_X_coeff[-1] = fid_value[-1]
+            if n_X == 2:
+                self.ln_X_coeff[-2] = fid_value[-2]
 
         # store list of likelihood parameters (might be fixed or free)
         self.set_parameters()
@@ -63,16 +70,18 @@ class MetalModel(object):
 
         self.X_params = []
         Npar = len(self.ln_X_coeff)
-        param_tag = "ln_" + self.metal_label
         for i in range(Npar):
-            name = param_tag + "_" + str(i)
+            name = "ln_" + self.metal_label + "_" + str(i)
             if i == 0:
                 # log of overall amplitude at z_X
-                xmin = -20
-                xmax = 0
+                # no contamination
+                xmin = -11
+                # max 10% contamination (oscillations)
+                xmax = -4
             else:
-                xmin = -5
-                xmax = 5
+                # not optimized
+                xmin = -10
+                xmax = 10
             # note non-trivial order in coefficients
             value = self.ln_X_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
@@ -85,54 +94,56 @@ class MetalModel(object):
         """Return likelihood parameters from the metal model"""
         return self.X_params
 
-    def update_parameters(self, like_params):
-        """Look for metal parameters in list of parameters"""
+    def get_X_coeffs(self, like_params=[]):
+        """Return list of coefficients for metal model"""
 
-        Npar = self.get_Nparam()
-        param_tag = "ln_" + self.metal_label
+        if like_params:
+            ln_X_coeff = self.ln_X_coeff.copy()
+            Npar = 0
+            array_names = []
+            array_values = []
+            for par in like_params:
+                if "ln_" + self.metal_label + "_" in par.name:
+                    Npar += 1
+                    array_names.append(par.name)
+                    array_values.append(par.value)
+            array_names = np.array(array_names)
+            array_values = np.array(array_values)
 
-        # loop over likelihood parameters
-        for like_par in like_params:
-            if param_tag in like_par.name:
-                # make sure you find the parameter
-                found = False
-                # loop over parameters in metal model
-                for ip in range(len(self.X_params)):
-                    if self.X_params[ip].name == like_par.name:
-                        if found:
-                            raise ValueError("can not update parameter twice")
-                        self.ln_X_coeff[Npar - ip - 1] = like_par.value
-                        found = True
-                if not found:
+            # use fiducial value (no contamination)
+            if Npar == 0:
+                return self.ln_X_coeff
+            elif Npar != len(self.X_params):
+                raise ValueError("number of params mismatch in get_X_coeffs")
+
+            for ip in range(Npar):
+                _ = np.argwhere(self.X_params[ip].name == array_names)[:, 0]
+                if len(_) != 1:
                     raise ValueError(
-                        "did not update parameter " + like_par.name
+                        "could not update parameter" + self.X_params[ip].name
                     )
+                else:
+                    ln_X_coeff[Npar - ip - 1] = array_values[_[0]]
+        else:
+            ln_X_coeff = self.ln_X_coeff
 
-        return
+        return ln_X_coeff
 
-    def get_new_model(self, like_params=[]):
-        """Return copy of model, updating values from list of parameters"""
-
-        X = MetalModel(
-            metal_label=self.metal_label,
-            lambda_rest=self.lambda_rest,
-            z_X=self.z_X,
-            ln_X_coeff=copy.deepcopy(self.ln_X_coeff),
-        )
-
-        X.update_parameters(like_params)
-        return X
-
-    def get_amplitude(self, z):
+    def get_amplitude(self, z, like_params=[]):
         """Amplitude of contamination at a given z"""
 
         # Note that this represents "f" in McDonald et al. (2006)
         # It is later rescaled by <F> to compute "a" in eq. (15)
 
-        xz = np.log((1 + z) / (1 + self.z_X))
-        ln_poly = np.poly1d(self.ln_X_coeff)
-        ln_out = ln_poly(xz)
-        return np.exp(ln_out)
+        ln_X_coeff = self.get_X_coeffs(like_params)
+
+        if ln_X_coeff[-1] <= self.null_value:
+            return 0
+        else:
+            xz = np.log((1 + z) / (1 + self.z_X))
+            ln_poly = np.poly1d(ln_X_coeff)
+            ln_out = ln_poly(xz)
+            return np.exp(ln_out)
 
     def get_dv_kms(self):
         """Velocity separation where the contamination is stronger"""
@@ -143,19 +154,20 @@ class MetalModel(object):
 
         # we should properly compute this (check McDonald et al. 2006)
         # dv_kms = (lambda_lya-self.lambda_rest)/lambda_lya*c_kms
+        # v3 in McDonald et al. (2006)
         dv_kms = np.log(lambda_lya / self.lambda_rest) * c_kms
 
         return dv_kms
 
-    def get_contamination(self, z, k_kms, mF):
+    def get_contamination(self, z, k_kms, mF, like_params=[]):
         """Multiplicative contamination at a given z and k (in s/km).
         The mean flux (mF) is used scale it (see McDonald et al. 2006)"""
 
         # Note that this represents "f" in McDonald et al. (2006)
         # It is later rescaled by <F> to compute "a" in eq. (15)
-        f = self.get_amplitude(z)
-        a = f / (1 - mF)
-        # v3 in McDonald et al. (2006)
-        dv = self.get_dv_kms()
-
-        return (1 + a**2) + 2 * a * np.cos(dv * k_kms)
+        f = self.get_amplitude(z, like_params=like_params)
+        if f == 0:
+            return 1
+        else:
+            a = f / (1 - mF)
+            return 1 + a**2 + 2 * a * np.cos(self.dv * k_kms)
