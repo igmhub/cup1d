@@ -228,19 +228,11 @@ for p in like.free_params:
 like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
 like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
 
-
 # %% [markdown]
 # ### Set fitter
 
 # %%
-def log_prob(theta):
-    return log_prob.fitter.like.get_chi2(theta)
-
-def set_log_prob(fitter):
-    log_prob.fitter = fitter
-    return log_prob
-
-# no real fit, just test
+# for sampler, no real fit, just test
 args.n_steps=50
 args.n_burn_in=10
 args.parallel=False
@@ -256,7 +248,6 @@ fitter = Fitter(
     explore=args.explore,
     fix_cosmology=args.fix_cosmo,
 )
-_get_chi2 = set_log_prob(fitter)
 
 # %% [markdown]
 # ### Run sampler
@@ -265,7 +256,7 @@ _get_chi2 = set_log_prob(fitter)
 # %%
 run_sampler = False
 if run_sampler:
-    _emcee_sam = sampler.run_sampler(log_func=_get_chi2)
+    _emcee_sam = sampler.run_sampler(log_func=fitter.like.get_chi2)
 
 # %% [markdown]
 # ### Run minimizer
@@ -277,8 +268,8 @@ if like.truth is None:
     p0 = np.array(list(like.fid["fit_cube"].values()))
 else:
     p0 = np.array(list(like.truth["like_params_cube"].values()))*1.05
-fitter.run_minimizer(log_func_minimize=_get_chi2, p0=p0)
-# fitter.run_minimizer(log_func_minimize=_get_chi2, nsamples=16)
+fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
+# fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
 
 # %%
 fitter.plot_p1d(residuals=False, plot_every_iz=1)
