@@ -98,7 +98,9 @@ class BaseDataP1D(object):
             self.cov_Pk_kms[iz] = self.cov_Pk_kms[iz][sli, sli]
             self.icov_Pk_kms[iz] = self.icov_Pk_kms[iz][sli, sli]
 
-    def plot_p1d(self, use_dimensionless=True, xlog=False, ylog=True):
+    def plot_p1d(
+        self, use_dimensionless=True, xlog=False, ylog=True, fname=None
+    ):
         """Plot P1D mesurement. If use_dimensionless, plot k*P(k)/pi."""
 
         N = len(self.z)
@@ -117,7 +119,7 @@ class BaseDataP1D(object):
                 label="z = {}".format(np.round(self.z[i], 3)),
             )
 
-        plt.legend()
+        plt.legend(ncol=4)
         if ylog:
             plt.yscale("log", nonpositive="clip")
         if xlog:
@@ -127,4 +129,8 @@ class BaseDataP1D(object):
             plt.ylabel(r"$k P(k)/ \pi$")
         else:
             plt.ylabel("P(k) [km/s]")
-        plt.show()
+
+        if fname is not None:
+            plt.savefig(fname)
+        else:
+            plt.show()

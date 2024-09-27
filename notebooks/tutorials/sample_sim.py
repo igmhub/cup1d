@@ -50,8 +50,17 @@ from cup1d.likelihood.pipeline import (
 
 from cup1d.likelihood.input_pipeline import Args
 
+# %%
+from cup1d.p1ds.data_QMLE_DESIY1 import P1D_QMLE_DESIY1
+
+# %%
+p1d = P1D_QMLE_DESIY1()
+
+# %%
+p1d.plot_p1d(fname="p1d_desi.png")
+
 # %% [markdown]
-# ## Set up arguments
+# ### Set up arguments
 #
 # Info about these and other arguments in cup1d.likelihood.input_pipeline.py
 
@@ -62,7 +71,7 @@ from cup1d.likelihood.input_pipeline import Args
 # set output directory for this test
 output_dir = "."
 
-args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # the nyx emulator has not properly been validated yet
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
@@ -80,13 +89,29 @@ if emulator.emulator_label == "Nyx_alphap":
 else:
     emulator.list_sim_cube = archive.list_sim_cube
 
+# %%
+
+# %%
+
+args = Args(emulator_label="Nyx_v0", training_set="Nyx23_Oct2023")
+emulator = set_emulator(
+    emulator_label=args.emulator_label,
+    archive=archive,
+)
+
+# %%
+
+if emulator.emulator_label == "Nyx_v0":
+    emulator.list_sim_cube = archive.list_sim_cube
+    emulator.list_sim_cube.remove("nyx_14")
+
 # %% [markdown]
 # #### Set either mock data or real data
 
 # %%
 choose_forecast = False
-choose_mock = False
-choose_data = True
+choose_mock = True
+choose_data = False
 
 if choose_forecast:
     # for forecast, just start label of observational data with mock
@@ -108,14 +133,14 @@ if choose_forecast:
 elif choose_mock:    
     true_cosmo=None
     # to analyze data from simulations
-    args.data_label = "mpg_central"    
-    # args.data_label="nyx_central"
+    # args.data_label = "mpg_central"    
+    args.data_label="nyx_central"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
 
     # provide cosmology only to cull the data
-    args.true_cosmo_label="mpg_central"
-    # args.true_cosmo_label="nyx_central"
+    # args.true_cosmo_label="mpg_central"
+    args.true_cosmo_label="nyx_central"
     
     # you need to provide contaminants
     # from -11 to -4
@@ -166,14 +191,14 @@ if choose_data == False:
 
 # %%
 # cosmology
-args.fid_cosmo_label="mpg_central"
-# args.fid_cosmo_label="nyx_central"
+# args.fid_cosmo_label="mpg_central"
+args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="Planck18"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
-args.fid_igm_label="mpg_central"
-# args.fid_igm_label="nyx_central"
+# args.fid_igm_label="mpg_central"
+args.fid_igm_label="nyx_central"
 if choose_data == False:
     args.igm_priors = "hc"
 else:
@@ -227,6 +252,9 @@ for p in like.free_params:
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
 like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
+
+# %%
+like.plot_igm()
 
 # %% [markdown]
 # ### Set fitter
