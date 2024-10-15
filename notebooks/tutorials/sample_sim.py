@@ -51,9 +51,24 @@ from cup1d.likelihood.pipeline import (
 from cup1d.likelihood.input_pipeline import Args
 
 # %% [markdown]
-# ## Set up arguments
+# ### Set up arguments
 #
 # Info about these and other arguments in cup1d.likelihood.input_pipeline.py
+
+# %%
+from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/"
+fname = "desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
+p1d = P1D_DESIY1(fname=folder+fname)
+p1d.plot_p1d()
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/"
+fname = "p1d_fft_y1_measurement.fits"
+p1d = P1D_DESIY1(fname=folder+fname)
+p1d.plot_p1d()
 
 # %% [markdown]
 # ### Set emulator
@@ -62,10 +77,10 @@ from cup1d.likelihood.input_pipeline import Args
 # set output directory for this test
 output_dir = "."
 
-args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # the nyx emulator has not properly been validated yet
-# args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
+args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
 
 archive = set_archive(args.training_set)
 
@@ -80,13 +95,29 @@ if emulator.emulator_label == "Nyx_alphap":
 else:
     emulator.list_sim_cube = archive.list_sim_cube
 
+# %%
+
+# args = Args(emulator_label="Nyx_v0", training_set="Nyx23_Oct2023")
+# emulator = set_emulator(
+#     emulator_label=args.emulator_label,
+#     archive=archive,
+# )
+
+# if emulator.emulator_label == "Nyx_v0":
+#     emulator.list_sim_cube = archive.list_sim_cube
+#     emulator.list_sim_cube.remove("nyx_14")
+
 # %% [markdown]
 # #### Set either mock data or real data
 
 # %%
 choose_forecast = False
 choose_mock = False
-choose_data = True
+choose_data = False
+choose_challenge = True
+folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
+fname = "mock_challenge_0.2_nonoise_fiducial.fits"
+true_sim_label="nyx_central"
 
 if choose_forecast:
     # for forecast, just start label of observational data with mock
@@ -108,14 +139,14 @@ if choose_forecast:
 elif choose_mock:    
     true_cosmo=None
     # to analyze data from simulations
-    args.data_label = "mpg_central"    
-    # args.data_label="nyx_central"
+    # args.data_label = "mpg_central"    
+    args.data_label="nyx_central"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
 
     # provide cosmology only to cull the data
-    args.true_cosmo_label="mpg_central"
-    # args.true_cosmo_label="nyx_central"
+    # args.true_cosmo_label="mpg_central"
+    args.true_cosmo_label="nyx_central"
     
     # you need to provide contaminants
     # from -11 to -4
@@ -134,23 +165,27 @@ elif choose_data:
 
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
-data["P1Ds"] = set_P1D(
-    args.data_label,
-    args,
-    archive=archive,
-    true_cosmo=true_cosmo,
-    emulator=emulator,
-    cull_data=False
-)
-if args.data_label_hires is not None:
-    data["extra_P1Ds"] = set_P1D(
-        args.data_label_hires,
+
+if choose_challenge == True:    
+    data["P1Ds"] = P1D_QMLE_DESIY1(fname = folder + fname, true_sim_label=true_sim_label)
+else:
+    data["P1Ds"] = set_P1D(
+        args.data_label,
         args,
         archive=archive,
         true_cosmo=true_cosmo,
         emulator=emulator,
         cull_data=False
     )
+    if args.data_label_hires is not None:
+        data["extra_P1Ds"] = set_P1D(
+            args.data_label_hires,
+            args,
+            archive=archive,
+            true_cosmo=true_cosmo,
+            emulator=emulator,
+            cull_data=False
+        )
 
 # %%
 data["P1Ds"].plot_p1d()
@@ -166,14 +201,14 @@ if choose_data == False:
 
 # %%
 # cosmology
-args.fid_cosmo_label="mpg_central"
-# args.fid_cosmo_label="nyx_central"
+# args.fid_cosmo_label="mpg_central"
+args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="Planck18"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
-args.fid_igm_label="mpg_central"
-# args.fid_igm_label="nyx_central"
+# args.fid_igm_label="mpg_central"
+args.fid_igm_label="nyx_central"
 if choose_data == False:
     args.igm_priors = "hc"
 else:
@@ -186,13 +221,13 @@ args.fid_HCD=[0, -6]
 args.fid_SN=[0, -4]
 
 # parameters
-args.vary_alphas=False
-args.fix_cosmo=True
+args.vary_alphas=True
+args.fix_cosmo=False
 args.n_tau=2
 args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
-args.n_SiIII = 2
+args.n_SiIII = 0
 args.n_SiII = 0
 args.n_dla=0
 args.n_sn=0
@@ -227,6 +262,9 @@ for p in like.free_params:
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
 like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
+
+# %%
+like.plot_igm()
 
 # %% [markdown]
 # ### Set fitter
@@ -267,7 +305,7 @@ if like.truth is None:
     # p0 = np.zeros(len(like.free_params)) + 0.5
     p0 = np.array(list(like.fid["fit_cube"].values()))
 else:
-    p0 = np.array(list(like.truth["like_params_cube"].values()))*1.05
+    p0 = np.array(list(like.truth["like_params_cube"].values()))*1.01
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
 
@@ -281,6 +319,10 @@ fitter.plot_p1d(residuals=True, plot_every_iz=2)
 fitter.plot_igm(cloud=True)
 
 # %%
+fitter.truth
+
+# %%
+fitter.mle_cosmo
 
 # %%
 # sampler.write_chain_to_file()
