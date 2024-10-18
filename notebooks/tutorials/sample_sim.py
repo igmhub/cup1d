@@ -122,7 +122,6 @@ fname = "mock_challenge_0.2_nonoise_fiducial.fits"
 # fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
 # fname = "mock_challenge_0.2_noise-42-0_fiducial.fits"
 true_sim_label="nyx_central"
-# true_sim_label="nyx_3"
 
 if choose_forecast:
     # for forecast, just start label of observational data with mock
@@ -171,7 +170,7 @@ elif choose_data:
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
 
-if choose_challenge == True:    
+if choose_challenge == True:
     data["P1Ds"] = P1D_DESIY1(fname = folder + fname, true_sim_label=true_sim_label)
 else:
     data["P1Ds"] = set_P1D(
@@ -284,7 +283,6 @@ like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
 # %%
 like.plot_igm()
 
-
 # %% [markdown]
 # ### Set fitter
 
@@ -324,6 +322,7 @@ if like.truth is None:
     p0 = np.array(list(like.fid["fit_cube"].values()))
 else:
     p0 = np.array(list(like.truth["like_params_cube"].values()))*1.01
+    
 p0 = np.array(list(like.fid["fit_cube"].values()))
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
@@ -359,6 +358,10 @@ if run_sampler:
     _emcee_sam = fitter.run_sampler(pini=fitter.mle_cube, log_func=func_for_sampler)
 
 # %%
+fitter.truth
+
+# %%
+fitter.mle_cosmo
 
 # %%
 # chain, lnprob, blobs = fitter.get_chain( cube=False, extra_nburn=400)

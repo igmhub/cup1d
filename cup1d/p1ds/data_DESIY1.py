@@ -26,7 +26,7 @@ class P1D_DESIY1(BaseDataP1D):
         - z_max: maximum redshift to include"""
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        zs, k_kms, Pk_kms, cov = read_from_file(fname, full_cov=full_cov)
+        zs, k_kms, Pk_kms, cov = read_from_file(fname=fname, full_cov=full_cov)
 
         # set truth if possible
         if true_sim_label is not None:
@@ -175,7 +175,7 @@ class P1D_DESIY1(BaseDataP1D):
         plt.tight_layout()
 
 
-def read_from_file(fname, full_cov=False, kmin=1e-3, nknyq=0.5):
+def read_from_file(fname=None, full_cov=False, kmin=1e-3, nknyq=0.5):
     """Read file containing P1D"""
 
     # folder storing P1D measurement
