@@ -91,18 +91,6 @@ if emulator.emulator_label == "Nyx_alphap":
 else:
     emulator.list_sim_cube = archive.list_sim_cube
 
-# %%
-
-# args = Args(emulator_label="Nyx_v0", training_set="Nyx23_Oct2023")
-# emulator = set_emulator(
-#     emulator_label=args.emulator_label,
-#     archive=archive,
-# )
-
-# if emulator.emulator_label == "Nyx_v0":
-#     emulator.list_sim_cube = archive.list_sim_cube
-#     emulator.list_sim_cube.remove("nyx_14")
-
 # %% [markdown]
 # #### Set either mock data or real data
 
@@ -122,6 +110,7 @@ fname = "mock_challenge_0.2_nonoise_fiducial.fits"
 # fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
 # fname = "mock_challenge_0.2_noise-42-0_fiducial.fits"
 true_sim_label="nyx_central"
+# true_sim_label="nyx_3"
 
 if choose_forecast:
     # for forecast, just start label of observational data with mock
@@ -170,7 +159,7 @@ elif choose_data:
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
 
-if choose_challenge == True:
+if choose_challenge == True:    
     data["P1Ds"] = P1D_DESIY1(fname = folder + fname, true_sim_label=true_sim_label)
 else:
     data["P1Ds"] = set_P1D(
@@ -236,14 +225,14 @@ args.fid_SN=[0, -4]
 # parameters
 args.vary_alphas=True
 args.fix_cosmo=False
-args.n_tau=0
-args.n_sigT=0
-args.n_gamma=0
-args.n_kF=0
-# args.n_tau=2
-# args.n_sigT=2
-# args.n_gamma=2
-# args.n_kF=2
+# args.n_tau=0
+# args.n_sigT=0
+# args.n_gamma=0
+# args.n_kF=0
+args.n_tau=2
+args.n_sigT=2
+args.n_gamma=2
+args.n_kF=2
 args.n_SiIII = 0
 args.n_SiII = 0
 args.n_dla=0
@@ -278,10 +267,11 @@ for p in like.free_params:
 
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
-like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
+# like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
 
 # %%
 like.plot_igm()
+
 
 # %% [markdown]
 # ### Set fitter
@@ -322,7 +312,6 @@ if like.truth is None:
     p0 = np.array(list(like.fid["fit_cube"].values()))
 else:
     p0 = np.array(list(like.truth["like_params_cube"].values()))*1.01
-    
 p0 = np.array(list(like.fid["fit_cube"].values()))
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
@@ -358,10 +347,6 @@ if run_sampler:
     _emcee_sam = fitter.run_sampler(pini=fitter.mle_cube, log_func=func_for_sampler)
 
 # %%
-fitter.truth
-
-# %%
-fitter.mle_cosmo
 
 # %%
 # chain, lnprob, blobs = fitter.get_chain( cube=False, extra_nburn=400)

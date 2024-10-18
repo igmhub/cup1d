@@ -295,6 +295,7 @@ def set_like(data, emulator, fid_cosmo, free_parameters, args, data_hires=None):
         fid_sim_igm=args.fid_igm_label,
         list_sim_cube=emulator.list_sim_cube,
         type_priors=args.igm_priors,
+        set_metric=True,
     )
     model_cont = Contaminants(
         free_param_names=free_parameters,

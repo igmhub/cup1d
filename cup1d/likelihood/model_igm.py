@@ -19,6 +19,8 @@ class IGM(object):
         fid_sim_igm="mpg_central",
         list_sim_cube=None,
         type_priors="hc",
+        emu_igm_params=["mF", "sigT_Mpc", "gamma", "kF_Mpc"],
+        set_metric=False,
     ):
         # load fiducial IGM history (used for fitting)
         self.fid_sim_igm = fid_sim_igm
@@ -58,6 +60,9 @@ class IGM(object):
             }
         else:
             self.set_priors(fid_igm, list_sim_cube, type_priors=type_priors)
+
+        if set_metric:
+            self.metric = self.set_metric(emu_igm_params, list_sim_cube)
 
         # setup fiducial IGM models
         if F_model is not None:
@@ -139,7 +144,7 @@ class IGM(object):
             return igm_return
 
     def set_priors(self, fid_igm, list_sim_cube, type_priors="hc"):
-        """Set priors for all IGM models"""
+        """Set priors for all IGM models: outdated!"""
 
         if type_priors == "hc":
             percent = 95
@@ -184,12 +189,81 @@ class IGM(object):
             y1 = y0_cen / np.log((1 + fid_igm["z"].max()) / (1 + self.z_pivot))
             self.priors[par] = [[-y1, y1], [-y0_min * 1.05, y0_max * 1.05]]
 
-        # self.shift = {}
-        # # adjust prior to fiducial IGM history
-        # for par in cen_igm:
-        #     if par == "z":
-        #         continue
+    def set_metric(self, emu_igm_params, list_sim_cube, tol_factor=95):
+        # get all individual points separately
 
-        #     res_div = np.abs(np.median(fid_igm[par] / cen_igm[par]))
-        #     y0 = np.log(np.percentile(res_div, percent))
-        #     self.priors[par] = y0
+        all_igm = self.get_igm(list_sim_cube[0], return_all=True)
+
+        all_points = {}
+        for par in emu_igm_params:
+            if par not in ["Delta2_p", "n_p", "alpha_p"]:
+                all_points[par] = []
+
+        for key in all_igm:
+            if key[4].isdigit():
+                for par in all_points:
+                    ind_use = np.argwhere(all_igm[key][par] != 0)[:, 0]
+                    all_points[par].append(all_igm[key][par][ind_use])
+
+        for key in all_points:
+            all_points[key] = np.concatenate(all_points[key])
+
+        # compute the maximum distance between training points
+        min_dist = {}
+
+        for key in all_points:
+            npoints = all_points[key].shape[0]
+            min_dist[key] = np.zeros(npoints)
+            for ii in range(npoints):
+                dist = np.abs(all_points[key][ii] - all_points[key])
+                _ = dist != 0
+                min_dist[key][ii] = dist[_].min()
+
+        max_dist = {}
+        for key in min_dist:
+            max_dist[key] = min_dist[key].max()
+
+        # define function to get normalizer distance from new points
+        def metric_par(p0):
+            dist = (
+                ((p0["mF"] - all_points["mF"]) / max_dist["mF"]) ** 2
+                + (
+                    (p0["sigT_Mpc"] - all_points["sigT_Mpc"])
+                    / max_dist["sigT_Mpc"]
+                )
+                ** 2
+                + ((p0["gamma"] - all_points["gamma"]) / max_dist["gamma"]) ** 2
+                + ((p0["kF_Mpc"] - all_points["kF_Mpc"]) / max_dist["kF_Mpc"])
+                ** 2
+            )
+            return np.sqrt(dist)
+
+        # find maximum normalized distance between training points
+        dist_norm = np.zeros(npoints)
+
+        for ii in range(npoints):
+            p0 = {}
+            for key in all_points:
+                p0[key] = all_points[key][ii]
+            res = metric_par(p0)
+            _ = res != 0
+            dist_norm[ii] = res[_].min()
+
+        # max_dist_norm = dist_norm.max() * tol_factor
+        max_dist_norm = np.percentile(dist_norm, tol_factor)
+
+        def metric_par(p0):
+            dist = (
+                ((p0["mF"] - all_points["mF"]) / max_dist["mF"]) ** 2
+                + (
+                    (p0["sigT_Mpc"] - all_points["sigT_Mpc"])
+                    / max_dist["sigT_Mpc"]
+                )
+                ** 2
+                + ((p0["gamma"] - all_points["gamma"]) / max_dist["gamma"]) ** 2
+                + ((p0["kF_Mpc"] - all_points["kF_Mpc"]) / max_dist["kF_Mpc"])
+                ** 2
+            )
+            return np.sqrt(dist.min()) / max_dist_norm
+
+        return metric_par

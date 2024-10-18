@@ -301,6 +301,15 @@ class Likelihood(object):
             return_covar=return_covar,
             return_blob=return_blob,
         )
+        if _res is None:
+            # out of priors
+            log_like = -np.inf
+            out = [log_like, log_like]
+            if return_blob:
+                blob = (0, 0, 0, 0, 0, 0)
+                out.append(blob)
+            return out
+
         if return_covar:
             if return_blob:
                 emu_p1d, emu_covar, blob = _res
@@ -323,6 +332,15 @@ class Likelihood(object):
                 return_covar=return_covar,
                 return_blob=False,
             )
+            if _res_hi is None:
+                # out of priors
+                log_like = -np.inf
+                out = [log_like, log_like]
+                if return_blob:
+                    blob = (0, 0, 0, 0, 0, 0)
+                    out.append(blob)
+                return out
+
             if return_covar:
                 emu_p1d_extra, emu_covar_extra = _res_hi
             else:
@@ -504,10 +522,13 @@ class Likelihood(object):
         _res = self.get_p1d_kms(
             self.data.z, self.data.k_kms, values, return_covar=return_covar
         )
+        if _res is None:
+            return print("Prior out of range")
         if return_covar:
             emu_p1d, emu_cov = _res
         else:
             emu_p1d = _res
+
         if self.extra_data is not None:
             _res = self.get_p1d_kms(
                 self.extra_data.z,
@@ -515,6 +536,8 @@ class Likelihood(object):
                 values,
                 return_covar=return_covar,
             )
+            if _res is None:
+                return print("Prior out of range")
             if return_covar:
                 emu_p1d_extra, emu_cov_extra = _res
             else:
@@ -522,25 +545,25 @@ class Likelihood(object):
 
         chi2, chi2_all = self.get_chi2(values=values, return_all=True)
 
-        if rand_posterior is not None:
-            Nz = len(self.data.z)
-            rand_emu = np.zeros((rand_posterior.shape[0], Nz, len(k_emu_kms)))
-            for ii in range(rand_posterior.shape[0]):
-                rand_emu[ii] = self.get_p1d_kms(
-                    self.data.z, k_emu_kms, rand_posterior[ii]
-                )
-            err_posterior = np.std(rand_emu, axis=0)
+        # if rand_posterior is not None:
+        #     Nz = len(self.data.z)
+        #     rand_emu = np.zeros((rand_posterior.shape[0], Nz, len(k_emu_kms)))
+        #     for ii in range(rand_posterior.shape[0]):
+        #         rand_emu[ii] = self.get_p1d_kms(
+        #             self.data.z, k_emu_kms, rand_posterior[ii]
+        #         )
+        #     err_posterior = np.std(rand_emu, axis=0)
 
-            if self.extra_data is not None:
-                Nz = len(self.extra_data.z)
-                rand_emu_extra = np.zeros(
-                    (rand_posterior.shape[0], Nz, len(k_emu_kms_extra))
-                )
-                for ii in range(rand_posterior.shape[0]):
-                    rand_emu_extra[ii] = self.get_p1d_kms(
-                        self.extra_data.z, k_emu_kms_extra, rand_posterior[ii]
-                    )
-                err_posterior_extra = np.std(rand_emu_extra, axis=0)
+        #     if self.extra_data is not None:
+        #         Nz = len(self.extra_data.z)
+        #         rand_emu_extra = np.zeros(
+        #             (rand_posterior.shape[0], Nz, len(k_emu_kms_extra))
+        #         )
+        #         for ii in range(rand_posterior.shape[0]):
+        #             rand_emu_extra[ii] = self.get_p1d_kms(
+        #                 self.extra_data.z, k_emu_kms_extra, rand_posterior[ii]
+        #             )
+        #         err_posterior_extra = np.std(rand_emu_extra, axis=0)
 
         if self.extra_data is None:
             fig, ax = plt.subplots(1, 1, figsize=(8, 6))
