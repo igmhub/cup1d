@@ -76,8 +76,8 @@ class MetalModel(object):
                 # log of overall amplitude at z_X
                 # no contamination
                 xmin = -11
-                # max 10% contamination (oscillations)
-                xmax = -4
+                # max 10% contamination (oscillations) -4
+                xmax = -2
             else:
                 # not optimized
                 xmin = -10

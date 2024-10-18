@@ -121,4 +121,30 @@ Pk_kms = data["P1Ds"].Pk_kms
 # %%
 data["P1Ds"].truth
 
+# %% [markdown]
+# ### Get star parameters directly from cosmology
+
 # %%
+
+from lace.cosmo import camb_cosmo
+from cup1d.likelihood import CAMB_model
+
+cosmo = camb_cosmo.get_cosmology(
+    H0=67,
+    mnu=0,
+    omch2=0.12,
+    ombh2=0.022,
+    omk=0,
+    As=2.1e-9,
+    ns=0.965,
+    nrun=0
+)
+
+fun_cosmo = CAMB_model.CAMBModel(
+    zs=[3],
+    cosmo=cosmo,
+    z_star=3,
+    kp_kms=0.009,
+)
+
+fun_cosmo.get_linP_params()

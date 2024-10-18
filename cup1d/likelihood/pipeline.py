@@ -302,6 +302,7 @@ def set_like(data, emulator, fid_cosmo, free_parameters, args, data_hires=None):
         fid_SiII=args.fid_SiII,
         fid_HCD=args.fid_HCD,
         fid_SN=args.fid_SN,
+        ic_correction=args.ic_correction,
     )
     theory = lya_theory.Theory(
         zs=data.z,
