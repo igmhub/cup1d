@@ -47,6 +47,7 @@ from cup1d.likelihood.pipeline import (
     set_free_like_parameters,
     set_like,
 )
+from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
 
 from cup1d.likelihood.input_pipeline import Args
 
@@ -56,19 +57,14 @@ from cup1d.likelihood.input_pipeline import Args
 # Info about these and other arguments in cup1d.likelihood.input_pipeline.py
 
 # %%
-from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
+# from astropy.io import fits
+# folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/"
+# # fname = "p1d_fft_y1_measurement.fits"
+# fname = "desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
+# hdul = fits.open(folder+fname)
 
-# %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/"
-fname = "desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-p1d = P1D_DESIY1(fname=folder+fname)
-p1d.plot_p1d()
-
-# %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/"
-fname = "p1d_fft_y1_measurement.fits"
-p1d = P1D_DESIY1(fname=folder+fname)
-p1d.plot_p1d()
+# # p1d = P1D_DESIY1(fname=folder+fname)
+# # p1d.plot_p1d()
 
 # %% [markdown]
 # ### Set emulator
@@ -111,12 +107,20 @@ else:
 # #### Set either mock data or real data
 
 # %%
+# folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
+# fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
+# data["P1Ds"] = P1D_DESIY1(fname = folder + fname, true_sim_label="nyx_3")
+
+# %%
 choose_forecast = False
 choose_mock = False
 choose_data = False
 choose_challenge = True
 folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
 fname = "mock_challenge_0.2_nonoise_fiducial.fits"
+# fname = "mock_challenge_0.2_nonoise_cosmo_grid_3.fits"
+# fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
+# fname = "mock_challenge_0.2_noise-42-0_fiducial.fits"
 true_sim_label="nyx_central"
 
 if choose_forecast:
@@ -166,8 +170,8 @@ elif choose_data:
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
 
-if choose_challenge == True:    
-    data["P1Ds"] = P1D_QMLE_DESIY1(fname = folder + fname, true_sim_label=true_sim_label)
+if choose_challenge == True:
+    data["P1Ds"] = P1D_DESIY1(fname = folder + fname, true_sim_label=true_sim_label)
 else:
     data["P1Ds"] = set_P1D(
         args.data_label,
@@ -201,18 +205,27 @@ if choose_data == False:
 
 # %%
 # cosmology
+args.ic_correction=False
 # args.fid_cosmo_label="mpg_central"
 args.fid_cosmo_label="nyx_central"
+# args.fid_cosmo_label="nyx_seed"
+
+# args.fid_cosmo_label="nyx_3"
+# args.ic_correction=True
 # args.fid_cosmo_label="Planck18"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
 # args.fid_igm_label="mpg_central"
 args.fid_igm_label="nyx_central"
+# args.fid_igm_label="nyx_seed"
+# args.fid_igm_label="nyx_3"
+# args.fid_igm_label="nyx_3_1"
 if choose_data == False:
     args.igm_priors = "hc"
 else:
     args.type_priors = "data"
+args.type_priors = "hc"
 
 # contaminants
 args.fid_SiIII=[0, -10]
@@ -223,10 +236,14 @@ args.fid_SN=[0, -4]
 # parameters
 args.vary_alphas=True
 args.fix_cosmo=False
-args.n_tau=2
-args.n_sigT=2
-args.n_gamma=2
-args.n_kF=2
+args.n_tau=0
+args.n_sigT=0
+args.n_gamma=0
+args.n_kF=0
+# args.n_tau=2
+# args.n_sigT=2
+# args.n_gamma=2
+# args.n_kF=2
 args.n_SiIII = 0
 args.n_SiII = 0
 args.n_dla=0
@@ -270,9 +287,17 @@ like.plot_igm()
 # ### Set fitter
 
 # %%
+def func_for_sampler(p0):
+    res = fitter.like.get_log_like(values=p0, return_blob=True)
+    return res[0], *res[2]
+
 # for sampler, no real fit, just test
-args.n_steps=50
-args.n_burn_in=10
+# args.n_steps=1000
+# args.n_burn_in=1500
+# args.parallel=False
+# args.explore=False
+args.n_steps=500
+args.n_burn_in=500
 args.parallel=False
 args.explore=True
 
@@ -288,15 +313,6 @@ fitter = Fitter(
 )
 
 # %% [markdown]
-# ### Run sampler
-# It takes less than 2 min on my laptop without any parallelization
-
-# %%
-run_sampler = False
-if run_sampler:
-    _emcee_sam = sampler.run_sampler(log_func=fitter.like.get_chi2)
-
-# %% [markdown]
 # ### Run minimizer
 
 # %%
@@ -306,6 +322,8 @@ if like.truth is None:
     p0 = np.array(list(like.fid["fit_cube"].values()))
 else:
     p0 = np.array(list(like.truth["like_params_cube"].values()))*1.01
+    
+p0 = np.array(list(like.fid["fit_cube"].values()))
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
 
@@ -318,11 +336,54 @@ fitter.plot_p1d(residuals=True, plot_every_iz=2)
 # %%
 fitter.plot_igm(cloud=True)
 
+# %% [markdown]
+# ### Run sampler
+# It takes less than 2 min on my laptop without any parallelization
+
+# %%
+fitter.mle_cube
+
+# %%
+p0 = fitter.mle_cube.copy()
+p0[0] = 0.5
+func_for_sampler(p0)
+
+# %% [markdown]
+# 15 min, one core
+
+# %%
+# %%time
+run_sampler = True
+if run_sampler:    
+    _emcee_sam = fitter.run_sampler(pini=fitter.mle_cube, log_func=func_for_sampler)
+
 # %%
 fitter.truth
 
 # %%
 fitter.mle_cosmo
+
+# %%
+# chain, lnprob, blobs = fitter.get_chain( cube=False, extra_nburn=400)
+
+# %%
+fitter.lnprob.max()
+
+# %%
+fitter.plot_lnprob(extra_nburn=0)
+
+# %%
+for ii in range(fitter.lnprob.shape[1]):
+    plt.plot(fitter.lnprob[40:, ii], alpha=0.5)
+
+# %%
+fitter.write_chain_to_file(extra_nburn=10)
+
+# %% [markdown]
+# Todo
+#
+# - add nuisance
+# - new mle?
 
 # %%
 # sampler.write_chain_to_file()

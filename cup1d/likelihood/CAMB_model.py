@@ -57,11 +57,11 @@ class CAMBModel(object):
         params.append(
             likelihood_parameter.LikelihoodParameter(
                 name="As",
-                # min_value=0.74e-09,
-                # max_value=4.11e-09,
-                # values for which emulators were trained
-                min_value=1.34e-09,
-                max_value=2.71e-09,
+                min_value=0.74e-09,
+                max_value=4.11e-09,
+                # values for which lace emulators were trained
+                # min_value=1.34e-09,
+                # max_value=2.71e-09,
                 value=self.cosmo.InitPower.As,
             )
         )
@@ -69,11 +69,11 @@ class CAMBModel(object):
         params.append(
             likelihood_parameter.LikelihoodParameter(
                 name="ns",
-                # min_value=0.68,
-                # max_value=1.32,
-                # values for which emulators were trained
-                min_value=0.91,
-                max_value=1.02,
+                min_value=0.68,
+                max_value=1.32,
+                # values for which lace emulators were trained
+                # min_value=0.91,
+                # max_value=1.02,
                 value=self.cosmo.InitPower.ns,
             )
         )

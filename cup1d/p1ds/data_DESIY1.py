@@ -179,20 +179,15 @@ def read_from_file(fname=None, full_cov=False, kmin=1e-3, nknyq=0.5):
     """Read file containing P1D"""
 
     # folder storing P1D measurement
-    if fname is not None:
-        fname = fname
-    else:
-        datadir = BaseDataP1D.BASEDIR + "/QMLE_DESIY1/"
-        fname = (
-            datadir + "/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-        )
-
-    hdu = fits.open(fname)
+    try:
+        hdu = fits.open(fname)
+    except:
+        raise ValueError("Cannot read: ", fname)
 
     zs_raw = hdu[1].data["Z"]
     k_kms_raw = hdu[1].data["K"]
     Pk_kms_raw = hdu[1].data["PLYA"]
-    cov_raw = hdu[2].data.copy()
+    cov_raw = hdu[3].data.copy()
     diag_cov_raw = np.diag(cov_raw)
 
     z_unique = np.unique(zs_raw)
@@ -208,6 +203,7 @@ def read_from_file(fname=None, full_cov=False, kmin=1e-3, nknyq=0.5):
         mask = np.argwhere(
             (zs_raw == z)
             & (diag_cov_raw > 0)
+            & np.isfinite(Pk_kms_raw)
             & (k_kms_raw > kmin)
             & (k_kms_raw < k_nyq * nknyq)
         )[:, 0]

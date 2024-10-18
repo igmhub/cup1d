@@ -1,3 +1,5 @@
+import numpy as np
+
 from cup1d.nuisance import metal_model, hcd_model_McDonald2005, SN_model
 
 
@@ -11,6 +13,7 @@ class Contaminants(object):
         SiIII_model=None,
         hcd_model=None,
         sn_model=None,
+        ic_correction=False,
         fid_SiII=-10,
         fid_SiIII=-10,
         fid_HCD=-6,
@@ -20,6 +23,7 @@ class Contaminants(object):
         self.fid_SiIII = fid_SiIII
         self.fid_HCD = fid_HCD
         self.fid_SN = fid_SN
+        self.ic_correction = ic_correction
 
         # setup metal models
         self.metal_models = []
@@ -87,4 +91,53 @@ class Contaminants(object):
             like_params=like_params,
         )
 
-        return cont_metals * cont_HCD * cont_SN
+        if self.ic_correction:
+            IC_corr = ref_nyx_ic_correction(k_kms, z)
+        else:
+            IC_corr = 1
+
+        return cont_metals * cont_HCD * cont_SN * IC_corr
+
+
+def ref_nyx_ic_correction(k_kms, z):
+    # This is the function fitted from the comparison of two Nyx runs,
+    # one with 2lpt (single fluid) IC and the other one with monofonic (2 fluid)
+    # - The high k points and z evolution are well determined
+    # - Low k term: quite uncertain, due to cosmic variance
+    ic_corr_z = np.array([0.15261529, -2.30600644, 2.61877894])
+    ic_corr_k = 0.003669741766936781
+    ancorIC = (ic_corr_z[0] * z**2 + ic_corr_z[1] * z + ic_corr_z[2]) * (
+        1 - np.exp(-k_kms / ic_corr_k)
+    )
+    corICs = 1 / (1 - ancorIC / 100)
+    return corICs
+
+
+# def nyx_ic_correction(k_kms, z):
+#     # This is the function fitted from the comparison of two Nyx runs,
+#     # one with 2lpt (single fluid) IC and the other one with monofonic (2 fluid)
+#     # - The high k points and z evolution are well determined
+#     # - Low k term: quite uncertain, due to cosmic variance
+#     coeff0 = np.poly1d(np.array([0.00067032, -0.00626953, 0.0073908]))
+#     coeff1 = np.poly1d(np.array([0.00767315, -0.04693207, 0.07151469]))
+#     cfit = np.zeros(2)
+#     cfit[0] = coeff0(z)
+#     cfit[1] = coeff1(z)
+
+#     rfit = np.poly1d(cfit)
+#     # multiplicative correction
+#     ic_corr = 10 ** rfit(np.log10(k_kms))
+
+#     return ic_corr
+
+
+# def nuisance_nyx_ic_correction(P0, k, z, Aic, Bic):
+#     ic_corr_k = 0.003669741766936781
+#     correction = (Aic + Bic * (z - 3)) * (1 - np.exp(-k / ic_corr_k))  # in %
+#     return P0 / (1 - 0.01 * correction)
+
+
+# def prior_nyx_ic_correction():
+#     # The central values are the result of a 1st order polynomial fit from the
+#     # 2nd order function given in _ref_nyx_ic_correction(P0, k, z)
+#     return {"Aic": (-2.9, 1.0), "Bic": (-1.4, 0.5)}

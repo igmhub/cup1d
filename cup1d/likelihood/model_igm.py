@@ -120,16 +120,23 @@ class IGM(object):
             return igm_hist
         else:
             if sim_igm not in igm_hist:
-                raise ValueError(
-                    sim_igm
-                    + " string_split found in "
-                    + fname
-                    + r"\n Check out the LaCE script save_"
-                    + sim_igm[:3]
-                    + "_IGM.py"
-                )
+                try:
+                    igm_return = igm_hist[sim_igm + "_0"]
+                except:
+                    igm_return = igm_hist[sim_igm]
+
+                    raise ValueError(
+                        sim_igm
+                        + " string_split found in "
+                        + fname
+                        + r"\n Check out the LaCE script save_"
+                        + sim_igm[:3]
+                        + "_IGM.py"
+                    )
             else:
-                return igm_hist[sim_igm]
+                igm_return = igm_hist[sim_igm]
+
+            return igm_return
 
     def set_priors(self, fid_igm, list_sim_cube, type_priors="hc"):
         """Set priors for all IGM models"""

@@ -342,6 +342,7 @@ class Args:
         n_SiII=1,
         n_dla=0,
         n_sn=0,
+        ic_correction=False,
         igm_priors="hc",
         fid_cosmo_label="mpg_central",
         true_cosmo_label=None,
@@ -398,6 +399,7 @@ class Args:
         self.true_HCD = true_HCD
         self.fid_SN = fid_SN
         self.true_SN = true_SN
+        self.ic_correction = ic_correction
         self.fid_cosmo_label = fid_cosmo_label
         self.true_cosmo_label = true_cosmo_label
         self.drop_sim = drop_sim

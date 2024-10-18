@@ -284,6 +284,9 @@ class Likelihood(object):
         """Compute log(likelihood), including determinant of covariance
         unless you are setting ignore_log_det_cov=True."""
 
+        # if np.sum((values >= 1) | (values <= 0)) > 0:
+        #     return -np.infty, 0, (0, 0)
+
         # use emulator covariance
         if self.emu_cov_factor == 0:
             return_covar = False
@@ -375,6 +378,9 @@ class Likelihood(object):
                 log_like += log_like_z
                 if self.verbose:
                     print("added {} to log_like".format(log_like_z))
+
+        if np.isnan(log_like):
+            log_like = -np.inf
 
         out = [log_like, chi2_all]
         if return_blob:
@@ -724,10 +730,10 @@ class Likelihood(object):
                 )
 
         plt.tight_layout()
-        if plot_fname:
+        if plot_fname is not None:
             plt.savefig(plot_fname)
-
-        if show:
+            # plt.close()
+        else:
             plt.show()
 
         return
