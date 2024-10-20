@@ -86,7 +86,9 @@ def main():
 
         ## set data
         data = {"P1Ds": None, "extra_P1Ds": None}
-        data["P1Ds"] = P1D_DESIY1(fname=fname, true_sim_label=true_sim_label)
+        data["P1Ds"] = P1D_DESIY1(
+            fname=fname, true_sim_label=true_sim_label, emu_error=0.02
+        )
         # data["P1Ds"].plot_p1d()
 
         ## set likelihood

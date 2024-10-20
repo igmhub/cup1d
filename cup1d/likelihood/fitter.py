@@ -1126,11 +1126,16 @@ class Fitter(object):
         if tries:
             # plots
             mask_use = self.plot_lnprob(extra_nburn=extra_nburn)
+            plt.close()
             self.plot_p1d(residuals=residuals)
+            plt.close()
             self.plot_igm()
+            plt.close()
             if self.fix_cosmology == False:
                 self.plot_corner(only_cosmo=True, extra_nburn=extra_nburn)
+                plt.close()
             dict_out["summary"] = self.plot_corner(extra_nburn=extra_nburn)
+            plt.close()
 
             # for stat_best_fit in ["mle"]:
             #     self.plot_p1d(

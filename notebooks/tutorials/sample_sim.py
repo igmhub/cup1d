@@ -160,7 +160,11 @@ elif choose_data:
 data = {"P1Ds": None, "extra_P1Ds": None}
 
 if choose_challenge == True:    
-    data["P1Ds"] = P1D_DESIY1(fname = folder + fname, true_sim_label=true_sim_label)
+    data["P1Ds"] = P1D_DESIY1(
+        fname = folder + fname, 
+        true_sim_label=true_sim_label,
+        emu_error=0.02
+    )
 else:
     data["P1Ds"] = set_P1D(
         args.data_label,
@@ -225,6 +229,7 @@ args.fid_SN=[0, -4]
 # parameters
 args.vary_alphas=True
 args.fix_cosmo=False
+# args.fix_cosmo=True
 # args.n_tau=0
 # args.n_sigT=0
 # args.n_gamma=0
@@ -267,7 +272,7 @@ for p in like.free_params:
 
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
-# like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
+like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
 
 # %%
 like.plot_igm()
@@ -328,17 +333,6 @@ fitter.plot_igm(cloud=True)
 # %% [markdown]
 # ### Run sampler
 # It takes less than 2 min on my laptop without any parallelization
-
-# %%
-fitter.mle_cube
-
-# %%
-p0 = fitter.mle_cube.copy()
-p0[0] = 0.5
-func_for_sampler(p0)
-
-# %% [markdown]
-# 15 min, one core
 
 # %%
 # %%time

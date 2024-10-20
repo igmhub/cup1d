@@ -38,8 +38,8 @@ def main():
         "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/oct21/"
     )
     files = np.sort(glob.glob(folder_in + "*.fits"))
-    # for ii in range(len(files)):
-    #     print(ii, files[ii])
+    for ii in range(len(files)):
+        print(ii, files[ii])
     # sys.exit()
 
     ## set archive and emulator
@@ -78,7 +78,7 @@ def main():
         niter = 1
 
     # for isim in range(niter):
-    for isim in range(21, 22):
+    for isim in range(18, 19):
         if len(sys.argv) == 2:
             fname = files[int(sys.argv[1])]
         else:
@@ -110,7 +110,7 @@ def main():
         if rank == 0:
             data = {"P1Ds": None, "extra_P1Ds": None}
             data["P1Ds"] = P1D_DESIY1(
-                fname=fname, true_sim_label=true_sim_label
+                fname=fname, true_sim_label=true_sim_label, emu_error=0.02
             )
             for irank in range(1, size):
                 comm.send(data, dest=irank, tag=(irank + 1) * 11)
@@ -251,6 +251,9 @@ def main():
                 residuals=True, plot_every_iz=2, save_directory=dir_out
             )
             fitter.plot_igm(cloud=True, save_directory=dir_out)
+
+            for ii in range(10):
+                plt.close()
 
 
 if __name__ == "__main__":

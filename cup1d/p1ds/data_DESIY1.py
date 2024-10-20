@@ -19,6 +19,7 @@ class P1D_DESIY1(BaseDataP1D):
         z_min=2,
         z_max=10,
         true_sim_label=None,
+        emu_error=0,
     ):
         """Read measured P1D from file.
         - full_cov: for now, no covariance between redshift bins
@@ -26,7 +27,9 @@ class P1D_DESIY1(BaseDataP1D):
         - z_max: maximum redshift to include"""
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        zs, k_kms, Pk_kms, cov = read_from_file(fname=fname, full_cov=full_cov)
+        zs, k_kms, Pk_kms, cov = read_from_file(
+            fname=fname, full_cov=full_cov, emu_error=emu_error
+        )
 
         # set truth if possible
         if true_sim_label is not None:
@@ -175,7 +178,13 @@ class P1D_DESIY1(BaseDataP1D):
         plt.tight_layout()
 
 
-def read_from_file(fname=None, full_cov=False, kmin=1e-3, nknyq=0.5):
+def read_from_file(
+    fname=None,
+    full_cov=False,
+    kmin=1e-3,
+    nknyq=0.5,
+    emu_error=0,
+):
     """Read file containing P1D"""
 
     # folder storing P1D measurement
@@ -209,7 +218,14 @@ def read_from_file(fname=None, full_cov=False, kmin=1e-3, nknyq=0.5):
         )[:, 0]
         slice_cov = slice(mask[0], mask[-1] + 1)
         k_kms.append(np.array(k_kms_raw[mask]))
-        Pk_kms.append(np.array(Pk_kms_raw[mask]))
-        cov.append(np.array(cov_raw[slice_cov, slice_cov]))
+
+        # add emulator error
+        _pk = np.array(Pk_kms_raw[mask])
+        _cov = np.array(cov_raw[slice_cov, slice_cov])
+        ind = np.arange(len(_pk))
+        _cov[ind, ind] += (_pk * emu_error) ** 2
+
+        Pk_kms.append(_pk)
+        cov.append(_cov)
 
     return zs, k_kms, Pk_kms, cov
