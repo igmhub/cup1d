@@ -57,14 +57,19 @@ from cup1d.likelihood.input_pipeline import Args
 # Info about these and other arguments in cup1d.likelihood.input_pipeline.py
 
 # %%
-# from astropy.io import fits
+from astropy.io import fits
+folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
+file = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
 # folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/"
 # # fname = "p1d_fft_y1_measurement.fits"
 # fname = "desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-# hdul = fits.open(folder+fname)
+hdul = fits.open(folder+fname)
 
 # # p1d = P1D_DESIY1(fname=folder+fname)
 # # p1d.plot_p1d()
+
+# %%
+# hdul[1].header
 
 # %% [markdown]
 # ### Set emulator
@@ -105,7 +110,8 @@ choose_mock = False
 choose_data = False
 choose_challenge = True
 folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
-fname = "mock_challenge_0.2_nonoise_fiducial.fits"
+# fname = "mock_challenge_0.2_nonoise_fiducial.fits"
+fname = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
 # fname = "mock_challenge_0.2_nonoise_cosmo_grid_3.fits"
 # fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
 # fname = "mock_challenge_0.2_noise-42-0_fiducial.fits"
@@ -318,8 +324,24 @@ if like.truth is None:
 else:
     p0 = np.array(list(like.truth["like_params_cube"].values()))*1.01
 p0 = np.array(list(like.fid["fit_cube"].values()))
+p0[:] = 0.5
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
+
+# %%
+Delta2_star
+0.4537 nan
+0.43377 0.01993
+n_star
+-2.22793 nan
+-2.24887 0.02094
+alpha_star
+-0.21348 nan
+-0.21154 0.00195
+
+HIERARCH Delta_star = 0.35847222103949444                                       
+N_STAR  =    -2.31015874198128                                                  
+HIERARCH alpha_star = -0.21501108704180283
 
 # %%
 fitter.plot_p1d(residuals=False, plot_every_iz=1)

@@ -27,8 +27,8 @@ def main():
         "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/oct21/"
     )
     files = np.sort(glob.glob(folder_in + "*.fits"))
-    # for ii in range(len(files)):
-    #     print(ii, files[ii])
+    for ii in range(len(files)):
+        print(ii, files[ii])
     # sys.exit()
 
     ## set emulator
@@ -56,7 +56,9 @@ def main():
         niter = 1
 
     # for isim in range(niter):
-    for isim in range(18, 21):
+    for isim in range(2, 8):
+        if isim == 4:
+            continue
         if len(sys.argv) == 2:
             fname = files[int(sys.argv[1])]
         else:
@@ -119,6 +121,7 @@ def main():
         args.n_kF = 2
         if "fsiiii" in fname:
             args.n_SiIII = 1
+            args.fid_SiIII = [0, -3]
         else:
             args.n_SiIII = 0
         args.n_SiII = 0
@@ -162,6 +165,7 @@ def main():
             _emcee_sam = sampler.run_sampler(log_func=fitter.like.get_chi2)
 
         p0 = np.array(list(like.fid["fit_cube"].values()))
+        # p0[:] = 0.5
         fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 
         ## save results
@@ -197,6 +201,9 @@ def main():
         )
         fitter.plot_p1d(residuals=True, plot_every_iz=2, save_directory=dir_out)
         fitter.plot_igm(cloud=True, save_directory=dir_out)
+
+        for ii in range(10):
+            plt.close()
 
 
 if __name__ == "__main__":

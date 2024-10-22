@@ -38,8 +38,9 @@ def main():
         "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/oct21/"
     )
     files = np.sort(glob.glob(folder_in + "*.fits"))
-    for ii in range(len(files)):
-        print(ii, files[ii])
+    if rank == 0:
+        for ii in range(len(files)):
+            print(ii, files[ii])
     # sys.exit()
 
     ## set archive and emulator
@@ -78,7 +79,7 @@ def main():
         niter = 1
 
     # for isim in range(niter):
-    for isim in range(18, 19):
+    for isim in range(20, 21):
         if len(sys.argv) == 2:
             fname = files[int(sys.argv[1])]
         else:
@@ -148,6 +149,7 @@ def main():
         args.n_kF = 2
         if "fsiiii" in fname:
             args.n_SiIII = 1
+            args.fid_SiIII = [0, -3]
         else:
             args.n_SiIII = 0
         args.n_SiII = 0
@@ -190,6 +192,7 @@ def main():
         # run minimizer
         if rank == 0:
             p0 = np.array(list(like.fid["fit_cube"].values()))
+            p0[:] = 0.5
             fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
             for irank in range(1, size):
                 comm.send(fitter.mle_cube, dest=irank, tag=(irank + 1) * 7)
