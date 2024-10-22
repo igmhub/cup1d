@@ -282,7 +282,15 @@ def set_cosmo(cosmo_label="mpg_central", return_all=False):
         return cosmo
 
 
-def set_like(data, emulator, fid_cosmo, free_parameters, args, data_hires=None):
+def set_like(
+    data,
+    emulator,
+    fid_cosmo,
+    free_parameters,
+    args,
+    data_hires=None,
+    P_model=None,
+):
     ## set theory
     if data_hires is not None:
         zs_hires = data_hires.z
@@ -296,6 +304,7 @@ def set_like(data, emulator, fid_cosmo, free_parameters, args, data_hires=None):
         list_sim_cube=emulator.list_sim_cube,
         type_priors=args.igm_priors,
         set_metric=True,
+        P_model=P_model,
     )
     model_cont = Contaminants(
         free_param_names=free_parameters,

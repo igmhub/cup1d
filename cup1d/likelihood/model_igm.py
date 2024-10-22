@@ -83,22 +83,30 @@ class IGM(object):
                 z_T=z_pivot,
                 priors=self.priors,
             )
+        self.yes_kF = True
         if P_model:
             self.P_model = P_model
         else:
-            self.P_model = pressure_model.PressureModel(
-                free_param_names=free_param_names,
-                fid_igm=fid_igm,
-                z_kF=z_pivot,
-                priors=self.priors,
-            )
+            # hack for nyx simulations
+            if np.sum(fid_igm["kF_kms"] != 0) == 0:
+                self.yes_kF = False
+            else:
+                self.P_model = pressure_model.PressureModel(
+                    free_param_names=free_param_names,
+                    fid_igm=fid_igm,
+                    z_kF=z_pivot,
+                    priors=self.priors,
+                )
 
         self.fid_igm = {}
         self.fid_igm["z"] = zs
         self.fid_igm["tau_eff"] = self.F_model.get_tau_eff(zs)
         self.fid_igm["gamma"] = self.T_model.get_gamma(zs)
         self.fid_igm["sigT_kms"] = self.T_model.get_sigT_kms(zs)
-        self.fid_igm["kF_kms"] = self.P_model.get_kF_kms(zs)
+        if self.yes_kF:
+            self.fid_igm["kF_kms"] = self.P_model.get_kF_kms(zs)
+        else:
+            self.fid_igm["kF_kms"] = np.zeros(len(zs))
 
     def get_igm(self, sim_igm, return_all=False):
         """Load IGM history"""
@@ -180,6 +188,11 @@ class IGM(object):
             _ = np.argwhere(np.isfinite(res_div[:, 0]) & (res_div[:, 0] != 0))[
                 :, 0
             ]
+            if len(_) == 0:
+                print("no good points for ", par)
+                self.priors[par] = [[-1, 1], [-1, 1]]
+                continue
+
             y0_max = np.abs(np.log(np.percentile(res_div[_, 0], percent)))
             _ = np.argwhere(np.isfinite(res_div[:, 1]) & (res_div[:, 1] != 0))[
                 :, 0

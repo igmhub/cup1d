@@ -57,19 +57,16 @@ from cup1d.likelihood.input_pipeline import Args
 # Info about these and other arguments in cup1d.likelihood.input_pipeline.py
 
 # %%
-from astropy.io import fits
-folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
-file = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
+# from astropy.io import fits
+# folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
+# file = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
+# res = fits.open(folder+file)
+# p1d = P1D_DESIY1(fname=folder+fname)
+
 # folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/"
-# # fname = "p1d_fft_y1_measurement.fits"
-# fname = "desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-hdul = fits.open(folder+fname)
 
 # # p1d = P1D_DESIY1(fname=folder+fname)
 # # p1d.plot_p1d()
-
-# %%
-# hdul[1].header
 
 # %% [markdown]
 # ### Set emulator
@@ -81,7 +78,7 @@ output_dir = "."
 # args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # the nyx emulator has not properly been validated yet
-args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
+args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
 
 archive = set_archive(args.training_set)
 
@@ -106,9 +103,9 @@ else:
 
 # %%
 choose_forecast = False
-choose_mock = False
+choose_mock = True
 choose_data = False
-choose_challenge = True
+choose_challenge = False
 folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
 # fname = "mock_challenge_0.2_nonoise_fiducial.fits"
 fname = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
@@ -116,6 +113,7 @@ fname = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
 # fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
 # fname = "mock_challenge_0.2_noise-42-0_fiducial.fits"
 true_sim_label="nyx_central"
+# true_sim_label="nyx_seed"
 # true_sim_label="nyx_3"
 
 if choose_forecast:
@@ -139,13 +137,15 @@ elif choose_mock:
     true_cosmo=None
     # to analyze data from simulations
     # args.data_label = "mpg_central"    
-    args.data_label="nyx_central"
+    args.data_label="nyx_central"   
+    args.data_label="nyx_seed"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
 
     # provide cosmology only to cull the data
     # args.true_cosmo_label="mpg_central"
     args.true_cosmo_label="nyx_central"
+    args.true_cosmo_label="nyx_seed"
     
     # you need to provide contaminants
     # from -11 to -4
@@ -168,8 +168,7 @@ data = {"P1Ds": None, "extra_P1Ds": None}
 if choose_challenge == True:    
     data["P1Ds"] = P1D_DESIY1(
         fname = folder + fname, 
-        true_sim_label=true_sim_label,
-        emu_error=0.02
+        true_sim_label=true_sim_label
     )
 else:
     data["P1Ds"] = set_P1D(
@@ -205,9 +204,11 @@ if choose_data == False:
 # %%
 # cosmology
 args.ic_correction=False
+
+args.emu_cov_factor = 0.02
 # args.fid_cosmo_label="mpg_central"
-args.fid_cosmo_label="nyx_central"
-# args.fid_cosmo_label="nyx_seed"
+# args.fid_cosmo_label="nyx_central"
+args.fid_cosmo_label="nyx_seed"
 
 # args.fid_cosmo_label="nyx_3"
 # args.ic_correction=True
@@ -234,15 +235,15 @@ args.fid_SN=[0, -4]
 
 # parameters
 args.vary_alphas=True
-args.fix_cosmo=False
-# args.fix_cosmo=True
-# args.n_tau=0
-# args.n_sigT=0
-# args.n_gamma=0
+# args.fix_cosmo=False
+args.fix_cosmo=True
+args.n_tau=0
+args.n_sigT=0
+args.n_gamma=0
 # args.n_kF=0
-args.n_tau=2
-args.n_sigT=2
-args.n_gamma=2
+# args.n_tau=2
+# args.n_sigT=2
+# args.n_gamma=2
 args.n_kF=2
 args.n_SiIII = 0
 args.n_SiII = 0
@@ -254,6 +255,10 @@ free_parameters = set_free_like_parameters(args)
 free_parameters
 
 # %% [markdown]
+# #TODO 
+# - nyx_central_1 included
+
+# %% [markdown]
 # ### Set likelihood
 
 # %%
@@ -263,8 +268,38 @@ like = set_like(
     fid_cosmo,
     free_parameters,
     args,
-    data_hires=data["extra_P1Ds"]
+    data_hires=data["extra_P1Ds"],
+    P_model=P_model
 )
+
+# %%
+P_model = like.theory.model_igm.P_model
+
+# %% [markdown]
+# PRIORS!
+
+# %%
+fname = os.environ["NYX_PATH"] + "nyx_emu_cosmo_Jul2024.npy"
+data_cosmo = np.load(fname, allow_pickle=True)
+
+delta2_star = np.zeros(len(data_cosmo))
+n_star = np.zeros(len(data_cosmo))
+alpha_star = np.zeros(len(data_cosmo))
+
+for ii in range(len(data_cosmo)):
+    delta2_star[ii] = data_cosmo[ii]["star_params"]["Delta2_star"]
+    n_star[ii] = data_cosmo[ii]["star_params"]["n_star"]
+    alpha_star[ii] = data_cosmo[ii]["star_params"]["alpha_star"]
+
+
+# %%
+fig, ax = plt.subplots(1, 2)
+ax[0].scatter(delta2_star, n_star)
+ax[1].scatter(n_star, alpha_star)
+plt.tight_layout()
+
+# %%
+like.full_icov_Pk_kms = None
 
 # %% [markdown]
 # Sampling parameters
@@ -329,21 +364,6 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
 
 # %%
-Delta2_star
-0.4537 nan
-0.43377 0.01993
-n_star
--2.22793 nan
--2.24887 0.02094
-alpha_star
--0.21348 nan
--0.21154 0.00195
-
-HIERARCH Delta_star = 0.35847222103949444                                       
-N_STAR  =    -2.31015874198128                                                  
-HIERARCH alpha_star = -0.21501108704180283
-
-# %%
 fitter.plot_p1d(residuals=False, plot_every_iz=1)
 
 # %%
@@ -361,24 +381,6 @@ fitter.plot_igm(cloud=True)
 run_sampler = True
 if run_sampler:    
     _emcee_sam = fitter.run_sampler(pini=fitter.mle_cube, log_func=func_for_sampler)
-
-# %%
-
-# %%
-# chain, lnprob, blobs = fitter.get_chain( cube=False, extra_nburn=400)
-
-# %%
-fitter.lnprob.max()
-
-# %%
-fitter.plot_lnprob(extra_nburn=0)
-
-# %%
-for ii in range(fitter.lnprob.shape[1]):
-    plt.plot(fitter.lnprob[40:, ii], alpha=0.5)
-
-# %%
-fitter.write_chain_to_file(extra_nburn=10)
 
 # %% [markdown]
 # Todo
@@ -448,3 +450,42 @@ fitter.write_chain_to_file(extra_nburn=10)
 
 # plt.plot(zs, like.theory.model_igm.P_model.get_kF_kms(zs))
 # plt.plot(like.truth["igm"]["z"], like.truth["igm"]["kF_kms"], "--")
+
+# %% [markdown]
+# Results fiducial
+#
+# -- w/ emu error 
+#
+# - block-covariance chi2 48
+#
+# Delta2_star 0.36652 0.36004 0.00647
+#
+# n_star -2.30407 -2.29877 0.0053
+#
+# alpha_star -0.21519 -0.21614 0.00096
+#
+# - full-covariance chi2 50
+#
+# Delta2_star 0.36911 0.36004 0.00907
+#
+# n_star -2.30417 -2.29877 0.0054
+#
+# alpha_star -0.21405 -0.21614 0.00209
+#
+# -- w/o emu error 
+#
+# - block-covariance chi2 147
+#
+# Delta2_star 0.37197 0.36004 0.01193
+#
+# n_star -2.30516 -2.29877 0.00639
+#
+# alpha_star -0.21374 -0.21614 0.00241
+#
+# - full-covariance chi2 181
+#
+# Delta2_star 0.3809 0.36004 0.02086
+#
+# n_star -2.30277 -2.29877 0.00401
+#
+# alpha_star -0.2111 -0.21614 0.00504

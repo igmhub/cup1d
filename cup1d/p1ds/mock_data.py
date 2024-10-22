@@ -168,7 +168,12 @@ class Mock_P1D(BaseMockP1D):
         self.truth["igm"]["sigT_kms"] = theory.model_igm.T_model.get_sigT_kms(
             zs
         )
-        self.truth["igm"]["kF_kms"] = theory.model_igm.P_model.get_kF_kms(zs)
+        if theory.model_igm.yes_kF:
+            self.truth["igm"]["kF_kms"] = theory.model_igm.P_model.get_kF_kms(
+                zs
+            )
+        else:
+            self.truth["igm"]["kF_kms"] = np.zeros_like(zs)
 
         self.truth["cont"] = {}
         for ii in range(2):

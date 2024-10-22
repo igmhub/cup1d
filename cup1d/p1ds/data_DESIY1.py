@@ -19,7 +19,6 @@ class P1D_DESIY1(BaseDataP1D):
         z_min=2,
         z_max=10,
         true_sim_label=None,
-        emu_error=0,
     ):
         """Read measured P1D from file.
         - full_cov: for now, no covariance between redshift bins
@@ -27,9 +26,8 @@ class P1D_DESIY1(BaseDataP1D):
         - z_max: maximum redshift to include"""
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        zs, k_kms, Pk_kms, cov = read_from_file(
-            fname=fname, full_cov=full_cov, emu_error=emu_error
-        )
+        res = read_from_file(fname=fname, full_cov=full_cov)
+        zs, k_kms, Pk_kms, cov, full_z, full_Pk_kms, full_cov_kms = res
 
         # set truth if possible
         if true_sim_label is not None:
@@ -51,13 +49,23 @@ class P1D_DESIY1(BaseDataP1D):
             )
             self.set_truth(theory, zs)
 
-        super().__init__(zs, k_kms, Pk_kms, cov, z_min=z_min, z_max=z_max)
+        super().__init__(
+            zs,
+            k_kms,
+            Pk_kms,
+            cov,
+            z_min=z_min,
+            z_max=z_max,
+            full_z=full_z,
+            full_Pk_kms=full_Pk_kms,
+            full_cov_kms=full_cov_kms,
+        )
 
         return
 
-    def _get_cosmo(self):
+    def _get_cosmo(self, nyx_version="Jul2024"):
         # get cosmology
-        fname = os.environ["NYX_PATH"] + "nyx_emu_cosmo_Oct2023.npy"
+        fname = os.environ["NYX_PATH"] + "nyx_emu_cosmo_" + nyx_version + ".npy"
         data_cosmo = np.load(fname, allow_pickle=True)
 
         true_cosmo = None
@@ -183,7 +191,6 @@ def read_from_file(
     full_cov=False,
     kmin=1e-3,
     nknyq=0.5,
-    emu_error=0,
 ):
     """Read file containing P1D"""
 
@@ -200,6 +207,7 @@ def read_from_file(
     diag_cov_raw = np.diag(cov_raw)
 
     z_unique = np.unique(zs_raw)
+    mask_raw = np.zeros(len(k_kms_raw), dtype=bool)
 
     zs = []
     k_kms = []
@@ -216,16 +224,20 @@ def read_from_file(
             & (k_kms_raw > kmin)
             & (k_kms_raw < k_nyq * nknyq)
         )[:, 0]
+        mask_raw[mask] = True
+
         slice_cov = slice(mask[0], mask[-1] + 1)
         k_kms.append(np.array(k_kms_raw[mask]))
 
         # add emulator error
         _pk = np.array(Pk_kms_raw[mask])
         _cov = np.array(cov_raw[slice_cov, slice_cov])
-        ind = np.arange(len(_pk))
-        _cov[ind, ind] += (_pk * emu_error) ** 2
 
         Pk_kms.append(_pk)
         cov.append(_cov)
 
-    return zs, k_kms, Pk_kms, cov
+    full_z = zs_raw[mask_raw]
+    full_Pk_kms = Pk_kms_raw[mask_raw]
+    full_cov_kms = cov_raw[mask_raw, :][:, mask_raw]
+
+    return zs, k_kms, Pk_kms, cov, full_z, full_Pk_kms, full_cov_kms

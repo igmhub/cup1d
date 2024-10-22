@@ -6,7 +6,17 @@ from warnings import warn
 from cup1d.utils.utils import get_path_cup1d
 
 
-def _drop_zbins(z_in, k_in, Pk_in, cov_in, z_min, z_max):
+def _drop_zbins(
+    z_in,
+    k_in,
+    Pk_in,
+    cov_in,
+    z_min,
+    z_max,
+    full_z=None,
+    full_Pk_kms=None,
+    full_cov_kms=None,
+):
     """Drop redshift bins below z_min or above z_max"""
 
     z_in = np.array(z_in)
@@ -17,11 +27,19 @@ def _drop_zbins(z_in, k_in, Pk_in, cov_in, z_min, z_max):
     Pk_out = []
     cov_out = []
     for jj in ind:
-        k_out.append(k_in[jj])
-        Pk_out.append(Pk_in[jj])
-        cov_out.append(cov_in[jj])
+        # remove tailing zeros
+        ind = np.argwhere(Pk_in[jj] != 0)[:, 0]
+        k_out.append(k_in[jj][ind])
+        Pk_out.append(Pk_in[jj][ind])
+        cov_out.append(cov_in[jj][ind, :][:, ind])
 
-    return z_out, k_out, Pk_out, cov_out
+    if full_z is not None:
+        ind = np.argwhere((full_z >= z_min) & (full_z <= z_max))[:, 0]
+        full_z = full_z[ind]
+        full_Pk_kms = full_Pk_kms[ind]
+        full_cov_kms = full_cov_kms[ind, :][:, ind]
+
+    return z_out, k_out, Pk_out, cov_out, full_Pk_kms, full_cov_kms
 
 
 class BaseDataP1D(object):
@@ -29,7 +47,18 @@ class BaseDataP1D(object):
 
     BASEDIR = get_path_cup1d() + "/data/p1d_measurements/"
 
-    def __init__(self, z, _k_kms, Pk_kms, cov_Pk_kms, z_min=0, z_max=10):
+    def __init__(
+        self,
+        z,
+        _k_kms,
+        Pk_kms,
+        cov_Pk_kms,
+        z_min=0,
+        z_max=10,
+        full_z=None,
+        full_Pk_kms=None,
+        full_cov_kms=None,
+    ):
         """Construct base P1D class, from measured power and covariance"""
 
         ## if multiple z, ensure that k_kms for each redshift
@@ -48,24 +77,26 @@ class BaseDataP1D(object):
             k_kms = _k_kms
 
         # drop zbins below z_min and above z_max
-        z, k_kms, Pk_kms, cov_Pk_kms = _drop_zbins(
-            z, k_kms, Pk_kms, cov_Pk_kms, z_min, z_max
+        res = _drop_zbins(
+            z,
+            k_kms,
+            Pk_kms,
+            cov_Pk_kms,
+            z_min,
+            z_max,
+            full_z=full_z,
+            full_Pk_kms=full_Pk_kms,
+            full_cov_kms=full_cov_kms,
         )
 
-        self.z = z
-        self.k_kms = k_kms
-        self.Pk_kms = Pk_kms
-        self.cov_Pk_kms = cov_Pk_kms
-
-        for iz in range(len(z)):
-            _ = np.argwhere(self.Pk_kms[iz] != 0)[-1, 0] + 1
-            self.k_kms[iz] = self.k_kms[iz][:_]
-            self.Pk_kms[iz] = self.Pk_kms[iz][:_]
-            self.cov_Pk_kms[iz] = self.cov_Pk_kms[iz][:_, :_]
-
-        self.icov_Pk_kms = []
-        for ii in range(len(z)):
-            self.icov_Pk_kms.append(np.linalg.inv(cov_Pk_kms[ii]))
+        (
+            self.z,
+            self.k_kms,
+            self.Pk_kms,
+            self.cov_Pk_kms,
+            self.full_Pk_kms,
+            self.full_cov_kms,
+        ) = res
 
     def get_Pk_iz(self, iz):
         """Return P1D in units of km/s for redshift bin iz"""

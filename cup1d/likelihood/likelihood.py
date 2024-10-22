@@ -49,6 +49,8 @@ class Likelihood(object):
         self.data = data
         self.extra_data = extra_data
 
+        self.set_icov()
+
         self.theory = theory
         self.theory.emu_cosmo_hc()
 
@@ -62,6 +64,43 @@ class Likelihood(object):
 
         # store also fiducial model
         self.set_fid()
+
+    def set_icov(self):
+        for idata in range(2):
+            if idata == 0:
+                data = self.data
+                self.icov_Pk_kms = []
+                self.full_icov_Pk_kms = None
+            else:
+                data = self.extra_data
+                self.extra_icov_Pk_kms = []
+                self.extra_full_icov_Pk_kms = None
+
+            if data is None:
+                continue
+
+            nks = 0
+            for ii in range(len(data.z)):
+                nks += len(data.Pk_kms[ii])
+
+            # add emulator error and compute inverse of covariance matrix
+            for ii in range(len(data.z)):
+                cov = data.cov_Pk_kms[ii].copy()
+                ind = np.arange(len(data.Pk_kms[ii]))
+                cov[ind, ind] += (data.Pk_kms[ii] * self.emu_cov_factor) ** 2
+                if idata == 0:
+                    self.icov_Pk_kms.append(np.linalg.inv(cov))
+                else:
+                    self.extra_icov_Pk_kms.append(np.linalg.inv(cov))
+
+            if data.full_Pk_kms is not None:
+                cov = data.full_cov_kms.copy()
+                ind = np.arange(len(data.full_Pk_kms))
+                cov[ind, ind] += (data.full_Pk_kms * self.emu_cov_factor) ** 2
+                if idata == 0:
+                    self.full_icov_Pk_kms = np.linalg.inv(cov)
+                else:
+                    self.extra_full_icov_Pk_kms = np.linalg.inv(cov)
 
     def set_free_parameters(self, free_param_names, free_param_limits):
         """Setup likelihood parameters that we want to vary"""
@@ -271,10 +310,12 @@ class Likelihood(object):
         """Compute chi2 using data and theory, without adding
         emulator covariance"""
 
-        log_like, chi2_all = self.get_log_like(values, ignore_log_det_cov=True)
+        log_like, log_like_all = self.get_log_like(
+            values, ignore_log_det_cov=True
+        )
 
         if return_all:
-            return -2.0 * log_like, chi2_all
+            return -2.0 * log_like, -2.0 * log_like_all
         else:
             return -2.0 * log_like
 
@@ -284,21 +325,11 @@ class Likelihood(object):
         """Compute log(likelihood), including determinant of covariance
         unless you are setting ignore_log_det_cov=True."""
 
-        # if np.sum((values >= 1) | (values <= 0)) > 0:
-        #     return -np.infty, 0, (0, 0)
-
-        # use emulator covariance
-        if self.emu_cov_factor == 0:
-            return_covar = False
-        else:
-            return_covar = True
-
         # ask emulator prediction for P1D in each bin
         _res = self.get_p1d_kms(
             self.data.z,
             self.data.k_kms,
             values,
-            return_covar=return_covar,
             return_blob=return_blob,
         )
         if _res is None:
@@ -310,29 +341,22 @@ class Likelihood(object):
                 out.append(blob)
             return out
 
-        if return_covar:
-            if return_blob:
-                emu_p1d, emu_covar, blob = _res
-            else:
-                emu_p1d, emu_covar = _res
+        if return_blob:
+            emu_p1d, blob = _res
         else:
-            if return_blob:
-                emu_p1d, blob = _res
-            else:
-                emu_p1d = _res
+            emu_p1d = _res
 
         # use high-res data
         if self.extra_data is not None:
             length = 2
             nz = np.max([len(self.data.z), len(self.extra_data.z)])
-            _res_hi = self.get_p1d_kms(
+            emu_p1d_extra = self.get_p1d_kms(
                 self.extra_data.z,
                 self.extra_data.k_kms,
                 values,
-                return_covar=return_covar,
                 return_blob=False,
             )
-            if _res_hi is None:
+            if emu_p1d_extra is None:
                 # out of priors
                 log_like = -np.inf
                 out = [log_like, log_like]
@@ -341,66 +365,58 @@ class Likelihood(object):
                     out.append(blob)
                 return out
 
-            if return_covar:
-                emu_p1d_extra, emu_covar_extra = _res_hi
-            else:
-                emu_p1d_extra = _res_hi
         else:
             length = 1
             nz = len(self.data.z)
 
         # compute log like contribution from each redshift bin
-        chi2_all = np.zeros((length, nz))
+        log_like_all = np.zeros((length, nz))
         log_like = 0
         # loop over low and high res data
         for ii in range(length):
             if ii == 0:
                 emu_p1d_use = emu_p1d
                 data = self.data
-                if return_covar:
-                    emu_covar_use = emu_covar
+                icov_Pk_kms = self.icov_Pk_kms
+                full_icov_Pk_kms = self.full_icov_Pk_kms
             else:
                 emu_p1d_use = emu_p1d_extra
                 data = self.extra_data
-                if return_covar:
-                    emu_covar_use = emu_covar_extra
+                icov_Pk_kms = self.extra_icov_Pk_kms
+                full_icov_Pk_kms = self.extra_full_icov_Pk_kms
 
             # loop over redshift bins
             for iz in range(len(data.z)):
-                # acess data for this redshift
-                z = data.z[iz]
-                # make sure that theory is valid
-                if emu_p1d_use[iz] is None:
-                    raise ValueError("theory did not emulate P1D")
-
-                # get data
-                p1d = data.get_Pk_iz(iz)
-                # add covariance from emulator
-                if return_covar:
-                    icov = np.linalg.inv(
-                        data.get_cov_iz(iz) + emu_cov_factor * emu_covar_use[iz]
-                    )
-                else:
-                    icov = data.get_icov_iz(iz)
-
                 # compute chi2 for this redshift bin
-                diff = p1d - emu_p1d_use[iz]
-                chi2_z = np.dot(np.dot(icov, diff), diff)
-                chi2_all[ii, iz] = chi2_z
+                diff = data.Pk_kms[iz] - emu_p1d_use[iz]
+                chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
                 # check whether to add determinant of covariance as well
                 if ignore_log_det_cov:
-                    log_like_z = -0.5 * chi2_z
+                    log_like_all[ii, iz] = -0.5 * chi2_z
                 else:
-                    log_det_cov = np.log(np.abs(1 / np.linalg.det(icov)))
-                    log_like_z = -0.5 * (chi2_z + log_det_cov)
-                log_like += log_like_z
-                if self.verbose:
-                    print("added {} to log_like".format(log_like_z))
+                    log_det_cov = np.log(
+                        np.abs(1 / np.linalg.det(icov_Pk_kms[iz]))
+                    )
+                    log_like_all[ii, iz] = -0.5 * (chi2_z + log_det_cov)
+
+            if full_icov_Pk_kms is None:
+                log_like += np.sum(log_like_all[ii])
+            else:
+                # compute chi2 using full cov
+                diff = data.full_Pk_kms - np.concatenate(emu_p1d_use)
+                chi2_all = np.dot(np.dot(full_icov_Pk_kms, diff), diff)
+                if ignore_log_det_cov:
+                    log_like += -0.5 * chi2_all
+                else:
+                    log_det_cov = np.log(
+                        np.abs(1 / np.linalg.det(full_icov_Pk_kms))
+                    )
+                    log_like += -0.5 * (chi2_all + log_det_cov)
 
         if np.isnan(log_like):
             log_like = -np.inf
 
-        out = [log_like, chi2_all]
+        out = [log_like, log_like_all]
         if return_blob:
             out.append(blob)
         return out
