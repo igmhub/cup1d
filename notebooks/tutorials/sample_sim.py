@@ -52,23 +52,6 @@ from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
 from cup1d.likelihood.input_pipeline import Args
 
 # %% [markdown]
-# ### Set up arguments
-#
-# Info about these and other arguments in cup1d.likelihood.input_pipeline.py
-
-# %%
-# from astropy.io import fits
-# folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
-# file = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
-# res = fits.open(folder+file)
-# p1d = P1D_DESIY1(fname=folder+fname)
-
-# folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/"
-
-# # p1d = P1D_DESIY1(fname=folder+fname)
-# # p1d.plot_p1d()
-
-# %% [markdown]
 # ### Set emulator
 
 # %%
@@ -97,24 +80,11 @@ else:
 # #### Set either mock data or real data
 
 # %%
-# folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
-# fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
-# data["P1Ds"] = P1D_DESIY1(fname = folder + fname, true_sim_label="nyx_3")
-
-# %%
 choose_forecast = False
-choose_mock = True
+choose_mock = False
 choose_data = False
 choose_challenge = False
-folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
-# fname = "mock_challenge_0.2_nonoise_fiducial.fits"
-fname = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
-# fname = "mock_challenge_0.2_nonoise_cosmo_grid_3.fits"
-# fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
-# fname = "mock_challenge_0.2_noise-42-0_fiducial.fits"
-true_sim_label="nyx_central"
-# true_sim_label="nyx_seed"
-# true_sim_label="nyx_3"
+choose_desiy1 = True
 
 if choose_forecast:
     # for forecast, just start label of observational data with mock
@@ -165,11 +135,32 @@ elif choose_data:
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
 
-if choose_challenge == True:    
+if choose_challenge:    
+    # folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
+    # fname = "mock_challenge_0.2_nonoise_fiducial.fits"
+    # fname = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
+    # fname = "mock_challenge_0.2_nonoise_cosmo_grid_3.fits"
+    # fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
+    # fname = "mock_challenge_0.2_noise-42-0_fiducial.fits"
+    # true_sim_label="nyx_central"
+    # true_sim_label="nyx_seed"
+    # true_sim_label="nyx_3"
     data["P1Ds"] = P1D_DESIY1(
         fname = folder + fname, 
         true_sim_label=true_sim_label
     )
+elif choose_desiy1:
+    fname = None
+    # in NERSC
+    # QMLE /global/cfs/cdirs/desicollab/users/naimgk/my-reductions/data/iron-v3/DataProducts/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits
+    # FFT /global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/plots/baseline/notebook/measurement/p1d_fft_y1_measurement_kms.fits
+    fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
+
+    if fname is None:
+        print("choose appropriate folder")
+
+    else:    
+        data["P1Ds"] = P1D_DESIY1(fname = fname)
 else:
     data["P1Ds"] = set_P1D(
         args.data_label,
@@ -195,8 +186,10 @@ if args.data_label_hires is not None:
     data["extra_P1Ds"].plot_p1d()
 
 # %%
-if choose_data == False:
+try:
     data["P1Ds"].plot_igm()
+except:
+    print("Real data, no true IGM history")
 
 # %% [markdown]
 # #### Set fiducial/initial options for the fit
@@ -207,8 +200,8 @@ args.ic_correction=False
 
 args.emu_cov_factor = 0.02
 # args.fid_cosmo_label="mpg_central"
-# args.fid_cosmo_label="nyx_central"
-args.fid_cosmo_label="nyx_seed"
+args.fid_cosmo_label="nyx_central"
+# args.fid_cosmo_label="nyx_seed"
 
 # args.fid_cosmo_label="nyx_3"
 # args.ic_correction=True
@@ -228,24 +221,24 @@ else:
 args.type_priors = "hc"
 
 # contaminants
-args.fid_SiIII=[0, -10]
+args.fid_SiIII=[0, -4]
 args.fid_SiII=[0, -10]
 args.fid_HCD=[0, -6]
 args.fid_SN=[0, -4]
 
 # parameters
 args.vary_alphas=True
-# args.fix_cosmo=False
-args.fix_cosmo=True
-args.n_tau=0
-args.n_sigT=0
-args.n_gamma=0
+args.fix_cosmo=False
+# args.fix_cosmo=True
+# args.n_tau=0
+# args.n_sigT=0
+# args.n_gamma=0
 # args.n_kF=0
-# args.n_tau=2
-# args.n_sigT=2
-# args.n_gamma=2
+args.n_tau=2
+args.n_sigT=2
+args.n_gamma=2
 args.n_kF=2
-args.n_SiIII = 0
+args.n_SiIII = 1
 args.n_SiII = 0
 args.n_dla=0
 args.n_sn=0
@@ -253,10 +246,6 @@ args.n_sn=0
 
 free_parameters = set_free_like_parameters(args)
 free_parameters
-
-# %% [markdown]
-# #TODO 
-# - nyx_central_1 included
 
 # %% [markdown]
 # ### Set likelihood
@@ -269,37 +258,10 @@ like = set_like(
     free_parameters,
     args,
     data_hires=data["extra_P1Ds"],
-    P_model=P_model
 )
 
 # %%
-P_model = like.theory.model_igm.P_model
-
-# %% [markdown]
-# PRIORS!
-
-# %%
-fname = os.environ["NYX_PATH"] + "nyx_emu_cosmo_Jul2024.npy"
-data_cosmo = np.load(fname, allow_pickle=True)
-
-delta2_star = np.zeros(len(data_cosmo))
-n_star = np.zeros(len(data_cosmo))
-alpha_star = np.zeros(len(data_cosmo))
-
-for ii in range(len(data_cosmo)):
-    delta2_star[ii] = data_cosmo[ii]["star_params"]["Delta2_star"]
-    n_star[ii] = data_cosmo[ii]["star_params"]["n_star"]
-    alpha_star[ii] = data_cosmo[ii]["star_params"]["alpha_star"]
-
-
-# %%
-fig, ax = plt.subplots(1, 2)
-ax[0].scatter(delta2_star, n_star)
-ax[1].scatter(n_star, alpha_star)
-plt.tight_layout()
-
-# %%
-like.full_icov_Pk_kms = None
+# like.full_icov_Pk_kms = None
 
 # %% [markdown]
 # Sampling parameters
@@ -362,6 +324,9 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 p0[:] = 0.5
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
+
+# %%
+fitter.plot_mle_cosmo()
 
 # %%
 fitter.plot_p1d(residuals=False, plot_every_iz=1)

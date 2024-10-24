@@ -228,7 +228,9 @@ def set_P1D(
     return data
 
 
-def set_cosmo(cosmo_label="mpg_central", return_all=False):
+def set_cosmo(
+    cosmo_label="mpg_central", return_all=False, nyx_version="Jul2024"
+):
     """Set fiducial cosmology
 
     Parameters
@@ -245,7 +247,9 @@ def set_cosmo(cosmo_label="mpg_central", return_all=False):
             fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
             get_cosmo = camb_cosmo.get_cosmology_from_dictionary
         elif cosmo_label[:3] == "nyx":
-            fname = os.environ["NYX_PATH"] + "nyx_emu_cosmo_Oct2023.npy"
+            fname = (
+                os.environ["NYX_PATH"] + "nyx_emu_cosmo_" + nyx_version + ".npy"
+            )
             get_cosmo = camb_cosmo.get_Nyx_cosmology
 
         try:
