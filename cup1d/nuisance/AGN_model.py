@@ -1,49 +1,54 @@
 import numpy as np
 import copy
 import os
+import cup1d
 from cup1d.likelihood import likelihood_parameter
+from scipy.interpolate import interp1d
 
 
-class SN_Model(object):
-    """Model SN contamination following Viel+13"""
+class AGN_Model(object):
+    """Model AGN contamination"""
 
     def __init__(
         self,
         z_0=3.0,
         fid_value=[0, -4],
         null_value=-4,
-        ln_SN_coeff=None,
+        ln_AGN_coeff=None,
         free_param_names=None,
     ):
         self.z_0 = z_0
         self.null_value = null_value
-        if ln_SN_coeff:
+
+        if ln_AGN_coeff:
             if free_param_names is not None:
                 raise ValueError("can not specify coeff and free_param_names")
-            self.ln_SN_coeff = ln_SN_coeff
+            self.ln_AGN_coeff = ln_AGN_coeff
         else:
             if free_param_names:
-                # figure out number of SN free params
-                n_SN = len([p for p in free_param_names if "ln_SN_" in p])
-                if n_SN == 0:
-                    n_SN = 1
+                # figure out number of AGN free params
+                n_AGN = len([p for p in free_param_names if "ln_AGN_" in p])
+                if n_AGN == 0:
+                    n_AGN = 1
             else:
-                n_SN = 1
+                n_AGN = 1
 
-            self.ln_SN_coeff = [0.0] * n_SN
-            self.ln_SN_coeff[-1] = fid_value[-1]
-            if n_SN == 2:
-                self.ln_SN_coeff[-2] = fid_value[-2]
+            self.ln_AGN_coeff = [0.0] * n_AGN
+            self.ln_AGN_coeff[-1] = fid_value[-1]
+            if n_AGN == 2:
+                self.ln_AGN_coeff[-2] = fid_value[-2]
 
         self.set_parameters()
+
+        self.AGN_z, self.AGN_expansion = _load_agn_file()
 
     def set_parameters(self):
         """Setup likelihood parameters in the HCD model"""
 
         self.params = []
-        Npar = len(self.ln_SN_coeff)
+        Npar = len(self.ln_AGN_coeff)
         for i in range(Npar):
-            name = "ln_SN_" + str(i)
+            name = "ln_AGN_" + str(i)
             if i == 0:
                 xmin = -5
                 xmax = 2
@@ -52,7 +57,7 @@ class SN_Model(object):
                 xmin = -1
                 xmax = 1
             # note non-trivial order in coefficients
-            value = self.ln_SN_coeff[Npar - i - 1]
+            value = self.ln_AGN_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
                 name=name, value=value, min_value=xmin, max_value=xmax
             )
@@ -62,62 +67,60 @@ class SN_Model(object):
 
     def get_Nparam(self):
         """Number of parameters in the model"""
-        assert len(self.ln_SN_coeff) == len(self.params), "size mismatch"
-        return len(self.ln_SN_coeff)
+        assert len(self.ln_AGN_coeff) == len(self.params), "size mismatch"
+        return len(self.ln_AGN_coeff)
 
-    def get_SN_damp(self, z, like_params=[]):
-        """Amplitude of HCD contamination around z_0"""
+    def get_AGN_damp(self, z, like_params=[]):
+        """Amplitude of AGN contamination around z_0"""
 
-        ln_SN_coeff = self.get_SN_coeffs(like_params=like_params)
-        if ln_SN_coeff[-1] <= self.null_value:
+        ln_AGN_coeff = self.get_AGN_coeffs(like_params=like_params)
+        if ln_AGN_coeff[-1] <= self.null_value:
             return 0
         else:
             xz = np.log((1 + z) / (1 + self.z_0))
-            ln_poly = np.poly1d(ln_SN_coeff)
+            ln_poly = np.poly1d(ln_AGN_coeff)
             ln_out = ln_poly(xz)
             return np.exp(ln_out)
 
-    def get_contamination(self, z, k_Mpc, like_params=[]):
-        """Multiplicative contamination caused by SNs"""
-        SN_damp = self.get_SN_damp(z, like_params=like_params)
-        if SN_damp == 0:
-            return 1
+    def get_contamination(self, z, k_kms, like_params=[]):
+        """Multiplicative contamination caused by AGNs"""
+
+        fAGN = self.get_AGN_damp(z, like_params=like_params)
+
+        if z <= np.max(self.AGN_z):
+            yy = self.AGN_expansion[:, 0][None, :] + self.AGN_expansion[:, 1][
+                None, :
+            ] * np.exp(-self.AGN_expansion[:, 2][None, :] * k_kms[:, None])
+            delta = interp1d(self.AGN_z, yy)(z)
         else:
-            # Viel+13 Fig 8 panel b
+            AGN_upper = self.AGN_expansion[0, 0] + self.AGN_expansion[
+                0, 1
+            ] * np.exp(-self.AGN_expansion[0, 2] * k_kms)
+            AGN_lower = self.AGN_expansion[1, 0] + self.AGN_expansion[
+                1, 1
+            ] * np.exp(-self.AGN_expansion[1, 2] * k_kms)
+            z_upper = self.AGN_z[0]
+            z_lower = self.AGN_z[1]
+            delta = (AGN_upper - AGN_lower) / (z_upper - z_lower) * (
+                z - z_upper
+            ) + AGN_upper
 
-            k0_Mpc = 0.07  # Mpc^-1
-            k1_Mpc = 1.4  # Mpc^-1
-            # Supernovae SN
-            tmpLowk = [-0.06, -0.04, -0.02]
-            tmpHighk = [-0.01, -0.01, -0.01]
-            if z < 2.5:
-                d0 = tmpLowk[0]
-                d1 = tmpHighk[0]
-            elif z < 3.5:
-                d0 = tmpLowk[1]
-                d1 = tmpHighk[1]
-            else:
-                d0 = tmpLowk[2]
-                d1 = tmpHighk[2]
-            delta = d0 + (d1 - d0) * (k_Mpc - k0_Mpc) / (k1_Mpc - k0_Mpc)
-            corSN = 1 / (1.0 + delta * SN_damp)
-
-            return corSN
+        return 1 + delta * fAGN
 
     def get_parameters(self):
         """Return likelihood parameters for the HCD model"""
         return self.params
 
-    def get_SN_coeffs(self, like_params=[]):
+    def get_AGN_coeffs(self, like_params=[]):
         """Return list of mean flux coefficients"""
 
         if like_params:
-            ln_SN_coeff = self.ln_SN_coeff.copy()
+            ln_AGN_coeff = self.ln_AGN_coeff.copy()
             Npar = 0
             array_names = []
             array_values = []
             for par in like_params:
-                if "ln_SN" in par.name:
+                if "ln_AGN" in par.name:
                     Npar += 1
                     array_names.append(par.name)
                     array_values.append(par.value)
@@ -126,10 +129,10 @@ class SN_Model(object):
 
             # use fiducial value (no contamination)
             if Npar == 0:
-                return self.ln_SN_coeff
+                return self.ln_AGN_coeff
             elif Npar != len(self.params):
                 print(Npar, len(self.params))
-                raise ValueError("number of params mismatch in get_SN_coeffs")
+                raise ValueError("number of params mismatch in get_AGN_coeffs")
 
             for ip in range(Npar):
                 _ = np.argwhere(self.params[ip].name == array_names)[:, 0]
@@ -138,8 +141,25 @@ class SN_Model(object):
                         "could not update parameter" + self.params[ip].name
                     )
                 else:
-                    ln_SN_coeff[Npar - ip - 1] = array_values[_[0]]
+                    ln_AGN_coeff[Npar - ip - 1] = array_values[_[0]]
         else:
-            ln_SN_coeff = self.ln_SN_coeff
+            ln_AGN_coeff = self.ln_AGN_coeff
 
-        return ln_SN_coeff
+        return ln_AGN_coeff
+
+
+def _load_agn_file():
+    agn_corr_filename = (
+        os.path.dirname(cup1d.__path__[0]) + "/data/nuisance/AGN_corr.dat"
+    )
+    NzAGN = 9
+    datafile = open(agn_corr_filename, "r")
+    AGN_z = np.ndarray(NzAGN, "float")
+    AGN_expansion = np.ndarray((NzAGN, 3), "float")
+    for i in range(NzAGN):
+        line = datafile.readline()
+        values = [float(valstring) for valstring in line.split()]
+        AGN_z[i] = values[0]
+        AGN_expansion[i] = values[1:]
+    datafile.close()
+    return AGN_z, AGN_expansion

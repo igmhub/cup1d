@@ -1,6 +1,11 @@
 import numpy as np
 
-from cup1d.nuisance import metal_model, hcd_model_McDonald2005, SN_model
+from cup1d.nuisance import (
+    metal_model,
+    hcd_model_McDonald2005,
+    SN_model,
+    AGN_model,
+)
 
 
 class Contaminants(object):
@@ -13,16 +18,19 @@ class Contaminants(object):
         SiIII_model=None,
         hcd_model=None,
         sn_model=None,
+        agn_model=None,
         ic_correction=False,
-        fid_SiII=-10,
-        fid_SiIII=-10,
-        fid_HCD=-6,
-        fid_SN=-10,
+        fid_SiII=[0, -10],
+        fid_SiIII=[0, -10],
+        fid_HCD=[0, -6],
+        fid_SN=[0, -4],
+        fid_AGN=[0, -4],
     ):
         self.fid_SiII = fid_SiII
         self.fid_SiIII = fid_SiIII
         self.fid_HCD = fid_HCD
         self.fid_SN = fid_SN
+        self.fid_AGN = fid_AGN
         self.ic_correction = ic_correction
 
         # setup metal models
@@ -57,12 +65,21 @@ class Contaminants(object):
             )
 
         # setup SN model
-        if hcd_model:
+        if sn_model:
             self.sn_model = sn_model
         else:
             self.sn_model = SN_model.SN_Model(
                 free_param_names=free_param_names,
                 fid_value=self.fid_SN,
+            )
+
+        # setup AGN model
+        if agn_model:
+            self.agn_model = sn_model
+        else:
+            self.agn_model = AGN_model.AGN_Model(
+                free_param_names=free_param_names,
+                fid_value=self.fid_AGN,
             )
 
     def get_contamination(self, z, k_kms, mF, M_of_z, like_params=[]):
@@ -91,12 +108,19 @@ class Contaminants(object):
             like_params=like_params,
         )
 
+        # include AGN contamination
+        cont_AGN = self.agn_model.get_contamination(
+            z=z,
+            k_kms=k_kms,
+            like_params=like_params,
+        )
+
         if self.ic_correction:
             IC_corr = ref_nyx_ic_correction(k_kms, z)
         else:
             IC_corr = 1
 
-        return cont_metals * cont_HCD * cont_SN * IC_corr
+        return cont_metals * cont_HCD * cont_SN * cont_AGN * IC_corr
 
 
 def ref_nyx_ic_correction(k_kms, z):

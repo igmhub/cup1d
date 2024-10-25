@@ -51,6 +51,11 @@ from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
 
 from cup1d.likelihood.input_pipeline import Args
 
+# %%
+from cup1d.nuisance import AGN_model
+import cup1d
+import os
+
 # %% [markdown]
 # ### Set emulator
 
@@ -226,6 +231,7 @@ args.fid_SiIII=[0, -4]
 args.fid_SiII=[0, -10]
 args.fid_HCD=[0, -6]
 args.fid_SN=[0, -4]
+args.fid_AGN=[0, -4]
 
 # parameters
 args.vary_alphas=True
@@ -243,10 +249,34 @@ args.n_SiIII = 2
 args.n_SiII = 1
 args.n_dla=1
 args.n_sn=0
+args.n_agn=1
 
 
 free_parameters = set_free_like_parameters(args)
 free_parameters
+
+# %%
+agn_model = AGN_model.AGN_Model(
+    free_param_names=free_parameters,
+    fid_value=[0, -4],
+)
+
+# %%
+from scipy.interpolate import interp1d
+
+# %%
+zz = np.arange(3)
+k_kms = np.arange(2)+3
+
+delta = interp1d(zz, zz[None, :] * k_kms[:, None])
+
+delta(2)
+
+# %%
+zz[None, :] * k_kms[:, None]
+
+# %%
+agn_model.get_contamination(3, np.array([0.5, 0.6]))
 
 # %% [markdown]
 # ### Set likelihood

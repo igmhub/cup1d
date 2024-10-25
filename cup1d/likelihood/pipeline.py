@@ -51,6 +51,8 @@ def set_free_like_parameters(params):
         free_parameters.append(f"ln_A_damp_{ii}")
     for ii in range(params.n_sn):
         free_parameters.append(f"ln_SN_{ii}")
+    for ii in range(params.n_agn):
+        free_parameters.append(f"ln_AGN_{ii}")
 
     return free_parameters
 

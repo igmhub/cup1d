@@ -605,6 +605,10 @@ class Theory(object):
         for par in self.model_cont.sn_model.get_parameters():
             params.append(par)
 
+        # get parameters from AGN contamination model
+        for par in self.model_cont.agn_model.get_parameters():
+            params.append(par)
+
         if self.verbose:
             print("got parameters")
             for par in params:
