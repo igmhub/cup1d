@@ -16,12 +16,11 @@ If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es
 - Create a new conda environment. It is usually better to follow python version one or two behind. In January 2024, the latest is 3.12, so we recommend 3.11.
 
 ```
-conda create -n cup1d -c conda-forge python=3.11 camb mpich mpi4py fdasrsf pip=24.0
+conda create -n cup1d -c conda-forge python=3.11 camb mpich mpi4py fdasrsf
 conda activate cup1d
+pip install --upgrade pip
 ```
-- Install LaCE (do so within the environment created above):
-
-```Follow the instructions from https://github.com/igmhub/lace (see also below)```
+- Clone and install LaCE (do so within the environment created above):
 
 ```
 git clone https://github.com/igmhub/LaCE.git
@@ -29,7 +28,7 @@ cd LacE
 pip install -e .
 ``` 
 
-- Clone the cup1d repo and perform an *editable* installation:
+- Clone and install cup1d:
 
 ```
 git clone https://github.com/igmhub/cup1d.git
@@ -47,7 +46,7 @@ MPICC="cc -shared" pip install --force-reinstall --no-cache-dir --no-binary=mpi4
 
 #### Nyx users:
 
-- You may need to add the Nyx path as an enviroment variable in your notebook kernel. The first is done writting in the kernel.json file:
+- You may need to add the Nyx path as an environment variable in your notebook kernel. The first is done by writing in the kernel.json file:
 
 ```
  "env": {
@@ -55,10 +54,17 @@ MPICC="cc -shared" pip install --force-reinstall --no-cache-dir --no-binary=mpi4
  }
 ```
 
-For convenience, you could also add the Nyx path as an environment variable. The Nyx data is located at NERSC in 
+You also need to add the Nyx path as an environment variable. The Nyx data is located at NERSC in 
 
 ```
 NYX_PATH="/global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/"
+```
+
+- Before running cup1d, please precompute all cosmological information needed using CAMB and save IGM histories. This is done by running the following scripts. *You do not need to do it* if you are in NERSC.
+
+```
+python LaCE/scripts/save_nyx_emu_cosmo.py
+python LaCE/scripts/save_nyx_IGM.py
 ```
 
 ### Notebooks / tutorials
