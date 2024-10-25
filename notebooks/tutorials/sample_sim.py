@@ -61,6 +61,7 @@ output_dir = "."
 # args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # the nyx emulator has not properly been validated yet
+# path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
 args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
 
 archive = set_archive(args.training_set)
@@ -228,7 +229,7 @@ args.fid_SN=[0, -4]
 
 # parameters
 args.vary_alphas=True
-args.fix_cosmo=False
+args.fix_cosmo=True
 # args.fix_cosmo=True
 # args.n_tau=0
 # args.n_sigT=0
@@ -238,9 +239,9 @@ args.n_tau=2
 args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
-args.n_SiIII = 1
-args.n_SiII = 0
-args.n_dla=0
+args.n_SiIII = 2
+args.n_SiII = 1
+args.n_dla=1
 args.n_sn=0
 
 
@@ -321,12 +322,13 @@ if like.truth is None:
 else:
     p0 = np.array(list(like.truth["like_params_cube"].values()))*1.01
 p0 = np.array(list(like.fid["fit_cube"].values()))
-p0[:] = 0.5
+# p0[:] = 0.5
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
 
 # %%
-fitter.plot_mle_cosmo()
+if args.fix_cosmo == False:
+    fitter.plot_mle_cosmo()
 
 # %%
 fitter.plot_p1d(residuals=False, plot_every_iz=1)
