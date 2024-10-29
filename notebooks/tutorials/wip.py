@@ -96,12 +96,13 @@ if choose_forecast:
     # for forecast, just start label of observational data with mock
     args.data_label = "mock_Chabanier2019"
     # args.data_label="mock_Karacayli2024"
-    args.data_label_hires = "mock_Karacayli2022"
+    # args.data_label_hires = "mock_Karacayli2022"
 
     # you need to provide true cosmology, IGM history, and contaminants
-    true_cosmo = set_cosmo(cosmo_label="mpg_central")
-    args.true_igm_label="mpg_central"
-    # args.true_igm_label="nyx_central"
+    true_cosmo = set_cosmo(cosmo_label="nyx_central")
+    # true_cosmo = set_cosmo(cosmo_label="mpg_central")
+    # args.true_igm_label="mpg_central"
+    args.true_igm_label="nyx_central"
     # from -11 to -4
     args.true_SiIII=[0, -10]
     args.true_SiII=[0, -10]
@@ -109,6 +110,8 @@ if choose_forecast:
     args.true_HCD=[0, -6]
     # from -5 to 2
     args.true_SN=[0, -4]
+    # from -5 to 1.5
+    args.true_AGN=[0, -5]
 elif choose_mock:    
     true_cosmo=None
     # to analyze data from simulations
@@ -164,9 +167,23 @@ elif choose_desiy1:
 
     if fname is None:
         print("choose appropriate folder")
-
     else:    
-        data["P1Ds"] = P1D_DESIY1(fname = fname)
+        
+        args.z_max = 10
+        args.data_label_hires = None
+        # args.data_label_hires = "Karacayli2022"
+        
+        data["P1Ds"] = P1D_DESIY1(fname = fname, z_max=args.z_max)
+        
+        
+        # data["extra_P1Ds"] = set_P1D(
+        #     args.data_label_hires,
+        #     args,
+        #     archive=archive,
+        #     # true_cosmo=true_cosmo,
+        #     # emulator=emulator,
+        #     cull_data=False
+        # )
 else:
     data["P1Ds"] = set_P1D(
         args.data_label,
@@ -205,8 +222,8 @@ except:
 args.ic_correction=False
 
 args.emu_cov_factor = 0.02
-# args.fid_cosmo_label="mpg_central"
-args.fid_cosmo_label="nyx_central"
+args.fid_cosmo_label="mpg_central"
+# args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="nyx_seed"
 
 # args.fid_cosmo_label="nyx_3"
@@ -227,15 +244,22 @@ else:
 args.type_priors = "hc"
 
 # contaminants
-args.fid_SiIII=[0, -4]
+# args.fid_SiIII=[0, -10]
+# args.fid_SiII=[0, -10]
+# args.fid_HCD=[0, -6]
+# args.fid_SN=[0, -4]
+# args.fid_AGN=[0, -5]
+
+
+args.fid_SiIII=[0, -5]
 args.fid_SiII=[0, -10]
-args.fid_HCD=[0, -6]
+args.fid_HCD=[0, -2]
 args.fid_SN=[0, -4]
-args.fid_AGN=[0, -4]
+args.fid_AGN=[0, -5]
 
 # parameters
 args.vary_alphas=True
-args.fix_cosmo=True
+args.fix_cosmo=False
 # args.fix_cosmo=True
 # args.n_tau=0
 # args.n_sigT=0
@@ -246,37 +270,13 @@ args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
 args.n_SiIII = 2
-args.n_SiII = 1
-args.n_dla=1
+args.n_SiII = 0
+args.n_dla=2
 args.n_sn=0
-args.n_agn=1
-
+args.n_agn=0
 
 free_parameters = set_free_like_parameters(args)
 free_parameters
-
-# %%
-agn_model = AGN_model.AGN_Model(
-    free_param_names=free_parameters,
-    fid_value=[0, -4],
-)
-
-# %%
-from scipy.interpolate import interp1d
-
-# %%
-zz = np.arange(3)
-k_kms = np.arange(2)+3
-
-delta = interp1d(zz, zz[None, :] * k_kms[:, None])
-
-delta(2)
-
-# %%
-zz[None, :] * k_kms[:, None]
-
-# %%
-agn_model.get_contamination(3, np.array([0.5, 0.6]))
 
 # %% [markdown]
 # ### Set likelihood
@@ -311,9 +311,16 @@ like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
 # %%
 like.plot_igm()
 
-
 # %% [markdown]
 # ### Set fitter
+
+# %%
+like.data.blind=True
+
+# %%
+for key in fitter.blind:
+    print(key, fitter.mle_cosmo[key] - fitter.blind[key])
+
 
 # %%
 def func_for_sampler(p0):
@@ -355,6 +362,10 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 # p0[:] = 0.5
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
+
+# %%
+Minimization improved: 4172.030447608675 2383.990146201969
+Minimization improved: 4172.030447608675 1964.3485135582682
 
 # %%
 if args.fix_cosmo == False:
@@ -486,3 +497,38 @@ if run_sampler:
 # n_star -2.30277 -2.29877 0.00401
 #
 # alpha_star -0.2111 -0.21614 0.00504
+
+# %%
+def make_p1d_err_plot(p1ds_err, kMpc_test):
+    """
+    Plot the P1D errors with 16th and 84th percentiles shaded.
+    
+    Parameters:
+    p1ds_err (np.array): Array of P1D errors
+    kMpc_test (np.array): k values in Mpc^-1
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Calculate median, 16th and 84th percentiles
+    p1d_median = np.nanmedian(p1ds_err.reshape(-1, len(kMpc_test)), axis=0)
+    perc_16 = np.nanpercentile(p1ds_err.reshape(-1, len(kMpc_test)), 16, axis=0)
+    perc_84 = np.nanpercentile(p1ds_err.reshape(-1, len(kMpc_test)), 84, axis=0)
+    
+    # Plot median line
+    ax.plot(kMpc_test, p1d_median,  color='crimson')
+    ax.axhline(y=0, color='black', linestyle='--', alpha=0.5)
+
+    ax.fill_between(kMpc_test, perc_16, perc_84, alpha=0.3, color='crimson')
+    
+    ax.set_xlabel('k (Mpc$^{-1}$)')
+    ax.set_ylabel('Relative Error in P1D')
+    ax.legend()
+    ax.grid(True, which="both", ls="-", alpha=0.2)
+    
+    plt.tight_layout()
+    plt.savefig(f'p1d_errors_all.pdf', bbox_inches='tight')
+    plt.close()
+
+# %%
+
+# %%

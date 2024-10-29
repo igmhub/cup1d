@@ -154,6 +154,7 @@ def set_P1D(
             true_SiIII=args.true_SiIII,
             true_HCD=args.true_HCD,
             true_SN=args.true_SN,
+            true_AGN=args.true_AGN,
             z_min=args.z_min,
             z_max=args.z_max,
         )
@@ -168,6 +169,7 @@ def set_P1D(
             true_SiIII=args.true_SiIII,
             true_HCD=args.true_HCD,
             true_SN=args.true_SN,
+            true_AGN=args.true_AGN,
             add_noise=args.add_noise,
             seed=args.seed_noise,
             z_min=args.z_min,
@@ -182,6 +184,7 @@ def set_P1D(
             true_SiIII=args.true_SiIII,
             true_HCD=args.true_HCD,
             true_SN=args.true_SN,
+            true_AGN=args.true_AGN,
             add_noise=args.add_noise,
             seed=args.seed_noise,
             z_min=args.z_min,
@@ -318,6 +321,7 @@ def set_like(
         fid_SiII=args.fid_SiII,
         fid_HCD=args.fid_HCD,
         fid_SN=args.fid_SN,
+        fid_AGN=args.fid_AGN,
         ic_correction=args.ic_correction,
     )
     theory = lya_theory.Theory(

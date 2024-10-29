@@ -7,13 +7,18 @@ from scipy.interpolate import interp1d
 
 
 class AGN_Model(object):
-    """Model AGN contamination"""
+    """Model AGN contamination
+
+    Model Chabanier et al. 2020, Eq. 21 for correction:
+
+    P1D(AGN) = (1 + beta) * P1D(noAGN)
+    """
 
     def __init__(
         self,
         z_0=3.0,
-        fid_value=[0, -4],
-        null_value=-4,
+        fid_value=[0, -5],
+        null_value=-5,
         ln_AGN_coeff=None,
         free_param_names=None,
     ):
@@ -49,13 +54,13 @@ class AGN_Model(object):
         Npar = len(self.ln_AGN_coeff)
         for i in range(Npar):
             name = "ln_AGN_" + str(i)
+            # priors optimized so we do not get negative values
             if i == 0:
                 xmin = -5
-                xmax = 2
+                xmax = 1.5
             else:
-                # not optimized
-                xmin = -1
-                xmax = 1
+                xmin = -5
+                xmax = 10
             # note non-trivial order in coefficients
             value = self.ln_AGN_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
@@ -76,16 +81,18 @@ class AGN_Model(object):
         ln_AGN_coeff = self.get_AGN_coeffs(like_params=like_params)
         if ln_AGN_coeff[-1] <= self.null_value:
             return 0
-        else:
-            xz = np.log((1 + z) / (1 + self.z_0))
-            ln_poly = np.poly1d(ln_AGN_coeff)
-            ln_out = ln_poly(xz)
-            return np.exp(ln_out)
+
+        xz = np.log((1 + z) / (1 + self.z_0))
+        ln_poly = np.poly1d(ln_AGN_coeff)
+        ln_out = ln_poly(xz)
+        return np.exp(ln_out)
 
     def get_contamination(self, z, k_kms, like_params=[]):
         """Multiplicative contamination caused by AGNs"""
 
         fAGN = self.get_AGN_damp(z, like_params=like_params)
+        if fAGN == 0:
+            return 1
 
         if z <= np.max(self.AGN_z):
             yy = self.AGN_expansion[:, 0][None, :] + self.AGN_expansion[:, 1][
@@ -105,7 +112,9 @@ class AGN_Model(object):
                 z - z_upper
             ) + AGN_upper
 
-        return 1 + delta * fAGN
+        beta = delta * fAGN
+
+        return 1 + beta
 
     def get_parameters(self):
         """Return likelihood parameters for the HCD model"""

@@ -32,6 +32,7 @@ class Mock_P1D(BaseMockP1D):
         true_SiIII=[0, -10],
         true_HCD=[0, -6],
         true_SN=[0, -5],
+        true_AGN=[0, -10],
         zs=None,
         k_kms=None,
     ):
@@ -110,6 +111,7 @@ class Mock_P1D(BaseMockP1D):
             fid_SiII=true_SiII,
             fid_HCD=true_HCD,
             fid_SN=true_SN,
+            fid_AGN=true_AGN,
         )
         theory = lya_theory.Theory(
             zs=zs,
@@ -187,5 +189,8 @@ class Mock_P1D(BaseMockP1D):
                 "ln_A_damp_" + str(ii)
             ] = theory.model_cont.fid_HCD[-1 - ii]
             self.truth["cont"]["ln_SN_" + str(ii)] = theory.model_cont.fid_SN[
+                -1 - ii
+            ]
+            self.truth["cont"]["ln_AGN_" + str(ii)] = theory.model_cont.fid_AGN[
                 -1 - ii
             ]

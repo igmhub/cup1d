@@ -139,11 +139,11 @@ class MetalModel(object):
 
         if ln_X_coeff[-1] <= self.null_value:
             return 0
-        else:
-            xz = np.log((1 + z) / (1 + self.z_X))
-            ln_poly = np.poly1d(ln_X_coeff)
-            ln_out = ln_poly(xz)
-            return np.exp(ln_out)
+
+        xz = np.log((1 + z) / (1 + self.z_X))
+        ln_poly = np.poly1d(ln_X_coeff)
+        ln_out = ln_poly(xz)
+        return np.exp(ln_out)
 
     def get_dv_kms(self):
         """Velocity separation where the contamination is stronger"""
@@ -168,6 +168,6 @@ class MetalModel(object):
         f = self.get_amplitude(z, like_params=like_params)
         if f == 0:
             return 1
-        else:
-            a = f / (1 - mF)
-            return 1 + a**2 + 2 * a * np.cos(self.dv * k_kms)
+
+        a = f / (1 - mF)
+        return 1 + a**2 + 2 * a * np.cos(self.dv * k_kms)

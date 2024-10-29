@@ -508,15 +508,16 @@ class Theory(object):
             emu_call, M_of_z = _res
 
         # check prior here
-        dist_priors = np.zeros((len(zs)))
-        for ii in range(len(zs)):
-            p0 = {}
-            for key in emu_call:
-                p0[key] = emu_call[key][ii]
-            dist_priors[ii] = self.model_igm.metric(p0)
-        if dist_priors.max() > 1:
-            # we are out of the prior range
-            return None
+        if self.model_igm.metric is not None:
+            dist_priors = np.zeros((len(zs)))
+            for ii in range(len(zs)):
+                p0 = {}
+                for key in emu_call:
+                    p0[key] = emu_call[key][ii]
+                dist_priors[ii] = self.model_igm.metric(p0)
+            if dist_priors.max() > 1:
+                # we are out of the prior range
+                return None
 
         # compute input k to emulator in Mpc
         Nz = len(zs)

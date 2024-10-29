@@ -3,6 +3,7 @@ import numpy as np
 from cup1d.nuisance import (
     metal_model,
     hcd_model_McDonald2005,
+    hcd_model_Rogers2017,
     SN_model,
     AGN_model,
 )
@@ -19,6 +20,7 @@ class Contaminants(object):
         hcd_model=None,
         sn_model=None,
         agn_model=None,
+        hcd_model_type="Rogers2017",
         ic_correction=False,
         fid_SiII=[0, -10],
         fid_SiIII=[0, -10],
@@ -59,10 +61,20 @@ class Contaminants(object):
         if hcd_model:
             self.hcd_model = hcd_model
         else:
-            self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
-                free_param_names=free_param_names,
-                fid_value=self.fid_HCD,
-            )
+            if hcd_model_type == "Rogers2017":
+                self.hcd_model = hcd_model_Rogers2017.HCD_Model_Rogers2017(
+                    free_param_names=free_param_names,
+                    fid_value=self.fid_HCD,
+                )
+            elif hcd_model_type == "McDonald2005":
+                self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
+                    free_param_names=free_param_names,
+                    fid_value=self.fid_HCD,
+                )
+            else:
+                raise ValueError(
+                    "hcd_model_type must be one of 'Rogers2017' or 'McDonald2005'"
+                )
 
         # setup SN model
         if sn_model:
@@ -114,11 +126,19 @@ class Contaminants(object):
             k_kms=k_kms,
             like_params=like_params,
         )
+        if np.any(cont_AGN < 0):
+            raise ValueError("Multiplicative AGN contamination < 0")
 
         if self.ic_correction:
             IC_corr = ref_nyx_ic_correction(k_kms, z)
         else:
             IC_corr = 1
+
+        # print("me", cont_metals)
+        # print("hcd", cont_HCD)
+        # print("sn", cont_SN)
+        # print("agn", cont_AGN)
+        # print("ic", IC_corr)
 
         return cont_metals * cont_HCD * cont_SN * cont_AGN * IC_corr
 

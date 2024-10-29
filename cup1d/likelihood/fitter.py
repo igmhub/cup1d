@@ -183,6 +183,9 @@ class Fitter(object):
         self.blobs_dtype = self.like.theory.get_blobs_dtype()
         self.mle = None
 
+        # set blinding
+        self.set_blinding(apply=like.data.blind)
+
     def set_truth(self):
         """Set up dictionary with true values of cosmological
         likelihood parameters for plotting purposes"""
@@ -465,6 +468,10 @@ class Fitter(object):
         print("Fit params no cube:", mle_no_cube, flush=True)
 
         self.mle_cosmo = self.get_cosmo_err(log_func_minimize)
+
+        # apply blinding
+        for key in self.blind:
+            self.mle_cosmo[key] += self.blind[key]
 
         self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(self.mle_cube)
 
@@ -1027,6 +1034,20 @@ class Fitter(object):
                     f.write("%s: %s\n" % (item, str(saveDict[item])))
 
         return
+
+    def set_blinding(self, apply, seed=0):
+        blind_prior = {"Delta2_star": 0.05, "n_star": 0.05, "alpha_star": 0.005}
+        np.random.seed(seed)
+        self.blind = {}
+        for key in blind_prior:
+            if apply:
+                self.blind[key] = np.random.normal(0, blind_prior[key])
+            else:
+                self.blind[key] = 0
+
+    def unblind_mle(self):
+        for key in self.blind:
+            print(key, self.mle_cosmo[key] - self.blind[key])
 
     def get_best_fit(self, delta_lnprob_cut=None, stat_best_fit="mean"):
         """Return an array of best fit values (mean) from the MCMC chain,
@@ -1671,6 +1692,8 @@ param_dict = {
     "ln_A_damp_1": "$\mathrm{ln}\,\mathrm{HCD}_1$",
     "ln_SN_0": "$\mathrm{ln}\,\mathrm{SN}_0$",
     "ln_SN_1": "$\mathrm{ln}\,\mathrm{SN}_1$",
+    "ln_AGN_0": "$\mathrm{ln}\,\mathrm{AGN}_0$",
+    "ln_AGN_1": "$\mathrm{ln}\,\mathrm{AGN}_1$",
     "H0": "$H_0$",
     "mnu": "$\Sigma m_\\nu$",
     "As": "$A_s$",
