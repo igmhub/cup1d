@@ -338,8 +338,10 @@ class Args:
         n_sigT=2,
         n_gamma=2,
         n_kF=2,
-        n_SiIII=2,
-        n_SiII=1,
+        n_SiIII=0,
+        n_SiII=0,
+        n_d_SiIII=0,
+        n_d_SiII=0,
         n_dla=0,
         n_sn=0,
         n_agn=0,
@@ -391,6 +393,8 @@ class Args:
         self.n_kF = n_kF
         self.n_SiIII = n_SiIII
         self.n_SiII = n_SiII
+        self.n_d_SiIII = n_d_SiIII
+        self.n_d_SiII = n_d_SiII
         self.n_dla = n_dla
         self.n_sn = n_sn
         self.n_agn = n_agn

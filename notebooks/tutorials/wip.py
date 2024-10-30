@@ -60,6 +60,9 @@ import os
 # ### Set emulator
 
 # %%
+args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
+
+# %%
 # set output directory for this test
 output_dir = "."
 
@@ -263,8 +266,8 @@ args.type_priors = "hc"
 # args.fid_AGN=[0, -5]
 
 
-args.fid_SiIII=[0, -5]
-args.fid_SiII=[0, -10]
+args.fid_SiIII=[[0, 0], [7, -4]]
+args.fid_SiII=[[0, 0], [0, -10]]
 args.fid_HCD=[0, -2]
 args.fid_SN=[0, -4]
 args.fid_AGN=[0, -5]
@@ -282,6 +285,7 @@ args.n_kF=0
 # args.n_gamma=2
 # args.n_kF=2
 args.n_SiIII = 1
+args.n_d_SiIII = 1
 args.n_SiII = 0
 args.n_dla=1
 args.n_sn=0

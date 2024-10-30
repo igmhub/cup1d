@@ -1553,6 +1553,10 @@ param_dict = {
     "ln_SiIII_1": "$\mathrm{ln}\,f^{SiIII}_1$",
     "ln_SiII_0": "$\mathrm{ln}\,f^{SiII}_0$",
     "ln_SiII_1": "$\mathrm{ln}\,f^{SiII}_1$",
+    "d_SiIII_0": "$\mathrm{ln}\,d^{SiIII}_0$",
+    "d_SiIII_1": "$\mathrm{ln}\,d^{SiIII}_1$",
+    "d_SiII_0": "$\mathrm{ln}\,d^{SiII}_0$",
+    "d_SiII_1": "$\mathrm{ln}\,d^{SiII}_1$",
     # each HCD contamination should have its own parameters here
     "ln_A_damp_0": "$\mathrm{ln}\,\mathrm{HCD}_0$",
     "ln_A_damp_1": "$\mathrm{ln}\,\mathrm{HCD}_1$",
