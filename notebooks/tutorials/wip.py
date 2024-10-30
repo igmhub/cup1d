@@ -168,12 +168,16 @@ elif choose_desiy1:
     if fname is None:
         print("choose appropriate folder")
     else:    
-        
-        args.z_max = 10
+        args.z_min = 2.1
+        args.z_max = 2.3
         args.data_label_hires = None
         # args.data_label_hires = "Karacayli2022"
         
-        data["P1Ds"] = P1D_DESIY1(fname = fname, z_max=args.z_max)
+        data["P1Ds"] = P1D_DESIY1(
+            fname=fname, 
+            z_min=args.z_min, 
+            z_max=args.z_max
+        )
         
         
         # data["extra_P1Ds"] = set_P1D(
@@ -202,6 +206,9 @@ else:
             emulator=emulator,
             cull_data=False
         )
+
+# %%
+data["P1Ds"].z
 
 # %%
 print(data["P1Ds"].apply_blinding)
@@ -274,9 +281,9 @@ args.n_kF=0
 # args.n_sigT=2
 # args.n_gamma=2
 # args.n_kF=2
-args.n_SiIII = 0
+args.n_SiIII = 1
 args.n_SiII = 0
-args.n_dla=0
+args.n_dla=1
 args.n_sn=0
 args.n_agn=0
 
@@ -296,9 +303,6 @@ like = set_like(
     data_hires=data["extra_P1Ds"],
 )
 
-# %%
-# like.full_icov_Pk_kms = None
-
 # %% [markdown]
 # Sampling parameters
 
@@ -311,7 +315,7 @@ for p in like.free_params:
 
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
-like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
+# like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
 
 # %%
 like.plot_igm()

@@ -542,7 +542,11 @@ class Theory(object):
         p1d_kms = []
         covars = []
         for iz in range(Nz):
-            p1d_kms.append(p1d_Mpc[iz][: len(k_kms[iz])] * M_of_z[iz])
+            try:
+                p1d_kms.append(p1d_Mpc[iz][: len(k_kms[iz])] * M_of_z[iz])
+            except:
+                # needed for one redshift at a time
+                p1d_kms.append(p1d_Mpc[: len(k_kms[iz])] * M_of_z[iz])
             if return_covar:
                 if cov_Mpc is None:
                     covars.append(None)
