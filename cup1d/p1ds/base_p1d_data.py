@@ -98,6 +98,12 @@ class BaseDataP1D(object):
             self.full_cov_kms,
         ) = res
 
+        # decide if applying blinding
+        self.apply_blinding = False
+        if hasattr(self, "blinding"):
+            if self.blinding is not None:
+                self.apply_blinding = True
+
     def get_Pk_iz(self, iz):
         """Return P1D in units of km/s for redshift bin iz"""
 

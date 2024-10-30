@@ -204,6 +204,11 @@ else:
         )
 
 # %%
+print(data["P1Ds"].apply_blinding)
+if data["P1Ds"].apply_blinding:
+    print(data["P1Ds"].blinding)
+
+# %%
 data["P1Ds"].plot_p1d()
 if args.data_label_hires is not None:
     data["extra_P1Ds"].plot_p1d()
@@ -311,12 +316,9 @@ like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
 # %%
 like.plot_igm()
 
+
 # %% [markdown]
 # ### Set fitter
-
-# %%
-like.data.blind=True
-
 
 # %%
 def func_for_sampler(p0):

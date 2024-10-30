@@ -185,7 +185,7 @@ class Fitter(object):
         self.mle = None
 
         # set blinding
-        self.set_blinding(apply=like.data.blind)
+        self.set_blinding()
 
     def set_truth(self):
         """Set up dictionary with true values of cosmological
@@ -877,13 +877,14 @@ class Fitter(object):
 
         return
 
-    def set_blinding(self, apply, seed=0):
+    def set_blinding(self, seed=0):
         """Set the blinding parameters"""
         blind_prior = {"Delta2_star": 0.05, "n_star": 0.05, "alpha_star": 0.005}
+        # if need to change the seed at some point, read self.like.data.blinding
         np.random.seed(seed)
         self.blind = {}
         for key in blind_prior:
-            if apply:
+            if self.like.data.apply_blinding:
                 self.blind[key] = np.random.normal(0, blind_prior[key])
             else:
                 self.blind[key] = 0
