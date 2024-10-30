@@ -9,6 +9,7 @@ from warnings import warn
 
 import numdifftools as nd
 from pyDOE2 import lhs
+import copy
 
 # import multiprocessing as mp
 # from schwimmbad import MPIPool
@@ -326,78 +327,8 @@ class Fitter(object):
                 self.chain = np.concatenate(chain, axis=1)
                 self.blobs = np.concatenate(blobs, axis=1)
 
-        # if not MPIPool.enabled():
-        #     raise SystemError(
-        #         "Tried to run with MPI but MPIPool not enabled!"
-        #     )
-
-        # with MPIPool() as pool:
-        #     if not pool.is_master():
-        #         pool.wait()
-        #         sys.exit(0)
-
-        #     print("\n Running with MPI on {0} cores \n".format(pool.size))
-
-        #     sampler.run_mcmc(p0, burn_in + max_steps)
-        # sampler.pool = pool
-        # print(f"Number of threads being used: {pool._processes}")
-        # sampler.run_mcmc(p0, burn_in + max_steps)
-        # p0 = self.get_initial_walkers()
-        # mp.set_start_method("spawn")
-        # with mp.Pool() as pool:
-        #     sampler = emcee.EnsembleSampler(
-        #         self.nwalkers,
-        #         self.ndim,
-        #         log_func,
-        #         backend=self.backend,
-        #         blobs_dtype=self.blobs_dtype,
-        #         pool=pool,
-        #     )
-        #     sampler.pool = pool
-        #     print(f"Number of threads being used: {pool._processes}")
-        #     sampler.run_mcmc(p0, burn_in + max_steps)
-        # if timeout:
-        #     time_end = time.time() + 3600 * timeout
-
-        # for sample in sampler.sample(
-        #     p0, iterations=burn_in + max_steps, progress=self.progress
-        # ):
-        #     print(sampler.iteration, flush=True)
-        #     # Only check convergence every 100 steps
-        #     if (
-        #         sampler.iteration % 100
-        #         or sampler.iteration < burn_in + 1
-        #     ):
-        #         continue
-
-        #     if self.progress == False:
-        #         print(
-        #             "Step %d out of %d "
-        #             % (sampler.iteration, burn_in + max_steps)
-        #         )
-
-        #     if self.get_autocorr:
-        #         # Compute the autocorrelation time so far
-        #         # Using tol=0 means that we'll always get an estimate even
-        #         # if it isn't trustworthy
-        #         tau = sampler.get_autocorr_time(tol=0, discard=burn_in)
-        #         self.autocorr = np.append(self.autocorr, np.mean(tau))
-
-        #         # Check convergence
-        #         converged = np.all(tau * 100 < sampler.iteration)
-        #         converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
-
-        #         ## Check if we are over time limit
-        #         if timeout:
-        #             if time.time() > time_end:
-        #                 print("Timed out")
-        #                 break
-        #         ## If not, only halt on convergence criterion if
-        #         ## force_timeout is false
-        #         if (force_timeout == False) and (converged == True):
-        #             print("Chains have converged")
-        #             break
-        #         old_tau = tau
+        # apply masking (only to star parameters)
+        self.blobs = self.apply_blinding(self.blobs)
 
         return sampler
 
@@ -468,10 +399,8 @@ class Fitter(object):
         print("Fit params no cube:", mle_no_cube, flush=True)
 
         self.mle_cosmo = self.get_cosmo_err(log_func_minimize)
-
         # apply blinding
-        for key in self.blind:
-            self.mle_cosmo[key] += self.blind[key]
+        self.mle_cosmo = self.apply_blinding(self.mle_cosmo)
 
         self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(self.mle_cube)
 
@@ -486,6 +415,13 @@ class Fitter(object):
 
         if "A_s" not in self.paramstrings[0]:
             return
+        self.mle = self.apply_blinding(self.mle, conv=True)
+
+        for key in self.blind:
+            if self.blind[key] != 0:
+                print("Results are blinded")
+            else:
+                print("Results are not blinded")
 
         for par in self.mle_cosmo:
             if par == "Delta2_star":
@@ -558,76 +494,6 @@ class Fitter(object):
         res = self.like.theory.get_err_linP_Mpc_params(like_pars, mle_cov)
 
         return res
-
-    def resume_sampler(
-        self, max_steps, log_func=None, timeout=None, force_timeout=False
-    ):
-        """Use the emcee backend to restart a chain from the last iteration
-        - max_steps is the maximum number of steps for this run
-        - log_func should be sampler.like.log_prob_and_blobs
-          with pool apparently
-        - timeout is the amount of time to run in hours before wrapping
-          the job up. This is used to make sure timeouts on compute nodes
-          don't corrupt the backend
-        - force_timeout will force chains to run for the time duration set
-          instead of cutting at autocorrelation time convergence"""
-
-        ## Make sure we have a backend
-        assert self.backend is not None, "No backend found, cannot run sampler"
-        old_tau = np.inf
-        with Pool() as pool:
-            sampler = emcee.EnsembleSampler(
-                self.backend.shape[0],
-                self.backend.shape[1],
-                log_func,
-                pool=pool,
-                backend=self.backend,
-                blobs_dtype=self.blobs_dtype,
-            )
-            if timeout:
-                time_end = time.time() + 3600 * timeout
-            start_step = self.backend.iteration
-            for sample in sampler.sample(
-                self.backend.get_last_sample(),
-                iterations=max_steps,
-                progress=self.progress,
-            ):
-                # Only check convergence every 100 steps
-                if sampler.iteration % 100:
-                    continue
-
-                if self.progress == False:
-                    self.print(
-                        "Step %d out of %d "
-                        % (self.backend.iteration, start_step + max_steps)
-                    )
-
-                # Compute the autocorrelation time so far
-                # Using tol=0 means that we'll always get an estimate even
-                # if it isn't trustworthy
-                tau = sampler.get_autocorr_time(tol=0)
-                self.autocorr = np.append(self.autocorr, np.mean(tau))
-
-                # Check convergence
-                converged = np.all(tau * 100 < sampler.iteration)
-                converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
-                if force_timeout == False:
-                    if converged:
-                        self.print("Chains have converged")
-                        break
-                if timeout:
-                    if time.time() > time_end:
-                        self.print("Timed out")
-                        break
-                old_tau = tau
-
-        self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
-        self.lnprob = sampler.get_log_prob(
-            flat=False, discard=self.burnin_nsteps
-        )
-        self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
-
-        return
 
     def get_initial_walkers(self, pini=None, rms=0.05):
         """Setup initial states of walkers in sensible points
@@ -704,30 +570,6 @@ class Fitter(object):
             chain = np.array(list_values).transpose()
 
         return chain, lnprob, blobs
-
-    def plot_autocorrelation_time(self):
-        """Plot autocorrelation time as a function of sample number"""
-
-        plt.figure()
-
-        n = 100 * np.arange(1, len(self.autocorr) + 1)
-        plt.plot(n, n / 100.0, "--k")
-        plt.plot(n, self.autocorr)
-        plt.xlim(0, n.max())
-        plt.ylim(
-            0,
-            self.autocorr.max()
-            + 0.1 * (self.autocorr.max() - self.autocorr.min()),
-        )
-        plt.xlabel("number of steps")
-        plt.ylabel(r"mean $\hat{\tau}$")
-        if self.save_directory is not None:
-            plt.savefig(self.save_directory + "/autocorr_time.pdf")
-            plt.close()
-        else:
-            plt.show()
-
-        return
 
     def get_all_params(self, delta_lnprob_cut=None, extra_nburn=0):
         """Get a merged array of both sampled and derived parameters
@@ -1036,6 +878,7 @@ class Fitter(object):
         return
 
     def set_blinding(self, apply, seed=0):
+        """Set the blinding parameters"""
         blind_prior = {"Delta2_star": 0.05, "n_star": 0.05, "alpha_star": 0.005}
         np.random.seed(seed)
         self.blind = {}
@@ -1045,9 +888,31 @@ class Fitter(object):
             else:
                 self.blind[key] = 0
 
-    def unblind_mle(self):
+    def apply_blinding(self, dict_cosmo, conv=False):
+        """Apply blinding to the dict_cosmo"""
+        out_dict = copy.deepcopy(dict_cosmo)
         for key in self.blind:
-            print(key, self.mle_cosmo[key] - self.blind[key])
+            if conv:
+                key2 = conv_strings[key]
+            else:
+                key2 = key
+            try:
+                out_dict[key2] = dict_cosmo[key2] + self.blind[key]
+            except:
+                pass
+        return out_dict
+
+    def apply_unblinding(self, dict_cosmo, conv=False):
+        """Apply unblinding to the dict_cosmo"""
+        out_dict = copy.deepcopy(dict_cosmo)
+        for key in self.blind:
+            if conv:
+                key2 = conv_strings[key]
+            else:
+                key2 = key
+            if key2 in dict_cosmo:
+                out_dict[key2] = dict_cosmo[key2] - self.blind[key]
+        return out_dict
 
     def get_best_fit(self, delta_lnprob_cut=None, stat_best_fit="mean"):
         """Return an array of best fit values (mean) from the MCMC chain,
@@ -1740,6 +1605,12 @@ blob_strings_orig = [
     "g_star",
     "H0",
 ]
+
+conv_strings = {
+    "Delta2_star": "$\Delta^2_\star$",
+    "n_star": "$n_\star$",
+    "alpha_star": "$\\alpha_\star$",
+}
 
 
 def compare_corners(

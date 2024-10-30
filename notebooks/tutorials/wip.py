@@ -261,17 +261,17 @@ args.fid_AGN=[0, -5]
 args.vary_alphas=True
 args.fix_cosmo=False
 # args.fix_cosmo=True
-# args.n_tau=0
-# args.n_sigT=0
-# args.n_gamma=0
-# args.n_kF=0
-args.n_tau=2
-args.n_sigT=2
-args.n_gamma=2
-args.n_kF=2
-args.n_SiIII = 2
+args.n_tau=0
+args.n_sigT=0
+args.n_gamma=0
+args.n_kF=0
+# args.n_tau=2
+# args.n_sigT=2
+# args.n_gamma=2
+# args.n_kF=2
+args.n_SiIII = 0
 args.n_SiII = 0
-args.n_dla=2
+args.n_dla=0
 args.n_sn=0
 args.n_agn=0
 
@@ -317,10 +317,6 @@ like.plot_igm()
 # %%
 like.data.blind=True
 
-# %%
-for key in fitter.blind:
-    print(key, fitter.mle_cosmo[key] - fitter.blind[key])
-
 
 # %%
 def func_for_sampler(p0):
@@ -332,8 +328,13 @@ def func_for_sampler(p0):
 # args.n_burn_in=1500
 # args.parallel=False
 # args.explore=False
-args.n_steps=500
-args.n_burn_in=500
+# args.n_steps=500
+# args.n_burn_in=500
+# args.parallel=False
+# args.explore=True
+
+args.n_steps=1
+args.n_burn_in=0
 args.parallel=False
 args.explore=True
 
