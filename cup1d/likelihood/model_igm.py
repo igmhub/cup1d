@@ -63,6 +63,8 @@ class IGM(object):
 
         if set_metric:
             self.metric = self.set_metric(emu_igm_params, list_sim_cube)
+        else:
+            self.metric = None
 
         # setup fiducial IGM models
         if F_model is not None:

@@ -342,6 +342,7 @@ class Args:
         n_SiII=1,
         n_dla=0,
         n_sn=0,
+        n_agn=0,
         ic_correction=False,
         igm_priors="hc",
         fid_cosmo_label="mpg_central",
@@ -354,6 +355,8 @@ class Args:
         true_HCD=[0, -6],
         fid_SN=[0, -5],
         true_SN=[0, -5],
+        fid_AGN=[0, -5],
+        true_AGN=[0, -5],
         drop_sim=False,
         apply_smoothing=False,
         cov_label="Chabanier2019",
@@ -390,6 +393,7 @@ class Args:
         self.n_SiII = n_SiII
         self.n_dla = n_dla
         self.n_sn = n_sn
+        self.n_agn = n_agn
         self.igm_priors = igm_priors
         self.fid_SiIII = fid_SiIII
         self.true_SiIII = true_SiIII
@@ -399,6 +403,8 @@ class Args:
         self.true_HCD = true_HCD
         self.fid_SN = fid_SN
         self.true_SN = true_SN
+        self.fid_AGN = fid_AGN
+        self.true_AGN = true_AGN
         self.ic_correction = ic_correction
         self.fid_cosmo_label = fid_cosmo_label
         self.true_cosmo_label = true_cosmo_label

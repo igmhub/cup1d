@@ -27,7 +27,16 @@ class P1D_DESIY1(BaseDataP1D):
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         res = read_from_file(fname=fname, full_cov=full_cov)
-        zs, k_kms, Pk_kms, cov, full_z, full_Pk_kms, full_cov_kms = res
+        (
+            zs,
+            k_kms,
+            Pk_kms,
+            cov,
+            full_z,
+            full_Pk_kms,
+            full_cov_kms,
+            self.blinding,
+        ) = res
 
         # set truth if possible
         if true_sim_label is not None:
@@ -200,6 +209,14 @@ def read_from_file(
     except:
         raise ValueError("Cannot read: ", fname)
 
+    if "VELUNITS" in hdu[1].header:
+        if hdu[1].header["VELUNITS"] == False:
+            raise ValueError("Not velocity units in: ", fname)
+    blinding = None
+    if "BLINDING" in hdu[1].header:
+        if hdu[1].header["BLINDING"] is not None:
+            blinding = hdu[1].header["BLINDING"]
+
     zs_raw = hdu[1].data["Z"]
     k_kms_raw = hdu[1].data["K"]
     Pk_kms_raw = hdu[1].data["PLYA"]
@@ -240,4 +257,4 @@ def read_from_file(
     full_Pk_kms = Pk_kms_raw[mask_raw]
     full_cov_kms = cov_raw[mask_raw, :][:, mask_raw]
 
-    return zs, k_kms, Pk_kms, cov, full_z, full_Pk_kms, full_cov_kms
+    return zs, k_kms, Pk_kms, cov, full_z, full_Pk_kms, full_cov_kms, blinding

@@ -1,6 +1,12 @@
 import numpy as np
 
-from cup1d.nuisance import metal_model, hcd_model_McDonald2005, SN_model
+from cup1d.nuisance import (
+    metal_model,
+    hcd_model_McDonald2005,
+    hcd_model_Rogers2017,
+    SN_model,
+    AGN_model,
+)
 
 
 class Contaminants(object):
@@ -13,16 +19,20 @@ class Contaminants(object):
         SiIII_model=None,
         hcd_model=None,
         sn_model=None,
+        agn_model=None,
+        hcd_model_type="Rogers2017",
         ic_correction=False,
-        fid_SiII=-10,
-        fid_SiIII=-10,
-        fid_HCD=-6,
-        fid_SN=-10,
+        fid_SiII=[0, -10],
+        fid_SiIII=[0, -10],
+        fid_HCD=[0, -6],
+        fid_SN=[0, -4],
+        fid_AGN=[0, -4],
     ):
         self.fid_SiII = fid_SiII
         self.fid_SiIII = fid_SiIII
         self.fid_HCD = fid_HCD
         self.fid_SN = fid_SN
+        self.fid_AGN = fid_AGN
         self.ic_correction = ic_correction
 
         # setup metal models
@@ -51,18 +61,37 @@ class Contaminants(object):
         if hcd_model:
             self.hcd_model = hcd_model
         else:
-            self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
-                free_param_names=free_param_names,
-                fid_value=self.fid_HCD,
-            )
+            if hcd_model_type == "Rogers2017":
+                self.hcd_model = hcd_model_Rogers2017.HCD_Model_Rogers2017(
+                    free_param_names=free_param_names,
+                    fid_value=self.fid_HCD,
+                )
+            elif hcd_model_type == "McDonald2005":
+                self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
+                    free_param_names=free_param_names,
+                    fid_value=self.fid_HCD,
+                )
+            else:
+                raise ValueError(
+                    "hcd_model_type must be one of 'Rogers2017' or 'McDonald2005'"
+                )
 
         # setup SN model
-        if hcd_model:
+        if sn_model:
             self.sn_model = sn_model
         else:
             self.sn_model = SN_model.SN_Model(
                 free_param_names=free_param_names,
                 fid_value=self.fid_SN,
+            )
+
+        # setup AGN model
+        if agn_model:
+            self.agn_model = sn_model
+        else:
+            self.agn_model = AGN_model.AGN_Model(
+                free_param_names=free_param_names,
+                fid_value=self.fid_AGN,
             )
 
     def get_contamination(self, z, k_kms, mF, M_of_z, like_params=[]):
@@ -91,12 +120,27 @@ class Contaminants(object):
             like_params=like_params,
         )
 
+        # include AGN contamination
+        cont_AGN = self.agn_model.get_contamination(
+            z=z,
+            k_kms=k_kms,
+            like_params=like_params,
+        )
+        if np.any(cont_AGN < 0):
+            raise ValueError("Multiplicative AGN contamination < 0")
+
         if self.ic_correction:
             IC_corr = ref_nyx_ic_correction(k_kms, z)
         else:
             IC_corr = 1
 
-        return cont_metals * cont_HCD * cont_SN * IC_corr
+        # print("me", cont_metals)
+        # print("hcd", cont_HCD)
+        # print("sn", cont_SN)
+        # print("agn", cont_AGN)
+        # print("ic", IC_corr)
+
+        return cont_metals * cont_HCD * cont_SN * cont_AGN * IC_corr
 
 
 def ref_nyx_ic_correction(k_kms, z):

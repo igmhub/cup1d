@@ -4,14 +4,14 @@ import os
 from cup1d.likelihood import likelihood_parameter
 
 
-class HCD_Model_McDonald2005(object):
-    """Model HCD contamination following McDonald et al. (2005)."""
+class HCD_Model_Rogers2017(object):
+    """Model HCD contamination following Rogers et al. (2017)."""
 
     def __init__(
         self,
         z_0=3.0,
-        fid_value=[0, -6],
-        null_value=-6,
+        fid_value=[0, -5],
+        null_value=-4,
         ln_A_damp_coeff=None,
         free_param_names=None,
     ):
@@ -46,9 +46,9 @@ class HCD_Model_McDonald2005(object):
             name = "ln_A_damp_" + str(i)
             if i == 0:
                 # no contamination
-                xmin = -7
-                # 0 gives 30% contamination low k
-                xmax = 2.5
+                xmin = -4
+                # 0 gives 350% contamination low k
+                xmax = 0
             else:
                 # not optimized
                 xmin = -10
@@ -85,10 +85,38 @@ class HCD_Model_McDonald2005(object):
         if A_damp == 0:
             return 1
 
-        # fitting function from Palanque-Delabrouille et al. (2015)
-        # that qualitatively describes Fig 2 of McDonald et al. (2005)
-        f_HCD = 0.018 + 1 / (15000 * k_kms - 8.9)
-        return 1 + A_damp * f_HCD
+        # values and pivot redshift directly from arXiv:1706.08532
+        z_0 = 2
+        # parameter order: LLS, Sub-DLA, Small-DLA, Large-DLA
+        a_0 = np.array([2.2001, 1.5083, 1.1415, 0.8633])
+        a_1 = np.array([0.0134, 0.0994, 0.0937, 0.2943])
+        b_0 = np.array([36.449, 81.388, 162.95, 429.58])
+        b_1 = np.array([-0.0674, -0.2287, 0.0126, -0.4964])
+        # compute the z-dependent correction terms
+        a_z = a_0 * ((1 + z) / (1 + z_0)) ** a_1
+        b_z = b_0 * ((1 + z) / (1 + z_0)) ** b_1
+        dla_corr = np.ones(
+            k_kms.size
+        )  # alpha_0 degenerate with mean flux, set to 1
+        # a_lls and a_sub degenerate with each other (as are a_sdla, a_ldla), so only use two values
+        dla_corr += (
+            A_damp
+            * ((1 + z) / (1 + z_0)) ** -3.55
+            * (
+                (a_z[0] * np.exp(b_z[0] * k_kms) - 1) ** -2
+                + (a_z[1] * np.exp(b_z[1] * k_kms) - 1) ** -2
+            )
+        )
+        # dla_corr += (
+        #     alpha[1]
+        #     * ((1 + z) / (1 + z_0)) ** -3.55
+        #     * (
+        #         (a_z[2] * np.exp(b_z[2] * k_kms) - 1) ** -2
+        #         + (a_z[3] * np.exp(b_z[3] * k_kms) - 1) ** -2
+        #     )
+        # )
+
+        return dla_corr
 
     def get_parameters(self):
         """Return likelihood parameters for the HCD model"""
