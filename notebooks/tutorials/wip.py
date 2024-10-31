@@ -171,8 +171,8 @@ elif choose_desiy1:
     if fname is None:
         print("choose appropriate folder")
     else:    
-        args.z_min = 2.1
-        args.z_max = 2.3
+        args.z_min = 2.0
+        args.z_max = 5.3
         args.data_label_hires = None
         # args.data_label_hires = "Karacayli2022"
         
@@ -209,9 +209,6 @@ else:
             emulator=emulator,
             cull_data=False
         )
-
-# %%
-data["P1Ds"].z
 
 # %%
 print(data["P1Ds"].apply_blinding)
@@ -266,7 +263,7 @@ args.type_priors = "hc"
 # args.fid_AGN=[0, -5]
 
 
-args.fid_SiIII=[[0, 0], [7, -4]]
+args.fid_SiIII=[[0, 0], [3, -5]]
 args.fid_SiII=[[0, 0], [0, -10]]
 args.fid_HCD=[0, -2]
 args.fid_SN=[0, -4]
@@ -276,18 +273,18 @@ args.fid_AGN=[0, -5]
 args.vary_alphas=True
 args.fix_cosmo=False
 # args.fix_cosmo=True
-args.n_tau=0
-args.n_sigT=0
-args.n_gamma=0
-args.n_kF=0
-# args.n_tau=2
-# args.n_sigT=2
-# args.n_gamma=2
-# args.n_kF=2
+# args.n_tau=1
+# args.n_sigT=1
+# args.n_gamma=1
+# args.n_kF=1
+args.n_tau=2
+args.n_sigT=2
+args.n_gamma=2
+args.n_kF=2
 args.n_SiIII = 1
 args.n_d_SiIII = 1
 args.n_SiII = 0
-args.n_dla=1
+args.n_dla=2
 args.n_sn=0
 args.n_agn=0
 
@@ -373,6 +370,11 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 # p0[:] = 0.5
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
+
+# %%
+0.71788052 0.90143857 0.24155368
+
+# %%
 
 # %%
 Minimization improved: 4172.030447608675 2383.990146201969

@@ -265,9 +265,10 @@ class MetalModel(object):
         adamp = self.get_damping(z, like_params=like_params)
 
         a = f / (1 - mF)
-        cont = (
-            1
-            + a**2
-            + 2 * a * np.cos(self.dv * k_kms) * np.exp(-(adamp**2) * k_kms)
+        # faster damping than exponential, but still long tail
+        alpha = 1.5
+        damping = (1 + (adamp**2 * k_kms)) ** alpha * np.exp(
+            -((adamp**2 * k_kms) ** alpha)
         )
+        cont = 1 + a**2 + 2 * a * np.cos(self.dv * k_kms) * damping
         return cont
