@@ -60,9 +60,6 @@ import os
 # ### Set emulator
 
 # %%
-args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-
-# %%
 # set output directory for this test
 output_dir = "."
 
@@ -107,8 +104,8 @@ if choose_forecast:
     # args.true_igm_label="mpg_central"
     args.true_igm_label="nyx_central"
     # from -11 to -4
-    args.true_SiIII=[0, -10]
-    args.true_SiII=[0, -10]
+    args.true_SiIII=[[0, 0], [-10, -10]]
+    args.true_SiII=[[0, 0], [-10, -10]]
     # from -7 to 0
     args.true_HCD=[0, -6]
     # from -5 to 2
@@ -118,25 +115,27 @@ if choose_forecast:
 elif choose_mock:    
     true_cosmo=None
     # to analyze data from simulations
-    # args.data_label = "mpg_central"    
-    args.data_label="nyx_central"   
-    args.data_label="nyx_seed"
+    args.data_label = "mpg_central"    
+    # args.data_label="nyx_central"
+    # args.data_label="nyx_seed"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
 
     # provide cosmology only to cull the data
-    # args.true_cosmo_label="mpg_central"
-    args.true_cosmo_label="nyx_central"
-    args.true_cosmo_label="nyx_seed"
-    
-    # you need to provide contaminants
-    # from -11 to -4
-    args.true_SiIII=[0, -10]
-    args.true_SiII=[0, -10]
-    # from -7 to 0
-    args.true_HCD=[0, -6]
+    args.true_cosmo_label="mpg_central"
+    # args.true_cosmo_label="nyx_central"
+    # args.true_cosmo_label="nyx_seed"
+
+    # you may provide contaminants
+    # from 1 to 6, -11 to -4
+    args.true_SiIII=[[0, 0], [2, -10]]
+    args.true_SiII=[[0, 0], [2, -10]]
+    # from -5 to 0
+    args.true_HCD=[0, -4]
     # from -5 to 2
     args.true_SN=[0, -4]
+    args.true_AGN=[0, -5]
+    
 elif choose_data:    
     true_cosmo=None
     args.data_label = "Chabanier2019"
@@ -234,8 +233,8 @@ except:
 args.ic_correction=False
 
 args.emu_cov_factor = 0.02
-args.fid_cosmo_label="mpg_central"
-# args.fid_cosmo_label="nyx_central"
+# args.fid_cosmo_label="mpg_central"
+args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="nyx_seed"
 
 # args.fid_cosmo_label="nyx_3"
@@ -263,13 +262,14 @@ args.type_priors = "hc"
 # args.fid_AGN=[0, -5]
 
 
-args.fid_SiIII=[[0, 0], [6, -5]]
-args.fid_SiII=[[0, 0], [-10, -10]]
+args.fid_SiIII=[[0, 0], [4, -5]]
+args.fid_SiII=[[0, 0], [2, -10]]
 args.fid_HCD=[0, -2]
 args.fid_SN=[0, -4]
 args.fid_AGN=[0, -5]
 
 # parameters
+args.vary_alphas=False
 args.vary_alphas=True
 args.fix_cosmo=False
 # args.fix_cosmo=True
@@ -313,6 +313,9 @@ for p in like.free_params:
 
 # %% [markdown]
 # Compare data and fiducial/starting model
+
+# %% [markdown]
+# priors at z for which no data! XD
 
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
@@ -371,15 +374,9 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
 
-# %%
-0.71788052 0.90143857 0.24155368
-
-# %%
-
-# %%
-Minimization improved: 4172.030447608675 2383.990146201969
-Minimization improved: 4172.030447608675 1964.3485135582682
-Minimization improved: 4381.154069685914 1455.4486410843758
+# %% [markdown]
+# - GP Minimization improved: 7495.505449898462 1413.4703537937303
+# - Nyx_alphap Minimization improved: 4381.154069685914 1455.4486410843758
 
 # %%
 if args.fix_cosmo == False:

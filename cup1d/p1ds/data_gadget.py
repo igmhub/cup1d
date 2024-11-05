@@ -38,10 +38,11 @@ class Gadget_P1D(BaseMockP1D):
         seed=0,
         z_star=3.0,
         kp_kms=0.009,
-        true_SiII=-10,
-        true_SiIII=-10,
-        true_HCD=-6,
-        true_SN=-10,
+        true_SiII=[[0, 0], [-10, -10]],
+        true_SiIII=[[0, 0], [-10, -10]],
+        true_HCD=[0, -6],
+        true_SN=[0, -4],
+        true_AGN=[0, -5],
         fprint=print,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
@@ -87,6 +88,7 @@ class Gadget_P1D(BaseMockP1D):
             fid_SiII=true_SiII,
             fid_HCD=true_HCD,
             fid_SN=true_SN,
+            fid_AGN=true_AGN,
         )
         true_cosmo = self._get_cosmo()
         theory = lya_theory.Theory(
@@ -192,14 +194,23 @@ class Gadget_P1D(BaseMockP1D):
         for ii in range(2):
             self.truth["cont"][
                 "ln_SiIII_" + str(ii)
-            ] = theory.model_cont.fid_SiIII[-1 - ii]
+            ] = theory.model_cont.fid_SiIII[-1 - ii][-1]
+            self.truth["cont"][
+                "d_SiIII_" + str(ii)
+            ] = theory.model_cont.fid_SiIII[-1 - ii][0]
             self.truth["cont"][
                 "ln_SiII_" + str(ii)
-            ] = theory.model_cont.fid_SiII[-1 - ii]
+            ] = theory.model_cont.fid_SiII[-1 - ii][-1]
+            self.truth["cont"][
+                "d_SiII_" + str(ii)
+            ] = theory.model_cont.fid_SiII[-1 - ii][0]
             self.truth["cont"][
                 "ln_A_damp_" + str(ii)
             ] = theory.model_cont.fid_HCD[-1 - ii]
             self.truth["cont"]["ln_SN_" + str(ii)] = theory.model_cont.fid_SN[
+                -1 - ii
+            ]
+            self.truth["cont"]["ln_AGN_" + str(ii)] = theory.model_cont.fid_AGN[
                 -1 - ii
             ]
 

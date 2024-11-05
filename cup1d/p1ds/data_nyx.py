@@ -36,10 +36,11 @@ class Nyx_P1D(BaseMockP1D):
         seed=0,
         z_star=3.0,
         kp_kms=0.009,
-        true_SiII=-10,
-        true_SiIII=-10,
-        true_HCD=-6,
-        true_SN=-10,
+        true_SiII=[[0, 0], [-10, -10]],
+        true_SiIII=[[0, 0], [-10, -10]],
+        true_HCD=[0, -6],
+        true_SN=[0, -4],
+        true_AGN=[0, -5],
         fprint=print,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
@@ -87,6 +88,7 @@ class Nyx_P1D(BaseMockP1D):
             fid_SiII=true_SiII,
             fid_HCD=true_HCD,
             fid_SN=true_SN,
+            fid_AGN=true_AGN,
         )
         true_cosmo = self._get_cosmo()
         theory = lya_theory.Theory(

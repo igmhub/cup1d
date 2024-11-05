@@ -63,15 +63,38 @@ class MeanFluxModel(object):
         mask2 = self.fid_tau_eff == 0
         self.fid_tau_eff[mask2] = np.exp(p(self.fid_z[mask2]))
 
-        # extrapolate to z=2 and 5.4
-        z_to_inter = np.concatenate([[1.9], self.fid_z, [5.5]])
+        # extrapolate to z=1.9 and 5.5 (if needed)
+        if np.min(self.fid_z) > 1.9:
+            low = True
+        else:
+            low = False
+        if np.max(self.fid_z) < 5.5:
+            high = True
+        else:
+            high = False
+
+        if low and high:
+            z_to_inter = np.concatenate([[1.9], self.fid_z, [5.5]])
+        elif low:
+            z_to_inter = np.concatenate([[1.9], self.fid_z])
+        elif high:
+            z_to_inter = np.concatenate([self.fid_z, [5.5]])
+        else:
+            z_to_inter = self.fid_z
         igm_to_inter = np.zeros_like(z_to_inter)
-        igm_to_inter[0] = np.exp(p(z_to_inter[0]))
+
+        # extrapolate to low z
+        if low:
+            igm_to_inter[0] = np.exp(p(z_to_inter[0]))
+        # extrapolate to high z
+        if high:
+            igm_to_inter[-1] = np.exp(p(z_to_inter[-1]))
+
+        # apply smoothing to IGM history
         if smoothing:
             igm_to_inter[1:-1] = np.exp(p(z_to_inter[1:-1]))
         else:
             igm_to_inter[1:-1] = self.fid_tau_eff
-        igm_to_inter[-1] = np.exp(p(z_to_inter[-1]))
 
         self.fid_tau_interp = interp1d(z_to_inter, igm_to_inter, kind="cubic")
 

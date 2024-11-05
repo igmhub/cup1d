@@ -167,7 +167,7 @@ class IGM(object):
 
         self.priors = {}
         for par in fid_igm:
-            if par == "z":
+            if (par == "z") | (par == "val_scaling"):
                 continue
             res_div = np.zeros((len(all_igm), 2))
             for ii, sim in enumerate(all_igm):
@@ -216,6 +216,8 @@ class IGM(object):
 
         for key in all_igm:
             if key[4].isdigit():
+                if (key[:3] == "mpg") and (key[-1] != "0"):
+                    continue
                 for par in all_points:
                     ind_use = np.argwhere(all_igm[key][par] != 0)[:, 0]
                     all_points[par].append(all_igm[key][par][ind_use])
@@ -226,6 +228,7 @@ class IGM(object):
         # compute the maximum distance between training points
         min_dist = {}
 
+        # get closest point to each IGM point
         for key in all_points:
             npoints = all_points[key].shape[0]
             min_dist[key] = np.zeros(npoints)
@@ -234,6 +237,7 @@ class IGM(object):
                 _ = dist != 0
                 min_dist[key][ii] = dist[_].min()
 
+        # get most distant of closest points
         max_dist = {}
         for key in min_dist:
             max_dist[key] = min_dist[key].max()

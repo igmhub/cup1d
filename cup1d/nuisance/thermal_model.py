@@ -21,6 +21,7 @@ class ThermalModel(object):
         free_param_names=None,
         fid_igm=None,
         order_extra=2,
+        smoothing=False,
         priors=None,
     ):
         """Model the redshift evolution of the thermal broadening scale and gamma.
@@ -61,33 +62,84 @@ class ThermalModel(object):
             & (fid_igm["sigT_kms"] != 0)
             & (fid_igm["z"] != 0)
         )
-        if np.sum(mask) > 0:
-            ind = np.argsort(fid_igm["z"][mask])
-            self.fid_z = fid_igm["z"][mask][ind]
-            self.fid_gamma = fid_igm["gamma"][mask][ind]
-            self.fid_sigT_kms = fid_igm["sigT_kms"][mask][ind]
-        else:
+        if np.sum(mask) == 0:
             raise ValueError("No non-zero gamma and sigT_kms in fiducial IGM")
 
-        # extrapolate to z=1.9
-        pfit = np.polyfit(self.fid_z[:3], self.fid_gamma[:3], order_extra)
-        p = np.poly1d(pfit)
-        z_to_inter = np.concatenate([[1.9], self.fid_z])
-        igm_to_inter = np.zeros_like(z_to_inter)
-        igm_to_inter[0] = p(z_to_inter[0])
-        igm_to_inter[1:] = self.fid_gamma
-        self.fid_gamma_interp = interp1d(z_to_inter, igm_to_inter, kind="cubic")
+        # if np.sum(mask) > 0:
+        #     ind = np.argsort(fid_igm["z"][mask])
+        #     self.fid_z = fid_igm["z"][mask][ind]
+        #     self.fid_gamma = fid_igm["gamma"][mask][ind]
+        #     self.fid_sigT_kms = fid_igm["sigT_kms"][mask][ind]
+        # else:
+        #     raise ValueError("No non-zero gamma and sigT_kms in fiducial IGM")
 
-        # extrapolate to z=1.9
-        pfit = np.polyfit(self.fid_z[:3], self.fid_sigT_kms[:3], order_extra)
-        p = np.poly1d(pfit)
-        z_to_inter = np.concatenate([[1.9], self.fid_z])
-        igm_to_inter = np.zeros_like(z_to_inter)
-        igm_to_inter[0] = p(z_to_inter[0])
-        igm_to_inter[1:] = self.fid_sigT_kms
-        self.fid_sigT_kms_interp = interp1d(
-            z_to_inter, igm_to_inter, kind="cubic"
-        )
+        # fit power law to fiducial data to reduce noise, and extrapolate when needed
+        for ii in range(2):
+            if ii == 0:
+                label = "gamma"
+
+            else:
+                label = "sigT_kms"
+            pfit = np.polyfit(
+                fid_igm["z"][mask],
+                fid_igm[label][mask],
+                order_extra,
+            )
+            p = np.poly1d(pfit)
+            ind = np.argsort(fid_igm["z"][mask])
+            if ii == 0:
+                self.fid_z = fid_igm["z"][mask][ind]
+                self.fid_gamma = fid_igm[label][mask][ind]
+                fid_prop = self.fid_gamma
+            else:
+                self.fid_sigT_kms = fid_igm[label][mask][ind]
+                fid_prop = self.fid_sigT_kms
+
+            # use poly fit to interpolate when data is missing (needed for Nyx)
+            mask2 = fid_prop == 0
+            fid_prop[mask2] = p(self.fid_z[mask2])
+
+            # extrapolate to z=1.9 and 5.5 (if needed)
+            if np.min(self.fid_z) > 1.9:
+                low = True
+            else:
+                low = False
+            if np.max(self.fid_z) < 5.5:
+                high = True
+            else:
+                high = False
+
+            if low and high:
+                z_to_inter = np.concatenate([[1.9], self.fid_z, [5.5]])
+            elif low:
+                z_to_inter = np.concatenate([[1.9], self.fid_z])
+            elif high:
+                z_to_inter = np.concatenate([self.fid_z, [5.5]])
+            else:
+                z_to_inter = self.fid_z
+            igm_to_inter = np.zeros_like(z_to_inter)
+
+            # extrapolate to low z
+            if low:
+                igm_to_inter[0] = p(z_to_inter[0])
+            # extrapolate to high z
+            if high:
+                igm_to_inter[-1] = p(z_to_inter[-1])
+
+            # apply smoothing to IGM history
+            if smoothing:
+                igm_to_inter[1:-1] = p(z_to_inter[1:-1])
+            else:
+                igm_to_inter[1:-1] = fid_prop
+
+            if ii == 0:
+                self.fid_gamma_interp = interp1d(
+                    z_to_inter, igm_to_inter, kind="cubic"
+                )
+            else:
+                self.fid_sigT_kms_interp = interp1d(
+                    z_to_inter, igm_to_inter, kind="cubic"
+                )
 
         self.z_T = z_T
 

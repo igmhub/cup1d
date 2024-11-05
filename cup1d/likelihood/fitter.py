@@ -1100,7 +1100,7 @@ class Fitter(object):
 
         return
 
-    def plot_mle_cosmo(self, nyx_version="Jul2024"):
+    def plot_mle_cosmo(self, fontsize=16, nyx_version="Jul2024"):
         """Plot MLE cosmology"""
 
         suite_emu = self.like.theory.emulator.list_sim_cube[0][:3]
@@ -1130,29 +1130,45 @@ class Fitter(object):
             n_star[ii] = data_cosmo[ii]["star_params"]["n_star"]
             alpha_star[ii] = data_cosmo[ii]["star_params"]["alpha_star"]
 
-        fig, ax = plt.subplots(1, 2, figsize=(8, 6))
+        if suite_emu == "mpg":
+            fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+            ax = [ax]
+        else:
+            fig, ax = plt.subplots(1, 3, figsize=(14, 6))
+
         ax[0].scatter(delta2_star, n_star)
-        ax[1].scatter(n_star, alpha_star)
+        if suite_emu != "mpg":
+            ax[1].scatter(delta2_star, alpha_star)
+            ax[2].scatter(n_star, alpha_star)
 
         dif0 = delta2_star.max() - delta2_star.min()
         dif1 = n_star.max() - n_star.min()
         dif2 = alpha_star.max() - alpha_star.min()
-        sep_x = 0.05
+        sep_x = 0.01
         for ii, lab in enumerate(labs):
             if data_cosmo[ii]["sim_label"][-1].isdigit():
                 sep_y = 0
             else:
-                sep_y = 0.05
+                sep_y = 0.01
             ax[0].annotate(
                 lab[4:],
                 (delta2_star[ii] + sep_x * dif0, n_star[ii] + sep_y * dif1),
                 fontsize=8,
             )
-            ax[1].annotate(
-                lab[4:],
-                (n_star[ii] + sep_x * dif1, alpha_star[ii] + sep_y * dif2),
-                fontsize=8,
-            )
+            if suite_emu != "mpg":
+                ax[1].annotate(
+                    lab[4:],
+                    (
+                        delta2_star[ii] + sep_x * dif0,
+                        alpha_star[ii] + sep_y * dif2,
+                    ),
+                    fontsize=8,
+                )
+                ax[2].annotate(
+                    lab[4:],
+                    (n_star[ii] + sep_x * dif1, alpha_star[ii] + sep_y * dif2),
+                    fontsize=8,
+                )
 
         ax[0].errorbar(
             self.mle_cosmo["Delta2_star"],
@@ -1162,20 +1178,31 @@ class Fitter(object):
             marker="X",
             color="C1",
         )
-        ax[1].errorbar(
-            self.mle_cosmo["n_star"],
-            self.mle_cosmo["alpha_star"],
-            xerr=self.mle_cosmo["err_n_star"],
-            yerr=self.mle_cosmo["err_alpha_star"],
-            marker="X",
-            color="C1",
-        )
+        if suite_emu != "mpg":
+            ax[1].errorbar(
+                self.mle_cosmo["Delta2_star"],
+                self.mle_cosmo["alpha_star"],
+                xerr=self.mle_cosmo["err_Delta2_star"],
+                yerr=self.mle_cosmo["err_alpha_star"],
+                marker="X",
+                color="C1",
+            )
+            ax[2].errorbar(
+                self.mle_cosmo["n_star"],
+                self.mle_cosmo["alpha_star"],
+                xerr=self.mle_cosmo["err_n_star"],
+                yerr=self.mle_cosmo["err_alpha_star"],
+                marker="X",
+                color="C1",
+            )
 
-        fontsize = 16
         ax[0].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
         ax[0].set_ylabel(r"$n_\star$", fontsize=fontsize)
-        ax[1].set_xlabel(r"$n_\star$", fontsize=fontsize)
-        ax[1].set_ylabel(r"$\alpha_\star$", fontsize=fontsize)
+        if suite_emu != "mpg":
+            ax[1].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
+            ax[1].set_ylabel(r"$\alpha_\star$", fontsize=fontsize)
+            ax[2].set_xlabel(r"$n_\star$", fontsize=fontsize)
+            ax[2].set_ylabel(r"$\alpha_\star$", fontsize=fontsize)
         plt.tight_layout()
 
         return

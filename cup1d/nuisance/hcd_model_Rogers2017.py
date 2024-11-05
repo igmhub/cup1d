@@ -46,7 +46,7 @@ class HCD_Model_Rogers2017(object):
             name = "ln_A_damp_" + str(i)
             if i == 0:
                 # no contamination
-                xmin = -4
+                xmin = -5
                 # 0 gives 350% contamination low k
                 xmax = 0
             else:
