@@ -594,18 +594,19 @@ class Likelihood(object):
         ymax = -1e10
 
         # print chi2
+        n_free_p = len(self.free_params)
         ndeg = 0
         for iz in range(len(self.data.k_kms)):
             ndeg += np.sum(self.data.Pk_kms[iz] != 0)
         if self.extra_data is not None:
             for iz in range(len(self.extra_data.k_kms)):
                 ndeg += np.sum(self.extra_data.Pk_kms[iz] != 0)
-        prob = chi2_scipy.sf(chi2, ndeg)
+        prob = chi2_scipy.sf(chi2, ndeg - n_free_p)
         label = (
             r"$\chi^2=$"
             + str(np.round(chi2, 6))
             + " (ndeg="
-            + str(ndeg)
+            + str(ndeg - n_free_p)
             + ", prob="
             + str(np.round(prob * 100, 6))
             + "%)"
@@ -672,12 +673,12 @@ class Likelihood(object):
                     xpos = k_kms[0]
                     ypos = 0.92 + yshift
                     ndeg = np.sum(p1d_data != 0)
-                    prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg)
+                    prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg - n_free_p)
                     label = (
                         r"$\chi^2=$"
                         + str(np.round(chi2_all[ii, iz], 2))
                         + " (ndeg="
-                        + str(ndeg)
+                        + str(ndeg - n_free_p)
                         + ", prob="
                         + str(np.round(prob * 100, 2))
                         + "%)"
@@ -718,12 +719,12 @@ class Likelihood(object):
                     xpos = k_kms[-1] + 0.001
                     ypos = (p1d_theory * k_kms / np.pi)[-1]
                     ndeg = np.sum(p1d_data != 0)
-                    prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg)
+                    prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg - n_free_p)
                     label = (
                         r"$\chi^2=$"
                         + str(np.round(chi2_all[ii, iz], 2))
                         + " ("
-                        + str(ndeg)
+                        + str(ndeg - n_free_p)
                         + ", "
                         + str(np.round(prob * 100, 2))
                         + "%)"
