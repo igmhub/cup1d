@@ -13,8 +13,8 @@ class MetalModel(object):
         z_X=3.0,
         ln_X_coeff=None,
         d_coeff=None,
-        fid_value=[[0, 0], [0, -10]],
-        null_value=[0, -10],
+        fid_value=[[0, 0], [2, -10]],
+        null_value=[2, -10],
         free_param_names=None,
     ):
         """Model the evolution of a metal contamination (SiII or SiIII).
@@ -115,9 +115,9 @@ class MetalModel(object):
             if i == 0:
                 # log of overall amplitude at z_X
                 # no contamination
-                xmin = 0
+                xmin = 1
                 # TBD
-                xmax = 12
+                xmax = 6.5
             else:
                 # not optimized
                 xmin = -10
@@ -237,7 +237,7 @@ class MetalModel(object):
 
         xz = np.log((1 + z) / (1 + self.z_X))
         poly = np.poly1d(d_coeff)
-        return poly(xz)
+        return np.exp(poly(xz))
 
     def get_dv_kms(self):
         """Velocity separation where the contamination is stronger"""
@@ -267,8 +267,7 @@ class MetalModel(object):
         a = f / (1 - mF)
         # faster damping than exponential, but still long tail
         alpha = 1.5
-        damping = (1 + (adamp**2 * k_kms)) ** alpha * np.exp(
-            -((adamp**2 * k_kms) ** alpha)
-        )
+        adim_damp = adamp * k_kms
+        damping = (1 + adim_damp) ** alpha * np.exp(-1 * adim_damp**alpha)
         cont = 1 + a**2 + 2 * a * np.cos(self.dv * k_kms) * damping
         return cont

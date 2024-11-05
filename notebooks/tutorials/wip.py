@@ -263,8 +263,8 @@ args.type_priors = "hc"
 # args.fid_AGN=[0, -5]
 
 
-args.fid_SiIII=[[0, 0], [3, -5]]
-args.fid_SiII=[[0, 0], [0, -10]]
+args.fid_SiIII=[[0, 0], [6, -5]]
+args.fid_SiII=[[0, 0], [-10, -10]]
 args.fid_HCD=[0, -2]
 args.fid_SN=[0, -4]
 args.fid_AGN=[0, -5]
@@ -284,7 +284,7 @@ args.n_kF=2
 args.n_SiIII = 1
 args.n_d_SiIII = 1
 args.n_SiII = 0
-args.n_dla=2
+args.n_dla=1
 args.n_sn=0
 args.n_agn=0
 
@@ -316,7 +316,7 @@ for p in like.free_params:
 
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
-# like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
+like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
 
 # %%
 like.plot_igm()
@@ -379,6 +379,7 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # %%
 Minimization improved: 4172.030447608675 2383.990146201969
 Minimization improved: 4172.030447608675 1964.3485135582682
+Minimization improved: 4381.154069685914 1455.4486410843758
 
 # %%
 if args.fix_cosmo == False:
