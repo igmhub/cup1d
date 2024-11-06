@@ -307,12 +307,6 @@ like = set_like(
     data_hires=data["extra_P1Ds"],
 )
 
-# %%
-# z = data["P1Ds"].z
-# k_kms = data["P1Ds"].k_kms
-# ln_A_damp_coeff = [0, -1]
-# like.theory.model_cont.hcd_model.plot_contamination(z, k_kms, ln_A_damp_coeff)
-
 # %% [markdown]
 # Sampling parameters
 
@@ -388,23 +382,26 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # - Nyx_alphap Minimization improved (2 HCD): 4045.9982979531555 1420.6221436936958
 
 # %%
+plotter = Plotter(fitter)
+
+# %%
 if args.fix_cosmo == False:
-    fitter.plot_mle_cosmo()
+    plotter.plot_mle_cosmo()
 
 # %%
-fitter.plot_p1d(residuals=False, plot_every_iz=1)
+plotter.plot_p1d(residuals=False, plot_every_iz=1)
 
 # %%
-fitter.plot_p1d(residuals=True, plot_every_iz=2)
+plotter.plot_p1d(residuals=True, plot_every_iz=2)
 
 # %%
 plotter.plot_igm(cloud=True)
 
 # %%
-plotter = Plotter(fitter)
+plotter.plot_hcd_cont()
 
 # %%
-plotter.plot_hcd_cont()
+plotter.plot_metal_cont(smooth_k=True)
 
 # %% [markdown]
 # ### Run sampler

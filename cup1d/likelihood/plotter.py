@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import numpy as np
+import os
 
 
 # Function to generate n discrete colors from any continuous colormap
@@ -564,7 +565,9 @@ class Plotter(object):
 
         return
 
-    def plot_hcd_cont(self, plot_every_iz=1, save_directory=None):
+    def plot_hcd_cont(
+        self, plot_every_iz=1, save_directory=None, smooth_k=False
+    ):
         list_params = {}
         for p in self.fitter.like.free_params:
             if "A_damp" in p.name:
@@ -585,6 +588,7 @@ class Plotter(object):
             coeff,
             plot_every_iz=plot_every_iz,
             cmap=self.cmap,
+            smooth_k=smooth_k,
         )
 
         if save_directory is not None:
@@ -597,3 +601,84 @@ class Plotter(object):
             # plt.close()
         else:
             plt.show()
+
+    def plot_metal_cont(
+        self,
+        plot_every_iz=1,
+        save_directory=None,
+        stat_best_fit="mle",
+        smooth_k=False,
+    ):
+        """Function to plot metal contamination"""
+
+        # get mean flux from best-fitting model
+        values = self.fitter.get_best_fit(stat_best_fit=stat_best_fit)
+        like_params = self.fitter.like.parameters_from_sampling_point(values)
+        mF = self.fitter.like.theory.model_igm.F_model.get_mean_flux(
+            np.array(self.fitter.like.data.z), like_params
+        )
+
+        # plot contamination of all metals
+        metal_models = self.fitter.like.theory.model_cont.metal_models
+        for jj in range(len(metal_models)):
+            metal = metal_models[jj].metal_label
+
+            x_list_params = {}
+            d_list_params = {}
+            for p in self.fitter.like.free_params:
+                if "ln_" + metal + "_" in p.name:
+                    key = self.fitter.param_dict[p.name]
+                    x_list_params[p.name] = self.fitter.mle[key]
+                    print(p.name, self.fitter.mle[key])
+                if "d_" + metal + "_" in p.name:
+                    key = self.fitter.param_dict[p.name]
+                    d_list_params[p.name] = self.fitter.mle[key]
+                    print(p.name, self.fitter.mle[key])
+
+            x_Npar = len(x_list_params)
+            ln_X_coeff = np.zeros(x_Npar)
+            for ii in range(x_Npar):
+                name = "ln_" + metal + "_" + str(ii)
+                # note non-trivial order in coefficients
+                ln_X_coeff[x_Npar - ii - 1] = x_list_params[name]
+
+            d_Npar = len(d_list_params)
+            ln_D_coeff = np.zeros(d_Npar)
+            for ii in range(d_Npar):
+                name = "d_" + metal + "_" + str(ii)
+                # note non-trivial order in coefficients
+                ln_D_coeff[d_Npar - ii - 1] = d_list_params[name]
+
+            if x_Npar == 0:
+                ln_X_coeff = None
+            if d_Npar == 0:
+                ln_D_coeff = None
+
+            if x_Npar == 0 and d_Npar == 0:
+                continue
+
+            print(ln_X_coeff, ln_D_coeff)
+
+            metal_models[jj].plot_contamination(
+                self.fitter.like.data.z,
+                self.fitter.like.data.k_kms,
+                mF,
+                ln_X_coeff=ln_X_coeff,
+                ln_D_coeff=ln_D_coeff,
+                plot_every_iz=plot_every_iz,
+                cmap=self.cmap,
+                smooth_k=smooth_k,
+            )
+
+            if save_directory is not None:
+                save_directory = save_directory
+            elif self.save_directory is not None:
+                save_directory = self.save_directory
+
+            if save_directory is not None:
+                plt.savefig(save_directory + "/" + metal + "_cont.pdf")
+                # plt.close()
+            else:
+                plt.show()
+
+            # plt.close()

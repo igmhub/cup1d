@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import copy
 from cup1d.likelihood import likelihood_parameter
 
@@ -12,7 +13,7 @@ class MetalModel(object):
         lambda_rest=None,
         z_X=3.0,
         ln_X_coeff=None,
-        d_coeff=None,
+        ln_D_coeff=None,
         fid_value=[[0, 0], [2, -10]],
         null_value=[2, -10],
         free_param_names=None,
@@ -38,11 +39,11 @@ class MetalModel(object):
         self.dv = self.get_dv_kms()
 
         # figure out parameters
-        if ln_X_coeff and d_coeff:
+        if (ln_X_coeff is not None) and (ln_D_coeff is not None):
             if free_param_names is not None:
                 raise ValueError("cannot specify coeff and free_param_names")
             self.ln_X_coeff = ln_X_coeff
-            self.d_coeff = d_coeff
+            self.ln_D_coeff = ln_D_coeff
         else:
             if free_param_names:
                 # figure out number of free params for this metal line
@@ -65,10 +66,10 @@ class MetalModel(object):
                 self.ln_X_coeff[-2] = fid_value[-2][-1]
 
             # this is for the k-dependent damping
-            self.d_coeff = [0.0] * n_D
-            self.d_coeff[-1] = fid_value[-1][0]
+            self.ln_D_coeff = [0.0] * n_D
+            self.ln_D_coeff[-1] = fid_value[-1][0]
             if n_D == 2:
-                self.d_coeff[-2] = fid_value[-2][0]
+                self.ln_D_coeff[-2] = fid_value[-2][0]
 
         # store list of likelihood parameters (might be fixed or free)
         self.set_X_parameters()
@@ -109,7 +110,7 @@ class MetalModel(object):
         """Setup likelihood parameters for metal model"""
 
         self.D_params = []
-        Npar = len(self.d_coeff)
+        Npar = len(self.ln_D_coeff)
         for i in range(Npar):
             name = "d_" + self.metal_label + "_" + str(i)
             if i == 0:
@@ -123,7 +124,7 @@ class MetalModel(object):
                 xmin = -10
                 xmax = 10
             # note non-trivial order in coefficients
-            value = self.d_coeff[Npar - i - 1]
+            value = self.ln_D_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
                 name=name, value=value, min_value=xmin, max_value=xmax
             )
@@ -173,11 +174,11 @@ class MetalModel(object):
 
         return ln_X_coeff
 
-    def get_D_coeffs(self, like_params=[]):
+    def get_ln_D_coeffs(self, like_params=[]):
         """Return list of coefficients for metal model"""
 
         if like_params:
-            d_coeff = self.d_coeff.copy()
+            ln_D_coeff = self.ln_D_coeff.copy()
             Npar = 0
             array_names = []
             array_values = []
@@ -191,9 +192,9 @@ class MetalModel(object):
 
             # use fiducial value (no contamination)
             if Npar == 0:
-                return self.d_coeff
+                return self.ln_D_coeff
             elif Npar != len(self.D_params):
-                raise ValueError("number of params mismatch in get_D_coeffs")
+                raise ValueError("number of params mismatch in get_ln_D_coeffs")
 
             for ip in range(Npar):
                 _ = np.argwhere(self.D_params[ip].name == array_names)[:, 0]
@@ -202,11 +203,11 @@ class MetalModel(object):
                         "could not update parameter" + self.D_params[ip].name
                     )
                 else:
-                    d_coeff[Npar - ip - 1] = array_values[_[0]]
+                    ln_D_coeff[Npar - ip - 1] = array_values[_[0]]
         else:
-            d_coeff = self.d_coeff
+            ln_D_coeff = self.ln_D_coeff
 
-        return d_coeff
+        return ln_D_coeff
 
     def get_amplitude(self, z, like_params=[]):
         """Amplitude of contamination at a given z"""
@@ -230,13 +231,13 @@ class MetalModel(object):
         # Note that this represents "f" in McDonald et al. (2006)
         # It is later rescaled by <F> to compute "a" in eq. (15)
 
-        d_coeff = self.get_D_coeffs(like_params)
+        ln_D_coeff = self.get_ln_D_coeffs(like_params)
 
-        if d_coeff[-1] <= self.null_value[0]:
+        if ln_D_coeff[-1] <= self.null_value[0]:
             return 0
 
         xz = np.log((1 + z) / (1 + self.z_X))
-        poly = np.poly1d(d_coeff)
+        poly = np.poly1d(ln_D_coeff)
         return np.exp(poly(xz))
 
     def get_dv_kms(self):
@@ -271,3 +272,51 @@ class MetalModel(object):
         damping = (1 + adim_damp) ** alpha * np.exp(-1 * adim_damp**alpha)
         cont = 1 + a**2 + 2 * a * np.cos(self.dv * k_kms) * damping
         return cont
+
+    def plot_contamination(
+        self,
+        z,
+        k_kms,
+        mF,
+        ln_X_coeff=None,
+        ln_D_coeff=None,
+        plot_every_iz=1,
+        cmap=None,
+        smooth_k=False,
+    ):
+        """Plot the contamination model"""
+
+        # plot for fiducial value
+        if ln_X_coeff is None:
+            ln_X_coeff = self.ln_X_coeff
+        if ln_D_coeff is None:
+            ln_D_coeff = self.ln_D_coeff
+
+        metal_model = MetalModel(
+            self.metal_label, ln_X_coeff=ln_X_coeff, ln_D_coeff=ln_D_coeff
+        )
+
+        for ii in range(0, len(z), plot_every_iz):
+            if smooth_k:
+                k_use = np.logspace(
+                    np.log10(k_kms[ii][0]), np.log10(k_kms[ii][-1]), 200
+                )
+            else:
+                k_use = k_kms[ii]
+            cont = metal_model.get_contamination(z[ii], k_use, mF[ii])
+            if isinstance(cont, int):
+                cont = np.ones_like(k_use)
+            if cmap is None:
+                plt.plot(k_use, cont, label="z=" + str(z[ii]))
+            else:
+                plt.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
+
+        plt.axhline(1, color="k", linestyle=":")
+
+        plt.legend(ncol=2)
+        plt.xscale("log")
+        plt.xlabel(r"$k$ [1/Mpc]")
+        plt.ylabel(self.metal_label + " contamination")
+        plt.tight_layout()
+
+        return
