@@ -304,6 +304,12 @@ like = set_like(
     data_hires=data["extra_P1Ds"],
 )
 
+# %%
+# z = data["P1Ds"].z
+# k_kms = data["P1Ds"].k_kms
+# ln_A_damp_coeff = [0, -1]
+# like.theory.model_cont.hcd_model.plot_contamination(z, k_kms, ln_A_damp_coeff)
+
 # %% [markdown]
 # Sampling parameters
 
@@ -390,6 +396,12 @@ fitter.plot_p1d(residuals=True, plot_every_iz=2)
 
 # %%
 fitter.plot_igm(cloud=True)
+
+# %%
+# TBI
+# fitter.hcd_contamination()
+coeff = [0, -1.88504490e+00]
+fitter.like.theory.model_cont.hcd_model.plot_contamination(z, k_kms, coeff)
 
 # %% [markdown]
 # ### Run sampler

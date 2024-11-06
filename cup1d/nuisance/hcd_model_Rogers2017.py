@@ -1,6 +1,6 @@
 import numpy as np
-import copy
-import os
+import copy, os
+from matplotlib import pyplot as plt
 from cup1d.likelihood import likelihood_parameter
 
 
@@ -159,3 +159,22 @@ class HCD_Model_Rogers2017(object):
             ln_A_damp_coeff = self.ln_A_damp_coeff
 
         return ln_A_damp_coeff
+
+    def plot_contamination(self, z, k_kms, ln_A_damp_coeff, plot_every_iz=2):
+        """Plot the contamination model"""
+
+        hcd_model = HCD_Model_Rogers2017(ln_A_damp_coeff=ln_A_damp_coeff)
+
+        for ii in range(0, len(z), plot_every_iz):
+            cont = hcd_model.get_contamination(z[ii], k_kms[ii])
+            if isinstance(cont, int):
+                cont = np.ones_like(k_kms[ii])
+            plt.plot(k_kms[ii], cont, label="z=" + str(z[ii]))
+
+        plt.legend()
+        plt.xscale("log")
+        plt.xlabel(r"$k$ [1/Mpc]")
+        plt.ylabel("HCD contamination")
+        plt.tight_layout()
+
+        return
