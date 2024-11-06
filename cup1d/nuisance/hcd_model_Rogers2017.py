@@ -17,7 +17,7 @@ class HCD_Model_Rogers2017(object):
     ):
         self.z_0 = z_0
         self.null_value = null_value
-        if ln_A_damp_coeff:
+        if ln_A_damp_coeff is not None:
             if free_param_names is not None:
                 raise ValueError("can not specify coeff and free_param_names")
             self.ln_A_damp_coeff = ln_A_damp_coeff
@@ -160,8 +160,14 @@ class HCD_Model_Rogers2017(object):
 
         return ln_A_damp_coeff
 
-    def plot_contamination(self, z, k_kms, ln_A_damp_coeff, plot_every_iz=2):
+    def plot_contamination(
+        self, z, k_kms, ln_A_damp_coeff=None, plot_every_iz=1, cmap=None
+    ):
         """Plot the contamination model"""
+
+        # plot for fiducial value
+        if ln_A_damp_coeff is None:
+            ln_A_damp_coeff = self.ln_A_damp_coeff
 
         hcd_model = HCD_Model_Rogers2017(ln_A_damp_coeff=ln_A_damp_coeff)
 
@@ -169,7 +175,12 @@ class HCD_Model_Rogers2017(object):
             cont = hcd_model.get_contamination(z[ii], k_kms[ii])
             if isinstance(cont, int):
                 cont = np.ones_like(k_kms[ii])
-            plt.plot(k_kms[ii], cont, label="z=" + str(z[ii]))
+            if cmap is None:
+                plt.plot(k_kms[ii], cont, label="z=" + str(z[ii]))
+            else:
+                plt.plot(
+                    k_kms[ii], cont, color=cmap(ii), label="z=" + str(z[ii])
+                )
 
         plt.legend()
         plt.xscale("log")

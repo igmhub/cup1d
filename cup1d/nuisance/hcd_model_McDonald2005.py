@@ -131,3 +131,33 @@ class HCD_Model_McDonald2005(object):
             ln_A_damp_coeff = self.ln_A_damp_coeff
 
         return ln_A_damp_coeff
+
+    def plot_contamination(
+        self, z, k_kms, ln_A_damp_coeff=None, plot_every_iz=1, cmap=None
+    ):
+        """Plot the contamination model"""
+
+        # plot for fiducial value
+        if ln_A_damp_coeff is None:
+            ln_A_damp_coeff = self.ln_A_damp_coeff
+
+        hcd_model = HCD_Model_McDonald2005(ln_A_damp_coeff=ln_A_damp_coeff)
+
+        for ii in range(0, len(z), plot_every_iz):
+            cont = hcd_model.get_contamination(z[ii], k_kms[ii])
+            if isinstance(cont, int):
+                cont = np.ones_like(k_kms[ii])
+            if cmap is None:
+                plt.plot(k_kms[ii], cont, label="z=" + str(z[ii]))
+            else:
+                plt.plot(
+                    k_kms[ii], cont, color=cmap(ii), label="z=" + str(z[ii])
+                )
+
+        plt.legend()
+        plt.xscale("log")
+        plt.xlabel(r"$k$ [1/Mpc]")
+        plt.ylabel("HCD contamination")
+        plt.tight_layout()
+
+        return

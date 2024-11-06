@@ -39,6 +39,7 @@ from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
 from cup1d.likelihood import lya_theory, likelihood
 from cup1d.likelihood.fitter import Fitter
+from cup1d.likelihood.plotter import Plotter
 
 from cup1d.likelihood.pipeline import (
     set_archive,
@@ -50,6 +51,8 @@ from cup1d.likelihood.pipeline import (
 from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
 
 from cup1d.likelihood.input_pipeline import Args
+
+
 
 # %%
 from cup1d.nuisance import AGN_model
@@ -284,7 +287,7 @@ args.n_kF=2
 args.n_SiIII = 1
 args.n_d_SiIII = 1
 args.n_SiII = 0
-args.n_dla=1
+args.n_dla=2
 args.n_sn=0
 args.n_agn=0
 
@@ -382,7 +385,7 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 
 # %% [markdown]
 # - GP Minimization improved: 7495.505449898462 1413.4703537937303
-# - Nyx_alphap Minimization improved: 4381.154069685914 1455.4486410843758
+# - Nyx_alphap Minimization improved (2 HCD): 4045.9982979531555 1420.6221436936958
 
 # %%
 if args.fix_cosmo == False:
@@ -395,13 +398,13 @@ fitter.plot_p1d(residuals=False, plot_every_iz=1)
 fitter.plot_p1d(residuals=True, plot_every_iz=2)
 
 # %%
-fitter.plot_igm(cloud=True)
+plotter.plot_igm(cloud=True)
 
 # %%
-# TBI
-# fitter.hcd_contamination()
-coeff = [0, -1.88504490e+00]
-fitter.like.theory.model_cont.hcd_model.plot_contamination(z, k_kms, coeff)
+plotter = Plotter(fitter)
+
+# %%
+plotter.plot_hcd_cont()
 
 # %% [markdown]
 # ### Run sampler
