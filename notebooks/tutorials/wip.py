@@ -269,7 +269,7 @@ args.fid_AGN=[0, -5]
 # parameters
 args.vary_alphas=False
 args.vary_alphas=True
-args.fix_cosmo=False
+args.fix_cosmo=True
 # args.fix_cosmo=True
 # args.n_tau=1
 # args.n_sigT=1
@@ -284,7 +284,7 @@ args.n_d_SiIII = 1
 args.n_SiII = 0
 args.n_dla=2
 args.n_sn=0
-args.n_agn=0
+args.n_agn=1
 
 free_parameters = set_free_like_parameters(args)
 free_parameters
@@ -397,6 +397,9 @@ plotter.plot_hcd_cont()
 
 # %%
 plotter.plot_metal_cont(smooth_k=True)
+
+# %%
+plotter.plot_agn_cont()
 
 # %% [markdown]
 # ### Run sampler

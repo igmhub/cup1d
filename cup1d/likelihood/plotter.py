@@ -683,3 +683,40 @@ class Plotter(object):
                 plt.show()
 
             # plt.close()
+
+    def plot_agn_cont(
+        self, plot_every_iz=1, save_directory=None, smooth_k=False
+    ):
+        list_params = {}
+        for p in self.fitter.like.free_params:
+            if "ln_AGN" in p.name:
+                key = self.fitter.param_dict[p.name]
+                list_params[p.name] = self.fitter.mle[key]
+                print(p.name, self.fitter.mle[key])
+
+        Npar = len(list_params)
+        coeff = np.zeros(Npar)
+        for ii in range(Npar):
+            name = "ln_AGN_" + str(ii)
+            # note non-trivial order in coefficients
+            coeff[Npar - ii - 1] = list_params[name]
+
+        self.fitter.like.theory.model_cont.agn_model.plot_contamination(
+            self.fitter.like.data.z,
+            self.fitter.like.data.k_kms,
+            coeff,
+            plot_every_iz=plot_every_iz,
+            cmap=self.cmap,
+            smooth_k=smooth_k,
+        )
+
+        if save_directory is not None:
+            save_directory = save_directory
+        elif self.save_directory is not None:
+            save_directory = self.save_directory
+
+        if save_directory is not None:
+            plt.savefig(save_directory + "/AGN_cont.pdf")
+            # plt.close()
+        else:
+            plt.show()

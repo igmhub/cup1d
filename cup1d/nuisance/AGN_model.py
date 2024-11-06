@@ -4,6 +4,7 @@ import os
 import cup1d
 from cup1d.likelihood import likelihood_parameter
 from scipy.interpolate import interp1d
+from matplotlib import pyplot as plt
 
 
 class AGN_Model(object):
@@ -155,6 +156,48 @@ class AGN_Model(object):
             ln_AGN_coeff = self.ln_AGN_coeff
 
         return ln_AGN_coeff
+
+    def plot_contamination(
+        self,
+        z,
+        k_kms,
+        ln_AGN_coeff=None,
+        plot_every_iz=1,
+        cmap=None,
+        smooth_k=False,
+    ):
+        """Plot the contamination model"""
+
+        # plot for fiducial value
+        if ln_AGN_coeff is None:
+            ln_AGN_coeff = self.ln_AGN_coeff
+
+        agn_model = AGN_Model(ln_AGN_coeff=ln_AGN_coeff)
+
+        for ii in range(0, len(z), plot_every_iz):
+            if smooth_k:
+                k_use = np.logspace(
+                    np.log10(k_kms[ii][0]), np.log10(k_kms[ii][-1]), 200
+                )
+            else:
+                k_use = k_kms[ii]
+            cont = agn_model.get_contamination(z[ii], k_use)
+            if isinstance(cont, int):
+                cont = np.ones_like(k_use)
+            if cmap is None:
+                plt.plot(k_use, cont, label="z=" + str(z[ii]))
+            else:
+                plt.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
+
+        plt.axhline(1, color="k", linestyle=":")
+
+        plt.legend()
+        plt.xscale("log")
+        plt.xlabel(r"$k$ [1/Mpc]")
+        plt.ylabel("AGN contamination")
+        plt.tight_layout()
+
+        return
 
 
 def _load_agn_file():
