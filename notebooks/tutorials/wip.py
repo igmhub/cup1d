@@ -54,11 +54,6 @@ from cup1d.likelihood.input_pipeline import Args
 
 
 
-# %%
-from cup1d.nuisance import AGN_model
-import cup1d
-import os
-
 # %% [markdown]
 # ### Set emulator
 

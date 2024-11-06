@@ -39,6 +39,7 @@ from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
 from cup1d.likelihood import lya_theory, likelihood
 from cup1d.likelihood.fitter import Fitter
+from cup1d.likelihood.plotter import Plotter
 
 from cup1d.likelihood.pipeline import (
     set_archive,
@@ -59,10 +60,10 @@ from cup1d.likelihood.input_pipeline import Args
 output_dir = "."
 
 # args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
-# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # the nyx emulator has not properly been validated yet
 # path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
-args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
+# args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
 
 archive = set_archive(args.training_set)
 
@@ -159,9 +160,26 @@ elif choose_desiy1:
 
     if fname is None:
         print("choose appropriate folder")
-
     else:    
-        data["P1Ds"] = P1D_DESIY1(fname = fname)
+        args.z_min = 2.0
+        args.z_max = 5.3
+        args.data_label_hires = None
+        # args.data_label_hires = "Karacayli2022"
+        
+        data["P1Ds"] = P1D_DESIY1(
+            fname=fname, 
+            z_min=args.z_min, 
+            z_max=args.z_max
+        )
+        
+        # data["extra_P1Ds"] = set_P1D(
+        #     args.data_label_hires,
+        #     args,
+        #     archive=archive,
+        #     # true_cosmo=true_cosmo,
+        #     # emulator=emulator,
+        #     cull_data=False
+        # )
 else:
     data["P1Ds"] = set_P1D(
         args.data_label,
@@ -200,8 +218,8 @@ except:
 args.ic_correction=False
 
 args.emu_cov_factor = 0.02
-# args.fid_cosmo_label="mpg_central"
-args.fid_cosmo_label="nyx_central"
+args.fid_cosmo_label="mpg_central"
+# args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="nyx_seed"
 
 # args.fid_cosmo_label="nyx_3"
@@ -210,8 +228,8 @@ args.fid_cosmo_label="nyx_central"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
-# args.fid_igm_label="mpg_central"
-args.fid_igm_label="nyx_central"
+args.fid_igm_label="mpg_central"
+# args.fid_igm_label="nyx_central"
 # args.fid_igm_label="nyx_seed"
 # args.fid_igm_label="nyx_3"
 # args.fid_igm_label="nyx_3_1"
@@ -222,14 +240,16 @@ else:
 args.type_priors = "hc"
 
 # contaminants
-args.fid_SiIII=[0, -4]
-args.fid_SiII=[0, -10]
-args.fid_HCD=[0, -6]
+args.fid_SiIII=[[0, 0], [4, -5]]
+args.fid_SiII=[[0, 0], [2, -10]]
+args.fid_HCD=[0, -2]
 args.fid_SN=[0, -4]
+args.fid_AGN=[0, -5]
+
 
 # parameters
-args.vary_alphas=True
-args.fix_cosmo=True
+args.vary_alphas=False
+args.fix_cosmo=False
 # args.fix_cosmo=True
 # args.n_tau=0
 # args.n_sigT=0
@@ -239,10 +259,13 @@ args.n_tau=2
 args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
-args.n_SiIII = 2
-args.n_SiII = 1
-args.n_dla=1
+args.n_SiIII = 1
+args.n_d_SiIII = 1
+args.n_SiII = 0
+args.n_dla=2
 args.n_sn=0
+args.n_agn=0
+
 
 
 free_parameters = set_free_like_parameters(args)
@@ -260,9 +283,6 @@ like = set_like(
     args,
     data_hires=data["extra_P1Ds"],
 )
-
-# %%
-# like.full_icov_Pk_kms = None
 
 # %% [markdown]
 # Sampling parameters
@@ -327,17 +347,26 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
 
 # %%
+plotter = Plotter(fitter)
+
+# %%
 if args.fix_cosmo == False:
-    fitter.plot_mle_cosmo()
+    plotter.plot_mle_cosmo()
 
 # %%
-fitter.plot_p1d(residuals=False, plot_every_iz=1)
+plotter.plot_p1d(residuals=False, plot_every_iz=1)
 
 # %%
-fitter.plot_p1d(residuals=True, plot_every_iz=2)
+plotter.plot_p1d(residuals=True, plot_every_iz=2)
 
 # %%
-fitter.plot_igm(cloud=True)
+plotter.plot_igm(cloud=True)
+
+# %%
+plotter.plot_hcd_cont()
+
+# %%
+plotter.plot_metal_cont(smooth_k=True)
 
 # %% [markdown]
 # ### Run sampler

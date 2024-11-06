@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import numpy as np
 import os
+import lace
 
 
 # Function to generate n discrete colors from any continuous colormap
