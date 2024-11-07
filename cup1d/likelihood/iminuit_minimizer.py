@@ -21,6 +21,7 @@ class IminuitMinimizer(object):
 
         # setup iminuit object (errordef=0.5 if using log-likelihood)
         self.minimizer = Minuit(like.minus_log_prob, ini_values)
+        # self.minimizer = Minuit(like.get_chi2, ini_values)
         self.minimizer.errordef = 0.5
         # error only used to set initial parameter step
         self.minimizer.errors = error
@@ -49,7 +50,7 @@ class IminuitMinimizer(object):
         if self.verbose:
             print("best-fit values =", best_fit_values)
 
-        plt.title("iminuit best fit")
+        # plt.title("iminuit best fit")
         self.like.plot_p1d(
             values=best_fit_values,
             plot_every_iz=plot_every_iz,

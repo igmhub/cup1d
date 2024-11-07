@@ -565,7 +565,10 @@ class Theory(object):
                 M_of_z[iz],
                 like_params=like_params,
             )
-            p1d_kms[iz] *= cont_total
+            if cont_total is None:
+                return None
+            else:
+                p1d_kms[iz] *= cont_total
 
         # decide what to return, and return it
         out = [p1d_kms]

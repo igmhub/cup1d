@@ -126,8 +126,6 @@ class Contaminants(object):
             k_kms=k_kms,
             like_params=like_params,
         )
-        if np.any(cont_AGN < 0):
-            raise ValueError("Multiplicative AGN contamination < 0")
 
         if self.ic_correction:
             IC_corr = ref_nyx_ic_correction(k_kms, z)
@@ -140,7 +138,12 @@ class Contaminants(object):
         # print("agn", cont_AGN)
         # print("ic", IC_corr)
 
-        return cont_metals * cont_HCD * cont_SN * cont_AGN * IC_corr
+        cont_total = cont_metals * cont_HCD * cont_SN * cont_AGN * IC_corr
+
+        if np.any(cont_AGN < 0):
+            return None
+        else:
+            return cont_total
 
 
 def ref_nyx_ic_correction(k_kms, z):

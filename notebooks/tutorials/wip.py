@@ -264,27 +264,34 @@ args.fid_SiIII=[[0, 0], [4, -5]]
 args.fid_SiII=[[0, 0], [2, -10]]
 args.fid_HCD=[0, -2]
 args.fid_SN=[0, -4]
-args.fid_AGN=[0, -5]
+args.fid_AGN=[0, 1]
 
 # parameters
 args.vary_alphas=False
 args.vary_alphas=True
-args.fix_cosmo=True
+args.fix_cosmo=False
 # args.fix_cosmo=True
 # args.n_tau=1
 # args.n_sigT=1
 # args.n_gamma=1
 # args.n_kF=1
+# args.n_SiIII = 0
+# args.n_d_SiIII = 0
+# args.n_SiII = 0
+# args.n_dla=0
+# args.n_sn=0
+# args.n_agn=0
+
 args.n_tau=2
 args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
-args.n_SiIII = 1
-args.n_d_SiIII = 1
-args.n_SiII = 0
+args.n_SiIII = 2
+args.n_d_SiIII = 2
+args.n_SiII = 1
 args.n_dla=2
 args.n_sn=0
-args.n_agn=1
+args.n_agn=2
 
 free_parameters = set_free_like_parameters(args)
 free_parameters
@@ -312,12 +319,14 @@ for p in like.free_params:
 # %% [markdown]
 # Compare data and fiducial/starting model
 
-# %% [markdown]
-# priors at z for which no data! XD
-
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
 like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
+
+# %%
+z = like.data.z
+k_kms = like.data.k_kms
+like.theory.model_cont.agn_model.plot_contamination(z, k_kms)
 
 # %%
 like.plot_igm()
@@ -393,13 +402,24 @@ plotter.plot_p1d(residuals=True, plot_every_iz=2)
 plotter.plot_igm(cloud=True)
 
 # %%
-plotter.plot_hcd_cont()
+plotter.plot_hcd_cont(plot_data=True, zrange=[0, 3.7])
 
 # %%
-plotter.plot_metal_cont(smooth_k=True)
+plotter.plot_metal_cont(smooth_k=True, plot_data=True, zrange=[0, 3.7])
 
 # %%
-plotter.plot_agn_cont()
+plotter.plot_agn_cont(plot_data=True, zrange=[0, 3.7])
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/test/"
+plotter = Plotter(fitter, save_directory=folder)
+
+# %%
+for ii in range(100):
+    plt.close()
+
+# %%
+plotter.plots_minimizer(zrange=[0, 3.7])
 
 # %% [markdown]
 # ### Run sampler

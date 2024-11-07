@@ -6,7 +6,7 @@ import lace
 
 
 # Function to generate n discrete colors from any continuous colormap
-def get_discrete_cmap(n, base_cmap="viridis"):
+def get_discrete_cmap(n, base_cmap="jet"):
     """Returns a colormap with n discrete colors."""
     cmap = plt.cm.get_cmap(
         base_cmap, n
@@ -17,11 +17,81 @@ def get_discrete_cmap(n, base_cmap="viridis"):
 class Plotter(object):
     def __init__(self, fitter, save_directory=None):
         self.fitter = fitter
-        self.cmap = get_discrete_cmap(len(self.fitter.like.data.z), "jet")
-        if save_directory is not None:
-            self.save_directory = save_directory
-        else:
-            self.save_directory = self.fitter.save_directory
+        self.cmap = get_discrete_cmap(len(self.fitter.like.data.z))
+        self.save_directory = save_directory
+
+        self.mle_values = self.fitter.get_best_fit(stat_best_fit="mle")
+        self.like_params = self.fitter.like.parameters_from_sampling_point(
+            self.mle_values
+        )
+        self.mle_results = self.fitter.like.plot_p1d(
+            values=self.mle_values, plot_every_iz=1, return_all=True
+        )
+        plt.close()
+
+    def plots_minimizer(self, zrange=[0, 10]):
+        # plot initial P1D (before fitting)
+        self.plot_P1D_initial(residuals=False)
+        plt.close()
+        self.plot_P1D_initial(residuals=True)
+        plt.close()
+
+        # plot best fit
+        self.plot_p1d(residuals=False, stat_best_fit="mle")
+        plt.close()
+        self.plot_p1d(residuals=True, stat_best_fit="mle")
+        plt.close()
+
+        # plot cosmology
+        if self.fitter.fix_cosmology == False:
+            self.plot_mle_cosmo()
+        plt.close()
+
+        # plot IGM histories
+        self.plot_igm(cloud=True)
+        plt.close()
+
+        # plot contamination
+        self.plot_hcd_cont(plot_data=True, zrange=zrange)
+        plt.close()
+        self.plot_metal_cont(smooth_k=True, plot_data=True, zrange=zrange)
+        plt.close()
+        self.plot_agn_cont(plot_data=True, zrange=zrange)
+        plt.close()
+
+    def plots_sampler(self):
+        # plot lnprob
+        self.plot_lnprob()
+
+        # plot initial P1D (before fitting)
+        self.plot_P1D_initial(residuals=False)
+        self.plot_P1D_initial(residuals=True)
+
+        # plot best fit
+        self.plot_p1d(residuals=False, stat_best_fit="mle")
+        plt.close()
+        self.plot_p1d(residuals=True, stat_best_fit="mle")
+        plt.close()
+
+        # plot cosmology
+        if self.fitter.fix_cosmology == False:
+            self.plot_corner(only_cosmo=True)
+        plt.close()
+
+        # plot corner
+        self.plot_corner()
+
+        # plot IGM histories
+        self.plot_igm(cloud=True)
+        plt.close()
+
+        # plot contamination
+        self.plot_hcd_cont()
+        plt.close()
+        self.plot_metal_cont()
+        # plt.close()
+        self.plot_agn_cont()
+        plt.close()
 
     def plot_mle_cosmo(self, fontsize=16, nyx_version="Jul2024"):
         """Plot MLE cosmology"""
@@ -93,28 +163,22 @@ class Plotter(object):
                     fontsize=8,
                 )
 
-        ax[0].errorbar(
+        ax[0].scatter(
             self.fitter.mle_cosmo["Delta2_star"],
             self.fitter.mle_cosmo["n_star"],
-            xerr=self.fitter.mle_cosmo["err_Delta2_star"],
-            yerr=self.fitter.mle_cosmo["err_n_star"],
             marker="X",
             color="C1",
         )
         if suite_emu != "mpg":
-            ax[1].errorbar(
+            ax[1].scatter(
                 self.fitter.mle_cosmo["Delta2_star"],
                 self.fitter.mle_cosmo["alpha_star"],
-                xerr=self.fitter.mle_cosmo["err_Delta2_star"],
-                yerr=self.fitter.mle_cosmo["err_alpha_star"],
                 marker="X",
                 color="C1",
             )
-            ax[2].errorbar(
+            ax[2].scatter(
                 self.fitter.mle_cosmo["n_star"],
                 self.fitter.mle_cosmo["alpha_star"],
-                xerr=self.fitter.mle_cosmo["err_n_star"],
-                yerr=self.fitter.mle_cosmo["err_alpha_star"],
                 marker="X",
                 color="C1",
             )
@@ -128,7 +192,10 @@ class Plotter(object):
             ax[2].set_ylabel(r"$\alpha_\star$", fontsize=fontsize)
         plt.tight_layout()
 
-        return
+        if self.save_directory is not None:
+            plt.savefig(self.save_directory + "/cosmo_mle.pdf")
+        else:
+            plt.show()
 
     def plot_corner(
         self,
@@ -137,7 +204,6 @@ class Plotter(object):
         usetex=True,
         serif=True,
         only_cosmo=False,
-        save_directory=None,
         extra_nburn=0,
     ):
         """Make corner plot in ChainConsumer
@@ -189,20 +255,15 @@ class Plotter(object):
 
         fig = c.plotter.plot(figsize=(12, 12))
 
-        if save_directory is not None:
-            save_directory = save_directory
-        elif self.save_directory is not None:
-            save_directory = self.save_directory
-
-        if save_directory is not None:
+        if self.save_directory is not None:
             if only_cosmo:
-                plt.savefig(save_directory + "/corner_cosmo.pdf")
+                plt.savefig(self.save_directory + "/corner_cosmo.pdf")
             else:
-                plt.savefig(save_directory + "/corner.pdf")
+                plt.savefig(self.save_directory + "/corner.pdf")
 
         return summary
 
-    def plot_lnprob(self, extra_nburn=0, save_directory=None):
+    def plot_lnprob(self, extra_nburn=0):
         """Plot lnprob"""
 
         mask, _ = purge_chains(self.fitter.lnprob[extra_nburn:, :])
@@ -219,13 +280,7 @@ class Plotter(object):
             # else:
             #     plt.plot(self.fitter.lnprob[extra_nburn:, ii], "--", alpha=0.5)
 
-        # save to file
-        if save_directory is not None:
-            save_directory = save_directory
-        elif self.save_directory is not None:
-            save_directory = self.save_directory
-
-        if save_directory is not None:
+        if self.save_directory is not None:
             plt.savefig(self.save_directory + "/lnprob.pdf")
         # plt.close()
 
@@ -238,7 +293,6 @@ class Plotter(object):
         residuals=False,
         rand_posterior=None,
         stat_best_fit="mle",
-        save_directory=None,
     ):
         """Plot the P1D of the data and the emulator prediction
         for the MCMC best fit
@@ -246,23 +300,19 @@ class Plotter(object):
 
         ## Get best fit values for each parameter
         if values is None:
-            values = self.fitter.get_best_fit(stat_best_fit=stat_best_fit)
+            values = self.mle_values
 
-        # save to file
-        if save_directory is not None:
-            save_directory = save_directory
-        elif self.save_directory is not None:
-            save_directory = self.save_directory
-
-        if save_directory is not None:
+        if self.save_directory is not None:
             if rand_posterior is None:
-                fname = "best_fit_" + stat_best_fit + "_err_emu"
+                fname = "P1D_mle"
             else:
                 fname = "best_fit_" + stat_best_fit + "_err_posterior"
             if residuals:
-                plot_fname = save_directory + "/" + fname + "_residuals.pdf"
+                plot_fname = (
+                    self.save_directory + "/" + fname + "_residuals.pdf"
+                )
             else:
-                plot_fname = save_directory + "/" + fname + ".pdf"
+                plot_fname = self.save_directory + "/" + fname + ".pdf"
         else:
             plot_fname = None
 
@@ -274,28 +324,24 @@ class Plotter(object):
             plot_fname=plot_fname,
         )
 
-    def plot_prediction(
-        self, figsize=(8, 6), values=None, plot_every_iz=1, residuals=False
-    ):
+    def plot_P1D_initial(self, plot_every_iz=1, residuals=False):
         """Plot the P1D of the data and the emulator prediction
         for the fiducial model"""
 
-        plt.figure(figsize=figsize)
-        if values == None:
-            plt.title("Fiducial model")
-        else:
-            plt.title("P1D at %s" % values)
-        self.fitter.like.plot_p1d(
-            values=values, plot_every_iz=plot_every_iz, residuals=residuals
-        )
-
         if self.save_directory is not None:
-            plt.savefig(self.save_directory + "/fiducial.pdf")
-            plt.close()
+            if residuals:
+                plot_fname = self.save_directory + "/P1D_initial_residuals.pdf"
+            else:
+                plot_fname = self.save_directory + "/P1D_initial.pdf"
         else:
-            plt.show()
+            plot_fname = None
 
-        return
+        self.fitter.like.plot_p1d(
+            values=None,
+            plot_every_iz=plot_every_iz,
+            residuals=residuals,
+            plot_fname=plot_fname,
+        )
 
     def plot_histograms(self, cube=False, delta_lnprob_cut=None):
         """Make histograms for all dimensions, using re-normalized values if
@@ -330,9 +376,11 @@ class Plotter(object):
         rand_sample=None,
         stat_best_fit="mle",
         cloud=False,
-        save_directory=None,
     ):
         """Plot IGM histories"""
+
+        if value is None:
+            value = self.mle_values
 
         # true IGM parameters
         if self.fitter.like.truth is not None:
@@ -353,39 +401,29 @@ class Plotter(object):
 
         # all IGM histories in the training sample
         if cloud:
-            emu_label_igm = self.fitter.like.theory.emulator.training_data[0][
-                "sim_label"
-            ]
-            all_emu_igm = self.fitter.like.theory.model_igm.get_igm(
-                emu_label_igm, return_all=True
-            )
-
-        # best-fitting IGM parameters
-        if value is None:
-            value = self.fitter.get_best_fit(stat_best_fit=stat_best_fit)
-        like_params = self.fitter.like.parameters_from_sampling_point(value)
+            all_emu_igm = self.fitter.like.theory.model_igm.all_igm
 
         pars_best = {}
         pars_best["z"] = np.array(self.fitter.like.data.z)
         pars_best[
             "tau_eff"
         ] = self.fitter.like.theory.model_igm.F_model.get_tau_eff(
-            pars_best["z"], like_params=like_params
+            pars_best["z"], like_params=self.like_params
         )
         pars_best[
             "gamma"
         ] = self.fitter.like.theory.model_igm.T_model.get_gamma(
-            pars_best["z"], like_params=like_params
+            pars_best["z"], like_params=self.like_params
         )
         pars_best[
             "sigT_kms"
         ] = self.fitter.like.theory.model_igm.T_model.get_sigT_kms(
-            pars_best["z"], like_params=like_params
+            pars_best["z"], like_params=self.like_params
         )
         pars_best[
             "kF_kms"
         ] = self.fitter.like.theory.model_igm.P_model.get_kF_kms(
-            pars_best["z"], like_params=like_params
+            pars_best["z"], like_params=self.like_params
         )
 
         if rand_sample is not None:
@@ -485,16 +523,10 @@ class Plotter(object):
 
         plt.tight_layout()
 
-        if save_directory is not None:
-            save_directory = save_directory
-        elif self.save_directory is not None:
-            save_directory = self.save_directory
-
-        if save_directory is not None:
+        if self.save_directory is not None:
             plt.savefig(
-                save_directory + "/IGM_histories_" + stat_best_fit + ".pdf"
+                self.save_directory + "/IGM_histories_" + stat_best_fit + ".pdf"
             )
-            # plt.close()
         else:
             plt.show()
 
@@ -567,8 +599,19 @@ class Plotter(object):
         return
 
     def plot_hcd_cont(
-        self, plot_every_iz=1, save_directory=None, smooth_k=False
+        self,
+        plot_every_iz=1,
+        smooth_k=False,
+        plot_data=False,
+        zrange=[0, 10],
     ):
+        """Function to plot the HCD contamination"""
+
+        if plot_data:
+            dict_data = self.mle_results
+        else:
+            dict_data = None
+
         list_params = {}
         for p in self.fitter.like.free_params:
             if "A_damp" in p.name:
@@ -577,6 +620,8 @@ class Plotter(object):
                 print(p.name, self.fitter.mle[key])
 
         Npar = len(list_params)
+        if Npar == 0:
+            return
         coeff = np.zeros(Npar)
         for ii in range(Npar):
             name = "ln_A_damp_" + str(ii)
@@ -590,33 +635,33 @@ class Plotter(object):
             plot_every_iz=plot_every_iz,
             cmap=self.cmap,
             smooth_k=smooth_k,
+            dict_data=dict_data,
+            zrange=zrange,
         )
 
-        if save_directory is not None:
-            save_directory = save_directory
-        elif self.save_directory is not None:
-            save_directory = self.save_directory
-
-        if save_directory is not None:
-            plt.savefig(save_directory + "/HCD_cont.pdf")
-            # plt.close()
+        if self.save_directory is not None:
+            plt.savefig(self.save_directory + "/HCD_cont.pdf")
         else:
             plt.show()
 
     def plot_metal_cont(
         self,
         plot_every_iz=1,
-        save_directory=None,
         stat_best_fit="mle",
         smooth_k=False,
+        plot_data=False,
+        zrange=[0, 10],
     ):
         """Function to plot metal contamination"""
 
+        if plot_data:
+            dict_data = self.mle_results
+        else:
+            dict_data = None
+
         # get mean flux from best-fitting model
-        values = self.fitter.get_best_fit(stat_best_fit=stat_best_fit)
-        like_params = self.fitter.like.parameters_from_sampling_point(values)
         mF = self.fitter.like.theory.model_igm.F_model.get_mean_flux(
-            np.array(self.fitter.like.data.z), like_params
+            np.array(self.fitter.like.data.z), self.like_params
         )
 
         # plot contamination of all metals
@@ -650,13 +695,13 @@ class Plotter(object):
                 # note non-trivial order in coefficients
                 ln_D_coeff[d_Npar - ii - 1] = d_list_params[name]
 
+            if (x_Npar == 0) and (d_Npar == 0):
+                continue
+
             if x_Npar == 0:
                 ln_X_coeff = None
             if d_Npar == 0:
                 ln_D_coeff = None
-
-            if x_Npar == 0 and d_Npar == 0:
-                continue
 
             print(ln_X_coeff, ln_D_coeff)
 
@@ -669,24 +714,30 @@ class Plotter(object):
                 plot_every_iz=plot_every_iz,
                 cmap=self.cmap,
                 smooth_k=smooth_k,
+                dict_data=dict_data,
+                zrange=zrange,
             )
 
-            if save_directory is not None:
-                save_directory = save_directory
-            elif self.save_directory is not None:
-                save_directory = self.save_directory
-
-            if save_directory is not None:
-                plt.savefig(save_directory + "/" + metal + "_cont.pdf")
-                # plt.close()
+            if self.save_directory is not None:
+                plt.savefig(self.save_directory + "/" + metal + "_cont.pdf")
+                plt.close()
             else:
                 plt.show()
 
-            # plt.close()
-
     def plot_agn_cont(
-        self, plot_every_iz=1, save_directory=None, smooth_k=False
+        self,
+        plot_every_iz=1,
+        smooth_k=False,
+        plot_data=False,
+        zrange=[0, 10],
     ):
+        """Function to plot AGN contamination"""
+
+        if plot_data:
+            dict_data = self.mle_results
+        else:
+            dict_data = None
+
         list_params = {}
         for p in self.fitter.like.free_params:
             if "ln_AGN" in p.name:
@@ -695,6 +746,8 @@ class Plotter(object):
                 print(p.name, self.fitter.mle[key])
 
         Npar = len(list_params)
+        if Npar == 0:
+            return
         coeff = np.zeros(Npar)
         for ii in range(Npar):
             name = "ln_AGN_" + str(ii)
@@ -708,15 +761,11 @@ class Plotter(object):
             plot_every_iz=plot_every_iz,
             cmap=self.cmap,
             smooth_k=smooth_k,
+            dict_data=dict_data,
+            zrange=zrange,
         )
 
-        if save_directory is not None:
-            save_directory = save_directory
-        elif self.save_directory is not None:
-            save_directory = self.save_directory
-
-        if save_directory is not None:
-            plt.savefig(save_directory + "/AGN_cont.pdf")
-            # plt.close()
+        if self.save_directory is not None:
+            plt.savefig(self.save_directory + "/AGN_cont.pdf")
         else:
             plt.show()

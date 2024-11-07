@@ -399,7 +399,15 @@ class Fitter(object):
         print("Fit params cube:", self.mle_cube, flush=True)
         print("Fit params no cube:", mle_no_cube, flush=True)
 
-        self.mle_cosmo = self.get_cosmo_err(log_func_minimize)
+        like_pars = self.like.parameters_from_sampling_point(self.mle_cube)
+        star_pars = self.like.theory.get_blob_fixed_background(like_pars)
+        self.mle_cosmo = {}
+        self.mle_cosmo["Delta2_star"] = star_pars[0]
+        self.mle_cosmo["n_star"] = star_pars[1]
+        self.mle_cosmo["alpha_star"] = star_pars[2]
+        # errors from Hessian do not work
+        # self.mle_cosmo = self.get_cosmo_err(log_func_minimize)
+
         # apply blinding
         self.mle_cosmo = self.apply_blinding(self.mle_cosmo)
 
@@ -426,31 +434,27 @@ class Fitter(object):
 
         for par in self.mle_cosmo:
             if par == "Delta2_star":
-                print("MLE, err")
                 if self.like.truth is not None:
-                    print("Truth, MLE - Truth")
+                    print("MLE, Truth, MLE/Truth - 1")
+                else:
+                    print("MLE")
 
-            if "err" in par:
-                continue
             print(par)
-            print(
-                np.round(self.mle_cosmo[par], 5),
-                np.round(self.mle_cosmo["err_" + par], 5),
-            )
+            val = np.round(self.mle_cosmo[par], 5)
             if self.like.truth is not None:
                 if par in self.like.truth["like_params"]:
-                    print(
-                        np.round(self.like.truth["like_params"][par], 5),
-                        np.round(
-                            np.abs(
-                                self.like.truth["like_params"][par]
-                                - self.mle_cosmo[par]
-                            ),
-                            5,
-                        ),
-                    )
+                    tru = np.round(self.like.truth["like_params"][par], 5)
+                    print(val, true, val / true - 1)
+            else:
+                print(val)
 
     def get_cosmo_err(self, fun_minimize):
+        """Deprecated
+
+        Getting errors from Hessian does not work properly, I tested many methods to get the
+        Hessian, including Iminuit, and results very bad
+
+        """
         hess = nd.Hessian(fun_minimize)
         ii = 0
         for par_i in self.like.free_params:
@@ -464,7 +468,7 @@ class Fitter(object):
         if ii == 0:
             return
 
-        cov = hess(self.mle_cube)[:ii, :ii]
+        cov = hess(self.mle_cube)
         mle_cov_cube = np.linalg.inv(cov)
 
         mle_cov = np.zeros((3, 3))
@@ -1009,7 +1013,6 @@ class Fitter(object):
         # self._write_dict_to_text(saveDict)
 
         tries = True
-        plotter = Plotter(self)
 
         dict_out = {}
         if tries:

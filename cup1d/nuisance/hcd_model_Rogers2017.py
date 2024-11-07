@@ -1,6 +1,7 @@
 import numpy as np
 import copy, os
 from matplotlib import pyplot as plt
+from cup1d.likelihood.plotter import get_discrete_cmap
 from cup1d.likelihood import likelihood_parameter
 
 
@@ -168,6 +169,8 @@ class HCD_Model_Rogers2017(object):
         plot_every_iz=1,
         cmap=None,
         smooth_k=False,
+        dict_data=None,
+        zrange=[0, 10],
     ):
         """Plot the contamination model"""
 
@@ -175,7 +178,12 @@ class HCD_Model_Rogers2017(object):
         if ln_A_damp_coeff is None:
             ln_A_damp_coeff = self.ln_A_damp_coeff
 
+        if cmap is None:
+            cmap = get_discrete_cmap(len(z))
+
         hcd_model = HCD_Model_Rogers2017(ln_A_damp_coeff=ln_A_damp_coeff)
+
+        yrange = [1, 1]
 
         for ii in range(0, len(z), plot_every_iz):
             if smooth_k:
@@ -187,17 +195,43 @@ class HCD_Model_Rogers2017(object):
             cont = hcd_model.get_contamination(z[ii], k_use)
             if isinstance(cont, int):
                 cont = np.ones_like(k_use)
-            if cmap is None:
-                plt.plot(k_use, cont, label="z=" + str(z[ii]))
-            else:
-                plt.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
+
+            plt.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
+
+            yrange[0] = min(yrange[0], np.min(cont))
+            yrange[1] = max(yrange[1], np.max(cont))
+
+            if (z[ii] > zrange[1]) | (z[ii] < zrange[0]):
+                continue
+
+            if dict_data is not None:
+                yy = (
+                    dict_data["p1d_data"][ii]
+                    / dict_data["p1d_model"][ii]
+                    * cont
+                )
+                err_yy = (
+                    dict_data["p1d_err"][ii] / dict_data["p1d_model"][ii] * cont
+                )
+                plt.errorbar(
+                    dict_data["k_kms"][ii],
+                    yy,
+                    err_yy,
+                    marker="o",
+                    linestyle=":",
+                    color=cmap(ii),
+                    alpha=0.5,
+                )
 
         plt.axhline(1, color="k", linestyle=":")
+        # ax[ii].plot(k_kms[0], 1, linestyle="-", label="Data", color="k")
 
-        plt.legend()
+        plt.ylim(yrange[0] - 0.05, yrange[1] + 0.05)
+
+        plt.legend(ncol=4)
         plt.xscale("log")
         plt.xlabel(r"$k$ [1/Mpc]")
-        plt.ylabel("HCD contamination")
+        plt.ylabel(r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,HCD}$")
         plt.tight_layout()
 
         return

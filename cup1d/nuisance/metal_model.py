@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
+from cup1d.likelihood.plotter import get_discrete_cmap
 from cup1d.likelihood import likelihood_parameter
 
 
@@ -283,6 +284,8 @@ class MetalModel(object):
         plot_every_iz=1,
         cmap=None,
         smooth_k=False,
+        dict_data=None,
+        zrange=[0, 10],
     ):
         """Plot the contamination model"""
 
@@ -292,9 +295,14 @@ class MetalModel(object):
         if ln_D_coeff is None:
             ln_D_coeff = self.ln_D_coeff
 
+        if cmap is None:
+            cmap = get_discrete_cmap(len(z))
+
         metal_model = MetalModel(
             self.metal_label, ln_X_coeff=ln_X_coeff, ln_D_coeff=ln_D_coeff
         )
+
+        yrange = [1, 1]
 
         for ii in range(0, len(z), plot_every_iz):
             if smooth_k:
@@ -306,17 +314,54 @@ class MetalModel(object):
             cont = metal_model.get_contamination(z[ii], k_use, mF[ii])
             if isinstance(cont, int):
                 cont = np.ones_like(k_use)
-            if cmap is None:
-                plt.plot(k_use, cont, label="z=" + str(z[ii]))
-            else:
-                plt.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
+
+            plt.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
+
+            yrange[0] = min(yrange[0], np.min(cont))
+            yrange[1] = max(yrange[1], np.max(cont))
+
+            if (z[ii] > zrange[1]) | (z[ii] < zrange[0]):
+                continue
+
+            if dict_data is not None:
+                cont_data_res = metal_model.get_contamination(
+                    z[ii], k_kms[ii], mF[ii]
+                )
+                if isinstance(cont_data_res, int):
+                    cont_data_res = np.ones_like(k_kms[ii])
+
+                yy = (
+                    dict_data["p1d_data"][ii]
+                    / dict_data["p1d_model"][ii]
+                    * cont_data_res
+                )
+                err_yy = (
+                    dict_data["p1d_err"][ii]
+                    / dict_data["p1d_model"][ii]
+                    * cont_data_res
+                )
+                plt.errorbar(
+                    dict_data["k_kms"][ii],
+                    yy,
+                    err_yy,
+                    marker="o",
+                    linestyle=":",
+                    color=cmap(ii),
+                    alpha=0.5,
+                )
 
         plt.axhline(1, color="k", linestyle=":")
 
-        plt.legend(ncol=2)
+        plt.ylim(yrange[0] - 0.05, yrange[1] + 0.05)
+
+        plt.legend(ncol=4)
         plt.xscale("log")
         plt.xlabel(r"$k$ [1/Mpc]")
-        plt.ylabel(self.metal_label + " contamination")
+        plt.ylabel(
+            r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,"
+            + self.metal_label
+            + "}$"
+        )
         plt.tight_layout()
 
         return

@@ -531,6 +531,7 @@ class Likelihood(object):
         return_covar=False,
         print_ratio=False,
         print_chi2=True,
+        return_all=False,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
@@ -614,6 +615,8 @@ class Likelihood(object):
         if print_chi2:
             ax[0].set_title(label, fontsize=14)
 
+        out = {}
+
         for ii in range(length):
             if ii == 0:
                 data = self.data
@@ -622,6 +625,12 @@ class Likelihood(object):
                     emu_cov_use = emu_cov
                 if rand_posterior is not None:
                     err_posterior_use = err_posterior
+                out["k_kms"] = []
+                out["p1d_data"] = []
+                out["p1d_model"] = []
+                out["p1d_err"] = []
+                out["chi2"] = []
+                out["prob"] = []
             else:
                 data = self.extra_data
                 emu_p1d_use = emu_p1d_extra
@@ -629,6 +638,12 @@ class Likelihood(object):
                     emu_cov_use = emu_cov_extra
                 if rand_posterior is not None:
                     err_posterior_use = err_posterior_extra
+                out["extra_k_kms"] = []
+                out["extra_p1d_data"] = []
+                out["extra_p1d_model"] = []
+                out["extra_p1d_err"] = []
+                out["extra_chi2"] = []
+                out["extra_prob"] = []
 
             zs = data.z
             Nz = len(zs)
@@ -652,7 +667,7 @@ class Likelihood(object):
                 # plot everything
                 if Nz > 1:
                     col = plt.cm.jet(iz / (Nz - 1))
-                    yshift = iz / (Nz - 1)
+                    yshift = 4 * iz / (Nz - 1)
                 else:
                     col = "blue"
                     yshift = 0
@@ -671,7 +686,7 @@ class Likelihood(object):
 
                     # print chi2
                     xpos = k_kms[0]
-                    ypos = 0.92 + yshift
+                    ypos = 0.75 + yshift
                     ndeg = np.sum(p1d_data != 0)
                     prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg - n_free_p)
                     label = (
@@ -684,7 +699,7 @@ class Likelihood(object):
                         + "%)"
                     )
                     if print_chi2:
-                        ax[ii].text(xpos, ypos, label, fontsize=12)
+                        ax[ii].text(xpos, ypos, label, fontsize=10)
 
                     if print_ratio:
                         print(p1d_data / p1d_theory)
@@ -749,8 +764,23 @@ class Likelihood(object):
                     ymin = min(ymin, min(p1d_data * k_kms / np.pi))
                     ymax = max(ymax, max(p1d_data * k_kms / np.pi))
 
-            ax[ii].plot(k_kms[0], 1, linestyle="-", label="Data", color="k")
-            ax[ii].plot(k_kms[0], 1, linestyle=":", label="Fit", color="k")
+                if ii == 0:
+                    out["k_kms"].append(k_kms)
+                    out["p1d_data"].append(p1d_data)
+                    out["p1d_model"].append(p1d_theory)
+                    out["p1d_err"].append(p1d_err)
+                    out["chi2"].append(chi2_all[ii, iz])
+                    out["prob"].append(prob)
+                else:
+                    out["extra_k_kms"].append(k_kms)
+                    out["extra_p1d_data"].append(p1d_data)
+                    out["extra_p1d_model"].append(p1d_theory)
+                    out["extra_p1d_err"].append(p1d_err)
+                    out["extra_chi2"].append(chi2_all[ii, iz])
+                    out["extra_prob"].append(prob)
+
+            # ax[ii].plot(k_kms[0], 1, linestyle="-", label="Data", color="k")
+            ax[ii].plot(k_kms[0], 1, linestyle="--", label="Fit", color="k")
             if residuals:
                 ax[ii].legend()
             else:
@@ -760,23 +790,27 @@ class Likelihood(object):
             ax[ii].set_xlabel(r"$k_\parallel$ [s/km]")
 
             if residuals:
-                ax[ii].set_ylabel(r"$P_{\rm 1D}(z,k_\parallel)$ residuals")
-                ax[ii].set_ylim(ymin - 0.1, ymax + 0.1)
+                ax[ii].set_ylabel(
+                    r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$"
+                )
+                ax[ii].set_ylim(ymin - 0.3, ymax + 0.3)
             else:
                 ax[ii].set_ylim(0.8 * ymin, 1.3 * ymax)
                 ax[ii].set_yscale("log")
                 ax[ii].set_ylabel(
-                    r"$k_\parallel \, P_{\rm 1D}(z,k_\parallel) / \pi$"
+                    r"$k_\parallel \, P_{\rm 1D}(z, k_\parallel) / \pi$"
                 )
 
         plt.tight_layout()
         if plot_fname is not None:
             plt.savefig(plot_fname)
-            # plt.close()
         else:
             plt.show()
 
-        return
+        if return_all:
+            return out
+        else:
+            return
 
     # def overplot_emulator_calls(
     #     self,

@@ -38,6 +38,8 @@ class IGM(object):
         else:
             default = False
 
+        self.all_igm = self.get_igm(list_sim_cube[0], return_all=True)
+
         if default:
             # default priors (hc for mpg)
             self.priors = {
@@ -62,7 +64,7 @@ class IGM(object):
             self.set_priors(fid_igm, list_sim_cube, type_priors=type_priors)
 
         if set_metric:
-            self.metric = self.set_metric(emu_igm_params, list_sim_cube)
+            self.metric = self.set_metric(emu_igm_params)
         else:
             self.metric = None
 
@@ -163,28 +165,26 @@ class IGM(object):
         else:
             raise ValueError("type_priors must be 'hc' or 'data'")
 
-        all_igm = self.get_igm(list_sim_cube[0], return_all=True)
-
         self.priors = {}
         for par in fid_igm:
             if (par == "z") | (par == "val_scaling"):
                 continue
-            res_div = np.zeros((len(all_igm), 2))
-            for ii, sim in enumerate(all_igm):
+            res_div = np.zeros((len(self.all_igm), 2))
+            for ii, sim in enumerate(self.all_igm):
                 string_split = sim.split("_")
                 sim_label = string_split[0] + "_" + string_split[1]
                 if sim_label not in list_sim_cube:
                     continue
-                _ = np.argwhere((fid_igm[par] != 0) & (all_igm[sim][par] != 0))[
-                    :, 0
-                ]
+                _ = np.argwhere(
+                    (fid_igm[par] != 0) & (self.all_igm[sim][par] != 0)
+                )[:, 0]
                 if len(_) == 0:
                     continue
                 res_div[ii, 0] = np.abs(
-                    np.max(all_igm[sim][par][_] / fid_igm[par][_])
+                    np.max(self.all_igm[sim][par][_] / fid_igm[par][_])
                 )
                 res_div[ii, 1] = np.abs(
-                    np.min(all_igm[sim][par][_] / fid_igm[par][_])
+                    np.min(self.all_igm[sim][par][_] / fid_igm[par][_])
                 )
 
             _ = np.argwhere(np.isfinite(res_div[:, 0]) & (res_div[:, 0] != 0))[
@@ -204,23 +204,22 @@ class IGM(object):
             y1 = y0_cen / np.log((1 + fid_igm["z"].max()) / (1 + self.z_pivot))
             self.priors[par] = [[-y1, y1], [-y0_min * 1.05, y0_max * 1.05]]
 
-    def set_metric(self, emu_igm_params, list_sim_cube, tol_factor=95):
+    def set_metric(self, emu_igm_params, tol_factor=95):
         # get all individual points separately
-
-        all_igm = self.get_igm(list_sim_cube[0], return_all=True)
 
         all_points = {}
         for par in emu_igm_params:
             if par not in ["Delta2_p", "n_p", "alpha_p"]:
                 all_points[par] = []
 
-        for key in all_igm:
+        for key in self.all_igm:
             if key[4].isdigit():
+                # distance between tau scalings for mpg is too small
                 if (key[:3] == "mpg") and (key[-1] != "0"):
                     continue
                 for par in all_points:
-                    ind_use = np.argwhere(all_igm[key][par] != 0)[:, 0]
-                    all_points[par].append(all_igm[key][par][ind_use])
+                    ind_use = np.argwhere(self.all_igm[key][par] != 0)[:, 0]
+                    all_points[par].append(self.all_igm[key][par][ind_use])
 
         for key in all_points:
             all_points[key] = np.concatenate(all_points[key])
