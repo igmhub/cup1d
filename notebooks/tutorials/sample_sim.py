@@ -357,22 +357,22 @@ if args.fix_cosmo == False:
 plotter.plot_p1d(residuals=False, plot_every_iz=1)
 
 # %%
-plotter.plot_p1d(residuals=True, plot_every_iz=2)
+plotter.plot_p1d(residuals=True, plot_every_iz=1)
 
 # %%
 plotter.plot_igm(cloud=True)
 
 # %%
 if args.n_dla > 0:
-    plotter.plot_hcd_cont()
+    plotter.plot_hcd_cont(plot_data=True, zrange=[0, 3.7])
 
 # %%
 if (args.n_SiIII + args.n_SiII) > 0:
-    plotter.plot_metal_cont(smooth_k=True)
+    plotter.plot_metal_cont(smooth_k=True, plot_data=True, zrange=[0, 3.7])
 
 # %%
 if args.n_agn > 0:
-    plotter.plot_agn_cont()
+    plotter.plot_agn_cont(plot_data=True, zrange=[0, 3.7])
 
 # %% [markdown]
 # ### Run sampler

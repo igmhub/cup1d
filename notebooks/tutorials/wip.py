@@ -396,7 +396,7 @@ if args.fix_cosmo == False:
 plotter.plot_p1d(residuals=False, plot_every_iz=1)
 
 # %%
-plotter.plot_p1d(residuals=True, plot_every_iz=2)
+plotter.plot_p1d(residuals=True, plot_every_iz=1)
 
 # %%
 plotter.plot_igm(cloud=True)
