@@ -443,8 +443,14 @@ class Fitter(object):
             val = np.round(self.mle_cosmo[par], 5)
             if self.like.truth is not None:
                 if par in self.like.truth["like_params"]:
-                    tru = np.round(self.like.truth["like_params"][par], 5)
-                    print(val, true, val / true - 1)
+                    true = np.round(self.like.truth["like_params"][par], 5)
+                    rat = np.round(
+                        self.mle_cosmo[par]
+                        / self.like.truth["like_params"][par]
+                        - 1,
+                        5,
+                    )
+                    print(val, true, rat)
             else:
                 print(val)
 

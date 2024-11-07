@@ -55,6 +55,16 @@ from cup1d.likelihood.input_pipeline import Args
 
 
 # %% [markdown]
+# ### Set archive
+
+# %%
+args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
+# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+
+# %%
+archive = set_archive(args.training_set)
+
+# %% [markdown]
 # ### Set emulator
 
 # %%
@@ -65,18 +75,16 @@ output_dir = "."
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # the nyx emulator has not properly been validated yet
 # path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
-args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-
-archive = set_archive(args.training_set)
 
 emulator = set_emulator(
     emulator_label=args.emulator_label,
     archive=archive,
 )
 
-if emulator.emulator_label == "Nyx_alphap":
+if "Nyx" in emulator.emulator_label:
     emulator.list_sim_cube = archive.list_sim_cube
-    emulator.list_sim_cube.remove("nyx_14")
+    if "nyx_14" in emulator.list_sim_cube:
+        emulator.list_sim_cube.remove("nyx_14")
 else:
     emulator.list_sim_cube = archive.list_sim_cube
 
@@ -87,8 +95,8 @@ else:
 choose_forecast = False
 choose_mock = False
 choose_data = False
-choose_challenge = False
-choose_desiy1 = True
+choose_challenge = True
+choose_desiy1 = False
 
 if choose_forecast:
     # for forecast, just start label of observational data with mock
@@ -113,15 +121,15 @@ if choose_forecast:
 elif choose_mock:    
     true_cosmo=None
     # to analyze data from simulations
-    args.data_label = "mpg_central"    
-    # args.data_label="nyx_central"
+    # args.data_label = "mpg_central"    
+    args.data_label="nyx_central"
     # args.data_label="nyx_seed"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
 
     # provide cosmology only to cull the data
-    args.true_cosmo_label="mpg_central"
-    # args.true_cosmo_label="nyx_central"
+    # args.true_cosmo_label="mpg_central"
+    args.true_cosmo_label="nyx_central"
     # args.true_cosmo_label="nyx_seed"
 
     # you may provide contaminants
@@ -145,13 +153,13 @@ elif choose_data:
 data = {"P1Ds": None, "extra_P1Ds": None}
 
 if choose_challenge:    
-    # folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
-    # fname = "mock_challenge_0.2_nonoise_fiducial.fits"
+    folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
+    fname = "mock_challenge_0.2_nonoise_fiducial.fits"
     # fname = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
     # fname = "mock_challenge_0.2_nonoise_cosmo_grid_3.fits"
     # fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
     # fname = "mock_challenge_0.2_noise-42-0_fiducial.fits"
-    # true_sim_label="nyx_central"
+    true_sim_label="nyx_central"
     # true_sim_label="nyx_seed"
     # true_sim_label="nyx_3"
     data["P1Ds"] = P1D_DESIY1(
@@ -230,7 +238,7 @@ except:
 # cosmology
 args.ic_correction=False
 
-args.emu_cov_factor = 0.02
+args.emu_cov_factor = 0.0
 # args.fid_cosmo_label="mpg_central"
 args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="nyx_seed"
@@ -253,45 +261,48 @@ else:
 args.type_priors = "hc"
 
 # contaminants
-# args.fid_SiIII=[0, -10]
-# args.fid_SiII=[0, -10]
-# args.fid_HCD=[0, -6]
-# args.fid_SN=[0, -4]
-# args.fid_AGN=[0, -5]
-
-
-args.fid_SiIII=[[0, 0], [4, -5]]
+# from 1 to 6, -11 to -4
+args.fid_SiIII=[[0, 0], [2, -10]]
 args.fid_SiII=[[0, 0], [2, -10]]
-args.fid_HCD=[0, -2]
+# from -5 to 0
+args.fid_HCD=[0, -4]
+# from -5 to 2
 args.fid_SN=[0, -4]
-args.fid_AGN=[0, 1]
+args.fid_AGN=[0, -5]
+
+
+# args.fid_SiIII=[[0, 0], [4, -5]]
+# args.fid_SiII=[[0, 0], [2, -10]]
+# args.fid_HCD=[0, -2]
+# args.fid_SN=[0, -4]
+# args.fid_AGN=[0, 1]
 
 # parameters
 args.vary_alphas=False
 args.vary_alphas=True
 args.fix_cosmo=False
 # args.fix_cosmo=True
-# args.n_tau=1
-# args.n_sigT=1
-# args.n_gamma=1
-# args.n_kF=1
-# args.n_SiIII = 0
-# args.n_d_SiIII = 0
-# args.n_SiII = 0
-# args.n_dla=0
-# args.n_sn=0
-# args.n_agn=0
+args.n_tau=0
+args.n_sigT=0
+args.n_gamma=0
+args.n_kF=0
+args.n_SiIII = 0
+args.n_d_SiIII = 0
+args.n_SiII = 0
+args.n_dla=0
+args.n_sn=0
+args.n_agn=0
 
 args.n_tau=2
 args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
-args.n_SiIII = 2
-args.n_d_SiIII = 2
-args.n_SiII = 1
-args.n_dla=2
-args.n_sn=0
-args.n_agn=2
+# args.n_SiIII = 2
+# args.n_d_SiIII = 2
+# args.n_SiII = 1
+# args.n_dla=2
+# args.n_sn=0
+# args.n_agn=2
 
 free_parameters = set_free_like_parameters(args)
 free_parameters
@@ -321,12 +332,15 @@ for p in like.free_params:
 
 # %%
 like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
-like.plot_p1d(residuals=True, plot_every_iz=2, print_ratio=False)
+like.plot_p1d(residuals=True, plot_every_iz=1, print_ratio=False)
 
 # %%
-z = like.data.z
-k_kms = like.data.k_kms
-like.theory.model_cont.agn_model.plot_contamination(z, k_kms)
+chi2 96.9, 77
+
+# %%
+# z = like.data.z
+# k_kms = like.data.k_kms
+# like.theory.model_cont.agn_model.plot_contamination(z, k_kms)
 
 # %%
 like.plot_igm()
@@ -380,6 +394,44 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 # p0[:] = 0.5
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
+
+# %%
+old_emu
+
+w/ emu error
+Delta2_star
+0.36837 0.36004 0.02314
+n_star
+-2.30158 -2.29877 0.00122
+alpha_star
+-0.21584 -0.21614 -0.00139
+
+w/o emu error
+Delta2_star
+0.37659 0.36004 0.04597
+n_star
+-2.30553 -2.29877 0.00294
+alpha_star
+-0.21088 -0.21614 -0.02434
+
+# %%
+new_emu
+
+w/ emu error
+Delta2_star
+0.40579 0.36004 0.12705
+n_star
+-2.28449 -2.29877 -0.00621
+alpha_star
+-0.22172 -0.21614 0.02579
+
+w/o emu error
+Delta2_star
+0.36874 0.36004 0.02415
+n_star
+-2.28712 -2.29877 -0.00507
+alpha_star
+-0.23209 -0.21614 0.07378
 
 # %% [markdown]
 # - GP Minimization improved: 7495.505449898462 1413.4703537937303

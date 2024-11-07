@@ -43,10 +43,11 @@ class P1D_DESIY1(BaseDataP1D):
             self.input_sim = true_sim_label
             model_igm = IGM(np.array(zs), fid_sim_igm=true_sim_label)
             model_cont = Contaminants(
-                fid_SiII=[0, -10],
-                fid_SiIII=[0, -10],
-                fid_HCD=[0, -6],
-                fid_SN=[0, -10],
+                fid_SiII=[[0, 0], [2, -10]],
+                fid_SiIII=[[0, 0], [2, -10]],
+                fid_HCD=[0, -4],
+                fid_SN=[0, -4],
+                fid_AGN=[0, -5],
             )
             true_cosmo = self._get_cosmo()
             theory = lya_theory.Theory(

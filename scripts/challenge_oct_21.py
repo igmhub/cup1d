@@ -8,6 +8,7 @@ from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
 from cup1d.likelihood import lya_theory, likelihood
 from cup1d.likelihood.fitter import Fitter
+from cup1d.likelihood.plotter import Plotter
 
 from cup1d.likelihood.pipeline import (
     set_archive,
@@ -35,7 +36,8 @@ def main():
 
     # args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
     # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-    args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Oct2023")
+    args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
+    # args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
 
     archive = set_archive(args.training_set)
 
@@ -46,7 +48,8 @@ def main():
 
     if emulator.emulator_label == "Nyx_alphap":
         emulator.list_sim_cube = archive.list_sim_cube
-        emulator.list_sim_cube.remove("nyx_14")
+        if "nyx_14" in emulator.list_sim_cube:
+            emulator.list_sim_cube.remove("nyx_14")
     else:
         emulator.list_sim_cube = archive.list_sim_cube
 
@@ -56,9 +59,9 @@ def main():
         niter = 1
 
     # for isim in range(niter):
-    for isim in range(2, 8):
-        if isim == 4:
-            continue
+    for isim in range(21, 22):
+        # if isim == 4:
+        #     continue
         if len(sys.argv) == 2:
             fname = files[int(sys.argv[1])]
         else:
@@ -88,13 +91,13 @@ def main():
 
         ## set data
         data = {"P1Ds": None, "extra_P1Ds": None}
-        data["P1Ds"] = P1D_DESIY1(
-            fname=fname, true_sim_label=true_sim_label, emu_error=0.02
-        )
+        data["P1Ds"] = P1D_DESIY1(fname=fname, true_sim_label=true_sim_label)
         # data["P1Ds"].plot_p1d()
 
         ## set likelihood
         # cosmology
+        args.emu_cov_factor = 0.0
+
         # args.fid_cosmo_label="mpg_central"
         args.fid_cosmo_label = "nyx_central"
         # args.fid_cosmo_label = "nyx_3"
@@ -107,10 +110,14 @@ def main():
         args.type_priors = "hc"
 
         # contaminants
-        args.fid_SiIII = [0, -10]
-        args.fid_SiII = [0, -10]
-        args.fid_HCD = [0, -6]
+        # from 1 to 6, -11 to -4
+        args.fid_SiIII = [[0, 0], [2, -10]]
+        args.fid_SiII = [[0, 0], [2, -10]]
+        # from -5 to 0
+        args.fid_HCD = [0, -4]
+        # from -5 to 2
         args.fid_SN = [0, -4]
+        args.fid_AGN = [0, -5]
 
         # parameters
         args.vary_alphas = True
@@ -127,6 +134,7 @@ def main():
         args.n_SiII = 0
         args.n_dla = 0
         args.n_sn = 0
+        args.n_agn = 0
 
         free_parameters = set_free_like_parameters(args)
 
@@ -196,14 +204,8 @@ def main():
 
         np.save(dir_out + "/results.npy", dict_out)
 
-        fitter.plot_p1d(
-            residuals=False, plot_every_iz=1, save_directory=dir_out
-        )
-        fitter.plot_p1d(residuals=True, plot_every_iz=2, save_directory=dir_out)
-        fitter.plot_igm(cloud=True, save_directory=dir_out)
-
-        for ii in range(10):
-            plt.close()
+        plotter = Plotter(fitter, save_directory=dir_out)
+        plotter.plots_minimizer()
 
 
 if __name__ == "__main__":

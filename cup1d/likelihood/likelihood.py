@@ -560,6 +560,7 @@ class Likelihood(object):
             else:
                 emu_p1d_extra = _res
 
+        # the sum of chi2_all may be different from chi2 due to covariance
         chi2, chi2_all = self.get_chi2(values=values, return_all=True)
 
         # if rand_posterior is not None:

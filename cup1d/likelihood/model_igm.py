@@ -38,7 +38,8 @@ class IGM(object):
         else:
             default = False
 
-        self.all_igm = self.get_igm(list_sim_cube[0], return_all=True)
+        if set_metric:
+            self.all_igm = self.get_igm(list_sim_cube[0], return_all=True)
 
         if default:
             # default priors (hc for mpg)
