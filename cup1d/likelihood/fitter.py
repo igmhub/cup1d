@@ -14,18 +14,7 @@ from mpi4py import MPI
 
 # our own modules
 import cup1d, lace
-from lace.cosmo import fit_linP, camb_cosmo
-from lace.archive import gadget_archive
-from lace.emulator import gp_emulator, nn_emulator
-from cup1d.p1ds import (
-    data_nyx,
-    data_gadget,
-    mock_data,
-    data_Chabanier2019,
-    data_Karacayli2022,
-)
-from cup1d.likelihood import likelihood
-from cup1d.likelihood.plotter import Plotter
+from lace.cosmo import camb_cosmo
 from cup1d.utils.utils import create_print_function
 
 

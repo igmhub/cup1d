@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
 import numpy as np
 import os
 import lace
@@ -7,15 +6,6 @@ import pandas as pd
 from chainconsumer import ChainConsumer, Chain, Truth
 
 from cup1d.likelihood.fitter import purge_chains
-
-
-# Function to generate n discrete colors from any continuous colormap
-def get_discrete_cmap(n, base_cmap="jet"):
-    """Returns a colormap with n discrete colors."""
-    cmap = plt.cm.get_cmap(
-        base_cmap, n
-    )  # Sample n colors from the base colormap
-    return ListedColormap(cmap(np.linspace(0, 1, n)))
 
 
 class Plotter(object):

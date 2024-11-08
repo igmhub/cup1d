@@ -8,7 +8,7 @@ from lace.emulator import gp_emulator
 from cup1d.likelihood import CAMB_model
 from cup1d.likelihood.model_contaminants import Contaminants
 from cup1d.likelihood.model_igm import IGM
-from cup1d.likelihood.pipeline import set_cosmo
+from cup1d.likelihood.cosmologies import set_cosmo
 
 
 class Theory(object):

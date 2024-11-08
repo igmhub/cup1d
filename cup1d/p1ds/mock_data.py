@@ -79,6 +79,8 @@ class Mock_P1D(BaseMockP1D):
             data = data_Karacayli2024.P1D_Karacayli2024(
                 z_min=z_min, z_max=z_max
             )
+        elif data_label == "DESI_Y1":
+            data = data_DESI_Y1.P1D_DESI_Y1(z_min=z_min, z_max=z_max)
         else:
             raise ValueError("Unknown data_label", data_label)
 

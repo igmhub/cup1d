@@ -1,6 +1,17 @@
 from mpi4py import MPI
 import os
 import cup1d
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+
+
+# Function to generate n discrete colors from any continuous colormap
+def get_discrete_cmap(n, base_cmap="jet"):
+    """Returns a colormap with n discrete colors."""
+    cmap = plt.cm.get_cmap(
+        base_cmap, n
+    )  # Sample n colors from the base colormap
+    return ListedColormap(cmap(np.linspace(0, 1, n)))
 
 
 def mpi_hello_world():

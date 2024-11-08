@@ -1,7 +1,7 @@
 import numpy as np
 import copy, os
 from matplotlib import pyplot as plt
-from cup1d.likelihood.plotter import get_discrete_cmap
+from cup1d.utils.utils import get_discrete_cmap
 from cup1d.likelihood import likelihood_parameter
 
 

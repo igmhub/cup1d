@@ -326,13 +326,14 @@ class Args:
     def __init__(
         self,
         archive=None,
+        emulator=None,
         training_set="Pedersen21",
         emulator_label="Pedersen21",
         data_label="mpg_central",
         p1d_fname=None,
         data_label_hires=None,
-        z_min=2,
-        z_max=4.5,
+        z_min=0,
+        z_max=10,
         fid_igm_label="mpg_central",
         true_igm_label=None,
         n_tau=2,
@@ -350,14 +351,14 @@ class Args:
         igm_priors="hc",
         fid_cosmo_label="mpg_central",
         true_cosmo_label=None,
-        fid_SiIII=[0, -10],
-        true_SiIII=[0, -10],
-        fid_SiII=[0, -10],
-        true_SiII=[0, -10],
-        fid_HCD=[0, -6],
-        true_HCD=[0, -6],
-        fid_SN=[0, -5],
-        true_SN=[0, -5],
+        fid_SiIII=[[0, 0], [2, -10]],
+        true_SiIII=[[0, 0], [2, -10]],
+        fid_SiII=[[0, 0], [2, -10]],
+        true_SiII=[[0, 0], [2, -10]],
+        fid_HCD=[0, -4],
+        true_HCD=[0, -4],
+        fid_SN=[0, -4],
+        true_SN=[0, -4],
         fid_AGN=[0, -5],
         true_AGN=[0, -5],
         drop_sim=False,
@@ -368,7 +369,6 @@ class Args:
         seed_noise=0,
         fix_cosmo=False,
         vary_alphas=False,
-        version="v3",
         prior_Gauss_rms=None,
         emu_cov_factor=0,
         verbose=True,
@@ -380,6 +380,7 @@ class Args:
     ):
         # see sam_sim to see what each parameter means
         self.archive = archive
+        self.emulator = emulator
         self.training_set = training_set
         self.emulator_label = emulator_label
         self.data_label = data_label
@@ -422,7 +423,6 @@ class Args:
         self.seed_noise = seed_noise
         self.fix_cosmo = fix_cosmo
         self.vary_alphas = vary_alphas
-        self.version = version
         self.prior_Gauss_rms = prior_Gauss_rms
         self.emu_cov_factor = emu_cov_factor
         self.verbose = verbose

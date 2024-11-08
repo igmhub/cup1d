@@ -66,6 +66,27 @@ args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # %%
 archive = set_archive(args.training_set)
 
+# %%
+# set output directory for this test
+output_dir = "."
+
+# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+# the nyx emulator has not properly been validated yet
+# path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
+
+emulator = set_emulator(
+    emulator_label=args.emulator_label,
+    archive=archive,
+)
+
+if "Nyx" in emulator.emulator_label:
+    emulator.list_sim_cube = archive.list_sim_cube
+    if "nyx_14" in emulator.list_sim_cube:
+        emulator.list_sim_cube.remove("nyx_14")
+else:
+    emulator.list_sim_cube = archive.list_sim_cube
+
 # %% [markdown]
 # ### Set emulator
 
@@ -490,9 +511,31 @@ if run_sampler:
 # ## Test pipeline
 
 # %%
+# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+
+
+# %%
+archive = set_archive(args.training_set)
+
+# %%
+
+emulator = set_emulator(
+    emulator_label=args.emulator_label,
+    archive=archive,
+)
+
+if "Nyx" in emulator.emulator_label:
+    emulator.list_sim_cube = archive.list_sim_cube
+    if "nyx_14" in emulator.list_sim_cube:
+        emulator.list_sim_cube.remove("nyx_14")
+else:
+    emulator.list_sim_cube = archive.list_sim_cube
+
+# %%
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
-args.archive = archive
+args.archive=archive
+args.emulator=emulator
 
 folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
 fname = "mock_challenge_0.2_nonoise_fiducial.fits"
@@ -524,56 +567,17 @@ args.fid_igm_label="mpg_central"
 # args.fid_igm_label="nyx_seed"
 # args.fid_igm_label="nyx_3"
 # args.fid_igm_label="nyx_3_1"
-# if choose_data == False:
-#     args.igm_priors = "hc"
-# else:
-#     args.igm_priors = "data"
-args.igm_priors = "hc"
-
-# contaminants
-# from 1 to 6, -11 to -4
-args.fid_SiIII=[[0, 0], [2, -10]]
-args.fid_SiII=[[0, 0], [2, -10]]
-# from -5 to 0
-args.fid_HCD=[0, -4]
-# from -5 to 2
-args.fid_SN=[0, -4]
-args.fid_AGN=[0, -5]
-
-
-# args.fid_SiIII=[[0, 0], [4, -5]]
-# args.fid_SiII=[[0, 0], [2, -10]]
-# args.fid_HCD=[0, -2]
-# args.fid_SN=[0, -4]
-# args.fid_AGN=[0, 1]
 
 # parameters
 args.vary_alphas=False
 # args.vary_alphas=True
 # args.fix_cosmo=False
 args.fix_cosmo=True
-args.n_tau=0
-args.n_sigT=0
-args.n_gamma=0
-args.n_kF=0
-args.n_SiIII = 0
-args.n_d_SiIII = 0
-args.n_SiII = 0
-args.n_dla=0
-args.n_sn=0
-args.n_agn=0
 
 args.n_tau=2
 args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
-# args.n_SiIII = 2
-# args.n_d_SiIII = 2
-# args.n_SiII = 1
-# args.n_dla=2
-# args.n_sn=0
-# args.n_agn=2
-
 
 args.n_steps=100
 args.n_burn_in=40
@@ -581,7 +585,8 @@ args.parallel=False
 args.explore=True
 
 # %%
-pip = Pipeline(args)
+out_folder = "/home/jchaves/Proyectos/projects/lya/data/tests"
+pip = Pipeline(args, make_plots=True, out_folder=out_folder)
 
 # %%
 pip.run_minimizer()

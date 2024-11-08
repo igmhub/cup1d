@@ -8,6 +8,7 @@ from mpi4py import MPI
 import lace
 from lace.archive import gadget_archive, nyx_archive
 from lace.cosmo import camb_cosmo
+from cup1d.likelihood.cosmologies import set_cosmo
 from lace.emulator.emulator_manager import set_emulator
 from cup1d.p1ds import (
     data_gadget,
@@ -246,66 +247,6 @@ def set_P1D(
     return data
 
 
-def set_cosmo(
-    cosmo_label="mpg_central",
-    return_all=False,
-    nyx_version="Jul2024",
-):
-    """Set fiducial cosmology
-
-    Parameters
-    ----------
-    cosmo_label : str
-
-    Returns
-    -------
-    cosmo : object
-    """
-    if (cosmo_label[:3] == "mpg") | (cosmo_label[:3] == "nyx"):
-        if cosmo_label[:3] == "mpg":
-            repo = os.path.dirname(lace.__path__[0]) + "/"
-            fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
-            get_cosmo = camb_cosmo.get_cosmology_from_dictionary
-        elif cosmo_label[:3] == "nyx":
-            fname = (
-                os.environ["NYX_PATH"] + "nyx_emu_cosmo_" + nyx_version + ".npy"
-            )
-            get_cosmo = camb_cosmo.get_Nyx_cosmology
-
-        try:
-            data_cosmo = np.load(fname, allow_pickle=True)
-        except:
-            ValueError(f"{fname} not found")
-
-        cosmo = None
-        for ii in range(len(data_cosmo)):
-            if data_cosmo[ii]["sim_label"] == cosmo_label:
-                cosmo = get_cosmo(data_cosmo[ii]["cosmo_params"])
-                break
-        if cosmo is None:
-            raise ValueError(f"Cosmo not found in {fname} for {cosmo_label}")
-    elif cosmo_label == "Planck18":
-        cosmo = camb_cosmo.get_cosmology(
-            H0=67.66,
-            mnu=0.0,
-            omch2=0.119,
-            ombh2=0.0224,
-            omk=0.0,
-            As=2.105e-09,
-            ns=0.9665,
-            nrun=0.0,
-            pivot_scalar=0.05,
-            w=-1,
-        )
-    else:
-        raise ValueError(f"cosmo_label {cosmo_label} not implemented")
-
-    if return_all:
-        return data_cosmo
-    else:
-        return cosmo
-
-
 def set_like(data, emulator, args, data_hires=None, P_model=None):
     """Set likelihood"""
 
@@ -451,7 +392,11 @@ def path_sampler(
 class Pipeline(object):
     """Full pipeline for extracting cosmology from P1D using sampler"""
 
-    def __init__(self, args):
+    def __init__(self, args, make_plots=False, out_folder=None):
+        """Set pipeline"""
+
+        self.out_folder = out_folder
+
         ## MPI stuff
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
@@ -461,6 +406,13 @@ class Pipeline(object):
         fprint = create_print_function(verbose=args.verbose)
         self.fprint = fprint
         self.explore = args.explore
+
+        # when reusing archive and emulator, these must be None for
+        # rank != 0 to prevent a very large memory footprint
+        if rank != 0:
+            args.archive = None
+            args.emulator = None
+
         ###################
 
         ## set training set (only for rank 0)
@@ -469,18 +421,15 @@ class Pipeline(object):
             start = time.time()
             fprint("----------")
             fprint("Setting training set " + args.training_set)
+
+            # only when reusing archive
             if args.archive is None:
-                # when calling the script from the command line
                 archive = set_archive(args.training_set)
             else:
                 archive = args.archive
             end = time.time()
             multi_time = str(np.round(end - start, 2))
             fprint("Training set loaded in " + multi_time + " s")
-        else:
-            if args.archive is not None:
-                print("WARNING: archive should be None for rank != 0")
-                archive = None
         #######################
 
         ## set emulator
@@ -493,11 +442,14 @@ class Pipeline(object):
             if args.drop_sim & (args.data_label in archive.list_sim_cube):
                 _drop_sim = args.data_label
 
-            emulator = set_emulator(
-                emulator_label=args.emulator_label,
-                archive=archive,
-                drop_sim=_drop_sim,
-            )
+            if args.emulator is None:
+                emulator = set_emulator(
+                    emulator_label=args.emulator_label,
+                    archive=archive,
+                    drop_sim=_drop_sim,
+                )
+            else:
+                emulator = args.emulator
 
             multi_time = str(np.round(time.time() - start, 2))
             fprint("Emulator set in " + multi_time + " s")
@@ -515,40 +467,6 @@ class Pipeline(object):
                 emulator.list_sim_cube.remove("nyx_14")
         else:
             emulator.list_sim_cube = archive.list_sim_cube
-
-        #######################
-
-        if rank == 0:
-            fprint("Setting output folder")
-            fprint("-------")
-
-            # TBD set out_folder
-            self.out_folder = "/home/jchaves/Proyectos/projects/lya/data/tests/"
-            # self.out_folder = path_sampler(
-            #     args.emulator_label,
-            #     args.data_label,
-            #     args.igm_label,
-            #     args.n_igm,
-            #     args.cosmo_label,
-            #     args.cov_label,
-            #     version=args.version,
-            #     drop_sim=_drop_sim,
-            #     apply_smoothing=args.apply_smoothing,
-            #     data_label_hires=args.data_label_hires,
-            #     add_noise=args.add_noise,
-            #     seed_noise=args.seed_noise,
-            #     fix_cosmo=args.fix_cosmo,
-            #     vary_alphas=args.vary_alphas,
-            # )
-
-            print("Output folder: ", self.out_folder)
-
-            # distribute out_folder to all tasks
-            for irank in range(1, size):
-                comm.send(self.out_folder, dest=irank, tag=(irank + 1) * 13)
-        else:
-            # get testing_data from task 0
-            self.out_folder = comm.recv(source=0, tag=(rank + 1) * 13)
 
         #######################
 
@@ -613,14 +531,15 @@ class Pipeline(object):
 
         if rank == 0:
             # TBD save to file!
-            data["P1Ds"].plot_p1d()
-            if args.data_label_hires is not None:
-                data["extra_P1Ds"].plot_p1d()
+            if make_plots:
+                data["P1Ds"].plot_p1d()
+                if args.data_label_hires is not None:
+                    data["extra_P1Ds"].plot_p1d()
 
-            try:
-                data["P1Ds"].plot_igm()
-            except:
-                print("Real data, no true IGM history")
+                try:
+                    data["P1Ds"].plot_igm()
+                except:
+                    print("Real data, no true IGM history")
 
         #######################
 
@@ -636,9 +555,10 @@ class Pipeline(object):
 
         if rank == 0:
             # TBD save to file!
-            like.plot_p1d(residuals=False)
-            like.plot_p1d(residuals=True)
-            like.plot_igm()
+            if make_plots:
+                like.plot_p1d(residuals=False)
+                like.plot_p1d(residuals=True)
+                like.plot_igm()
 
         # print parameters
         for p in like.free_params:

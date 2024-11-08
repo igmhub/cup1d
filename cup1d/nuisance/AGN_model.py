@@ -4,7 +4,7 @@ import os
 import cup1d
 from cup1d.likelihood import likelihood_parameter
 from scipy.interpolate import interp1d
-from cup1d.likelihood.plotter import get_discrete_cmap
+from cup1d.utils.utils import get_discrete_cmap
 from matplotlib import pyplot as plt
 
 
