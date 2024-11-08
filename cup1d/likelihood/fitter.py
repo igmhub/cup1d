@@ -3,11 +3,8 @@ import os, time, emcee, json
 import scipy.stats
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
-from chainconsumer import ChainConsumer, Chain, Truth
 from warnings import warn
 
-import numdifftools as nd
 from pyDOE2 import lhs
 import copy
 
@@ -461,6 +458,9 @@ class Fitter(object):
         Hessian, including Iminuit, and results very bad
 
         """
+
+        import numdifftools as nd
+
         hess = nd.Hessian(fun_minimize)
         ii = 0
         for par_i in self.like.free_params:

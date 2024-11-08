@@ -14,8 +14,7 @@ from cup1d.likelihood.model_igm import IGM
 class P1D_DESIY1(BaseDataP1D):
     def __init__(
         self,
-        fname=None,
-        full_cov=False,
+        p1d_fname=None,
         z_min=2,
         z_max=10,
         true_sim_label=None,
@@ -26,7 +25,7 @@ class P1D_DESIY1(BaseDataP1D):
         - z_max: maximum redshift to include"""
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        res = read_from_file(fname=fname, full_cov=full_cov)
+        res = read_from_file(p1d_fname=p1d_fname)
         (
             zs,
             k_kms,
@@ -38,17 +37,20 @@ class P1D_DESIY1(BaseDataP1D):
             self.blinding,
         ) = res
 
+        if "fiducial" in p1d_fname:
+            true_sim_label = "nyx_central"
+        elif "CGAN" in p1d_fname:
+            true_sim_label = "nyx_seed"
+        elif "grid_3" in p1d_fname:
+            true_sim_label = "nyx_3"
+        else:
+            true_sim_label = None
+
         # set truth if possible
         if true_sim_label is not None:
             self.input_sim = true_sim_label
             model_igm = IGM(np.array(zs), fid_sim_igm=true_sim_label)
-            model_cont = Contaminants(
-                fid_SiII=[[0, 0], [2, -10]],
-                fid_SiIII=[[0, 0], [2, -10]],
-                fid_HCD=[0, -4],
-                fid_SN=[0, -4],
-                fid_AGN=[0, -5],
-            )
+            model_cont = Contaminants()
             true_cosmo = self._get_cosmo()
             theory = lya_theory.Theory(
                 zs=np.array(zs),
@@ -196,23 +198,18 @@ class P1D_DESIY1(BaseDataP1D):
         plt.tight_layout()
 
 
-def read_from_file(
-    fname=None,
-    full_cov=False,
-    kmin=1e-3,
-    nknyq=0.5,
-):
+def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
     """Read file containing P1D"""
 
     # folder storing P1D measurement
     try:
-        hdu = fits.open(fname)
+        hdu = fits.open(p1d_fname)
     except:
-        raise ValueError("Cannot read: ", fname)
+        raise ValueError("Cannot read: ", p1d_fname)
 
     if "VELUNITS" in hdu[1].header:
         if hdu[1].header["VELUNITS"] == False:
-            raise ValueError("Not velocity units in: ", fname)
+            raise ValueError("Not velocity units in: ", p1d_fname)
     blinding = None
     if "BLINDING" in hdu[1].header:
         if hdu[1].header["BLINDING"] is not None:

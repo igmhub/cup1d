@@ -3,6 +3,10 @@ from matplotlib.colors import ListedColormap
 import numpy as np
 import os
 import lace
+import pandas as pd
+from chainconsumer import ChainConsumer, Chain, Truth
+
+from cup1d.likelihood.fitter import purge_chains
 
 
 # Function to generate n discrete colors from any continuous colormap
@@ -62,10 +66,13 @@ class Plotter(object):
     def plots_sampler(self):
         # plot lnprob
         self.plot_lnprob()
+        plt.close()
 
         # plot initial P1D (before fitting)
         self.plot_P1D_initial(residuals=False)
+        plt.close()
         self.plot_P1D_initial(residuals=True)
+        plt.close()
 
         # plot best fit
         self.plot_p1d(residuals=False, stat_best_fit="mle")
@@ -76,10 +83,11 @@ class Plotter(object):
         # plot cosmology
         if self.fitter.fix_cosmology == False:
             self.plot_corner(only_cosmo=True)
-        plt.close()
+            plt.close()
 
         # plot corner
         self.plot_corner()
+        plt.close()
 
         # plot IGM histories
         self.plot_igm(cloud=True)
@@ -277,8 +285,8 @@ class Plotter(object):
         for ii in range(self.fitter.lnprob.shape[1]):
             if ii in mask:
                 plt.plot(self.fitter.lnprob[extra_nburn:, ii], alpha=0.5)
-            # else:
-            #     plt.plot(self.fitter.lnprob[extra_nburn:, ii], "--", alpha=0.5)
+            else:
+                plt.plot(self.fitter.lnprob[extra_nburn:, ii], "--", alpha=0.5)
 
         if self.save_directory is not None:
             plt.savefig(self.save_directory + "/lnprob.pdf")

@@ -47,6 +47,7 @@ from cup1d.likelihood.pipeline import (
     set_cosmo,
     set_free_like_parameters,
     set_like,
+    Pipeline,
 )
 from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
 
@@ -58,8 +59,9 @@ from cup1d.likelihood.input_pipeline import Args
 # ### Set archive
 
 # %%
-args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
+# args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
 # args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 
 # %%
 archive = set_archive(args.training_set)
@@ -239,8 +241,8 @@ except:
 args.ic_correction=False
 
 args.emu_cov_factor = 0.0
-# args.fid_cosmo_label="mpg_central"
-args.fid_cosmo_label="nyx_central"
+args.fid_cosmo_label="mpg_central"
+# args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="nyx_seed"
 
 # args.fid_cosmo_label="nyx_3"
@@ -249,8 +251,8 @@ args.fid_cosmo_label="nyx_central"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
-# args.fid_igm_label="mpg_central"
-args.fid_igm_label="nyx_central"
+args.fid_igm_label="mpg_central"
+# args.fid_igm_label="nyx_central"
 # args.fid_igm_label="nyx_seed"
 # args.fid_igm_label="nyx_3"
 # args.fid_igm_label="nyx_3_1"
@@ -314,8 +316,6 @@ free_parameters
 like = set_like(
     data["P1Ds"],
     emulator,
-    fid_cosmo,
-    free_parameters,
     args,
     data_hires=data["extra_P1Ds"],
 )
@@ -331,8 +331,8 @@ for p in like.free_params:
 # Compare data and fiducial/starting model
 
 # %%
-like.plot_p1d(residuals=False, plot_every_iz=1, print_chi2=False)
-like.plot_p1d(residuals=True, plot_every_iz=1, print_ratio=False)
+like.plot_p1d(residuals=False)
+like.plot_p1d(residuals=True)
 
 # %%
 chi2 96.9, 77
@@ -345,15 +345,10 @@ chi2 96.9, 77
 # %%
 like.plot_igm()
 
-
 # %% [markdown]
 # ### Set fitter
 
 # %%
-def func_for_sampler(p0):
-    res = fitter.like.get_log_like(values=p0, return_blob=True)
-    return res[0], *res[2]
-
 # for sampler, no real fit, just test
 # args.n_steps=1000
 # args.n_burn_in=1500
@@ -473,21 +468,130 @@ for ii in range(100):
 # %%
 plotter.plots_minimizer(zrange=[0, 3.7])
 
+
 # %% [markdown]
 # ### Run sampler
 # It takes less than 2 min on my laptop without any parallelization
 
 # %%
 # %%time
+
+def func_for_sampler(p0):
+    res = fitter.like.get_log_like(values=p0, return_blob=True)
+    return res[0], *res[2]
+
 run_sampler = True
 if run_sampler:    
     _emcee_sam = fitter.run_sampler(pini=fitter.mle_cube, log_func=func_for_sampler)
 
+# %%
+
 # %% [markdown]
-# Todo
-#
-# - add nuisance
-# - new mle?
+# ## Test pipeline
+
+# %%
+# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+args.archive = archive
+
+folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
+fname = "mock_challenge_0.2_nonoise_fiducial.fits"
+# fname = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
+# fname = "mock_challenge_0.2_nonoise_cosmo_grid_3.fits"
+# fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
+# fname = "mock_challenge_0.2_noise-42-0_fiducial.fits"
+true_sim_label="nyx_central"
+args.data_label = "DESI_Y1"
+args.p1d_fname = folder + fname
+
+
+# cosmology
+args.ic_correction=False
+
+args.emu_cov_factor = 0.0
+# args.fid_cosmo_label="mpg_central"
+args.fid_cosmo_label="nyx_central"
+# args.fid_cosmo_label="nyx_seed"
+
+# args.fid_cosmo_label="nyx_3"
+# args.ic_correction=True
+# args.fid_cosmo_label="Planck18"
+# fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
+
+# IGM
+args.fid_igm_label="mpg_central"
+# args.fid_igm_label="nyx_central"
+# args.fid_igm_label="nyx_seed"
+# args.fid_igm_label="nyx_3"
+# args.fid_igm_label="nyx_3_1"
+# if choose_data == False:
+#     args.igm_priors = "hc"
+# else:
+#     args.igm_priors = "data"
+args.igm_priors = "hc"
+
+# contaminants
+# from 1 to 6, -11 to -4
+args.fid_SiIII=[[0, 0], [2, -10]]
+args.fid_SiII=[[0, 0], [2, -10]]
+# from -5 to 0
+args.fid_HCD=[0, -4]
+# from -5 to 2
+args.fid_SN=[0, -4]
+args.fid_AGN=[0, -5]
+
+
+# args.fid_SiIII=[[0, 0], [4, -5]]
+# args.fid_SiII=[[0, 0], [2, -10]]
+# args.fid_HCD=[0, -2]
+# args.fid_SN=[0, -4]
+# args.fid_AGN=[0, 1]
+
+# parameters
+args.vary_alphas=False
+# args.vary_alphas=True
+# args.fix_cosmo=False
+args.fix_cosmo=True
+args.n_tau=0
+args.n_sigT=0
+args.n_gamma=0
+args.n_kF=0
+args.n_SiIII = 0
+args.n_d_SiIII = 0
+args.n_SiII = 0
+args.n_dla=0
+args.n_sn=0
+args.n_agn=0
+
+args.n_tau=2
+args.n_sigT=2
+args.n_gamma=2
+args.n_kF=2
+# args.n_SiIII = 2
+# args.n_d_SiIII = 2
+# args.n_SiII = 1
+# args.n_dla=2
+# args.n_sn=0
+# args.n_agn=2
+
+
+args.n_steps=100
+args.n_burn_in=40
+args.parallel=False
+args.explore=True
+
+# %%
+pip = Pipeline(args)
+
+# %%
+pip.run_minimizer()
+
+# %%
+pip.run_sampler()
+
+# %%
+plotter = Plotter(pip.fitter, save_directory=pip.out_folder)
+plotter.plots_sampler()
 
 # %%
 # sampler.write_chain_to_file()

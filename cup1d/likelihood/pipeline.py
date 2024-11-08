@@ -19,10 +19,14 @@ from cup1d.p1ds import (
     data_Ravoux2023,
     data_QMLE_Ohio,
     mock_data,
+    data_DESIY1,
 )
 from cup1d.likelihood import lya_theory, likelihood, fitter
 from cup1d.likelihood.model_contaminants import Contaminants
 from cup1d.likelihood.model_igm import IGM
+
+from cup1d.likelihood.fitter import Fitter
+from cup1d.likelihood.plotter import Plotter
 
 
 def set_free_like_parameters(params):
@@ -81,7 +85,6 @@ def set_archive(training_set):
 
 
 def set_P1D(
-    data_label,
     args,
     archive=None,
     true_cosmo=None,
@@ -114,6 +117,8 @@ def set_P1D(
     true_sim_igm : str
         Label of simulation/dataset used to generate mock data
     """
+
+    data_label = args.data_label
 
     if (data_label[:3] == "mpg") | (data_label[:3] == "nyx"):
         # check if we need to load another archive
@@ -218,6 +223,10 @@ def set_P1D(
         data = data_QMLE_Ohio.P1D_QMLE_Ohio(
             filename=file, z_min=args.z_min, z_max=args.z_max
         )
+    elif data_label == "DESI_Y1":
+        data = data_DESIY1.P1D_DESIY1(
+            p1d_fname=args.p1d_fname, z_min=args.z_min, z_max=args.z_max
+        )
     else:
         raise ValueError(f"data_label {data_label} not implemented")
 
@@ -238,7 +247,9 @@ def set_P1D(
 
 
 def set_cosmo(
-    cosmo_label="mpg_central", return_all=False, nyx_version="Jul2024"
+    cosmo_label="mpg_central",
+    return_all=False,
+    nyx_version="Jul2024",
 ):
     """Set fiducial cosmology
 
@@ -295,21 +306,23 @@ def set_cosmo(
         return cosmo
 
 
-def set_like(
-    data,
-    emulator,
-    fid_cosmo,
-    free_parameters,
-    args,
-    data_hires=None,
-    P_model=None,
-):
-    ## set theory
+def set_like(data, emulator, args, data_hires=None, P_model=None):
+    """Set likelihood"""
+
     if data_hires is not None:
         zs_hires = data_hires.z
     else:
         zs_hires = None
 
+    ## set theory
+
+    # set free parameters
+    free_parameters = set_free_like_parameters(args)
+
+    # set fiducial cosmology
+    fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
+
+    # set igm model
     model_igm = IGM(
         data.z,
         free_param_names=free_parameters,
@@ -319,6 +332,8 @@ def set_like(
         set_metric=True,
         P_model=P_model,
     )
+
+    # set contaminants
     model_cont = Contaminants(
         free_param_names=free_parameters,
         fid_SiIII=args.fid_SiIII,
@@ -328,6 +343,8 @@ def set_like(
         fid_AGN=args.fid_AGN,
         ic_correction=args.ic_correction,
     )
+
+    # set theory
     theory = lya_theory.Theory(
         zs=data.z,
         zs_hires=zs_hires,
@@ -492,10 +509,46 @@ class Pipeline(object):
             # receive emulator from ranks 0
             emulator = comm.recv(source=0, tag=(rank + 1) * 7)
 
+        if "Nyx" in emulator.emulator_label:
+            emulator.list_sim_cube = archive.list_sim_cube
+            if "nyx_14" in emulator.list_sim_cube:
+                emulator.list_sim_cube.remove("nyx_14")
+        else:
+            emulator.list_sim_cube = archive.list_sim_cube
+
         #######################
 
-        ## set fiducial cosmology
-        fid_cosmo = set_fid_cosmo(cosmo_label=args.cosmo_label)
+        if rank == 0:
+            fprint("Setting output folder")
+            fprint("-------")
+
+            # TBD set out_folder
+            self.out_folder = "/home/jchaves/Proyectos/projects/lya/data/tests/"
+            # self.out_folder = path_sampler(
+            #     args.emulator_label,
+            #     args.data_label,
+            #     args.igm_label,
+            #     args.n_igm,
+            #     args.cosmo_label,
+            #     args.cov_label,
+            #     version=args.version,
+            #     drop_sim=_drop_sim,
+            #     apply_smoothing=args.apply_smoothing,
+            #     data_label_hires=args.data_label_hires,
+            #     add_noise=args.add_noise,
+            #     seed_noise=args.seed_noise,
+            #     fix_cosmo=args.fix_cosmo,
+            #     vary_alphas=args.vary_alphas,
+            # )
+
+            print("Output folder: ", self.out_folder)
+
+            # distribute out_folder to all tasks
+            for irank in range(1, size):
+                comm.send(self.out_folder, dest=irank, tag=(irank + 1) * 13)
+        else:
+            # get testing_data from task 0
+            self.out_folder = comm.recv(source=0, tag=(rank + 1) * 13)
 
         #######################
 
@@ -505,39 +558,33 @@ class Pipeline(object):
             fprint("Setting P1D")
             start = time.time()
 
+            # set fiducial cosmology
+            if args.true_cosmo_label is not None:
+                true_cosmo = set_cosmo(cosmo_label=args.true_cosmo_label)
+            else:
+                true_cosmo = None
+
             data = {"P1Ds": None, "extra_P1Ds": None}
+
+            # set P1D
             data["P1Ds"] = set_P1D(
-                archive,
-                emulator,
-                args.data_label,
-                fid_cosmo,
-                true_sim_igm=args.igm_label,
-                cov_label=args.cov_label,
-                apply_smoothing=args.apply_smoothing,
-                z_min=args.z_min,
-                z_max=args.z_max,
-                add_noise=args.add_noise,
-                seed_noise=args.seed_noise,
-                fprint=fprint,
+                args,
+                archive=archive,
+                true_cosmo=true_cosmo,
+                emulator=emulator,
             )
             fprint(
                 "Set " + str(len(data["P1Ds"].z)) + " P1Ds at z = ",
                 data["P1Ds"].z,
             )
+
+            # set hires P1D
             if args.data_label_hires is not None:
                 data["extra_P1Ds"] = set_P1D_hires(
-                    archive,
-                    emulator,
-                    args.data_label_hires,
-                    fid_cosmo,
-                    true_sim_igm=args.igm_label,
-                    cov_label=args.cov_label_hires,
-                    apply_smoothing=args.apply_smoothing,
-                    z_min=args.z_min,
-                    z_max=args.z_max,
-                    add_noise=args.add_noise,
-                    seed_noise=args.seed_noise,
-                    fprint=fprint,
+                    args,
+                    archive=archive,
+                    true_cosmo=true_cosmo,
+                    emulator=emulator,
                 )
                 fprint(
                     "Set " + str(len(data["extra_P1Ds"].z)) + " P1Ds at z = ",
@@ -556,65 +603,70 @@ class Pipeline(object):
 
         #######################
 
-        # set likelihood
+        ## Validating data
+
+        # check if data is blinded
+        fprint("----------")
+        fprint("Is the data blinded: ", data["P1Ds"].apply_blinding)
+        if data["P1Ds"].apply_blinding:
+            fprint("Type of blinding: ", data["P1Ds"].blinding)
+
+        if rank == 0:
+            # TBD save to file!
+            data["P1Ds"].plot_p1d()
+            if args.data_label_hires is not None:
+                data["extra_P1Ds"].plot_p1d()
+
+            try:
+                data["P1Ds"].plot_igm()
+            except:
+                print("Real data, no true IGM history")
+
+        #######################
+
+        ## set likelihood
         fprint("----------")
         fprint("Setting likelihood")
 
         like = set_like(
-            emulator,
-            data["P1Ds"],
-            data["extra_P1Ds"],
-            args.igm_label,
-            args.n_igm,
-            fid_cosmo,
-            fix_cosmo=args.fix_cosmo,
-            vary_alphas=args.vary_alphas,
-            fprint=fprint,
-            prior_Gauss_rms=args.prior_Gauss_rms,
-            emu_cov_factor=args.emu_cov_factor,
+            data["P1Ds"], emulator, args, data_hires=data["extra_P1Ds"]
         )
 
-        self.set_emcee_options(
-            args.data_label,
-            args.cov_label,
-            args.n_igm,
-            n_steps=args.n_steps,
-            n_burn_in=args.n_burn_in,
-            test=args.test,
-        )
+        ## Validating likelihood
+
+        if rank == 0:
+            # TBD save to file!
+            like.plot_p1d(residuals=False)
+            like.plot_p1d(residuals=True)
+            like.plot_igm()
+
+        # print parameters
+        for p in like.free_params:
+            fprint(p.name, p.value, p.min_value, p.max_value)
 
         #######################
 
-        # set sampler
-        if rank == 0:
-            fprint("Setting sampler")
-            fprint("-------")
+        # self.set_emcee_options(
+        #     args.data_label,
+        #     args.cov_label,
+        #     args.n_igm,
+        #     n_steps=args.n_steps,
+        #     n_burn_in=args.n_burn_in,
+        #     test=args.test,
+        # )
 
-            self.out_folder = path_sampler(
-                args.emulator_label,
-                args.data_label,
-                args.igm_label,
-                args.n_igm,
-                args.cosmo_label,
-                args.cov_label,
-                version=args.version,
-                drop_sim=_drop_sim,
-                apply_smoothing=args.apply_smoothing,
-                data_label_hires=args.data_label_hires,
-                add_noise=args.add_noise,
-                seed_noise=args.seed_noise,
-                fix_cosmo=args.fix_cosmo,
-                vary_alphas=args.vary_alphas,
-            )
+        ## set fitter
 
-            # distribute out_folder to all tasks
-            for irank in range(1, size):
-                comm.send(self.out_folder, dest=irank, tag=(irank + 1) * 13)
-        else:
-            # get testing_data from task 0
-            self.out_folder = comm.recv(source=0, tag=(rank + 1) * 13)
-
-        self.set_sampler(like, fix_cosmo=args.fix_cosmo, parallel=args.parallel)
+        self.fitter = Fitter(
+            like=like,
+            rootdir=self.out_folder,
+            save_chain=False,
+            nburnin=args.n_burn_in,
+            nsteps=args.n_steps,
+            parallel=args.parallel,
+            explore=args.explore,
+            fix_cosmology=args.fix_cosmo,
+        )
 
         #######################
 
@@ -660,57 +712,70 @@ class Pipeline(object):
                     else:
                         self.n_burn_in = 1500
 
-    def set_sampler(self, like, fix_cosmo=False, parallel=True):
-        """Sample the posterior distribution"""
+    def run_minimizer(self):
+        """
+        Run the minimizer (only rank 0)
+        """
 
-        def log_prob(theta):
-            return log_prob.sampler.like.log_prob_and_blobs(theta)
-
-        def set_log_prob(sampler):
-            log_prob.sampler = sampler
-            return log_prob
-
-        self.fitter = fitter.EmceeSampler(
-            like=like,
-            rootdir=self.out_folder,
-            save_chain=False,
-            nburnin=self.n_burn_in,
-            nsteps=self.n_steps,
-            parallel=parallel,
-            explore=self.explore,
-            fix_cosmology=fix_cosmo,
-        )
-        self._log_prob = set_log_prob(self.fitter)
-
-    def run_sampler(self):
-        ### XXX put minimizer outsize
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        if rank == 0:
+            start = time.time()
+            self.fprint("----------")
+            self.fprint("Running minimizer")
+            # start fit from initial values
+            p0 = np.array(list(self.fitter.like.fid["fit_cube"].values()))
+            self.fitter.run_minimizer(
+                log_func_minimize=self.fitter.like.get_chi2, p0=p0
+            )
+
+            # plot fit
+            plotter = Plotter(self.fitter, save_directory=self.out_folder)
+            plotter.plots_minimizer()
+
+            # distribute best_fit to all tasks
+            for irank in range(1, size):
+                comm.send(
+                    self.fitter.mle_cube, dest=irank, tag=(irank + 1) * 13
+                )
+        else:
+            # get testing_data from task 0
+            self.fitter.mle_cube = comm.recv(source=0, tag=(rank + 1) * 13)
+
+    def run_sampler(self):
+        """
+        Run the sampler (after minimizer)
+        """
+
+        def func_for_sampler(p0):
+            res = self.fitter.like.get_log_like(values=p0, return_blob=True)
+            return res[0], *res[2]
+
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
 
         if rank == 0:
             start = time.time()
             self.fprint("----------")
             self.fprint("Running sampler")
 
-        self.sampler.run_sampler(log_func=self._log_prob)
+        # make sure all tasks start at the same time
+        comm.Barrier()
+        self.fitter.run_sampler(
+            pini=self.fitter.mle_cube, log_func=func_for_sampler
+        )
 
         if rank == 0:
             end = time.time()
             multi_time = str(np.round(end - start, 2))
             self.fprint("Sampler run in " + multi_time + " s")
 
-            # improve best fit from sampler using minimize
-
-            self.fprint("----------")
-            self.fprint("Running minimizer")
-            start = time.time()
-            ind = np.argmax(self.sampler.lnprob.reshape(-1))
-            nparam = self.sampler.chain.shape[-1]
-            p0 = self.sampler.chain.reshape(-1, nparam)[ind, :]
-            self.sampler.run_minimizer(log_func=self._log_prob, p0=p0)
-            end = time.time()
-            multi_time = str(np.round(end - start, 2))
-            self.fprint("Minimizer run in " + multi_time + " s")
+            # plot fit
+            plotter = Plotter(self.fitter, save_directory=self.out_folder)
+            plotter.plots_sampler()
 
             start = time.time()
             self.fprint("----------")

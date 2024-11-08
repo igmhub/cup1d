@@ -329,6 +329,7 @@ class Args:
         training_set="Pedersen21",
         emulator_label="Pedersen21",
         data_label="mpg_central",
+        p1d_fname=None,
         data_label_hires=None,
         z_min=2,
         z_max=4.5,
@@ -382,6 +383,7 @@ class Args:
         self.training_set = training_set
         self.emulator_label = emulator_label
         self.data_label = data_label
+        self.p1d_fname = p1d_fname
         self.data_label_hires = data_label_hires
         self.z_min = z_min
         self.z_max = z_max
@@ -465,6 +467,7 @@ class Args:
             "Nyx_v0",
             # "Nyx_v0_extended",
             "Nyx_alphap",
+            "Nyx_alphap_cov",
         ]
         if self.emulator_label not in avail_emulator_label:
             raise ValueError(

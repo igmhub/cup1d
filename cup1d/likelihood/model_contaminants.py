@@ -22,11 +22,11 @@ class Contaminants(object):
         agn_model=None,
         hcd_model_type="Rogers2017",
         ic_correction=False,
-        fid_SiII=[[0, 0], [0, -10]],
-        fid_SiIII=[[0, 0], [0, -10]],
-        fid_HCD=[0, -6],
+        fid_SiII=[[0, 0], [2, -10]],
+        fid_SiIII=[[0, 0], [2, -10]],
+        fid_HCD=[0, -4],
         fid_SN=[0, -4],
-        fid_AGN=[0, -4],
+        fid_AGN=[0, -5],
     ):
         self.fid_SiII = fid_SiII
         self.fid_SiIII = fid_SiIII
