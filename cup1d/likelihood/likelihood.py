@@ -55,6 +55,7 @@ class Likelihood(object):
         self.theory.emu_cosmo_hc()
 
         # setup parameters
+        self.free_param_names = free_param_names
         self.set_free_parameters(free_param_names, free_param_limits)
         if verbose:
             print(len(self.free_params), "free parameters")
@@ -526,7 +527,7 @@ class Likelihood(object):
         residuals=False,
         plot_fname=None,
         rand_posterior=None,
-        show=False,
+        show=True,
         sampling_p1d=100,
         return_covar=False,
         print_ratio=False,
@@ -804,9 +805,11 @@ class Likelihood(object):
 
         plt.tight_layout()
         if plot_fname is not None:
-            plt.savefig(plot_fname)
+            plt.savefig(plot_fname + ".pdf")
+            plt.savefig(plot_fname + ".png")
         else:
-            plt.show()
+            if show:
+                plt.show()
 
         if return_all:
             return out

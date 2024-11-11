@@ -1,6 +1,7 @@
 import os
 import numpy as np
 
+import lace
 from lace.cosmo import camb_cosmo
 
 

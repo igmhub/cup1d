@@ -2,7 +2,6 @@ import os, time, emcee, json
 
 import scipy.stats
 import numpy as np
-import matplotlib.pyplot as plt
 from warnings import warn
 
 from pyDOE2 import lhs
@@ -836,7 +835,7 @@ class Fitter(object):
         if subfolder:
             # If there is one, check if it exists, if not make it
             if not os.path.isdir(chain_location + "/" + subfolder):
-                os.mkdir(chain_location + "/" + subfolder)
+                os.makedirs(chain_location + "/" + subfolder)
             base_string = chain_location + "/" + subfolder + "/chain_"
         else:
             base_string = chain_location + "/chain_"
@@ -850,7 +849,7 @@ class Fitter(object):
                 continue
             else:
                 try:
-                    os.mkdir(sampler_directory)
+                    os.makedirs(sampler_directory)
                     self.print("Created directory:", sampler_directory)
                     break
                 except FileExistsError:
@@ -936,6 +935,52 @@ class Fitter(object):
             raise ValueError(stat_best_fit + " not implemented")
 
         return best_values
+
+    def save_minimizer(self):
+        """Write results of minimizer to file"""
+
+        dict_out = {}
+        dict_out["cosmo_best"] = {}
+        dict_out["cosmo_true"] = {}
+        dict_out["cosmo_reldiff"] = {}
+
+        dict_out["cosmo_best"]["Delta2_star"] = self.mle_cosmo["Delta2_star"]
+        dict_out["cosmo_best"]["n_star"] = self.mle_cosmo["n_star"]
+        if "n_run" in self.like.free_param_names:
+            dict_out["cosmo_best"]["alpha_star"] = self.mle_cosmo["alpha_star"]
+
+        if self.truth is not None:
+            dict_out["cosmo_true"]["Delta2_star"] = self.truth[
+                "$\\Delta^2_\\star$"
+            ]
+            dict_out["cosmo_reldiff"]["Delta2_star"] = (
+                dict_out["cosmo_best"]["Delta2_star"]
+                / dict_out["cosmo_true"]["Delta2_star"]
+                - 1
+            ) * 100
+
+            dict_out["cosmo_true"]["n_star"] = self.truth["$n_\\star$"]
+            dict_out["cosmo_reldiff"]["n_star"] = (
+                dict_out["cosmo_best"]["n_star"]
+                / dict_out["cosmo_true"]["n_star"]
+                - 1
+            ) * 100
+
+            if "n_run" in self.like.free_param_names:
+                dict_out["cosmo_true"]["alpha_star"] = self.truth[
+                    "$\\alpha_\\star$"
+                ]
+                dict_out["cosmo_reldiff"]["alpha_star"] = (
+                    dict_out["cosmo_best"]["alpha_star"]
+                    / dict_out["cosmo_true"]["alpha_star"]
+                    - 1
+                ) * 100
+            dict_out["truth"] = self.truth
+
+        dict_out["mle"] = self.mle
+        dict_out["lnprob_mle"] = self.lnprop_mle
+
+        np.save(self.save_directory + "/minimizer_results.npy", dict_out)
 
     def write_chain_to_file(self, residuals=True, extra_nburn=0):
         """Write flat chain to file"""

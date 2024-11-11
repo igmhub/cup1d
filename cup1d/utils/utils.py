@@ -1,5 +1,6 @@
 from mpi4py import MPI
 import os
+import numpy as np
 import cup1d
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap

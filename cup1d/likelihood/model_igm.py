@@ -114,6 +114,10 @@ class IGM(object):
             self.fid_igm["kF_kms"] = np.zeros(len(zs))
 
     def get_igm(self, sim_igm, return_all=False):
+        # print(sim_igm)
+        # print("\n")
+        # print("\n")
+        # print("\n")
         """Load IGM history"""
         if sim_igm[:3] == "mpg":
             repo = os.path.dirname(lace.__path__[0]) + "/"

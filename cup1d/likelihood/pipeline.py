@@ -651,6 +651,9 @@ class Pipeline(object):
                 log_func_minimize=self.fitter.like.get_chi2, p0=p0
             )
 
+            # save fit
+            self.fitter.save_minimizer()
+
             # plot fit
             plotter = Plotter(self.fitter, save_directory=self.out_folder)
             plotter.plots_minimizer()

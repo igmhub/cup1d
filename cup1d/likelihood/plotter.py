@@ -4,6 +4,7 @@ import os
 import lace
 import pandas as pd
 from chainconsumer import ChainConsumer, Chain, Truth
+from cup1d.utils.utils import get_discrete_cmap
 
 from cup1d.likelihood.fitter import purge_chains
 
@@ -19,9 +20,11 @@ class Plotter(object):
             self.mle_values
         )
         self.mle_results = self.fitter.like.plot_p1d(
-            values=self.mle_values, plot_every_iz=1, return_all=True
+            values=self.mle_values,
+            plot_every_iz=1,
+            return_all=True,
+            show=False,
         )
-        plt.close()
 
     def plots_minimizer(self, zrange=[0, 10]):
         # plot initial P1D (before fitting)
@@ -39,7 +42,7 @@ class Plotter(object):
         # plot cosmology
         if self.fitter.fix_cosmology == False:
             self.plot_mle_cosmo()
-        plt.close()
+            plt.close()
 
         # plot IGM histories
         self.plot_igm(cloud=True)
@@ -191,7 +194,9 @@ class Plotter(object):
         plt.tight_layout()
 
         if self.save_directory is not None:
-            plt.savefig(self.save_directory + "/cosmo_mle.pdf")
+            name = self.save_directory + "/cosmo_mle"
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
         else:
             plt.show()
 
@@ -255,9 +260,11 @@ class Plotter(object):
 
         if self.save_directory is not None:
             if only_cosmo:
-                plt.savefig(self.save_directory + "/corner_cosmo.pdf")
+                name = self.save_directory + "/corner_cosmo"
             else:
-                plt.savefig(self.save_directory + "/corner.pdf")
+                name = self.save_directory + "/corner"
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
 
         return summary
 
@@ -280,7 +287,6 @@ class Plotter(object):
 
         if self.save_directory is not None:
             plt.savefig(self.save_directory + "/lnprob.pdf")
-        # plt.close()
 
         return mask_use
 
@@ -306,11 +312,9 @@ class Plotter(object):
             else:
                 fname = "best_fit_" + stat_best_fit + "_err_posterior"
             if residuals:
-                plot_fname = (
-                    self.save_directory + "/" + fname + "_residuals.pdf"
-                )
+                plot_fname = self.save_directory + "/" + fname + "_residuals"
             else:
-                plot_fname = self.save_directory + "/" + fname + ".pdf"
+                plot_fname = self.save_directory + "/" + fname
         else:
             plot_fname = None
 
@@ -328,9 +332,9 @@ class Plotter(object):
 
         if self.save_directory is not None:
             if residuals:
-                plot_fname = self.save_directory + "/P1D_initial_residuals.pdf"
+                plot_fname = self.save_directory + "/P1D_initial_residuals"
             else:
-                plot_fname = self.save_directory + "/P1D_initial.pdf"
+                plot_fname = self.save_directory + "/P1D_initial"
         else:
             plot_fname = None
 
@@ -522,9 +526,9 @@ class Plotter(object):
         plt.tight_layout()
 
         if self.save_directory is not None:
-            plt.savefig(
-                self.save_directory + "/IGM_histories_" + stat_best_fit + ".pdf"
-            )
+            name = self.save_directory + "/IGM_histories_" + stat_best_fit
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
         else:
             plt.show()
 
@@ -638,7 +642,9 @@ class Plotter(object):
         )
 
         if self.save_directory is not None:
-            plt.savefig(self.save_directory + "/HCD_cont.pdf")
+            name = self.save_directory + "/HCD_cont"
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
         else:
             plt.show()
 
@@ -717,7 +723,9 @@ class Plotter(object):
             )
 
             if self.save_directory is not None:
-                plt.savefig(self.save_directory + "/" + metal + "_cont.pdf")
+                name = self.save_directory + "/" + metal + "_cont"
+                plt.savefig(name + ".pdf")
+                plt.savefig(name + ".png")
                 plt.close()
             else:
                 plt.show()
@@ -764,6 +772,8 @@ class Plotter(object):
         )
 
         if self.save_directory is not None:
-            plt.savefig(self.save_directory + "/AGN_cont.pdf")
+            name = self.save_directory + "/AGN_cont"
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
         else:
             plt.show()
