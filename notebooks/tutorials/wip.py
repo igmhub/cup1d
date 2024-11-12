@@ -55,43 +55,20 @@ from cup1d.likelihood.input_pipeline import Args
 
 
 
-# %%
-from cup1d.likelihood.lya_theory import set_theory
-
-# %%
-theory = set_theory(np.array([2,3]), emulator)
-
-# %%
-
-# %%
-# setup theory
-      
-        model_igm = IGM(zs, fid_sim_igm=true_sim_igm)
-        model_cont = Contaminants(
-            fid_SiIII=true_SiIII,
-            fid_SiII=true_SiII,
-            fid_HCD=true_HCD,
-            fid_SN=true_SN,
-            fid_AGN=true_AGN,
-        )
-        theory = lya_theory.Theory(
-            zs=zs,
-            emulator=emulator,
-            fid_cosmo=true_cosmo,
-            model_igm=model_igm,
-            model_cont=model_cont,
-        )  
-
 # %% [markdown]
 # ### Set archive
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
 # args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
-args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 # %%
 archive = set_archive(args.training_set)
+
+# %%
+archive.data[0]["sim_label"][:3]
 
 # %% [markdown]
 # ### Set emulator
@@ -121,10 +98,10 @@ else:
 # #### Set either mock data or real data
 
 # %%
-choose_forecast = False
+choose_forecast = True
 choose_mock = False
 choose_data = False
-choose_challenge = True
+choose_challenge = False
 choose_desiy1 = False
 
 if choose_forecast:
@@ -227,7 +204,6 @@ elif choose_desiy1:
         # )
 else:
     data["P1Ds"] = set_P1D(
-        args.data_label,
         args,
         archive=archive,
         true_cosmo=true_cosmo,
@@ -236,7 +212,6 @@ else:
     )
     if args.data_label_hires is not None:
         data["extra_P1Ds"] = set_P1D(
-            args.data_label_hires,
             args,
             archive=archive,
             true_cosmo=true_cosmo,

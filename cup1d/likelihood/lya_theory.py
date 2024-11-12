@@ -14,10 +14,10 @@ from cup1d.likelihood.cosmologies import set_cosmo
 def set_theory(
     zs,
     emulator,
+    cosmo,
     free_parameters=None,
     set_metric=True,
     zs_hires=None,
-    cosmo_label="Planck18",
     sim_igm="mpg_central",
     igm_priors="hc",
     SiIII=None,
@@ -28,9 +28,6 @@ def set_theory(
     ic_correction=None,
 ):
     """Set theory"""
-
-    # set fiducial cosmology
-    fid_cosmo = set_cosmo(cosmo_label=cosmo_label)
 
     # set igm model
     model_igm = IGM(
@@ -58,7 +55,7 @@ def set_theory(
         zs=zs,
         zs_hires=zs_hires,
         emulator=emulator,
-        fid_cosmo=fid_cosmo,
+        fid_cosmo=cosmo,
         model_igm=model_igm,
         model_cont=model_cont,
     )

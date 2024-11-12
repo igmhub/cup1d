@@ -91,6 +91,8 @@ def set_P1D(
     true_cosmo=None,
     emulator=None,
     cull_data=False,
+    zs=None,
+    zs_hires=None,
 ):
     """Set P1D data
 
@@ -169,23 +171,40 @@ def set_P1D(
             z_max=args.z_max,
         )
     elif data_label[:5] == "mock_":
-        # setup theory
+        if data_label[5:] == "Chabanier2019":
+            data = data_Chabanier2019.P1D_Chabanier2019(
+                z_min=args.z_min, z_max=args.z_max
+            )
+        elif data_label == "Karacayli2022":
+            data = data_Karacayli2022.P1D_Karacayli2022(
+                z_min=args.z_min, z_max=args.z_max
+            )
+        else:
+            raise ValueError("Data label", data_label, "not recognized")
+
+        theory = lya_theory.set_theory(
+            data.z,
+            emulator,
+            true_cosmo,
+            set_metric=False,
+            sim_igm=args.true_sim_igm,
+            SiII=args.true_SiII,
+            SiIII=args.true_SiIII,
+            HCD=args.true_HCD,
+            SN=args.true_SN,
+            AGN=args.true_AGN,
+            ic_correction=args.ic_correction,
+        )
 
         # mock data from emulator
         data = mock_data.Mock_P1D(
-            emulator,
+            theory,
             data_label=data_label[5:],
-            true_cosmo=true_cosmo,
-            true_sim_igm=args.true_igm_label,
-            true_SiII=args.true_SiII,
-            true_SiIII=args.true_SiIII,
-            true_HCD=args.true_HCD,
-            true_SN=args.true_SN,
-            true_AGN=args.true_AGN,
             add_noise=args.add_noise,
             seed=args.seed_noise,
             z_min=args.z_min,
             z_max=args.z_max,
+            p1d_fname=args.p1d_fname,
         )
     elif data_label == "eBOSS_mock":
         # need to be tested
