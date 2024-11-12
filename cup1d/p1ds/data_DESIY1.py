@@ -15,9 +15,8 @@ class P1D_DESIY1(BaseDataP1D):
     def __init__(
         self,
         p1d_fname=None,
-        z_min=2,
+        z_min=0,
         z_max=10,
-        true_sim_label=None,
     ):
         """Read measured P1D from file.
         - full_cov: for now, no covariance between redshift bins
@@ -31,11 +30,13 @@ class P1D_DESIY1(BaseDataP1D):
             k_kms,
             Pk_kms,
             cov,
-            full_z,
+            full_zs,
             full_Pk_kms,
             full_cov_kms,
             self.blinding,
         ) = res
+
+        ## TODO, get fiducial cosmo from file!
 
         if "fiducial" in p1d_fname:
             true_sim_label = "nyx_central"
@@ -68,7 +69,7 @@ class P1D_DESIY1(BaseDataP1D):
             cov,
             z_min=z_min,
             z_max=z_max,
-            full_z=full_z,
+            full_zs=full_zs,
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=full_cov_kms,
         )
@@ -251,8 +252,8 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
         Pk_kms.append(_pk)
         cov.append(_cov)
 
-    full_z = zs_raw[mask_raw]
+    full_zs = zs_raw[mask_raw]
     full_Pk_kms = Pk_kms_raw[mask_raw]
     full_cov_kms = cov_raw[mask_raw, :][:, mask_raw]
 
-    return zs, k_kms, Pk_kms, cov, full_z, full_Pk_kms, full_cov_kms, blinding
+    return zs, k_kms, Pk_kms, cov, full_zs, full_Pk_kms, full_cov_kms, blinding

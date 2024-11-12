@@ -17,7 +17,10 @@ class HCD_Model_Rogers2017(object):
         free_param_names=None,
     ):
         self.z_0 = z_0
+        if fid_value is None:
+            fid_value = [0, -5]
         self.null_value = null_value
+
         if ln_A_damp_coeff is not None:
             if free_param_names is not None:
                 raise ValueError("can not specify coeff and free_param_names")

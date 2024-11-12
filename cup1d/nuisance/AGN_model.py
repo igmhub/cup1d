@@ -25,6 +25,8 @@ class AGN_Model(object):
         free_param_names=None,
     ):
         self.z_0 = z_0
+        if fid_value is None:
+            fid_value = [0, -5]
         self.null_value = null_value
 
         if ln_AGN_coeff is not None:

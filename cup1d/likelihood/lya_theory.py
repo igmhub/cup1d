@@ -11,6 +11,61 @@ from cup1d.likelihood.model_igm import IGM
 from cup1d.likelihood.cosmologies import set_cosmo
 
 
+def set_theory(
+    zs,
+    emulator,
+    free_parameters=None,
+    set_metric=True,
+    zs_hires=None,
+    cosmo_label="Planck18",
+    sim_igm="mpg_central",
+    igm_priors="hc",
+    SiIII=None,
+    SiII=None,
+    HCD=None,
+    SN=None,
+    AGN=None,
+    ic_correction=None,
+):
+    """Set theory"""
+
+    # set fiducial cosmology
+    fid_cosmo = set_cosmo(cosmo_label=cosmo_label)
+
+    # set igm model
+    model_igm = IGM(
+        zs,
+        free_param_names=free_parameters,
+        fid_sim_igm=sim_igm,
+        list_sim_cube=emulator.list_sim_cube,
+        type_priors=igm_priors,
+        set_metric=set_metric,
+    )
+
+    # set contaminants
+    model_cont = Contaminants(
+        free_param_names=free_parameters,
+        fid_SiIII=SiIII,
+        fid_SiII=SiII,
+        fid_HCD=HCD,
+        fid_SN=SN,
+        fid_AGN=AGN,
+        ic_correction=ic_correction,
+    )
+
+    # set theory
+    theory = Theory(
+        zs=zs,
+        zs_hires=zs_hires,
+        emulator=emulator,
+        fid_cosmo=fid_cosmo,
+        model_igm=model_igm,
+        model_cont=model_cont,
+    )
+
+    return theory
+
+
 class Theory(object):
     """Translator between the likelihood object and the emulator. This object
     will map from a set of CAMB parameters directly to emulator calls, without
@@ -53,8 +108,7 @@ class Theory(object):
 
         # setup emulator
         if emulator is None:
-            self.emulator = gp_emulator.GPEmulator(training_set="Pedersen21")
-            print("Using default emulator: Pedersen21")
+            raise ValueError("Emulator not specified")
         else:
             self.emulator = emulator
         self.emu_kp_Mpc = self.emulator.kp_Mpc

@@ -22,6 +22,9 @@ class MetalModel(object):
         """Model the evolution of a metal contamination (SiII or SiIII).
         We use a power law around z_X=3."""
 
+        if fid_value is None:
+            fid_value = [[0, 0], [2, -10]]
+
         # label identifying the metal line
         self.metal_label = metal_label
         if metal_label == "SiIII":

@@ -169,6 +169,8 @@ def set_P1D(
             z_max=args.z_max,
         )
     elif data_label[:5] == "mock_":
+        # setup theory
+
         # mock data from emulator
         data = mock_data.Mock_P1D(
             emulator,
@@ -247,7 +249,7 @@ def set_P1D(
     return data
 
 
-def set_like(data, emulator, args, data_hires=None, P_model=None):
+def set_like(data, emulator, args, data_hires=None):
     """Set likelihood"""
 
     if data_hires is not None:
@@ -255,44 +257,24 @@ def set_like(data, emulator, args, data_hires=None, P_model=None):
     else:
         zs_hires = None
 
-    ## set theory
-
     # set free parameters
     free_parameters = set_free_like_parameters(args)
 
-    # set fiducial cosmology
-    fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
-
-    # set igm model
-    model_igm = IGM(
+    ## set theory
+    theory = lya_theory.set_theory(
         data.z,
-        free_param_names=free_parameters,
-        fid_sim_igm=args.fid_igm_label,
-        list_sim_cube=emulator.list_sim_cube,
-        type_priors=args.igm_priors,
-        set_metric=True,
-        P_model=P_model,
-    )
-
-    # set contaminants
-    model_cont = Contaminants(
-        free_param_names=free_parameters,
-        fid_SiIII=args.fid_SiIII,
-        fid_SiII=args.fid_SiII,
-        fid_HCD=args.fid_HCD,
-        fid_SN=args.fid_SN,
-        fid_AGN=args.fid_AGN,
-        ic_correction=args.ic_correction,
-    )
-
-    # set theory
-    theory = lya_theory.Theory(
-        zs=data.z,
+        emulator,
+        free_parameters=free_parameters,
         zs_hires=zs_hires,
-        emulator=emulator,
-        fid_cosmo=fid_cosmo,
-        model_igm=model_igm,
-        model_cont=model_cont,
+        cosmo_label=args.fid_cosmo_label,
+        sim_igm=args.fid_igm_label,
+        igm_priors=args.igm_priors,
+        SiIII=args.fid_SiIII,
+        SiII=args.fid_SiII,
+        HCD=args.fid_HCD,
+        SN=args.fid_SN,
+        AGN=args.fid_AGN,
+        ic_correction=args.ic_correction,
     )
 
     ## set like
