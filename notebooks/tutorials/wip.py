@@ -55,13 +55,112 @@ from cup1d.likelihood.input_pipeline import Args
 
 
 
+# %%
+from cup1d.p1ds import data_DESIY1
+
+# %%
+p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
+data_from_obs = data_DESIY1.read_from_file(p1d_fname=p1d_fname)
+
+# %%
+(
+    zs,
+    k_kms,
+    Pk_kms,
+    cov,
+    full_z,
+    full_Pk_kms,
+    full_cov_kms,
+    blind
+) = data_from_obs
+
+# %%
+full_z.shape
+
+# %%
+zs
+
+# %%
+np.concatenate(Pk_kms).shape
+
+# %%
+full_Pk_kms.shape
+
+# %%
+full_cov_kms.shape
+
+# %%
+
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
+
+# %%
+datadir = BaseDataP1D.BASEDIR + "/Chabanier2019/"
+p1d_file = datadir + "/Pk1D_data.dat"
+zs_raw, k_kms_raw, inPk, inPkstat, _, _ = np.loadtxt(p1d_file, unpack=True)
+Nz = len(np.unique(zs_raw))
+Nk = len(np.unique(k_kms_raw))
+inPkstat.shape
+
+# %%
+np.unique(ink).shape
+
+# %%
+corr_file = datadir + "Pk1D_cor.dat"
+incorr = np.loadtxt(corr_file, unpack=True)
+# allcorr = np.reshape(incorr, [Nk, Nz, Nk])
+allcorr.shape
+
+# %%
+p1d_file = datadir + "/Pk1D_data.dat"
+zs_raw, k_kms_raw, Pk_kms_raw, diag_cov_raw, _, _ = np.loadtxt(
+    p1d_file, unpack=True
+)
+
+# now read correlation matrices
+corr_file = datadir + "Pk1D_cor.dat"
+incorr = np.loadtxt(corr_file, unpack=True)
+
+z_unique = np.unique(zs_raw)
+mask_raw = np.zeros(len(k_kms_raw), dtype=bool)
+
+zs = []
+k_kms = []
+Pk_kms = []
+cov = []
+for z in z_unique:
+    zs.append(z)
+    mask = np.argwhere(
+        (zs_raw == z) & (diag_cov_raw > 0) & np.isfinite(Pk_kms_raw)
+    )[:, 0]
+    mask_raw[mask] = True
+
+    # slice_cov = slice(mask[0], mask[-1] + 1)
+    k_kms.append(np.array(k_kms_raw[mask]))
+    Pk_kms.append(np.array(Pk_kms_raw[mask]))
+
+    sigma = np.sqrt(diag_cov_raw[mask])
+    zcov = np.multiply(incorr[:, mask], np.outer(sigma, sigma))
+    cov.append(zcov)
+
+full_z = zs_raw[mask_raw]
+full_Pk_kms = Pk_kms_raw[mask_raw]
+full_cov_kms = np.zeros((full_z.shape[0], full_z.shape[0]))
+Nz = z_unique.shape[0]
+Nk = np.unique(k_kms_raw).shape[0]
+for ii in range(Nz):
+    slice_cov = slice(ii * Nk, (ii + 1) * Nk)
+    full_cov_kms[slice_cov, slice_cov] = cov[ii]
+
+# %%
+plt.imshow(np.log10(full_cov_kms**2))
+
 # %% [markdown]
 # ### Set archive
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
-args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 
 # %%
 archive = set_archive(args.training_set)

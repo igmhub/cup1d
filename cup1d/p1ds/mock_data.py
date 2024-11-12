@@ -4,11 +4,13 @@ import numpy as np
 from lace.emulator import gp_emulator
 from lace.cosmo import camb_cosmo
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
+
 from cup1d.p1ds import (
     data_Chabanier2019,
     data_Karacayli2022,
     data_QMLE_Ohio,
     data_Karacayli2024,
+    data_DESIY1,
 )
 from cup1d.likelihood import lya_theory
 from cup1d.likelihood.model_contaminants import Contaminants
@@ -61,18 +63,10 @@ class Mock_P1D(BaseMockP1D):
 
         """
 
-        # load original data
+        # load covariance from data file
         self.data_label = data_label
         if data_label == "Chabanier2019":
             data = data_Chabanier2019.P1D_Chabanier2019(
-                z_min=z_min, z_max=z_max
-            )
-        elif data_label == "QMLE_Ohio":
-            data = data_QMLE_Ohio.P1D_QMLE_Ohio(
-                z_min=z_min, z_max=z_max, **kwargs
-            )
-        elif data_label == "Karacayli2022":
-            data = data_Karacayli2022.P1D_Karacayli2022(
                 z_min=z_min, z_max=z_max
             )
         elif data_label == "Karacayli2024":
@@ -80,7 +74,19 @@ class Mock_P1D(BaseMockP1D):
                 z_min=z_min, z_max=z_max
             )
         elif data_label == "DESI_Y1":
-            data = data_DESI_Y1.P1D_DESI_Y1(z_min=z_min, z_max=z_max)
+            data_from_obs = data_DESI_Y1.read_from_file(p1d_fname=p1d_fname)
+            (
+                zs,
+                k_kms,
+                Pk_kms,
+                cov,
+                full_z,
+                full_Pk_kms,
+                full_cov_kms,
+                blind,
+            ) = data_from_obs
+            Pk_kms = None
+            full_Pk_kms = None
         else:
             raise ValueError("Unknown data_label", data_label)
 

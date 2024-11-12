@@ -24,7 +24,9 @@ def main():
 
     # emulator_label = "Pedersen23_ext"
     # emulator_label = "Cabayol23+"
+    # training_set = "Cabayol23"
     emulator_label = "Nyx_alphap_cov"
+    # emulator_label = "Nyx_alphap"
     training_set = "Nyx23_Jul2024"
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "DESI_Y1"
@@ -65,7 +67,7 @@ def main():
         args.fid_cosmo_label = "mpg_central"
         args.fid_igm_label = "mpg_central"
 
-    args.emu_cov_factor = 0.02
+    args.emu_cov_factor = 0.0
 
     for isim in range(len(files)):
         args.p1d_fname = files[isim]

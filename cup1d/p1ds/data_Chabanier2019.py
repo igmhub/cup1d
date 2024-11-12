@@ -15,14 +15,89 @@ class P1D_Chabanier2019(BaseDataP1D):
         datadir = BaseDataP1D.BASEDIR + "/Chabanier2019/"
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        z, k, Pk, cov = read_from_file(datadir, add_syst)
+        res = read_from_file(datadir, add_syst)
+        (
+            zs,
+            k_kms,
+            Pk_kms,
+            cov,
+            full_z,
+            full_Pk_kms,
+            full_cov_kms,
+        ) = res
 
-        super().__init__(z, k, Pk, cov, z_min=z_min, z_max=z_max)
+        super().__init__(
+            zs,
+            k_kms,
+            Pk_kms,
+            cov,
+            z_min=z_min,
+            z_max=z_max,
+            full_z=full_z,
+            full_Pk_kms=full_Pk_kms,
+            full_cov_kms=full_cov_kms,
+        )
 
         return
 
 
 def read_from_file(datadir, add_syst):
+    """Reconstruct covariance matrix from files."""
+
+    # start by reading Pk file
+    p1d_file = datadir + "/Pk1D_data.dat"
+    zs_raw, k_kms_raw, Pk_kms_raw, diag_cov_raw, _, _ = np.loadtxt(
+        p1d_file, unpack=True
+    )
+
+    # if asked to, add systematic variance
+    if add_syst:
+        # read file with systematic uncertainties
+        syst_file = datadir + "Pk1D_syst.dat"
+        insyst = np.loadtxt(syst_file, unpack=True)
+        # add in quadrature 8 different systematics
+        syst_var = np.sum(insyst**2, axis=0)
+        diag_cov_raw += syst_var
+
+    # now read correlation matrices
+    corr_file = datadir + "Pk1D_cor.dat"
+    incorr = np.loadtxt(corr_file, unpack=True)
+
+    z_unique = np.unique(zs_raw)
+    mask_raw = np.zeros(len(k_kms_raw), dtype=bool)
+
+    zs = []
+    k_kms = []
+    Pk_kms = []
+    cov = []
+    for z in z_unique:
+        zs.append(z)
+        mask = np.argwhere(
+            (zs_raw == z) & (diag_cov_raw > 0) & np.isfinite(Pk_kms_raw)
+        )[:, 0]
+        mask_raw[mask] = True
+
+        # slice_cov = slice(mask[0], mask[-1] + 1)
+        k_kms.append(np.array(k_kms_raw[mask]))
+        Pk_kms.append(np.array(Pk_kms_raw[mask]))
+
+        sigma = np.sqrt(diag_cov_raw[mask])
+        zcov = np.multiply(incorr[:, mask], np.outer(sigma, sigma))
+        cov.append(zcov)
+
+    full_z = zs_raw[mask_raw]
+    full_Pk_kms = Pk_kms_raw[mask_raw]
+    full_cov_kms = np.zeros((full_z.shape[0], full_z.shape[0]))
+    Nz = z_unique.shape[0]
+    Nk = np.unique(k_kms_raw).shape[0]
+    for ii in range(Nz):
+        slice_cov = slice(ii * Nk, (ii + 1) * Nk)
+        full_cov_kms[slice_cov, slice_cov] = cov[ii]
+
+    return zs, k_kms, Pk_kms, cov, full_z, full_Pk_kms, full_cov_kms
+
+
+def read_from_file_old(datadir, add_syst):
     """Reconstruct covariance matrix from files."""
 
     # start by reading Pk file
