@@ -144,6 +144,26 @@ class Theory(object):
             "cosmo"
         ].get_linP_params()
 
+    def set_cosmo_priors(self):
+        """Set priors for cosmological parameters"""
+        if hasattr(self, "linP_hc") == False:
+            self.emu_cosmo_hc()
+
+        self.cosmo_priors = {}
+        pnames = ["Delta2_star", "n_star", "alpha_star"]
+        for ii, key in enumerate(pnames):
+            self.cosmo_priors[key] = np.zeros(2)
+            self.cosmo_priors[key][0] = np.min(self.linP_hc[:, ii])
+            self.cosmo_priors[key][1] = np.max(self.linP_hc[:, ii])
+            diff = 0.1 * (self.cosmo_priors[key][1] - self.cosmo_priors[key][0])
+            # make sure that we have multiple values of key (useful for alpha_star)
+            if diff < 1e-7:
+                self.cosmo_priors[key][0] = -np.inf
+                self.cosmo_priors[key][1] = np.inf
+            else:
+                self.cosmo_priors[key][0] -= diff
+                self.cosmo_priors[key][1] += diff
+
     def emu_cosmo_hc(self):
         """Return cosmological parameters of simulations used for training"""
 
@@ -532,7 +552,7 @@ class Theory(object):
         k_kms,
         like_params=[],
         return_covar=False,
-        return_blob=False,
+        return_blob=True,
         return_emu_params=False,
     ):
         """Emulate P1D in velocity units, for all redshift bins,
@@ -541,26 +561,28 @@ class Theory(object):
         or a blob with extra information for the fitter."""
 
         # figure out emulator calls
-        _res = self.get_emulator_calls(
+        emu_call, M_of_z, blob = self.get_emulator_calls(
             zs,
             like_params=like_params,
             return_M_of_z=True,
-            return_blob=return_blob,
+            return_blob=True,
         )
-        if return_blob:
-            emu_call, M_of_z, blob = _res
-        else:
-            emu_call, M_of_z = _res
 
-        # check prior here
+        # check cosmo prior
+        for ii, key in enumerate(self.cosmo_priors):
+            if (blob[ii] > self.cosmo_priors[key][1]) | (
+                blob[ii] < self.cosmo_priors[key][0]
+            ):
+                return None
+        # check igm prior
         if self.model_igm.metric is not None:
-            dist_priors = np.zeros((len(zs)))
+            dist_igm_priors = np.zeros((len(zs)))
             for ii in range(len(zs)):
                 p0 = {}
                 for key in emu_call:
                     p0[key] = emu_call[key][ii]
-                dist_priors[ii] = self.model_igm.metric(p0)
-            if dist_priors.max() > 1:
+                dist_igm_priors[ii] = self.model_igm.metric(p0)
+            if dist_igm_priors.max() > 1:
                 # we are out of the prior range
                 return None
 

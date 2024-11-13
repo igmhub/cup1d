@@ -67,9 +67,6 @@ args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # %%
 archive = set_archive(args.training_set)
 
-# %%
-archive.data[0]["sim_label"][:3]
-
 # %% [markdown]
 # ### Set emulator
 
@@ -98,23 +95,25 @@ else:
 # #### Set either mock data or real data
 
 # %%
-choose_forecast = True
+choose_forecast = False
 choose_mock = False
 choose_data = False
 choose_challenge = False
-choose_desiy1 = False
+choose_desiy1 = True
 
 if choose_forecast:
     # for forecast, just start label of observational data with mock
-    args.data_label = "mock_Chabanier2019"
+    # args.data_label = "mock_Chabanier2019"
     # args.data_label="mock_Karacayli2024"
     # args.data_label_hires = "mock_Karacayli2022"
+    args.data_label="mock_DESIY1"
+    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
 
     # you need to provide true cosmology, IGM history, and contaminants
-    true_cosmo = set_cosmo(cosmo_label="nyx_central")
-    # true_cosmo = set_cosmo(cosmo_label="mpg_central")
-    # args.true_igm_label="mpg_central"
-    args.true_igm_label="nyx_central"
+    # true_cosmo = set_cosmo(cosmo_label="nyx_central")
+    true_cosmo = set_cosmo(cosmo_label="mpg_central")
+    args.true_igm_label="mpg_central"
+    # args.true_igm_label="nyx_central"
     # from -11 to -4
     args.true_SiIII=[[0, 0], [-10, -10]]
     args.true_SiII=[[0, 0], [-10, -10]]
@@ -253,7 +252,7 @@ args.fid_cosmo_label="mpg_central"
 
 # args.fid_cosmo_label="nyx_3"
 # args.ic_correction=True
-# args.fid_cosmo_label="Planck18"
+args.fid_cosmo_label="Planck18"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
@@ -279,16 +278,16 @@ args.fid_SN=[0, -4]
 args.fid_AGN=[0, -5]
 
 
-# args.fid_SiIII=[[0, 0], [4, -5]]
-# args.fid_SiII=[[0, 0], [2, -10]]
-# args.fid_HCD=[0, -2]
-# args.fid_SN=[0, -4]
-# args.fid_AGN=[0, 1]
+args.fid_SiIII=[[0, 0], [4, -5]]
+args.fid_SiII=[[0, 0], [2, -10]]
+args.fid_HCD=[0, -2]
+args.fid_SN=[0, -4]
+args.fid_AGN=[0, -3]
 
 # parameters
-args.vary_alphas=False
+# args.vary_alphas=False
 args.vary_alphas=True
-args.fix_cosmo=False
+# args.fix_cosmo=False
 # args.fix_cosmo=True
 args.n_tau=0
 args.n_sigT=0
@@ -305,14 +304,14 @@ args.n_tau=2
 args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
-# args.n_SiIII = 2
-# args.n_d_SiIII = 2
-# args.n_SiII = 1
-# args.n_dla=2
-# args.n_sn=0
-# args.n_agn=2
+args.n_SiIII = 1
+args.n_d_SiIII = 1
+args.n_SiII = 0
+args.n_dla=2
+args.n_sn=0
+args.n_agn=1
 
-free_parameters = set_free_like_parameters(args)
+free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
 
 # %% [markdown]
@@ -338,10 +337,7 @@ for p in like.free_params:
 
 # %%
 like.plot_p1d(residuals=False)
-like.plot_p1d(residuals=True)
-
-# %%
-chi2 96.9, 77
+# like.plot_p1d(residuals=True)
 
 # %%
 # z = like.data.z
@@ -381,6 +377,10 @@ fitter = Fitter(
     fix_cosmology=args.fix_cosmo,
 )
 
+# %%
+# p0 = np.array(list(like.fid["fit_cube"].values()))
+# fitter.like.get_chi2(p0)
+
 # %% [markdown]
 # ### Run minimizer
 
@@ -395,44 +395,6 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 # p0[:] = 0.5
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
-
-# %%
-old_emu
-
-w/ emu error
-Delta2_star
-0.36837 0.36004 0.02314
-n_star
--2.30158 -2.29877 0.00122
-alpha_star
--0.21584 -0.21614 -0.00139
-
-w/o emu error
-Delta2_star
-0.37659 0.36004 0.04597
-n_star
--2.30553 -2.29877 0.00294
-alpha_star
--0.21088 -0.21614 -0.02434
-
-# %%
-new_emu
-
-w/ emu error
-Delta2_star
-0.40579 0.36004 0.12705
-n_star
--2.28449 -2.29877 -0.00621
-alpha_star
--0.22172 -0.21614 0.02579
-
-w/o emu error
-Delta2_star
-0.36874 0.36004 0.02415
-n_star
--2.28712 -2.29877 -0.00507
-alpha_star
--0.23209 -0.21614 0.07378
 
 # %% [markdown]
 # - GP Minimization improved: 7495.505449898462 1413.4703537937303
@@ -466,10 +428,6 @@ plotter.plot_agn_cont(plot_data=True, zrange=[0, 3.7])
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/test/"
 plotter = Plotter(fitter, save_directory=folder)
-
-# %%
-for ii in range(100):
-    plt.close()
 
 # %%
 plotter.plots_minimizer(zrange=[0, 3.7])

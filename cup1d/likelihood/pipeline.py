@@ -30,12 +30,12 @@ from cup1d.likelihood.fitter import Fitter
 from cup1d.likelihood.plotter import Plotter
 
 
-def set_free_like_parameters(params):
+def set_free_like_parameters(params, emulator_label):
     """Set free parameters for likelihood"""
     if params.fix_cosmo:
         free_parameters = []
     else:
-        if params.vary_alphas:
+        if params.vary_alphas and ("Nyx_alphap" in emulator_label):
             free_parameters = ["As", "ns", "nrun"]
         else:
             free_parameters = ["As", "ns"]
@@ -248,16 +248,17 @@ def set_P1D(
     return data
 
 
-def set_like(data, emulator, fid_cosmo, args, data_hires=None):
+def set_like(data, emulator, args, data_hires=None):
     """Set likelihood"""
 
+    zs = data.z
     if data_hires is not None:
         zs_hires = data_hires.z
     else:
         zs_hires = None
 
     # set free parameters
-    free_parameters = set_free_like_parameters(args)
+    free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 
     ## set theory
     theory = lya_theory.set_theory(
@@ -273,7 +274,8 @@ def set_like(data, emulator, fid_cosmo, args, data_hires=None):
         ic_correction=args.ic_correction,
     )
 
-    theory.model_igm.set_fid_igm(data.z)
+    theory.model_igm.set_fid_igm(zs)
+    fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
     theory.set_fid_cosmo(zs, input_cosmo=fid_cosmo, zs_hires=zs_hires)
 
     ## set like
@@ -528,11 +530,9 @@ class Pipeline(object):
         fprint("----------")
         fprint("Setting likelihood")
 
-        fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
         like = set_like(
             data["P1Ds"],
             emulator,
-            fid_cosmo,
             args,
             data_hires=data["extra_P1Ds"],
         )

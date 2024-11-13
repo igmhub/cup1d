@@ -60,15 +60,15 @@ class Mock_P1D(BaseMockP1D):
         self.data_label = data_label
         if data_label == "Chabanier2019":
             data_from_obs = data_Chabanier2019.read_from_file()
-        elif data_label == "Karacayli2024":
-            data_from_obs = data_Karacayli2024.read_from_file()
-        elif data_label == "DESI_Y1":
+        # elif data_label == "Karacayli2024":
+        #     data_from_obs = data_Karacayli2024.read_from_file()
+        elif data_label == "DESIY1":
             if p1d_fname is None:
                 raise ValueError(
                     "Must provide p1d_fname if loading DESI_Y1 data"
                 )
             else:
-                data_from_obs = data_DESI_Y1.read_from_file(p1d_fname=p1d_fname)
+                data_from_obs = data_DESIY1.read_from_file(p1d_fname=p1d_fname)
         else:
             raise ValueError("Unknown data_label", data_label)
 

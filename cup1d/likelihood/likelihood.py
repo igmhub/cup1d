@@ -53,6 +53,7 @@ class Likelihood(object):
 
         self.theory = theory
         self.theory.emu_cosmo_hc()
+        self.theory.set_cosmo_priors()
 
         # setup parameters
         self.free_param_names = free_param_names
@@ -202,10 +203,14 @@ class Likelihood(object):
         for par in self.data.truth:
             self.truth[par] = self.data.truth[par]
 
-        if self.data.truth["igm"]["label"] == self.theory.model_igm.fid_sim_igm:
-            equal_IGM = True
-        else:
-            equal_IGM = False
+        print()
+        equal_IGM = True
+        for key in self.data.truth["igm"]:
+            if np.allclose(
+                self.data.truth["igm"][key], self.theory.model_igm.fid_igm[key]
+            ):
+                equal_IGM = False
+                break
 
         self.truth["like_params"] = {}
         self.truth["like_params_cube"] = {}
