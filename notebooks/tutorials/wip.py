@@ -282,7 +282,7 @@ args.fid_SiIII=[[0, 0], [4, -5]]
 args.fid_SiII=[[0, 0], [2, -10]]
 args.fid_HCD=[0, -2]
 args.fid_SN=[0, -4]
-args.fid_AGN=[0, -3]
+args.fid_AGN=[0, -]
 
 # parameters
 # args.vary_alphas=False
@@ -304,8 +304,8 @@ args.n_tau=2
 args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
-args.n_SiIII = 1
-args.n_d_SiIII = 1
+args.n_SiIII = 2
+args.n_d_SiIII = 2
 args.n_SiII = 0
 args.n_dla=2
 args.n_sn=0
@@ -417,13 +417,13 @@ plotter.plot_p1d(residuals=True, plot_every_iz=1)
 plotter.plot_igm(cloud=True)
 
 # %%
-plotter.plot_hcd_cont(plot_data=True, zrange=[0, 3.7])
+plotter.plot_hcd_cont(plot_data=True)
 
 # %%
-plotter.plot_metal_cont(smooth_k=True, plot_data=True, zrange=[0, 3.7])
+plotter.plot_metal_cont(smooth_k=True, plot_data=True)
 
 # %%
-plotter.plot_agn_cont(plot_data=True, zrange=[0, 3.7])
+plotter.plot_agn_cont(plot_data=True)
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/test/"

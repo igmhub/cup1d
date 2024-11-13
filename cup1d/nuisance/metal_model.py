@@ -289,6 +289,7 @@ class MetalModel(object):
         smooth_k=False,
         dict_data=None,
         zrange=[0, 10],
+        name=None,
     ):
         """Plot the contamination model"""
 
@@ -306,6 +307,10 @@ class MetalModel(object):
         )
 
         yrange = [1, 1]
+        fig1, ax1 = plt.subplots(figsize=(8, 6))
+        fig2, ax2 = plt.subplots(
+            len(z), sharex=True, sharey=True, figsize=(8, len(z) * 4)
+        )
 
         for ii in range(0, len(z), plot_every_iz):
             if smooth_k:
@@ -318,13 +323,11 @@ class MetalModel(object):
             if isinstance(cont, int):
                 cont = np.ones_like(k_use)
 
-            plt.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
+            ax1.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
+            ax2[ii].plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
 
             yrange[0] = min(yrange[0], np.min(cont))
             yrange[1] = max(yrange[1], np.max(cont))
-
-            if (z[ii] > zrange[1]) | (z[ii] < zrange[0]):
-                continue
 
             if dict_data is not None:
                 cont_data_res = metal_model.get_contamination(
@@ -343,7 +346,19 @@ class MetalModel(object):
                     / dict_data["p1d_model"][ii]
                     * cont_data_res
                 )
-                plt.errorbar(
+                if (z[ii] > zrange[1]) | (z[ii] < zrange[0]):
+                    pass
+                else:
+                    ax1.errorbar(
+                        dict_data["k_kms"][ii],
+                        yy,
+                        err_yy,
+                        marker="o",
+                        linestyle=":",
+                        color=cmap(ii),
+                        alpha=0.5,
+                    )
+                ax2[ii].errorbar(
                     dict_data["k_kms"][ii],
                     yy,
                     err_yy,
@@ -353,18 +368,38 @@ class MetalModel(object):
                     alpha=0.5,
                 )
 
-        plt.axhline(1, color="k", linestyle=":")
-
-        plt.ylim(yrange[0] - 0.05, yrange[1] + 0.05)
-
-        plt.legend(ncol=4)
-        plt.xscale("log")
-        plt.xlabel(r"$k$ [1/Mpc]")
-        plt.ylabel(
+        ax1.axhline(1, color="k", linestyle=":")
+        ax1.legend(ncol=4)
+        ax1.set_ylim(yrange[0] * 0.95, yrange[1] * 1.05)
+        ax1.set_xscale("log")
+        ax1.set_xlabel(r"$k$ [1/Mpc]")
+        ax1.set_ylabel(
             r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,"
             + self.metal_label
             + "}$"
         )
-        plt.tight_layout()
+        for ax in ax2:
+            ax.axhline(1, color="k", linestyle=":")
+            ax.legend()
+            ax.set_ylim(yrange[0] * 0.95, yrange[1] * 1.05)
+            ax.set_xlabel(r"$k$ [1/Mpc]")
+            ax.set_ylabel(
+                r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,"
+                + self.metal_label
+                + "}$"
+            )
+            ax.set_xscale("log")
+
+        fig1.tight_layout()
+        fig2.tight_layout()
+
+        if name is None:
+            fig1.show()
+            fig2.show()
+        else:
+            fig1.savefig(name + "_all.pdf")
+            fig1.savefig(name + "_all.png")
+            fig2.savefig(name + "_z.pdf")
+            fig2.savefig(name + "_z.png")
 
         return
