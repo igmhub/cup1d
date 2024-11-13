@@ -2,9 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from warnings import warn
 
-import cup1d
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
 from lace.utils.smoothing_manager import apply_smoothing
+from lace.cosmo import camb_cosmo
 
 
 class BaseMockP1D(BaseDataP1D):
@@ -12,14 +12,18 @@ class BaseMockP1D(BaseDataP1D):
 
     def __init__(
         self,
-        z,
+        zs,
         k_kms,
         Pk_kms,
         cov_Pk_kms,
+        full_zs=None,
+        full_Pk_kms=None,
+        full_cov_kms=None,
         add_noise=False,
         seed=0,
         z_min=0,
         z_max=10,
+        theory=None,
     ):
         """Construct base P1D class, from measured power and covariance"""
 
@@ -31,12 +35,26 @@ class BaseMockP1D(BaseDataP1D):
         else:
             Pk_perturb_kms = Pk_kms
 
+        if theory is not None:
+            self.set_truth(theory, zs)
+
         super().__init__(
-            z, k_kms, Pk_perturb_kms, cov_Pk_kms, z_min=z_min, z_max=z_max
+            zs,
+            k_kms,
+            Pk_perturb_kms,
+            cov_Pk_kms,
+            z_min=z_min,
+            z_max=z_max,
+            full_zs=full_zs,
+            full_Pk_kms=full_Pk_kms,
+            full_cov_kms=full_cov_kms,
         )
 
     def get_Pk_iz_perturbed(self, Pk_kms, cov_Pk_kms, nsamples=1, seed=0):
-        """Perturb data by adding Gaussian noise according to the covariance matrix"""
+        """Perturb data by adding Gaussian noise according to the covariance matrix
+
+        No correlation among redshifts right now
+        """
 
         np.random.seed(seed)
         Pk_iz_perturb = []
@@ -121,6 +139,29 @@ class BaseMockP1D(BaseDataP1D):
 
         plt.tight_layout()
 
+    def set_truth(self, theory, zs):
+        # setup fiducial cosmology
+        self.truth = {}
+
+        sim_cosmo = theory.fid_cosmo["cosmo"].cosmo
+
+        self.truth["cosmo"] = {}
+        self.truth["cosmo"]["ombh2"] = sim_cosmo.ombh2
+        self.truth["cosmo"]["omch2"] = sim_cosmo.omch2
+        self.truth["cosmo"]["As"] = sim_cosmo.InitPower.As
+        self.truth["cosmo"]["ns"] = sim_cosmo.InitPower.ns
+        self.truth["cosmo"]["nrun"] = sim_cosmo.InitPower.nrun
+        self.truth["cosmo"]["H0"] = sim_cosmo.H0
+        self.truth["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
+
+        self.truth["linP"] = {}
+        cosmo_params = ["Delta2_star", "n_star", "alpha_star"]
+        for par in cosmo_params:
+            self.truth["linP"][par] = theory.fid_cosmo["linP_params"][par]
+
+        self.truth["igm"] = theory.model_igm.fid_igm
+        self.truth["cont"] = theory.model_cont.get_dict_cont()
+
     # def _get_cosmo(self, nyx_version="Jul2024"):
     #     # get cosmology
     #     fname = os.environ["NYX_PATH"] + "nyx_emu_cosmo_" + nyx_version + ".npy"
@@ -155,90 +196,3 @@ class BaseMockP1D(BaseDataP1D):
     #         true_igm = igm_hist[self.input_sim]
 
     #     return true_igm
-
-    # def set_truth(self, theory, zs):
-    #     # setup fiducial cosmology
-    #     self.truth = {}
-
-    #     sim_cosmo = theory.cosmo_model_fid["cosmo"].cosmo
-
-    #     self.truth["cosmo"] = {}
-    #     self.truth["cosmo"]["ombh2"] = sim_cosmo.ombh2
-    #     self.truth["cosmo"]["omch2"] = sim_cosmo.omch2
-    #     self.truth["cosmo"]["As"] = sim_cosmo.InitPower.As
-    #     self.truth["cosmo"]["ns"] = sim_cosmo.InitPower.ns
-    #     self.truth["cosmo"]["nrun"] = sim_cosmo.InitPower.nrun
-    #     self.truth["cosmo"]["H0"] = sim_cosmo.H0
-    #     self.truth["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
-
-    #     self.truth["linP"] = {}
-    #     blob_params = ["Delta2_star", "n_star", "alpha_star"]
-    #     blob = theory.cosmo_model_fid["cosmo"].get_linP_params()
-    #     for ii in range(len(blob_params)):
-    #         self.truth["linP"][blob_params[ii]] = blob[blob_params[ii]]
-
-    #     self.truth["igm"] = {}
-    #     zs = np.array(zs)
-    #     self.truth["igm"]["label"] = self.input_sim
-    #     self.truth["igm"]["z"] = zs
-    #     self.truth["igm"]["tau_eff"] = theory.model_igm.F_model.get_tau_eff(zs)
-    #     self.truth["igm"]["gamma"] = theory.model_igm.T_model.get_gamma(zs)
-    #     self.truth["igm"]["sigT_kms"] = theory.model_igm.T_model.get_sigT_kms(
-    #         zs
-    #     )
-    #     self.truth["igm"]["kF_kms"] = theory.model_igm.P_model.get_kF_kms(zs)
-
-    #     self.truth["cont"] = {}
-    #     for ii in range(2):
-    #         self.truth["cont"][
-    #             "ln_SiIII_" + str(ii)
-    #         ] = theory.model_cont.fid_SiIII[-1 - ii]
-    #         self.truth["cont"][
-    #             "ln_SiII_" + str(ii)
-    #         ] = theory.model_cont.fid_SiII[-1 - ii]
-    #         self.truth["cont"][
-    #             "ln_A_damp_" + str(ii)
-    #         ] = theory.model_cont.fid_HCD[-1 - ii]
-    #         self.truth["cont"]["ln_SN_" + str(ii)] = theory.model_cont.fid_SN[
-    #             -1 - ii
-    #         ]
-
-    # def plot_igm(self):
-    #     """Plot IGM histories"""
-
-    #     # true IGM parameters
-    #     pars_true = {}
-    #     pars_true["z"] = self.truth["igm"]["z"]
-    #     pars_true["tau_eff"] = self.truth["igm"]["tau_eff"]
-    #     pars_true["gamma"] = self.truth["igm"]["gamma"]
-    #     pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
-    #     pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
-
-    #     fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
-    #     ax = ax.reshape(-1)
-
-    #     arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
-    #     latex_labs = [
-    #         r"$\tau_\mathrm{eff}$",
-    #         r"$\gamma$",
-    #         r"$\sigma_T$",
-    #         r"$k_F$",
-    #     ]
-
-    #     for ii in range(len(arr_labs)):
-    #         _ = pars_true[arr_labs[ii]] != 0
-    #         ax[ii].plot(
-    #             pars_true["z"][_],
-    #             pars_true[arr_labs[ii]][_],
-    #             "o:",
-    #             label="true",
-    #         )
-
-    #         ax[ii].set_ylabel(latex_labs[ii])
-    #         if ii == 0:
-    #             ax[ii].set_yscale("log")
-
-    #         if (ii == 2) | (ii == 3):
-    #             ax[ii].set_xlabel(r"$z$")
-
-    #     plt.tight_layout()

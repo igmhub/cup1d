@@ -250,7 +250,7 @@ class Likelihood(object):
 
         self.fid = {}
 
-        sim_cosmo = self.theory.cosmo_model_fid["cosmo"].cosmo
+        sim_cosmo = self.theory.fid_cosmo["cosmo"].cosmo
 
         self.fid["cosmo"] = {}
         self.fid["cosmo"]["ombh2"] = sim_cosmo.ombh2
@@ -262,7 +262,7 @@ class Likelihood(object):
         self.fid["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
 
         blob_params = ["Delta2_star", "n_star", "alpha_star"]
-        blob = self.theory.cosmo_model_fid["cosmo"].get_linP_params()
+        blob = self.theory.fid_cosmo["cosmo"].get_linP_params()
 
         self.fid["igm"] = self.theory.model_igm.fid_igm
         self.fid["fit"] = {}

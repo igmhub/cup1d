@@ -188,7 +188,7 @@ elif choose_desiy1:
         # args.data_label_hires = "Karacayli2022"
         
         data["P1Ds"] = P1D_DESIY1(
-            fname=fname, 
+            p1d_fname=fname, 
             z_min=args.z_min, 
             z_max=args.z_max
         )
@@ -218,6 +218,10 @@ else:
             emulator=emulator,
             cull_data=False
         )
+
+# %%
+# ntos = 100 * np.sqrt(np.diag(data["P1Ds"].cov_Pk_kms[0]))/data["P1Ds"].Pk_kms[0]
+# plt.plot(data["P1Ds"].k_kms[0], ntos)
 
 # %%
 print(data["P1Ds"].apply_blinding)

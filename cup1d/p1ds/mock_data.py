@@ -23,6 +23,7 @@ class Mock_P1D(BaseMockP1D):
     def __init__(
         self,
         theory,
+        true_cosmo,
         data_label="Chabanier2019",
         z_min=0,
         z_max=10,
@@ -83,13 +84,13 @@ class Mock_P1D(BaseMockP1D):
         ) = data_from_obs
 
         # evaluate theory at k_kms, for all redshifts
-        Pk_kms = theory.get_p1d_kms(zs, k_kms)
-        full_Pk_kms = Pk_kms.reshape(-1)
-
-        self.set_truth(theory, zs)
+        theory.model_igm.set_fid_igm(np.array(zs))
+        theory.set_fid_cosmo(np.array(zs), input_cosmo=true_cosmo)
+        Pk_kms = theory.get_p1d_kms(np.array(zs), k_kms)
+        full_Pk_kms = np.concatenate(np.array(Pk_kms)).reshape(-1)
 
         super().__init__(
-            z=zs,
+            zs=zs,
             k_kms=k_kms,
             Pk_kms=Pk_kms,
             cov_Pk_kms=cov_Pk_kms,
@@ -100,58 +101,5 @@ class Mock_P1D(BaseMockP1D):
             full_zs=full_zs,
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=full_cov_kms,
+            theory=theory,
         )
-
-    def set_truth(self, theory, zs):
-        # setup fiducial cosmology
-        self.truth = {}
-
-        sim_cosmo = theory.cosmo_model_fid["cosmo"].cosmo
-
-        self.truth["cosmo"] = {}
-        self.truth["cosmo"]["ombh2"] = sim_cosmo.ombh2
-        self.truth["cosmo"]["omch2"] = sim_cosmo.omch2
-        self.truth["cosmo"]["As"] = sim_cosmo.InitPower.As
-        self.truth["cosmo"]["ns"] = sim_cosmo.InitPower.ns
-        self.truth["cosmo"]["nrun"] = sim_cosmo.InitPower.nrun
-        self.truth["cosmo"]["H0"] = sim_cosmo.H0
-        self.truth["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
-
-        self.truth["linP"] = {}
-        blob_params = ["Delta2_star", "n_star", "alpha_star"]
-        blob = theory.cosmo_model_fid["cosmo"].get_linP_params()
-        for ii in range(len(blob_params)):
-            self.truth["linP"][blob_params[ii]] = blob[blob_params[ii]]
-
-        self.truth["igm"] = {}
-        zs = np.array(zs)
-        self.truth["igm"]["z"] = zs
-        self.truth["igm"]["tau_eff"] = theory.model_igm.F_model.get_tau_eff(zs)
-        self.truth["igm"]["gamma"] = theory.model_igm.T_model.get_gamma(zs)
-        self.truth["igm"]["sigT_kms"] = theory.model_igm.T_model.get_sigT_kms(
-            zs
-        )
-        if theory.model_igm.yes_kF:
-            self.truth["igm"]["kF_kms"] = theory.model_igm.P_model.get_kF_kms(
-                zs
-            )
-        else:
-            self.truth["igm"]["kF_kms"] = np.zeros_like(zs)
-
-        self.truth["cont"] = {}
-        for ii in range(2):
-            self.truth["cont"][
-                "ln_SiIII_" + str(ii)
-            ] = theory.model_cont.fid_SiIII[-1 - ii]
-            self.truth["cont"][
-                "ln_SiII_" + str(ii)
-            ] = theory.model_cont.fid_SiII[-1 - ii]
-            self.truth["cont"][
-                "ln_A_damp_" + str(ii)
-            ] = theory.model_cont.fid_HCD[-1 - ii]
-            self.truth["cont"]["ln_SN_" + str(ii)] = theory.model_cont.fid_SN[
-                -1 - ii
-            ]
-            self.truth["cont"]["ln_AGN_" + str(ii)] = theory.model_cont.fid_AGN[
-                -1 - ii
-            ]

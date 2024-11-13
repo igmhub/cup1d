@@ -12,9 +12,7 @@ from cup1d.likelihood.cosmologies import set_cosmo
 
 
 def set_theory(
-    zs,
     emulator,
-    cosmo,
     free_parameters=None,
     set_metric=True,
     zs_hires=None,
@@ -31,7 +29,6 @@ def set_theory(
 
     # set igm model
     model_igm = IGM(
-        zs,
         free_param_names=free_parameters,
         fid_sim_igm=sim_igm,
         list_sim_cube=emulator.list_sim_cube,
@@ -52,10 +49,7 @@ def set_theory(
 
     # set theory
     theory = Theory(
-        zs=zs,
-        zs_hires=zs_hires,
         emulator=emulator,
-        fid_cosmo=cosmo,
         model_igm=model_igm,
         model_cont=model_cont,
     )
@@ -70,15 +64,12 @@ class Theory(object):
 
     def __init__(
         self,
-        zs,
-        zs_hires=None,
         emulator=None,
         model_igm=None,
         model_cont=None,
         verbose=False,
         z_star=3.0,
         kp_kms=0.009,
-        fid_cosmo=None,
     ):
         """Setup object to compute predictions for the 1D power spectrum.
         Inputs:
@@ -96,8 +87,6 @@ class Theory(object):
         """
 
         self.verbose = verbose
-        self.zs = zs
-        self.zs_hires = zs_hires
 
         # specify pivot point used in compressed parameters
         self.z_star = z_star
@@ -122,9 +111,15 @@ class Theory(object):
         else:
             self.model_cont = model_cont
 
+    def set_fid_cosmo(self, zs, zs_hires=None, input_cosmo=None):
+        """Setup fiducial cosmology"""
+
+        self.zs = zs
+        self.zs_hires = zs_hires
+
         # setup fiducial cosmology (used for fitting)
-        if not fid_cosmo:
-            fid_cosmo = camb_cosmo.get_cosmology()
+        if not input_cosmo:
+            input_cosmo = camb_cosmo.get_cosmology()
 
         # setup CAMB object for the fiducial cosmology and precompute some things
         if self.zs_hires is not None:
@@ -133,20 +128,21 @@ class Theory(object):
             _zs = np.concatenate([self.zs, [self.z_star]])
         _zs = np.unique(_zs)
 
-        self.cosmo_model_fid = {}
-        self.cosmo_model_fid["zs"] = _zs
-        self.cosmo_model_fid["cosmo"] = CAMB_model.CAMBModel(
+        self.fid_cosmo = {}
+        self.fid_cosmo["zs"] = _zs
+        self.fid_cosmo["cosmo"] = CAMB_model.CAMBModel(
             zs=_zs,
-            cosmo=fid_cosmo,
+            cosmo=input_cosmo,
             z_star=self.z_star,
             kp_kms=self.kp_kms,
         )
-        self.cosmo_model_fid["linP_Mpc_params"] = self.cosmo_model_fid[
+        self.fid_cosmo["linP_Mpc_params"] = self.fid_cosmo[
             "cosmo"
         ].get_linP_Mpc_params(kp_Mpc=self.emu_kp_Mpc)
-        self.cosmo_model_fid["M_of_zs"] = self.cosmo_model_fid[
+        self.fid_cosmo["M_of_zs"] = self.fid_cosmo["cosmo"].get_M_of_zs()
+        self.fid_cosmo["linP_params"] = self.fid_cosmo[
             "cosmo"
-        ].get_M_of_zs()
+        ].get_linP_params()
 
     def emu_cosmo_hc(self):
         """Return cosmological parameters of simulations used for training"""
@@ -206,17 +202,17 @@ class Theory(object):
         delta_nrun = 0.0
         for par in like_params:
             if par.name == "As":
-                fid_As = self.cosmo_model_fid["cosmo"].cosmo.InitPower.As
+                fid_As = self.fid_cosmo["cosmo"].cosmo.InitPower.As
                 ratio_As = par.value / fid_As
             if par.name == "ns":
-                fid_ns = self.cosmo_model_fid["cosmo"].cosmo.InitPower.ns
+                fid_ns = self.fid_cosmo["cosmo"].cosmo.InitPower.ns
                 delta_ns = par.value - fid_ns
             if par.name == "nrun":
-                fid_nrun = self.cosmo_model_fid["cosmo"].cosmo.InitPower.nrun
+                fid_nrun = self.fid_cosmo["cosmo"].cosmo.InitPower.nrun
                 delta_nrun = par.value - fid_nrun
 
         # pivot scale in primordial power
-        ks_Mpc = self.cosmo_model_fid["cosmo"].cosmo.InitPower.pivot_scalar
+        ks_Mpc = self.fid_cosmo["cosmo"].cosmo.InitPower.pivot_scalar
         # logarithm of ratio of pivot points
         ln_kp_ks = np.log(self.emu_kp_Mpc / ks_Mpc)
 
@@ -231,8 +227,8 @@ class Theory(object):
         # update values of linP_params at emulator pivot point, at each z
         linP_Mpc_params = []
         for z in zs:
-            _ = np.argwhere(self.cosmo_model_fid["zs"] == z)[0, 0]
-            zlinP = self.cosmo_model_fid["linP_Mpc_params"][_]
+            _ = np.argwhere(self.fid_cosmo["zs"] == z)[0, 0]
+            zlinP = self.fid_cosmo["linP_Mpc_params"][_]
             linP_Mpc_params.append(
                 {
                     "Delta2_p": zlinP["Delta2_p"] * np.exp(ln_ratio_A_p),
@@ -243,8 +239,8 @@ class Theory(object):
 
         if return_derivs:
             val_derivs = {}
-            _ = np.argwhere(self.cosmo_model_fid["zs"] == self.z_star)[0, 0]
-            zlinP = self.cosmo_model_fid["linP_Mpc_params"][_]
+            _ = np.argwhere(self.fid_cosmo["zs"] == self.z_star)[0, 0]
+            zlinP = self.fid_cosmo["linP_Mpc_params"][_]
 
             val_derivs["Delta2star"] = zlinP["Delta2_p"] * np.exp(ln_ratio_A_p)
             val_derivs["nstar"] = zlinP["n_p"] + delta_n_p
@@ -347,8 +343,8 @@ class Theory(object):
             )
             M_of_zs = []
             for z in zs:
-                _ = np.argwhere(self.cosmo_model_fid["zs"] == z)[0, 0]
-                M_of_zs.append(self.cosmo_model_fid["M_of_zs"][_])
+                _ = np.argwhere(self.fid_cosmo["zs"] == z)[0, 0]
+                M_of_zs.append(self.fid_cosmo["M_of_zs"][_])
             M_of_zs = np.array(M_of_zs)
             if return_blob:
                 blob = self.get_blob_fixed_background(like_params)
@@ -356,9 +352,7 @@ class Theory(object):
             # setup a new CAMB_model from like_params
             if self.verbose:
                 print("create new CAMB_model")
-            camb_model = self.cosmo_model_fid["cosmo"].get_new_model(
-                zs, like_params
-            )
+            camb_model = self.fid_cosmo["cosmo"].get_new_model(zs, like_params)
             linP_Mpc_params = camb_model.get_linP_Mpc_params(
                 kp_Mpc=self.emu_kp_Mpc
             )
@@ -444,7 +438,7 @@ class Theory(object):
                 return out
         else:
             # compute linear power parameters for input cosmology
-            params = self.cosmo_model_fid["cosmo"].get_linP_params()
+            params = self.fid_cosmo["cosmo"].get_linP_params()
             return (
                 params["Delta2_star"],
                 params["n_star"],
@@ -466,20 +460,20 @@ class Theory(object):
         delta_nrun = 0.0
         for par in like_params:
             if par.name == "As":
-                fid_As = self.cosmo_model_fid["cosmo"].cosmo.InitPower.As
+                fid_As = self.fid_cosmo["cosmo"].cosmo.InitPower.As
                 ratio_As = par.value / fid_As
             if par.name == "ns":
-                fid_ns = self.cosmo_model_fid["cosmo"].cosmo.InitPower.ns
+                fid_ns = self.fid_cosmo["cosmo"].cosmo.InitPower.ns
                 delta_ns = par.value - fid_ns
             if par.name == "nrun":
-                fid_nrun = self.cosmo_model_fid["cosmo"].cosmo.InitPower.nrun
+                fid_nrun = self.fid_cosmo["cosmo"].cosmo.InitPower.nrun
                 delta_nrun = par.value - fid_nrun
 
         # pivot scale of primordial power
-        ks_Mpc = self.cosmo_model_fid["cosmo"].cosmo.InitPower.pivot_scalar
+        ks_Mpc = self.fid_cosmo["cosmo"].cosmo.InitPower.pivot_scalar
 
         # likelihood pivot point, in velocity units
-        dkms_dMpc = self.cosmo_model_fid["cosmo"].dkms_dMpc(self.z_star)
+        dkms_dMpc = self.fid_cosmo["cosmo"].dkms_dMpc(self.z_star)
         kp_Mpc = self.kp_kms * dkms_dMpc
 
         # logarithm of ratio of pivot points
@@ -487,7 +481,7 @@ class Theory(object):
 
         # get blob for fiducial cosmo
         ### TODO: make this more efficient! Maybe directly storing the params?
-        fid_blob = self.get_blob(self.cosmo_model_fid["cosmo"])
+        fid_blob = self.get_blob(self.fid_cosmo["cosmo"])
 
         # rescale blobs
         delta_alpha_star = delta_nrun
@@ -639,7 +633,7 @@ class Theory(object):
         """Return parameters in models, even if not free parameters"""
 
         # get parameters from CAMB model
-        params = self.cosmo_model_fid["cosmo"].get_likelihood_parameters()
+        params = self.fid_cosmo["cosmo"].get_likelihood_parameters()
 
         # get parameters from nuisance IGM models
         for par in self.model_igm.F_model.get_parameters():

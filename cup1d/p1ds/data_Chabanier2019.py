@@ -12,16 +12,16 @@ class P1D_Chabanier2019(BaseDataP1D):
         """Read measured P1D from Chabanier et al. (2019)."""
 
         # folder storing P1D measurements
-        datadir = BaseDataP1D.BASEDIR + "/Chabanier2019/"
+        # datadir = BaseDataP1D.BASEDIR + "/Chabanier2019/"
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        res = read_from_file(datadir, add_syst)
+        res = read_from_file(add_syst=add_syst)
         (
             zs,
             k_kms,
             Pk_kms,
             cov,
-            full_z,
+            full_zs,
             full_Pk_kms,
             full_cov_kms,
         ) = res
@@ -33,7 +33,7 @@ class P1D_Chabanier2019(BaseDataP1D):
             cov,
             z_min=z_min,
             z_max=z_max,
-            full_z=full_z,
+            full_zs=full_zs,
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=full_cov_kms,
         )
@@ -41,7 +41,11 @@ class P1D_Chabanier2019(BaseDataP1D):
         return
 
 
-def read_from_file(datadir, add_syst):
+def read_from_file(
+    datadir=BaseDataP1D.BASEDIR + "/Chabanier2019/",
+    add_syst=True,
+    blinding=False,
+):
     """Reconstruct covariance matrix from files."""
 
     # start by reading Pk file
@@ -85,16 +89,16 @@ def read_from_file(datadir, add_syst):
         zcov = np.multiply(incorr[:, mask], np.outer(sigma, sigma))
         cov.append(zcov)
 
-    full_z = zs_raw[mask_raw]
+    full_zs = zs_raw[mask_raw]
     full_Pk_kms = Pk_kms_raw[mask_raw]
-    full_cov_kms = np.zeros((full_z.shape[0], full_z.shape[0]))
+    full_cov_kms = np.zeros((full_zs.shape[0], full_zs.shape[0]))
     Nz = z_unique.shape[0]
     Nk = np.unique(k_kms_raw).shape[0]
     for ii in range(Nz):
         slice_cov = slice(ii * Nk, (ii + 1) * Nk)
         full_cov_kms[slice_cov, slice_cov] = cov[ii]
 
-    return zs, k_kms, Pk_kms, cov, full_z, full_Pk_kms, full_cov_kms
+    return zs, k_kms, Pk_kms, cov, full_zs, full_Pk_kms, full_cov_kms, blinding
 
 
 def read_from_file_old(datadir, add_syst):
