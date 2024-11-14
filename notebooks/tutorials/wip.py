@@ -55,16 +55,27 @@ from cup1d.likelihood.input_pipeline import Args
 
 
 
+# %%
+from lace.archive import gadget_archive
+
+# %%
+archive = gadget_archive.GadgetArchive(postproc="Pedersen21")
+emulator = set_emulator(
+        emulator_label="Pedersen23_ext",
+        archive=archive,
+    )
+
 # %% [markdown]
 # ### Set archive
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
 # args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
-# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 # %%
+# path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
 archive = set_archive(args.training_set)
 
 # %% [markdown]
@@ -73,11 +84,6 @@ archive = set_archive(args.training_set)
 # %%
 # set output directory for this test
 output_dir = "."
-
-# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
-# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-# the nyx emulator has not properly been validated yet
-# path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
 
 emulator = set_emulator(
     emulator_label=args.emulator_label,
@@ -95,13 +101,14 @@ else:
 # #### Set either mock data or real data
 
 # %%
-choose_forecast = False
+choose_forecast = True
 choose_mock = False
 choose_data = False
 choose_challenge = False
-choose_desiy1 = True
+choose_desiy1 = False
 
 if choose_forecast:
+    args.data_label_hires = None
     # for forecast, just start label of observational data with mock
     # args.data_label = "mock_Chabanier2019"
     # args.data_label="mock_Karacayli2024"
@@ -126,15 +133,16 @@ if choose_forecast:
 elif choose_mock:    
     true_cosmo=None
     # to analyze data from simulations
-    # args.data_label = "mpg_central"    
-    args.data_label="nyx_central"
+    args.data_label = "mpg_central"    
+    # args.data_label="nyx_central"
     # args.data_label="nyx_seed"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
 
     # provide cosmology only to cull the data
-    # args.true_cosmo_label="mpg_central"
-    args.true_cosmo_label="nyx_central"
+    args.true_cosmo_label="mpg_central"
+    # args.true_cosmo_label="nyx_central"
+    true_cosmo = set_cosmo(cosmo_label=args.data_label)
     # args.true_cosmo_label="nyx_seed"
 
     # you may provide contaminants
@@ -146,33 +154,33 @@ elif choose_mock:
     # from -5 to 2
     args.true_SN=[0, -4]
     args.true_AGN=[0, -5]
-    
 elif choose_data:    
     true_cosmo=None
     args.data_label = "Chabanier2019"
     # args.data_label="Karacayli2024"
     args.data_label_hires = "Karacayli2022"
     args.z_max = 3.9
+elif choose_challenge:
+    args.data_label = "challenge_DESIY1"
+    folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
+    fname = "mock_challenge_0.2_nonoise_fiducial.fits"
+    args.p1d_fname = folder + fname
+    if "fiducial" in args.p1d_fname:
+        true_sim_label = "nyx_central"
+    elif "CGAN" in args.p1d_fname:
+        true_sim_label = "nyx_seed"
+    elif "grid_3" in args.p1d_fname:
+        true_sim_label = "nyx_3"
+    else:
+        true_sim_label = None
+    true_cosmo = set_cosmo(cosmo_label=true_sim_label)
+    args.true_igm_label=true_sim_label
 
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
 
-if choose_challenge:    
-    folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
-    fname = "mock_challenge_0.2_nonoise_fiducial.fits"
-    # fname = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
-    # fname = "mock_challenge_0.2_nonoise_cosmo_grid_3.fits"
-    # fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
-    # fname = "mock_challenge_0.2_noise-42-0_fiducial.fits"
-    true_sim_label="nyx_central"
-    # true_sim_label="nyx_seed"
-    # true_sim_label="nyx_3"
-    data["P1Ds"] = P1D_DESIY1(
-        fname = folder + fname, 
-        true_sim_label=true_sim_label
-    )
-elif choose_desiy1:
-    fname = None
+if choose_desiy1:
+    # fname = None
     # in NERSC
     # QMLE /global/cfs/cdirs/desicollab/users/naimgk/my-reductions/data/iron-v3/DataProducts/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits
     # FFT /global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/plots/baseline/notebook/measurement/p1d_fft_y1_measurement_kms.fits
@@ -278,16 +286,16 @@ args.fid_SN=[0, -4]
 args.fid_AGN=[0, -5]
 
 
-args.fid_SiIII=[[0, 0], [4, -5]]
-args.fid_SiII=[[0, 0], [2, -10]]
-args.fid_HCD=[0, -2]
-args.fid_SN=[0, -4]
-args.fid_AGN=[0, -]
+# args.fid_SiIII=[[0, 0], [4, -5]]
+# args.fid_SiII=[[0, 0], [2, -10]]
+# args.fid_HCD=[0, -2]
+# args.fid_SN=[0, -4]
+# args.fid_AGN=[0, -5]
 
 # parameters
 # args.vary_alphas=False
 args.vary_alphas=True
-# args.fix_cosmo=False
+args.fix_cosmo=False
 # args.fix_cosmo=True
 args.n_tau=0
 args.n_sigT=0
@@ -300,16 +308,16 @@ args.n_dla=0
 args.n_sn=0
 args.n_agn=0
 
-args.n_tau=2
-args.n_sigT=2
-args.n_gamma=2
-args.n_kF=2
-args.n_SiIII = 2
-args.n_d_SiIII = 2
-args.n_SiII = 0
-args.n_dla=2
-args.n_sn=0
-args.n_agn=1
+# args.n_tau=2
+# args.n_sigT=2
+# args.n_gamma=2
+# args.n_kF=2
+# args.n_SiIII = 1
+# args.n_d_SiIII = 1
+# args.n_SiII = 0
+# args.n_dla=2
+# args.n_sn=0
+# args.n_agn=0
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
@@ -336,8 +344,8 @@ for p in like.free_params:
 # Compare data and fiducial/starting model
 
 # %%
-like.plot_p1d(residuals=False)
-# like.plot_p1d(residuals=True)
+# like.plot_p1d(residuals=False)
+like.plot_p1d(residuals=True)
 
 # %%
 # z = like.data.z
@@ -398,7 +406,8 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 
 # %% [markdown]
 # - GP Minimization improved: 7495.505449898462 1413.4703537937303
-# - Nyx_alphap Minimization improved (2 HCD): 4045.9982979531555 1420.6221436936958
+# - Nyx_alphap Minimization improved (2 HCD): 1388
+# - Nyx_alphap_cov Minimization improved (2 HCD): 1427
 
 # %%
 plotter = Plotter(fitter)
@@ -411,26 +420,26 @@ if args.fix_cosmo == False:
 plotter.plot_p1d(residuals=False, plot_every_iz=1)
 
 # %%
-plotter.plot_p1d(residuals=True, plot_every_iz=1)
+# plotter.plot_p1d(residuals=True, plot_every_iz=1)
 
 # %%
-plotter.plot_igm(cloud=True)
+# plotter.plot_igm(cloud=True)
 
 # %%
-plotter.plot_hcd_cont(plot_data=True)
+# plotter.plot_hcd_cont(plot_data=True)
 
 # %%
-plotter.plot_metal_cont(smooth_k=True, plot_data=True)
+# plotter.plot_metal_cont(smooth_k=True, plot_data=True)
 
 # %%
-plotter.plot_agn_cont(plot_data=True)
+# plotter.plot_agn_cont(plot_data=True)
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/test/"
 plotter = Plotter(fitter, save_directory=folder)
 
 # %%
-plotter.plots_minimizer(zrange=[0, 3.7])
+plotter.plots_minimizer()
 
 
 # %% [markdown]

@@ -21,6 +21,7 @@ from cup1d.p1ds import (
     data_QMLE_Ohio,
     mock_data,
     data_DESIY1,
+    challenge_DESIY1,
 )
 from cup1d.likelihood import lya_theory, likelihood, fitter
 from cup1d.likelihood.model_contaminants import Contaminants
@@ -186,6 +187,28 @@ def set_P1D(
             z_max=args.z_max,
             p1d_fname=args.p1d_fname,
         )
+
+    elif data_label == "challenge_DESIY1":
+        theory = lya_theory.set_theory(
+            emulator,
+            set_metric=False,
+            sim_igm=args.true_igm_label,
+            SiII=args.true_SiII,
+            SiIII=args.true_SiIII,
+            HCD=args.true_HCD,
+            SN=args.true_SN,
+            AGN=args.true_AGN,
+            ic_correction=args.ic_correction,
+        )
+
+        data = challenge_DESIY1.P1D_challenge_DESIY1(
+            theory,
+            true_cosmo,
+            p1d_fname=args.p1d_fname,
+            z_min=args.z_min,
+            z_max=args.z_max,
+        )
+
     elif data_label == "eBOSS_mock":
         # need to be tested
         data = data_eBOSS_mock.P1D_eBOSS_mock(

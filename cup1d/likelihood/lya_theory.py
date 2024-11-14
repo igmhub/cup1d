@@ -569,11 +569,12 @@ class Theory(object):
         )
 
         # check cosmo prior
-        for ii, key in enumerate(self.cosmo_priors):
-            if (blob[ii] > self.cosmo_priors[key][1]) | (
-                blob[ii] < self.cosmo_priors[key][0]
-            ):
-                return None
+        if hasattr(self, "cosmo_priors"):
+            for ii, key in enumerate(self.cosmo_priors):
+                if (blob[ii] > self.cosmo_priors[key][1]) | (
+                    blob[ii] < self.cosmo_priors[key][0]
+                ):
+                    return None
         # check igm prior
         if self.model_igm.metric is not None:
             dist_igm_priors = np.zeros((len(zs)))

@@ -24,6 +24,7 @@ class P1D_Chabanier2019(BaseDataP1D):
             full_zs,
             full_Pk_kms,
             full_cov_kms,
+            blinding,
         ) = res
 
         super().__init__(

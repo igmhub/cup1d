@@ -6,12 +6,12 @@ from cup1d.likelihood.pipeline import set_archive, Pipeline
 def main():
     """Launch validate cosmology"""
 
-    emulator_label = "Pedersen23_ext"
-    # emulator_label = "Cabayol23+"
-    training_set = "Cabayol23"
-
+    # emulator_label = "Pedersen23_ext"
     # emulator_label = "Cabayol23+"
     # training_set = "Cabayol23"
+    emulator_label = "Nyx_alphap_cov"
+    training_set = "Nyx23_Jul2024"
+
     base_out_folder = (
         "/home/jchaves/Proyectos/projects/lya/data/cup1d/validate_cosmo/"
     )
@@ -71,7 +71,7 @@ def validate_cosmo(emulator_label, training_set, base_out_folder):
         args.fid_cosmo_label = sim_label
 
         out_folder = (
-            base_out_folder + "/" + emulator_label + "/" + sim_label + "/"
+            base_out_folder + "/" + args.data_label[5:] "/" + emulator_label + "/" + sim_label + "/"
         )
 
         pip = Pipeline(args, make_plots=False, out_folder=out_folder)

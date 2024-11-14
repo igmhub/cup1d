@@ -258,4 +258,13 @@ class HCD_Model_Rogers2017(object):
         fig1.tight_layout()
         fig2.tight_layout()
 
+        if name is None:
+            fig1.show()
+            fig2.show()
+        else:
+            fig1.savefig(name + "_all.pdf")
+            fig1.savefig(name + "_all.png")
+            fig2.savefig(name + "_z.pdf")
+            fig2.savefig(name + "_z.png")
+
         return

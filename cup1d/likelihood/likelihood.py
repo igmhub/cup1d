@@ -203,7 +203,6 @@ class Likelihood(object):
         for par in self.data.truth:
             self.truth[par] = self.data.truth[par]
 
-        print()
         equal_IGM = True
         for key in self.data.truth["igm"]:
             if np.allclose(
