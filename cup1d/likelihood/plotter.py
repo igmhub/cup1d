@@ -630,6 +630,11 @@ class Plotter(object):
             # note non-trivial order in coefficients
             coeff[Npar - ii - 1] = list_params[name]
 
+        if self.save_directory is not None:
+            name = self.save_directory + "/HCD_cont"
+        else:
+            name = None
+
         self.fitter.like.theory.model_cont.hcd_model.plot_contamination(
             self.fitter.like.data.z,
             self.fitter.like.data.k_kms,
@@ -639,14 +644,8 @@ class Plotter(object):
             smooth_k=smooth_k,
             dict_data=dict_data,
             zrange=zrange,
+            name=name,
         )
-
-        if self.save_directory is not None:
-            name = self.save_directory + "/HCD_cont"
-            plt.savefig(name + ".pdf")
-            plt.savefig(name + ".png")
-        else:
-            plt.show()
 
     def plot_metal_cont(
         self,
@@ -709,6 +708,11 @@ class Plotter(object):
 
             print(ln_X_coeff, ln_D_coeff)
 
+            if self.save_directory is not None:
+                name = self.save_directory + "/" + metal + "_cont"
+            else:
+                name = None
+
             metal_models[jj].plot_contamination(
                 self.fitter.like.data.z,
                 self.fitter.like.data.k_kms,
@@ -720,15 +724,8 @@ class Plotter(object):
                 smooth_k=smooth_k,
                 dict_data=dict_data,
                 zrange=zrange,
+                name=name,
             )
-
-            if self.save_directory is not None:
-                name = self.save_directory + "/" + metal + "_cont"
-                plt.savefig(name + ".pdf")
-                plt.savefig(name + ".png")
-                plt.close()
-            else:
-                plt.show()
 
     def plot_agn_cont(
         self,
@@ -760,6 +757,11 @@ class Plotter(object):
             # note non-trivial order in coefficients
             coeff[Npar - ii - 1] = list_params[name]
 
+        if self.save_directory is not None:
+            name = self.save_directory + "/AGN_cont"
+        else:
+            name = None
+
         self.fitter.like.theory.model_cont.agn_model.plot_contamination(
             self.fitter.like.data.z,
             self.fitter.like.data.k_kms,
@@ -769,11 +771,5 @@ class Plotter(object):
             smooth_k=smooth_k,
             dict_data=dict_data,
             zrange=zrange,
+            name=name,
         )
-
-        if self.save_directory is not None:
-            name = self.save_directory + "/AGN_cont"
-            plt.savefig(name + ".pdf")
-            plt.savefig(name + ".png")
-        else:
-            plt.show()

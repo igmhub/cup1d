@@ -940,6 +940,13 @@ class Fitter(object):
         """Write results of minimizer to file"""
 
         dict_out = {}
+
+        dict_out["emu_label"] = self.like.theory.emulator.emulator_label
+        dict_out["z_star"] = self.like.theory.z_star
+        dict_out["kp_kms"] = self.like.theory.kp_kms
+        dict_out["mle"] = self.mle
+        dict_out["lnprob_mle"] = self.lnprop_mle
+
         dict_out["cosmo_best"] = {}
         dict_out["cosmo_true"] = {}
         dict_out["cosmo_reldiff"] = {}
@@ -976,9 +983,6 @@ class Fitter(object):
                     - 1
                 ) * 100
             dict_out["truth"] = self.truth
-
-        dict_out["mle"] = self.mle
-        dict_out["lnprob_mle"] = self.lnprop_mle
 
         np.save(self.save_directory + "/minimizer_results.npy", dict_out)
 

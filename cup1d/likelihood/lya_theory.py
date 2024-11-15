@@ -11,6 +11,52 @@ from cup1d.likelihood.model_igm import IGM
 from cup1d.likelihood.cosmologies import set_cosmo
 
 
+def set_theory(
+    emulator,
+    free_parameters=None,
+    set_metric=True,
+    zs_hires=None,
+    sim_igm="mpg_central",
+    igm_priors="hc",
+    SiIII=None,
+    SiII=None,
+    HCD=None,
+    SN=None,
+    AGN=None,
+    ic_correction=None,
+):
+    """Set theory"""
+
+    # set igm model
+    model_igm = IGM(
+        free_param_names=free_parameters,
+        fid_sim_igm=sim_igm,
+        list_sim_cube=emulator.list_sim_cube,
+        type_priors=igm_priors,
+        set_metric=set_metric,
+    )
+
+    # set contaminants
+    model_cont = Contaminants(
+        free_param_names=free_parameters,
+        fid_SiIII=SiIII,
+        fid_SiII=SiII,
+        fid_HCD=HCD,
+        fid_SN=SN,
+        fid_AGN=AGN,
+        ic_correction=ic_correction,
+    )
+
+    # set theory
+    theory = Theory(
+        emulator=emulator,
+        model_igm=model_igm,
+        model_cont=model_cont,
+    )
+
+    return theory
+
+
 class Theory(object):
     """Translator between the likelihood object and the emulator. This object
     will map from a set of CAMB parameters directly to emulator calls, without
@@ -18,15 +64,12 @@ class Theory(object):
 
     def __init__(
         self,
-        zs,
-        zs_hires=None,
         emulator=None,
         model_igm=None,
         model_cont=None,
         verbose=False,
         z_star=3.0,
         kp_kms=0.009,
-        fid_cosmo=None,
     ):
         """Setup object to compute predictions for the 1D power spectrum.
         Inputs:
@@ -44,8 +87,6 @@ class Theory(object):
         """
 
         self.verbose = verbose
-        self.zs = zs
-        self.zs_hires = zs_hires
 
         # specify pivot point used in compressed parameters
         self.z_star = z_star
@@ -53,8 +94,7 @@ class Theory(object):
 
         # setup emulator
         if emulator is None:
-            self.emulator = gp_emulator.GPEmulator(training_set="Pedersen21")
-            print("Using default emulator: Pedersen21")
+            raise ValueError("Emulator not specified")
         else:
             self.emulator = emulator
         self.emu_kp_Mpc = self.emulator.kp_Mpc
@@ -71,9 +111,15 @@ class Theory(object):
         else:
             self.model_cont = model_cont
 
+    def set_fid_cosmo(self, zs, zs_hires=None, input_cosmo=None):
+        """Setup fiducial cosmology"""
+
+        self.zs = zs
+        self.zs_hires = zs_hires
+
         # setup fiducial cosmology (used for fitting)
-        if not fid_cosmo:
-            fid_cosmo = camb_cosmo.get_cosmology()
+        if not input_cosmo:
+            input_cosmo = camb_cosmo.get_cosmology()
 
         # setup CAMB object for the fiducial cosmology and precompute some things
         if self.zs_hires is not None:
@@ -82,20 +128,41 @@ class Theory(object):
             _zs = np.concatenate([self.zs, [self.z_star]])
         _zs = np.unique(_zs)
 
-        self.cosmo_model_fid = {}
-        self.cosmo_model_fid["zs"] = _zs
-        self.cosmo_model_fid["cosmo"] = CAMB_model.CAMBModel(
+        self.fid_cosmo = {}
+        self.fid_cosmo["zs"] = _zs
+        self.fid_cosmo["cosmo"] = CAMB_model.CAMBModel(
             zs=_zs,
-            cosmo=fid_cosmo,
+            cosmo=input_cosmo,
             z_star=self.z_star,
             kp_kms=self.kp_kms,
         )
-        self.cosmo_model_fid["linP_Mpc_params"] = self.cosmo_model_fid[
+        self.fid_cosmo["linP_Mpc_params"] = self.fid_cosmo[
             "cosmo"
         ].get_linP_Mpc_params(kp_Mpc=self.emu_kp_Mpc)
-        self.cosmo_model_fid["M_of_zs"] = self.cosmo_model_fid[
+        self.fid_cosmo["M_of_zs"] = self.fid_cosmo["cosmo"].get_M_of_zs()
+        self.fid_cosmo["linP_params"] = self.fid_cosmo[
             "cosmo"
-        ].get_M_of_zs()
+        ].get_linP_params()
+
+    def set_cosmo_priors(self):
+        """Set priors for cosmological parameters"""
+        if hasattr(self, "linP_hc") == False:
+            self.emu_cosmo_hc()
+
+        self.cosmo_priors = {}
+        pnames = ["Delta2_star", "n_star", "alpha_star"]
+        for ii, key in enumerate(pnames):
+            self.cosmo_priors[key] = np.zeros(2)
+            self.cosmo_priors[key][0] = np.min(self.linP_hc[:, ii])
+            self.cosmo_priors[key][1] = np.max(self.linP_hc[:, ii])
+            diff = 0.1 * (self.cosmo_priors[key][1] - self.cosmo_priors[key][0])
+            # make sure that we have multiple values of key (useful for alpha_star)
+            if diff < 1e-7:
+                self.cosmo_priors[key][0] = -np.inf
+                self.cosmo_priors[key][1] = np.inf
+            else:
+                self.cosmo_priors[key][0] -= diff
+                self.cosmo_priors[key][1] += diff
 
     def emu_cosmo_hc(self):
         """Return cosmological parameters of simulations used for training"""
@@ -155,17 +222,17 @@ class Theory(object):
         delta_nrun = 0.0
         for par in like_params:
             if par.name == "As":
-                fid_As = self.cosmo_model_fid["cosmo"].cosmo.InitPower.As
+                fid_As = self.fid_cosmo["cosmo"].cosmo.InitPower.As
                 ratio_As = par.value / fid_As
             if par.name == "ns":
-                fid_ns = self.cosmo_model_fid["cosmo"].cosmo.InitPower.ns
+                fid_ns = self.fid_cosmo["cosmo"].cosmo.InitPower.ns
                 delta_ns = par.value - fid_ns
             if par.name == "nrun":
-                fid_nrun = self.cosmo_model_fid["cosmo"].cosmo.InitPower.nrun
+                fid_nrun = self.fid_cosmo["cosmo"].cosmo.InitPower.nrun
                 delta_nrun = par.value - fid_nrun
 
         # pivot scale in primordial power
-        ks_Mpc = self.cosmo_model_fid["cosmo"].cosmo.InitPower.pivot_scalar
+        ks_Mpc = self.fid_cosmo["cosmo"].cosmo.InitPower.pivot_scalar
         # logarithm of ratio of pivot points
         ln_kp_ks = np.log(self.emu_kp_Mpc / ks_Mpc)
 
@@ -180,8 +247,8 @@ class Theory(object):
         # update values of linP_params at emulator pivot point, at each z
         linP_Mpc_params = []
         for z in zs:
-            _ = np.argwhere(self.cosmo_model_fid["zs"] == z)[0, 0]
-            zlinP = self.cosmo_model_fid["linP_Mpc_params"][_]
+            _ = np.argwhere(self.fid_cosmo["zs"] == z)[0, 0]
+            zlinP = self.fid_cosmo["linP_Mpc_params"][_]
             linP_Mpc_params.append(
                 {
                     "Delta2_p": zlinP["Delta2_p"] * np.exp(ln_ratio_A_p),
@@ -192,8 +259,8 @@ class Theory(object):
 
         if return_derivs:
             val_derivs = {}
-            _ = np.argwhere(self.cosmo_model_fid["zs"] == self.z_star)[0, 0]
-            zlinP = self.cosmo_model_fid["linP_Mpc_params"][_]
+            _ = np.argwhere(self.fid_cosmo["zs"] == self.z_star)[0, 0]
+            zlinP = self.fid_cosmo["linP_Mpc_params"][_]
 
             val_derivs["Delta2star"] = zlinP["Delta2_p"] * np.exp(ln_ratio_A_p)
             val_derivs["nstar"] = zlinP["n_p"] + delta_n_p
@@ -296,8 +363,8 @@ class Theory(object):
             )
             M_of_zs = []
             for z in zs:
-                _ = np.argwhere(self.cosmo_model_fid["zs"] == z)[0, 0]
-                M_of_zs.append(self.cosmo_model_fid["M_of_zs"][_])
+                _ = np.argwhere(self.fid_cosmo["zs"] == z)[0, 0]
+                M_of_zs.append(self.fid_cosmo["M_of_zs"][_])
             M_of_zs = np.array(M_of_zs)
             if return_blob:
                 blob = self.get_blob_fixed_background(like_params)
@@ -305,9 +372,7 @@ class Theory(object):
             # setup a new CAMB_model from like_params
             if self.verbose:
                 print("create new CAMB_model")
-            camb_model = self.cosmo_model_fid["cosmo"].get_new_model(
-                zs, like_params
-            )
+            camb_model = self.fid_cosmo["cosmo"].get_new_model(zs, like_params)
             linP_Mpc_params = camb_model.get_linP_Mpc_params(
                 kp_Mpc=self.emu_kp_Mpc
             )
@@ -393,7 +458,7 @@ class Theory(object):
                 return out
         else:
             # compute linear power parameters for input cosmology
-            params = self.cosmo_model_fid["cosmo"].get_linP_params()
+            params = self.fid_cosmo["cosmo"].get_linP_params()
             return (
                 params["Delta2_star"],
                 params["n_star"],
@@ -415,20 +480,20 @@ class Theory(object):
         delta_nrun = 0.0
         for par in like_params:
             if par.name == "As":
-                fid_As = self.cosmo_model_fid["cosmo"].cosmo.InitPower.As
+                fid_As = self.fid_cosmo["cosmo"].cosmo.InitPower.As
                 ratio_As = par.value / fid_As
             if par.name == "ns":
-                fid_ns = self.cosmo_model_fid["cosmo"].cosmo.InitPower.ns
+                fid_ns = self.fid_cosmo["cosmo"].cosmo.InitPower.ns
                 delta_ns = par.value - fid_ns
             if par.name == "nrun":
-                fid_nrun = self.cosmo_model_fid["cosmo"].cosmo.InitPower.nrun
+                fid_nrun = self.fid_cosmo["cosmo"].cosmo.InitPower.nrun
                 delta_nrun = par.value - fid_nrun
 
         # pivot scale of primordial power
-        ks_Mpc = self.cosmo_model_fid["cosmo"].cosmo.InitPower.pivot_scalar
+        ks_Mpc = self.fid_cosmo["cosmo"].cosmo.InitPower.pivot_scalar
 
         # likelihood pivot point, in velocity units
-        dkms_dMpc = self.cosmo_model_fid["cosmo"].dkms_dMpc(self.z_star)
+        dkms_dMpc = self.fid_cosmo["cosmo"].dkms_dMpc(self.z_star)
         kp_Mpc = self.kp_kms * dkms_dMpc
 
         # logarithm of ratio of pivot points
@@ -436,7 +501,7 @@ class Theory(object):
 
         # get blob for fiducial cosmo
         ### TODO: make this more efficient! Maybe directly storing the params?
-        fid_blob = self.get_blob(self.cosmo_model_fid["cosmo"])
+        fid_blob = self.get_blob(self.fid_cosmo["cosmo"])
 
         # rescale blobs
         delta_alpha_star = delta_nrun
@@ -487,7 +552,7 @@ class Theory(object):
         k_kms,
         like_params=[],
         return_covar=False,
-        return_blob=False,
+        return_blob=True,
         return_emu_params=False,
     ):
         """Emulate P1D in velocity units, for all redshift bins,
@@ -496,26 +561,29 @@ class Theory(object):
         or a blob with extra information for the fitter."""
 
         # figure out emulator calls
-        _res = self.get_emulator_calls(
+        emu_call, M_of_z, blob = self.get_emulator_calls(
             zs,
             like_params=like_params,
             return_M_of_z=True,
-            return_blob=return_blob,
+            return_blob=True,
         )
-        if return_blob:
-            emu_call, M_of_z, blob = _res
-        else:
-            emu_call, M_of_z = _res
 
-        # check prior here
+        # check cosmo prior
+        if hasattr(self, "cosmo_priors"):
+            for ii, key in enumerate(self.cosmo_priors):
+                if (blob[ii] > self.cosmo_priors[key][1]) | (
+                    blob[ii] < self.cosmo_priors[key][0]
+                ):
+                    return None
+        # check igm prior
         if self.model_igm.metric is not None:
-            dist_priors = np.zeros((len(zs)))
+            dist_igm_priors = np.zeros((len(zs)))
             for ii in range(len(zs)):
                 p0 = {}
                 for key in emu_call:
                     p0[key] = emu_call[key][ii]
-                dist_priors[ii] = self.model_igm.metric(p0)
-            if dist_priors.max() > 1:
+                dist_igm_priors[ii] = self.model_igm.metric(p0)
+            if dist_igm_priors.max() > 1:
                 # we are out of the prior range
                 return None
 
@@ -588,7 +656,7 @@ class Theory(object):
         """Return parameters in models, even if not free parameters"""
 
         # get parameters from CAMB model
-        params = self.cosmo_model_fid["cosmo"].get_likelihood_parameters()
+        params = self.fid_cosmo["cosmo"].get_likelihood_parameters()
 
         # get parameters from nuisance IGM models
         for par in self.model_igm.F_model.get_parameters():

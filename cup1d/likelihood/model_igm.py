@@ -10,7 +10,6 @@ class IGM(object):
 
     def __init__(
         self,
-        zs,
         free_param_names=None,
         z_pivot=3,
         F_model=None,
@@ -40,6 +39,8 @@ class IGM(object):
 
         if set_metric:
             self.all_igm = self.get_igm(list_sim_cube[0], return_all=True)
+        else:
+            default = True
 
         if default:
             # default priors (hc for mpg)
@@ -103,6 +104,7 @@ class IGM(object):
                     priors=self.priors,
                 )
 
+    def set_fid_igm(self, zs):
         self.fid_igm = {}
         self.fid_igm["z"] = zs
         self.fid_igm["tau_eff"] = self.F_model.get_tau_eff(zs)

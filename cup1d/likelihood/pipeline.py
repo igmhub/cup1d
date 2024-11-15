@@ -21,6 +21,7 @@ from cup1d.p1ds import (
     data_QMLE_Ohio,
     mock_data,
     data_DESIY1,
+    challenge_DESIY1,
 )
 from cup1d.likelihood import lya_theory, likelihood, fitter
 from cup1d.likelihood.model_contaminants import Contaminants
@@ -30,12 +31,12 @@ from cup1d.likelihood.fitter import Fitter
 from cup1d.likelihood.plotter import Plotter
 
 
-def set_free_like_parameters(params):
+def set_free_like_parameters(params, emulator_label):
     """Set free parameters for likelihood"""
     if params.fix_cosmo:
         free_parameters = []
     else:
-        if params.vary_alphas:
+        if params.vary_alphas and ("Nyx_alphap" in emulator_label):
             free_parameters = ["As", "ns", "nrun"]
         else:
             free_parameters = ["As", "ns"]
@@ -86,11 +87,7 @@ def set_archive(training_set):
 
 
 def set_P1D(
-    args,
-    archive=None,
-    true_cosmo=None,
-    emulator=None,
-    cull_data=False,
+    args, archive=None, true_cosmo=None, emulator=None, cull_data=False
 ):
     """Set P1D data
 
@@ -115,8 +112,6 @@ def set_P1D(
     -------
     data : object
         P1D data
-    true_sim_igm : str
-        Label of simulation/dataset used to generate mock data
     """
 
     data_label = args.data_label
@@ -169,22 +164,51 @@ def set_P1D(
             z_max=args.z_max,
         )
     elif data_label[:5] == "mock_":
+        theory = lya_theory.set_theory(
+            emulator,
+            set_metric=False,
+            sim_igm=args.true_igm_label,
+            SiII=args.true_SiII,
+            SiIII=args.true_SiIII,
+            HCD=args.true_HCD,
+            SN=args.true_SN,
+            AGN=args.true_AGN,
+            ic_correction=args.ic_correction,
+        )
+
         # mock data from emulator
         data = mock_data.Mock_P1D(
-            emulator,
+            theory,
+            true_cosmo,
             data_label=data_label[5:],
-            true_cosmo=true_cosmo,
-            true_sim_igm=args.true_igm_label,
-            true_SiII=args.true_SiII,
-            true_SiIII=args.true_SiIII,
-            true_HCD=args.true_HCD,
-            true_SN=args.true_SN,
-            true_AGN=args.true_AGN,
             add_noise=args.add_noise,
             seed=args.seed_noise,
             z_min=args.z_min,
             z_max=args.z_max,
+            p1d_fname=args.p1d_fname,
         )
+
+    elif data_label == "challenge_DESIY1":
+        theory = lya_theory.set_theory(
+            emulator,
+            set_metric=False,
+            sim_igm=args.true_igm_label,
+            SiII=args.true_SiII,
+            SiIII=args.true_SiIII,
+            HCD=args.true_HCD,
+            SN=args.true_SN,
+            AGN=args.true_AGN,
+            ic_correction=args.ic_correction,
+        )
+
+        data = challenge_DESIY1.P1D_challenge_DESIY1(
+            theory,
+            true_cosmo,
+            p1d_fname=args.p1d_fname,
+            z_min=args.z_min,
+            z_max=args.z_max,
+        )
+
     elif data_label == "eBOSS_mock":
         # need to be tested
         data = data_eBOSS_mock.P1D_eBOSS_mock(
@@ -224,7 +248,7 @@ def set_P1D(
         data = data_QMLE_Ohio.P1D_QMLE_Ohio(
             filename=file, z_min=args.z_min, z_max=args.z_max
         )
-    elif data_label == "DESI_Y1":
+    elif data_label == "DESIY1":
         data = data_DESIY1.P1D_DESIY1(
             p1d_fname=args.p1d_fname, z_min=args.z_min, z_max=args.z_max
         )
@@ -247,53 +271,35 @@ def set_P1D(
     return data
 
 
-def set_like(data, emulator, args, data_hires=None, P_model=None):
+def set_like(data, emulator, args, data_hires=None):
     """Set likelihood"""
 
+    zs = data.z
     if data_hires is not None:
         zs_hires = data_hires.z
     else:
         zs_hires = None
 
-    ## set theory
-
     # set free parameters
-    free_parameters = set_free_like_parameters(args)
+    free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 
-    # set fiducial cosmology
-    fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
-
-    # set igm model
-    model_igm = IGM(
-        data.z,
-        free_param_names=free_parameters,
-        fid_sim_igm=args.fid_igm_label,
-        list_sim_cube=emulator.list_sim_cube,
-        type_priors=args.igm_priors,
-        set_metric=True,
-        P_model=P_model,
-    )
-
-    # set contaminants
-    model_cont = Contaminants(
-        free_param_names=free_parameters,
-        fid_SiIII=args.fid_SiIII,
-        fid_SiII=args.fid_SiII,
-        fid_HCD=args.fid_HCD,
-        fid_SN=args.fid_SN,
-        fid_AGN=args.fid_AGN,
+    ## set theory
+    theory = lya_theory.set_theory(
+        emulator,
+        free_parameters=free_parameters,
+        sim_igm=args.fid_igm_label,
+        igm_priors=args.igm_priors,
+        SiIII=args.fid_SiIII,
+        SiII=args.fid_SiII,
+        HCD=args.fid_HCD,
+        SN=args.fid_SN,
+        AGN=args.fid_AGN,
         ic_correction=args.ic_correction,
     )
 
-    # set theory
-    theory = lya_theory.Theory(
-        zs=data.z,
-        zs_hires=zs_hires,
-        emulator=emulator,
-        fid_cosmo=fid_cosmo,
-        model_igm=model_igm,
-        model_cont=model_cont,
-    )
+    theory.model_igm.set_fid_igm(zs)
+    fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
+    theory.set_fid_cosmo(zs, input_cosmo=fid_cosmo, zs_hires=zs_hires)
 
     ## set like
     like = likelihood.Likelihood(
@@ -548,7 +554,10 @@ class Pipeline(object):
         fprint("Setting likelihood")
 
         like = set_like(
-            data["P1Ds"], emulator, args, data_hires=data["extra_P1Ds"]
+            data["P1Ds"],
+            emulator,
+            args,
+            data_hires=data["extra_P1Ds"],
         )
 
         ## Validating likelihood

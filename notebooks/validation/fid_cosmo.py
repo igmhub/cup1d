@@ -28,28 +28,87 @@ import glob
 import matplotlib.pyplot as plt
 
 # %%
+folder_out = "/home/jchaves/Proyectos/projects/lya/data/cup1d/validate_cosmo/"
+# folder_cov = "Chabanier2019"
+folder_cov = "DESIY1"
+arr_folder_emu = ["Pedersen23_ext", "Cabayol23+", "Nyx_alphap_cov"]
+dict_sims = {
+    "mpg":30,
+    "nyx":17,
+}
 
-arr_star = np.zeros((len(files), 3))
-true_star = np.zeros(3)
+jj = 2
+if "Nyx" in arr_folder_emu[jj]:
+    b_sim = "nyx"
+    b_sim = "mpg"
+else:
+    b_sim = "mpg"
+nsims = dict_sims[b_sim]
 
-for ii in range(len(files)):
-    if plots_err:
-        file = folder_out + "Nyx_alphap_cov_err/" + os.path.basename(files[ii])[:-5] + "/chain_1/minimizer_results.npy"
-    else:
-        file = folder_out + "Nyx_alphap_cov/" + os.path.basename(files[ii])[:-5] + "/chain_1/minimizer_results.npy"
+arr_star = np.zeros((nsims, 3))
+true_star = np.zeros((nsims, 3))
+sim_labels = []
+
+for ii in range(nsims):
+    sim_label = b_sim + "_" + str(ii)
+    sim_labels.append(sim_label)
+    if b_sim == "nyx":
+        if(ii == 14):
+            ii += 1
     
-    try:
-        res = np.load(file, allow_pickle=True).item()
-    except:
-        continue
-    if ii == 0:
-        true_star[0] = res['truth']['$\\Delta^2_\\star$']
-        true_star[1] = res['truth']['$n_\\star$']
-        true_star[2] = res['truth']['$\\alpha_\\star$']
+    file = folder_out + "/" + folder_cov + "/" + arr_folder_emu[jj] + "/" + sim_label + "/chain_1/minimizer_results.npy"
+    res = np.load(file, allow_pickle=True).item()
+
+    true_star[ii, 0] = res['truth']['$\\Delta^2_\\star$']
+    true_star[ii, 1] = res['truth']['$n_\\star$']
     
     arr_star[ii, 0] = res['mle']['$\\Delta^2_\\star$']
     arr_star[ii, 1] = res['mle']['$n_\\star$']
-    arr_star[ii, 2] = res['mle']['$\\alpha_\\star$']
+    if '$\\alpha_\\star$' in res['truth']:
+        true_star[ii, 2] = res['truth']['$\\alpha_\\star$']        
+        arr_star[ii, 2] = res['mle']['$\\alpha_\\star$']
+
+# %%
+sep_x = 0.01
+if "Nyx" in arr_folder_emu[jj]:
+    nax = 3
+    fig, ax = plt.subplots(1, 3, figsize=(14, 6)) 
+else:
+    nax = 1
+    fig, ax = plt.subplots(1, 1, figsize=(14, 6))
+    ax = [ax]
+    
+for ii in range(nax):
+    if ii == 0:
+        jj0 = 0
+        jj1 = 1
+    elif ii == 1:
+        jj0 = 0
+        jj1 = 2
+    elif ii == 2:
+        jj0 = 1
+        jj1 = 2
+
+    x0 = (arr_star[:, jj0]/true_star[:, jj0]-1) * 100
+    y0 = (arr_star[:, jj1]/true_star[:, jj1]-1) * 100        
+    ax[ii].scatter(x0, y0, marker=".", color="blue")
+    for kk in range(len(sim_labels)):
+        ax[ii].annotate(sim_labels[kk], (x0[kk] + sep_x, y0[kk]), fontsize=8)
+
+    ax[ii].axhline(color="black", linestyle=":")
+    ax[ii].axvline(color="black", linestyle=":")
+
+if "Nyx" in arr_folder_emu[jj]:
+    ax[0].set_xlabel(r"$\Delta(\Delta^2_\star)$ [%]", fontsize=fontsize)
+    ax[0].set_ylabel(r"$\Delta(n_\star)$ [%]", fontsize=fontsize)
+    ax[1].set_xlabel(r"$\Delta(\Delta^2_\star)$ [%]", fontsize=fontsize)
+    ax[1].set_ylabel(r"$\Delta(\alpha_\star)$ [%]", fontsize=fontsize)
+    ax[2].set_xlabel(r"$\Delta(n_\star)$ [%]", fontsize=fontsize)
+    ax[2].set_ylabel(r"$\Delta(\alpha_\star)$ [%]", fontsize=fontsize)
+else:
+    ax[0].set_xlabel(r"$\Delta(\Delta^2_\star)$ [%]", fontsize=fontsize)
+    ax[0].set_ylabel(r"$\Delta(n_\star)$ [%]", fontsize=fontsize)
+plt.tight_layout()
 
 # %% [markdown]
 # ## Read Data

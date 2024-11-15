@@ -53,6 +53,7 @@ class Likelihood(object):
 
         self.theory = theory
         self.theory.emu_cosmo_hc()
+        self.theory.set_cosmo_priors()
 
         # setup parameters
         self.free_param_names = free_param_names
@@ -189,7 +190,7 @@ class Likelihood(object):
 
         return cosmo_dict
 
-    def set_truth(self, z_star=3.0, kp_kms=0.009):
+    def set_truth(self):
         """Store true cosmology from the simulation used to make mock data"""
 
         # access true cosmology used in mock data
@@ -202,10 +203,13 @@ class Likelihood(object):
         for par in self.data.truth:
             self.truth[par] = self.data.truth[par]
 
-        if self.data.truth["igm"]["label"] == self.theory.model_igm.fid_sim_igm:
-            equal_IGM = True
-        else:
-            equal_IGM = False
+        equal_IGM = True
+        for key in self.data.truth["igm"]:
+            if np.allclose(
+                self.data.truth["igm"][key], self.theory.model_igm.fid_igm[key]
+            ):
+                equal_IGM = False
+                break
 
         self.truth["like_params"] = {}
         self.truth["like_params_cube"] = {}
@@ -245,12 +249,12 @@ class Likelihood(object):
                     par.name
                 ] = par.get_value_in_cube(self.truth["cont"][par.name])
 
-    def set_fid(self, z_star=3.0, kp_kms=0.009):
+    def set_fid(self):
         """Store fiducial cosmology assumed for the fit"""
 
         self.fid = {}
 
-        sim_cosmo = self.theory.cosmo_model_fid["cosmo"].cosmo
+        sim_cosmo = self.theory.fid_cosmo["cosmo"].cosmo
 
         self.fid["cosmo"] = {}
         self.fid["cosmo"]["ombh2"] = sim_cosmo.ombh2
@@ -262,7 +266,7 @@ class Likelihood(object):
         self.fid["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
 
         blob_params = ["Delta2_star", "n_star", "alpha_star"]
-        blob = self.theory.cosmo_model_fid["cosmo"].get_linP_params()
+        blob = self.theory.fid_cosmo["cosmo"].get_linP_params()
 
         self.fid["igm"] = self.theory.model_igm.fid_igm
         self.fid["fit"] = {}

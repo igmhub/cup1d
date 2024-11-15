@@ -1,4 +1,4 @@
-import os
+import os, sys
 import numpy as np
 import matplotlib.pyplot as plt
 from warnings import warn
@@ -13,7 +13,7 @@ def _drop_zbins(
     cov_in,
     z_min,
     z_max,
-    full_z=None,
+    full_zs=None,
     full_Pk_kms=None,
     full_cov_kms=None,
 ):
@@ -33,9 +33,9 @@ def _drop_zbins(
         Pk_out.append(Pk_in[jj][ind])
         cov_out.append(cov_in[jj][ind, :][:, ind])
 
-    if full_z is not None:
-        ind = np.argwhere((full_z >= z_min) & (full_z <= z_max))[:, 0]
-        full_z = full_z[ind]
+    if full_zs is not None:
+        ind = np.argwhere((full_zs >= z_min) & (full_zs <= z_max))[:, 0]
+        full_zs = full_zs[ind]
         full_Pk_kms = full_Pk_kms[ind]
         full_cov_kms = full_cov_kms[ind, :][:, ind]
 
@@ -55,7 +55,7 @@ class BaseDataP1D(object):
         cov_Pk_kms,
         z_min=0,
         z_max=10,
-        full_z=None,
+        full_zs=None,
         full_Pk_kms=None,
         full_cov_kms=None,
     ):
@@ -84,7 +84,7 @@ class BaseDataP1D(object):
             cov_Pk_kms,
             z_min,
             z_max,
-            full_z=full_z,
+            full_zs=full_zs,
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=full_cov_kms,
         )

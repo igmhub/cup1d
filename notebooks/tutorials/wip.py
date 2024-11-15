@@ -50,109 +50,11 @@ from cup1d.likelihood.pipeline import (
     Pipeline,
 )
 from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
+from astropy.io import fits
 
 from cup1d.likelihood.input_pipeline import Args
 
 
-
-# %%
-from cup1d.p1ds import data_DESIY1
-
-# %%
-p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-data_from_obs = data_DESIY1.read_from_file(p1d_fname=p1d_fname)
-
-# %%
-(
-    zs,
-    k_kms,
-    Pk_kms,
-    cov,
-    full_z,
-    full_Pk_kms,
-    full_cov_kms,
-    blind
-) = data_from_obs
-
-# %%
-full_z.shape
-
-# %%
-zs
-
-# %%
-np.concatenate(Pk_kms).shape
-
-# %%
-full_Pk_kms.shape
-
-# %%
-full_cov_kms.shape
-
-# %%
-
-from cup1d.p1ds.base_p1d_data import BaseDataP1D
-
-# %%
-datadir = BaseDataP1D.BASEDIR + "/Chabanier2019/"
-p1d_file = datadir + "/Pk1D_data.dat"
-zs_raw, k_kms_raw, inPk, inPkstat, _, _ = np.loadtxt(p1d_file, unpack=True)
-Nz = len(np.unique(zs_raw))
-Nk = len(np.unique(k_kms_raw))
-inPkstat.shape
-
-# %%
-np.unique(ink).shape
-
-# %%
-corr_file = datadir + "Pk1D_cor.dat"
-incorr = np.loadtxt(corr_file, unpack=True)
-# allcorr = np.reshape(incorr, [Nk, Nz, Nk])
-allcorr.shape
-
-# %%
-p1d_file = datadir + "/Pk1D_data.dat"
-zs_raw, k_kms_raw, Pk_kms_raw, diag_cov_raw, _, _ = np.loadtxt(
-    p1d_file, unpack=True
-)
-
-# now read correlation matrices
-corr_file = datadir + "Pk1D_cor.dat"
-incorr = np.loadtxt(corr_file, unpack=True)
-
-z_unique = np.unique(zs_raw)
-mask_raw = np.zeros(len(k_kms_raw), dtype=bool)
-
-zs = []
-k_kms = []
-Pk_kms = []
-cov = []
-for z in z_unique:
-    zs.append(z)
-    mask = np.argwhere(
-        (zs_raw == z) & (diag_cov_raw > 0) & np.isfinite(Pk_kms_raw)
-    )[:, 0]
-    mask_raw[mask] = True
-
-    # slice_cov = slice(mask[0], mask[-1] + 1)
-    k_kms.append(np.array(k_kms_raw[mask]))
-    Pk_kms.append(np.array(Pk_kms_raw[mask]))
-
-    sigma = np.sqrt(diag_cov_raw[mask])
-    zcov = np.multiply(incorr[:, mask], np.outer(sigma, sigma))
-    cov.append(zcov)
-
-full_z = zs_raw[mask_raw]
-full_Pk_kms = Pk_kms_raw[mask_raw]
-full_cov_kms = np.zeros((full_z.shape[0], full_z.shape[0]))
-Nz = z_unique.shape[0]
-Nk = np.unique(k_kms_raw).shape[0]
-for ii in range(Nz):
-    slice_cov = slice(ii * Nk, (ii + 1) * Nk)
-    full_cov_kms[slice_cov, slice_cov] = cov[ii]
-
-# %%
-plt.imshow(np.log10(full_cov_kms**2))
 
 # %% [markdown]
 # ### Set archive
@@ -161,30 +63,11 @@ plt.imshow(np.log10(full_cov_kms**2))
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
 args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-
-# %%
-archive = set_archive(args.training_set)
-
-# %%
-# set output directory for this test
-output_dir = "."
-
 # args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
-# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-# the nyx emulator has not properly been validated yet
+
+# %%
 # path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
-
-emulator = set_emulator(
-    emulator_label=args.emulator_label,
-    archive=archive,
-)
-
-if "Nyx" in emulator.emulator_label:
-    emulator.list_sim_cube = archive.list_sim_cube
-    if "nyx_14" in emulator.list_sim_cube:
-        emulator.list_sim_cube.remove("nyx_14")
-else:
-    emulator.list_sim_cube = archive.list_sim_cube
+archive = set_archive(args.training_set)
 
 # %% [markdown]
 # ### Set emulator
@@ -192,11 +75,6 @@ else:
 # %%
 # set output directory for this test
 output_dir = "."
-
-# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
-# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-# the nyx emulator has not properly been validated yet
-# path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
 
 emulator = set_emulator(
     emulator_label=args.emulator_label,
@@ -217,20 +95,24 @@ else:
 choose_forecast = False
 choose_mock = False
 choose_data = False
-choose_challenge = True
-choose_desiy1 = False
+choose_challenge = False
+choose_desiy1 = True
 
 if choose_forecast:
+    args.data_label_hires = None
     # for forecast, just start label of observational data with mock
-    args.data_label = "mock_Chabanier2019"
+    # args.data_label = "mock_Chabanier2019"
     # args.data_label="mock_Karacayli2024"
     # args.data_label_hires = "mock_Karacayli2022"
+    args.data_label="mock_DESIY1"
+    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
+    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms.fits"
 
     # you need to provide true cosmology, IGM history, and contaminants
-    true_cosmo = set_cosmo(cosmo_label="nyx_central")
-    # true_cosmo = set_cosmo(cosmo_label="mpg_central")
-    # args.true_igm_label="mpg_central"
-    args.true_igm_label="nyx_central"
+    # true_cosmo = set_cosmo(cosmo_label="nyx_central")
+    # args.true_igm_label="nyx_central"
+    true_cosmo = set_cosmo(cosmo_label="mpg_central")
+    args.true_igm_label="mpg_central"
     # from -11 to -4
     args.true_SiIII=[[0, 0], [-10, -10]]
     args.true_SiII=[[0, 0], [-10, -10]]
@@ -243,15 +125,16 @@ if choose_forecast:
 elif choose_mock:    
     true_cosmo=None
     # to analyze data from simulations
-    # args.data_label = "mpg_central"    
-    args.data_label="nyx_central"
+    args.data_label = "mpg_central"    
+    # args.data_label="nyx_central"
     # args.data_label="nyx_seed"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
 
     # provide cosmology only to cull the data
-    # args.true_cosmo_label="mpg_central"
-    args.true_cosmo_label="nyx_central"
+    args.true_cosmo_label="mpg_central"
+    # args.true_cosmo_label="nyx_central"
+    true_cosmo = set_cosmo(cosmo_label=args.data_label)
     # args.true_cosmo_label="nyx_seed"
 
     # you may provide contaminants
@@ -263,79 +146,71 @@ elif choose_mock:
     # from -5 to 2
     args.true_SN=[0, -4]
     args.true_AGN=[0, -5]
-    
 elif choose_data:    
     true_cosmo=None
     args.data_label = "Chabanier2019"
     # args.data_label="Karacayli2024"
     args.data_label_hires = "Karacayli2022"
     args.z_max = 3.9
+elif choose_challenge:
+    args.data_label = "challenge_DESIY1"
+    folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
+    fname = "mock_challenge_0.2_nonoise_fiducial.fits"
+    args.p1d_fname = folder + fname
+    if "fiducial" in args.p1d_fname:
+        true_sim_label = "nyx_central"
+    elif "CGAN" in args.p1d_fname:
+        true_sim_label = "nyx_seed"
+    elif "grid_3" in args.p1d_fname:
+        true_sim_label = "nyx_3"
+    else:
+        true_sim_label = None
+    true_cosmo = set_cosmo(cosmo_label=true_sim_label)
+    args.true_igm_label=true_sim_label
+elif choose_desiy1:
+    true_cosmo = None
+    args.true_igm_label= None
+    args.data_label = "DESIY1"
+    # in NERSC
+    # QMLE /global/cfs/cdirs/desicollab/users/naimgk/my-reductions/data/iron-v3/DataProducts/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits
+    # FFT /global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/plots/baseline/notebook/measurement/p1d_fft_y1_measurement_kms.fits
+    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
+    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms.fits"
 
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
 
-if choose_challenge:    
-    folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
-    fname = "mock_challenge_0.2_nonoise_fiducial.fits"
-    # fname = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
-    # fname = "mock_challenge_0.2_nonoise_cosmo_grid_3.fits"
-    # fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
-    # fname = "mock_challenge_0.2_noise-42-0_fiducial.fits"
-    true_sim_label="nyx_central"
-    # true_sim_label="nyx_seed"
-    # true_sim_label="nyx_3"
-    data["P1Ds"] = P1D_DESIY1(
-        fname = folder + fname, 
-        true_sim_label=true_sim_label
-    )
-elif choose_desiy1:
-    fname = None
-    # in NERSC
-    # QMLE /global/cfs/cdirs/desicollab/users/naimgk/my-reductions/data/iron-v3/DataProducts/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits
-    # FFT /global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/plots/baseline/notebook/measurement/p1d_fft_y1_measurement_kms.fits
-    fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-
-    if fname is None:
-        print("choose appropriate folder")
-    else:    
-        args.z_min = 2.0
-        args.z_max = 5.3
-        args.data_label_hires = None
-        # args.data_label_hires = "Karacayli2022"
-        
-        data["P1Ds"] = P1D_DESIY1(
-            fname=fname, 
-            z_min=args.z_min, 
-            z_max=args.z_max
-        )
-        
-        
-        # data["extra_P1Ds"] = set_P1D(
-        #     args.data_label_hires,
-        #     args,
-        #     archive=archive,
-        #     # true_cosmo=true_cosmo,
-        #     # emulator=emulator,
-        #     cull_data=False
-        # )
-else:
-    data["P1Ds"] = set_P1D(
-        args.data_label,
+data["P1Ds"] = set_P1D(
+    args,
+    archive=archive,
+    true_cosmo=true_cosmo,
+    emulator=emulator,
+    cull_data=False
+)
+if args.data_label_hires is not None:
+    data["extra_P1Ds"] = set_P1D(
         args,
         archive=archive,
         true_cosmo=true_cosmo,
         emulator=emulator,
         cull_data=False
     )
-    if args.data_label_hires is not None:
-        data["extra_P1Ds"] = set_P1D(
-            args.data_label_hires,
-            args,
-            archive=archive,
-            true_cosmo=true_cosmo,
-            emulator=emulator,
-            cull_data=False
-        )
+
+# %%
+# hdu = fits.open(args.p1d_fname)
+# hdu[1].header
+# plt.imshow(data["P1Ds"].full_cov_kms[738:, 738:])
+
+# %%
+mask = np.isfinite(data["P1Ds"].full_cov_kms) == False
+data["P1Ds"].full_cov_kms[mask] = 0
+
+# %%
+# ntos = 100 * np.sqrt(np.diag(data["P1Ds"].cov_Pk_kms[0]))/data["P1Ds"].Pk_kms[0]
+# plt.plot(data["P1Ds"].k_kms[0], ntos)
+
+# %%
+# data["P1Ds"].truth
 
 # %%
 print(data["P1Ds"].apply_blinding)
@@ -361,8 +236,8 @@ except:
 args.ic_correction=False
 
 args.emu_cov_factor = 0.0
-args.fid_cosmo_label="mpg_central"
-# args.fid_cosmo_label="nyx_central"
+# args.fid_cosmo_label="mpg_central"
+args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="nyx_seed"
 
 # args.fid_cosmo_label="nyx_3"
@@ -371,8 +246,8 @@ args.fid_cosmo_label="mpg_central"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
-args.fid_igm_label="mpg_central"
-# args.fid_igm_label="nyx_central"
+# args.fid_igm_label="mpg_central"
+args.fid_igm_label="nyx_central"
 # args.fid_igm_label="nyx_seed"
 # args.fid_igm_label="nyx_3"
 # args.fid_igm_label="nyx_3_1"
@@ -383,50 +258,49 @@ else:
 args.type_priors = "hc"
 
 # contaminants
-# from 1 to 6, -11 to -4
-args.fid_SiIII=[[0, 0], [2, -10]]
-args.fid_SiII=[[0, 0], [2, -10]]
-# from -5 to 0
-args.fid_HCD=[0, -4]
-# from -5 to 2
-args.fid_SN=[0, -4]
-args.fid_AGN=[0, -5]
-
-
-# args.fid_SiIII=[[0, 0], [4, -5]]
+# # from 1 to 6, -11 to -4
+# args.fid_SiIII=[[0, 0], [2, -10]]
 # args.fid_SiII=[[0, 0], [2, -10]]
-# args.fid_HCD=[0, -2]
+# # from -5 to 0
+# args.fid_HCD=[0, -4]
+# # from -5 to 2
 # args.fid_SN=[0, -4]
-# args.fid_AGN=[0, 1]
+# args.fid_AGN=[0, -5]
 
 # parameters
-args.vary_alphas=False
+# args.vary_alphas=False
 args.vary_alphas=True
 args.fix_cosmo=False
 # args.fix_cosmo=True
-args.n_tau=0
-args.n_sigT=0
-args.n_gamma=0
-args.n_kF=0
-args.n_SiIII = 0
-args.n_d_SiIII = 0
-args.n_SiII = 0
-args.n_dla=0
-args.n_sn=0
-args.n_agn=0
+# args.n_tau=0
+# args.n_sigT=0
+# args.n_gamma=0
+# args.n_kF=0
+# args.n_SiIII = 0
+# args.n_d_SiIII = 0
+# args.n_SiII = 0
+# args.n_dla=0
+# args.n_sn=0
+# args.n_agn=0
+
+args.fid_SiIII=[[0, 0], [4, -5]]
+args.fid_SiII=[[0, 0], [2, -10]]
+args.fid_HCD=[0, -2]
+args.fid_SN=[0, -4]
+args.fid_AGN=[0, -5]
 
 args.n_tau=2
 args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
-# args.n_SiIII = 2
-# args.n_d_SiIII = 2
-# args.n_SiII = 1
-# args.n_dla=2
-# args.n_sn=0
-# args.n_agn=2
+args.n_SiIII = 2
+args.n_d_SiIII = 2
+args.n_SiII = 0
+args.n_dla=2
+args.n_sn=0
+args.n_agn=1
 
-free_parameters = set_free_like_parameters(args)
+free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
 
 # %% [markdown]
@@ -451,11 +325,8 @@ for p in like.free_params:
 # Compare data and fiducial/starting model
 
 # %%
-like.plot_p1d(residuals=False)
-like.plot_p1d(residuals=True)
 
-# %%
-chi2 96.9, 77
+like.plot_p1d(residuals=True)
 
 # %%
 # z = like.data.z
@@ -495,6 +366,10 @@ fitter = Fitter(
     fix_cosmology=args.fix_cosmo,
 )
 
+# %%
+# p0 = np.array(list(like.fid["fit_cube"].values()))
+# fitter.like.get_chi2(p0)
+
 # %% [markdown]
 # ### Run minimizer
 
@@ -510,47 +385,11 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
 
-# %%
-old_emu
-
-w/ emu error
-Delta2_star
-0.36837 0.36004 0.02314
-n_star
--2.30158 -2.29877 0.00122
-alpha_star
--0.21584 -0.21614 -0.00139
-
-w/o emu error
-Delta2_star
-0.37659 0.36004 0.04597
-n_star
--2.30553 -2.29877 0.00294
-alpha_star
--0.21088 -0.21614 -0.02434
-
-# %%
-new_emu
-
-w/ emu error
-Delta2_star
-0.40579 0.36004 0.12705
-n_star
--2.28449 -2.29877 -0.00621
-alpha_star
--0.22172 -0.21614 0.02579
-
-w/o emu error
-Delta2_star
-0.36874 0.36004 0.02415
-n_star
--2.28712 -2.29877 -0.00507
-alpha_star
--0.23209 -0.21614 0.07378
-
 # %% [markdown]
 # - GP Minimization improved: 7495.505449898462 1413.4703537937303
-# - Nyx_alphap Minimization improved (2 HCD): 4045.9982979531555 1420.6221436936958
+# - Nyx_alphap Minimization improved (2 HCD): 1388
+# - Nyx_alphap_cov Minimization improved (2 HCD): 1427
+# - No emu error, 1970 Naim, Corentin
 
 # %%
 plotter = Plotter(fitter)
@@ -561,32 +400,28 @@ if args.fix_cosmo == False:
 
 # %%
 plotter.plot_p1d(residuals=False, plot_every_iz=1)
-
-# %%
 plotter.plot_p1d(residuals=True, plot_every_iz=1)
 
 # %%
-plotter.plot_igm(cloud=True)
 
 # %%
-plotter.plot_hcd_cont(plot_data=True, zrange=[0, 3.7])
+# plotter.plot_igm(cloud=True)
 
 # %%
-plotter.plot_metal_cont(smooth_k=True, plot_data=True, zrange=[0, 3.7])
+# plotter.plot_hcd_cont(plot_data=True)
 
 # %%
-plotter.plot_agn_cont(plot_data=True, zrange=[0, 3.7])
+# plotter.plot_metal_cont(smooth_k=True, plot_data=True)
+
+# %%
+# plotter.plot_agn_cont(plot_data=True)
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/test/"
 plotter = Plotter(fitter, save_directory=folder)
 
 # %%
-for ii in range(100):
-    plt.close()
-
-# %%
-plotter.plots_minimizer(zrange=[0, 3.7])
+plotter.plots_minimizer()
 
 
 # %% [markdown]

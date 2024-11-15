@@ -94,6 +94,21 @@ class Contaminants(object):
                 fid_value=self.fid_AGN,
             )
 
+    def get_dict_cont(self):
+        dict_out = {}
+
+        for ii in range(2):
+            dict_out["ln_SiIII_" + str(ii)] = self.fid_SiIII[-1 - ii][-1]
+            dict_out["d_SiIII_" + str(ii)] = self.fid_SiIII[-1 - ii][0]
+            dict_out["ln_SiII_" + str(ii)] = self.fid_SiII[-1 - ii][-1]
+            dict_out["d_SiII_" + str(ii)] = self.fid_SiII[-1 - ii][0]
+            dict_out["ln_A_damp_" + str(ii)] = self.fid_HCD[-1 - ii]
+            dict_out["ln_SN_" + str(ii)] = self.fid_SN[-1 - ii]
+            dict_out["ln_AGN_" + str(ii)] = self.fid_AGN[-1 - ii]
+        dict_out["ic_correction"] = self.ic_correction
+
+        return dict_out
+
     def get_contamination(self, z, k_kms, mF, M_of_z, like_params=[]):
         # include multiplicative metal contamination
         cont_metals = 1
