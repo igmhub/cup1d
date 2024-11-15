@@ -190,7 +190,7 @@ class Likelihood(object):
 
         return cosmo_dict
 
-    def set_truth(self, z_star=3.0, kp_kms=0.009):
+    def set_truth(self):
         """Store true cosmology from the simulation used to make mock data"""
 
         # access true cosmology used in mock data
@@ -249,7 +249,7 @@ class Likelihood(object):
                     par.name
                 ] = par.get_value_in_cube(self.truth["cont"][par.name])
 
-    def set_fid(self, z_star=3.0, kp_kms=0.009):
+    def set_fid(self):
         """Store fiducial cosmology assumed for the fit"""
 
         self.fid = {}

@@ -248,7 +248,7 @@ def set_P1D(
         data = data_QMLE_Ohio.P1D_QMLE_Ohio(
             filename=file, z_min=args.z_min, z_max=args.z_max
         )
-    elif data_label == "DESI_Y1":
+    elif data_label == "DESIY1":
         data = data_DESIY1.P1D_DESIY1(
             p1d_fname=args.p1d_fname, z_min=args.z_min, z_max=args.z_max
         )

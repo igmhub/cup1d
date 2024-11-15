@@ -42,7 +42,7 @@ class P1D_DESIY1(BaseDataP1D):
         return
 
 
-def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
+def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5, max_cov=1e3):
     """Read file containing P1D"""
 
     # folder storing P1D measurement
@@ -58,6 +58,9 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
     if "BLINDING" in hdu[1].header:
         if hdu[1].header["BLINDING"] is not None:
             blinding = hdu[1].header["BLINDING"]
+    elif "EXTNAME" in hdu[1].header:
+        if hdu[1].header["EXTNAME"] == "P1D_BLIND":
+            blinding = True
 
     zs_raw = hdu[1].data["Z"]
     k_kms_raw = hdu[1].data["K"]
@@ -79,7 +82,9 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
         mask = np.argwhere(
             (zs_raw == z)
             & (diag_cov_raw > 0)
+            & (diag_cov_raw < max_cov)
             & np.isfinite(Pk_kms_raw)
+            & np.isfinite(diag_cov_raw)
             & (k_kms_raw > kmin)
             & (k_kms_raw < k_nyq * nknyq)
         )[:, 0]

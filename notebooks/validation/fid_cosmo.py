@@ -29,7 +29,8 @@ import matplotlib.pyplot as plt
 
 # %%
 folder_out = "/home/jchaves/Proyectos/projects/lya/data/cup1d/validate_cosmo/"
-folder_cov = "Chabanier2019"
+# folder_cov = "Chabanier2019"
+folder_cov = "DESIY1"
 arr_folder_emu = ["Pedersen23_ext", "Cabayol23+", "Nyx_alphap_cov"]
 dict_sims = {
     "mpg":30,
@@ -39,18 +40,23 @@ dict_sims = {
 jj = 2
 if "Nyx" in arr_folder_emu[jj]:
     b_sim = "nyx"
+    b_sim = "mpg"
 else:
     b_sim = "mpg"
 nsims = dict_sims[b_sim]
 
 arr_star = np.zeros((nsims, 3))
 true_star = np.zeros((nsims, 3))
+sim_labels = []
 
 for ii in range(nsims):
-    if(ii == 14):
-        ii += 1
+    sim_label = b_sim + "_" + str(ii)
+    sim_labels.append(sim_label)
+    if b_sim == "nyx":
+        if(ii == 14):
+            ii += 1
     
-    file = folder_out + "/" + folder_cov + "/" + arr_folder_emu[jj] + "/" + b_sim + "_" + str(ii) + "/chain_1/minimizer_results.npy"
+    file = folder_out + "/" + folder_cov + "/" + arr_folder_emu[jj] + "/" + sim_label + "/chain_1/minimizer_results.npy"
     res = np.load(file, allow_pickle=True).item()
 
     true_star[ii, 0] = res['truth']['$\\Delta^2_\\star$']
@@ -63,7 +69,7 @@ for ii in range(nsims):
         arr_star[ii, 2] = res['mle']['$\\alpha_\\star$']
 
 # %%
-fontsize = 16
+sep_x = 0.01
 if "Nyx" in arr_folder_emu[jj]:
     nax = 3
     fig, ax = plt.subplots(1, 3, figsize=(14, 6)) 
@@ -86,6 +92,8 @@ for ii in range(nax):
     x0 = (arr_star[:, jj0]/true_star[:, jj0]-1) * 100
     y0 = (arr_star[:, jj1]/true_star[:, jj1]-1) * 100        
     ax[ii].scatter(x0, y0, marker=".", color="blue")
+    for kk in range(len(sim_labels)):
+        ax[ii].annotate(sim_labels[kk], (x0[kk] + sep_x, y0[kk]), fontsize=8)
 
     ax[ii].axhline(color="black", linestyle=":")
     ax[ii].axvline(color="black", linestyle=":")
@@ -101,10 +109,6 @@ else:
     ax[0].set_xlabel(r"$\Delta(\Delta^2_\star)$ [%]", fontsize=fontsize)
     ax[0].set_ylabel(r"$\Delta(n_\star)$ [%]", fontsize=fontsize)
 plt.tight_layout()
-
-# %%
-
-# %%
 
 # %% [markdown]
 # ## Read Data

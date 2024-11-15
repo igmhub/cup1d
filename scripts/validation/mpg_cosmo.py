@@ -1,3 +1,5 @@
+import os
+
 from cup1d.likelihood.input_pipeline import Args
 from lace.emulator.emulator_manager import set_emulator
 from cup1d.likelihood.pipeline import set_archive, Pipeline
@@ -25,11 +27,13 @@ def validate_cosmo(emulator_label, training_set, base_out_folder):
     args = Args(emulator_label=emulator_label, training_set=training_set)
 
     # set fiducial cosmology
-    args.fid_cosmo_label = "Planck18"
+    args.true_cosmo_label = "Planck18"
 
     # set covariance matrix
-    # args.data_label = "mock_DESIY1"
-    args.data_label = "mock_Chabanier2019"
+    args.data_label = "mock_DESIY1"
+    args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
+
+    # args.data_label = "mock_Chabanier2019"
 
     # set number of free IGM parameters
     args.n_tau = 2
@@ -62,7 +66,9 @@ def validate_cosmo(emulator_label, training_set, base_out_folder):
         args.fid_igm_label = "mpg_central"
 
     # loop over simulations
-    for sim_label in args.emulator.list_sim_cube:
+    # for sim_label in args.emulator.list_sim_cube:
+    for isim_label in range(30):
+        sim_label = "mpg_{}".format(isim_label)
         print("\n\n\n")
         print(sim_label)
         print("\n\n\n")
@@ -71,7 +77,14 @@ def validate_cosmo(emulator_label, training_set, base_out_folder):
         args.fid_cosmo_label = sim_label
 
         out_folder = (
-            base_out_folder + "/" + args.data_label[5:] "/" + emulator_label + "/" + sim_label + "/"
+            base_out_folder
+            + "/"
+            + args.data_label[5:]
+            + "/"
+            + emulator_label
+            + "/"
+            + sim_label
+            + "/"
         )
 
         pip = Pipeline(args, make_plots=False, out_folder=out_folder)
