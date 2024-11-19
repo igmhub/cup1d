@@ -16,7 +16,7 @@ def main():
     emulator_label = "Nyx_alphap_cov"
     training_set = "Nyx23_Jul2024"
     suite = "nyx"
-    nIGM = 2
+    nIGM = 1
 
     base_out_folder = (
         "/home/jchaves/Proyectos/projects/lya/data/cup1d/validate_igm/"
@@ -54,8 +54,9 @@ def validate_cosmo(emulator_label, training_set, base_out_folder, suite, nIGM):
     if "Nyx" in args.emulator.emulator_label:
         args.emulator.list_sim_cube = args.archive.list_sim_cube
         args.vary_alphas = True
-        if "nyx_14" in args.emulator.list_sim_cube:
-            args.emulator.list_sim_cube.remove("nyx_14")
+        for ii in range(14, 19):
+            if "nyx_" + str(ii) in args.emulator.list_sim_cube:
+                args.emulator.list_sim_cube.remove("nyx_" + str(ii))
     else:
         args.emulator.list_sim_cube = args.archive.list_sim_cube
         args.vary_alphas = False

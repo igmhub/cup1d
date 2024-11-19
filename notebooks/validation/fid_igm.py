@@ -14,7 +14,7 @@
 # ---
 
 # %% [markdown]
-# # Does the fiducial cosmology matter?
+# # Does the fiducial igm history matters?
 #
 # This test examines whether choosing a particular fiducial cosmology matters for cup1d constraints. This cosmology enters into the calculation of power spectra from CAMB, which gets rescaled during inference
 
@@ -81,7 +81,7 @@ for ii in range(nsims):
             true_star[ii, jj] = res['cosmo_true'][pars[jj]]
             fid_star[ii, jj] = res['cosmo_fid'][pars[jj]]
             best_star[ii, jj] = res['cosmo_best'][pars[jj]]
-    
+
 
 # %%
 
