@@ -32,44 +32,48 @@ folder_out = "/home/jchaves/Proyectos/projects/lya/data/cup1d/validate_cosmo/"
 # folder_cov = "Chabanier2019"
 folder_cov = "DESIY1"
 arr_folder_emu = ["Pedersen23_ext", "Cabayol23+", "Nyx_alphap_cov"]
-dict_sims = {
-    "mpg":30,
-    "nyx":17,
-}
+pars = ['Delta2_star', 'n_star', "alpha_star"]
 
-jj = 2
-if "Nyx" in arr_folder_emu[jj]:
-    b_sim = "nyx"
-    b_sim = "mpg"
-else:
-    b_sim = "mpg"
-nsims = dict_sims[b_sim]
+sim_labels = []
+for ii in range(18):
+    if ii == 14:
+        continue
+    else:
+        sim_labels.append("nyx_{}".format(ii))
+for ii in range(30):
+    sim_labels.append("mpg_{}".format(ii))
+nsims = len(sim_labels)
 
-arr_star = np.zeros((nsims, 3))
 true_star = np.zeros((nsims, 3))
+fid_star = np.zeros((nsims, 3))
+best_star = np.zeros((nsims, 3))
 sim_labels = []
 
 for ii in range(nsims):
-    sim_label = b_sim + "_" + str(ii)
-    sim_labels.append(sim_label)
-    if b_sim == "nyx":
-        if(ii == 14):
-            ii += 1
-    
-    file = folder_out + "/" + folder_cov + "/" + arr_folder_emu[jj] + "/" + sim_label + "/chain_1/minimizer_results.npy"
-    res = np.load(file, allow_pickle=True).item()
+    sim_label = sim_labels[ii]
+    print(sim_label)
 
-    true_star[ii, 0] = res['truth']['$\\Delta^2_\\star$']
-    true_star[ii, 1] = res['truth']['$n_\\star$']
+    for kk in range(1):
+        file = folder_out + "/" + folder_cov + "/" + arr_folder_emu[jj] + "/nIGM/" + sim_label + "/chain_"+str(kk+1)+"/minimizer_results.npy"
+        res = np.load(file, allow_pickle=True).item()
+        # print(res['lnprob_mle'], res['cosmo_best'])
+    # print(res['cosmo_true'])
+
+    for jj in range(3):        
+        if (pars[jj] in res['cosmo_best']):
+            true_star[ii, jj] = res['cosmo_true'][pars[jj]]
+            fid_star[ii, jj] = res['cosmo_fid'][pars[jj]]
+            best_star[ii, jj] = res['cosmo_best'][pars[jj]]
     
-    arr_star[ii, 0] = res['mle']['$\\Delta^2_\\star$']
-    arr_star[ii, 1] = res['mle']['$n_\\star$']
-    if '$\\alpha_\\star$' in res['truth']:
-        true_star[ii, 2] = res['truth']['$\\alpha_\\star$']        
-        arr_star[ii, 2] = res['mle']['$\\alpha_\\star$']
+
+# %%
+
+# %% [markdown]
+# ### Difference between truth and best fit
 
 # %%
 sep_x = 0.01
+fontsize =16
 if "Nyx" in arr_folder_emu[jj]:
     nax = 3
     fig, ax = plt.subplots(1, 3, figsize=(14, 6)) 
@@ -89,8 +93,8 @@ for ii in range(nax):
         jj0 = 1
         jj1 = 2
 
-    x0 = (arr_star[:, jj0]/true_star[:, jj0]-1) * 100
-    y0 = (arr_star[:, jj1]/true_star[:, jj1]-1) * 100        
+    x0 = (best_star[:, jj0]/true_star[:, jj0]-1) * 100
+    y0 = (best_star[:, jj1]/true_star[:, jj1]-1) * 100        
     ax[ii].scatter(x0, y0, marker=".", color="blue")
     for kk in range(len(sim_labels)):
         ax[ii].annotate(sim_labels[kk], (x0[kk] + sep_x, y0[kk]), fontsize=8)
@@ -109,6 +113,53 @@ else:
     ax[0].set_xlabel(r"$\Delta(\Delta^2_\star)$ [%]", fontsize=fontsize)
     ax[0].set_ylabel(r"$\Delta(n_\star)$ [%]", fontsize=fontsize)
 plt.tight_layout()
+plt.savefig(arr_folder_emu[jj] + "_on_" + b_sim + "_err.png")
+
+# %% [markdown]
+# ### Plot fiducial vales, connect with best-fitting value, plot truth
+
+# %%
+sep_x = 0.001
+if "Nyx" in arr_folder_emu[jj]:
+    nax = 3
+    fig, ax = plt.subplots(1, 3, figsize=(14, 6)) 
+else:
+    nax = 1
+    fig, ax = plt.subplots(1, 1, figsize=(14, 6))
+    ax = [ax]
+    
+for ii in range(nax):
+    if ii == 0:
+        jj0 = 0
+        jj1 = 1
+    elif ii == 1:
+        jj0 = 0
+        jj1 = 2
+    elif ii == 2:
+        jj0 = 1
+        jj1 = 2
+
+    ax[ii].scatter(best_star[:, jj0], best_star[:, jj1], color="C0")
+    ax[ii].scatter(fid_star[:, jj0], fid_star[:, jj1], color="C1")
+    for kk in range(len(sim_labels)):
+        ax[ii].annotate(sim_labels[kk], (fid_star[kk, jj0] + sep_x, fid_star[kk, jj1]), fontsize=8)
+        ax[ii].plot([fid_star[kk, jj0], best_star[kk, jj0]], [fid_star[kk, jj1], best_star[kk, jj1]], "k--", alpha=0.5)
+
+    ax[ii].axhline(true_star[0, jj1], color="black", linestyle=":", alpha=0.3)
+    ax[ii].axvline(true_star[0, jj0], color="black", linestyle=":", alpha=0.3)
+
+if "Nyx" in arr_folder_emu[jj]:
+    ax[0].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
+    ax[0].set_ylabel(r"$n_\star$", fontsize=fontsize)
+    ax[1].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
+    ax[1].set_ylabel(r"$\alpha_\star$", fontsize=fontsize)
+    ax[2].set_xlabel(r"$n_\star$", fontsize=fontsize)
+    ax[2].set_ylabel(r"$\alpha_\star$", fontsize=fontsize)
+else:
+    ax[0].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
+    ax[0].set_ylabel(r"$n_\star$", fontsize=fontsize)
+plt.tight_layout()
+plt.savefig(arr_folder_emu[jj] + "_on_" + b_sim + ".png")
 
 # %% [markdown]
 # ## Read Data

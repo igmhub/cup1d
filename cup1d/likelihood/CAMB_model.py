@@ -57,11 +57,14 @@ class CAMBModel(object):
         params.append(
             likelihood_parameter.LikelihoodParameter(
                 name="As",
-                min_value=0.74e-09,
-                max_value=4.11e-09,
-                # values for which lace emulators were trained
+                min_value=0.70e-09,
+                max_value=3.60e-09,
+                # values for which mpg emulators were trained
                 # min_value=1.34e-09,
                 # max_value=2.71e-09,
+                # values for which nyx emulators were trained
+                # min_value=0.92e-09,
+                # max_value=3.43e-09,
                 value=self.cosmo.InitPower.As,
             )
         )
@@ -69,11 +72,14 @@ class CAMBModel(object):
         params.append(
             likelihood_parameter.LikelihoodParameter(
                 name="ns",
-                min_value=0.68,
-                max_value=1.32,
+                min_value=0.80,
+                max_value=1.15,
                 # values for which lace emulators were trained
                 # min_value=0.91,
                 # max_value=1.02,
+                # values for which nyx emulators were trained
+                # min_value=0.86,
+                # max_value=1.10,
                 value=self.cosmo.InitPower.ns,
             )
         )
@@ -88,8 +94,11 @@ class CAMBModel(object):
         params.append(
             likelihood_parameter.LikelihoodParameter(
                 name="nrun",
-                min_value=-0.8,
-                max_value=0.8,
+                min_value=-0.05,
+                max_value=0.05,
+                # values for which nyx emulators were trained (differences in alpha_star)
+                # min_value=-0.01,
+                # max_value=0.01,
                 value=self.cosmo.InitPower.nrun,
             )
         )

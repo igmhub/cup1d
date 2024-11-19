@@ -13,6 +13,7 @@ def main():
     # training_set = "Cabayol23"
     emulator_label = "Nyx_alphap_cov"
     training_set = "Nyx23_Jul2024"
+    nIGM = 0
 
     base_out_folder = (
         "/home/jchaves/Proyectos/projects/lya/data/cup1d/validate_cosmo/"
@@ -21,7 +22,7 @@ def main():
     validate_cosmo(emulator_label, training_set, base_out_folder)
 
 
-def validate_cosmo(emulator_label, training_set, base_out_folder):
+def validate_cosmo(emulator_label, training_set, base_out_folder, nIGM):
     """Validate assuming a fiducial cosmology against forecast data"""
 
     args = Args(emulator_label=emulator_label, training_set=training_set)
@@ -31,15 +32,14 @@ def validate_cosmo(emulator_label, training_set, base_out_folder):
 
     # set covariance matrix
     args.data_label = "mock_DESIY1"
+    # args.data_label = "mock_Chabanier2019"
     args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
 
-    # args.data_label = "mock_Chabanier2019"
-
     # set number of free IGM parameters
-    args.n_tau = 2
-    args.n_sigT = 2
-    args.n_gamma = 2
-    args.n_kF = 2
+    args.n_tau = nIGM
+    args.n_sigT = nIGM
+    args.n_gamma = nIGM
+    args.n_kF = nIGM
 
     # set archive and emulator
     args.archive = set_archive(args.training_set)
@@ -65,10 +65,20 @@ def validate_cosmo(emulator_label, training_set, base_out_folder):
         args.true_igm_label = "mpg_central"
         args.fid_igm_label = "mpg_central"
 
-    # loop over simulations
-    # for sim_label in args.emulator.list_sim_cube:
-    for isim_label in range(30):
-        sim_label = "mpg_{}".format(isim_label)
+    # loop over cosmologies of nyx and mpg simulations
+    list_sims = []
+    for ii in range(18):
+        if ii == 14:
+            continue
+        else:
+            list_sims.append("nyx_{}".format(ii))
+    for ii in range(30):
+        list_sims.append("mpg_{}".format(ii))
+
+    for sim_label in list_sims:
+        if "mpg" in sim_label:
+            continue
+
         print("\n\n\n")
         print(sim_label)
         print("\n\n\n")
@@ -76,19 +86,17 @@ def validate_cosmo(emulator_label, training_set, base_out_folder):
         # set fiducial cosmology (the only thing that changes)
         args.fid_cosmo_label = sim_label
 
-        out_folder = (
-            base_out_folder
-            + "/"
-            + args.data_label[5:]
-            + "/"
-            + emulator_label
-            + "/"
-            + sim_label
-            + "/"
+        out_folder = os.path.join(
+            base_out_folder,
+            args.data_label[5:],
+            emulator_label,
+            "nIGM" + str(nIGM),
+            sim_label,
         )
 
         pip = Pipeline(args, make_plots=False, out_folder=out_folder)
         pip.run_minimizer()
+        # break
 
 
 if __name__ == "__main__":

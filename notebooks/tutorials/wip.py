@@ -174,8 +174,9 @@ elif choose_desiy1:
     # in NERSC
     # QMLE /global/cfs/cdirs/desicollab/users/naimgk/my-reductions/data/iron-v3/DataProducts/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits
     # FFT /global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/plots/baseline/notebook/measurement/p1d_fft_y1_measurement_kms.fits
-    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms.fits"
+    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
+    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms.fits"
+    args.z_max = 4.3
 
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
@@ -200,10 +201,6 @@ if args.data_label_hires is not None:
 # hdu = fits.open(args.p1d_fname)
 # hdu[1].header
 # plt.imshow(data["P1Ds"].full_cov_kms[738:, 738:])
-
-# %%
-mask = np.isfinite(data["P1Ds"].full_cov_kms) == False
-data["P1Ds"].full_cov_kms[mask] = 0
 
 # %%
 # ntos = 100 * np.sqrt(np.diag(data["P1Ds"].cov_Pk_kms[0]))/data["P1Ds"].Pk_kms[0]
@@ -314,6 +311,36 @@ like = set_like(
     data_hires=data["extra_P1Ds"],
 )
 
+# %%
+cosmo_all = set_cosmo(cosmo_label="nyx_0", return_all=True)
+
+# %%
+cos
+
+# %%
+as_min = 10
+as_max = -10
+ns_min = 10
+ns_max = -10
+alpha_min = 10
+alpha_max = -10
+for cos in cosmo_all:
+    if (cos["cosmo_params"]["A_s"] < as_min):
+        as_min = cos["cosmo_params"]["A_s"]
+    if (cos["cosmo_params"]["A_s"] > as_max):
+        as_max = cos["cosmo_params"]["A_s"]
+    if (cos["cosmo_params"]["n_s"] < ns_min):
+        ns_min = cos["cosmo_params"]["n_s"]
+    if (cos["cosmo_params"]["n_s"] > ns_max):
+        ns_max = cos["cosmo_params"]["n_s"]
+    if (cos["star_params"]["alpha_star"] < alpha_min):
+        alpha_min = cos["star_params"]["alpha_star"]
+    if (cos["star_params"]["alpha_star"] > alpha_max):
+        alpha_max = cos["star_params"]["alpha_star"]
+print(as_min, as_max)
+print(ns_min, ns_max)
+print(alpha_min - 0.5*(alpha_max+alpha_min), alpha_max - 0.5*(alpha_max+alpha_min))
+
 # %% [markdown]
 # Sampling parameters
 
@@ -325,7 +352,6 @@ for p in like.free_params:
 # Compare data and fiducial/starting model
 
 # %%
-
 like.plot_p1d(residuals=True)
 
 # %%
@@ -385,11 +411,13 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
 
-# %% [markdown]
-# - GP Minimization improved: 7495.505449898462 1413.4703537937303
-# - Nyx_alphap Minimization improved (2 HCD): 1388
-# - Nyx_alphap_cov Minimization improved (2 HCD): 1427
-# - No emu error, 1970 Naim, Corentin
+# %%
+fil = np.load(fitter.save_directory + "/minimizer_results.npy", allow_pickle=True).item()
+for key in fil:
+    print(key, fil[key])
+
+# %%
+fitter.save_minimizer()
 
 # %%
 plotter = Plotter(fitter)
@@ -417,7 +445,7 @@ plotter.plot_p1d(residuals=True, plot_every_iz=1)
 # plotter.plot_agn_cont(plot_data=True)
 
 # %%
-folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/test/"
+folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/test_qmle/"
 plotter = Plotter(fitter, save_directory=folder)
 
 # %%

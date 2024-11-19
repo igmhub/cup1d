@@ -323,21 +323,28 @@ class Fitter(object):
         npars = len(self.like.free_params)
 
         if p0 is None:
-            arr_p0 = lhs(npars, samples=nsamples)
-
-            mle = None
-            chi2 = 1e10
-
+            # star at the center of the parameter space
+            mle = np.ones(npars) * 0.5
+            chi2 = log_func_minimize(p0)
+            chi2_ini = chi2.copy()
+            arr_p0 = lhs(npars, samples=nsamples) - 0.5
+            # sigma to search around mle
+            sig = 0.1
             for ii in range(nsamples):
+                pini = mle.copy() + arr_p0[ii] * sig
+                pini[pini <= 0] = 0.05
+                pini[pini >= 1] = 0.95
                 res = scipy.optimize.minimize(
                     log_func_minimize,
-                    arr_p0[ii],
+                    pini,
                     method="Nelder-Mead",
                     bounds=((0.0, 1.0),) * npars,
                 )
                 if res.fun < chi2:
                     chi2 = res.fun
                     mle = res.x
+                    # reduce sigma
+                    sig *= 0.5
 
             # start at the minimum
             res = scipy.optimize.minimize(
@@ -350,29 +357,23 @@ class Fitter(object):
                 chi2 = res.fun
                 mle = res.x
 
-            print("Minimization:", chi2, flush=True)
+            print("Minimization improved:", chi2_ini, chi2, flush=True)
         else:
-            chi2_ini = log_func_minimize(p0)
-
+            # start at the initial value
+            mle = p0.copy()
+            chi2 = log_func_minimize(p0)
+            chi2_ini = chi2.copy()
             for ii in range(2):
-                if ii == 0:
-                    ini = p0.copy()
-                else:
-                    ini = mle.copy()
-
-                _ = ini <= 0
-                ini[_] = 0.01
-                _ = ini >= 1
-                ini[_] = 0.99
-
+                pini = mle.copy()
                 res = scipy.optimize.minimize(
                     log_func_minimize,
-                    ini,
+                    pini,
                     method="Nelder-Mead",
                     bounds=((0.0, 1.0),) * npars,
                 )
-                mle = res.x
-                chi2 = res.fun
+                if res.fun < chi2:
+                    chi2 = res.fun
+                    mle = res.x
             print("Minimization improved:", chi2_ini, chi2, flush=True)
 
         self.mle_cube = mle
@@ -830,15 +831,16 @@ class Fitter(object):
         if rootdir:
             chain_location = rootdir
         else:
-            repo = os.path.dirname(cup1d.__path__[0]) + "/"
-            chain_location = repo + "data/chains/"
+            repo = os.path.dirname(cup1d.__path__[0])
+            chain_location = os.path.join(repo, "data", "chains")
         if subfolder:
             # If there is one, check if it exists, if not make it
-            if not os.path.isdir(chain_location + "/" + subfolder):
-                os.makedirs(chain_location + "/" + subfolder)
-            base_string = chain_location + "/" + subfolder + "/chain_"
+            subfolder_dir = os.path.join(chain_location, subfolder)
+            if not os.path.isdir(subfolder_dir):
+                os.makedirs(subfolder_dir)
+            base_string = os.path.join(subfolder_dir, "chain_")
         else:
-            base_string = chain_location + "/chain_"
+            base_string = os.path.join(chain_location, "chain_")
 
         # Create a new folder for this chain
         chain_count = 1
@@ -948,40 +950,33 @@ class Fitter(object):
         dict_out["lnprob_mle"] = self.lnprop_mle
 
         dict_out["cosmo_best"] = {}
+        dict_out["cosmo_fid"] = {}
         dict_out["cosmo_true"] = {}
         dict_out["cosmo_reldiff"] = {}
 
-        dict_out["cosmo_best"]["Delta2_star"] = self.mle_cosmo["Delta2_star"]
-        dict_out["cosmo_best"]["n_star"] = self.mle_cosmo["n_star"]
-        if "n_run" in self.like.free_param_names:
-            dict_out["cosmo_best"]["alpha_star"] = self.mle_cosmo["alpha_star"]
+        pars = {
+            "Delta2_star": "$\\Delta^2_\\star$",
+            "n_star": "$n_\\star$",
+            "alpha_star": "$\\alpha_\\star$",
+        }
 
-        if self.truth is not None:
-            dict_out["cosmo_true"]["Delta2_star"] = self.truth[
-                "$\\Delta^2_\\star$"
-            ]
-            dict_out["cosmo_reldiff"]["Delta2_star"] = (
-                dict_out["cosmo_best"]["Delta2_star"]
-                / dict_out["cosmo_true"]["Delta2_star"]
-                - 1
-            ) * 100
+        for par in pars:
+            if (par == "alpha_star") and (
+                "nrun" not in self.like.free_param_names
+            ):
+                continue
 
-            dict_out["cosmo_true"]["n_star"] = self.truth["$n_\\star$"]
-            dict_out["cosmo_reldiff"]["n_star"] = (
-                dict_out["cosmo_best"]["n_star"]
-                / dict_out["cosmo_true"]["n_star"]
-                - 1
-            ) * 100
+            dict_out["cosmo_best"][par] = self.mle_cosmo[par]
+            dict_out["cosmo_fid"][par] = self.like.fid["fit"][par]
 
-            if "n_run" in self.like.free_param_names:
-                dict_out["cosmo_true"]["alpha_star"] = self.truth[
-                    "$\\alpha_\\star$"
-                ]
-                dict_out["cosmo_reldiff"]["alpha_star"] = (
-                    dict_out["cosmo_best"]["alpha_star"]
-                    / dict_out["cosmo_true"]["alpha_star"]
+            if self.truth is not None:
+                dict_out["cosmo_true"][par] = self.truth[pars[par]]
+                dict_out["cosmo_reldiff"][par] = (
+                    dict_out["cosmo_best"][par] / dict_out["cosmo_true"][par]
                     - 1
                 ) * 100
+
+        if self.truth is not None:
             dict_out["truth"] = self.truth
 
         np.save(self.save_directory + "/minimizer_results.npy", dict_out)
