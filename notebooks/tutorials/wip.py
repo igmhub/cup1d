@@ -61,13 +61,26 @@ from cup1d.likelihood.input_pipeline import Args
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
-# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 # %%
 # path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
 archive = set_archive(args.training_set)
+
+# %%
+from cup1d.utils.utils_sims import get_training_hc
+from cup1d.utils.hull import Hull
+
+# %%
+hc_params, hc_points, cosmo_all, igm_all = get_training_hc("mpg")
+
+# %%
+hull = Hull(hc_points)
+
+# %%
+hull.in_hull(hc_points[0])
 
 # %% [markdown]
 # ### Set emulator
@@ -92,11 +105,11 @@ else:
 # #### Set either mock data or real data
 
 # %%
-choose_forecast = False
+choose_forecast = True
 choose_mock = False
 choose_data = False
 choose_challenge = False
-choose_desiy1 = True
+choose_desiy1 = False
 
 if choose_forecast:
     args.data_label_hires = None
@@ -106,7 +119,7 @@ if choose_forecast:
     # args.data_label_hires = "mock_Karacayli2022"
     args.data_label="mock_DESIY1"
     args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms.fits"
+    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms.fits"
 
     # you need to provide true cosmology, IGM history, and contaminants
     # true_cosmo = set_cosmo(cosmo_label="nyx_central")
@@ -122,6 +135,7 @@ if choose_forecast:
     args.true_SN=[0, -4]
     # from -5 to 1.5
     args.true_AGN=[0, -5]
+    args.z_max = 10
 elif choose_mock:    
     true_cosmo=None
     # to analyze data from simulations
@@ -233,8 +247,8 @@ except:
 args.ic_correction=False
 
 args.emu_cov_factor = 0.0
-# args.fid_cosmo_label="mpg_central"
-args.fid_cosmo_label="nyx_central"
+args.fid_cosmo_label="mpg_central"
+# args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="nyx_seed"
 
 # args.fid_cosmo_label="nyx_3"
@@ -244,35 +258,35 @@ fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
 # args.fid_igm_label="mpg_central"
-args.fid_igm_label="nyx_central"
+# args.fid_igm_label="nyx_central"
+args.fid_igm_label="mpg_29"
 # args.fid_igm_label="nyx_seed"
 # args.fid_igm_label="nyx_3"
 # args.fid_igm_label="nyx_3_1"
 if choose_data == False:
     args.igm_priors = "hc"
 else:
-    args.type_priors = "data"
-args.type_priors = "hc"
+    args.igm_priors = "data"
 
 # contaminants
-# # from 1 to 6, -11 to -4
-# args.fid_SiIII=[[0, 0], [2, -10]]
-# args.fid_SiII=[[0, 0], [2, -10]]
-# # from -5 to 0
-# args.fid_HCD=[0, -4]
-# # from -5 to 2
-# args.fid_SN=[0, -4]
-# args.fid_AGN=[0, -5]
+# from 1 to 6, -11 to -4
+args.fid_SiIII=[[0, 0], [2, -10]]
+args.fid_SiII=[[0, 0], [2, -10]]
+# from -5 to 0
+args.fid_HCD=[0, -4]
+# from -5 to 2
+args.fid_SN=[0, -4]
+args.fid_AGN=[0, -5]
 
 # parameters
-# args.vary_alphas=False
-args.vary_alphas=True
+args.vary_alphas=False
+# args.vary_alphas=True
 args.fix_cosmo=False
 # args.fix_cosmo=True
-# args.n_tau=0
-# args.n_sigT=0
-# args.n_gamma=0
-# args.n_kF=0
+args.n_tau=2
+args.n_sigT=2
+args.n_gamma=2
+args.n_kF=2
 # args.n_SiIII = 0
 # args.n_d_SiIII = 0
 # args.n_SiII = 0
@@ -280,22 +294,22 @@ args.fix_cosmo=False
 # args.n_sn=0
 # args.n_agn=0
 
-args.fid_SiIII=[[0, 0], [4, -5]]
-args.fid_SiII=[[0, 0], [2, -10]]
-args.fid_HCD=[0, -2]
-args.fid_SN=[0, -4]
-args.fid_AGN=[0, -5]
+# args.fid_SiIII=[[0, 0], [4, -5]]
+# args.fid_SiII=[[0, 0], [2, -10]]
+# args.fid_HCD=[0, -2]
+# args.fid_SN=[0, -4]
+# args.fid_AGN=[0, -5]
 
-args.n_tau=2
-args.n_sigT=2
-args.n_gamma=2
-args.n_kF=2
-args.n_SiIII = 2
-args.n_d_SiIII = 2
-args.n_SiII = 0
-args.n_dla=2
-args.n_sn=0
-args.n_agn=1
+# args.n_tau=2
+# args.n_sigT=2
+# args.n_gamma=2
+# args.n_kF=2
+# args.n_SiIII = 2
+# args.n_d_SiIII = 2
+# args.n_SiII = 0
+# args.n_dla=2
+# args.n_sn=0
+# args.n_agn=1
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
@@ -312,12 +326,82 @@ like = set_like(
 )
 
 # %%
+# load the cosmology of these
+
+# linP_hc = np.zeros((len(list_sim_hc), 3))
+
+# %%
+all_igm["mpg_0_0"]
+
+# %%
+isinstance("0", (int))
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+# %%time
+# Test points
+# test_points = [[0.3, -2.2, 0.16, 0.2, 0.1, 1.5, 15]]
+test_points = [[0.3, -2.2, 0.2, 0.1, 1.5, 15]]
+# Check if test points are inside the hull
+results = [is_point_inside_hull(point, hull) for point in test_points]
+results = np.array(results).astype(int)
+
+# %%
+# Visualization: Project onto all 2D pairs of dimensions
+n_dimensions = points.shape[1]
+fig, axes = plt.subplots(n_dimensions, n_dimensions, figsize=(12, 12), constrained_layout=True)
+
+for i in range(n_dimensions):
+    for j in range(n_dimensions):
+        if j > i:
+            axes[i, j].set_visible(False)
+            continue
+    
+        # Plot the points projected onto dimensions (i, j)
+        if i == j:
+            axes[i, j].hist(points[:, i])
+        else:
+            # axes[i, j].sharex(axes[i, 0])
+            axes[i, j].scatter(points[:, j], points[:, i], s=10)
+            
+            for icol in range(2):
+                col = "C"+str(icol+2)
+                _ = np.argwhere(results == icol)[:,0]
+                # axes[i, j].scatter(test_points[_, j], test_points[_, i], s=20, color=col)
+
+            # Project points onto dimensions (i, j)
+            projected_points = data_hull[:, [j, i]]            
+            # Extract the hull vertices and sort them for the contour
+            projected_hull_points = projected_points[hull.vertices]
+            hull_2d = ConvexHull(projected_hull_points)
+            for simplex in hull_2d.simplices:
+                axes[i, j].plot(projected_hull_points[simplex, 0], 
+                                projected_hull_points[simplex, 1], 
+                                'k-')
+
+
+    
+# axes[i, j].set_xlabel(f"Dimension {i+1}")
+# axes[i, j].set_ylabel(f"Dimension {j+1}")
+
+# ax.set_title("Convex Hull in n-D Projected to 2D")
+# ax.set_xlabel("Dimension 1")
+# ax.set_ylabel("Dimension 2")
+
+# %%
+
+# %%
+
+# %% [markdown]
+# #### Set priors, move
+
+# %%
 cosmo_all = set_cosmo(cosmo_label="nyx_0", return_all=True)
-
-# %%
-cos
-
-# %%
 as_min = 10
 as_max = -10
 ns_min = 10
@@ -409,12 +493,12 @@ else:
 p0 = np.array(list(like.fid["fit_cube"].values()))
 # p0[:] = 0.5
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
-# fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=16)
+# fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
 
 # %%
-fil = np.load(fitter.save_directory + "/minimizer_results.npy", allow_pickle=True).item()
-for key in fil:
-    print(key, fil[key])
+# fil = np.load(fitter.save_directory + "/minimizer_results.npy", allow_pickle=True).item()
+# for key in fil:
+#     print(key, fil[key])
 
 # %%
 fitter.save_minimizer()
@@ -433,7 +517,7 @@ plotter.plot_p1d(residuals=True, plot_every_iz=1)
 # %%
 
 # %%
-# plotter.plot_igm(cloud=True)
+plotter.plot_igm(cloud=True)
 
 # %%
 # plotter.plot_hcd_cont(plot_data=True)

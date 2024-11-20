@@ -325,8 +325,8 @@ class Fitter(object):
         if p0 is None:
             # star at the center of the parameter space
             mle = np.ones(npars) * 0.5
-            chi2 = log_func_minimize(p0)
-            chi2_ini = chi2.copy()
+            chi2 = log_func_minimize(mle)
+            chi2_ini = chi2 * 1
             arr_p0 = lhs(npars, samples=nsamples) - 0.5
             # sigma to search around mle
             sig = 0.1
@@ -347,9 +347,10 @@ class Fitter(object):
                     sig *= 0.5
 
             # start at the minimum
+            pini = mle.copy()
             res = scipy.optimize.minimize(
                 log_func_minimize,
-                mle,
+                pini,
                 method="Nelder-Mead",
                 bounds=((0.0, 1.0),) * npars,
             )
@@ -362,8 +363,8 @@ class Fitter(object):
             # start at the initial value
             mle = p0.copy()
             chi2 = log_func_minimize(p0)
-            chi2_ini = chi2.copy()
-            for ii in range(2):
+            chi2_ini = chi2 * 1
+            for ii in range(3):
                 pini = mle.copy()
                 res = scipy.optimize.minimize(
                     log_func_minimize,
@@ -947,6 +948,7 @@ class Fitter(object):
         dict_out["z_star"] = self.like.theory.z_star
         dict_out["kp_kms"] = self.like.theory.kp_kms
         dict_out["mle"] = self.mle
+        dict_out["mle_cube"] = self.mle_cube
         dict_out["lnprob_mle"] = self.lnprop_mle
 
         dict_out["cosmo_best"] = {}

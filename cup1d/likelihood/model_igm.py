@@ -1,7 +1,6 @@
 import os
 import lace
 import numpy as np
-
 from cup1d.nuisance import mean_flux_model, thermal_model, pressure_model
 
 
@@ -163,7 +162,11 @@ class IGM(object):
             return igm_return
 
     def set_priors(self, fid_igm, list_sim_cube, type_priors="hc"):
-        """Set priors for all IGM models: outdated!"""
+        """Set priors for all IGM models
+
+        This is only important for giving the minimizer and the sampler a uniform
+        prior that it is not too broad. The metric below takes care of the real priors
+        """
 
         if type_priors == "hc":
             percent = 95
@@ -194,22 +197,29 @@ class IGM(object):
                     np.min(self.all_igm[sim][par][_] / fid_igm[par][_])
                 )
 
-            _ = np.argwhere(np.isfinite(res_div[:, 0]) & (res_div[:, 0] != 0))[
-                :, 0
-            ]
+            _ = np.argwhere(
+                np.isfinite(res_div[:, 0])
+                & (res_div[:, 0] != 0)
+                & (res_div[:, 0] != 1)
+            )[:, 0]
             if len(_) == 0:
                 print("no good points for ", par)
                 self.priors[par] = [[-1, 1], [-1, 1]]
                 continue
-
             y0_max = np.abs(np.log(np.percentile(res_div[_, 0], percent)))
-            _ = np.argwhere(np.isfinite(res_div[:, 1]) & (res_div[:, 1] != 0))[
-                :, 0
-            ]
+            _ = np.argwhere(
+                np.isfinite(res_div[:, 1])
+                & (res_div[:, 1] != 0)
+                & (res_div[:, 1] != 1)
+            )[:, 0]
             y0_min = np.abs(np.log(np.percentile(1 / res_div[_, 1], percent)))
             y0_cen = 0.5 * (y0_max + y0_min)
             y1 = y0_cen / np.log((1 + fid_igm["z"].max()) / (1 + self.z_pivot))
-            self.priors[par] = [[-y1, y1], [-y0_min * 1.05, y0_max * 1.05]]
+            self.priors[par] = [
+                [-y1 * 1.05, y1 * 1.05],
+                [-y0_min * 1.05, y0_max * 1.05],
+                # [-1, 1],
+            ]
 
     def set_metric(self, emu_igm_params, tol_factor=95):
         # get all individual points separately

@@ -205,8 +205,10 @@ class Likelihood(object):
 
         equal_IGM = True
         for key in self.data.truth["igm"]:
+            lenz = self.theory.model_igm.fid_igm[key].shape[0]
             if np.allclose(
-                self.data.truth["igm"][key], self.theory.model_igm.fid_igm[key]
+                self.data.truth["igm"][key][:lenz],
+                self.theory.model_igm.fid_igm[key],
             ):
                 equal_IGM = False
                 break
