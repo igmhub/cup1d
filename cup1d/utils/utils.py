@@ -50,15 +50,6 @@ def create_print_function(verbose=True):
     return print_new
 
 
-def get_path_cup1d():
-    path_cup1d = os.path.dirname(cup1d.__path__[0])
-    if "cup1d" in path_cup1d:
-        pass
-    else:
-        path_cup1d += "/cup1d"
-    return path_cup1d
-
-
 def get_path_repo(name_repo):
     """
     Returns the file path to the root directory of a specified repository.

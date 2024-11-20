@@ -69,19 +69,6 @@ args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
 archive = set_archive(args.training_set)
 
-# %%
-from cup1d.utils.utils_sims import get_training_hc
-from cup1d.utils.hull import Hull
-
-# %%
-hc_params, hc_points, cosmo_all, igm_all = get_training_hc("mpg")
-
-# %%
-hull = Hull(hc_points)
-
-# %%
-hull.in_hull(hc_points[0])
-
 # %% [markdown]
 # ### Set emulator
 
@@ -105,11 +92,11 @@ else:
 # #### Set either mock data or real data
 
 # %%
-choose_forecast = True
+choose_forecast = False
 choose_mock = False
 choose_data = False
 choose_challenge = False
-choose_desiy1 = False
+choose_desiy1 = True
 
 if choose_forecast:
     args.data_label_hires = None
@@ -135,7 +122,7 @@ if choose_forecast:
     args.true_SN=[0, -4]
     # from -5 to 1.5
     args.true_AGN=[0, -5]
-    args.z_max = 10
+    args.z_max = 4.5
 elif choose_mock:    
     true_cosmo=None
     # to analyze data from simulations
@@ -248,6 +235,7 @@ args.ic_correction=False
 
 args.emu_cov_factor = 0.0
 args.fid_cosmo_label="mpg_central"
+# args.fid_cosmo_label="mpg_2"
 # args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="nyx_seed"
 
@@ -257,9 +245,9 @@ args.fid_cosmo_label="mpg_central"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
-# args.fid_igm_label="mpg_central"
+args.fid_igm_label="mpg_central"
 # args.fid_igm_label="nyx_central"
-args.fid_igm_label="mpg_29"
+# args.fid_igm_label="mpg_2"
 # args.fid_igm_label="nyx_seed"
 # args.fid_igm_label="nyx_3"
 # args.fid_igm_label="nyx_3_1"
@@ -283,10 +271,10 @@ args.vary_alphas=False
 # args.vary_alphas=True
 args.fix_cosmo=False
 # args.fix_cosmo=True
-args.n_tau=2
-args.n_sigT=2
-args.n_gamma=2
-args.n_kF=2
+# args.n_tau=2
+# args.n_sigT=2
+# args.n_gamma=2
+# args.n_kF=2
 # args.n_SiIII = 0
 # args.n_d_SiIII = 0
 # args.n_SiII = 0
@@ -294,22 +282,22 @@ args.n_kF=2
 # args.n_sn=0
 # args.n_agn=0
 
-# args.fid_SiIII=[[0, 0], [4, -5]]
-# args.fid_SiII=[[0, 0], [2, -10]]
-# args.fid_HCD=[0, -2]
-# args.fid_SN=[0, -4]
-# args.fid_AGN=[0, -5]
+args.fid_SiIII=[[0, 0], [4, -5]]
+args.fid_SiII=[[0, 0], [2, -10]]
+args.fid_HCD=[0, -2]
+args.fid_SN=[0, -4]
+args.fid_AGN=[0, -5]
 
-# args.n_tau=2
-# args.n_sigT=2
-# args.n_gamma=2
-# args.n_kF=2
-# args.n_SiIII = 2
-# args.n_d_SiIII = 2
-# args.n_SiII = 0
-# args.n_dla=2
-# args.n_sn=0
-# args.n_agn=1
+args.n_tau=2
+args.n_sigT=2
+args.n_gamma=2
+args.n_kF=2
+args.n_SiIII = 2
+args.n_d_SiIII = 1
+args.n_SiII = 0
+args.n_dla=2
+args.n_sn=0
+args.n_agn=0
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
@@ -324,23 +312,28 @@ like = set_like(
     args,
     data_hires=data["extra_P1Ds"],
 )
+like.plot_p1d(residuals=True)
+
+# %%
+like.theory.hc_params
+
+# %%
+for ii in range(like.theory.hc_points.shape[0]):
+    p0 = {}
+    for jj, key in enumerate(like.theory.hc_params):
+        p0[key] = like.theory.hc_points[ii, jj]
+    if like.theory.hull.in_hull(p0) == False:
+        print(ii, like.theory.hull.in_hull(p0))
+    
+                            
 
 # %%
 # load the cosmology of these
 
 # linP_hc = np.zeros((len(list_sim_hc), 3))
 
-# %%
-all_igm["mpg_0_0"]
-
-# %%
-isinstance("0", (int))
-
-# %%
-
-# %%
-
-# %%
+# %% [markdown]
+# #### PLOT HULL (to be added)
 
 # %%
 # %%time

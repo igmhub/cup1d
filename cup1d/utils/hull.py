@@ -24,7 +24,7 @@ class Hull(object):
 
     """
 
-    def __init__(self, data_hull, extra_factor=1.05):
+    def __init__(self, data_params, data_hull, extra_factor=1.05):
         """
         Initializes the Hull object by computing the convex hull of a given dataset with an optional scaling factor.
 
@@ -56,6 +56,7 @@ class Hull(object):
         - The convex hull is computed using the scaled dataset, and the resulting `ConvexHull` object contains
           the vertices, simplices, and other details about the convex hull.
         """
+        self.data_params = data_params
         mean = data_hull.mean(axis=0)
         self.hull = ConvexHull(extra_factor * (data_hull - mean) + mean)
 
@@ -80,10 +81,13 @@ class Hull(object):
         lies within the convex hull. The convex hull is considered to enclose all points whose projections
         onto the faces of the hull satisfy the inequality defined by the hull's equations.
         """
+        p0 = np.zeros(len(self.data_params))
+        for ii, param in enumerate(self.data_params):
+            p0[ii] = point[param]
 
         # Use the plane equations from the convex hull
         equations = (
             self.hull.equations
         )  # Ax + By + Cz + D = 0 (normal vector + offset)
 
-        return np.all(np.dot(equations[:, :-1], point) + equations[:, -1] <= 0)
+        return np.all(np.dot(equations[:, :-1], p0) + equations[:, -1] <= 0)

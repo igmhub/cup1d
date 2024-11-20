@@ -6,13 +6,6 @@ from scipy.stats.distributions import chi2 as chi2_scipy
 from scipy.optimize import minimize
 
 from lace.cosmo import camb_cosmo
-from lace.cosmo import fit_linP
-
-from cup1d.likelihood import cosmologies
-from cup1d.likelihood import lya_theory
-from cup1d.nuisance import mean_flux_model
-from cup1d.nuisance import thermal_model
-from cup1d.nuisance import pressure_model
 
 
 class Likelihood(object):
@@ -49,11 +42,12 @@ class Likelihood(object):
         self.data = data
         self.extra_data = extra_data
 
+        # Set inverse covariance. We do it here so we can account for emulator error
         self.set_icov()
 
         self.theory = theory
-        self.theory.emu_cosmo_hc()
-        self.theory.set_cosmo_priors()
+        # self.theory.emu_cosmo_hc()
+        # self.theory.set_cosmo_priors()
 
         # setup parameters
         self.free_param_names = free_param_names
@@ -68,37 +62,93 @@ class Likelihood(object):
         self.set_fid()
 
     def set_icov(self):
+        """
+        Computes and sets the inverse covariance matrix for the P1 power spectrum data and full power spectrum data.
+
+        This method processes the main dataset (`data`) and any additional dataset (`extra_data`) associated
+        with the object. For each dataset:
+        - It computes the inverse covariance matrices for the power spectrum (`Pk_kms`) at different redshifts,
+          incorporating an emulator error factor.
+        - It computes the inverse covariance matrix for the full power spectrum data, if available.
+
+        The resulting inverse covariance matrices are stored in instance attributes.
+
+        Attributes Modified:
+        --------------------
+        icov_Pk_kms : list of numpy.ndarray
+            List of inverse covariance matrices for the power spectrum of the main dataset at different redshifts.
+
+        full_icov_Pk_kms : numpy.ndarray or None
+            Inverse covariance matrix for the full power spectrum of the main dataset.
+            Set to `None` if the full power spectrum is not available.
+
+        extra_icov_Pk_kms : list of numpy.ndarray
+            List of inverse covariance matrices for the power spectrum of the additional dataset at different redshifts.
+            Set to `None` if `extra_data` is not provided.
+
+        extra_full_icov_Pk_kms : numpy.ndarray or None
+            Inverse covariance matrix for the full power spectrum of the additional dataset.
+            Set to `None` if the full power spectrum is not available or if `extra_data` is not provided.
+
+        Notes:
+        -----
+        - The emulator error is added to the diagonal of the covariance matrix before inverting. The error is
+          computed as `(data.Pk_kms * emu_cov_factor) ** 2`, where `emu_cov_factor` is an attribute of the object.
+        - The method iterates over redshift bins (`data.z`) and processes the covariance matrices accordingly.
+        - If the dataset (`data` or `extra_data`) is `None`, no processing occurs for that dataset.
+
+        Raises:
+        -------
+        ValueError:
+            If the covariance matrix inversion fails (e.g., due to singularity).
+        """
+
+        # Iterate over both datasets: main dataset (idata = 0) and additional dataset (idata = 1)
         for idata in range(2):
-            if idata == 0:
+            if idata == 0:  # Main dataset
                 data = self.data
+                # Initialize list to store inverse covariance matrices for Pk_kms
                 self.icov_Pk_kms = []
+                # Initialize the full inverse covariance matrix for Pk_kms
                 self.full_icov_Pk_kms = None
-            else:
+            else:  # Additional dataset
                 data = self.extra_data
+                # Initialize list for extra inverse covariance matrices
                 self.extra_icov_Pk_kms = []
+                # Initialize the full inverse covariance matrix for extra data
                 self.extra_full_icov_Pk_kms = None
 
-            if data is None:
+            if data is None:  # Skip if no data is provided for this dataset
                 continue
 
+            # Total number of k values across all redshifts
             nks = 0
             for ii in range(len(data.z)):
                 nks += len(data.Pk_kms[ii])
 
-            # add emulator error and compute inverse of covariance matrix
+            # Process each redshift bin
             for ii in range(len(data.z)):
+                # Copy the covariance matrix for the current redshift bin
                 cov = data.cov_Pk_kms[ii].copy()
+                # Indices of the diagonal elements
                 ind = np.arange(len(data.Pk_kms[ii]))
+                # Add emulator error to the diagonal
                 cov[ind, ind] += (data.Pk_kms[ii] * self.emu_cov_factor) ** 2
+                # Compute and store the inverse covariance matrix
                 if idata == 0:
                     self.icov_Pk_kms.append(np.linalg.inv(cov))
                 else:
                     self.extra_icov_Pk_kms.append(np.linalg.inv(cov))
 
+            # Process the full power spectrum data if available
             if data.full_Pk_kms is not None:
+                # Copy the full covariance matrix
                 cov = data.full_cov_kms.copy()
+                # Indices of the diagonal elements
                 ind = np.arange(len(data.full_Pk_kms))
+                # Add emulator error to the diagonal
                 cov[ind, ind] += (data.full_Pk_kms * self.emu_cov_factor) ** 2
+                # Compute and store the inverse covariance matrix
                 if idata == 0:
                     self.full_icov_Pk_kms = np.linalg.inv(cov)
                 else:
