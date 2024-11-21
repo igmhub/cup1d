@@ -6,6 +6,7 @@ from scipy.stats.distributions import chi2 as chi2_scipy
 from scipy.optimize import minimize
 
 from lace.cosmo import camb_cosmo
+from cup1d.utils.utils import is_number_string
 
 
 class Likelihood(object):
@@ -945,7 +946,13 @@ class Likelihood(object):
 
     #     return
 
-    def plot_igm(self, cloud=False, free_params=None):
+    def plot_igm(
+        self,
+        cloud=False,
+        free_params=None,
+        save_directory=None,
+        stat_best_fit="mle",
+    ):
         """Plot IGM histories"""
 
         # true IGM parameters
@@ -963,13 +970,6 @@ class Likelihood(object):
         pars_fid["gamma"] = self.fid["igm"]["gamma"]
         pars_fid["sigT_kms"] = self.fid["igm"]["sigT_kms"]
         pars_fid["kF_kms"] = self.fid["igm"]["kF_kms"]
-
-        # all IGM histories in the training sample
-        if cloud:
-            emu_label_igm = self.theory.emulator.training_data[0]["sim_label"]
-            all_emu_igm = self.theory.model_igm.get_igm(
-                emu_label_igm, return_all=True
-            )
 
         if free_params is not None:
             zs = self.fid["igm"]["z"]
@@ -1005,39 +1005,44 @@ class Likelihood(object):
                 ax[ii].plot(
                     pars_true["z"][_],
                     pars_true[arr_labs[ii]][_],
-                    "o:",
+                    "C0:o",
                     alpha=0.75,
                     label="true",
-                )
-
-            if free_params is not None:
-                _ = pars_test[arr_labs[ii]] != 0
-                ax[ii].plot(
-                    pars_test["z"][_],
-                    pars_test[arr_labs[ii]][_],
-                    "r-",
-                    label="test",
                 )
 
             _ = pars_fid[arr_labs[ii]] != 0
             ax[ii].plot(
                 pars_fid["z"][_],
                 pars_fid[arr_labs[ii]][_],
-                "--",
+                "C1--",
                 label="fiducial",
                 alpha=0.75,
                 lw=3,
             )
 
+            if free_params is not None:
+                _ = pars_test[arr_labs[ii]] != 0
+                ax[ii].plot(
+                    pars_test["z"][_],
+                    pars_test[arr_labs[ii]][_],
+                    "C2-.",
+                    label="fit",
+                    alpha=0.75,
+                    lw=3,
+                )
+
             if cloud:
-                for sim_label in all_emu_igm:
-                    _ = np.argwhere(all_emu_igm[sim_label][arr_labs[ii]] != 0)[
-                        :, 0
-                    ]
+                for sim_label in self.theory.emu_igm_all:
+                    if is_number_string(sim_label[-1]) == False:
+                        continue
+
+                    _ = np.argwhere(
+                        self.theory.emu_igm_all[sim_label][arr_labs[ii]] != 0
+                    )[:, 0]
                     if len(_) > 0:
                         ax[ii].scatter(
-                            all_emu_igm[sim_label]["z"][_],
-                            all_emu_igm[sim_label][arr_labs[ii]][_],
+                            self.theory.emu_igm_all[sim_label]["z"][_],
+                            self.theory.emu_igm_all[sim_label][arr_labs[ii]][_],
                             marker=".",
                             color="black",
                             alpha=0.05,
@@ -1052,3 +1057,12 @@ class Likelihood(object):
                 ax[ii].set_xlabel(r"$z$")
 
         plt.tight_layout()
+
+        if save_directory is not None:
+            name = os.join.path(
+                save_directory, "IGM_histories_" + stat_best_fit
+            )
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
+        else:
+            plt.show()

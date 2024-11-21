@@ -293,7 +293,7 @@ args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
 args.n_SiIII = 2
-args.n_d_SiIII = 1
+args.n_d_SiIII = 2
 args.n_SiII = 0
 args.n_dla=2
 args.n_sn=0
@@ -312,111 +312,9 @@ like = set_like(
     args,
     data_hires=data["extra_P1Ds"],
 )
-like.plot_p1d(residuals=True)
-
-# %%
-like.theory.hc_params
-
-# %%
-for ii in range(like.theory.hc_points.shape[0]):
-    p0 = {}
-    for jj, key in enumerate(like.theory.hc_params):
-        p0[key] = like.theory.hc_points[ii, jj]
-    if like.theory.hull.in_hull(p0) == False:
-        print(ii, like.theory.hull.in_hull(p0))
-    
-                            
-
-# %%
-# load the cosmology of these
-
-# linP_hc = np.zeros((len(list_sim_hc), 3))
-
-# %% [markdown]
-# #### PLOT HULL (to be added)
-
-# %%
-# %%time
-# Test points
-# test_points = [[0.3, -2.2, 0.16, 0.2, 0.1, 1.5, 15]]
-test_points = [[0.3, -2.2, 0.2, 0.1, 1.5, 15]]
-# Check if test points are inside the hull
-results = [is_point_inside_hull(point, hull) for point in test_points]
-results = np.array(results).astype(int)
-
-# %%
-# Visualization: Project onto all 2D pairs of dimensions
-n_dimensions = points.shape[1]
-fig, axes = plt.subplots(n_dimensions, n_dimensions, figsize=(12, 12), constrained_layout=True)
-
-for i in range(n_dimensions):
-    for j in range(n_dimensions):
-        if j > i:
-            axes[i, j].set_visible(False)
-            continue
-    
-        # Plot the points projected onto dimensions (i, j)
-        if i == j:
-            axes[i, j].hist(points[:, i])
-        else:
-            # axes[i, j].sharex(axes[i, 0])
-            axes[i, j].scatter(points[:, j], points[:, i], s=10)
-            
-            for icol in range(2):
-                col = "C"+str(icol+2)
-                _ = np.argwhere(results == icol)[:,0]
-                # axes[i, j].scatter(test_points[_, j], test_points[_, i], s=20, color=col)
-
-            # Project points onto dimensions (i, j)
-            projected_points = data_hull[:, [j, i]]            
-            # Extract the hull vertices and sort them for the contour
-            projected_hull_points = projected_points[hull.vertices]
-            hull_2d = ConvexHull(projected_hull_points)
-            for simplex in hull_2d.simplices:
-                axes[i, j].plot(projected_hull_points[simplex, 0], 
-                                projected_hull_points[simplex, 1], 
-                                'k-')
-
-
-    
-# axes[i, j].set_xlabel(f"Dimension {i+1}")
-# axes[i, j].set_ylabel(f"Dimension {j+1}")
-
-# ax.set_title("Convex Hull in n-D Projected to 2D")
-# ax.set_xlabel("Dimension 1")
-# ax.set_ylabel("Dimension 2")
-
-# %%
-
-# %%
 
 # %% [markdown]
 # #### Set priors, move
-
-# %%
-cosmo_all = set_cosmo(cosmo_label="nyx_0", return_all=True)
-as_min = 10
-as_max = -10
-ns_min = 10
-ns_max = -10
-alpha_min = 10
-alpha_max = -10
-for cos in cosmo_all:
-    if (cos["cosmo_params"]["A_s"] < as_min):
-        as_min = cos["cosmo_params"]["A_s"]
-    if (cos["cosmo_params"]["A_s"] > as_max):
-        as_max = cos["cosmo_params"]["A_s"]
-    if (cos["cosmo_params"]["n_s"] < ns_min):
-        ns_min = cos["cosmo_params"]["n_s"]
-    if (cos["cosmo_params"]["n_s"] > ns_max):
-        ns_max = cos["cosmo_params"]["n_s"]
-    if (cos["star_params"]["alpha_star"] < alpha_min):
-        alpha_min = cos["star_params"]["alpha_star"]
-    if (cos["star_params"]["alpha_star"] > alpha_max):
-        alpha_max = cos["star_params"]["alpha_star"]
-print(as_min, as_max)
-print(ns_min, ns_max)
-print(alpha_min - 0.5*(alpha_max+alpha_min), alpha_max - 0.5*(alpha_max+alpha_min))
 
 # %% [markdown]
 # Sampling parameters
@@ -437,7 +335,7 @@ like.plot_p1d(residuals=True)
 # like.theory.model_cont.agn_model.plot_contamination(z, k_kms)
 
 # %%
-like.plot_igm()
+like.plot_igm(cloud=True)
 
 # %% [markdown]
 # ### Set fitter
@@ -510,7 +408,7 @@ plotter.plot_p1d(residuals=True, plot_every_iz=1)
 # %%
 
 # %%
-plotter.plot_igm(cloud=True)
+plotter.plot_igm()
 
 # %%
 # plotter.plot_hcd_cont(plot_data=True)

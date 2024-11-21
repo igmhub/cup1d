@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
 
 
@@ -57,8 +58,9 @@ class Hull(object):
           the vertices, simplices, and other details about the convex hull.
         """
         self.data_params = data_params
-        mean = data_hull.mean(axis=0)
-        self.hull = ConvexHull(extra_factor * (data_hull - mean) + mean)
+        self.data_hull = data_hull
+        mean = self.data_hull.mean(axis=0)
+        self.hull = ConvexHull(extra_factor * (self.data_hull - mean) + mean)
 
     def in_hull(self, point):
         """
@@ -91,3 +93,48 @@ class Hull(object):
         )  # Ax + By + Cz + D = 0 (normal vector + offset)
 
         return np.all(np.dot(equations[:, :-1], p0) + equations[:, -1] <= 0)
+
+    def plot_hull(self, test_points=None):
+        # Visualization: Project onto all 2D pairs of dimensions
+        points = self.data_hull
+        n_dimensions = points.shape[1]
+        fig, axes = plt.subplots(
+            n_dimensions,
+            n_dimensions,
+            figsize=(12, 12),
+            constrained_layout=True,
+        )
+
+        for i in range(n_dimensions):
+            for j in range(n_dimensions):
+                if j > i:
+                    axes[i, j].set_visible(False)
+                    continue
+
+                # Plot the points projected onto dimensions (i, j)
+                if i == j:
+                    axes[i, j].hist(points[:, i])
+                else:
+                    axes[i, j].scatter(points[:, j], points[:, i], s=10)
+
+                    # uncomment for test points
+                    # for icol in range(2):
+                    #     col = "C" + str(icol + 2)
+                    #     _ = np.argwhere(results == icol)[:, 0]
+                    # axes[i, j].scatter(test_points[_, j], test_points[_, i], s=20, color=col)
+
+                    # Project points onto dimensions (i, j)
+                    projected_points = points[:, [j, i]]
+                    # Extract the hull vertices and sort them for the contour
+                    projected_hull_points = projected_points[self.hull.vertices]
+                    hull_2d = ConvexHull(projected_hull_points)
+                    for simplex in hull_2d.simplices:
+                        axes[i, j].plot(
+                            projected_hull_points[simplex, 0],
+                            projected_hull_points[simplex, 1],
+                            "k-",
+                        )
+
+        for j in range(n_dimensions):
+            axes[-1, j].set_xlabel(self.data_params[j])
+            axes[j, 0].set_ylabel(self.data_params[j])
