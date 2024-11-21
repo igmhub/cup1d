@@ -167,6 +167,7 @@ def set_P1D(
         theory = lya_theory.set_theory(
             emulator,
             set_metric=False,
+            use_hull=False,
             sim_igm=args.true_igm_label,
             SiII=args.true_SiII,
             SiIII=args.true_SiIII,

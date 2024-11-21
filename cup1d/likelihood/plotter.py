@@ -377,160 +377,54 @@ class Plotter(object):
         value=None,
         rand_sample=None,
         stat_best_fit="mle",
-        cloud=False,
+        cloud=True,
     ):
         """Plot IGM histories"""
 
         if value is None:
             value = self.mle_values
 
-        # true IGM parameters
-        if self.fitter.like.truth is not None:
-            pars_true = {}
-            pars_true["z"] = self.fitter.like.truth["igm"]["z"]
-            pars_true["tau_eff"] = self.fitter.like.truth["igm"]["tau_eff"]
-            pars_true["gamma"] = self.fitter.like.truth["igm"]["gamma"]
-            pars_true["sigT_kms"] = self.fitter.like.truth["igm"]["sigT_kms"]
-            pars_true["kF_kms"] = self.fitter.like.truth["igm"]["kF_kms"]
-
-        # fiducial IGM parameters
-        pars_fid = {}
-        pars_fid["z"] = self.fitter.like.fid["igm"]["z"]
-        pars_fid["tau_eff"] = self.fitter.like.fid["igm"]["tau_eff"]
-        pars_fid["gamma"] = self.fitter.like.fid["igm"]["gamma"]
-        pars_fid["sigT_kms"] = self.fitter.like.fid["igm"]["sigT_kms"]
-        pars_fid["kF_kms"] = self.fitter.like.fid["igm"]["kF_kms"]
-
-        # all IGM histories in the training sample
-        if cloud:
-            all_emu_igm = self.fitter.like.theory.model_igm.all_igm
-
-        pars_best = {}
-        pars_best["z"] = np.array(self.fitter.like.data.z)
-        pars_best[
-            "tau_eff"
-        ] = self.fitter.like.theory.model_igm.F_model.get_tau_eff(
-            pars_best["z"], like_params=self.like_params
-        )
-        pars_best[
-            "gamma"
-        ] = self.fitter.like.theory.model_igm.T_model.get_gamma(
-            pars_best["z"], like_params=self.like_params
-        )
-        pars_best[
-            "sigT_kms"
-        ] = self.fitter.like.theory.model_igm.T_model.get_sigT_kms(
-            pars_best["z"], like_params=self.like_params
-        )
-        pars_best[
-            "kF_kms"
-        ] = self.fitter.like.theory.model_igm.P_model.get_kF_kms(
-            pars_best["z"], like_params=self.like_params
+        self.fitter.like.plot_igm(
+            cloud=cloud,
+            free_params=self.like_params,
+            stat_best_fit=stat_best_fit,
+            save_directory=self.save_directory,
         )
 
-        if rand_sample is not None:
-            # chain, lnprob, blobs = self.fitter.get_chain()
-            # nn = min(chain.shape[0], nn)
-            # mask = np.random.permutation(chain.shape[0])[:nn]
-            # rand_sample = chain[mask]
+        # if rand_sample is not None:
+        #     # chain, lnprob, blobs = self.fitter.get_chain()
+        #     # nn = min(chain.shape[0], nn)
+        #     # mask = np.random.permutation(chain.shape[0])[:nn]
+        #     # rand_sample = chain[mask]
 
-            # sample the chain to get errors on IGM parameters
-            pars_samp = {}
-            pars_samp["tau_eff"] = np.zeros((nn, len(z)))
-            pars_samp["gamma"] = np.zeros((nn, len(z)))
-            pars_samp["sigT_kms"] = np.zeros((nn, len(z)))
-            pars_samp["kF_kms"] = np.zeros((nn, len(z)))
-            for ii in range(nn):
-                like_params = self.fitter.like.parameters_from_sampling_point(
-                    rand_sample[ii]
-                )
-                models = self.fitter.like.theory.update_igm_models(like_params)
-                pars_samp["tau_eff"][ii] = models["F_model"].get_tau_eff(z)
-                pars_samp["gamma"][ii] = models["T_model"].get_gamma(z)
-                pars_samp["sigT_kms"][ii] = models["T_model"].get_sigT_kms(z)
-                pars_samp["kF_kms"][ii] = models["P_model"].get_kF_kms(z)
+        #     # sample the chain to get errors on IGM parameters
+        #     pars_samp = {}
+        #     pars_samp["tau_eff"] = np.zeros((nn, len(z)))
+        #     pars_samp["gamma"] = np.zeros((nn, len(z)))
+        #     pars_samp["sigT_kms"] = np.zeros((nn, len(z)))
+        #     pars_samp["kF_kms"] = np.zeros((nn, len(z)))
+        #     for ii in range(nn):
+        #         like_params = self.fitter.like.parameters_from_sampling_point(
+        #             rand_sample[ii]
+        #         )
+        #         models = self.fitter.like.theory.update_igm_models(like_params)
+        #         pars_samp["tau_eff"][ii] = models["F_model"].get_tau_eff(z)
+        #         pars_samp["gamma"][ii] = models["T_model"].get_gamma(z)
+        #         pars_samp["sigT_kms"][ii] = models["T_model"].get_sigT_kms(z)
+        #         pars_samp["kF_kms"][ii] = models["P_model"].get_kF_kms(z)
 
-        # plot the IGM histories
-        fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
-        ax = ax.reshape(-1)
-
-        arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
-        latex_labs = [
-            r"$\tau_\mathrm{eff}$",
-            r"$\gamma$",
-            r"$\sigma_T$",
-            r"$k_F$",
-        ]
-
-        for ii in range(len(arr_labs)):
-            if self.fitter.like.truth is not None:
-                _ = pars_true[arr_labs[ii]] != 0
-                ax[ii].plot(
-                    pars_true["z"][_],
-                    pars_true[arr_labs[ii]][_],
-                    ":o",
-                    label="true",
-                    alpha=0.75,
-                )
-            _ = pars_fid[arr_labs[ii]] != 0
-            ax[ii].plot(
-                pars_fid["z"][_],
-                pars_fid[arr_labs[ii]][_],
-                "--",
-                label="fiducial",
-                lw=3,
-                alpha=0.75,
-            )
-
-            _ = pars_best[arr_labs[ii]] != 0
-            if rand_sample is not None:
-                err = np.abs(
-                    np.percentile(pars_samp[arr_labs[ii]], [16, 84], axis=0)
-                    - pars_best[arr_labs[ii]]
-                )
-                ax[ii].errorbar(
-                    pars_best["z"],
-                    pars_best[arr_labs[ii]],
-                    err,
-                    label="best-fitting",
-                    alpha=0.75,
-                )
-            else:
-                ax[ii].plot(
-                    pars_best["z"][_],
-                    pars_best[arr_labs[ii]][_],
-                    label="fit",
-                    lw=3,
-                    alpha=0.75,
-                )
-
-            if cloud:
-                for sim_label in all_emu_igm:
-                    _ = all_emu_igm[sim_label][arr_labs[ii]] != 0
-                    ax[ii].scatter(
-                        all_emu_igm[sim_label]["z"][_],
-                        all_emu_igm[sim_label][arr_labs[ii]][_],
-                        marker=".",
-                        color="black",
-                        alpha=0.05,
-                    )
-
-            ax[ii].set_ylabel(latex_labs[ii])
-            if ii == 0:
-                ax[ii].set_yscale("log")
-                ax[ii].legend()
-
-            if (ii == 2) | (ii == 3):
-                ax[ii].set_xlabel(r"$z$")
-
-        plt.tight_layout()
-
-        if self.save_directory is not None:
-            name = self.save_directory + "/IGM_histories_" + stat_best_fit
-            plt.savefig(name + ".pdf")
-            plt.savefig(name + ".png")
-        else:
-            plt.show()
+        #     if rand_sample is not None:
+        #         err = np.abs(
+        #             np.percentile(pars_samp[arr_labs[ii]], [16, 84], axis=0)
+        #             - pars_best[arr_labs[ii]]
+        #         )
+        #         ax[ii].errorbar(
+        #             pars_best["z"],
+        #             pars_best[arr_labs[ii]],
+        #             err,
+        #             label="best-fitting",
+        #             alpha=0.75,
+        #         )
 
     def compare_corners(
         self,

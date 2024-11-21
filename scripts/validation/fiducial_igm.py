@@ -9,14 +9,15 @@ def main():
     """Launch validate cosmology"""
 
     # emulator_label = "Pedersen23_ext"
-    # emulator_label = "Cabayol23+"
-    # training_set = "Cabayol23"
-    # suite = "mpg"
+    emulator_label = "Cabayol23+"
+    training_set = "Cabayol23"
+    suite = "mpg"
 
-    emulator_label = "Nyx_alphap_cov"
-    training_set = "Nyx23_Jul2024"
-    suite = "nyx"
-    nIGM = 1
+    # emulator_label = "Nyx_alphap_cov"
+    # training_set = "Nyx23_Jul2024"
+    # suite = "nyx"
+
+    nIGM = 2
 
     base_out_folder = (
         "/home/jchaves/Proyectos/projects/lya/data/cup1d/validate_igm/"

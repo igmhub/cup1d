@@ -30,7 +30,7 @@ class CAMBModel(object):
         self.kp_kms = kp_kms
         self.cached_linP_params = None
 
-    def get_likelihood_parameters(self):
+    def get_likelihood_parameters(self, cosmo_priors=None):
         """Return a list of likelihood parameters"""
 
         # should clarify role of min/max given that these are also
@@ -53,33 +53,32 @@ class CAMBModel(object):
                 value=self.cosmo.omch2,
             )
         )
-        # 20% above and below max value from Nyx
+        if cosmo_priors is not None:
+            min_val = cosmo_priors["As"][0]
+            max_val = cosmo_priors["As"][1]
+        else:
+            min_val = 0.70e-09
+            max_val = 3.60e-09
         params.append(
             likelihood_parameter.LikelihoodParameter(
                 name="As",
-                min_value=0.70e-09,
-                max_value=3.60e-09,
-                # values for which mpg emulators were trained
-                # min_value=1.34e-09,
-                # max_value=2.71e-09,
-                # values for which nyx emulators were trained
-                # min_value=0.92e-09,
-                # max_value=3.43e-09,
+                min_value=min_val,
+                max_value=max_val,
                 value=self.cosmo.InitPower.As,
             )
         )
-        # 20% above and below max value from Nyx
+
+        if cosmo_priors is not None:
+            min_val = cosmo_priors["ns"][0]
+            max_val = cosmo_priors["ns"][1]
+        else:
+            min_val = 0.80
+            max_val = 1.15
         params.append(
             likelihood_parameter.LikelihoodParameter(
                 name="ns",
-                min_value=0.80,
-                max_value=1.15,
-                # values for which lace emulators were trained
-                # min_value=0.91,
-                # max_value=1.02,
-                # values for which nyx emulators were trained
-                # min_value=0.86,
-                # max_value=1.10,
+                min_value=min_val,
+                max_value=max_val,
                 value=self.cosmo.InitPower.ns,
             )
         )
@@ -91,14 +90,18 @@ class CAMBModel(object):
                 value=camb_cosmo.get_mnu(self.cosmo),
             )
         )
+
+        if cosmo_priors is not None:
+            min_val = cosmo_priors["nrun"][0]
+            max_val = cosmo_priors["nrun"][1]
+        else:
+            min_val = -0.05
+            max_val = 0.05
         params.append(
             likelihood_parameter.LikelihoodParameter(
                 name="nrun",
-                min_value=-0.05,
-                max_value=0.05,
-                # values for which nyx emulators were trained (differences in alpha_star)
-                # min_value=-0.01,
-                # max_value=0.01,
+                min_value=min_val,
+                max_value=max_val,
                 value=self.cosmo.InitPower.nrun,
             )
         )

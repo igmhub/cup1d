@@ -9,12 +9,16 @@ from cup1d.likelihood import CAMB_model
 from cup1d.likelihood.model_contaminants import Contaminants
 from cup1d.likelihood.model_igm import IGM
 from cup1d.likelihood.cosmologies import set_cosmo
+from cup1d.utils.utils_sims import get_training_hc
+from cup1d.utils.hull import Hull
+from cup1d.utils.utils import is_number_string
 
 
 def set_theory(
     emulator,
     free_parameters=None,
     set_metric=True,
+    use_hull=True,
     zs_hires=None,
     sim_igm="mpg_central",
     igm_priors="hc",
@@ -33,7 +37,6 @@ def set_theory(
         fid_sim_igm=sim_igm,
         list_sim_cube=emulator.list_sim_cube,
         type_priors=igm_priors,
-        set_metric=set_metric,
     )
 
     # set contaminants
@@ -52,6 +55,7 @@ def set_theory(
         emulator=emulator,
         model_igm=model_igm,
         model_cont=model_cont,
+        use_hull=use_hull,
     )
 
     return theory
@@ -67,6 +71,7 @@ class Theory(object):
         emulator=None,
         model_igm=None,
         model_cont=None,
+        use_hull=True,
         verbose=False,
         z_star=3.0,
         kp_kms=0.009,
@@ -91,6 +96,7 @@ class Theory(object):
         # specify pivot point used in compressed parameters
         self.z_star = z_star
         self.kp_kms = kp_kms
+        self.use_hull = use_hull
 
         # setup emulator
         if emulator is None:
@@ -110,6 +116,15 @@ class Theory(object):
             self.model_cont = Contaminants()
         else:
             self.model_cont = model_cont
+
+        # set convex hull
+        (
+            self.hc_params,
+            self.hc_points,
+            self.emu_cosmo_all,
+            self.emu_igm_all,
+        ) = get_training_hc(self.emulator.list_sim_cube[0][:3])
+        self.hull = Hull(self.hc_params, self.hc_points)
 
     def set_fid_cosmo(self, zs, zs_hires=None, input_cosmo=None):
         """Setup fiducial cosmology"""
@@ -144,57 +159,94 @@ class Theory(object):
             "cosmo"
         ].get_linP_params()
 
-    def set_cosmo_priors(self):
-        """Set priors for cosmological parameters"""
-        if hasattr(self, "linP_hc") == False:
-            self.emu_cosmo_hc()
+        self.set_cosmo_priors()
 
-        self.cosmo_priors = {}
-        pnames = ["Delta2_star", "n_star", "alpha_star"]
-        for ii, key in enumerate(pnames):
-            self.cosmo_priors[key] = np.zeros(2)
-            self.cosmo_priors[key][0] = np.min(self.linP_hc[:, ii])
-            self.cosmo_priors[key][1] = np.max(self.linP_hc[:, ii])
-            diff = 0.1 * (self.cosmo_priors[key][1] - self.cosmo_priors[key][0])
-            # make sure that we have multiple values of key (useful for alpha_star)
-            if diff < 1e-7:
-                self.cosmo_priors[key][0] = -np.inf
-                self.cosmo_priors[key][1] = np.inf
+    def set_cosmo_priors(self, extra_factor=1.05):
+        """Set priors for cosmological parameters
+
+        We get the priors on As, ns, and nrun from differences in star parameters in the training set
+        """
+
+        self.cosmo_priors = {
+            "As": np.zeros(2),
+            "ns": np.zeros(2),
+            "nrun": np.zeros(2),
+        }
+
+        Astar_min = 10
+        Astar_max = -10
+        nstar_min = 10
+        nstar_max = -10
+        alphastar_min = 10
+        alphastar_max = -10
+        for cos in self.emu_cosmo_all:
+            if is_number_string(cos["sim_label"][-1]) == False:
+                continue
+            if cos["star_params"]["Delta2_star"] < Astar_min:
+                Astar_min = cos["star_params"]["Delta2_star"]
+            if cos["star_params"]["Delta2_star"] > Astar_max:
+                Astar_max = cos["star_params"]["Delta2_star"]
+            if cos["star_params"]["n_star"] < nstar_min:
+                nstar_min = cos["star_params"]["n_star"]
+            if cos["star_params"]["n_star"] > nstar_max:
+                nstar_max = cos["star_params"]["n_star"]
+            if cos["star_params"]["alpha_star"] < alphastar_min:
+                alphastar_min = cos["star_params"]["alpha_star"]
+            if cos["star_params"]["alpha_star"] > alphastar_max:
+                alphastar_max = cos["star_params"]["alpha_star"]
+
+        # pivot scale of primordial power
+        ks_Mpc = self.fid_cosmo["cosmo"].cosmo.InitPower.pivot_scalar
+
+        # likelihood pivot point, in velocity units
+        dkms_dMpc = self.fid_cosmo["cosmo"].dkms_dMpc(self.z_star)
+        kp_Mpc = self.kp_kms * dkms_dMpc
+
+        # logarithm of ratio of pivot points
+        ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
+
+        fid_As = self.fid_cosmo["cosmo"].cosmo.InitPower.As
+        fid_ns = self.fid_cosmo["cosmo"].cosmo.InitPower.ns
+        fid_nrun = self.fid_cosmo["cosmo"].cosmo.InitPower.nrun
+
+        fid_Astar = self.fid_cosmo["linP_params"]["Delta2_star"]
+        fid_nstar = self.fid_cosmo["linP_params"]["n_star"]
+        fid_alphastar = self.fid_cosmo["linP_params"]["alpha_star"]
+
+        for ii in range(2):
+            if ii == 0:
+                test_Astar = Astar_min
+                test_nstar = nstar_min
+                test_alphastar = alphastar_min
             else:
-                self.cosmo_priors[key][0] -= diff
-                self.cosmo_priors[key][1] += diff
+                test_Astar = Astar_max
+                test_nstar = nstar_max
+                test_alphastar = alphastar_max
 
-    def emu_cosmo_hc(self):
-        """Return cosmological parameters of simulations used for training"""
+            ln_ratio_Astar = np.log(test_Astar / fid_Astar)
+            delta_nstar = test_nstar - fid_nstar
+            delta_alphastar = test_alphastar - fid_alphastar
 
-        # name of simulations used for training
-        list_sim_hc = self.emulator.list_sim_cube
-        if list_sim_hc[0][:3] == "mpg":
-            get_cosmo = camb_cosmo.get_cosmology_from_dictionary
-        elif list_sim_hc[0][:3] == "nyx":
-            get_cosmo = camb_cosmo.get_Nyx_cosmology
-        else:
-            raise ValueError("Simulation not recognised")
+            delta_nrun = delta_alphastar
+            delta_ns = delta_nstar - delta_nrun * ln_kp_ks
+            ln_ratio_As = (
+                ln_ratio_Astar
+                - (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
+            )
+            self.cosmo_priors["nrun"][ii] = fid_nrun + delta_nrun
+            self.cosmo_priors["ns"][ii] = fid_ns + delta_ns
+            self.cosmo_priors["As"][ii] = fid_As * np.exp(ln_ratio_As)
 
-        # load the cosmology of these
-        cosmo_all = set_cosmo(cosmo_label=list_sim_hc[0], return_all=True)
-
-        linP_hc = np.zeros((len(list_sim_hc), 3))
-        for ii in range(len(list_sim_hc)):
-            if cosmo_all[ii]["sim_label"] in list_sim_hc:
-                cosmo = get_cosmo(cosmo_all[ii]["cosmo_params"])
-                _ = CAMB_model.CAMBModel(
-                    zs=[3.0],
-                    cosmo=cosmo,
-                    z_star=self.z_star,
-                    kp_kms=self.kp_kms,
-                )
-                linparams = _.get_linP_params()
-                linP_hc[ii, 0] = linparams["Delta2_star"]
-                linP_hc[ii, 1] = linparams["n_star"]
-                linP_hc[ii, 2] = linparams["alpha_star"]
-
-        self.linP_hc = linP_hc
+        for par in self.cosmo_priors:
+            for ii in range(2):
+                if (ii == 0) and (self.cosmo_priors[par][ii] < 0):
+                    self.cosmo_priors[par][ii] *= extra_factor
+                elif (ii == 0) and (self.cosmo_priors[par][ii] >= 0):
+                    self.cosmo_priors[par][ii] *= 1 - (extra_factor - 1)
+                elif (ii == 1) and (self.cosmo_priors[par][ii] < 0):
+                    self.cosmo_priors[par][ii] *= 1 - (extra_factor - 1)
+                elif (ii == 1) and (self.cosmo_priors[par][ii] >= 0):
+                    self.cosmo_priors[par][ii] *= extra_factor
 
     def fixed_background(self, like_params):
         """Check if any of the input likelihood parameters would change
@@ -568,24 +620,35 @@ class Theory(object):
             return_blob=True,
         )
 
-        # check cosmo prior
-        if hasattr(self, "cosmo_priors"):
-            for ii, key in enumerate(self.cosmo_priors):
-                if (blob[ii] > self.cosmo_priors[key][1]) | (
-                    blob[ii] < self.cosmo_priors[key][0]
-                ):
+        # check priors
+        for ii in range(len(zs)):
+            p0 = {}
+            for key in emu_call:
+                p0[key] = emu_call[key][ii]
+            if self.hull.in_hull(p0) == False:
+                if self.use_hull:
                     return None
-        # check igm prior
-        if self.model_igm.metric is not None:
-            dist_igm_priors = np.zeros((len(zs)))
-            for ii in range(len(zs)):
-                p0 = {}
-                for key in emu_call:
-                    p0[key] = emu_call[key][ii]
-                dist_igm_priors[ii] = self.model_igm.metric(p0)
-            if dist_igm_priors.max() > 1:
-                # we are out of the prior range
-                return None
+                else:
+                    print(zs[ii], p0, self.hull.in_hull(p0))
+
+        # # check cosmo prior
+        # if hasattr(self, "cosmo_priors"):
+        #     for ii, key in enumerate(self.cosmo_priors):
+        #         if (blob[ii] > self.cosmo_priors[key][1]) | (
+        #             blob[ii] < self.cosmo_priors[key][0]
+        #         ):
+        #             return None
+        # # check igm prior
+        # if self.model_igm.metric is not None:
+        #     dist_igm_priors = np.zeros((len(zs)))
+        #     for ii in range(len(zs)):
+        #         p0 = {}
+        #         for key in emu_call:
+        #             p0[key] = emu_call[key][ii]
+        #         dist_igm_priors[ii] = self.model_igm.metric(p0)
+        #     if dist_igm_priors.max() > 1:
+        #         # we are out of the prior range
+        #         return None
 
         # compute input k to emulator in Mpc
         Nz = len(zs)
@@ -656,7 +719,9 @@ class Theory(object):
         """Return parameters in models, even if not free parameters"""
 
         # get parameters from CAMB model
-        params = self.fid_cosmo["cosmo"].get_likelihood_parameters()
+        params = self.fid_cosmo["cosmo"].get_likelihood_parameters(
+            cosmo_priors=self.cosmo_priors
+        )
 
         # get parameters from nuisance IGM models
         for par in self.model_igm.F_model.get_parameters():

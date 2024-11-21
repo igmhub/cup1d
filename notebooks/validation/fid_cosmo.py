@@ -17,6 +17,10 @@
 # # Does the fiducial cosmology matter?
 #
 # This test examines whether choosing a particular fiducial cosmology matters for cup1d constraints. This cosmology enters into the calculation of power spectra from CAMB, which gets rescaled during inference
+#
+# - These are mocks drawn from emulators.
+# - The true cosmology is always the same. We assume that from other simulations in the LH.
+# - The fiducial and true IGM history are the same, nIGM=0
 
 # %%
 # %load_ext autoreload
@@ -31,6 +35,7 @@ import matplotlib.pyplot as plt
 folder_out = "/home/jchaves/Proyectos/projects/lya/data/cup1d/validate_cosmo/"
 # folder_cov = "Chabanier2019"
 folder_cov = "DESIY1"
+iemu = 2
 arr_folder_emu = ["Pedersen23_ext", "Cabayol23+", "Nyx_alphap_cov"]
 pars = ['Delta2_star', 'n_star', "alpha_star"]
 nIGM = 0
@@ -63,7 +68,7 @@ for ii in range(nsims):
             + "/"
             + folder_cov
             + "/"
-            + arr_folder_emu[jj]
+            + arr_folder_emu[iemu]
             + "/nIGM"
             + str(nIGM)
             + "/"
@@ -81,7 +86,7 @@ for ii in range(nsims):
             true_star[ii, jj] = res['cosmo_true'][pars[jj]]
             fid_star[ii, jj] = res['cosmo_fid'][pars[jj]]
             best_star[ii, jj] = res['cosmo_best'][pars[jj]]
-    
+
 
 # %%
 
@@ -91,7 +96,7 @@ for ii in range(nsims):
 # %%
 sep_x = 0.01
 fontsize =16
-if "Nyx" in arr_folder_emu[jj]:
+if "Nyx" in arr_folder_emu[iemu]:
     nax = 3
     fig, ax = plt.subplots(1, 3, figsize=(14, 6)) 
 else:
@@ -121,7 +126,7 @@ for ii in range(nax):
     ax[ii].axhline(color="black", linestyle=":")
     ax[ii].axvline(color="black", linestyle=":")
 
-if "Nyx" in arr_folder_emu[jj]:
+if "Nyx" in arr_folder_emu[iemu]:
     ax[0].set_xlabel(r"$\Delta(\Delta^2_\star)$ [%]", fontsize=fontsize)
     ax[0].set_ylabel(r"$\Delta(n_\star)$ [%]", fontsize=fontsize)
     ax[1].set_xlabel(r"$\Delta(\Delta^2_\star)$ [%]", fontsize=fontsize)
@@ -132,14 +137,14 @@ else:
     ax[0].set_xlabel(r"$\Delta(\Delta^2_\star)$ [%]", fontsize=fontsize)
     ax[0].set_ylabel(r"$\Delta(n_\star)$ [%]", fontsize=fontsize)
 plt.tight_layout()
-plt.savefig(arr_folder_emu[jj] + "_err.png")
+plt.savefig(arr_folder_emu[iemu] + "_err.png")
 
 # %% [markdown]
 # ### Plot fiducial vales, connect with best-fitting value, plot truth
 
 # %%
 sep_x = 0.001
-if "Nyx" in arr_folder_emu[jj]:
+if "Nyx" in arr_folder_emu[iemu]:
     nax = 3
     fig, ax = plt.subplots(2, 3, figsize=(14, 12), sharex="col", sharey="col")
 else:
@@ -179,14 +184,14 @@ for ii in range(nax):
         ax[kk, ii].axvline(true_star[0, jj0], color="black", linestyle=":", alpha=0.3)
 
 for kk in range(2):
-    if "Nyx" in arr_folder_emu[jj]:
+    if "Nyx" in arr_folder_emu[iemu]:
         ax[kk, 0].set_ylabel(r"$n_\star$", fontsize=fontsize)
         ax[kk, 1].set_ylabel(r"$\alpha_\star$", fontsize=fontsize)
         ax[kk, 2].set_ylabel(r"$\alpha_\star$", fontsize=fontsize)
     else:
         ax[kk, 0].set_ylabel(r"$n_\star$", fontsize=fontsize)
         
-if "Nyx" in arr_folder_emu[jj]:
+if "Nyx" in arr_folder_emu[iemu]:
     ax[1, 0].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
     ax[0, 1].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
     ax[0, 2].set_xlabel(r"$n_\star$", fontsize=fontsize)
@@ -195,8 +200,8 @@ if "Nyx" in arr_folder_emu[jj]:
 else:
     ax[1, 0].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
 plt.tight_layout()
-plt.savefig(arr_folder_emu[jj] + ".png")
-plt.savefig(arr_folder_emu[jj] + ".pdf")
+plt.savefig(arr_folder_emu[iemu] + ".png")
+plt.savefig(arr_folder_emu[iemu] + ".pdf")
 
 # %% [markdown]
 # ## Read Data

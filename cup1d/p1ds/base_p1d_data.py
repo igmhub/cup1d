@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from warnings import warn
 
-from cup1d.utils.utils import get_path_cup1d
+from cup1d.utils.utils import get_path_repo
 
 
 def _drop_zbins(
@@ -45,7 +45,7 @@ def _drop_zbins(
 class BaseDataP1D(object):
     """Base class to store measurements of the 1D power spectrum"""
 
-    BASEDIR = get_path_cup1d() + "/data/p1d_measurements/"
+    BASEDIR = os.path.join(get_path_repo("cup1d"), "data", "p1d_measurements")
 
     def __init__(
         self,
