@@ -324,6 +324,7 @@ class Likelihood(object):
         self.fid["igm"] = self.theory.model_igm.fid_igm
         self.fid["fit"] = {}
         self.fid["fit_cube"] = {}
+        self.fid["linP"] = {}
 
         pname2 = {"As": "Delta2_star", "ns": "n_star", "nrun": "alpha_star"}
         for par in self.free_params:
@@ -331,6 +332,7 @@ class Likelihood(object):
             self.fid["fit_cube"][par.name] = par.get_value_in_cube(par.value)
             if (par.name == "As") | (par.name == "ns") | (par.name == "nrun"):
                 self.fid["fit"][pname2[par.name]] = blob[pname2[par.name]]
+                self.fid["linP"][pname2[par.name]] = blob[pname2[par.name]]
 
     def get_p1d_kms(
         self,
@@ -1059,7 +1061,7 @@ class Likelihood(object):
         plt.tight_layout()
 
         if save_directory is not None:
-            name = os.join.path(
+            name = os.path.join(
                 save_directory, "IGM_histories_" + stat_best_fit
             )
             plt.savefig(name + ".pdf")

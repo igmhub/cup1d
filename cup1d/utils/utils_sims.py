@@ -71,7 +71,7 @@ def get_training_hc(sim_suite, emu_params=None, nyx_version="Jul2024"):
 
     # read cosmo
     try:
-        cosmo_all = np.load(cosmo_fname, allow_pickle=True)
+        cosmo_all = np.load(cosmo_fname, allow_pickle=True).item()
     except:
         script_fname = os.path.join(
             get_path_repo("lace"),
@@ -109,29 +109,33 @@ def get_training_hc(sim_suite, emu_params=None, nyx_version="Jul2024"):
         else:
             pars_cosmo = ["Delta2_p", "n_p"]
     pars_igm = ["mF", "sigT_Mpc", "gamma", "kF_Mpc"]
+    hc_params = pars_cosmo + pars_igm
 
     # extract data
     dict_out = {}
-    for par in pars_cosmo + pars_igm:
+    for par in hc_params:
         dict_out[par] = []
 
-    for ii in range(len(cosmo_all)):
-        cosmo = cosmo_all[ii]
-        sim_label = cosmo["sim_label"]
+    sim_label_cosmo = ["_".join(s.split("_")[:2]) for s in igm_all.keys()]
+    for ii, sim_label in enumerate(igm_all):
         # only use simulations in the training set
-        if is_number_string(sim_label[-1]) == False:
+        if is_number_string(sim_label_cosmo[ii][-1]) == False:
             continue
 
-        for par in pars_cosmo:
-            dict_out[par].append(cosmo["linP_params"][par])
-
+        mask = igm_all[sim_label]["z"] != 0
         for par in pars_igm:
-            dict_out[par].append(igm_all[sim_label + "_0"][par])
+            mask = mask & (igm_all[sim_label][par] != 0)
+        for par in pars_igm:
+            dict_out[par].append(igm_all[sim_label][par][mask])
 
-    for par in pars_cosmo + pars_igm:
+        for par in pars_cosmo:
+            dict_out[par].append(
+                cosmo_all[sim_label_cosmo[ii]]["linP_params"][par][mask]
+            )
+
+    for par in hc_params:
         dict_out[par] = np.concatenate(np.array(dict_out[par]))
 
-    hc_params = pars_cosmo + pars_igm
     hc_points = np.vstack(list(dict_out.values())).T
 
     return hc_params, hc_points, cosmo_all, igm_all

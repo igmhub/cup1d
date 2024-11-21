@@ -61,8 +61,8 @@ from cup1d.likelihood.input_pipeline import Args
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
-args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 # %%
@@ -109,10 +109,11 @@ if choose_forecast:
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms.fits"
 
     # you need to provide true cosmology, IGM history, and contaminants
-    # true_cosmo = set_cosmo(cosmo_label="nyx_central")
+    true_cosmo = set_cosmo(cosmo_label="nyx_central")
     # args.true_igm_label="nyx_central"
-    true_cosmo = set_cosmo(cosmo_label="mpg_central")
-    args.true_igm_label="mpg_central"
+    args.true_igm_label="nyx_13"
+    # true_cosmo = set_cosmo(cosmo_label="mpg_central")
+    # args.true_igm_label="mpg_central"
     # from -11 to -4
     args.true_SiIII=[[0, 0], [-10, -10]]
     args.true_SiII=[[0, 0], [-10, -10]]
@@ -234,9 +235,9 @@ except:
 args.ic_correction=False
 
 args.emu_cov_factor = 0.0
-args.fid_cosmo_label="mpg_central"
+# args.fid_cosmo_label="mpg_central"
 # args.fid_cosmo_label="mpg_2"
-# args.fid_cosmo_label="nyx_central"
+args.fid_cosmo_label="nyx_central"
 # args.fid_cosmo_label="nyx_seed"
 
 # args.fid_cosmo_label="nyx_3"
@@ -245,8 +246,9 @@ args.fid_cosmo_label="mpg_central"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
-args.fid_igm_label="mpg_central"
-# args.fid_igm_label="nyx_central"
+# args.fid_igm_label="mpg_central"
+# args.fid_igm_label="nyx_13"
+args.fid_igm_label="nyx_central"
 # args.fid_igm_label="mpg_2"
 # args.fid_igm_label="nyx_seed"
 # args.fid_igm_label="nyx_3"
@@ -267,10 +269,17 @@ args.fid_SN=[0, -4]
 args.fid_AGN=[0, -5]
 
 # parameters
-args.vary_alphas=False
-# args.vary_alphas=True
+if "Nyx" in emulator.emulator_label:
+    args.vary_alphas=True
+else:
+    args.vary_alphas=False
+    
 args.fix_cosmo=False
 # args.fix_cosmo=True
+# args.n_tau=0
+# args.n_sigT=0
+# args.n_gamma=0
+# args.n_kF=0
 # args.n_tau=2
 # args.n_sigT=2
 # args.n_gamma=2
@@ -312,6 +321,66 @@ like = set_like(
     args,
     data_hires=data["extra_P1Ds"],
 )
+
+# %%
+
+from cup1d.utils.hull import Hull
+
+# %% [markdown]
+# #### Create smaller hull
+# - Create data * 1.05
+# - Create hull with data * 0.9
+# - Create new hull with points * 1.05 outside hull
+# - Test speed
+# - Save hull
+# - Load hull
+
+# %%
+# %%time
+hull = Hull(like.theory.hc_params, like.theory.hc_points[:200, :])
+
+# %%
+hull2 = Hull(like.theory.hc_params, like.theory.hc_points[:50, :])
+
+# %%
+data_hull = vars(hull.hull)
+
+# %%
+for key in data_hull.keys():
+    setattr(hull2.hull, key, getattr(hull.hull, key))
+
+# %%
+p0 = {}
+ii = 0
+for par in like.theory.hc_params:
+    p0[par] = like.theory.hc_points[199, ii]
+    ii += 1
+
+hull2.in_hull(p0)
+
+# %%
+
+# %%
+for key in dir(hull.hull):
+    if not key.startswith('_'):
+        print(key)
+        # hull2 = hull.hull.key
+
+# %%
+# %%time
+for ii in range(10):
+    hull.in_hull(p0)
+
+# %%
+p0 = {}
+ii = 0
+for par in like.theory.hc_params:
+    p0[par] = like.theory.hc_points[0, ii]
+    ii += 1
+
+# %%
+# like.theory.hull.plot_hull()
+# plt.savefig("hc_nyx.pdf")
 
 # %% [markdown]
 # #### Set priors, move
@@ -367,10 +436,6 @@ fitter = Fitter(
     fix_cosmology=args.fix_cosmo,
 )
 
-# %%
-# p0 = np.array(list(like.fid["fit_cube"].values()))
-# fitter.like.get_chi2(p0)
-
 # %% [markdown]
 # ### Run minimizer
 
@@ -404,8 +469,6 @@ if args.fix_cosmo == False:
 # %%
 plotter.plot_p1d(residuals=False, plot_every_iz=1)
 plotter.plot_p1d(residuals=True, plot_every_iz=1)
-
-# %%
 
 # %%
 plotter.plot_igm()

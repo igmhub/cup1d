@@ -179,7 +179,8 @@ class Theory(object):
         nstar_max = -10
         alphastar_min = 10
         alphastar_max = -10
-        for cos in self.emu_cosmo_all:
+        for key in self.emu_cosmo_all:
+            cos = self.emu_cosmo_all[key]
             if is_number_string(cos["sim_label"][-1]) == False:
                 continue
             if cos["star_params"]["Delta2_star"] < Astar_min:
@@ -627,6 +628,7 @@ class Theory(object):
                 p0[key] = emu_call[key][ii]
             if self.hull.in_hull(p0) == False:
                 if self.use_hull:
+                    print(zs[ii], p0, self.hull.in_hull(p0))
                     return None
                 else:
                     print(zs[ii], p0, self.hull.in_hull(p0))

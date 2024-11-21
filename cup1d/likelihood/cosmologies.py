@@ -51,17 +51,15 @@ def set_cosmo(
             get_cosmo = camb_cosmo.get_Nyx_cosmology
 
         try:
-            data_cosmo = np.load(fname, allow_pickle=True)
+            data_cosmo = np.load(fname, allow_pickle=True).item()
         except:
-            ValueError(f"{fname} not found")
+            raise ValueError(f"{fname} not found")
 
-        cosmo = None
-        for ii in range(len(data_cosmo)):
-            if data_cosmo[ii]["sim_label"] == cosmo_label:
-                cosmo = get_cosmo(data_cosmo[ii]["cosmo_params"])
-                break
-        if cosmo is None:
+        if cosmo_label in data_cosmo.keys():
+            cosmo = get_cosmo(data_cosmo[cosmo_label]["cosmo_params"])
+        else:
             raise ValueError(f"Cosmo not found in {fname} for {cosmo_label}")
+
     elif cosmo_label == "Planck18":
         cosmo = camb_cosmo.get_cosmology(
             H0=67.66,

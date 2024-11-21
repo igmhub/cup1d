@@ -19,7 +19,7 @@ def main():
         "/home/jchaves/Proyectos/projects/lya/data/cup1d/validate_cosmo/"
     )
 
-    validate_cosmo(emulator_label, training_set, base_out_folder)
+    validate_cosmo(emulator_label, training_set, base_out_folder, nIGM)
 
 
 def validate_cosmo(emulator_label, training_set, base_out_folder, nIGM):
@@ -27,7 +27,7 @@ def validate_cosmo(emulator_label, training_set, base_out_folder, nIGM):
 
     args = Args(emulator_label=emulator_label, training_set=training_set)
 
-    # set fiducial cosmology
+    # set true cosmology
     args.true_cosmo_label = "Planck18"
 
     # set covariance matrix
@@ -53,38 +53,24 @@ def validate_cosmo(emulator_label, training_set, base_out_folder, nIGM):
         args.vary_alphas = True
         if "nyx_14" in args.emulator.list_sim_cube:
             args.emulator.list_sim_cube.remove("nyx_14")
+        sim_label = []
+        for ii in range(14):
+            sim_label.append("nyx_" + str(ii))
     else:
         args.emulator.list_sim_cube = args.archive.list_sim_cube
         args.vary_alphas = False
-
-    # same true and fiducial IGM
-    if "Nyx" in args.emulator.emulator_label:
-        args.true_igm_label = "nyx_central"
-        args.fid_igm_label = "nyx_central"
-    else:
-        args.true_igm_label = "mpg_central"
-        args.fid_igm_label = "mpg_central"
-
-    # loop over cosmologies of nyx and mpg simulations
-    list_sims = []
-    for ii in range(18):
-        if ii == 14:
-            continue
-        else:
-            list_sims.append("nyx_{}".format(ii))
-    for ii in range(30):
-        list_sims.append("mpg_{}".format(ii))
+        list_sims = args.emulator.list_sim_cube
 
     for sim_label in list_sims:
-        if "mpg" in sim_label:
-            continue
-
         print("\n\n\n")
         print(sim_label)
         print("\n\n\n")
 
         # set fiducial cosmology (the only thing that changes)
         args.fid_cosmo_label = sim_label
+        # same true and fiducial IGM
+        args.true_igm_label = sim_label
+        args.fid_igm_label = sim_label
 
         out_folder = os.path.join(
             base_out_folder,
