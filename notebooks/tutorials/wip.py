@@ -349,7 +349,7 @@ hc_params, hc_points, cosmo_all, igm_all = get_training_hc("nyx")
 
 # %%
 # %%time
-hull = Hull(data_hull = hc_points, suite="nyx", recompute=True)
+hull = Hull(data_hull = hc_points, suite="mpg", recompute=True)
 
 # %%
 # %%time
@@ -361,11 +361,11 @@ points = hc_points
 points.shape
 
 # %%
-hull.set_in_hull(points)
+hull.set_in_hull(points[:10])
 
 # %%
 # %%time
-res = hull.in_hull(points)
+res = hull.in_hull(points[:10])
 
 # %%
 res.all()

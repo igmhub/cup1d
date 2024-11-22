@@ -138,20 +138,22 @@ class Hull(object):
         )
 
     def save_hull(self, suite, mpg_version="Cabayol23", nyx_version="Jul2024"):
-        folder = os.path.join(get_path_repo("cup1d"), "data", "hull")
         if suite == "nyx":
-            fname = os.path.join(folder, "Nyx23_" + nyx_version + ".npy")
+            folder = os.environ["NYX_PATH"]
+            fname = os.path.join(folder, "hull_Nyx23_" + nyx_version + ".npy")
         elif suite == "mpg":
-            fname = os.path.join(folder, mpg_version + ".npy")
+            folder = os.path.join(get_path_repo("cup1d"), "data", "hull")
+            fname = os.path.join(folder, "hull_" + mpg_version + ".npy")
 
         np.save(fname, vars(self.hull))
 
     def load_hull(self, suite, mpg_version="Cabayol23", nyx_version="Jul2024"):
-        folder = os.path.join(get_path_repo("cup1d"), "data", "hull")
         if suite == "nyx":
-            fname = os.path.join(folder, "Nyx23_" + nyx_version + ".npy")
+            folder = os.environ["NYX_PATH"]
+            fname = os.path.join(folder, "hull_Nyx23_" + nyx_version + ".npy")
         elif suite == "mpg":
-            fname = os.path.join(folder, mpg_version + ".npy")
+            folder = os.path.join(get_path_repo("cup1d"), "data", "hull")
+            fname = os.path.join(folder, "hull_" + mpg_version + ".npy")
 
         if not os.path.exists(fname):
             return None
