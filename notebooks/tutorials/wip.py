@@ -323,64 +323,55 @@ like = set_like(
 )
 
 # %%
+# %load_ext autoreload
+# %autoreload 2
 
+
+from cup1d.utils.utils_sims import get_training_hc
 from cup1d.utils.hull import Hull
+import numpy as np
 
-# %% [markdown]
-# #### Create smaller hull
-# - Create data * 1.05
-# - Create hull with data * 0.9
-# - Create new hull with points * 1.05 outside hull
-# - Test speed
-# - Save hull
-# - Load hull
+class ehull(object):
+    def __init__(self, p, hull, tol=1e-12):
+        self.eq = hull.equations[:,:-1]
+        self.eq2 = np.repeat(hull.equations[:,-1][None,:], len(p), axis=0).T
+        self.tol = tol
+    def in_hull(self, p):
+        return np.all(self.eq @ p.T + self.eq2 <= self.tol, 0)
+
+def points_in_hull(p, hull, tol=1e-12):
+    p = np.atleast_2d(p)
+    return np.all(hull.equations[:,:-1] @ p.T + np.repeat(hull.equations[:,-1][None,:], len(p), axis=0).T <= tol, 0)
+
+
+# %%
+hc_params, hc_points, cosmo_all, igm_all = get_training_hc("nyx")
 
 # %%
 # %%time
-hull = Hull(like.theory.hc_params, like.theory.hc_points[:200, :])
-
-# %%
-hull2 = Hull(like.theory.hc_params, like.theory.hc_points[:50, :])
-
-# %%
-data_hull = vars(hull.hull)
-
-# %%
-for key in data_hull.keys():
-    setattr(hull2.hull, key, getattr(hull.hull, key))
-
-# %%
-p0 = {}
-ii = 0
-for par in like.theory.hc_params:
-    p0[par] = like.theory.hc_points[199, ii]
-    ii += 1
-
-hull2.in_hull(p0)
-
-# %%
-
-# %%
-for key in dir(hull.hull):
-    if not key.startswith('_'):
-        print(key)
-        # hull2 = hull.hull.key
+hull = Hull(data_hull = hc_points, suite="nyx", recompute=True)
 
 # %%
 # %%time
-for ii in range(10):
-    hull.in_hull(p0)
+hull = Hull(suite="nyx")
 
 # %%
-p0 = {}
-ii = 0
-for par in like.theory.hc_params:
-    p0[par] = like.theory.hc_points[0, ii]
-    ii += 1
+# ind = np.random.permutation(np.arange(hc_points.shape[0]))[:10]
+points = hc_points
+points.shape
 
 # %%
-# like.theory.hull.plot_hull()
-# plt.savefig("hc_nyx.pdf")
+hull.set_in_hull(points)
+
+# %%
+# %%time
+res = hull.in_hull(points)
+
+# %%
+res.all()
+
+# %%
+hull.plot_hull(hc_params)
 
 # %% [markdown]
 # #### Set priors, move

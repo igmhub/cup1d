@@ -1,6 +1,9 @@
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
+
+from cup1d.utils.utils import get_path_repo
 
 
 class Hull(object):
@@ -25,7 +28,17 @@ class Hull(object):
 
     """
 
-    def __init__(self, data_params, data_hull, extra_factor=1.05):
+    def __init__(
+        self,
+        data_hull=None,
+        suite="mpg",
+        save=True,
+        extra_factor=1.05,
+        mpg_version="Cabayol23",
+        nyx_version="Jul2024",
+        recompute=False,
+        tol=1e-12,
+    ):
         """
         Initializes the Hull object by computing the convex hull of a given dataset with an optional scaling factor.
 
@@ -57,12 +70,49 @@ class Hull(object):
         - The convex hull is computed using the scaled dataset, and the resulting `ConvexHull` object contains
           the vertices, simplices, and other details about the convex hull.
         """
-        self.data_params = data_params
-        self.data_hull = data_hull
-        mean = self.data_hull.mean(axis=0)
-        self.hull = ConvexHull(extra_factor * (self.data_hull - mean) + mean)
 
-    def in_hull(self, point):
+        self.tol = tol
+
+        self.hull = None
+        if recompute == False:
+            if suite == "mpg":
+                self.hull = self.load_hull(suite, mpg_version=mpg_version)
+            elif suite == "nyx":
+                self.hull = self.load_hull(suite, nyx_version=nyx_version)
+
+        if self.hull is None:
+            self.hull = self.set_hull(data_hull, extra_factor=extra_factor)
+            if save:
+                self.save_hull(
+                    suite, mpg_version=mpg_version, nyx_version=nyx_version
+                )
+
+    def set_hull(self, data_hull, extra_factor=1.050):
+        int_factor = extra_factor - 1e-3
+        mean = data_hull.mean(axis=0)
+        int_data = int_factor * (data_hull - mean) + mean
+        ext_data = extra_factor * (data_hull - mean) + mean
+        hull = ConvexHull(int_data)
+
+        data_for_hull = []
+        for ii in range(ext_data.shape[0]):
+            if self._in_hull(hull, ext_data[ii]) == False:
+                data_for_hull.append(ext_data[ii])
+        data_for_hull = np.vstack(data_for_hull)
+
+        return ConvexHull(data_for_hull)
+
+    def set_in_hull(self, p):
+        self.eq = self.hull.equations[:, :-1]
+        self.eq2 = np.repeat(
+            self.hull.equations[:, -1][None, :], len(p), axis=0
+        ).T
+
+    def in_hull(self, p):
+        p = np.atleast_2d(p)
+        return np.all(self.eq @ p.T + self.eq2 <= self.tol, 0)
+
+    def _in_hull(self, hull, point):
         """
         Check if a point is inside the convex hull.
 
@@ -83,20 +133,41 @@ class Hull(object):
         lies within the convex hull. The convex hull is considered to enclose all points whose projections
         onto the faces of the hull satisfy the inequality defined by the hull's equations.
         """
-        p0 = np.zeros(len(self.data_params))
-        for ii, param in enumerate(self.data_params):
-            p0[ii] = point[param]
+        return np.all(
+            np.dot(hull.equations[:, :-1], point) + hull.equations[:, -1] <= 0
+        )
 
-        # Use the plane equations from the convex hull
-        equations = (
-            self.hull.equations
-        )  # Ax + By + Cz + D = 0 (normal vector + offset)
+    def save_hull(self, suite, mpg_version="Cabayol23", nyx_version="Jul2024"):
+        folder = os.path.join(get_path_repo("cup1d"), "data", "hull")
+        if suite == "nyx":
+            fname = os.path.join(folder, "Nyx23_" + nyx_version + ".npy")
+        elif suite == "mpg":
+            fname = os.path.join(folder, mpg_version + ".npy")
 
-        return np.all(np.dot(equations[:, :-1], p0) + equations[:, -1] <= 0)
+        np.save(fname, vars(self.hull))
 
-    def plot_hull(self, test_points=None):
+    def load_hull(self, suite, mpg_version="Cabayol23", nyx_version="Jul2024"):
+        folder = os.path.join(get_path_repo("cup1d"), "data", "hull")
+        if suite == "nyx":
+            fname = os.path.join(folder, "Nyx23_" + nyx_version + ".npy")
+        elif suite == "mpg":
+            fname = os.path.join(folder, mpg_version + ".npy")
+
+        if not os.path.exists(fname):
+            return None
+
+        vars_hull = np.load(fname, allow_pickle=True).item()
+
+        # create a tiny hull to fill it with that stored in disk
+        hull = ConvexHull(vars_hull["_points"][:50])
+        for key in vars_hull.keys():
+            setattr(hull, key, vars_hull[key])
+
+        return hull
+
+    def plot_hull(self, data_params, test_points=None):
         # Visualization: Project onto all 2D pairs of dimensions
-        points = self.data_hull
+        points = self.hull.points
         n_dimensions = points.shape[1]
         fig, axes = plt.subplots(
             n_dimensions,
@@ -136,5 +207,5 @@ class Hull(object):
                         )
 
         for j in range(n_dimensions):
-            axes[-1, j].set_xlabel(self.data_params[j])
-            axes[j, 0].set_ylabel(self.data_params[j])
+            axes[-1, j].set_xlabel(data_params[j])
+            axes[j, 0].set_ylabel(data_params[j])
