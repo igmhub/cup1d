@@ -61,8 +61,8 @@ from cup1d.likelihood.input_pipeline import Args
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
-# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 # %%
@@ -178,7 +178,8 @@ elif choose_desiy1:
     # FFT /global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/plots/baseline/notebook/measurement/p1d_fft_y1_measurement_kms.fits
     args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms.fits"
-    args.z_max = 4.3
+    args.z_min = 2.3
+    args.z_max = 4.5
 
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
@@ -235,9 +236,16 @@ except:
 args.ic_correction=False
 
 args.emu_cov_factor = 0.0
-# args.fid_cosmo_label="mpg_central"
 # args.fid_cosmo_label="mpg_2"
-args.fid_cosmo_label="nyx_central"
+if "Nyx" in emulator.emulator_label:
+    args.fid_cosmo_label="nyx_central"
+    args.fid_igm_label="nyx_central"
+    args.vary_alphas=True
+else:
+    args.fid_cosmo_label="mpg_central"
+    args.fid_igm_label="mpg_central"
+    args.vary_alphas=False
+
 # args.fid_cosmo_label="nyx_seed"
 
 # args.fid_cosmo_label="nyx_3"
@@ -246,9 +254,7 @@ args.fid_cosmo_label="nyx_central"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # IGM
-# args.fid_igm_label="mpg_central"
 # args.fid_igm_label="nyx_13"
-args.fid_igm_label="nyx_central"
 # args.fid_igm_label="mpg_2"
 # args.fid_igm_label="nyx_seed"
 # args.fid_igm_label="nyx_3"
@@ -268,11 +274,6 @@ args.fid_HCD=[0, -4]
 args.fid_SN=[0, -4]
 args.fid_AGN=[0, -5]
 
-# parameters
-if "Nyx" in emulator.emulator_label:
-    args.vary_alphas=True
-else:
-    args.vary_alphas=False
     
 args.fix_cosmo=False
 # args.fix_cosmo=True
@@ -301,10 +302,10 @@ args.n_tau=2
 args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
-args.n_SiIII = 2
-args.n_d_SiIII = 2
+args.n_SiIII = 1
+args.n_d_SiIII = 1
 args.n_SiII = 0
-args.n_dla=2
+args.n_dla=1
 args.n_sn=0
 args.n_agn=0
 
@@ -323,55 +324,10 @@ like = set_like(
 )
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
 
-
-from cup1d.utils.utils_sims import get_training_hc
-from cup1d.utils.hull import Hull
-import numpy as np
-
-class ehull(object):
-    def __init__(self, p, hull, tol=1e-12):
-        self.eq = hull.equations[:,:-1]
-        self.eq2 = np.repeat(hull.equations[:,-1][None,:], len(p), axis=0).T
-        self.tol = tol
-    def in_hull(self, p):
-        return np.all(self.eq @ p.T + self.eq2 <= self.tol, 0)
-
-def points_in_hull(p, hull, tol=1e-12):
-    p = np.atleast_2d(p)
-    return np.all(hull.equations[:,:-1] @ p.T + np.repeat(hull.equations[:,-1][None,:], len(p), axis=0).T <= tol, 0)
-
-
-# %%
-hc_params, hc_points, cosmo_all, igm_all = get_training_hc("nyx")
-
-# %%
-# %%time
-hull = Hull(data_hull = hc_points, suite="mpg", recompute=True)
-
-# %%
-# %%time
-hull = Hull(suite="nyx")
-
-# %%
-# ind = np.random.permutation(np.arange(hc_points.shape[0]))[:10]
-points = hc_points
-points.shape
-
-# %%
-hull.set_in_hull(points[:10])
-
-# %%
-# %%time
-res = hull.in_hull(points[:10])
-
-# %%
-res.all()
-
-# %%
-hull.plot_hull(hc_params)
+# from cup1d.utils.utils_sims import get_training_hc
+# hc_params, hc_points, cosmo_all, igm_all = get_training_hc("nyx")
+# like.theory.hull.plot_hull(hc_points)
 
 # %% [markdown]
 # #### Set priors, move
@@ -429,6 +385,9 @@ fitter = Fitter(
 
 # %% [markdown]
 # ### Run minimizer
+
+# %% [markdown]
+# 1min23s
 
 # %%
 # %%time

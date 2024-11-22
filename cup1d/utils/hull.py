@@ -30,6 +30,7 @@ class Hull(object):
 
     def __init__(
         self,
+        zs,
         data_hull=None,
         suite="mpg",
         save=True,
@@ -71,7 +72,27 @@ class Hull(object):
           the vertices, simplices, and other details about the convex hull.
         """
 
+        self.zs = zs
         self.tol = tol
+        if suite == "mpg":
+            self.params = [
+                "Delta2_p",
+                "n_p",
+                "mF",
+                "sigT_Mpc",
+                "gamma",
+                "kF_Mpc",
+            ]
+        elif suite == "nyx":
+            self.params = [
+                "Delta2_p",
+                "n_p",
+                "alpha_p",
+                "mF",
+                "sigT_Mpc",
+                "gamma",
+                "kF_Mpc",
+            ]
 
         self.hull = None
         if recompute == False:
@@ -86,6 +107,7 @@ class Hull(object):
                 self.save_hull(
                     suite, mpg_version=mpg_version, nyx_version=nyx_version
                 )
+        self.set_in_hull(zs)
 
     def set_hull(self, data_hull, extra_factor=1.050):
         int_factor = extra_factor - 1e-3
@@ -167,9 +189,8 @@ class Hull(object):
 
         return hull
 
-    def plot_hull(self, data_params, test_points=None):
+    def plot_hull(self, points, test_points=None):
         # Visualization: Project onto all 2D pairs of dimensions
-        points = self.hull.points
         n_dimensions = points.shape[1]
         fig, axes = plt.subplots(
             n_dimensions,
@@ -197,7 +218,7 @@ class Hull(object):
                     # axes[i, j].scatter(test_points[_, j], test_points[_, i], s=20, color=col)
 
                     # Project points onto dimensions (i, j)
-                    projected_points = points[:, [j, i]]
+                    projected_points = self.hull.points[:, [j, i]]
                     # Extract the hull vertices and sort them for the contour
                     projected_hull_points = projected_points[self.hull.vertices]
                     hull_2d = ConvexHull(projected_hull_points)
@@ -209,5 +230,5 @@ class Hull(object):
                         )
 
         for j in range(n_dimensions):
-            axes[-1, j].set_xlabel(data_params[j])
-            axes[j, 0].set_ylabel(data_params[j])
+            axes[-1, j].set_xlabel(self.params[j])
+            axes[j, 0].set_ylabel(self.params[j])

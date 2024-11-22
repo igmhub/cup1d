@@ -364,7 +364,7 @@ class Fitter(object):
             mle = p0.copy()
             chi2 = log_func_minimize(p0)
             chi2_ini = chi2 * 1
-            for ii in range(3):
+            for ii in range(1):
                 pini = mle.copy()
                 res = scipy.optimize.minimize(
                     log_func_minimize,

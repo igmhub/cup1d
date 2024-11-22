@@ -109,7 +109,7 @@ class Plotter(object):
             ValueError("cosmo_label should be 'mpg' or 'nyx'")
 
         try:
-            data_cosmo = np.load(fname, allow_pickle=True)
+            data_cosmo = np.load(fname, allow_pickle=True).item()
         except:
             ValueError(f"{fname} not found")
 
@@ -118,11 +118,11 @@ class Plotter(object):
         n_star = np.zeros(len(data_cosmo))
         alpha_star = np.zeros(len(data_cosmo))
 
-        for ii in range(len(data_cosmo)):
-            labs.append(data_cosmo[ii]["sim_label"])
-            delta2_star[ii] = data_cosmo[ii]["star_params"]["Delta2_star"]
-            n_star[ii] = data_cosmo[ii]["star_params"]["n_star"]
-            alpha_star[ii] = data_cosmo[ii]["star_params"]["alpha_star"]
+        for ii, key in enumerate(data_cosmo):
+            labs.append(key)
+            delta2_star[ii] = data_cosmo[key]["star_params"]["Delta2_star"]
+            n_star[ii] = data_cosmo[key]["star_params"]["n_star"]
+            alpha_star[ii] = data_cosmo[key]["star_params"]["alpha_star"]
 
         if suite_emu == "mpg":
             fig, ax = plt.subplots(1, 1, figsize=(8, 6))
@@ -140,7 +140,7 @@ class Plotter(object):
         dif2 = alpha_star.max() - alpha_star.min()
         sep_x = 0.01
         for ii, lab in enumerate(labs):
-            if data_cosmo[ii]["sim_label"][-1].isdigit():
+            if data_cosmo[lab]["sim_label"][-1].isdigit():
                 sep_y = 0
             else:
                 sep_y = 0.01
