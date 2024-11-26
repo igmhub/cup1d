@@ -13,20 +13,17 @@ def main():
     size = comm.Get_size()
 
     version = "2"
-    folder_in = (
-        "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."
-        + version
-        + "/"
-    )
-    folder_out = (
-        "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v"
-        + version
-        + "/"
-    )
+    folder_base1 = "/global/cfs/cdirs/desicollab/science/lya/y1-p1d/likelihood_files/data_files/MockChallengeSnapshot/"
+    # folder_base1 = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/"
+    folder_base2 = "/global/homes/j/jjchaves/data/cup1d/mock_challenge/"
+    # folder_base2 = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/"
+
+    folder_in = folder_base1 + "/mockchallenge-0." + version + "/"
+    folder_out = folder_base2 + "/v" + version + "/"
     # files = np.sort(glob.glob(folder_in + "*CGAN*.fits"))
     # files = np.sort(glob.glob(folder_in + "*grid_3.fits"))
     # files = np.sort(glob.glob(folder_in + "*bar_ic*.fits"))
-    files = np.sort(glob.glob(folder_in + "*nonoise_fiducial.fits"))
+    files = np.sort(glob.glob(folder_in + "*nonoise_fiducial.fits.gz"))
     if rank == 0:
         for ii in range(len(files)):
             print(ii, files[ii])
