@@ -9,11 +9,11 @@ def main():
     """Launch validate cosmology"""
 
     # emulator_label = "Pedersen23_ext"
-    # emulator_label = "Cabayol23+"
-    # training_set = "Cabayol23"
-    emulator_label = "Nyx_alphap_cov"
-    training_set = "Nyx23_Jul2024"
-    nIGM = 0
+    emulator_label = "Cabayol23+"
+    training_set = "Cabayol23"
+    # emulator_label = "Nyx_alphap_cov"
+    # training_set = "Nyx23_Jul2024"
+    nIGM = 2
 
     base_out_folder = (
         "/home/jchaves/Proyectos/projects/lya/data/cup1d/validate_cosmo/"
@@ -40,6 +40,8 @@ def validate_cosmo(emulator_label, training_set, base_out_folder, nIGM):
     args.n_sigT = nIGM
     args.n_gamma = nIGM
     args.n_kF = nIGM
+    args.z_min = 2.1
+    args.z_max = 4.1
 
     # set archive and emulator
     args.archive = set_archive(args.training_set)
@@ -61,10 +63,12 @@ def validate_cosmo(emulator_label, training_set, base_out_folder, nIGM):
         args.vary_alphas = False
         list_sims = args.emulator.list_sim_cube
 
-    for sim_label in list_sims:
+    for kk, sim_label in enumerate(list_sims):
         print("\n\n\n")
         print(sim_label)
         print("\n\n\n")
+        if kk < 29:
+            continue
 
         # set fiducial cosmology (the only thing that changes)
         args.fid_cosmo_label = sim_label

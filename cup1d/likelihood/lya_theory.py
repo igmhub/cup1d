@@ -638,9 +638,9 @@ class Theory(object):
             check_hull = hull.in_hull(p0)
 
             if check_hull.all() == False:
-                print(zs)
-                print(p0)
-                print(check_hull)
+                # print(zs)
+                # print(p0)
+                # print(check_hull)
                 return None
 
         # # check cosmo prior

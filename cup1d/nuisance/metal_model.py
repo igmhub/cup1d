@@ -15,8 +15,8 @@ class MetalModel(object):
         z_X=3.0,
         ln_X_coeff=None,
         ln_D_coeff=None,
-        fid_value=[[0, 0], [2, -10]],
-        null_value=[2, -10],
+        fid_value=[[0, 0], [-4, -10]],
+        null_value=[-4, -10],
         free_param_names=None,
     ):
         """Model the evolution of a metal contamination (SiII or SiIII).
@@ -97,7 +97,7 @@ class MetalModel(object):
                 # no contamination
                 xmin = -11
                 # max 10% contamination (oscillations) -4
-                xmax = -2
+                xmax = -3
             else:
                 # not optimized
                 xmin = -10
@@ -119,10 +119,10 @@ class MetalModel(object):
             name = "d_" + self.metal_label + "_" + str(i)
             if i == 0:
                 # log of overall amplitude at z_X
-                # no contamination
-                xmin = 1
-                # TBD
-                xmax = 6.5
+                # no contamination (0.3% at high k)
+                xmin = -5
+                # Almost no oscillations at high k
+                xmax = 7
             else:
                 # not optimized
                 xmin = -10

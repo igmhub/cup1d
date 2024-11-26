@@ -313,8 +313,8 @@ class Fitter(object):
                 self.chain = np.concatenate(chain, axis=1)
                 self.blobs = np.concatenate(blobs, axis=1)
 
-        # apply masking (only to star parameters)
-        self.blobs = self.apply_blinding(self.blobs)
+                # apply masking (only to star parameters)
+                self.blobs = self.apply_blinding(self.blobs)
 
         return sampler
 
@@ -879,15 +879,18 @@ class Fitter(object):
 
         return
 
-    def set_blinding(self, seed=0):
+    def set_blinding(self):
         """Set the blinding parameters"""
-        blind_prior = {"Delta2_star": 0.05, "n_star": 0.05, "alpha_star": 0.005}
-        # if need to change the seed at some point, read self.like.data.blinding
-        np.random.seed(seed)
+        blind_prior = {"Delta2_star": 0.05, "n_star": 0.01, "alpha_star": 0.005}
+        if self.like.data.apply_blinding:
+            seed = int.from_bytes(
+                self.like.data.blinding.encode("utf-8"), byteorder="big"
+            )
+            rng = np.random.default_rng(seed)
         self.blind = {}
         for key in blind_prior:
             if self.like.data.apply_blinding:
-                self.blind[key] = np.random.normal(0, blind_prior[key])
+                self.blind[key] = rng.normal(0, blind_prior[key])
             else:
                 self.blind[key] = 0
 
@@ -988,7 +991,7 @@ class Fitter(object):
 
         # TO BE UPDATED
 
-        saveDict = {}
+        dict_out = {}
 
         # # Emulator settings
         # emulator = self.like.theory.emulator
@@ -1053,62 +1056,68 @@ class Fitter(object):
         # # save config info in plain text as well
         # self._write_dict_to_text(saveDict)
 
-        tries = True
+        tries = False
 
-        dict_out = {}
-        if tries:
-            # plots
-            mask_use = plotter.plot_lnprob(extra_nburn=extra_nburn)
-            plt.close()
-            plotter.plot_p1d(residuals=residuals)
-            plt.close()
-            plotter.plot_igm()
-            plt.close()
-            if self.fix_cosmology == False:
-                plotter.plot_corner(only_cosmo=True, extra_nburn=extra_nburn)
-                plt.close()
-            dict_out["summary"] = plotter.plot_corner(extra_nburn=extra_nburn)
-            plt.close()
+        # dict_out = {}
+        # if tries:
+        #     # plots
+        #     mask_use = plotter.plot_lnprob(extra_nburn=extra_nburn)
+        #     plt.close()
+        #     plotter.plot_p1d(residuals=residuals)
+        #     plt.close()
+        #     plotter.plot_igm()
+        #     plt.close()
+        #     if self.fix_cosmology == False:
+        #         plotter.plot_corner(only_cosmo=True, extra_nburn=extra_nburn)
+        #         plt.close()
+        #     dict_out["summary"] = plotter.plot_corner(extra_nburn=extra_nburn)
+        #     plt.close()
 
-            # for stat_best_fit in ["mle"]:
-            #     self.plot_p1d(
-            #         residuals=residuals,
-            #         rand_posterior=rand_posterior,
-            #         stat_best_fit=stat_best_fit,
-            #     )
+        #     # for stat_best_fit in ["mle"]:
+        #     #     self.plot_p1d(
+        #     #         residuals=residuals,
+        #     #         rand_posterior=rand_posterior,
+        #     #         stat_best_fit=stat_best_fit,
+        #     #     )
 
-            # try:
-            #     self.plot_prediction(residuals=residuals)
-            # except:
-            #     self.print("Can't plot prediction")
+        #     # try:
+        #     #     self.plot_prediction(residuals=residuals)
+        #     # except:
+        #     #     self.print("Can't plot prediction")
 
-            # if self.get_autocorr:
-            #     try:
-            #         self.plot_autocorrelation_time()
-            #     except:
-            #         self.print("Can't plot autocorrelation time")
+        #     # if self.get_autocorr:
+        #     #     try:
+        #     #         self.plot_autocorrelation_time()
+        #     #     except:
+        #     #         self.print("Can't plot autocorrelation time")
 
-        else:
-            mask_use = plotter.plot_lnprob()
-            plotter.plot_p1d(residuals=residuals, stat_best_fit="mean")
-            for stat_best_fit in ["mean"]:
-                rand_posterior = fitter.plot_igm(stat_best_fit=stat_best_fit)
-                plotter.plot_p1d(
-                    residuals=residuals,
-                    rand_posterior=rand_posterior,
-                    stat_best_fit=stat_best_fit,
-                )
-                plotter.plot_prediction(residuals=residuals)
-            if self.fix_cosmology == False:
-                _ = plotter.plot_corner(only_cosmo=True)
-            dict_out["summary"] = plotter.plot_corner()
+        # else:
+        #     mask_use = plotter.plot_lnprob()
+        #     plotter.plot_p1d(residuals=residuals, stat_best_fit="mean")
+        #     for stat_best_fit in ["mean"]:
+        #         rand_posterior = fitter.plot_igm(stat_best_fit=stat_best_fit)
+        #         plotter.plot_p1d(
+        #             residuals=residuals,
+        #             rand_posterior=rand_posterior,
+        #             stat_best_fit=stat_best_fit,
+        #         )
+        #         plotter.plot_prediction(residuals=residuals)
+        #     if self.fix_cosmology == False:
+        #         _ = plotter.plot_corner(only_cosmo=True)
+        #     dict_out["summary"] = plotter.plot_corner()
 
-        dict_out["walkers_survive"] = mask_use
+        # dict_out["walkers_survive"] = mask_use
         dict_out["truth"] = self.truth
 
         all_param, all_names, lnprob = self.get_all_params(
             extra_nburn=extra_nburn
         )
+
+        output = {}
+        for ii, key in enumerate(all_names):
+            output[param_dict_rev[key]] = all_param[:, ii]
+        output["lnprob"] = lnprob
+
         dict_out["param_names"] = all_names
         dict_out["param_percen"] = np.percentile(
             all_param, [16, 50, 84], axis=0
@@ -1118,8 +1127,7 @@ class Fitter(object):
         dict_out["lnprob_mle"] = self.lnprop_mle
 
         np.save(self.save_directory + "/results.npy", dict_out)
-        np.save(self.save_directory + "/chain.npy", all_param)
-        np.save(self.save_directory + "/lnprob.npy", lnprob)
+        np.save(self.save_directory + "/chain.npy", output)
 
 
 ## Dictionary to convert likelihood parameters into latex strings
@@ -1168,6 +1176,7 @@ param_dict = {
     # each HCD contamination should have its own parameters here
     "ln_A_damp_0": "$\mathrm{ln}\,\mathrm{HCD}_0$",
     "ln_A_damp_1": "$\mathrm{ln}\,\mathrm{HCD}_1$",
+    "ln_A_damp_2": "$\mathrm{ln}\,\mathrm{HCD}_2$",
     "ln_SN_0": "$\mathrm{ln}\,\mathrm{SN}_0$",
     "ln_SN_1": "$\mathrm{ln}\,\mathrm{SN}_1$",
     "ln_AGN_0": "$\mathrm{ln}\,\mathrm{AGN}_0$",
@@ -1181,6 +1190,7 @@ param_dict = {
     "omch2": "$\omega_c$",
     "cosmomc_theta": "$\\theta_{MC}$",
 }
+param_dict_rev = {v: k for k, v in param_dict.items()}
 
 
 ## List of all possibly free cosmology params for the truth array

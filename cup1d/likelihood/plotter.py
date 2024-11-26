@@ -14,6 +14,8 @@ class Plotter(object):
         self.fitter = fitter
         self.cmap = get_discrete_cmap(len(self.fitter.like.data.z))
         self.save_directory = save_directory
+        if save_directory is not None:
+            os.makedirs(save_directory, exist_ok=True)
 
         self.mle_values = self.fitter.get_best_fit(stat_best_fit="mle")
         self.like_params = self.fitter.like.parameters_from_sampling_point(

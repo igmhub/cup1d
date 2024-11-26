@@ -92,11 +92,11 @@ else:
 # #### Set either mock data or real data
 
 # %%
-choose_forecast = False
+choose_forecast = True
 choose_mock = False
 choose_data = False
 choose_challenge = False
-choose_desiy1 = True
+choose_desiy1 = False
 
 if choose_forecast:
     args.data_label_hires = None
@@ -109,11 +109,13 @@ if choose_forecast:
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms.fits"
 
     # you need to provide true cosmology, IGM history, and contaminants
-    true_cosmo = set_cosmo(cosmo_label="nyx_central")
+    # true_cosmo = set_cosmo(cosmo_label="nyx_central")
+    # true_cosmo = set_cosmo(cosmo_label="mpg_22")
+    # true_cosmo = set_cosmo(cosmo_label="Planck18")
     # args.true_igm_label="nyx_central"
-    args.true_igm_label="nyx_13"
-    # true_cosmo = set_cosmo(cosmo_label="mpg_central")
-    # args.true_igm_label="mpg_central"
+    # args.true_igm_label="mpg_22"
+    true_cosmo = set_cosmo(cosmo_label="mpg_central")
+    args.true_igm_label="mpg_central"
     # from -11 to -4
     args.true_SiIII=[[0, 0], [-10, -10]]
     args.true_SiII=[[0, 0], [-10, -10]]
@@ -123,7 +125,8 @@ if choose_forecast:
     args.true_SN=[0, -4]
     # from -5 to 1.5
     args.true_AGN=[0, -5]
-    args.z_max = 4.5
+    args.z_min = 2.1
+    args.z_max = 4.3
 elif choose_mock:    
     true_cosmo=None
     # to analyze data from simulations
@@ -176,10 +179,10 @@ elif choose_desiy1:
     # in NERSC
     # QMLE /global/cfs/cdirs/desicollab/users/naimgk/my-reductions/data/iron-v3/DataProducts/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits
     # FFT /global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/plots/baseline/notebook/measurement/p1d_fft_y1_measurement_kms.fits
-    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms.fits"
-    args.z_min = 2.3
-    args.z_max = 4.5
+    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
+    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v2.fits"
+    args.z_min = 2.1
+    args.z_max = 4.3
 
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
@@ -203,7 +206,7 @@ if args.data_label_hires is not None:
 # %%
 # hdu = fits.open(args.p1d_fname)
 # hdu[1].header
-# plt.imshow(data["P1Ds"].full_cov_kms[738:, 738:])
+# plt.imshow(data["P1Ds"].full_cov_kms)
 
 # %%
 # ntos = 100 * np.sqrt(np.diag(data["P1Ds"].cov_Pk_kms[0]))/data["P1Ds"].Pk_kms[0]
@@ -248,7 +251,10 @@ else:
 
 # args.fid_cosmo_label="nyx_seed"
 
-# args.fid_cosmo_label="nyx_3"
+# args.fid_igm_label="mpg_22"
+# args.fid_cosmo_label="mpg_22"
+
+# args.fid_igm_label="mpg_central"
 # args.ic_correction=True
 # args.fid_cosmo_label="Planck18"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
@@ -266,8 +272,8 @@ else:
 
 # contaminants
 # from 1 to 6, -11 to -4
-args.fid_SiIII=[[0, 0], [2, -10]]
-args.fid_SiII=[[0, 0], [2, -10]]
+args.fid_SiIII=[[0, 0], [-4, -10]]
+args.fid_SiII=[[0, 0], [-4, -10]]
 # from -5 to 0
 args.fid_HCD=[0, -4]
 # from -5 to 2
@@ -281,33 +287,38 @@ args.fix_cosmo=False
 # args.n_sigT=0
 # args.n_gamma=0
 # args.n_kF=0
-# args.n_tau=2
-# args.n_sigT=2
-# args.n_gamma=2
-# args.n_kF=2
-# args.n_SiIII = 0
-# args.n_d_SiIII = 0
-# args.n_SiII = 0
-# args.n_dla=0
-# args.n_sn=0
-# args.n_agn=0
-
-args.fid_SiIII=[[0, 0], [4, -5]]
-args.fid_SiII=[[0, 0], [2, -10]]
-args.fid_HCD=[0, -2]
-args.fid_SN=[0, -4]
-args.fid_AGN=[0, -5]
-
 args.n_tau=2
 args.n_sigT=2
 args.n_gamma=2
 args.n_kF=2
-args.n_SiIII = 1
-args.n_d_SiIII = 1
+args.n_SiIII = 0
+args.n_d_SiIII = 0
 args.n_SiII = 0
-args.n_dla=1
+args.n_dla=0
 args.n_sn=0
 args.n_agn=0
+
+# args.fid_SiII=[[0, 0], [-4, -10]] # null
+# args.fid_SN=[0, -4] # null
+# args.fid_AGN=[0, -4] # null
+# # args.fid_SiIII=[[0, 0], [-3, -10]] # null
+# # args.fid_SiIII=[[0, 0], [-3, -5]] # 1 null
+# args.fid_SiIII=[[0, 0], [5, -5]]
+# # args.fid_HCD=[0, -4] # null
+# # args.fid_HCD=[0, -2] # 1 null
+# args.fid_HCD=[3, -1.5]
+
+# args.n_SiII=0
+# args.n_d_SiII=0
+# args.n_sn=0
+# args.n_agn=0
+# args.n_tau=2
+# args.n_sigT=2
+# args.n_gamma=2
+# args.n_kF=2
+# args.n_SiIII=1
+# args.n_d_SiIII=1
+# args.n_dla=2
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
@@ -332,6 +343,124 @@ like = set_like(
 # %% [markdown]
 # #### Set priors, move
 
+# %%
+
+from cup1d.likelihood import CAMB_model
+from cup1d.utils.utils import is_number_string
+from cup1d.utils.utils_sims import get_training_hc
+
+def set_cosmo_priors(suite, fid_cosmo, extra_factor=1.05, z_star=3, kp_kms=0.009):
+    """Set priors for cosmological parameters
+
+    We get the priors on As, ns, and nrun from differences in star parameters in the training set
+    """
+
+    cosmo_priors = {
+        "As": np.zeros(2),
+        "ns": np.zeros(2),
+        "nrun": np.zeros(2),
+    }
+
+    # set convex hull
+    res = get_training_hc(suite)
+    emu_cosmo_all = res[2]
+    emu_igm_all = res[3]
+
+    Astar_min = 10
+    Astar_max = -10
+    nstar_min = 10
+    nstar_max = -10
+    alphastar_min = 10
+    alphastar_max = -10
+    for key in emu_cosmo_all:
+        cos = emu_cosmo_all[key]
+        if is_number_string(cos["sim_label"][-1]) == False:
+            continue
+        if cos["star_params"]["Delta2_star"] < Astar_min:
+            Astar_min = cos["star_params"]["Delta2_star"]
+        if cos["star_params"]["Delta2_star"] > Astar_max:
+            Astar_max = cos["star_params"]["Delta2_star"]
+        if cos["star_params"]["n_star"] < nstar_min:
+            nstar_min = cos["star_params"]["n_star"]
+        if cos["star_params"]["n_star"] > nstar_max:
+            nstar_max = cos["star_params"]["n_star"]
+        if cos["star_params"]["alpha_star"] < alphastar_min:
+            alphastar_min = cos["star_params"]["alpha_star"]
+        if cos["star_params"]["alpha_star"] > alphastar_max:
+            alphastar_max = cos["star_params"]["alpha_star"]
+
+    # pivot scale of primordial power
+    ks_Mpc = fid_cosmo["cosmo"].cosmo.InitPower.pivot_scalar
+
+    # likelihood pivot point, in velocity units
+    dkms_dMpc = fid_cosmo["cosmo"].dkms_dMpc(z_star)
+    kp_Mpc = kp_kms * dkms_dMpc
+
+    # logarithm of ratio of pivot points
+    ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
+
+    fid_As = fid_cosmo["cosmo"].cosmo.InitPower.As
+    fid_ns = fid_cosmo["cosmo"].cosmo.InitPower.ns
+    fid_nrun = fid_cosmo["cosmo"].cosmo.InitPower.nrun
+
+    fid_Astar = fid_cosmo["linP_params"]["Delta2_star"]
+    fid_nstar = fid_cosmo["linP_params"]["n_star"]
+    fid_alphastar = fid_cosmo["linP_params"]["alpha_star"]
+
+    for ii in range(2):
+        if ii == 0:
+            test_Astar = Astar_min
+            test_nstar = nstar_min
+            test_alphastar = alphastar_min
+        else:
+            test_Astar = Astar_max
+            test_nstar = nstar_max
+            test_alphastar = alphastar_max
+
+        ln_ratio_Astar = np.log(test_Astar / fid_Astar)
+        delta_nstar = test_nstar - fid_nstar
+        delta_alphastar = test_alphastar - fid_alphastar
+
+        delta_nrun = delta_alphastar
+        delta_ns = delta_nstar - delta_nrun * ln_kp_ks
+        ln_ratio_As = (
+            ln_ratio_Astar
+            - (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
+        )
+        cosmo_priors["nrun"][ii] = fid_nrun + delta_nrun
+        cosmo_priors["ns"][ii] = fid_ns + delta_ns
+        cosmo_priors["As"][ii] = fid_As * np.exp(ln_ratio_As)
+    return cosmo_priors
+
+
+# %%
+
+fid_cosmo = set_cosmo(cosmo_label="mpg_central")
+class_fid_cosmo = {}
+class_fid_cosmo["zs"] = data["P1Ds"].z
+class_fid_cosmo["cosmo"] = CAMB_model.CAMBModel(
+    zs=data["P1Ds"].z,
+    cosmo=fid_cosmo,
+    z_star=3,
+    kp_kms=0.009,
+)
+class_fid_cosmo["linP_params"] = class_fid_cosmo[
+    "cosmo"
+].get_linP_params()
+print(class_fid_cosmo["linP_params"])
+set_cosmo_priors("mpg", class_fid_cosmo)
+
+# %%
+{'As': array([1.64898841e-09, 2.25405948e-09]),
+ 'ns': array([0.919232, 1.015899]),
+ 'nrun': array([-6.81954493e-14,  1.36279876e-14])}
+
+# %%
+# blinding_key = "desi_y1"
+# seed = int.from_bytes(blinding_key.encode('utf-8'), byteorder='big')
+# np.random.default_rng(seed=seed)
+# np.random.random(3)
+
 # %% [markdown]
 # Sampling parameters
 
@@ -343,6 +472,7 @@ for p in like.free_params:
 # Compare data and fiducial/starting model
 
 # %%
+like.plot_p1d(residuals=False)
 like.plot_p1d(residuals=True)
 
 # %%
@@ -367,7 +497,7 @@ like.plot_igm(cloud=True)
 # args.parallel=False
 # args.explore=True
 
-args.n_steps=1
+args.n_steps=10
 args.n_burn_in=0
 args.parallel=False
 args.explore=True
@@ -387,7 +517,7 @@ fitter = Fitter(
 # ### Run minimizer
 
 # %% [markdown]
-# 1min23s
+# Nyx 1min23s
 
 # %%
 # %%time
@@ -402,12 +532,33 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
 
 # %%
+# fft Cabayol23 free cosmo z_max = 4.3
+# SiIII dSiIII DLA
+# 1 1 2 1502
+# 1 0 2 2521 # We need 1 params for damping! dchi2 = 1000
+# 1 1 0 2272 # We need (at least) 1 param for DLAs! dchi2 = 700
+# 1 1 1 1700 # We need 2 params for DLAs dchi2 = 100
+# 0 0 0 6726
+
+# fft Planck18 z_max = 4.3
+# Cabayol23+ 1 1 2 1504
+# pedersen23 1 1 2 1501
+# Nyx_cov    1 1 2 1667
+
+# fft Planck18 zmin=2.3 z_max = 4.3
+# Nyx_cov    1 1 2 1327
+
+# qmle Planck18 z_max = 4.3
+# Cabayol23+ 1 1 2 1813
+# Nyx_cov    1 1 2 2100
+
+# %%
 # fil = np.load(fitter.save_directory + "/minimizer_results.npy", allow_pickle=True).item()
 # for key in fil:
 #     print(key, fil[key])
 
 # %%
-fitter.save_minimizer()
+# fitter.save_minimizer()
 
 # %%
 plotter = Plotter(fitter)
@@ -433,7 +584,13 @@ plotter.plot_igm()
 # plotter.plot_agn_cont(plot_data=True)
 
 # %%
-folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/test_qmle/"
+# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/test_qmle/"
+folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/ca_test_fft_111/"
+# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/ca_test_qmle_112/"
+# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/pe_test_fft_112/"
+# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/nyx_test_fft_112/"
+# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/nyx_test_qmle_112/"
+# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/nyx_zmin_test_fft_112/"
 plotter = Plotter(fitter, save_directory=folder)
 
 # %%
@@ -456,6 +613,16 @@ if run_sampler:
     _emcee_sam = fitter.run_sampler(pini=fitter.mle_cube, log_func=func_for_sampler)
 
 # %%
+plotter = Plotter(fitter)
+
+# %%
+plotter.plots_sampler()
+
+# %%
+fitter.write_chain_to_file()
+
+# %%
+fil = np.load("/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/chain_2/chain.npy", allow_pickle=True).item()
 
 # %% [markdown]
 # ## Test pipeline

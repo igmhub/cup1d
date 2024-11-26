@@ -461,19 +461,19 @@ class Pipeline(object):
             multi_time = str(np.round(time.time() - start, 2))
             fprint("Emulator set in " + multi_time + " s")
 
+            if "Nyx" in emulator.emulator_label:
+                emulator.list_sim_cube = archive.list_sim_cube
+                if "nyx_14" in emulator.list_sim_cube:
+                    emulator.list_sim_cube.remove("nyx_14")
+            else:
+                emulator.list_sim_cube = archive.list_sim_cube
+
             # distribute emulator to all ranks
             for irank in range(1, size):
                 comm.send(emulator, dest=irank, tag=(irank + 1) * 7)
         else:
             # receive emulator from ranks 0
             emulator = comm.recv(source=0, tag=(rank + 1) * 7)
-
-        if "Nyx" in emulator.emulator_label:
-            emulator.list_sim_cube = archive.list_sim_cube
-            if "nyx_14" in emulator.list_sim_cube:
-                emulator.list_sim_cube.remove("nyx_14")
-        else:
-            emulator.list_sim_cube = archive.list_sim_cube
 
         #######################
 
@@ -696,7 +696,6 @@ class Pipeline(object):
             self.fprint("Running sampler")
 
         # make sure all tasks start at the same time
-        comm.Barrier()
         self.fitter.run_sampler(
             pini=self.fitter.mle_cube, log_func=func_for_sampler
         )
@@ -706,14 +705,10 @@ class Pipeline(object):
             multi_time = str(np.round(end - start, 2))
             self.fprint("Sampler run in " + multi_time + " s")
 
+            self.fprint("----------")
+            self.fprint("Saving data")
+            self.fitter.write_chain_to_file()
+
             # plot fit
             plotter = Plotter(self.fitter, save_directory=self.out_folder)
             plotter.plots_sampler()
-
-            start = time.time()
-            self.fprint("----------")
-            self.fprint("Saving data")
-            self.sampler.write_chain_to_file()
-            end = time.time()
-            multi_time = str(np.round(end - start, 2))
-            self.fprint("Data saved in " + multi_time + " s")
