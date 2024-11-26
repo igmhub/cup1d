@@ -134,7 +134,7 @@ def get_training_hc(sim_suite, emu_params=None, nyx_version="Jul2024"):
             )
 
     for par in hc_params:
-        dict_out[par] = np.concatenate(np.array(dict_out[par]))
+        dict_out[par] = np.concatenate(np.array(dict_out[par], dtype=object))
 
     hc_points = np.vstack(list(dict_out.values())).T
 
