@@ -41,7 +41,9 @@ def main():
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "DESIY1"
 
-    args.n_steps = 5000
+    # args.n_steps = 5000
+    # args.n_burn_in = 0
+    args.n_steps = 20
     args.n_burn_in = 0
     # args.n_steps = 200
     # args.n_burn_in = 50
