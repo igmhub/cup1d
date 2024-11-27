@@ -60,6 +60,7 @@ class Plotter(object):
 
     def plots_sampler(self):
         # plot lnprob
+        plt.close("all")
         self.plot_lnprob()
         plt.close()
 
@@ -76,13 +77,13 @@ class Plotter(object):
         plt.close()
 
         # plot cosmology
-        if self.fitter.fix_cosmology == False:
-            self.plot_corner(only_cosmo=True)
-            plt.close()
+        # if self.fitter.fix_cosmology == False:
+        #     self.plot_corner(only_cosmo=True)
+        #     plt.close()
 
-        # plot corner
-        self.plot_corner()
-        plt.close()
+        # # plot corner
+        # self.plot_corner()
+        # plt.close()
 
         # plot IGM histories
         self.plot_igm(cloud=True)
@@ -241,7 +242,7 @@ class Plotter(object):
             name="a",
         )
         c.add_chain(chain)
-        summary = c.analysis.get_summary()["a"]
+        # summary = c.analysis.get_summary()["a"]
         if self.fitter.truth is not None:
             c.add_truth(
                 Truth(
@@ -268,7 +269,7 @@ class Plotter(object):
             plt.savefig(name + ".pdf")
             plt.savefig(name + ".png")
 
-        return summary
+        # return summary
 
     def plot_lnprob(self, extra_nburn=0):
         """Plot lnprob"""

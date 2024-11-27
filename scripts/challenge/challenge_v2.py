@@ -1,5 +1,11 @@
 import time, os, sys
 import glob
+
+os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
+# os.environ["OPENBLAS_NUM_THREADS"] = "4" # export OPENBLAS_NUM_THREADS=4
+# os.environ["MKL_NUM_THREADS"] = "6" # export MKL_NUM_THREADS=6
+# os.environ["VECLIB_MAXIMUM_THREADS"] = "4" # export VECLIB_MAXIMUM_THREADS=4
+# os.environ["NUMEXPR_NUM_THREADS"] = "6" # export NUMEXPR_NUM_THREADS=6
 import numpy as np
 from mpi4py import MPI
 from cup1d.likelihood.input_pipeline import Args
@@ -13,10 +19,10 @@ def main():
     size = comm.Get_size()
 
     version = "2"
-    folder_base1 = "/global/cfs/cdirs/desicollab/science/lya/y1-p1d/likelihood_files/data_files/MockChallengeSnapshot/"
-    # folder_base1 = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/"
-    folder_base2 = "/global/homes/j/jjchaves/data/cup1d/mock_challenge/"
-    # folder_base2 = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/"
+    # folder_base1 = "/global/cfs/cdirs/desicollab/science/lya/y1-p1d/likelihood_files/data_files/MockChallengeSnapshot/"
+    folder_base1 = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/"
+    # folder_base2 = "/global/homes/j/jjchaves/data/cup1d/mock_challenge/"
+    folder_base2 = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/"
 
     folder_in = folder_base1 + "/mockchallenge-0." + version + "/"
     folder_out = folder_base2 + "/v" + version + "/"
@@ -28,15 +34,24 @@ def main():
         for ii in range(len(files)):
             print(ii, files[ii])
 
-    emulator_label = "Nyx_alphap_cov"
-    training_set = "Nyx23_Jul2024"
+    # emulator_label = "Nyx_alphap_cov"
+    # training_set = "Nyx23_Jul2024"
+    emulator_label = "Cabayol23+"
+    training_set = "Cabayol23"
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "DESIY1"
 
-    args.n_steps = 1000
-    args.n_burn_in = 500
-    args.parallel = True
-    # args.explore = True
+    args.n_steps = 5000
+    args.n_burn_in = 0
+    # args.n_steps = 200
+    # args.n_burn_in = 50
+    # args.n_steps = 100
+    # args.n_burn_in = 0
+    if size > 1:
+        args.parallel = True
+    else:
+        args.parallel = False
+    args.explore = True
 
     base_out_folder = folder_out + emulator_label
 

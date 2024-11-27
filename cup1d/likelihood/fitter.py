@@ -116,7 +116,7 @@ class Fitter(object):
                 self.backend = None
 
             # number of walkers
-            if nwalkers:
+            if nwalkers is not None:
                 if nwalkers > 2 * self.ndim:
                     self.nwalkers = nwalkers
                 else:
@@ -300,6 +300,7 @@ class Fitter(object):
                 lnprob.append(_lnprob)
                 chain.append(_chain)
                 blobs.append(_blobs)
+                # print(chain[-1].shape)
 
                 for irank in range(1, self.size):
                     self.print("Receiving from rank %d" % irank)
@@ -308,6 +309,7 @@ class Fitter(object):
                     )
                     chain.append(self.comm.recv(source=irank, tag=2000 + irank))
                     blobs.append(self.comm.recv(source=irank, tag=3000 + irank))
+                    # print(chain[-1].shape)
 
                 self.lnprob = np.concatenate(lnprob, axis=1)
                 self.chain = np.concatenate(chain, axis=1)
