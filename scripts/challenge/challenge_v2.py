@@ -19,10 +19,10 @@ def main():
     size = comm.Get_size()
 
     version = "2"
-    # folder_base1 = "/global/cfs/cdirs/desicollab/science/lya/y1-p1d/likelihood_files/data_files/MockChallengeSnapshot/"
-    folder_base1 = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/"
-    # folder_base2 = "/global/homes/j/jjchaves/data/cup1d/mock_challenge/"
-    folder_base2 = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/"
+    folder_base1 = "/global/cfs/cdirs/desicollab/science/lya/y1-p1d/likelihood_files/data_files/MockChallengeSnapshot/"
+    folder_base2 = "/global/homes/j/jjchaves/data/cup1d/mock_challenge/"
+    # folder_base1 = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/"
+    # folder_base2 = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/"
 
     folder_in = folder_base1 + "/mockchallenge-0." + version + "/"
     folder_out = folder_base2 + "/v" + version + "/"
@@ -34,10 +34,10 @@ def main():
         for ii in range(len(files)):
             print(ii, files[ii])
 
-    # emulator_label = "Nyx_alphap_cov"
-    # training_set = "Nyx23_Jul2024"
-    emulator_label = "Cabayol23+"
-    training_set = "Cabayol23"
+    emulator_label = "Nyx_alphap_cov"
+    training_set = "Nyx23_Jul2024"
+    # emulator_label = "Cabayol23+"
+    # training_set = "Cabayol23"
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "DESIY1"
 
