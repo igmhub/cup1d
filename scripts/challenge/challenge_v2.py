@@ -25,6 +25,7 @@ def main():
     name_system = socket.gethostname()
     if "login" in name_system:
         path_in_challenge = [
+            os.path.sep,
             "global",
             "cfs",
             "cdirs",
@@ -59,7 +60,8 @@ def main():
             "v" + version,
         )
 
-    print(path_in_challenge, path_out_challenge)
+    print(path_in_challenge)
+    print(path_out_challenge)
 
     # files = np.sort(glob.glob(folder_in + "*CGAN*.fits"))
     # files = np.sort(glob.glob(folder_in + "*grid_3.fits"))
@@ -69,7 +71,6 @@ def main():
     if rank == 0:
         for ii in range(len(files)):
             print(ii, files[ii])
-    sys.exit()
 
     # emulator_label = "Nyx_alphap_cov"
     # training_set = "Nyx23_Jul2024"
