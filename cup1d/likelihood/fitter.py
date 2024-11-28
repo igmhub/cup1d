@@ -6,9 +6,6 @@ from warnings import warn
 
 from pyDOE2 import lhs
 import copy
-
-# import multiprocessing as mp
-# from schwimmbad import MPIPool
 from mpi4py import MPI
 
 # our own modules
@@ -59,13 +56,9 @@ class Fitter(object):
         nwalkers=None,
         nsteps=None,
         nburnin=None,
-        read_chain_file=None,
         verbose=False,
         subfolder=None,
         rootdir=None,
-        save_chain=True,
-        progress=False,
-        get_autocorr=False,
         parallel=False,
         explore=False,
         fix_cosmology=False,
@@ -78,8 +71,6 @@ class Fitter(object):
         self.parallel = parallel
         self.explore = explore
         self.verbose = verbose
-        self.progress = progress
-        self.get_autocorr = get_autocorr
         self.burnin_nsteps = nburnin
 
         self.param_dict = param_dict
@@ -96,24 +87,12 @@ class Fitter(object):
 
         self.print = create_print_function(self.verbose)
 
-        if read_chain_file:
-            self.print("will read chain from file", read_chain_file)
-            assert not like, "likelihood specified but reading chain from file"
-            self.read_chain_from_file(read_chain_file, rootdir, subfolder)
-            self.burnin_pos = None
-        else:
-            self.like = like
-            # number of free parameters to sample
-            self.ndim = len(self.like.free_params)
+        self.like = like
+        # number of free parameters to sample
+        self.ndim = len(self.like.free_params)
 
-            if self.rank == 0:
-                self._setup_chain_folder(rootdir, subfolder)
-
-            if save_chain:
-                backend_string = self.save_directory + "/backend.h5"
-                self.backend = emcee.backends.HDFBackend(backend_string)
-            else:
-                self.backend = None
+        if self.rank == 0:
+            self._setup_chain_folder(rootdir, subfolder)
 
             # number of walkers
             if nwalkers is not None:
@@ -138,25 +117,34 @@ class Fitter(object):
                         - self.burnin_nsteps
                     )
 
-                self.nwalkers = nwalkers
-                self.nsteps = nsteps
+                for irank in range(1, self.size):
+                    self.comm.send(nsteps, dest=irank, tag=irank * 11)
+                    self.comm.send(nwalkers, dest=irank, tag=irank * 13)
 
-            self.print(
-                "setup with ",
-                self.size,
-                " ranks, ",
-                self.nwalkers,
-                " walkers, and ",
-                self.nsteps,
-                " steps",
-            )
-            self.print(
-                "combined steps ",
-                self.nwalkers * self.size * (self.nsteps + self.burnin_nsteps),
-                "(should be close to ",
-                combined_steps,
-                ")",
-            )
+        else:
+            nsteps = self.comm.recv(source=0, tag=self.rank * 11)
+            nwalkers = self.comm.recv(source=0, tag=self.rank * 13)
+
+        self.nwalkers = nwalkers
+        self.nsteps = nsteps
+
+        print(
+            "rank", self.rank, "nwalkers", self.nwalkers, "nsteps", self.nsteps
+        )
+
+        self.print(
+            "setup with ",
+            self.size,
+            " ranks, ",
+            self.nwalkers,
+            " walkers, and ",
+            self.nsteps,
+            " steps",
+        )
+        self.print(
+            "combined steps ",
+            self.nwalkers * self.size * (self.nsteps + self.burnin_nsteps),
+        )
 
         ## Set up list of parameter names in tex format for plotting
         self.paramstrings = []
@@ -206,11 +194,6 @@ class Fitter(object):
               sampler for
             - force_timeout will continue to run the chains
               until timeout, regardless of convergence"""
-        if self.get_autocorr:
-            # We'll track how the average autocorrelation time estimate changes
-            self.autocorr = np.array([])
-            # This will be useful to testing convergence
-            old_tau = np.inf
 
         if self.parallel == False:
             ## Get initial walkers
@@ -221,35 +204,16 @@ class Fitter(object):
                 self.nwalkers,
                 self.ndim,
                 log_func,
-                backend=self.backend,
                 blobs_dtype=self.blobs_dtype,
             )
             for sample in sampler.sample(
-                p0,
-                iterations=self.burnin_nsteps + self.nsteps,
-                progress=self.progress,
+                p0, iterations=self.burnin_nsteps + self.nsteps
             ):
                 if sampler.iteration % 100 == 0:
                     self.print(
                         "Step %d out of %d "
                         % (sampler.iteration, self.burnin_nsteps + self.nsteps)
                     )
-
-                # if self.get_autocorr:
-                #     # Compute the autocorrelation time so far
-                #     # Using tol=0 means that we'll always get an estimate even
-                #     # if it isn't trustworthy
-                #     tau = sampler.get_autocorr_time(
-                #         tol=0, discard=self.burnin_nsteps
-                #     )
-                #     self.autocorr = np.append(self.autocorr, np.mean(tau))
-
-                #     # Check convergence
-                #     converged = np.all(tau * 100 < sampler.iteration)
-                #     converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
-                #     if converged:
-                #         break
-                #     old_tau = tau
 
             ## Get samples, flat=False to be able to mask not converged chains latter
             self.lnprob = sampler.get_log_prob(
@@ -610,223 +574,6 @@ class Fitter(object):
             all_strings = self.paramstrings
 
         return all_params, all_strings, lnprob
-
-    # def read_chain_from_file(self, chain_number, rootdir, subfolder):
-    #     """Read chain from file, check parameters and setup likelihood"""
-
-    #     if rootdir:
-    #         chain_location = rootdir
-    #     else:
-    #         assert "CUP1D_PATH" in os.environ, "export CUP1D_PATH"
-    #         chain_location = os.environ["CUP1D_PATH"] + "/chains/"
-    #     if subfolder:
-    #         self.save_directory = (
-    #             chain_location + "/" + subfolder + "/chain_" + str(chain_number)
-    #         )
-    #     else:
-    #         self.save_directory = chain_location + "/chain_" + str(chain_number)
-
-    #     with open(self.save_directory + "/config.json") as json_file:
-    #         config = json.load(json_file)
-
-    #     self.print("Setup emulator")
-
-    #     # new runs specify emulator_label, old ones use Pedersen23
-    #     if "emulator_label" in config:
-    #         emulator_label = config["emulator_label"]
-    #     else:
-    #         emulator_label = "Pedersen23"
-
-    #     # setup emulator based on emulator_label
-    #     if emulator_label == "Pedersen23":
-    #         # check consistency in old book-keepings
-    #         if "emu_type" in config:
-    #             if config["emu_type"] != "polyfit":
-    #                 raise ValueError("emu_type not polyfit", config["emu_type"])
-    #         # emulator_label='Pedersen23' would ignore kmax_Mpc
-    #         self.print("setup GP emulator used in Pedersen et al. (2023)")
-    #         emulator = gp_emulator.GPEmulator(
-    #             training_set="Pedersen21", kmax_Mpc=config["kmax_Mpc"]
-    #         )
-    #     elif emulator_label == "Cabayol23":
-    #         self.print(
-    #             "setup NN emulator used in Cabayol-Garcia et al. (2023)"
-    #         )
-    #         emulator = nn_emulator.NNEmulator(
-    #             training_set="Cabayol23", emulator_label="Cabayol23"
-    #         )
-    #     elif emulator_label == "Nyx":
-    #         self.print("setup NN emulator using Nyx simulations")
-    #         emulator = nn_emulator.NNEmulator(
-    #             training_set="Nyx23", emulator_label="Cabayol23_Nyx"
-    #         )
-    #     else:
-    #         raise ValueError("wrong emulator_label", emulator_label)
-
-    #     # Figure out redshift range in data
-    #     if "z_list" in config:
-    #         z_list = config["z_list"]
-    #         zmin = min(z_list)
-    #         zmax = max(z_list)
-    #     else:
-    #         zmin = config["data_zmin"]
-    #         zmax = config["data_zmax"]
-
-    #     # Setup mock data
-    #     if "data_type" in config:
-    #         data_type = config["data_type"]
-    #     else:
-    #         data_type = "gadget"
-    #     self.print("Setup data of type =", data_type)
-    #     if data_type == "mock":
-    #         # using a mock_data P1D (computed from theory)
-    #         data = mock_data.Mock_P1D(
-    #             emulator=emulator,
-    #             data_label=config["data_mock_label"],
-    #             zmin=zmin,
-    #             zmax=zmax,
-    #         )
-    #         # (optionally) setup extra P1D from high-resolution
-    #         if "extra_p1d_label" in config:
-    #             extra_data = mock_data.Mock_P1D(
-    #                 emulator=emulator,
-    #                 data_label=config["extra_p1d_label"],
-    #                 zmin=config["extra_p1d_zmin"],
-    #                 zmax=config["extra_p1d_zmax"],
-    #             )
-    #         else:
-    #             extra_data = None
-    #     elif data_type == "gadget":
-    #         # using a data_gadget P1D (from Gadget sim)
-    #         if "data_sim_number" in config:
-    #             sim_label = config["data_sim_number"]
-    #         else:
-    #             sim_label = config["data_sim_label"]
-    #         if not sim_label[:3] == "mpg":
-    #             sim_label = "mpg_" + sim_label
-    #         # check that sim is not from emulator suite
-    #         assert sim_label not in range(30)
-    #         # figure out p1d covariance used
-    #         if "data_year" in config:
-    #             data_cov_label = config["data_year"]
-    #         else:
-    #             data_cov_label = config["data_cov_label"]
-    #         # we can get the archive from the emulator (should be consistent)
-    #         data = data_gadget.Gadget_P1D(
-    #             archive=emulator.archive,
-    #             input_sim=sim_label,
-    #             z_max=zmax,
-    #             data_cov_factor=config["data_cov_factor"],
-    #             data_cov_label=data_cov_label,
-    #             polyfit_kmax_Mpc=emulator.kmax_Mpc,
-    #             polyfit_ndeg=emulator.ndeg,
-    #         )
-    #         # (optionally) setup extra P1D from high-resolution
-    #         if "extra_p1d_label" in config:
-    #             extra_data = data_gadget.Gadget_P1D(
-    #                 archive=emulator.archive,
-    #                 input_sim=sim_label,
-    #                 z_max=config["extra_p1d_zmax"],
-    #                 data_cov_label=config["extra_p1d_label"],
-    #                 polyfit_kmax_Mpc=emulator.kmax_Mpc,
-    #                 polyfit_ndeg=emulator.ndeg,
-    #             )
-    #         else:
-    #             extra_data = None
-    #     elif data_type == "nyx":
-    #         # using a data_nyx P1D (from Nyx sim)
-    #         sim_label = config["data_sim_label"]
-    #         # check that sim is not from emulator suite
-    #         assert sim_label not in range(15)
-    #         # figure out p1d covariance used
-    #         if "data_year" in config:
-    #             data_cov_label = config["data_year"]
-    #         else:
-    #             data_cov_label = config["data_cov_label"]
-    #         data = data_nyx.Nyx_P1D(
-    #             archive=emulator.archive,
-    #             input_sim=sim_label,
-    #             z_max=zmax,
-    #             data_cov_factor=config["data_cov_factor"],
-    #             data_cov_label=data_cov_label,
-    #             polyfit_kmax_Mpc=emulator.kmax_Mpc,
-    #             polyfit_ndeg=emulator.ndeg,
-    #         )
-    #         # (optionally) setup extra P1D from high-resolution
-    #         if "extra_p1d_label" in config:
-    #             extra_data = data_nyx.Nyx_P1D(
-    #                 archive=emulator.archive,
-    #                 input_sim=sim_label,
-    #                 z_max=config["extra_p1d_zmax"],
-    #                 data_cov_label=config["extra_p1d_label"],
-    #                 polyfit_kmax_Mpc=emulator.kmax_Mpc,
-    #                 polyfit_ndeg=emulator.ndeg,
-    #             )
-    #         else:
-    #             extra_data = None
-    #     elif data_type == "Chabanier2019":
-    #         data = data_Chabanier2019.P1D_Chabanier2019(zmin=zmin, zmax=zmax)
-    #         # (optionally) setup extra P1D from high-resolution
-    #         if "extra_p1d_label" in config:
-    #             if config["extra_p1d_label"] == "Karacayli2022":
-    #                 extra_data = data_Karacayli2022.P1D_Karacayli2022(
-    #                     diag_cov=True, kmax_kms=0.09, zmin=zmin, zmax=zmax
-    #                 )
-    #             else:
-    #                 raise ValueError("unknown extra_p1d_label", extra_p1d_label)
-    #         else:
-    #             extra_data = None
-    #     else:
-    #         raise ValueError("unknown data type")
-
-    #     # Setup free parameters
-    #     self.print("Setting up likelihood")
-    #     free_param_names = []
-    #     for item in config["free_params"]:
-    #         free_param_names.append(item[0])
-    #     free_param_limits = config["free_param_limits"]
-
-    #     # Setup fiducial cosmo and likelihood
-    #     cosmo_fid_label = config["cosmo_fid_label"]
-    #     self.like = likelihood.Likelihood(
-    #         data=data,
-    #         emulator=emulator,
-    #         free_param_names=free_param_names,
-    #         free_param_limits=free_param_limits,
-    #         prior_Gauss_rms=config["prior_Gauss_rms"],
-    #         emu_cov_factor=config["emu_cov_factor"],
-    #         cosmo_fid_label=cosmo_fid_label,
-    #         extra_p1d_data=extra_data,
-    #     )
-
-    #     # Verify we have a backend, and load it
-    #     assert os.path.isfile(
-    #         self.save_directory + "/backend.h5"
-    #     ), "Backend not found, can't load chains"
-    #     self.backend = emcee.backends.HDFBackend(
-    #         self.save_directory + "/backend.h5"
-    #     )
-
-    #     ## Load chains - build a sampler object to access the backend
-    #     sampler = emcee.EnsembleSampler(
-    #         self.backend.shape[0],
-    #         self.backend.shape[1],
-    #         self.like.log_prob_and_blobs,
-    #         backend=self.backend,
-    #     )
-
-    #     self.burnin_nsteps = config["burn_in"]
-    #     self.chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
-    #     self.lnprob = sampler.get_log_prob(
-    #         flat=False, discard=self.burnin_nsteps
-    #     )
-    #     self.blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
-
-    #     self.ndim = len(self.like.free_params)
-    #     self.nwalkers = config["nwalkers"]
-    #     self.autocorr = np.asarray(config["autocorr"])
-
-    #     return
 
     def _setup_chain_folder(self, rootdir=None, subfolder=None):
         """Set up a directory to save files for this sampler run"""

@@ -1,3 +1,4 @@
+import socket
 import time, os, sys
 import glob
 
@@ -11,6 +12,7 @@ from mpi4py import MPI
 from cup1d.likelihood.input_pipeline import Args
 from lace.emulator.emulator_manager import set_emulator
 from cup1d.likelihood.pipeline import set_archive, Pipeline
+from cup1d.utils.utils import get_path_repo
 
 
 def main():
@@ -19,25 +21,57 @@ def main():
     size = comm.Get_size()
 
     version = "2"
-    folder_base1 = "/global/cfs/cdirs/desicollab/science/lya/y1-p1d/likelihood_files/data_files/MockChallengeSnapshot/"
-    folder_base2 = "/global/homes/j/jjchaves/data/cup1d/mock_challenge/"
-    # folder_base1 = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/"
-    # folder_base2 = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/"
 
-    folder_in = folder_base1 + "/mockchallenge-0." + version + "/"
-    folder_out = folder_base2 + "/v" + version + "/"
+    name_system = socket.gethostname()
+    if "login" in name_system:
+        path_in_challenge = [
+            "global",
+            "cfs",
+            "cdirs",
+            "desicollab",
+            "science",
+            "lya",
+            "y1-p1d",
+            "likelihood_files",
+            "data_files",
+            "MockChallengeSnapshot",
+            "mockchallenge-0." + version,
+        ]
+        path_in_challenge = os.path.join(*path_in_challenge)
+        path_out_challenge = os.path.join(
+            os.path.dirname(get_path_repo("cup1d")),
+            "data",
+            "mock_challenge",
+            "v" + version,
+        )
+    else:
+        path_in_challenge = os.path.join(
+            os.path.dirname(get_path_repo("cup1d")),
+            "data",
+            "mock_challenge",
+            "MockChallengeSnapshot",
+            "mockchallenge-0." + version,
+        )
+        path_out_challenge = os.path.join(
+            os.path.dirname(get_path_repo("cup1d")),
+            "data",
+            "mock_challenge",
+            "v" + version,
+        )
+
     # files = np.sort(glob.glob(folder_in + "*CGAN*.fits"))
     # files = np.sort(glob.glob(folder_in + "*grid_3.fits"))
     # files = np.sort(glob.glob(folder_in + "*bar_ic*.fits"))
-    files = np.sort(glob.glob(folder_in + "*nonoise_fiducial.fits.gz"))
+    search = os.path.join(path_in_challenge, "*nonoise_fiducial.fits.gz")
+    files = np.sort(glob.glob(search))
     if rank == 0:
         for ii in range(len(files)):
             print(ii, files[ii])
 
-    emulator_label = "Nyx_alphap_cov"
-    training_set = "Nyx23_Jul2024"
-    # emulator_label = "Cabayol23+"
-    # training_set = "Cabayol23"
+    # emulator_label = "Nyx_alphap_cov"
+    # training_set = "Nyx23_Jul2024"
+    emulator_label = "Cabayol23+"
+    training_set = "Cabayol23"
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "DESIY1"
 
@@ -55,7 +89,7 @@ def main():
         args.parallel = False
     args.explore = True
 
-    base_out_folder = folder_out + emulator_label
+    base_out_folder = os.path.join(path_out_challenge, emulator_label)
 
     # set number of free IGM parameters
     args.n_tau = 2
@@ -86,16 +120,11 @@ def main():
         args.p1d_fname = files[isim]
         if rank == 0:
             print("Analyzing:", args.p1d_fname)
+        file_sim = os.path.basename(args.p1d_fname)[:-8]
         if args.emu_cov_factor != 0:
-            dir_out = (
-                base_out_folder
-                + "_err/"
-                + os.path.basename(args.p1d_fname)[:-5]
-            )
+            dir_out = os.path.join(base_out_folder + "err", file_sim)
         else:
-            dir_out = (
-                base_out_folder + "/" + os.path.basename(args.p1d_fname)[:-5]
-            )
+            dir_out = os.path.join(base_out_folder, file_sim)
         if rank == 0:
             os.makedirs(dir_out, exist_ok=True)
             print("Output in:", dir_out)

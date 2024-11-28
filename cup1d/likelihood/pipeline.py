@@ -590,7 +590,6 @@ class Pipeline(object):
         self.fitter = Fitter(
             like=like,
             rootdir=self.out_folder,
-            save_chain=False,
             nburnin=args.n_burn_in,
             nsteps=args.n_steps,
             parallel=args.parallel,
