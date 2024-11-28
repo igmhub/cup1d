@@ -67,6 +67,7 @@ def main():
     if rank == 0:
         for ii in range(len(files)):
             print(ii, files[ii])
+    sys.exit()
 
     # emulator_label = "Nyx_alphap_cov"
     # training_set = "Nyx23_Jul2024"
