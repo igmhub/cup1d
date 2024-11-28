@@ -59,6 +59,8 @@ def main():
             "v" + version,
         )
 
+    print(path_in_challenge, path_out_challenge)
+
     # files = np.sort(glob.glob(folder_in + "*CGAN*.fits"))
     # files = np.sort(glob.glob(folder_in + "*grid_3.fits"))
     # files = np.sort(glob.glob(folder_in + "*bar_ic*.fits"))
