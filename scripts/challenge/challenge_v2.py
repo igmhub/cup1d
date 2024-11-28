@@ -79,10 +79,10 @@ def main():
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "DESIY1"
 
-    args.n_steps = 2000
-    args.n_burn_in = 0
-    # args.n_steps = 12
+    # args.n_steps = 2000
     # args.n_burn_in = 0
+    args.n_steps = 12
+    args.n_burn_in = 0
     if size > 1:
         args.parallel = True
     else:

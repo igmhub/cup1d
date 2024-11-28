@@ -455,18 +455,18 @@ class Pipeline(object):
                     archive=archive,
                     drop_sim=_drop_sim,
                 )
+
+                if "Nyx" in emulator.emulator_label:
+                    emulator.list_sim_cube = archive.list_sim_cube
+                    if "nyx_14" in emulator.list_sim_cube:
+                        emulator.list_sim_cube.remove("nyx_14")
+                else:
+                    emulator.list_sim_cube = archive.list_sim_cube
             else:
                 emulator = args.emulator
 
             multi_time = str(np.round(time.time() - start, 2))
             fprint("Emulator set in " + multi_time + " s")
-
-            if "Nyx" in emulator.emulator_label:
-                emulator.list_sim_cube = archive.list_sim_cube
-                if "nyx_14" in emulator.list_sim_cube:
-                    emulator.list_sim_cube.remove("nyx_14")
-            else:
-                emulator.list_sim_cube = archive.list_sim_cube
 
             # distribute emulator to all ranks
             for irank in range(1, size):
