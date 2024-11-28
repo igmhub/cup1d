@@ -265,6 +265,7 @@ class Fitter(object):
                 chain.append(_chain)
                 blobs.append(_blobs)
                 # print(chain[-1].shape)
+                # print(chain[-1][0])
 
                 for irank in range(1, self.size):
                     self.print("Receiving from rank %d" % irank)
@@ -273,7 +274,8 @@ class Fitter(object):
                     )
                     chain.append(self.comm.recv(source=irank, tag=2000 + irank))
                     blobs.append(self.comm.recv(source=irank, tag=3000 + irank))
-                    # print(chain[-1].shape)
+                    # print(irank, chain[-1].shape)
+                    # print(chain[-1][0])
 
                 self.lnprob = np.concatenate(lnprob, axis=1)
                 self.chain = np.concatenate(chain, axis=1)

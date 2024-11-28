@@ -81,7 +81,7 @@ def main():
 
     args.n_steps = 5000
     args.n_burn_in = 0
-    # args.n_steps = 20
+    # args.n_steps = 12
     # args.n_burn_in = 0
     if size > 1:
         args.parallel = True
@@ -107,12 +107,15 @@ def main():
 
         if "Nyx" in emulator_label:
             args.emulator.list_sim_cube = args.archive.list_sim_cube
-            args.vary_alphas = True
             if "nyx_14" in args.emulator.list_sim_cube:
                 args.emulator.list_sim_cube.remove("nyx_14")
         else:
             args.emulator.list_sim_cube = args.archive.list_sim_cube
-            args.vary_alphas = False
+
+    if "Nyx" in emulator_label:
+        args.vary_alphas = True
+    else:
+        args.vary_alphas = False
 
     args.emu_cov_factor = 0.0
 
