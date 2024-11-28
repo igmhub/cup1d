@@ -72,20 +72,16 @@ def main():
         for ii in range(len(files)):
             print(ii, files[ii])
 
-    # emulator_label = "Nyx_alphap_cov"
-    # training_set = "Nyx23_Jul2024"
-    emulator_label = "Cabayol23+"
-    training_set = "Cabayol23"
+    emulator_label = "Nyx_alphap_cov"
+    training_set = "Nyx23_Jul2024"
+    # emulator_label = "Cabayol23+"
+    # training_set = "Cabayol23"
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "DESIY1"
 
-    # args.n_steps = 5000
-    # args.n_burn_in = 0
-    args.n_steps = 20
+    args.n_steps = 5000
     args.n_burn_in = 0
-    # args.n_steps = 200
-    # args.n_burn_in = 50
-    # args.n_steps = 100
+    # args.n_steps = 20
     # args.n_burn_in = 0
     if size > 1:
         args.parallel = True
