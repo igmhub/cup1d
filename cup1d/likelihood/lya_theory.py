@@ -104,6 +104,11 @@ class Theory(object):
         else:
             self.emulator = emulator
         self.emu_kp_Mpc = self.emulator.kp_Mpc
+        res = get_training_hc(self.emulator.list_sim_cube[0][:3])
+        self.emu_pars = res[0]
+        self.hc_points = res[1]
+        self.emu_cosmo_all = res[2]
+        self.emu_igm_all = res[3]
 
         # setup model_igm
         if model_igm is None:
@@ -124,11 +129,20 @@ class Theory(object):
         self.zs_hires = zs_hires
 
         if self.use_hull:
-            self.hull = Hull(zs, suite=self.emulator.list_sim_cube[0][:3])
+            self.hull = Hull(
+                zs=zs,
+                data_hull=self.hc_points,
+                suite=self.emulator.list_sim_cube[0][:3],
+            )
             if zs_hires is not None:
-                self.hull_hires = Hull(
-                    zs_hires, suite=self.emulator.list_sim_cube[0][:3]
-                )
+                if len(zs) == len(zs_hires):
+                    self.hull_hires = self.hull
+                else:
+                    self.hull_hires = Hull(
+                        zs=zs_hires,
+                        data_hull=self.hc_points,
+                        suite=self.emulator.list_sim_cube[0][:3],
+                    )
 
         # setup fiducial cosmology (used for fitting)
         if not input_cosmo:
@@ -172,10 +186,6 @@ class Theory(object):
         }
 
         # set convex hull
-        res = get_training_hc(self.emulator.list_sim_cube[0][:3])
-        self.emu_cosmo_all = res[2]
-        self.emu_igm_all = res[3]
-
         Astar_min = 10
         Astar_max = -10
         nstar_min = 10
@@ -626,41 +636,17 @@ class Theory(object):
 
         # check priors
         if self.use_hull:
-            if np.allclose(zs, self.hull.zs):
+            if len(zs) == self.hull.nz:
                 hull = self.hull
             else:
                 hull = self.hull_hires
 
-            p0 = np.zeros((len(zs), len(hull.params)))
+            p0 = np.zeros((hull.nz, len(hull.params)))
             for jj, key in enumerate(hull.params):
                 p0[:, jj] = emu_call[key]
 
-            check_hull = hull.in_hull(p0)
-
-            if check_hull.all() == False:
-                # print(zs)
-                # print(p0)
-                # print(check_hull)
+            if hull.in_hulls(p0) == False:
                 return None
-
-        # # check cosmo prior
-        # if hasattr(self, "cosmo_priors"):
-        #     for ii, key in enumerate(self.cosmo_priors):
-        #         if (blob[ii] > self.cosmo_priors[key][1]) | (
-        #             blob[ii] < self.cosmo_priors[key][0]
-        #         ):
-        #             return None
-        # # check igm prior
-        # if self.model_igm.metric is not None:
-        #     dist_igm_priors = np.zeros((len(zs)))
-        #     for ii in range(len(zs)):
-        #         p0 = {}
-        #         for key in emu_call:
-        #             p0[key] = emu_call[key][ii]
-        #         dist_igm_priors[ii] = self.model_igm.metric(p0)
-        #     if dist_igm_priors.max() > 1:
-        #         # we are out of the prior range
-        #         return None
 
         # compute input k to emulator in Mpc
         Nz = len(zs)

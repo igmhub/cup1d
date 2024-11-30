@@ -6,6 +6,10 @@ from scipy.spatial import ConvexHull
 from cup1d.utils.utils import get_path_repo
 
 
+def in_hull(hull, p):
+    return np.all(hull.eq @ p.T + hull.eq2 <= hull.tol, 0)
+
+
 class Hull(object):
     """
     A class for computing and working with the convex hull of a dataset, with optional scaling.
@@ -30,15 +34,16 @@ class Hull(object):
 
     def __init__(
         self,
-        zs,
+        zs=None,
         data_hull=None,
         suite="mpg",
-        save=True,
+        save=False,
         extra_factor=1.05,
         mpg_version="Cabayol23",
         nyx_version="Jul2024",
         recompute=False,
         tol=1e-12,
+        multi_dim=False,
     ):
         """
         Initializes the Hull object by computing the convex hull of a given dataset with an optional scaling factor.
@@ -72,7 +77,7 @@ class Hull(object):
           the vertices, simplices, and other details about the convex hull.
         """
 
-        self.zs = zs
+        self.nz = len(zs)
         self.tol = tol
         if suite == "mpg":
             self.params = [
@@ -94,20 +99,69 @@ class Hull(object):
                 "kF_Mpc",
             ]
 
-        self.hull = None
-        if recompute == False:
-            if suite == "mpg":
-                self.hull = self.load_hull(suite, mpg_version=mpg_version)
-            elif suite == "nyx":
-                self.hull = self.load_hull(suite, nyx_version=nyx_version)
+        if multi_dim == True:
+            self.hull = None
+            if recompute == False:
+                if suite == "mpg":
+                    self.hull = self.load_hull(suite, mpg_version=mpg_version)
+                elif suite == "nyx":
+                    self.hull = self.load_hull(suite, nyx_version=nyx_version)
 
-        if self.hull is None:
-            self.hull = self.set_hull(data_hull, extra_factor=extra_factor)
-            if save:
-                self.save_hull(
-                    suite, mpg_version=mpg_version, nyx_version=nyx_version
-                )
-        self.set_in_hull(zs)
+            if self.hull is None:
+                self.hull = self.set_hull(data_hull, extra_factor=extra_factor)
+                if save:
+                    self.save_hull(
+                        suite, mpg_version=mpg_version, nyx_version=nyx_version
+                    )
+            self.set_in_hull(zs)
+        else:
+            self.hulls = self.set_hulls(data_hull, extra_factor=extra_factor)
+
+    def set_hulls(self, points, extra_factor=1.05):
+        int_factor = extra_factor - 0.01
+
+        hulls = []
+        for jj0 in range(points.shape[1]):
+            for jj1 in range(points.shape[1]):
+                if jj1 >= jj0:
+                    continue
+
+                data_hull = points[:, [jj0, jj1]]
+
+                mean = data_hull.mean(axis=0)
+                int_data = int_factor * (data_hull - mean) + mean
+                ext_data = extra_factor * (data_hull - mean) + mean
+                hull = ConvexHull(int_data)
+                hull.eq = hull.equations[:, :-1]
+                hull.eq2 = np.repeat(
+                    hull.equations[:, -1][None, :], data_hull.shape[0], axis=0
+                ).T
+                hull.tol = self.tol
+
+                mask = in_hull(hull, ext_data) == False
+                data_for_hull = ext_data[mask]
+
+                hull_2d = ConvexHull(data_for_hull)
+                hull_2d.eq = hull_2d.equations[:, :-1]
+                hull_2d.eq2 = np.repeat(
+                    hull_2d.equations[:, -1][None, :], self.nz, axis=0
+                ).T
+                hull_2d.tol = self.tol
+                hull_2d.dim0 = jj0
+                hull_2d.dim1 = jj1
+                hulls.append(hull_2d)
+
+        return hulls
+
+    def in_hulls(self, p):
+        for jj in range(len(self.hulls)):
+            res = in_hull(
+                self.hulls[jj], p[:, [self.hulls[jj].dim0, self.hulls[jj].dim1]]
+            )
+            if res.all() == False:
+                return False
+
+        return True
 
     def set_hull(self, data_hull, extra_factor=1.050):
         int_factor = extra_factor - 1e-3
@@ -123,16 +177,6 @@ class Hull(object):
         data_for_hull = np.vstack(data_for_hull)
 
         return ConvexHull(data_for_hull)
-
-    def set_in_hull(self, p):
-        self.eq = self.hull.equations[:, :-1]
-        self.eq2 = np.repeat(
-            self.hull.equations[:, -1][None, :], len(p), axis=0
-        ).T
-
-    def in_hull(self, p):
-        p = np.atleast_2d(p)
-        return np.all(self.eq @ p.T + self.eq2 <= self.tol, 0)
 
     def _in_hull(self, hull, point):
         """
@@ -228,6 +272,41 @@ class Hull(object):
                             projected_hull_points[simplex, 1],
                             "k-",
                         )
+
+        for j in range(n_dimensions):
+            axes[-1, j].set_xlabel(self.params[j])
+            axes[j, 0].set_ylabel(self.params[j])
+
+    def plot_hulls(self, points, test_points=None):
+        # Visualization: Project onto all 2D pairs of dimensions
+        n_dimensions = points.shape[1]
+        fig, axes = plt.subplots(
+            n_dimensions,
+            n_dimensions,
+            figsize=(12, 12),
+            constrained_layout=True,
+        )
+
+        kk = 0
+        for i in range(n_dimensions):
+            for j in range(n_dimensions):
+                if j > i:
+                    axes[i, j].set_visible(False)
+                    continue
+
+                # Plot the points projected onto dimensions (i, j)
+                if i == j:
+                    axes[i, j].hist(points[:, i])
+                else:
+                    axes[i, j].scatter(points[:, j], points[:, i], s=10)
+
+                    for simplex in self.hulls[kk].simplices:
+                        axes[i, j].plot(
+                            self.hulls[kk].points[simplex, 1],
+                            self.hulls[kk].points[simplex, 0],
+                            "k-",
+                        )
+                    kk += 1
 
         for j in range(n_dimensions):
             axes[-1, j].set_xlabel(self.params[j])

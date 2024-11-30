@@ -61,8 +61,8 @@ from cup1d.likelihood.input_pipeline import Args
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
-args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
+args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 # %%
@@ -92,10 +92,10 @@ else:
 # #### Set either mock data or real data
 
 # %%
-choose_forecast = True
+choose_forecast = False
 choose_mock = False
 choose_data = False
-choose_challenge = False
+choose_challenge = True
 choose_desiy1 = False
 
 if choose_forecast:
@@ -160,7 +160,7 @@ elif choose_data:
 elif choose_challenge:
     args.data_label = "challenge_DESIY1"
     folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
-    fname = "mock_challenge_0.2_nonoise_fiducial.fits"
+    fname = "mock_challenge_0.2_nonoise_fiducial.fits.gz"
     args.p1d_fname = folder + fname
     if "fiducial" in args.p1d_fname:
         true_sim_label = "nyx_central"
@@ -283,14 +283,14 @@ args.fid_AGN=[0, -5]
     
 args.fix_cosmo=False
 # args.fix_cosmo=True
-# args.n_tau=0
-# args.n_sigT=0
-# args.n_gamma=0
-# args.n_kF=0
-args.n_tau=2
-args.n_sigT=2
-args.n_gamma=2
-args.n_kF=2
+args.n_tau=0
+args.n_sigT=0
+args.n_gamma=0
+args.n_kF=0
+# args.n_tau=2
+# args.n_sigT=2
+# args.n_gamma=2
+# args.n_kF=2
 args.n_SiIII = 0
 args.n_d_SiIII = 0
 args.n_SiII = 0
@@ -337,8 +337,8 @@ like = set_like(
 # %%
 
 # from cup1d.utils.utils_sims import get_training_hc
-# hc_params, hc_points, cosmo_all, igm_all = get_training_hc("nyx")
-# like.theory.hull.plot_hull(hc_points)
+# hc_params, hc_points, cosmo_all, igm_all = get_training_hc("mpg")
+# like.theory.hull.plot_hulls(hc_points)
 
 # %% [markdown]
 # #### Set priors, move
@@ -505,7 +505,6 @@ args.explore=True
 fitter = Fitter(
     like=like,
     rootdir=output_dir,
-    save_chain=False,
     nburnin=args.n_burn_in,
     nsteps=args.n_steps,
     parallel=args.parallel,
@@ -515,9 +514,6 @@ fitter = Fitter(
 
 # %% [markdown]
 # ### Run minimizer
-
-# %% [markdown]
-# Nyx 1min23s
 
 # %%
 # %%time
@@ -575,6 +571,8 @@ plotter.plot_p1d(residuals=True, plot_every_iz=1)
 plotter.plot_igm()
 
 # %%
+
+# %%
 # plotter.plot_hcd_cont(plot_data=True)
 
 # %%
@@ -611,6 +609,38 @@ def func_for_sampler(p0):
 run_sampler = True
 if run_sampler:    
     _emcee_sam = fitter.run_sampler(pini=fitter.mle_cube, log_func=func_for_sampler)
+
+# %%
+chain1 = fitter.chain.copy()
+chain2 = fitter.chain[:5, :80, :]
+chain3 = fitter.chain[:3, :70, :]
+
+# %%
+chain1.shape
+
+# %%
+chain = []
+chain.append(chain1)
+chain = np.concatenate(chain2, axis=1)
+chain = np.concatenate(chain3, axis=1)
+chain.shape
+
+# %%
+chain = []
+chain.append(chain1)
+chain.append(chain2)
+chain.append(chain3)
+chain = np.concatenate(chain, axis=1)
+# chain = np.concatenate(chain3, axis=1)
+
+# %%
+self.nsteps + self.burnin_nsteps
+
+# %% [markdown]
+# make sure all chains have the same length
+
+# %%
+chain = 
 
 # %%
 plotter = Plotter(fitter)

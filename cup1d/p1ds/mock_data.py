@@ -87,7 +87,7 @@ class Mock_P1D(BaseMockP1D):
         theory.model_igm.set_fid_igm(np.array(zs))
         theory.set_fid_cosmo(zs, input_cosmo=true_cosmo)
         Pk_kms = theory.get_p1d_kms(np.array(zs), k_kms, return_blob=False)
-        full_Pk_kms = np.concatenate(np.array(Pk_kms)).reshape(-1)
+        full_Pk_kms = np.concatenate(np.array(Pk_kms, dtype=object)).reshape(-1)
 
         super().__init__(
             zs=zs,

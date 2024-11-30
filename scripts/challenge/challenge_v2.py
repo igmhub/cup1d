@@ -79,6 +79,10 @@ def main():
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "DESIY1"
 
+    # note redshift range!
+    args.zmin = 2.1
+    args.zmax = 4.2
+
     args.n_steps = 2000
     # args.n_burn_in = 0
     # args.n_steps = 12
