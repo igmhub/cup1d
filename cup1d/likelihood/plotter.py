@@ -1,17 +1,23 @@
 import matplotlib.pyplot as plt
+from corner import corner
 import numpy as np
 import os
-import lace
-import pandas as pd
-from chainconsumer import ChainConsumer, Chain, Truth
-from cup1d.utils.utils import get_discrete_cmap
-
+from cup1d.utils.utils import get_discrete_cmap, get_path_repo
 from cup1d.likelihood.fitter import purge_chains
 
 
 class Plotter(object):
-    def __init__(self, fitter, save_directory=None):
-        self.fitter = fitter
+    def __init__(self, fitter, save_directory=None, file_with_chain=None):
+        if fitter is not None:
+            self.fitter = fitter
+        elif file_with_chain is not None:
+            # we need to store enough information in the output file to reconstruct
+            # the fitter here. maybe calling the pipeline after setting the relevant args?
+            # in the meanwhile, we need
+            pass
+        else:
+            ValueError("Provide either fitter or file_with_chain")
+
         self.cmap = get_discrete_cmap(len(self.fitter.like.data.z))
         self.save_directory = save_directory
         if save_directory is not None:
@@ -29,6 +35,7 @@ class Plotter(object):
         )
 
     def plots_minimizer(self, zrange=[0, 10]):
+        plt.close("all")
         # plot initial P1D (before fitting)
         self.plot_P1D_initial(residuals=False)
         plt.close()
@@ -77,13 +84,13 @@ class Plotter(object):
         plt.close()
 
         # plot cosmology
-        # if self.fitter.fix_cosmology == False:
-        #     self.plot_corner(only_cosmo=True)
-        #     plt.close()
+        if self.fitter.fix_cosmology == False:
+            self.plot_corner(only_cosmo=True)
+            plt.close()
 
-        # # plot corner
-        # self.plot_corner()
-        # plt.close()
+        # plot corner
+        self.plot_corner()
+        plt.close()
 
         # plot IGM histories
         self.plot_igm(cloud=True)
@@ -97,16 +104,19 @@ class Plotter(object):
         self.plot_agn_cont()
         plt.close()
 
-    def plot_mle_cosmo(self, fontsize=16, nyx_version="Jul2024"):
-        """Plot MLE cosmology"""
-
+    def get_hc_star(self, nyx_version="Jul2024"):
         suite_emu = self.fitter.like.theory.emulator.list_sim_cube[0][:3]
         if suite_emu == "mpg":
-            repo = os.path.dirname(lace.__path__[0]) + "/"
-            fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
+            fname = os.path.join(
+                get_path_repo("lace"),
+                "data",
+                "sim_suites",
+                "Australia20",
+                "mpg_emu_cosmo.npy",
+            )
         elif suite_emu == "nyx":
-            fname = (
-                os.environ["NYX_PATH"] + "nyx_emu_cosmo_" + nyx_version + ".npy"
+            fname = os.path.join(
+                os.environ["NYX_PATH"], "nyx_emu_cosmo_" + nyx_version + ".npy"
             )
         else:
             ValueError("cosmo_label should be 'mpg' or 'nyx'")
@@ -126,6 +136,19 @@ class Plotter(object):
             delta2_star[ii] = data_cosmo[key]["star_params"]["Delta2_star"]
             n_star[ii] = data_cosmo[key]["star_params"]["n_star"]
             alpha_star[ii] = data_cosmo[key]["star_params"]["alpha_star"]
+        return labs, delta2_star, n_star, alpha_star, suite_emu, data_cosmo
+
+    def plot_mle_cosmo(self, fontsize=16):
+        """Plot MLE cosmology"""
+
+        (
+            labs,
+            delta2_star,
+            n_star,
+            alpha_star,
+            suite_emu,
+            data_cosmo,
+        ) = self.get_hc_star()
 
         if suite_emu == "mpg":
             fig, ax = plt.subplots(1, 1, figsize=(8, 6))
@@ -203,7 +226,7 @@ class Plotter(object):
         else:
             plt.show()
 
-    def plot_corner(
+    def plot_corner_chainconsumer(
         self,
         plot_params=None,
         delta_lnprob_cut=None,
@@ -217,6 +240,9 @@ class Plotter(object):
                     or leave as None to
                     plot all (including derived)
         - if delta_lnprob_cut is set, keep only high-prob points"""
+
+        from chainconsumer import ChainConsumer, Chain, Truth
+        import pandas as pd
 
         params_plot, strings_plot, _ = self.fitter.get_all_params(
             delta_lnprob_cut=delta_lnprob_cut, extra_nburn=extra_nburn
@@ -270,6 +296,105 @@ class Plotter(object):
             plt.savefig(name + ".png")
 
         # return summary
+
+    def plot_corner(
+        self,
+        delta_lnprob_cut=None,
+        usetex=True,
+        only_cosmo=False,
+        extra_nburn=0,
+    ):
+        """Make corner plot in ChainConsumer
+        - if delta_lnprob_cut is set, keep only high-prob points"""
+
+        params_plot, strings_plot, _ = self.fitter.get_all_params(
+            delta_lnprob_cut=delta_lnprob_cut, extra_nburn=extra_nburn
+        )
+        if only_cosmo:
+            yesplot = ["$\\Delta^2_\\star$", "$n_\\star$"]
+            for param in self.fitter.like.free_params:
+                if param.name == "nrun":
+                    yesplot.append("$\\alpha_\\star$")
+        else:
+            # only plot parameters that vary
+            diff = np.max(params_plot, axis=0) - np.min(params_plot, axis=0)
+            yesplot = np.array(strings_plot)[diff != 0]
+
+        truth = np.zeros((len(yesplot)))
+        chain = np.zeros((params_plot.shape[0], len(yesplot)))
+        for ii, par in enumerate(yesplot):
+            _ = np.argwhere(np.array(strings_plot) == par)[0, 0]
+            chain[:, ii] = params_plot[:, _]
+            truth[ii] = self.fitter.truth[par]
+
+        fig = corner(
+            chain,
+            labels=yesplot,
+            quantiles=(0.16, 0.84),
+            levels=(0.68, 0.95),
+            show_titles=True,
+            title_quantiles=(0.16, 0.5, 0.84),
+            title_fmt=".4f",
+            plot_datapoints=False,
+            plot_density=False,
+            truths=truth,
+        )
+
+        if only_cosmo:
+            (
+                labs,
+                delta2_star,
+                n_star,
+                alpha_star,
+                suite_emu,
+                data_cosmo,
+            ) = self.get_hc_star()
+
+            if suite_emu == "mpg":
+                axs = np.array(fig.axes).reshape((2, 2))
+                nproj = 1
+            else:
+                axs = np.array(fig.axes).reshape((3, 3))
+                nproj = 3
+
+            for ii in range(nproj):
+                if ii == 0:
+                    x = delta2_star
+                    y = n_star
+                    ax = axs[1, 0]
+                elif ii == 1:
+                    x = delta2_star
+                    y = alpha_star
+                    ax = axs[2, 0]
+                else:
+                    x = n_star
+                    y = alpha_star
+                    ax = axs[2, 1]
+
+                ax.scatter(x, y, marker="o", color="C1", alpha=0.5)
+
+                diff = 0.05 * (y.max() - y.min())
+                ax.set_ylim(y.min() - diff, y.max() + diff)
+
+            for ii in range(len(axs)):
+                if ii == 0:
+                    x = delta2_star
+                elif ii == 1:
+                    x = n_star
+                else:
+                    x = alpha_star
+
+                for jj in range(len(axs)):
+                    diff = 0.05 * (x.max() - x.min())
+                    axs[jj, ii].set_xlim(x.min() - diff, x.max() + diff)
+
+        if self.save_directory is not None:
+            if only_cosmo:
+                name = self.save_directory + "/corner_cosmo"
+            else:
+                name = self.save_directory + "/corner"
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
 
     def plot_lnprob(self, extra_nburn=0):
         """Plot lnprob"""
@@ -448,6 +573,8 @@ class Plotter(object):
          - save_string: to save the plot. Must include
                         file extension (i.e. .pdf, .png etc)
          - if delta_lnprob_cut is set, keep only high-prob points"""
+
+        from chainconsumer import ChainConsumer, Chain, Truth
 
         assert len(chain_files) == len(labels)
 

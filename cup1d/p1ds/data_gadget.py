@@ -25,25 +25,18 @@ class Gadget_P1D(BaseMockP1D):
 
     def __init__(
         self,
+        theory,
+        true_cosmo,
         testing_data,
-        emulator=None,
         apply_smoothing=True,
         input_sim="mpg_central",
-        z_min=0,
-        z_max=10,
         data_cov_label="Chabanier2019",
         data_cov_factor=1.0,
         add_syst=True,
         add_noise=False,
         seed=0,
-        z_star=3.0,
-        kp_kms=0.009,
-        true_SiII=[[0, 0], [-10, -10]],
-        true_SiIII=[[0, 0], [-10, -10]],
-        true_HCD=[0, -6],
-        true_SN=[0, -4],
-        true_AGN=[0, -5],
-        fprint=print,
+        z_min=0,
+        z_max=10,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
         - testing_data: p1d measurements from Gadget sims
@@ -58,18 +51,14 @@ class Gadget_P1D(BaseMockP1D):
         self.add_syst = add_syst
         self.data_cov_factor = data_cov_factor
         self.data_cov_label = data_cov_label
-        self.z_star = z_star
-        self.kp_kms = kp_kms
-
-        # store sim data
         self.input_sim = input_sim
 
-        if apply_smoothing & (emulator is not None):
+        if apply_smoothing:
             self.testing_data = super().set_smoothing_Mpc(
-                emulator, testing_data, fprint=fprint
+                theory.emulator, testing_data
             )
         else:
-            fprint("No smoothing is applied")
+            print("No smoothing is applied")
             self.testing_data = testing_data
 
         # store cosmology used in the simulation
@@ -80,31 +69,17 @@ class Gadget_P1D(BaseMockP1D):
 
         # setup P1D using covariance and testing sim
         zs, k_kms, Pk_kms, cov = self._load_p1d()
+        theory.set_fid_cosmo(zs, input_cosmo=true_cosmo)
 
-        # setup theory
-        model_igm = IGM(np.array(zs), fid_sim_igm=input_sim)
-        model_cont = Contaminants(
-            fid_SiIII=true_SiIII,
-            fid_SiII=true_SiII,
-            fid_HCD=true_HCD,
-            fid_SN=true_SN,
-            fid_AGN=true_AGN,
-        )
-        true_cosmo = self._get_cosmo()
-        theory = lya_theory.Theory(
-            zs=np.array(zs),
-            emulator=emulator,
-            fid_cosmo=true_cosmo,
-            model_igm=model_igm,
-            model_cont=model_cont,
-        )
         self.set_truth(theory, zs)
 
         # apply contaminants
         for iz, z in enumerate(zs):
-            mF = model_igm.F_model.get_mean_flux(z)
-            M_of_z = theory.cosmo_model_fid["M_of_zs"][iz]
-            cont_total = model_cont.get_contamination(z, k_kms[iz], mF, M_of_z)
+            mF = theory.model_igm.F_model.get_mean_flux(z)
+            M_of_z = theory.fid_cosmo["M_of_zs"][iz]
+            cont_total = theory.model_cont.get_contamination(
+                z, k_kms[iz], mF, M_of_z
+            )
             Pk_kms[iz] *= cont_total
 
         # setup base class
@@ -162,7 +137,7 @@ class Gadget_P1D(BaseMockP1D):
         # setup fiducial cosmology
         self.truth = {}
 
-        sim_cosmo = theory.cosmo_model_fid["cosmo"].cosmo
+        sim_cosmo = theory.fid_cosmo["cosmo"].cosmo
 
         self.truth["cosmo"] = {}
         self.truth["cosmo"]["ombh2"] = sim_cosmo.ombh2
@@ -175,7 +150,7 @@ class Gadget_P1D(BaseMockP1D):
 
         self.truth["linP"] = {}
         blob_params = ["Delta2_star", "n_star", "alpha_star"]
-        blob = theory.cosmo_model_fid["cosmo"].get_linP_params()
+        blob = theory.fid_cosmo["cosmo"].get_linP_params()
         for ii in range(len(blob_params)):
             self.truth["linP"][blob_params[ii]] = blob[blob_params[ii]]
 

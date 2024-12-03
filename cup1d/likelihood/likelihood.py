@@ -144,7 +144,7 @@ class Likelihood(object):
             # Process the full power spectrum data if available
             if data.full_Pk_kms is not None:
                 # Copy the full covariance matrix
-                cov = data.full_cov_kms.copy()
+                cov = data.full_cov_Pk_kms.copy()
                 # Indices of the diagonal elements
                 ind = np.arange(len(data.full_Pk_kms))
                 # Add emulator error to the diagonal
@@ -256,6 +256,8 @@ class Likelihood(object):
 
         equal_IGM = True
         for key in self.data.truth["igm"]:
+            if key not in self.theory.model_igm.fid_igm:
+                continue
             lenz = self.theory.model_igm.fid_igm[key].shape[0]
             if np.allclose(
                 self.data.truth["igm"][key][:lenz],

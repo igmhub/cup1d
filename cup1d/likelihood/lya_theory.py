@@ -17,7 +17,6 @@ from cup1d.utils.utils import is_number_string
 def set_theory(
     emulator,
     free_parameters=None,
-    set_metric=True,
     use_hull=True,
     zs_hires=None,
     sim_igm="mpg_central",

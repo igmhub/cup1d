@@ -116,6 +116,25 @@ def set_P1D(
 
     data_label = args.data_label
 
+    if (
+        (data_label[:3] == "mpg")
+        | (data_label[:3] == "nyx")
+        | (data_label[:5] == "mock_")
+        | (data_label == "challenge_DESIY1")
+        | (data_label == "eBOSS_mock")
+    ):
+        theory = lya_theory.set_theory(
+            emulator,
+            use_hull=False,
+            sim_igm=args.true_igm_label,
+            SiII=args.true_SiII,
+            SiIII=args.true_SiIII,
+            HCD=args.true_HCD,
+            SN=args.true_SN,
+            AGN=args.true_AGN,
+            ic_correction=args.ic_correction,
+        )
+
     if (data_label[:3] == "mpg") | (data_label[:3] == "nyx"):
         # check if we need to load another archive
         if data_label in archive.list_sim:
@@ -148,35 +167,18 @@ def set_P1D(
             set_p1d_from_mock = data_nyx.Nyx_P1D
 
         data = set_p1d_from_mock(
+            theory,
+            true_cosmo,
+            p1d_ideal,
             input_sim=data_label,
-            testing_data=p1d_ideal,
             data_cov_label=args.cov_label,
-            emulator=emulator,
             apply_smoothing=args.apply_smoothing,
             add_noise=args.add_noise,
             seed=args.seed_noise,
-            true_SiII=args.true_SiII,
-            true_SiIII=args.true_SiIII,
-            true_HCD=args.true_HCD,
-            true_SN=args.true_SN,
-            true_AGN=args.true_AGN,
             z_min=args.z_min,
             z_max=args.z_max,
         )
     elif data_label[:5] == "mock_":
-        theory = lya_theory.set_theory(
-            emulator,
-            set_metric=False,
-            use_hull=False,
-            sim_igm=args.true_igm_label,
-            SiII=args.true_SiII,
-            SiIII=args.true_SiIII,
-            HCD=args.true_HCD,
-            SN=args.true_SN,
-            AGN=args.true_AGN,
-            ic_correction=args.ic_correction,
-        )
-
         # mock data from emulator
         data = mock_data.Mock_P1D(
             theory,
@@ -190,18 +192,6 @@ def set_P1D(
         )
 
     elif data_label == "challenge_DESIY1":
-        theory = lya_theory.set_theory(
-            emulator,
-            set_metric=False,
-            sim_igm=args.true_igm_label,
-            SiII=args.true_SiII,
-            SiIII=args.true_SiIII,
-            HCD=args.true_HCD,
-            SN=args.true_SN,
-            AGN=args.true_AGN,
-            ic_correction=args.ic_correction,
-        )
-
         data = challenge_DESIY1.P1D_challenge_DESIY1(
             theory,
             true_cosmo,
@@ -268,6 +258,8 @@ def set_P1D(
         dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo, z=np.max(data.z))
         kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
         data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
+
+    data.data_label = data_label
 
     return data
 
@@ -664,7 +656,9 @@ class Pipeline(object):
             self.fitter.save_minimizer()
 
             # plot fit
-            plotter = Plotter(self.fitter, save_directory=self.out_folder)
+            plotter = Plotter(
+                self.fitter, save_directory=self.fitter.save_directory
+            )
             plotter.plots_minimizer()
 
             # distribute best_fit to all tasks
@@ -709,5 +703,7 @@ class Pipeline(object):
             self.fitter.write_chain_to_file()
 
             # plot fit
-            plotter = Plotter(self.fitter, save_directory=self.out_folder)
+            plotter = Plotter(
+                self.fitter, save_directory=self.fitter.save_directory
+            )
             plotter.plots_sampler()

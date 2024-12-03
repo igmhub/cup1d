@@ -95,7 +95,7 @@ class BaseDataP1D(object):
             self.Pk_kms,
             self.cov_Pk_kms,
             self.full_Pk_kms,
-            self.full_cov_kms,
+            self.full_cov_Pk_kms,
         ) = res
 
         # decide if applying blinding

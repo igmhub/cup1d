@@ -502,7 +502,9 @@ class Fitter(object):
 
         return values
 
-    def get_chain(self, cube=True, extra_nburn=0, delta_lnprob_cut=None):
+    def get_chain(
+        self, cube=True, extra_nburn=0, delta_lnprob_cut=None, collapse=True
+    ):
         """Figure out whether chain has been read from file, or computed.
         - if cube=True, return values in range [0,1]
         - if delta_lnprob_cut is set, use it to remove low-prob islands"""
@@ -512,35 +514,47 @@ class Fitter(object):
             mask, _ = purge_chains(self.lnprob[extra_nburn:, :])
         else:
             mask = np.ones(self.lnprob.shape[1], dtype=bool)
-        lnprob = self.lnprob[extra_nburn:, mask].reshape(-1)
-        chain = self.chain[extra_nburn:, mask, :].reshape(
-            -1, self.chain.shape[-1]
-        )
-        blobs = self.blobs[extra_nburn:, mask].reshape(-1)
+
+        # step, walker, param
+
+        if collapse:
+            lnprob = self.lnprob[extra_nburn:, mask].reshape(-1)
+            chain = self.chain[extra_nburn:, mask, :].reshape(
+                -1, self.chain.shape[-1]
+            )
+            blobs = self.blobs[extra_nburn:, mask].reshape(-1)
+        else:
+            lnprob = self.lnprob[extra_nburn:, mask]
+            chain = self.chain[extra_nburn:, mask, :]
+            blobs = self.blobs[extra_nburn:, mask]
 
         if delta_lnprob_cut:
             max_lnprob = np.max(lnprob)
             cut_lnprob = max_lnprob - delta_lnprob_cut
             mask = lnprob > cut_lnprob
-            # total number and masked points in chain
-            nt = len(lnprob)
-            nm = sum(mask)
-            self.print("will keep {} \ {} points from chain".format(nm, nt))
             chain = chain[mask]
             lnprob = lnprob[mask]
             blobs = blobs[mask]
 
         if cube == False:
-            cube_values = chain
-            list_values = [
-                self.like.free_params[ip].value_from_cube(cube_values[:, ip])
-                for ip in range(self.ndim)
-            ]
-            chain = np.array(list_values).transpose()
+            # cube_values = chain.copy()
+            # list_values = [
+            #     self.like.free_params[ip].value_from_cube(cube_values[:, ip])
+            #     for ip in range(self.ndim)
+            # ]
+            # chain = np.array(list_values).transpose()
+
+            cube_values = chain.copy()
+            for ip in range(self.ndim):
+                cube_values[..., ip] = self.like.free_params[
+                    ip
+                ].value_from_cube(cube_values[..., ip])
 
         return chain, lnprob, blobs
 
-    def get_all_params(self, delta_lnprob_cut=None, extra_nburn=0):
+    def get_all_params(
+        self, delta_lnprob_cut=None, extra_nburn=0, collapse=True
+    ):
         """Get a merged array of both sampled and derived parameters
         returns a 2D array of all parameters, and an ordered list of
         the LaTeX strings for each.
@@ -550,28 +564,30 @@ class Fitter(object):
             cube=False,
             delta_lnprob_cut=delta_lnprob_cut,
             extra_nburn=extra_nburn,
+            collapse=collapse,
         )
 
-        if blobs is None:
-            ## Old chains will have no blobs
-            all_params = chain
-            all_strings = self.paramstrings
-        elif len(blobs[0]) == 6:
-            # Build an array of chain + blobs, as chainconsumer doesn't know
-            # about the difference between sampled and derived parameters
-            all_params = np.zeros((chain.shape[0], chain.shape[1] + 6))
-            all_params[:, : chain.shape[1]] = chain
+        return_all = False
+        if collapse:
+            if len(blobs[0]) == 6:
+                return_all = True
+        else:
+            if len(blobs[0, 0]) == 6:
+                return_all = True
+
+        if return_all:
+            # Build an array of chain + blobs
+            all_params = np.zeros((*chain.shape[:-1], chain.shape[-1] + 6))
+
+            all_params[..., : chain.shape[-1]] = chain
             for ii in range(6):
-                all_params[:, chain.shape[1] + ii] = blobs[
+                all_params[..., chain.shape[-1] + ii] = blobs[
                     blob_strings_orig[ii]
                 ]
 
             # Ordered strings for all parameters
             all_strings = self.paramstrings + blob_strings
         else:
-            self.print(
-                "Unknown blob configuration, just returning sampled params"
-            )
             all_params = chain
             all_strings = self.paramstrings
 
@@ -740,145 +756,72 @@ class Fitter(object):
     def write_chain_to_file(self, residuals=True, extra_nburn=0):
         """Write flat chain to file"""
 
-        # TO BE UPDATED
-
         dict_out = {}
 
-        # # Emulator settings
-        # emulator = self.like.theory.emulator
-        # saveDict["kmax_Mpc"] = emulator.kmax_Mpc
-        # # if isinstance(emulator, gp_emulator.GPEmulator):
-        # #     saveDict["emu_type"] = emulator.emu_type
-        # # else:
-        # #     # this is dangerous, there might be different settings
-        # #     if isinstance(emulator.archive, gadget_archive.GadgetArchive):
-        # #         saveDict["emulator_label"] = "Cabayol23"
-        # #     else:
-        # #         saveDict["emulator_label"] = "Nyx"
+        # DATA
+        dict_out["data"] = {}
+        dict_out["data"]["data_label"] = self.like.data.data_label
+        dict_out["data"]["zs"] = self.like.data.z
+        dict_out["data"]["k_kms"] = self.like.data.k_kms
+        dict_out["data"]["Pk_kms"] = self.like.data.Pk_kms
+        dict_out["data"]["cov_Pk_kms"] = self.like.data.cov_Pk_kms
+        if self.like.data.full_Pk_kms is not None:
+            dict_out["data"]["full_Pk_kms"] = self.like.data.full_Pk_kms
+            dict_out["data"]["full_cov_Pk_kms"] = self.like.data.full_cov_Pk_kms
 
-        # # Data settings
-        # if isinstance(self.like.data, data_gadget.Gadget_P1D):
-        #     # using a data_gadget P1D (from Gadget sim)
-        #     saveDict["data_type"] = "gadget"
-        #     saveDict["data_sim_label"] = self.like.data.input_sim
-        #     saveDict["data_cov_label"] = self.like.data.data_cov_label
-        #     saveDict["data_cov_factor"] = self.like.data.data_cov_factor
-        # elif isinstance(self.like.data, data_nyx.Nyx_P1D):
-        #     # using a data_nyx P1D (from Nyx sim)
-        #     saveDict["data_type"] = "nyx"
-        #     saveDict["data_sim_label"] = self.like.data.input_sim
-        #     saveDict["data_cov_label"] = self.like.data.data_cov_label
-        #     saveDict["data_cov_factor"] = self.like.data.data_cov_factor
-        # elif hasattr(self.like.data, "theory"):
-        #     # using a mock_data P1D (computed from theory)
-        #     saveDict["data_type"] = "mock"
-        #     saveDict["data_mock_label"] = self.like.data.data_label
-        # elif isinstance(self.like.data, data_Chabanier2019.P1D_Chabanier2019):
-        #     saveDict["data_type"] = "Chabanier2019"
-        # else:
-        #     saveDict["data_type"] = "other"
-        # saveDict["data_zmin"] = min(self.like.theory.zs)
-        # saveDict["data_zmax"] = max(self.like.theory.zs)
+        # EMULATOR
+        dict_out["emulator"] = {}
+        dict_out["emulator"][
+            "emulator_label"
+        ] = self.like.theory.emulator.emulator_label
+        dict_out["emulator"]["kmax_Mpc"] = self.like.theory.emulator.kmax_Mpc
 
-        # # Other likelihood settings
-        # saveDict["prior_Gauss_rms"] = self.like.prior_Gauss_rms
-        # saveDict["cosmo_fid_label"] = self.like.cosmo_fid_label
-        # saveDict["emu_cov_factor"] = self.like.emu_cov_factor
-        # free_params_save = []
-        # free_param_limits = []
-        # for par in self.like.free_params:
-        #     free_params_save.append([par.name, par.min_value, par.max_value])
-        #     free_param_limits.append([par.min_value, par.max_value])
-        # saveDict["free_params"] = free_params_save
-        # saveDict["free_param_limits"] = free_param_limits
+        # LIKELIHOOD
+        dict_out["like"] = {}
+        dict_out["like"]["cosmo_fid_label"] = self.like.fid
+        dict_out["like"]["emu_cov_factor"] = self.like.emu_cov_factor
+        dict_out["like"]["free_params"] = []
+        for par in self.like.free_params:
+            dict_out["like"]["free_params"].append(par.name)
 
-        # # Sampler stuff
-        # saveDict["burn_in"] = self.burnin_nsteps
-        # saveDict["nwalkers"] = self.nwalkers
-        # if self.get_autocorr:
-        #     saveDict["autocorr"] = self.autocorr.tolist()
+        # SAMPLER
+        dict_out["sampler"] = {}
+        dict_out["sampler"]["nsteps"] = self.nsteps
+        dict_out["sampler"]["burnin_nsteps"] = self.burnin_nsteps
+        dict_out["sampler"]["nwalkers"] = self.nwalkers
 
-        # # Save dictionary to json file in the appropriate directory
-        # if self.save_directory is None:
-        #     self._setup_chain_folder()
-        # with open(self.save_directory + "/config.json", "w") as json_file:
-        #     json.dump(saveDict, json_file)
-
-        # # save config info in plain text as well
-        # self._write_dict_to_text(saveDict)
-
-        tries = False
-
-        # dict_out = {}
-        # if tries:
-        #     # plots
-        #     mask_use = plotter.plot_lnprob(extra_nburn=extra_nburn)
-        #     plt.close()
-        #     plotter.plot_p1d(residuals=residuals)
-        #     plt.close()
-        #     plotter.plot_igm()
-        #     plt.close()
-        #     if self.fix_cosmology == False:
-        #         plotter.plot_corner(only_cosmo=True, extra_nburn=extra_nburn)
-        #         plt.close()
-        #     dict_out["summary"] = plotter.plot_corner(extra_nburn=extra_nburn)
-        #     plt.close()
-
-        #     # for stat_best_fit in ["mle"]:
-        #     #     self.plot_p1d(
-        #     #         residuals=residuals,
-        #     #         rand_posterior=rand_posterior,
-        #     #         stat_best_fit=stat_best_fit,
-        #     #     )
-
-        #     # try:
-        #     #     self.plot_prediction(residuals=residuals)
-        #     # except:
-        #     #     self.print("Can't plot prediction")
-
-        #     # if self.get_autocorr:
-        #     #     try:
-        #     #         self.plot_autocorrelation_time()
-        #     #     except:
-        #     #         self.print("Can't plot autocorrelation time")
-
-        # else:
-        #     mask_use = plotter.plot_lnprob()
-        #     plotter.plot_p1d(residuals=residuals, stat_best_fit="mean")
-        #     for stat_best_fit in ["mean"]:
-        #         rand_posterior = fitter.plot_igm(stat_best_fit=stat_best_fit)
-        #         plotter.plot_p1d(
-        #             residuals=residuals,
-        #             rand_posterior=rand_posterior,
-        #             stat_best_fit=stat_best_fit,
-        #         )
-        #         plotter.plot_prediction(residuals=residuals)
-        #     if self.fix_cosmology == False:
-        #         _ = plotter.plot_corner(only_cosmo=True)
-        #     dict_out["summary"] = plotter.plot_corner()
-
-        # dict_out["walkers_survive"] = mask_use
+        # TRUTH
         dict_out["truth"] = self.truth
 
         all_param, all_names, lnprob = self.get_all_params(
-            extra_nburn=extra_nburn
+            extra_nburn=extra_nburn, collapse=False
         )
 
-        output = {}
+        # POSTERIOR
+        dict_out["posterior"] = {}
+        dict_out["posterior"]["param_names"] = []
+        dict_out["posterior"]["param_names_latex"] = []
         for ii, key in enumerate(all_names):
-            output[param_dict_rev[key]] = all_param[:, ii]
-        output["lnprob"] = lnprob
+            dict_out["posterior"][param_dict_rev[key]] = all_param[..., ii]
+            dict_out["posterior"]["param_names"].append(param_dict_rev[key])
+            dict_out["posterior"]["param_names_latex"].append(key)
+        dict_out["posterior"]["lnprob"] = lnprob
 
-        dict_out["param_names"] = all_names
-        dict_out["param_percen"] = np.percentile(
-            all_param, [16, 50, 84], axis=0
-        ).T
+        if all_param.ndim == 3:
+            dict_out["posterior"]["param_percen"] = np.percentile(
+                all_param.reshape(-1, all_param.shape[-1]), [16, 50, 84], axis=0
+            ).T
+        else:
+            dict_out["posterior"]["param_percen"] = np.percentile(
+                all_param, [16, 50, 84], axis=0
+            ).T
 
-        dict_out["param_mle"] = self.mle
-        dict_out["lnprob_mle"] = self.lnprop_mle
+        dict_out["posterior"]["param_mle"] = self.mle
+        dict_out["posterior"]["lnprob_mle"] = self.lnprop_mle
 
-        np.save(self.save_directory + "/results.npy", dict_out)
-        np.save(self.save_directory + "/chain.npy", output)
+        out_file = self.save_directory + "/sampler_results.npy"
+        print("Saving chain to " + out_file)
+        np.save(out_file, dict_out)
 
 
 ## Dictionary to convert likelihood parameters into latex strings

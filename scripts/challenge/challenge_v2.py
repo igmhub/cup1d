@@ -72,21 +72,27 @@ def main():
         for ii in range(len(files)):
             print(ii, files[ii])
 
+    # emulator_label = "Pedersen23_ext"
+    # training_set = "Cabayol23"
     emulator_label = "Nyx_alphap_cov"
     training_set = "Nyx23_Jul2024"
     # emulator_label = "Cabayol23+"
     # training_set = "Cabayol23"
     args = Args(emulator_label=emulator_label, training_set=training_set)
-    args.data_label = "DESIY1"
+    args.data_label = "challenge_DESIY1"
+
+    impose_fid_cosmo_label = None
+    # impose_fid_cosmo_label = "Planck18"
+    # impose_fid_cosmo_label = "Planck18_h74"
 
     # note redshift range!
     args.zmin = 2.1
     args.zmax = 4.2
 
-    args.n_steps = 2000
-    # args.n_burn_in = 0
-    # args.n_steps = 12
-    args.n_burn_in = 0
+    args.n_steps = 1500
+    args.n_burn_in = 1000
+    # args.n_steps = 10
+    # args.n_burn_in = 10
     if size > 1:
         args.parallel = True
     else:
@@ -139,21 +145,28 @@ def main():
         # same true and fiducial IGM
         if "fiducial" in args.p1d_fname:
             true_sim_label = "nyx_central"
+        elif "CGAN" in args.p1d_fname:
+            true_sim_label = "nyx_seed"
         elif "grid_3" in args.p1d_fname:
             true_sim_label = "nyx_3"
         else:
-            true_sim_label = "nyx_central"
+            true_sim_label = None
 
         if "Nyx" in emulator_label:
-            args.true_cosmo_label = true_sim_label
             args.true_sim_label = true_sim_label
+            args.true_cosmo_label = true_sim_label
+            args.true_igm_label = true_sim_label
             args.fid_cosmo_label = true_sim_label
             args.fid_igm_label = true_sim_label
         else:
-            args.true_cosmo_label = true_sim_label
             args.true_sim_label = true_sim_label
+            args.true_cosmo_label = true_sim_label
+            args.true_igm_label = true_sim_label
             args.fid_cosmo_label = "mpg_central"
             args.fid_igm_label = "mpg_central"
+
+        if impose_fid_cosmo_label is not None:
+            args.fid_cosmo_label = impose_fid_cosmo_label
 
         if "bar_ic" in args.p1d_fname:
             args.ic_correction = True

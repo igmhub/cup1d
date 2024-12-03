@@ -63,6 +63,21 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
         if hdu[1].header["BLINDING"] is not None:
             blinding = hdu[1].header["BLINDING"]
 
+    # compressed parameters do not agree between codes!!
+    # keys = ["modelname", "Delta_star", "N_STAR", "alpha_star"]
+    # dict_conv = {
+    #     "Delta_star": "Delta2_star",
+    #     "N_STAR": "n_star",
+    #     "alpha_star":"alpha_star"
+    # }
+    # for key in keys:
+    #     if key == "modelname":
+    #         print(hdu[1].header[key])
+    #     else:
+    #         print(dict_conv[key], hdu[1].header[key])
+
+    # input_sim = hdu[1].header["modelname"]
+
     zs_raw = hdu[1].data["Z"]
     k_kms_raw = hdu[1].data["K"]
     Pk_kms_raw = hdu[1].data["PLYA"]
@@ -105,4 +120,13 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
     full_Pk_kms = Pk_kms_raw[mask_raw]
     full_cov_kms = cov_raw[mask_raw, :][:, mask_raw]
 
-    return zs, k_kms, Pk_kms, cov, full_zs, full_Pk_kms, full_cov_kms, blinding
+    return (
+        zs,
+        k_kms,
+        Pk_kms,
+        cov,
+        full_zs,
+        full_Pk_kms,
+        full_cov_kms,
+        blinding,
+    )

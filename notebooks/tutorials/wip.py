@@ -54,7 +54,32 @@ from astropy.io import fits
 
 from cup1d.likelihood.input_pipeline import Args
 
+from corner import corner
 
+# %%
+# folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.4/"
+# fname = "mockchallenge-0.4_nonoise_fiducial.fits.gz"
+# hdu = fits.open(folder + fname)
+# keys = ["modelname", "Delta_star", "N_STAR", "alpha_star"]
+# dict_conv = {
+#     "Delta_star": "Delta2_star", 
+#     "N_STAR": "n_star", 
+#     "alpha_star":"alpha_star"
+# }
+# for key in keys:
+#     if key == "modelname":
+#         print(hdu[1].header[key])
+#     else:
+#         print(dict_conv[key], np.round(hdu[1].header[key], 4), 
+#               np.round(fid[dict_conv[key]], 4), 
+#               np.round(hdu[1].header[key]-fid[dict_conv[key]], 4)
+#              )
+
+# %%
+
+# %%
+
+# %%
 
 # %% [markdown]
 # ### Set archive
@@ -109,13 +134,14 @@ if choose_forecast:
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms.fits"
 
     # you need to provide true cosmology, IGM history, and contaminants
-    # true_cosmo = set_cosmo(cosmo_label="nyx_central")
+    true_cosmo = set_cosmo(cosmo_label="nyx_central")
+    args.true_igm_label="nyx_central"
     # true_cosmo = set_cosmo(cosmo_label="mpg_22")
     # true_cosmo = set_cosmo(cosmo_label="Planck18")
     # args.true_igm_label="nyx_central"
     # args.true_igm_label="mpg_22"
-    true_cosmo = set_cosmo(cosmo_label="mpg_central")
-    args.true_igm_label="mpg_central"
+    # true_cosmo = set_cosmo(cosmo_label="mpg_central")
+    # args.true_igm_label="mpg_central"
     # from -11 to -4
     args.true_SiIII=[[0, 0], [-10, -10]]
     args.true_SiII=[[0, 0], [-10, -10]]
@@ -131,13 +157,15 @@ elif choose_mock:
     true_cosmo=None
     # to analyze data from simulations
     args.data_label = "mpg_central"    
+    args.true_cosmo_label="mpg_central"
+    args.true_igm_label="mpg_central"
     # args.data_label="nyx_central"
     # args.data_label="nyx_seed"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
 
     # provide cosmology only to cull the data
-    args.true_cosmo_label="mpg_central"
+    # args.true_cosmo_label="mpg_central"
     # args.true_cosmo_label="nyx_central"
     true_cosmo = set_cosmo(cosmo_label=args.data_label)
     # args.true_cosmo_label="nyx_seed"
@@ -172,6 +200,8 @@ elif choose_challenge:
         true_sim_label = None
     true_cosmo = set_cosmo(cosmo_label=true_sim_label)
     args.true_igm_label=true_sim_label
+    args.z_min = 2.1
+    args.z_max = 4.3
 elif choose_desiy1:
     true_cosmo = None
     args.true_igm_label= None
@@ -213,7 +243,7 @@ if args.data_label_hires is not None:
 # plt.plot(data["P1Ds"].k_kms[0], ntos)
 
 # %%
-# data["P1Ds"].truth
+data["P1Ds"].truth
 
 # %%
 print(data["P1Ds"].apply_blinding)
@@ -512,6 +542,9 @@ fitter = Fitter(
     fix_cosmology=args.fix_cosmo,
 )
 
+# %%
+fitter.like.data.truth
+
 # %% [markdown]
 # ### Run minimizer
 
@@ -526,6 +559,9 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 # p0[:] = 0.5
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
+
+# %%
+# fitter.write_chain_to_file()
 
 # %%
 # fft Cabayol23 free cosmo z_max = 4.3
@@ -611,42 +647,16 @@ if run_sampler:
     _emcee_sam = fitter.run_sampler(pini=fitter.mle_cube, log_func=func_for_sampler)
 
 # %%
-chain1 = fitter.chain.copy()
-chain2 = fitter.chain[:5, :80, :]
-chain3 = fitter.chain[:3, :70, :]
+fitter.write_chain_to_file()
 
 # %%
-chain1.shape
-
-# %%
-chain = []
-chain.append(chain1)
-chain = np.concatenate(chain2, axis=1)
-chain = np.concatenate(chain3, axis=1)
-chain.shape
-
-# %%
-chain = []
-chain.append(chain1)
-chain.append(chain2)
-chain.append(chain3)
-chain = np.concatenate(chain, axis=1)
-# chain = np.concatenate(chain3, axis=1)
-
-# %%
-self.nsteps + self.burnin_nsteps
-
-# %% [markdown]
-# make sure all chains have the same length
-
-# %%
-chain = 
-
-# %%
-plotter = Plotter(fitter)
+plotter = Plotter(fitter, save_directory=fitter.save_directory)
 
 # %%
 plotter.plots_sampler()
+
+# %%
+# chain = plotter.plot_corner(only_cosmo=True)
 
 # %%
 fitter.write_chain_to_file()
