@@ -81,9 +81,9 @@ def main():
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "challenge_DESIY1"
 
-    # impose_fid_cosmo_label = None
+    impose_fid_cosmo_label = None
     # impose_fid_cosmo_label = "Planck18"
-    impose_fid_cosmo_label = "Planck18_h74"
+    # impose_fid_cosmo_label = "Planck18_h74"
 
     # note redshift range!
     args.zmin = 2.1

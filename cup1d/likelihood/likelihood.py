@@ -47,8 +47,6 @@ class Likelihood(object):
         self.set_icov()
 
         self.theory = theory
-        # self.theory.emu_cosmo_hc()
-        # self.theory.set_cosmo_priors()
 
         # setup parameters
         self.free_param_names = free_param_names

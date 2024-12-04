@@ -630,6 +630,7 @@ class Theory(object):
                 p0[:, jj] = emu_call[key]
 
             if hull.in_hulls(p0) == False:
+                print(p0)
                 return None
 
         # compute input k to emulator in Mpc
@@ -701,6 +702,7 @@ class Theory(object):
         """Return parameters in models, even if not free parameters"""
 
         # get parameters from CAMB model
+        # TODO (can we set the priors only once?)
         params = self.fid_cosmo["cosmo"].get_likelihood_parameters(
             cosmo_priors=self.cosmo_priors
         )
