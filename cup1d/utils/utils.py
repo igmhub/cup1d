@@ -1,8 +1,40 @@
-from mpi4py import MPI
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+
+
+def purge_chains(ln_prop_chains, nsplit=7, abs_diff=5):
+    """Purge emcee chains that have not converged"""
+    minval = np.median(ln_prop_chains) - abs_diff
+    # split each walker in nsplit chunks
+    split_arr = np.array_split(ln_prop_chains, nsplit, axis=0)
+    # compute median of each chunck
+    split_med = []
+    for ii in range(nsplit):
+        split_med.append(split_arr[ii].mean(axis=0))
+    # (nwalkers, nchucks)
+    split_res = np.array(split_med).T
+    # compute median of chunks for each walker ()
+    split_res_med = split_res.mean(axis=1)
+
+    # step-dependence convergence
+    # check that average logprob does not vary much with step
+    # compute difference between chunks and median of each chain
+    keep1 = (np.abs(split_res - split_res_med[:, np.newaxis]) < abs_diff).all(
+        axis=1
+    )
+    # total-dependence convergence
+    # check that average logprob is close to minimum logprob of all chains
+    # check that all chunks are above a target minimum value
+    keep2 = (split_res > minval).all(axis=1)
+
+    # combine both criteria
+    both = keep1 & keep2
+    keep = np.argwhere(both)[:, 0]
+    keep_not = np.argwhere(both == False)[:, 0]
+
+    return keep, keep_not
 
 
 def is_number_string(value):
@@ -25,20 +57,23 @@ def get_discrete_cmap(n, base_cmap="jet"):
     return ListedColormap(cmap(np.linspace(0, 1, n)))
 
 
-def mpi_hello_world():
-    # Get the MPI communicator
-    comm = MPI.COMM_WORLD
+# def mpi_hello_world():
+#     # Get the MPI communicator
+#     comm = MPI.COMM_WORLD
 
-    # Get the rank and size of the MPI process
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+#     # Get the rank and size of the MPI process
+#     rank = comm.Get_rank()
+#     size = comm.Get_size()
 
-    # Print a "Hello, World!" message from each MPI process
-    print(f"Hello from rank {rank} out of {size} processes.", flush=True)
+#     # Print a "Hello, World!" message from each MPI process
+#     print(f"Hello from rank {rank} out of {size} processes.", flush=True)
 
 
 def create_print_function(verbose=True):
     """Create a function to print messages"""
+
+    from mpi4py import MPI
+
     mpi_rank = MPI.COMM_WORLD.Get_rank() if MPI.COMM_WORLD.Get_size() > 1 else 0
 
     def print_new(*args, verbose=True):

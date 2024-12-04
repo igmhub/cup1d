@@ -2,8 +2,7 @@ import matplotlib.pyplot as plt
 from corner import corner
 import numpy as np
 import os
-from cup1d.utils.utils import get_discrete_cmap, get_path_repo
-from cup1d.likelihood.fitter import purge_chains
+from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
 
 
 class Plotter(object):
