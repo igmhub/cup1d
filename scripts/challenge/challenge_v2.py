@@ -81,23 +81,23 @@ def main():
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "challenge_DESIY1"
 
-    impose_fid_cosmo_label = None
+    # impose_fid_cosmo_label = None
     # impose_fid_cosmo_label = "Planck18"
-    # impose_fid_cosmo_label = "Planck18_h74"
+    impose_fid_cosmo_label = "Planck18_h74"
 
     # note redshift range!
     args.zmin = 2.1
     args.zmax = 4.2
 
-    args.n_steps = 1500
-    args.n_burn_in = 1000
+    args.n_steps = 1250
+    args.n_burn_in = 1250
     # args.n_steps = 10
     # args.n_burn_in = 10
     if size > 1:
         args.parallel = True
     else:
         args.parallel = False
-    args.explore = True
+    args.explore = False
 
     base_out_folder = os.path.join(path_out_challenge, emulator_label)
 

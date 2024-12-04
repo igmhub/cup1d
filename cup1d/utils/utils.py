@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 
 
-def purge_chains(ln_prop_chains, nsplit=7, abs_diff=5):
+def purge_chains(ln_prop_chains, nsplit=8, abs_diff=2):
     """Purge emcee chains that have not converged"""
     minval = np.median(ln_prop_chains) - abs_diff
     # split each walker in nsplit chunks
@@ -57,16 +57,18 @@ def get_discrete_cmap(n, base_cmap="jet"):
     return ListedColormap(cmap(np.linspace(0, 1, n)))
 
 
-# def mpi_hello_world():
-#     # Get the MPI communicator
-#     comm = MPI.COMM_WORLD
+def mpi_hello_world():
+    from mpi4py import MPI
 
-#     # Get the rank and size of the MPI process
-#     rank = comm.Get_rank()
-#     size = comm.Get_size()
+    # Get the MPI communicator
+    comm = MPI.COMM_WORLD
 
-#     # Print a "Hello, World!" message from each MPI process
-#     print(f"Hello from rank {rank} out of {size} processes.", flush=True)
+    # Get the rank and size of the MPI process
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    # Print a "Hello, World!" message from each MPI process
+    print(f"Hello from rank {rank} out of {size} processes.", flush=True)
 
 
 def create_print_function(verbose=True):

@@ -38,7 +38,7 @@ class Hull(object):
         data_hull=None,
         suite="mpg",
         save=False,
-        extra_factor=1.05,
+        extra_factor=1.0,
         mpg_version="Cabayol23",
         nyx_version="Jul2024",
         recompute=False,
@@ -117,7 +117,7 @@ class Hull(object):
         else:
             self.hulls = self.set_hulls(data_hull, extra_factor=extra_factor)
 
-    def set_hulls(self, points, extra_factor=1.05):
+    def set_hulls(self, points, extra_factor=1.0):
         int_factor = extra_factor - 0.01
 
         hulls = []

@@ -504,20 +504,15 @@ class Fitter(object):
             blobs = blobs[mask]
 
         if cube == False:
-            # cube_values = chain.copy()
-            # list_values = [
-            #     self.like.free_params[ip].value_from_cube(cube_values[:, ip])
-            #     for ip in range(self.ndim)
-            # ]
-            # chain = np.array(list_values).transpose()
-
-            cube_values = chain.copy()
-            for ip in range(self.ndim):
+            cube_values = np.zeros_like(chain)
+            for ip in range(chain.shape[-1]):
                 cube_values[..., ip] = self.like.free_params[
                     ip
-                ].value_from_cube(cube_values[..., ip])
+                ].value_from_cube(chain[..., ip])
 
-        return chain, lnprob, blobs
+            return cube_values, lnprob, blobs
+        else:
+            return chain, lnprob, blobs
 
     def get_all_params(
         self, delta_lnprob_cut=None, extra_nburn=0, collapse=True

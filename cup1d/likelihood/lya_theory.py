@@ -170,43 +170,15 @@ class Theory(object):
             "cosmo"
         ].get_linP_params()
 
+        # when using a fiducial cosmology, easy to change in other cases (TODO)
         self.set_cosmo_priors()
 
-    def set_cosmo_priors(self, extra_factor=1.05):
+    def set_cosmo_priors(self, extra_factor=1):
         """Set priors for cosmological parameters
 
         We get the priors on As, ns, and nrun from differences in star parameters in the training set
+        Only works when using a fiducial cosmology
         """
-
-        self.cosmo_priors = {
-            "As": np.zeros(2),
-            "ns": np.zeros(2),
-            "nrun": np.zeros(2),
-        }
-
-        # set convex hull
-        Astar_min = 10
-        Astar_max = -10
-        nstar_min = 10
-        nstar_max = -10
-        alphastar_min = 10
-        alphastar_max = -10
-        for key in self.emu_cosmo_all:
-            cos = self.emu_cosmo_all[key]
-            if is_number_string(cos["sim_label"][-1]) == False:
-                continue
-            if cos["star_params"]["Delta2_star"] < Astar_min:
-                Astar_min = cos["star_params"]["Delta2_star"]
-            if cos["star_params"]["Delta2_star"] > Astar_max:
-                Astar_max = cos["star_params"]["Delta2_star"]
-            if cos["star_params"]["n_star"] < nstar_min:
-                nstar_min = cos["star_params"]["n_star"]
-            if cos["star_params"]["n_star"] > nstar_max:
-                nstar_max = cos["star_params"]["n_star"]
-            if cos["star_params"]["alpha_star"] < alphastar_min:
-                alphastar_min = cos["star_params"]["alpha_star"]
-            if cos["star_params"]["alpha_star"] > alphastar_max:
-                alphastar_max = cos["star_params"]["alpha_star"]
 
         # pivot scale of primordial power
         ks_Mpc = self.fid_cosmo["cosmo"].cosmo.InitPower.pivot_scalar
@@ -226,15 +198,18 @@ class Theory(object):
         fid_nstar = self.fid_cosmo["linP_params"]["n_star"]
         fid_alphastar = self.fid_cosmo["linP_params"]["alpha_star"]
 
-        for ii in range(2):
-            if ii == 0:
-                test_Astar = Astar_min
-                test_nstar = nstar_min
-                test_alphastar = alphastar_min
-            else:
-                test_Astar = Astar_max
-                test_nstar = nstar_max
-                test_alphastar = alphastar_max
+        hc_fid = {}
+        hc_fid["As"] = []
+        hc_fid["ns"] = []
+        hc_fid["nrun"] = []
+
+        for key in self.emu_cosmo_all:
+            cos = self.emu_cosmo_all[key]
+            if is_number_string(cos["sim_label"][-1]) == False:
+                continue
+            test_Astar = cos["star_params"]["Delta2_star"]
+            test_nstar = cos["star_params"]["n_star"]
+            test_alphastar = cos["star_params"]["alpha_star"]
 
             ln_ratio_Astar = np.log(test_Astar / fid_Astar)
             delta_nstar = test_nstar - fid_nstar
@@ -246,9 +221,19 @@ class Theory(object):
                 ln_ratio_Astar
                 - (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
             )
-            self.cosmo_priors["nrun"][ii] = fid_nrun + delta_nrun
-            self.cosmo_priors["ns"][ii] = fid_ns + delta_ns
-            self.cosmo_priors["As"][ii] = fid_As * np.exp(ln_ratio_As)
+            hc_fid["nrun"].append(fid_nrun + delta_nrun)
+            hc_fid["ns"].append(fid_ns + delta_ns)
+            hc_fid["As"].append(fid_As * np.exp(ln_ratio_As))
+
+        hc_fid["As"] = np.array(hc_fid["As"])
+        hc_fid["ns"] = np.array(hc_fid["ns"])
+        hc_fid["nrun"] = np.array(hc_fid["nrun"])
+
+        self.cosmo_priors = {
+            "As": np.array([hc_fid["As"].min(), hc_fid["As"].max()]),
+            "ns": np.array([hc_fid["ns"].min(), hc_fid["ns"].max()]),
+            "nrun": np.array([hc_fid["nrun"].min(), hc_fid["nrun"].max()]),
+        }
 
         for par in self.cosmo_priors:
             for ii in range(2):

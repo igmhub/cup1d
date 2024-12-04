@@ -399,23 +399,15 @@ class Plotter(object):
         """Plot lnprob"""
 
         mask, _ = purge_chains(self.fitter.lnprob[extra_nburn:, :])
-        mask_use = (
-            "Using "
-            + str(mask.shape[0])
-            + " chains out of "
-            + str(self.fitter.lnprob.shape[1])
-        )
 
         for ii in range(self.fitter.lnprob.shape[1]):
             if ii in mask:
                 plt.plot(self.fitter.lnprob[extra_nburn:, ii], alpha=0.5)
-            else:
-                plt.plot(self.fitter.lnprob[extra_nburn:, ii], "--", alpha=0.5)
+            # else:
+            #     plt.plot(self.fitter.lnprob[extra_nburn:, ii], "--", alpha=0.01)
 
         if self.save_directory is not None:
             plt.savefig(self.save_directory + "/lnprob.pdf")
-
-        return mask_use
 
     def plot_p1d(
         self,
