@@ -720,6 +720,11 @@ class Fitter(object):
 
         dict_out = {}
 
+        # ARGS
+        dict_out["args"] = {}
+        for key in self.like.args:
+            dict_out["args"][key] = self.like.args[key]
+
         # DATA
         dict_out["data"] = {}
         dict_out["data"]["data_label"] = self.like.data.data_label
@@ -742,9 +747,7 @@ class Fitter(object):
         dict_out["like"] = {}
         dict_out["like"]["cosmo_fid_label"] = self.like.fid
         dict_out["like"]["emu_cov_factor"] = self.like.emu_cov_factor
-        dict_out["like"]["free_params"] = []
-        for par in self.like.free_params:
-            dict_out["like"]["free_params"].append(par.name)
+        dict_out["like"]["free_params"] = self.like.free_param_names
 
         # SAMPLER
         dict_out["sampler"] = {}
@@ -755,31 +758,20 @@ class Fitter(object):
         # TRUTH
         dict_out["truth"] = self.truth
 
-        all_param, all_names, lnprob = self.get_all_params(
-            extra_nburn=extra_nburn, collapse=False
-        )
+        # FITTER
+        dict_out["fitter"] = {}
+        dict_out["fitter"]["mle_cube"] = self.mle_cube
+        dict_out["fitter"]["mle"] = self.mle
+        dict_out["fitter"]["lnprob_mle"] = self.lnprop_mle
+        dict_out["fitter"]["lnprob"] = self.lnprob
+        dict_out["fitter"]["chain"] = self.chain
+        dict_out["fitter"]["blobs"] = self.blobs
 
-        # POSTERIOR
-        dict_out["posterior"] = {}
-        dict_out["posterior"]["param_names"] = []
-        dict_out["posterior"]["param_names_latex"] = []
-        for ii, key in enumerate(all_names):
-            dict_out["posterior"][param_dict_rev[key]] = all_param[..., ii]
-            dict_out["posterior"]["param_names"].append(param_dict_rev[key])
-            dict_out["posterior"]["param_names_latex"].append(key)
-        dict_out["posterior"]["lnprob"] = lnprob
-
-        if all_param.ndim == 3:
-            dict_out["posterior"]["param_percen"] = np.percentile(
-                all_param.reshape(-1, all_param.shape[-1]), [16, 50, 84], axis=0
-            ).T
-        else:
-            dict_out["posterior"]["param_percen"] = np.percentile(
-                all_param, [16, 50, 84], axis=0
-            ).T
-
-        dict_out["posterior"]["param_mle"] = self.mle
-        dict_out["posterior"]["lnprob_mle"] = self.lnprop_mle
+        dict_out["fitter"]["chain_names_latex"] = self.paramstrings
+        dict_out["fitter"]["blobs_names"] = blob_strings_orig
+        dict_out["fitter"]["blobs_names_latex"] = blob_strings
+        for key in dict_out["fitter"]["chain_names_latex"]:
+            dict_out["fitter"]["chain_names"] = param_dict_rev[key]
 
         out_file = self.save_directory + "/sampler_results.npy"
         print("Saving chain to " + out_file)

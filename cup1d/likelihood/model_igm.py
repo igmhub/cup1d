@@ -2,6 +2,7 @@ import os
 import lace
 import numpy as np
 from cup1d.nuisance import mean_flux_model, thermal_model, pressure_model
+from cup1d.utils.utils import is_number_string
 
 
 class IGM(object):
@@ -14,60 +15,27 @@ class IGM(object):
         F_model=None,
         T_model=None,
         P_model=None,
-        fid_sim_igm="mpg_central",
-        list_sim_cube=None,
+        fid_sim_igm_mF="mpg_central",
+        fid_sim_igm_T="mpg_central",
+        fid_sim_igm_kF="mpg_central",
+        emu_suite="mpg",
         type_priors="hc",
         emu_igm_params=["mF", "sigT_Mpc", "gamma", "kF_Mpc"],
-        set_metric=False,
+        # set_metric=False,
     ):
         # load fiducial IGM history (used for fitting)
-        self.fid_sim_igm = fid_sim_igm
+        self.fid_sim_igm_mF = fid_sim_igm_mF
+        self.fid_sim_igm_T = fid_sim_igm_T
+        self.fid_sim_igm_kF = fid_sim_igm_kF
         self.z_pivot = z_pivot
 
-        fid_igm = self.get_igm(fid_sim_igm)
+        fid_igm = self.get_igm(
+            sim_igm_mF=fid_sim_igm_mF,
+            sim_igm_T=fid_sim_igm_T,
+            sim_igm_kF=fid_sim_igm_kF,
+        )
 
-        # compute priors for this emulator
-        if list_sim_cube is None:
-            default = True
-        # we use these if the fiducial IGM does not correspond to one of
-        # those used for training. We can fix this in the future
-        elif self.fid_sim_igm[:3] != list_sim_cube[0][:3]:
-            default = True
-        else:
-            default = False
-
-        if set_metric:
-            self.all_igm = self.get_igm(list_sim_cube[0], return_all=True)
-        else:
-            default = True
-
-        if default:
-            # default priors (hc for mpg)
-            self.priors = {
-                "tau_eff": [
-                    [-0.5912022429177898, 0.5912022429177898],
-                    [-0.1936758618341875, 0.20169231438172694],
-                ],
-                "gamma": [
-                    [-0.6257448015637526, 0.6257448015637526],
-                    [-0.2260619891767361, 0.19240662107387235],
-                ],
-                "sigT_kms": [
-                    [-0.5683643384807968, 0.5683643384807968],
-                    [-0.18454429411238835, 0.19555096875785932],
-                ],
-                "kF_kms": [
-                    [-0.5470878025948258, 0.5470878025948258],
-                    [-0.15974048204662275, 0.2061260371234787],
-                ],
-            }
-        else:
-            self.set_priors(fid_igm, list_sim_cube, type_priors=type_priors)
-
-        # if set_metric:
-        #     self.metric = self.set_metric(emu_igm_params)
-        # else:
-        #     self.metric = None
+        self.set_priors(fid_igm, emu_suite=emu_suite, type_priors=type_priors)
 
         # setup fiducial IGM models
         if F_model is not None:
@@ -88,20 +56,16 @@ class IGM(object):
                 z_T=z_pivot,
                 priors=self.priors,
             )
-        self.yes_kF = True
+
         if P_model:
             self.P_model = P_model
         else:
-            # hack for nyx simulations
-            if np.sum(fid_igm["kF_kms"] != 0) == 0:
-                self.yes_kF = False
-            else:
-                self.P_model = pressure_model.PressureModel(
-                    free_param_names=free_param_names,
-                    fid_igm=fid_igm,
-                    z_kF=z_pivot,
-                    priors=self.priors,
-                )
+            self.P_model = pressure_model.PressureModel(
+                free_param_names=free_param_names,
+                fid_igm=fid_igm,
+                z_kF=z_pivot,
+                priors=self.priors,
+            )
 
     def set_fid_igm(self, zs):
         self.fid_igm = {}
@@ -109,59 +73,71 @@ class IGM(object):
         self.fid_igm["tau_eff"] = self.F_model.get_tau_eff(zs)
         self.fid_igm["gamma"] = self.T_model.get_gamma(zs)
         self.fid_igm["sigT_kms"] = self.T_model.get_sigT_kms(zs)
-        if self.yes_kF:
-            self.fid_igm["kF_kms"] = self.P_model.get_kF_kms(zs)
-        else:
-            self.fid_igm["kF_kms"] = np.zeros(len(zs))
+        self.fid_igm["kF_kms"] = self.P_model.get_kF_kms(zs)
 
-    def get_igm(self, sim_igm, return_all=False):
-        # print(sim_igm)
-        # print("\n")
-        # print("\n")
-        # print("\n")
+    def get_igm(self, sim_igm_mF=None, sim_igm_T=None, sim_igm_kF=None):
         """Load IGM history"""
-        if sim_igm[:3] == "mpg":
-            repo = os.path.dirname(lace.__path__[0]) + "/"
-            fname = repo + "/data/sim_suites/Australia20/IGM_histories.npy"
-        elif sim_igm[:3] == "nyx":
-            fname = os.environ["NYX_PATH"] + "/IGM_histories.npy"
-        else:
-            raise ValueError("only mpg and nyx sim_igm implemented")
 
+        repo = os.path.dirname(lace.__path__[0])
+        fname = os.path.join(
+            repo, "data", "sim_suites", "Australia20", "IGM_histories.npy"
+        )
         try:
-            igm_hist = np.load(fname, allow_pickle=True).item()
+            self.igm_hist_mpg = np.load(fname, allow_pickle=True).item()
         except:
             raise ValueError(
                 fname
                 + " not found. You can produce it using LaCE"
-                + r" script save_"
-                + sim_igm[:3]
-                + "_IGM.py"
+                + r" script save_mpg_IGM.py"
             )
 
-        if return_all:
-            return igm_hist
-        else:
-            if sim_igm not in igm_hist:
-                try:
-                    igm_return = igm_hist[sim_igm + "_0"]
-                except:
-                    igm_return = igm_hist[sim_igm]
+        fname = os.path.join(os.environ["NYX_PATH"], "IGM_histories.npy")
+        igm_hist_nyx = np.load(fname, allow_pickle=True).item()
+        try:
+            self.igm_hist_nyx = np.load(fname, allow_pickle=True).item()
+        except:
+            raise ValueError(
+                fname
+                + " not found. You can produce it using LaCE"
+                + r" script save_nyx_IGM.py"
+            )
 
-                    raise ValueError(
-                        sim_igm
-                        + " string_split found in "
-                        + fname
-                        + r"\n Check out the LaCE script save_"
-                        + sim_igm[:3]
-                        + "_IGM.py"
-                    )
+        sim_igms = [sim_igm_mF, sim_igm_T, sim_igm_kF]
+
+        for ii, sim_igm in enumerate(sim_igms):
+            if sim_igm[:3] == "mpg":
+                igm_hist = self.igm_hist_mpg
+            elif sim_igm[:3] == "nyx":
+                igm_hist = self.igm_hist_nyx
+            else:
+                ValueError("sim_igm must be 'mpg' or 'nyx'")
+
+            if sim_igm not in igm_hist:
+                igm_return = igm_hist[sim_igm + "_0"]
             else:
                 igm_return = igm_hist[sim_igm]
 
-            return igm_return
+            if ii == 0:
+                igms_return = igm_return
+                igms_return["z_tau"] = igm_return["z"]
+            elif ii == 1:
+                igms_return["gamma"] = igm_return["gamma"]
+                igms_return["sigT_kms"] = igm_return["sigT_kms"]
+                igms_return["sigT_Mpc"] = igm_return["sigT_Mpc"]
+                igms_return["z_T"] = igm_return["z"]
+            elif ii == 2:
+                igms_return["kF_Mpc"] = igm_return["kF_Mpc"]
+                igms_return["kF_kms"] = igm_return["kF_kms"]
+                igms_return["z_kF"] = igm_return["z"]
 
-    def set_priors(self, fid_igm, list_sim_cube, type_priors="hc"):
+            # important for nyx simulations, not all have kF
+            if np.sum(igm_return["kF_kms"] != 0) == 0:
+                igms_return["kF_Mpc"] = igm_hist["nyx_central"]["kF_Mpc"]
+                igms_return["kF_kms"] = igm_hist["nyx_central"]["kF_kms"]
+
+        return igms_return
+
+    def set_priors(self, fid_igm, emu_suite="mpg", type_priors="hc"):
         """Set priors for all IGM models
 
         This is only important for giving the minimizer and the sampler a uniform
@@ -175,26 +151,44 @@ class IGM(object):
         else:
             raise ValueError("type_priors must be 'hc' or 'data'")
 
+        if emu_suite == "mpg":
+            all_igm = self.igm_hist_mpg
+        elif emu_suite == "nyx":
+            all_igm = self.igm_hist_nyx
+        else:
+            ValueError("sim_igm must be 'mpg' or 'nyx'")
+
         self.priors = {}
         for par in fid_igm:
-            if (par == "z") | (par == "val_scaling"):
+            if (
+                (par == "z")
+                | (par == "val_scaling")
+                | (par == "z_tau")
+                | (par == "z_T")
+                | (par == "z_kF")
+            ):
                 continue
-            res_div = np.zeros((len(self.all_igm), 2))
-            for ii, sim in enumerate(self.all_igm):
+
+            res_div = np.zeros((len(all_igm), 2))
+            for ii, sim in enumerate(all_igm):
                 string_split = sim.split("_")
                 sim_label = string_split[0] + "_" + string_split[1]
-                if sim_label not in list_sim_cube:
+                if is_number_string(sim_label[-1]) == False:
                     continue
-                _ = np.argwhere(
-                    (fid_igm[par] != 0) & (self.all_igm[sim][par] != 0)
-                )[:, 0]
+
+                try:
+                    _ = np.argwhere(
+                        (fid_igm[par] != 0) & (all_igm[sim][par] != 0)
+                    )[:, 0]
+                except:
+                    continue
                 if len(_) == 0:
                     continue
                 res_div[ii, 0] = np.abs(
-                    np.max(self.all_igm[sim][par][_] / fid_igm[par][_])
+                    np.max(all_igm[sim][par][_] / fid_igm[par][_])
                 )
                 res_div[ii, 1] = np.abs(
-                    np.min(self.all_igm[sim][par][_] / fid_igm[par][_])
+                    np.min(all_igm[sim][par][_] / fid_igm[par][_])
                 )
 
             _ = np.argwhere(
@@ -218,7 +212,6 @@ class IGM(object):
             self.priors[par] = [
                 [-y1 * 1.05, y1 * 1.05],
                 [-y0_min * 1.05, y0_max * 1.05],
-                # [-1, 1],
             ]
 
     # def set_metric(self, emu_igm_params, tol_factor=95):

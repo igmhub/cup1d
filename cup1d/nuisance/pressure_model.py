@@ -48,17 +48,17 @@ class PressureModel(object):
         elif np.sum(mask) != fid_igm["kF_kms"].shape[0]:
             print(
                 "The fiducial value of kF is zero for z: ",
-                fid_igm["z"][mask == False],
+                fid_igm["z_kF"][mask == False],
             )
 
         # fit power law to fiducial data to reduce noise
         pfit = np.polyfit(
-            fid_igm["z"][mask], fid_igm["kF_kms"][mask], order_extra
+            fid_igm["z_kF"][mask], fid_igm["kF_kms"][mask], order_extra
         )
         p = np.poly1d(pfit)
-        _ = fid_igm["z"] != 0
-        ind = np.argsort(fid_igm["z"][_])
-        self.fid_z = fid_igm["z"][_][ind]
+        _ = fid_igm["z_kF"] != 0
+        ind = np.argsort(fid_igm["z_kF"][_])
+        self.fid_z = fid_igm["z_kF"][_][ind]
         self.fid_kF = fid_igm["kF_kms"][_][ind]
 
         # use poly fit to interpolate when data is missing (needed for Nyx)

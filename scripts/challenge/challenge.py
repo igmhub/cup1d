@@ -1,6 +1,6 @@
-import socket
-import time, os, sys
-import glob
+# //global/cfs/cdirs/desicollab/science/lya/y1-p1d/likelihood_files/data_files/MockChallengeSnapshot
+
+import socket, os, sys, glob
 
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 # os.environ["OPENBLAS_NUM_THREADS"] = "4" # export OPENBLAS_NUM_THREADS=4
@@ -20,7 +20,7 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    version = "2"
+    version = "6"
 
     name_system = socket.gethostname()
     if "login" in name_system:
@@ -66,7 +66,10 @@ def main():
     # files = np.sort(glob.glob(folder_in + "*CGAN*.fits"))
     # files = np.sort(glob.glob(folder_in + "*grid_3.fits"))
     # files = np.sort(glob.glob(folder_in + "*bar_ic*.fits"))
-    search = os.path.join(path_in_challenge, "*nonoise_fiducial.fits.gz")
+    search = os.path.join(
+        path_in_challenge,
+        "mockchallenge-0." + version + "_nonoise_fiducial.fits.gz",
+    )
     files = np.sort(glob.glob(search))
     if rank == 0:
         for ii in range(len(files)):
@@ -74,10 +77,11 @@ def main():
 
     # emulator_label = "Pedersen23_ext"
     # training_set = "Cabayol23"
-    emulator_label = "Nyx_alphap_cov"
-    training_set = "Nyx23_Jul2024"
-    # emulator_label = "Cabayol23+"
-    # training_set = "Cabayol23"
+    # emulator_label = "Nyx_alphap_cov"
+    # training_set = "Nyx23_Jul2024"
+    # vary_alphas = False
+    emulator_label = "Cabayol23+"
+    training_set = "Cabayol23"
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "challenge_DESIY1"
 
@@ -89,15 +93,19 @@ def main():
     args.zmin = 2.1
     args.zmax = 4.2
 
-    args.n_steps = 1250
-    args.n_burn_in = 1250
-    # args.n_steps = 10
-    # args.n_burn_in = 10
+    # args.n_steps = 1250
+    # args.n_burn_in = 1250
+    args.n_steps = 10
+    args.n_burn_in = 0
     if size > 1:
         args.parallel = True
     else:
         args.parallel = False
-    args.explore = False
+
+    if args.n_burn_in == 0:
+        args.explore = True
+    else:
+        args.explore = False
 
     base_out_folder = os.path.join(path_out_challenge, emulator_label)
 
@@ -122,7 +130,7 @@ def main():
         else:
             args.emulator.list_sim_cube = args.archive.list_sim_cube
 
-    if "Nyx" in emulator_label:
+    if ("Nyx" in emulator_label) and vary_alphas:
         args.vary_alphas = True
     else:
         args.vary_alphas = False
@@ -157,13 +165,17 @@ def main():
             args.true_cosmo_label = true_sim_label
             args.true_igm_label = true_sim_label
             args.fid_cosmo_label = true_sim_label
-            args.fid_igm_label = true_sim_label
+            args.fid_igm_label_mF = true_sim_label
+            args.fid_igm_label_T = true_sim_label
+            args.fid_igm_label_kF = true_sim_label
         else:
             args.true_sim_label = true_sim_label
             args.true_cosmo_label = true_sim_label
             args.true_igm_label = true_sim_label
-            args.fid_cosmo_label = "mpg_central"
-            args.fid_igm_label = "mpg_central"
+            args.fid_cosmo_label = true_sim_label
+            args.fid_igm_label_mF = true_sim_label
+            args.fid_igm_label_T = true_sim_label
+            args.fid_igm_label_kF = "mpg_central"
 
         if impose_fid_cosmo_label is not None:
             args.fid_cosmo_label = impose_fid_cosmo_label

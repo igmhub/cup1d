@@ -50,6 +50,7 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
     """Read file containing P1D"""
 
     # folder storing P1D measurement
+    print("Reading: ", p1d_fname)
     try:
         hdu = fits.open(p1d_fname)
     except:
@@ -62,6 +63,8 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
     if "BLINDING" in hdu[1].header:
         if hdu[1].header["BLINDING"] is not None:
             blinding = hdu[1].header["BLINDING"]
+    # hack
+    blinding = None
 
     # compressed parameters do not agree between codes!!
     # keys = ["modelname", "Delta_star", "N_STAR", "alpha_star"]

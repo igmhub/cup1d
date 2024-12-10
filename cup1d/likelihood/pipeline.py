@@ -126,7 +126,9 @@ def set_P1D(
         theory = lya_theory.set_theory(
             emulator,
             use_hull=False,
-            sim_igm=args.true_igm_label,
+            sim_igm_mF=args.true_igm_label,
+            sim_igm_T=args.true_igm_label,
+            sim_igm_kF=args.true_igm_label,
             SiII=args.true_SiII,
             SiIII=args.true_SiIII,
             HCD=args.true_HCD,
@@ -275,12 +277,15 @@ def set_like(data, emulator, args, data_hires=None):
 
     # set free parameters
     free_parameters = set_free_like_parameters(args, emulator.emulator_label)
+    print(free_parameters)
 
     ## set theory
     theory = lya_theory.set_theory(
         emulator,
         free_parameters=free_parameters,
-        sim_igm=args.fid_igm_label,
+        sim_igm_mF=args.fid_igm_label_mF,
+        sim_igm_T=args.fid_igm_label_T,
+        sim_igm_kF=args.fid_igm_label_kF,
         igm_priors=args.igm_priors,
         SiIII=args.fid_SiIII,
         SiII=args.fid_SiII,
@@ -302,6 +307,7 @@ def set_like(data, emulator, args, data_hires=None):
         free_param_names=free_parameters,
         prior_Gauss_rms=args.prior_Gauss_rms,
         emu_cov_factor=args.emu_cov_factor,
+        args=args,
     )
 
     return like

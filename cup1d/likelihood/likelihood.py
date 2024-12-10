@@ -23,6 +23,7 @@ class Likelihood(object):
         emu_cov_factor=1,
         extra_data=None,
         min_log_like=-1e100,
+        args=None,
     ):
         """Setup likelihood from theory and data. Options:
         - data (required) is the data to model
@@ -42,6 +43,11 @@ class Likelihood(object):
         self.min_log_like = min_log_like
         self.data = data
         self.extra_data = extra_data
+        # we only do this for latter save all relevant after fitting the model
+        self.args = {}
+        for attr, value in args.__dict__.items():
+            if attr not in ["archive", "emulator"]:
+                self.args[attr] = value
 
         # Set inverse covariance. We do it here so we can account for emulator error
         self.set_icov()
@@ -392,6 +398,7 @@ class Likelihood(object):
             values,
             return_blob=return_blob,
         )
+        # XXX
         if _res is None:
             # out of priors
             log_like = -np.inf

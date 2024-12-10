@@ -46,17 +46,19 @@ class MeanFluxModel(object):
         elif np.sum(mask) != fid_igm["tau_eff"].shape[0]:
             print(
                 "The fiducial value of tau_eff is zero for z: ",
-                fid_igm["z"][mask == False],
+                fid_igm["z_tau"][mask == False],
             )
 
         # fit power law to fiducial data to reduce noise
         pfit = np.polyfit(
-            fid_igm["z"][mask], np.log(fid_igm["tau_eff"][mask]), order_extra
+            fid_igm["z_tau"][mask],
+            np.log(fid_igm["tau_eff"][mask]),
+            order_extra,
         )
         p = np.poly1d(pfit)
-        _ = fid_igm["z"] != 0
-        ind = np.argsort(fid_igm["z"][_])
-        self.fid_z = fid_igm["z"][_][ind]
+        _ = fid_igm["z_tau"] != 0
+        ind = np.argsort(fid_igm["z_tau"][_])
+        self.fid_z = fid_igm["z_tau"][_][ind]
         self.fid_tau_eff = fid_igm["tau_eff"][_][ind]
 
         # use poly fit to interpolate when data is missing (needed for Nyx)
@@ -191,7 +193,9 @@ class MeanFluxModel(object):
             array_values = np.array(array_values)
 
             if Npar != len(self.params):
-                raise ValueError("number of params mismatch in get_tau_coeffs")
+                raise ValueError(
+                    f"number of params {Npar} vs {self.params} mismatch in get_tau_coeffs"
+                )
 
             for ip in range(Npar):
                 _ = np.argwhere(self.params[ip].name == array_names)[:, 0]

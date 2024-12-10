@@ -334,7 +334,9 @@ class Args:
         data_label_hires=None,
         z_min=0,
         z_max=10,
-        fid_igm_label="mpg_central",
+        fid_igm_label_mF="mpg_central",
+        fid_igm_label_T="mpg_central",
+        fid_igm_label_kF="mpg_central",
         true_igm_label=None,
         n_tau=2,
         n_sigT=2,
@@ -389,7 +391,9 @@ class Args:
         self.z_min = z_min
         self.z_max = z_max
         self.true_igm_label = true_igm_label
-        self.fid_igm_label = fid_igm_label
+        self.fid_igm_label_mF = fid_igm_label_mF
+        self.fid_igm_label_T = fid_igm_label_T
+        self.fid_igm_label_kF = fid_igm_label_kF
         self.n_tau = n_tau
         self.n_sigT = n_sigT
         self.n_gamma = n_gamma

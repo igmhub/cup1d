@@ -6,16 +6,29 @@ from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
 
 
 class Plotter(object):
-    def __init__(self, fitter, save_directory=None, file_with_chain=None):
+    def __init__(self, fitter=None, save_directory=None, fname_chain=None):
         if fitter is not None:
             self.fitter = fitter
-        elif file_with_chain is not None:
-            # we need to store enough information in the output file to reconstruct
-            # the fitter here. maybe calling the pipeline after setting the relevant args?
-            # in the meanwhile, we need
-            pass
+        elif fname_chain is not None:
+            from cup1d.likelihood.input_pipeline import Args
+            from cup1d.likelihood.pipeline import Pipeline
+
+            # load file with chain
+            data = np.load(fname_chain, allow_pickle=True).item()
+
+            # set input args to pipeline and evaluate
+            args = Args(**data["args"])
+            self.fitter = Pipeline(args, out_folder=save_directory).fitter
+
+            # add sampler results to fitter
+            self.fitter.mle_cube = data["fitter"]["mle_cube"]
+            self.fitter.mle = data["fitter"]["mle"]
+            self.fitter.lnprop_mle = data["fitter"]["lnprob_mle"]
+            self.fitter.lnprob = data["fitter"]["lnprob"]
+            self.fitter.chain = data["fitter"]["chain"]
+            self.fitter.blobs = data["fitter"]["blobs"]
         else:
-            ValueError("Provide either fitter or file_with_chain")
+            ValueError("Provide either fitter or fname_chain")
 
         self.cmap = get_discrete_cmap(len(self.fitter.like.data.z))
         self.save_directory = save_directory
@@ -311,9 +324,8 @@ class Plotter(object):
         )
         if only_cosmo:
             yesplot = ["$\\Delta^2_\\star$", "$n_\\star$"]
-            for param in self.fitter.like.free_params:
-                if param.name == "nrun":
-                    yesplot.append("$\\alpha_\\star$")
+            if "nrun" in self.fitter.like.free_param_names:
+                yesplot.append("$\\alpha_\\star$")
         else:
             # only plot parameters that vary
             diff = np.max(params_plot, axis=0) - np.min(params_plot, axis=0)
@@ -324,7 +336,9 @@ class Plotter(object):
         for ii, par in enumerate(yesplot):
             _ = np.argwhere(np.array(strings_plot) == par)[0, 0]
             chain[:, ii] = params_plot[:, _]
-            truth[ii] = self.fitter.truth[par]
+            if par in self.fitter.truth:
+                truth[ii] = self.fitter.truth[par]
+        # XXX check out that all relevant parameters in truth
 
         fig = corner(
             chain,
@@ -349,43 +363,69 @@ class Plotter(object):
                 data_cosmo,
             ) = self.get_hc_star()
 
-            if suite_emu == "mpg":
-                axs = np.array(fig.axes).reshape((2, 2))
-                nproj = 1
-            else:
+            if "nrun" in self.fitter.like.free_param_names:
                 axs = np.array(fig.axes).reshape((3, 3))
                 nproj = 3
+            else:
+                axs = np.array(fig.axes).reshape((2, 2))
+                nproj = 1
 
             for ii in range(nproj):
                 if ii == 0:
                     x = delta2_star
                     y = n_star
+                    _ = np.argwhere(np.array(yesplot) == "$n_\\star$")[0, 0]
+                    ychain = chain[:, _]
                     ax = axs[1, 0]
                 elif ii == 1:
                     x = delta2_star
                     y = alpha_star
+                    _ = np.argwhere(np.array(yesplot) == "$\\alpha_\\star$")[
+                        0, 0
+                    ]
+                    ychain = chain[:, _]
                     ax = axs[2, 0]
                 else:
                     x = n_star
                     y = alpha_star
+                    _ = np.argwhere(np.array(yesplot) == "$\\alpha_\\star$")[
+                        0, 0
+                    ]
+                    ychain = chain[:, _]
                     ax = axs[2, 1]
 
                 ax.scatter(x, y, marker="o", color="C1", alpha=0.5)
 
                 diff = 0.05 * (y.max() - y.min())
-                ax.set_ylim(y.min() - diff, y.max() + diff)
+                ax.set_ylim(
+                    np.min([y.min(), ychain.min()]) - diff,
+                    np.max([y.max(), ychain.max()]) + diff,
+                )
 
             for ii in range(len(axs)):
                 if ii == 0:
                     x = delta2_star
+                    _ = np.argwhere(np.array(yesplot) == "$\\Delta^2_\\star$")[
+                        0, 0
+                    ]
+                    xchain = chain[:, _]
                 elif ii == 1:
                     x = n_star
+                    _ = np.argwhere(np.array(yesplot) == "$n_\\star$")[0, 0]
+                    xchain = chain[:, _]
                 else:
                     x = alpha_star
+                    _ = np.argwhere(np.array(yesplot) == "$\\alpha_\\star$")[
+                        0, 0
+                    ]
+                    xchain = chain[:, _]
 
                 for jj in range(len(axs)):
                     diff = 0.05 * (x.max() - x.min())
-                    axs[jj, ii].set_xlim(x.min() - diff, x.max() + diff)
+                    axs[jj, ii].set_xlim(
+                        np.min([x.min(), xchain.min()]) - diff,
+                        np.max([x.max(), xchain.max()]) + diff,
+                    )
 
         if self.save_directory is not None:
             if only_cosmo:
@@ -403,8 +443,8 @@ class Plotter(object):
         for ii in range(self.fitter.lnprob.shape[1]):
             if ii in mask:
                 plt.plot(self.fitter.lnprob[extra_nburn:, ii], alpha=0.5)
-            # else:
-            #     plt.plot(self.fitter.lnprob[extra_nburn:, ii], "--", alpha=0.01)
+            else:
+                plt.plot(self.fitter.lnprob[extra_nburn:, ii], "--", alpha=0.01)
 
         if self.save_directory is not None:
             plt.savefig(self.save_directory + "/lnprob.pdf")

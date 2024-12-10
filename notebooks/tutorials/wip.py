@@ -57,38 +57,18 @@ from cup1d.likelihood.input_pipeline import Args
 from corner import corner
 
 # %%
-# folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.4/"
-# fname = "mockchallenge-0.4_nonoise_fiducial.fits.gz"
-# hdu = fits.open(folder + fname)
-# keys = ["modelname", "Delta_star", "N_STAR", "alpha_star"]
-# dict_conv = {
-#     "Delta_star": "Delta2_star", 
-#     "N_STAR": "n_star", 
-#     "alpha_star":"alpha_star"
-# }
-# for key in keys:
-#     if key == "modelname":
-#         print(hdu[1].header[key])
-#     else:
-#         print(dict_conv[key], np.round(hdu[1].header[key], 4), 
-#               np.round(fid[dict_conv[key]], 4), 
-#               np.round(hdu[1].header[key]-fid[dict_conv[key]], 4)
-#              )
-
-# %%
-
-# %%
-
-# %%
+# fname = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v2/Nyx_alphap_cov/mock_challenge_0.2_nonoise_fiducial/chain_2/sampler_results.npy"
+# fil = np.load(fname, allow_pickle=True).item()
+# fil.keys()
 
 # %% [markdown]
 # ### Set archive
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 # %%
 # path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
@@ -187,8 +167,9 @@ elif choose_data:
     args.z_max = 3.9
 elif choose_challenge:
     args.data_label = "challenge_DESIY1"
-    folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
-    fname = "mock_challenge_0.2_nonoise_fiducial.fits.gz"
+    version = "6"
+    folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
+    fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
     args.p1d_fname = folder + fname
     if "fiducial" in args.p1d_fname:
         true_sim_label = "nyx_central"
@@ -243,9 +224,6 @@ if args.data_label_hires is not None:
 # plt.plot(data["P1Ds"].k_kms[0], ntos)
 
 # %%
-data["P1Ds"].truth
-
-# %%
 print(data["P1Ds"].apply_blinding)
 if data["P1Ds"].apply_blinding:
     print(data["P1Ds"].blinding)
@@ -278,6 +256,11 @@ else:
     args.fid_cosmo_label="mpg_central"
     args.fid_igm_label="mpg_central"
     args.vary_alphas=False
+
+args.fid_cosmo_label="nyx_central"
+args.fid_igm_label_mF="nyx_central"
+args.fid_igm_label_T="nyx_central"
+args.fid_igm_label_kF="mpg_central"
 
 # args.fid_cosmo_label="nyx_seed"
 
@@ -313,7 +296,7 @@ args.fid_AGN=[0, -5]
     
 args.fix_cosmo=False
 # args.fix_cosmo=True
-args.n_tau=0
+args.n_tau=2
 args.n_sigT=0
 args.n_gamma=0
 args.n_kF=0
@@ -365,125 +348,29 @@ like = set_like(
 )
 
 # %%
+p0 = np.array(list(like.fid["fit_cube"].values()))
+print(p0)
+like_params = like.parameters_from_sampling_point(p0)
+
+emu_call, M_of_z, blob = like.theory.get_emulator_calls(
+    like.data.z,
+    like_params=like_params,
+    return_M_of_z=True,
+    return_blob=True,
+)
+
+p1 = np.zeros((like.theory.hull.nz, len(like.theory.hull.params)))
+for jj, key in enumerate(like.theory.hull.params):
+    p1[:, jj] = emu_call[key]
+
+print(hull.in_hulls(p1))
+hull.plot_hulls(p1)
+
+# %%
 
 # from cup1d.utils.utils_sims import get_training_hc
 # hc_params, hc_points, cosmo_all, igm_all = get_training_hc("mpg")
 # like.theory.hull.plot_hulls(hc_points)
-
-# %% [markdown]
-# #### Set priors, move
-
-# %%
-
-from cup1d.likelihood import CAMB_model
-from cup1d.utils.utils import is_number_string
-from cup1d.utils.utils_sims import get_training_hc
-
-def set_cosmo_priors(suite, fid_cosmo, extra_factor=1.05, z_star=3, kp_kms=0.009):
-    """Set priors for cosmological parameters
-
-    We get the priors on As, ns, and nrun from differences in star parameters in the training set
-    """
-
-    cosmo_priors = {
-        "As": np.zeros(2),
-        "ns": np.zeros(2),
-        "nrun": np.zeros(2),
-    }
-
-    # set convex hull
-    res = get_training_hc(suite)
-    emu_cosmo_all = res[2]
-    emu_igm_all = res[3]
-
-    Astar_min = 10
-    Astar_max = -10
-    nstar_min = 10
-    nstar_max = -10
-    alphastar_min = 10
-    alphastar_max = -10
-    for key in emu_cosmo_all:
-        cos = emu_cosmo_all[key]
-        if is_number_string(cos["sim_label"][-1]) == False:
-            continue
-        if cos["star_params"]["Delta2_star"] < Astar_min:
-            Astar_min = cos["star_params"]["Delta2_star"]
-        if cos["star_params"]["Delta2_star"] > Astar_max:
-            Astar_max = cos["star_params"]["Delta2_star"]
-        if cos["star_params"]["n_star"] < nstar_min:
-            nstar_min = cos["star_params"]["n_star"]
-        if cos["star_params"]["n_star"] > nstar_max:
-            nstar_max = cos["star_params"]["n_star"]
-        if cos["star_params"]["alpha_star"] < alphastar_min:
-            alphastar_min = cos["star_params"]["alpha_star"]
-        if cos["star_params"]["alpha_star"] > alphastar_max:
-            alphastar_max = cos["star_params"]["alpha_star"]
-
-    # pivot scale of primordial power
-    ks_Mpc = fid_cosmo["cosmo"].cosmo.InitPower.pivot_scalar
-
-    # likelihood pivot point, in velocity units
-    dkms_dMpc = fid_cosmo["cosmo"].dkms_dMpc(z_star)
-    kp_Mpc = kp_kms * dkms_dMpc
-
-    # logarithm of ratio of pivot points
-    ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
-
-    fid_As = fid_cosmo["cosmo"].cosmo.InitPower.As
-    fid_ns = fid_cosmo["cosmo"].cosmo.InitPower.ns
-    fid_nrun = fid_cosmo["cosmo"].cosmo.InitPower.nrun
-
-    fid_Astar = fid_cosmo["linP_params"]["Delta2_star"]
-    fid_nstar = fid_cosmo["linP_params"]["n_star"]
-    fid_alphastar = fid_cosmo["linP_params"]["alpha_star"]
-
-    for ii in range(2):
-        if ii == 0:
-            test_Astar = Astar_min
-            test_nstar = nstar_min
-            test_alphastar = alphastar_min
-        else:
-            test_Astar = Astar_max
-            test_nstar = nstar_max
-            test_alphastar = alphastar_max
-
-        ln_ratio_Astar = np.log(test_Astar / fid_Astar)
-        delta_nstar = test_nstar - fid_nstar
-        delta_alphastar = test_alphastar - fid_alphastar
-
-        delta_nrun = delta_alphastar
-        delta_ns = delta_nstar - delta_nrun * ln_kp_ks
-        ln_ratio_As = (
-            ln_ratio_Astar
-            - (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
-        )
-        cosmo_priors["nrun"][ii] = fid_nrun + delta_nrun
-        cosmo_priors["ns"][ii] = fid_ns + delta_ns
-        cosmo_priors["As"][ii] = fid_As * np.exp(ln_ratio_As)
-    return cosmo_priors
-
-
-# %%
-
-fid_cosmo = set_cosmo(cosmo_label="mpg_central")
-class_fid_cosmo = {}
-class_fid_cosmo["zs"] = data["P1Ds"].z
-class_fid_cosmo["cosmo"] = CAMB_model.CAMBModel(
-    zs=data["P1Ds"].z,
-    cosmo=fid_cosmo,
-    z_star=3,
-    kp_kms=0.009,
-)
-class_fid_cosmo["linP_params"] = class_fid_cosmo[
-    "cosmo"
-].get_linP_params()
-print(class_fid_cosmo["linP_params"])
-set_cosmo_priors("mpg", class_fid_cosmo)
-
-# %%
-{'As': array([1.64898841e-09, 2.25405948e-09]),
- 'ns': array([0.919232, 1.015899]),
- 'nrun': array([-6.81954493e-14,  1.36279876e-14])}
 
 # %%
 # blinding_key = "desi_y1"
@@ -527,8 +414,8 @@ like.plot_igm(cloud=True)
 # args.parallel=False
 # args.explore=True
 
-args.n_steps=10
-args.n_burn_in=0
+args.n_steps=5
+args.n_burn_in=1
 args.parallel=False
 args.explore=True
 
@@ -543,7 +430,7 @@ fitter = Fitter(
 )
 
 # %%
-fitter.like.data.truth
+# fitter.like.data.truth
 
 # %% [markdown]
 # ### Run minimizer
@@ -559,6 +446,11 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 # p0[:] = 0.5
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
+
+# %%
+plotter = Plotter(fitter)
+if args.fix_cosmo == False:
+    plotter.plot_mle_cosmo()
 
 # %%
 # fitter.write_chain_to_file()
@@ -593,11 +485,8 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.save_minimizer()
 
 # %%
-plotter = Plotter(fitter)
 
 # %%
-if args.fix_cosmo == False:
-    plotter.plot_mle_cosmo()
 
 # %%
 plotter.plot_p1d(residuals=False, plot_every_iz=1)
@@ -648,6 +537,64 @@ if run_sampler:
 
 # %%
 fitter.write_chain_to_file()
+
+# %%
+plotter = Plotter(save_directory="test", fname_chain="./chain_20/sampler_results.npy")
+
+# %%
+plotter = Plotter(fitter=fitter)
+
+# %%
+plotter.plot_corner(only_cosmo=True)
+
+# %% [markdown]
+# inside in terms of deltap and np parameters, but outside in terms of deltastar and nstar
+
+# %%
+like.theory.emulator.list_sim_cube[0][:3]
+
+# %%
+ii = 0
+jj = 0
+zs = fitter.like.data.z
+pini = fitter.chain[ii,jj,:].copy()
+pini[1] = 0.95
+like_params = fitter.like.parameters_from_sampling_point(pini)
+
+# %%
+pini
+
+# %%
+fitter.blobs[ii,jj]
+
+# %%
+for par in like_params:
+    print(par.name, par.value)
+
+# %%
+
+hull = fitter.like.theory.hull
+
+# %%
+
+# %%
+
+# %%
+
+# %% [markdown]
+# why outside?
+
+# %%
+# fil = np.load("/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v2/Nyx_alphap_cov/mock_challenge_0.2_nonoise_fiducial/chain_6/sampler_results.npy", allow_pickle=True).item()
+# fil.keys()
+
+# %%
+# fil["posterior"].keys()
+# fil["posterior"]["nrun"].max()
+# plt.hist(fil["posterior"]["nrun"].reshape(-1), bins=100);
+
+# %%
+# plt.scatter(fil["posterior"]["alpha_star"].reshape(-1), fil["posterior"]["lnprob"].reshape(-1), s=1)
 
 # %%
 plotter = Plotter(fitter, save_directory=fitter.save_directory)

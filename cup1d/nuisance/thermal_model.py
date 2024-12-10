@@ -48,30 +48,22 @@ class ThermalModel(object):
         if np.sum(mask) != fid_igm["gamma"].shape[0]:
             print(
                 "The fiducial value of gamma is zero for z: ",
-                fid_igm["z"][mask == False],
+                fid_igm["z_T"][mask == False],
             )
         mask = fid_igm["sigT_kms"] != 0
         if np.sum(mask) != fid_igm["sigT_kms"].shape[0]:
             print(
                 "The fiducial value of sigT_kms is zero for z: ",
-                fid_igm["z"][mask == False],
+                fid_igm["z_T"][mask == False],
             )
 
         mask = (
             (fid_igm["gamma"] != 0)
             & (fid_igm["sigT_kms"] != 0)
-            & (fid_igm["z"] != 0)
+            & (fid_igm["z_T"] != 0)
         )
         if np.sum(mask) == 0:
             raise ValueError("No non-zero gamma and sigT_kms in fiducial IGM")
-
-        # if np.sum(mask) > 0:
-        #     ind = np.argsort(fid_igm["z"][mask])
-        #     self.fid_z = fid_igm["z"][mask][ind]
-        #     self.fid_gamma = fid_igm["gamma"][mask][ind]
-        #     self.fid_sigT_kms = fid_igm["sigT_kms"][mask][ind]
-        # else:
-        #     raise ValueError("No non-zero gamma and sigT_kms in fiducial IGM")
 
         # fit power law to fiducial data to reduce noise, and extrapolate when needed
         for ii in range(2):
@@ -81,14 +73,14 @@ class ThermalModel(object):
             else:
                 label = "sigT_kms"
             pfit = np.polyfit(
-                fid_igm["z"][mask],
+                fid_igm["z_T"][mask],
                 fid_igm[label][mask],
                 order_extra,
             )
             p = np.poly1d(pfit)
-            ind = np.argsort(fid_igm["z"][mask])
+            ind = np.argsort(fid_igm["z_T"][mask])
             if ii == 0:
-                self.fid_z = fid_igm["z"][mask][ind]
+                self.fid_z = fid_igm["z_T"][mask][ind]
                 self.fid_gamma = fid_igm[label][mask][ind]
                 fid_prop = self.fid_gamma
             else:

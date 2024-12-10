@@ -19,7 +19,9 @@ def set_theory(
     free_parameters=None,
     use_hull=True,
     zs_hires=None,
-    sim_igm="mpg_central",
+    sim_igm_mF="mpg_central",
+    sim_igm_T="mpg_central",
+    sim_igm_kF="mpg_central",
     igm_priors="hc",
     SiIII=None,
     SiII=None,
@@ -33,8 +35,10 @@ def set_theory(
     # set igm model
     model_igm = IGM(
         free_param_names=free_parameters,
-        fid_sim_igm=sim_igm,
-        list_sim_cube=emulator.list_sim_cube,
+        fid_sim_igm_mF=sim_igm_mF,
+        fid_sim_igm_T=sim_igm_T,
+        fid_sim_igm_kF=sim_igm_kF,
+        emu_suite=emulator.list_sim_cube[0][:3],
         type_priors=igm_priors,
     )
 
@@ -121,7 +125,9 @@ class Theory(object):
         else:
             self.model_cont = model_cont
 
-    def set_fid_cosmo(self, zs, zs_hires=None, input_cosmo=None):
+    def set_fid_cosmo(
+        self, zs, zs_hires=None, input_cosmo=None, extra_factor=0.95
+    ):
         """Setup fiducial cosmology"""
 
         self.zs = zs
@@ -132,6 +138,7 @@ class Theory(object):
                 zs=zs,
                 data_hull=self.hc_points,
                 suite=self.emulator.list_sim_cube[0][:3],
+                extra_factor=extra_factor,
             )
             if zs_hires is not None:
                 if len(zs) == len(zs_hires):
@@ -141,6 +148,7 @@ class Theory(object):
                         zs=zs_hires,
                         data_hull=self.hc_points,
                         suite=self.emulator.list_sim_cube[0][:3],
+                        extra_factor=extra_factor,
                     )
 
         # setup fiducial cosmology (used for fitting)
@@ -630,7 +638,7 @@ class Theory(object):
                 p0[:, jj] = emu_call[key]
 
             if hull.in_hulls(p0) == False:
-                print(p0)
+                # print(p0)
                 return None
 
         # compute input k to emulator in Mpc
