@@ -1,5 +1,6 @@
-import sys, os
-import configargparse
+import sys, os, configargparse
+from dataclasses import dataclass, field
+
 from cup1d.utils.utils import create_print_function, mpi_hello_world
 
 
@@ -318,142 +319,74 @@ def parse_args():
     return args
 
 
+@dataclass
 class Args:
     """
     Class to store input arguments
     """
 
-    def __init__(
-        self,
-        archive=None,
-        emulator=None,
-        training_set="Pedersen21",
-        emulator_label="Pedersen21",
-        data_label="mpg_central",
-        p1d_fname=None,
-        data_label_hires=None,
-        z_min=0,
-        z_max=10,
-        fid_igm_label_mF="mpg_central",
-        fid_igm_label_T="mpg_central",
-        fid_igm_label_kF="mpg_central",
-        true_igm_label=None,
-        n_tau=2,
-        n_sigT=2,
-        n_gamma=2,
-        n_kF=2,
-        n_SiIII=0,
-        n_SiII=0,
-        n_d_SiIII=0,
-        n_d_SiII=0,
-        n_dla=0,
-        n_sn=0,
-        n_agn=0,
-        ic_correction=False,
-        igm_priors="hc",
-        fid_cosmo_label="mpg_central",
-        true_cosmo_label=None,
-        fid_SiIII=[[0, 0], [2, -10]],
-        true_SiIII=[[0, 0], [2, -10]],
-        fid_SiII=[[0, 0], [2, -10]],
-        true_SiII=[[0, 0], [2, -10]],
-        fid_HCD=[0, -4],
-        true_HCD=[0, -4],
-        fid_SN=[0, -4],
-        true_SN=[0, -4],
-        fid_AGN=[0, -5],
-        true_AGN=[0, -5],
-        drop_sim=False,
-        apply_smoothing=False,
-        cov_label="Chabanier2019",
-        cov_label_hires="Karacayli2022",
-        add_noise=False,
-        seed_noise=0,
-        fix_cosmo=False,
-        vary_alphas=False,
-        prior_Gauss_rms=None,
-        emu_cov_factor=0,
-        verbose=True,
-        test=False,
-        explore=False,
-        parallel=True,
-        n_burn_in=0,
-        n_steps=0,
-    ):
-        # see sam_sim to see what each parameter means
-        self.archive = archive
-        self.emulator = emulator
-        self.training_set = training_set
-        self.emulator_label = emulator_label
-        self.data_label = data_label
-        self.p1d_fname = p1d_fname
-        self.data_label_hires = data_label_hires
-        self.z_min = z_min
-        self.z_max = z_max
-        self.true_igm_label = true_igm_label
-        self.fid_igm_label_mF = fid_igm_label_mF
-        self.fid_igm_label_T = fid_igm_label_T
-        self.fid_igm_label_kF = fid_igm_label_kF
-        self.n_tau = n_tau
-        self.n_sigT = n_sigT
-        self.n_gamma = n_gamma
-        self.n_kF = n_kF
-        self.n_SiIII = n_SiIII
-        self.n_SiII = n_SiII
-        self.n_d_SiIII = n_d_SiIII
-        self.n_d_SiII = n_d_SiII
-        self.n_dla = n_dla
-        self.n_sn = n_sn
-        self.n_agn = n_agn
-        self.igm_priors = igm_priors
-        self.fid_SiIII = fid_SiIII
-        self.true_SiIII = true_SiIII
-        self.fid_SiII = fid_SiII
-        self.true_SiII = true_SiII
-        self.fid_HCD = fid_HCD
-        self.true_HCD = true_HCD
-        self.fid_SN = fid_SN
-        self.true_SN = true_SN
-        self.fid_AGN = fid_AGN
-        self.true_AGN = true_AGN
-        self.ic_correction = ic_correction
-        self.fid_cosmo_label = fid_cosmo_label
-        self.true_cosmo_label = true_cosmo_label
-        self.drop_sim = drop_sim
-        self.apply_smoothing = apply_smoothing
-        self.cov_label = cov_label
-        self.cov_label_hires = cov_label_hires
-        self.add_noise = add_noise
-        self.seed_noise = seed_noise
-        self.fix_cosmo = fix_cosmo
-        self.vary_alphas = vary_alphas
-        self.prior_Gauss_rms = prior_Gauss_rms
-        self.emu_cov_factor = emu_cov_factor
-        self.verbose = verbose
-        self.test = test
-        self.explore = explore
-        self.parallel = parallel
-        self.n_burn_in = n_burn_in
-        self.n_steps = n_steps
-
-    #     self.par2save = [
-    #         "emulator_label",
-    #         "data_label",
-    #         "data_label_hires",
-    #         "z_min",
-    #         "z_max",
-    #         "fid_igm_label",
-    #         "true_igm_label",
-    #         "fix_cosmo",
-    #         "cov_label",
-    #         "cov_label_hires",
-    #     ]
-
-    # def save(self):
-    #     out = {}
-    #     for par in self.par2save:
-    #         out[par] = getattr(self, par)
-    #     return out
+    archive: str | None = None
+    emulator: str | None = None
+    training_set: str = "Pedersen21"
+    emulator_label: str = "Pedersen21"
+    data_label: str = "mpg_central"
+    p1d_fname: str | None = None
+    data_label_hires: str | None = None
+    z_min: float = 0
+    z_max: float = 10
+    fid_igm_label_mF: str = "mpg_central"
+    fid_igm_label_T: str = "mpg_central"
+    fid_igm_label_kF: str = "mpg_central"
+    true_igm_label: str | None = None
+    n_tau: int = 2
+    n_sigT: int = 2
+    n_gamma: int = 2
+    n_kF: int = 2
+    n_SiIII: int = 0
+    n_SiII: int = 0
+    n_d_SiIII: int = 0
+    n_d_SiII: int = 0
+    n_dla: int = 0
+    n_sn: int = 0
+    n_agn: int = 0
+    ic_correction: bool = False
+    igm_priors: str = "hc"
+    fid_cosmo_label: str = "mpg_central"
+    true_cosmo_label: str | None = None
+    fid_SiIII: list[list[float]] = field(
+        default_factory=lambda: [[0, 0], [2, -10]]
+    )
+    true_SiIII: list[list[float]] = field(
+        default_factory=lambda: [[0, 0], [2, -10]]
+    )
+    fid_SiII: list[list[float]] = field(
+        default_factory=lambda: [[0, 0], [2, -10]]
+    )
+    true_SiII: list[list[float]] = field(
+        default_factory=lambda: [[0, 0], [2, -10]]
+    )
+    fid_HCD: list[float] = field(default_factory=lambda: [0, -4])
+    true_HCD: list[float] = field(default_factory=lambda: [0, -4])
+    fid_SN: list[float] = field(default_factory=lambda: [0, -4])
+    true_SN: list[float] = field(default_factory=lambda: [0, -4])
+    fid_AGN: list[float] = field(default_factory=lambda: [0, -5])
+    true_AGN: list[float] = field(default_factory=lambda: [0, -5])
+    drop_sim: bool = False
+    apply_smoothing: bool = False
+    cov_label: str = "Chabanier2019"
+    cov_label_hires: str = "Karacayli2022"
+    add_noise: bool = False
+    seed_noise: int = 0
+    fix_cosmo: bool = False
+    vary_alphas: bool = False
+    prior_Gauss_rms: float | None = None
+    emu_cov_factor: float = 0
+    verbose: bool = True
+    test: bool = False
+    explore: bool = False
+    parallel: bool = True
+    n_burn_in: int = 0
+    n_steps: int = 0
 
     def check_emulator_label(self):
         avail_emulator_label = [

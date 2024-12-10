@@ -249,7 +249,7 @@ class Fitter(object):
                 self.blobs = np.concatenate(blobs, axis=1)
 
                 # apply masking (only to star parameters)
-                self.blobs = self.apply_blinding(self.blobs)
+                self.blobs = self.apply_blinding(self.blobs, sample="chains")
 
         return sampler
 
@@ -331,7 +331,7 @@ class Fitter(object):
         # self.mle_cosmo = self.get_cosmo_err(log_func_minimize)
 
         # apply blinding
-        self.mle_cosmo = self.apply_blinding(self.mle_cosmo)
+        self.mle_cosmo = self.apply_blinding(self.mle_cosmo, sample="mle")
 
         self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(self.mle_cube)
 
@@ -431,7 +431,7 @@ class Fitter(object):
 
         return res
 
-    def get_initial_walkers(self, pini=None, rms=0.05):
+    def get_initial_walkers(self, pini=None, rms=0.01):
         """Setup initial states of walkers in sensible points
         -- initial will set a range within unit volume around the
            fiducial values to initialise walkers (if no prior is used)"""
@@ -623,19 +623,24 @@ class Fitter(object):
             else:
                 self.blind[key] = 0
 
-    def apply_blinding(self, dict_cosmo, conv=False):
+    def apply_blinding(self, dict_cosmo, conv=False, sample=None):
         """Apply blinding to the dict_cosmo"""
-        out_dict = copy.deepcopy(dict_cosmo)
-        for key in self.blind:
-            if conv:
-                key2 = conv_strings[key]
-            else:
-                key2 = key
-            try:
-                out_dict[key2] = dict_cosmo[key2] + self.blind[key]
-            except:
-                pass
-        return out_dict
+
+        if self.like.data.apply_blinding:
+            if sample is not None:
+                print("Blinding " + sample)
+            for key in self.blind:
+                if conv:
+                    key2 = conv_strings[key]
+                else:
+                    key2 = key
+
+                try:
+                    dict_cosmo[key2] += self.blind[key]
+                except:
+                    pass
+
+        return dict_cosmo
 
     def apply_unblinding(self, dict_cosmo, conv=False):
         """Apply unblinding to the dict_cosmo"""
@@ -761,6 +766,7 @@ class Fitter(object):
         # FITTER
         dict_out["fitter"] = {}
         dict_out["fitter"]["mle_cube"] = self.mle_cube
+        dict_out["fitter"]["mle_cosmo"] = self.mle_cosmo
         dict_out["fitter"]["mle"] = self.mle
         dict_out["fitter"]["lnprob_mle"] = self.lnprop_mle
         dict_out["fitter"]["lnprob"] = self.lnprob

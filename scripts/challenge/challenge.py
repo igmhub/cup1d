@@ -77,11 +77,11 @@ def main():
 
     # emulator_label = "Pedersen23_ext"
     # training_set = "Cabayol23"
-    # emulator_label = "Nyx_alphap_cov"
-    # training_set = "Nyx23_Jul2024"
-    # vary_alphas = False
-    emulator_label = "Cabayol23+"
-    training_set = "Cabayol23"
+    emulator_label = "Nyx_alphap_cov"
+    training_set = "Nyx23_Jul2024"
+    vary_alphas = False
+    # emulator_label = "Cabayol23+"
+    # training_set = "Cabayol23"
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "challenge_DESIY1"
 
@@ -90,13 +90,15 @@ def main():
     # impose_fid_cosmo_label = "Planck18_h74"
 
     # note redshift range!
-    args.zmin = 2.1
-    args.zmax = 4.2
+    args.z_min = 2.1
+    args.z_max = 4.2
 
-    # args.n_steps = 1250
-    # args.n_burn_in = 1250
-    args.n_steps = 10
-    args.n_burn_in = 0
+    args.emu_cov_factor = 0.0
+
+    args.n_steps = 1250
+    args.n_burn_in = 1250
+    # args.n_steps = 10
+    # args.n_burn_in = 0
     if size > 1:
         args.parallel = True
     else:
@@ -135,8 +137,6 @@ def main():
     else:
         args.vary_alphas = False
 
-    args.emu_cov_factor = 0.0
-
     for isim in range(len(files)):
         args.p1d_fname = files[isim]
         if rank == 0:
@@ -161,7 +161,6 @@ def main():
             true_sim_label = None
 
         if "Nyx" in emulator_label:
-            args.true_sim_label = true_sim_label
             args.true_cosmo_label = true_sim_label
             args.true_igm_label = true_sim_label
             args.fid_cosmo_label = true_sim_label
@@ -169,7 +168,6 @@ def main():
             args.fid_igm_label_T = true_sim_label
             args.fid_igm_label_kF = true_sim_label
         else:
-            args.true_sim_label = true_sim_label
             args.true_cosmo_label = true_sim_label
             args.true_igm_label = true_sim_label
             args.fid_cosmo_label = true_sim_label
@@ -187,8 +185,19 @@ def main():
             args.ic_correction = False
 
         pip = Pipeline(args, make_plots=False, out_folder=dir_out)
-        pip.run_minimizer()
+
+        # run minimizer on fiducial (may not get to minimum)
+        p0 = np.array(list(pip.fitter.like.fid["fit_cube"].values()))
+        pip.run_minimizer(p0)
+
+        # run samplers, it uses as ini the results of the minimizer
         pip.run_sampler()
+
+        # run minimizer again, now on MLE
+        if rank == 0:
+            ind = np.argmax(pip.fitter.lnprob.reshape(-1))
+            p0 = pip.fitter.chain.reshape(-1, pip.fitter.chain.shape[-1])[ind]
+        pip.run_minimizer(p0)
 
 
 if __name__ == "__main__":

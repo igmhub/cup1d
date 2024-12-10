@@ -22,6 +22,7 @@ class Plotter(object):
 
             # add sampler results to fitter
             self.fitter.mle_cube = data["fitter"]["mle_cube"]
+            self.fitter.mle_cosmo = data["fitter"]["mle_cosmo"]
             self.fitter.mle = data["fitter"]["mle"]
             self.fitter.lnprop_mle = data["fitter"]["lnprob_mle"]
             self.fitter.lnprob = data["fitter"]["lnprob"]

@@ -639,7 +639,7 @@ class Pipeline(object):
                     else:
                         self.n_burn_in = 1500
 
-    def run_minimizer(self):
+    def run_minimizer(self, p0):
         """
         Run the minimizer (only rank 0)
         """
@@ -653,7 +653,6 @@ class Pipeline(object):
             self.fprint("----------")
             self.fprint("Running minimizer")
             # start fit from initial values
-            p0 = np.array(list(self.fitter.like.fid["fit_cube"].values()))
             self.fitter.run_minimizer(
                 log_func_minimize=self.fitter.like.get_chi2, p0=p0
             )
