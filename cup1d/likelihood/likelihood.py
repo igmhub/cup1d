@@ -1023,7 +1023,7 @@ class Likelihood(object):
             ax[ii].plot(
                 pars_fid["z"][_],
                 pars_fid[arr_labs[ii]][_],
-                "C1--",
+                "C1s--",
                 label="fiducial",
                 alpha=0.75,
                 lw=3,
@@ -1034,7 +1034,7 @@ class Likelihood(object):
                 ax[ii].plot(
                     pars_test["z"][_],
                     pars_test[arr_labs[ii]][_],
-                    "C2-.",
+                    "C2.-.",
                     label="fit",
                     alpha=0.75,
                     lw=3,

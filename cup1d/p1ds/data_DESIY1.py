@@ -8,14 +8,14 @@ from cup1d.likelihood import lya_theory
 
 
 class P1D_DESIY1(BaseDataP1D):
-    def __init__(self, p1d_fname=None, z_min=0, z_max=10):
+    def __init__(self, p1d_fname=None, z_min=0, z_max=10, cov_only_diag=False):
         """Read measured P1D from file.
         - full_cov: for now, no covariance between redshift bins
         - z_min: z=2.0 bin is not recommended by Karacayli2024
         - z_max: maximum redshift to include"""
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        res = read_from_file(p1d_fname=p1d_fname)
+        res = read_from_file(p1d_fname=p1d_fname, cov_only_diag=cov_only_diag)
         (
             zs,
             k_kms,
@@ -42,7 +42,9 @@ class P1D_DESIY1(BaseDataP1D):
         return
 
 
-def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5, max_cov=1e3):
+def read_from_file(
+    p1d_fname=None, kmin=1e-3, nknyq=0.5, max_cov=1e3, cov_only_diag=False
+):
     """Read file containing P1D"""
 
     # folder storing P1D measurement
@@ -67,6 +69,10 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5, max_cov=1e3):
     Pk_kms_raw = hdu[1].data["PLYA"]
     cov_raw = hdu[3].data.copy()
     diag_cov_raw = np.diag(cov_raw)
+    if cov_only_diag:
+        _cov = np.zeros_like(cov_raw)
+        _cov[np.arange(_cov.shape[0]), np.arange(_cov.shape[0])] = diag_cov_raw
+        cov_raw = _cov
 
     z_unique = np.unique(zs_raw)
     mask_raw = np.zeros(len(k_kms_raw), dtype=bool)

@@ -700,8 +700,14 @@ class Fitter(object):
         }
 
         for par in pars:
-            if (par == "alpha_star") and (
-                "nrun" not in self.like.free_param_names
+            if (
+                (par == "alpha_star")
+                and ("nrun" not in self.like.free_param_names)
+            ) | (
+                (par == "n_star") and ("ns" not in self.like.free_param_names)
+            ) or (
+                (par == "Delta2_star")
+                and ("As" not in self.like.free_param_names)
             ):
                 continue
 

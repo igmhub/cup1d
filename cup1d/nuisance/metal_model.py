@@ -311,6 +311,8 @@ class MetalModel(object):
         fig2, ax2 = plt.subplots(
             len(z), sharex=True, sharey=True, figsize=(8, len(z) * 4)
         )
+        if len(z) == 1:
+            ax2 = [ax2]
 
         for ii in range(0, len(z), plot_every_iz):
             if smooth_k:
@@ -397,8 +399,9 @@ class MetalModel(object):
             fig1.show()
             fig2.show()
         else:
-            fig1.savefig(name + "_all.pdf")
-            fig1.savefig(name + "_all.png")
+            if len(z) != 1:
+                fig1.savefig(name + "_all.pdf")
+                fig1.savefig(name + "_all.png")
             fig2.savefig(name + "_z.pdf")
             fig2.savefig(name + "_z.png")
 

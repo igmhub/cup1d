@@ -78,6 +78,10 @@ class Plotter(object):
         self.plot_agn_cont(plot_data=True, zrange=zrange)
         plt.close()
 
+        # plot fit in hull
+        self.plot_hull()
+        plt.close()
+
     def plots_sampler(self):
         # plot lnprob
         plt.close("all")
@@ -115,6 +119,10 @@ class Plotter(object):
         self.plot_metal_cont()
         # plt.close()
         self.plot_agn_cont()
+        plt.close()
+
+        # plot fit in hull
+        self.plot_hull()
         plt.close()
 
     def get_hc_star(self, nyx_version="Jul2024"):
@@ -829,3 +837,38 @@ class Plotter(object):
             zrange=zrange,
             name=name,
         )
+
+    def plot_hull(self, p0=None, save_plot=True):
+        """Function to plot data within hull"""
+
+        if p0 is None:
+            p0 = self.fitter.mle_cube
+
+        like_params = self.fitter.like.parameters_from_sampling_point(p0)
+
+        emu_call, M_of_z, blob = self.fitter.like.theory.get_emulator_calls(
+            self.fitter.like.data.z,
+            like_params=like_params,
+            return_M_of_z=True,
+            return_blob=True,
+        )
+
+        p1 = np.zeros(
+            (
+                self.fitter.like.theory.hull.nz,
+                len(self.fitter.like.theory.hull.params),
+            )
+        )
+        for jj, key in enumerate(self.fitter.like.theory.hull.params):
+            p1[:, jj] = emu_call[key]
+
+        # print(self.fitter.like.theory.hull.in_hulls(p1))
+        self.fitter.like.theory.hull.plot_hulls(p1)
+
+        if self.save_directory is not None:
+            name = self.save_directory + "/fit_in_hull"
+            if save_plot:
+                plt.savefig(name + ".pdf")
+                plt.savefig(name + ".png")
+        else:
+            plt.show()

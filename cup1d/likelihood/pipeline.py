@@ -243,7 +243,10 @@ def set_P1D(
         )
     elif data_label == "DESIY1":
         data = data_DESIY1.P1D_DESIY1(
-            p1d_fname=args.p1d_fname, z_min=args.z_min, z_max=args.z_max
+            p1d_fname=args.p1d_fname,
+            z_min=args.z_min,
+            z_max=args.z_max,
+            cov_only_diag=args.cov_only_diag,
         )
     else:
         raise ValueError(f"data_label {data_label} not implemented")
@@ -661,10 +664,10 @@ class Pipeline(object):
             self.fitter.save_minimizer()
 
             # plot fit
-            plotter = Plotter(
+            self.plotter = Plotter(
                 self.fitter, save_directory=self.fitter.save_directory
             )
-            plotter.plots_minimizer()
+            self.plotter.plots_minimizer()
 
             # distribute best_fit to all tasks
             for irank in range(1, size):
@@ -708,7 +711,7 @@ class Pipeline(object):
             self.fitter.write_chain_to_file()
 
             # plot fit
-            plotter = Plotter(
+            self.plotter = Plotter(
                 self.fitter, save_directory=self.fitter.save_directory
             )
-            plotter.plots_sampler()
+            self.plotter.plots_sampler()
