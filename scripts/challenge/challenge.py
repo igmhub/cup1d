@@ -11,7 +11,8 @@ import numpy as np
 from mpi4py import MPI
 from cup1d.likelihood.input_pipeline import Args
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.pipeline import set_archive, Pipeline
+from cup1d.likelihood.pipeline import set_archive, Pipeline, set_cosmo
+from cup1d.likelihood import CAMB_model
 from cup1d.utils.utils import get_path_repo
 
 
@@ -20,7 +21,7 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    version = "6"
+    version = "8"
 
     name_system = socket.gethostname()
     if "login" in name_system:
@@ -79,8 +80,8 @@ def main():
     # training_set = "Cabayol23"
     emulator_label = "Nyx_alphap_cov"
     training_set = "Nyx23_Jul2024"
-    # vary_alphas = True
-    vary_alphas = False
+    vary_alphas = True
+    # vary_alphas = False
     # emulator_label = "Cabayol23+"
     # training_set = "Cabayol23"
     args = Args(emulator_label=emulator_label, training_set=training_set)
@@ -178,6 +179,18 @@ def main():
 
         if impose_fid_cosmo_label is not None:
             args.fid_cosmo_label = impose_fid_cosmo_label
+
+        fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
+
+        # Planck18 0.354 -2.300 -0.2155
+        # 5 sigma 0.056 0.011 0.0028
+        blob = CAMB_model.CAMBModel(zs=[3], cosmo=fid_cosmo).get_linP_params()
+        # args.use_star_priors = None
+        args.use_star_priors = {}
+        args.use_star_priors["alpha_star"] = [
+            blob["alpha_star"] - 0.0028,
+            blob["alpha_star"] + 0.0028,
+        ]
 
         if "bar_ic" in args.p1d_fname:
             args.ic_correction = True

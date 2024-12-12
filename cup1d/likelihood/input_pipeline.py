@@ -1,5 +1,6 @@
 import sys, os, configargparse
 from dataclasses import dataclass, field
+from typing import Optional
 
 from cup1d.utils.utils import create_print_function, mpi_hello_world
 
@@ -376,6 +377,7 @@ class Args:
     apply_smoothing: bool = False
     cov_label: str = "Chabanier2019"
     cov_label_hires: str = "Karacayli2022"
+    use_star_priors: Optional[dict] = None
     add_noise: bool = False
     seed_noise: int = 0
     fix_cosmo: bool = False

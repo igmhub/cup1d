@@ -55,15 +55,16 @@ from astropy.io import fits
 from cup1d.likelihood.input_pipeline import Args
 
 from corner import corner
+from cup1d.likelihood import CAMB_model
 
 # %%
 from cup1d.likelihood.pipeline_z import Pipeline_z
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 # args.vary_alphas = False
 args.data_label = "DESIY1"
 
@@ -207,9 +208,9 @@ pip = Pipeline_z(args, out_folder="desi_fft_z")
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 # %%
 # path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
@@ -398,10 +399,12 @@ else:
     args.fid_igm_label="mpg_central"
     args.vary_alphas=False
 
+args.vary_alphas=False
 args.fid_cosmo_label="nyx_central"
 args.fid_igm_label_mF="nyx_central"
 args.fid_igm_label_T="nyx_central"
-args.fid_igm_label_kF="mpg_central"
+args.fid_igm_label_kF="nyx_central"
+# args.fid_igm_label_kF="mpg_central"
 
 # args.fid_cosmo_label="nyx_seed"
 
@@ -412,6 +415,16 @@ args.fid_igm_label_kF="mpg_central"
 # args.ic_correction=True
 # args.fid_cosmo_label="Planck18"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
+
+# args.use_star_priors = None
+args.use_star_priors = {}
+# Planck18 0.354 -2.300 -0.2155
+# 5 sigma 0.056 0.011 0.0028
+blob = CAMB_model.CAMBModel(zs=[3], cosmo=fid_cosmo).get_linP_params()
+amin = blob["alpha_star"] - 0.0028
+amax = blob["alpha_star"] + 0.0028
+args.use_star_priors["alpha_star"] = [amin, amax]
+
 
 # IGM
 # args.fid_igm_label="nyx_13"
@@ -488,37 +501,6 @@ like = set_like(
     data_hires=data["extra_P1Ds"],
 )
 
-# %%
-p0 = np.array(list(like.fid["fit_cube"].values()))
-print(p0)
-like_params = like.parameters_from_sampling_point(p0)
-
-emu_call, M_of_z, blob = like.theory.get_emulator_calls(
-    like.data.z,
-    like_params=like_params,
-    return_M_of_z=True,
-    return_blob=True,
-)
-
-p1 = np.zeros((like.theory.hull.nz, len(like.theory.hull.params)))
-for jj, key in enumerate(like.theory.hull.params):
-    p1[:, jj] = emu_call[key]
-
-print(hull.in_hulls(p1))
-hull.plot_hulls(p1)
-
-# %%
-
-# from cup1d.utils.utils_sims import get_training_hc
-# hc_params, hc_points, cosmo_all, igm_all = get_training_hc("mpg")
-# like.theory.hull.plot_hulls(hc_points)
-
-# %%
-# blinding_key = "desi_y1"
-# seed = int.from_bytes(blinding_key.encode('utf-8'), byteorder='big')
-# np.random.default_rng(seed=seed)
-# np.random.random(3)
-
 # %% [markdown]
 # Sampling parameters
 
@@ -587,6 +569,8 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 # p0[:] = 0.5
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
+
+# %%
 
 # %%
 plotter = Plotter(fitter)

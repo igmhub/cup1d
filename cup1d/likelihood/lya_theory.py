@@ -18,6 +18,7 @@ def set_theory(
     emulator,
     free_parameters=None,
     use_hull=True,
+    use_star_priors=None,
     zs_hires=None,
     sim_igm_mF="mpg_central",
     sim_igm_T="mpg_central",
@@ -59,6 +60,7 @@ def set_theory(
         model_igm=model_igm,
         model_cont=model_cont,
         use_hull=use_hull,
+        use_star_priors=use_star_priors,
     )
 
     return theory
@@ -78,6 +80,7 @@ class Theory(object):
         verbose=False,
         z_star=3.0,
         kp_kms=0.009,
+        use_star_priors=None,
     ):
         """Setup object to compute predictions for the 1D power spectrum.
         Inputs:
@@ -100,6 +103,7 @@ class Theory(object):
         self.z_star = z_star
         self.kp_kms = kp_kms
         self.use_hull = use_hull
+        self.use_star_priors = use_star_priors
 
         # setup emulator
         if emulator is None:
@@ -205,6 +209,13 @@ class Theory(object):
         fid_Astar = self.fid_cosmo["linP_params"]["Delta2_star"]
         fid_nstar = self.fid_cosmo["linP_params"]["n_star"]
         fid_alphastar = self.fid_cosmo["linP_params"]["alpha_star"]
+
+        if self.use_star_priors is not None:
+            self.star_priors = {}
+            for key in self.use_star_priors:
+                self.star_priors[key] = self.use_star_priors[key]
+        else:
+            self.star_priors = None
 
         hc_fid = {}
         hc_fid["As"] = []
@@ -625,6 +636,22 @@ class Theory(object):
             return_M_of_z=True,
             return_blob=True,
         )
+
+        # also apply priors on compressed parameters
+        # temporary hack
+        dict_trans = {
+            "Delta2_star": 0,
+            "n_star": 1,
+            "alpha_star": 2,
+        }
+        if self.star_priors is not None:
+            for key in self.star_priors:
+                _ = np.argwhere(
+                    (blob[dict_trans[key]] > self.star_priors[key][1])
+                    | (blob[dict_trans[key]] < self.star_priors[key][0])
+                )
+                if len(_) > 0:
+                    return None
 
         # check priors
         if self.use_hull:

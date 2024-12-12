@@ -286,6 +286,7 @@ def set_like(data, emulator, args, data_hires=None):
     theory = lya_theory.set_theory(
         emulator,
         free_parameters=free_parameters,
+        use_star_priors=args.use_star_priors,
         sim_igm_mF=args.fid_igm_label_mF,
         sim_igm_T=args.fid_igm_label_T,
         sim_igm_kF=args.fid_igm_label_kF,
@@ -642,7 +643,7 @@ class Pipeline(object):
                     else:
                         self.n_burn_in = 1500
 
-    def run_minimizer(self, p0):
+    def run_minimizer(self, p0, make_plots=True):
         """
         Run the minimizer (only rank 0)
         """
@@ -663,11 +664,12 @@ class Pipeline(object):
             # save fit
             self.fitter.save_minimizer()
 
-            # plot fit
-            self.plotter = Plotter(
-                self.fitter, save_directory=self.fitter.save_directory
-            )
-            self.plotter.plots_minimizer()
+            if make_plots:
+                # plot fit
+                self.plotter = Plotter(
+                    self.fitter, save_directory=self.fitter.save_directory
+                )
+                self.plotter.plots_minimizer()
 
             # distribute best_fit to all tasks
             for irank in range(1, size):
@@ -678,7 +680,7 @@ class Pipeline(object):
             # get testing_data from task 0
             self.fitter.mle_cube = comm.recv(source=0, tag=(rank + 1) * 13)
 
-    def run_sampler(self):
+    def run_sampler(self, make_plots=True):
         """
         Run the sampler (after minimizer)
         """
@@ -711,7 +713,8 @@ class Pipeline(object):
             self.fitter.write_chain_to_file()
 
             # plot fit
-            self.plotter = Plotter(
-                self.fitter, save_directory=self.fitter.save_directory
-            )
-            self.plotter.plots_sampler()
+            if make_plots:
+                self.plotter = Plotter(
+                    self.fitter, save_directory=self.fitter.save_directory
+                )
+                self.plotter.plots_sampler()
