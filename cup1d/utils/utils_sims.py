@@ -139,3 +139,67 @@ def get_training_hc(sim_suite, emu_params=None, nyx_version="Jul2024"):
     hc_points = np.vstack(list(dict_out.values())).T
 
     return hc_params, hc_points, cosmo_all, igm_all
+
+
+def load_chains_for_cosmopower(fname):
+    """
+    Load chains from a file.
+
+    Parameters:
+    -----------
+    path : str
+        The path to the file containing the chains.
+
+    Returns:
+    --------
+    chains : numpy.ndarray
+        The loaded chains.
+    """
+
+    import pandas as pd
+
+    data = np.load(fname, allow_pickle=True).item()
+    sampling_params = data["fitter"]["chain_names"]  # to chain
+    star_params = data["fitter"]["blobs_names"]  # to blob
+    _chain = data["fitter"]["chain"].reshape(
+        -1, data["fitter"]["chain"].shape[-1]
+    )
+    _blobs = data["fitter"]["blobs"].reshape(-1)
+    if "nrun" in sampling_params:
+        nstar = 3
+    else:
+        nstar = 2
+    all_params = np.zeros((_chain.shape[0], _chain.shape[1] + nstar))
+    all_params_names = []
+    for ii in range(_chain.shape[-1]):
+        prange = data["fitter"]["chain_from_cube"][sampling_params[ii]]
+        # print(sampling_params[ii], prange)
+        all_params[:, ii] = _chain[:, ii] * (prange[1] - prange[0]) + prange[0]
+        all_params_names.append(sampling_params[ii])
+
+    for ii in range(nstar):
+        all_params[:, -nstar + ii] = _blobs[star_params[ii]]
+        all_params_names.append(star_params[ii])
+
+    df = pd.DataFrame(all_params, columns=all_params_names)
+    h = data["like"]["cosmo_fid_label"]["cosmo"]["H0"] / 100
+    omch2 = data["like"]["cosmo_fid_label"]["cosmo"]["omch2"]
+    ombh2 = data["like"]["cosmo_fid_label"]["cosmo"]["ombh2"]
+    mnu = data["like"]["cosmo_fid_label"]["cosmo"]["mnu"]
+    # next two lines to be updated when using with neutrinos
+    omnuh2 = mnu / 94.07  # this is more complicated, need CAMB or CLASS
+    Omega_m = (omch2 + ombh2) / h**2  # should I include omnuh2 here?
+
+    if "nrun" not in sampling_params:
+        df["nrun"] = 0
+
+    df["ln_A_s_1e10"] = np.log(df.As * 1e10)
+    df["h"] = h
+    df["m_ncdm"] = mnu
+    df["omch2"] = omch2
+    df["ombh2"] = ombh2
+    df["omnuh2"] = omnuh2
+    df["Omega_m"] = Omega_m
+    df["Omega_Lambda"] = 1 - Omega_m
+
+    return df

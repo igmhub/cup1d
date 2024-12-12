@@ -79,7 +79,8 @@ def main():
     # training_set = "Cabayol23"
     emulator_label = "Nyx_alphap_cov"
     training_set = "Nyx23_Jul2024"
-    vary_alphas = True
+    # vary_alphas = True
+    vary_alphas = False
     # emulator_label = "Cabayol23+"
     # training_set = "Cabayol23"
     args = Args(emulator_label=emulator_label, training_set=training_set)

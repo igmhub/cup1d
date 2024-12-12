@@ -779,11 +779,24 @@ class Fitter(object):
         dict_out["fitter"]["chain"] = self.chain
         dict_out["fitter"]["blobs"] = self.blobs
 
+        # min_value + x * (max_value - min_value)
+        dict_out["fitter"]["chain_from_cube"] = {}
+        for ip in range(self.chain.shape[-1]):
+            param = self.like.free_params[ip]
+            dict_out["fitter"]["chain_from_cube"][param.name] = np.zeros(2)
+            dict_out["fitter"]["chain_from_cube"][param.name][
+                0
+            ] = param.min_value
+            dict_out["fitter"]["chain_from_cube"][param.name][
+                1
+            ] = param.max_value
+
         dict_out["fitter"]["chain_names_latex"] = self.paramstrings
         dict_out["fitter"]["blobs_names"] = blob_strings_orig
         dict_out["fitter"]["blobs_names_latex"] = blob_strings
+        dict_out["fitter"]["chain_names"] = []
         for key in dict_out["fitter"]["chain_names_latex"]:
-            dict_out["fitter"]["chain_names"] = param_dict_rev[key]
+            dict_out["fitter"]["chain_names"].append(param_dict_rev[key])
 
         out_file = self.save_directory + "/sampler_results.npy"
         print("Saving chain to " + out_file)
