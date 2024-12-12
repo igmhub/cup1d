@@ -390,6 +390,8 @@ class Args:
     parallel: bool = True
     n_burn_in: int = 0
     n_steps: int = 0
+    z_star: float = 3
+    kp_kms: float = 0.009
 
     def check_emulator_label(self):
         avail_emulator_label = [

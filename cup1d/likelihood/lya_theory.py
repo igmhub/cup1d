@@ -20,6 +20,8 @@ def set_theory(
     use_hull=True,
     use_star_priors=None,
     zs_hires=None,
+    z_star=3.0,
+    kp_kms=0.009,
     sim_igm_mF="mpg_central",
     sim_igm_T="mpg_central",
     sim_igm_kF="mpg_central",
@@ -61,6 +63,8 @@ def set_theory(
         model_cont=model_cont,
         use_hull=use_hull,
         use_star_priors=use_star_priors,
+        z_star=z_star,
+        kp_kms=kp_kms,
     )
 
     return theory

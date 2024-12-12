@@ -287,6 +287,8 @@ def set_like(data, emulator, args, data_hires=None):
         emulator,
         free_parameters=free_parameters,
         use_star_priors=args.use_star_priors,
+        z_star=args.z_star,
+        kp_kms=args.kp_kms,
         sim_igm_mF=args.fid_igm_label_mF,
         sim_igm_T=args.fid_igm_label_T,
         sim_igm_kF=args.fid_igm_label_kF,
@@ -662,7 +664,7 @@ class Pipeline(object):
             )
 
             # save fit
-            self.fitter.save_minimizer()
+            self.fitter.save_fitter()
 
             if make_plots:
                 # plot fit
@@ -710,7 +712,7 @@ class Pipeline(object):
 
             self.fprint("----------")
             self.fprint("Saving data")
-            self.fitter.write_chain_to_file()
+            self.fitter.save_fitter(save_chains=True)
 
             # plot fit
             if make_plots:

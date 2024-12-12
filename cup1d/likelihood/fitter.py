@@ -676,57 +676,57 @@ class Fitter(object):
 
         return best_values
 
-    def save_minimizer(self):
-        """Write results of minimizer to file"""
+    # def save_minimizer(self):
+    #     """Write results of minimizer to file"""
 
-        dict_out = {}
+    #     dict_out = {}
 
-        dict_out["emu_label"] = self.like.theory.emulator.emulator_label
-        dict_out["z_star"] = self.like.theory.z_star
-        dict_out["kp_kms"] = self.like.theory.kp_kms
-        dict_out["mle"] = self.mle
-        dict_out["mle_cube"] = self.mle_cube
-        dict_out["lnprob_mle"] = self.lnprop_mle
+    #     dict_out["emu_label"] = self.like.theory.emulator.emulator_label
+    #     dict_out["z_star"] = self.like.theory.z_star
+    #     dict_out["kp_kms"] = self.like.theory.kp_kms
+    #     dict_out["mle"] = self.mle
+    #     dict_out["mle_cube"] = self.mle_cube
+    #     dict_out["lnprob_mle"] = self.lnprop_mle
 
-        dict_out["cosmo_best"] = {}
-        dict_out["cosmo_fid"] = {}
-        dict_out["cosmo_true"] = {}
-        dict_out["cosmo_reldiff"] = {}
+    #     dict_out["cosmo_best"] = {}
+    #     dict_out["cosmo_fid"] = {}
+    #     dict_out["cosmo_true"] = {}
+    #     dict_out["cosmo_reldiff"] = {}
 
-        pars = {
-            "Delta2_star": "$\\Delta^2_\\star$",
-            "n_star": "$n_\\star$",
-            "alpha_star": "$\\alpha_\\star$",
-        }
+    #     pars = {
+    #         "Delta2_star": "$\\Delta^2_\\star$",
+    #         "n_star": "$n_\\star$",
+    #         "alpha_star": "$\\alpha_\\star$",
+    #     }
 
-        for par in pars:
-            if (
-                (par == "alpha_star")
-                and ("nrun" not in self.like.free_param_names)
-            ) | (
-                (par == "n_star") and ("ns" not in self.like.free_param_names)
-            ) or (
-                (par == "Delta2_star")
-                and ("As" not in self.like.free_param_names)
-            ):
-                continue
+    #     for par in pars:
+    #         if (
+    #             (par == "alpha_star")
+    #             and ("nrun" not in self.like.free_param_names)
+    #         ) | (
+    #             (par == "n_star") and ("ns" not in self.like.free_param_names)
+    #         ) or (
+    #             (par == "Delta2_star")
+    #             and ("As" not in self.like.free_param_names)
+    #         ):
+    #             continue
 
-            dict_out["cosmo_best"][par] = self.mle_cosmo[par]
-            dict_out["cosmo_fid"][par] = self.like.fid["fit"][par]
+    #         dict_out["cosmo_best"][par] = self.mle_cosmo[par]
+    #         dict_out["cosmo_fid"][par] = self.like.fid["fit"][par]
 
-            if self.truth is not None:
-                dict_out["cosmo_true"][par] = self.truth[pars[par]]
-                dict_out["cosmo_reldiff"][par] = (
-                    dict_out["cosmo_best"][par] / dict_out["cosmo_true"][par]
-                    - 1
-                ) * 100
+    #         if self.truth is not None:
+    #             dict_out["cosmo_true"][par] = self.truth[pars[par]]
+    #             dict_out["cosmo_reldiff"][par] = (
+    #                 dict_out["cosmo_best"][par] / dict_out["cosmo_true"][par]
+    #                 - 1
+    #             ) * 100
 
-        if self.truth is not None:
-            dict_out["truth"] = self.truth
+    #     if self.truth is not None:
+    #         dict_out["truth"] = self.truth
 
-        np.save(self.save_directory + "/minimizer_results.npy", dict_out)
+    #     np.save(self.save_directory + "/minimizer_results.npy", dict_out)
 
-    def write_chain_to_file(self, residuals=True, extra_nburn=0):
+    def save_fitter(self, save_chains=False):
         """Write flat chain to file"""
 
         dict_out = {}
@@ -761,13 +761,61 @@ class Fitter(object):
         dict_out["like"]["free_params"] = self.like.free_param_names
 
         # SAMPLER
-        dict_out["sampler"] = {}
-        dict_out["sampler"]["nsteps"] = self.nsteps
-        dict_out["sampler"]["burnin_nsteps"] = self.burnin_nsteps
-        dict_out["sampler"]["nwalkers"] = self.nwalkers
+        if save_chains:
+            dict_out["sampler"] = {}
+            dict_out["sampler"]["nsteps"] = self.nsteps
+            dict_out["sampler"]["burnin_nsteps"] = self.burnin_nsteps
+            dict_out["sampler"]["nwalkers"] = self.nwalkers
 
         # TRUTH
         dict_out["truth"] = self.truth
+
+        # IGM
+        like_params = self.like.parameters_from_sampling_point(self.mle_cube)
+        dict_out["IGM"] = {}
+        zs = dict_out["data"]["zs"]
+        dict_out["IGM"]["z"] = zs
+        dict_out["IGM"][
+            "tau_eff"
+        ] = self.like.theory.model_igm.F_model.get_tau_eff(
+            zs, like_params=like_params
+        )
+        dict_out["IGM"]["gamma"] = self.like.theory.model_igm.T_model.get_gamma(
+            zs, like_params=like_params
+        )
+        dict_out["IGM"][
+            "sigT_kms"
+        ] = self.like.theory.model_igm.T_model.get_sigT_kms(
+            zs, like_params=like_params
+        )
+        dict_out["IGM"][
+            "kF_kms"
+        ] = self.like.theory.model_igm.P_model.get_kF_kms(
+            zs, like_params=like_params
+        )
+
+        # NUISANCE
+        dict_out["nuisance"] = {}
+        dict_out["nuisance"]["z"] = zs
+        # HCD
+        dict_out["nuisance"][
+            "HCD"
+        ] = self.like.theory.model_cont.hcd_model.get_A_damp(
+            zs, like_params=like_params
+        )
+        # AGN
+        dict_out["nuisance"][
+            "AGN"
+        ] = self.like.theory.model_cont.hcd_model.get_AGN_damp(
+            zs, like_params=like_params
+        )
+        # Metals
+        for X_model in self.like.theory.model_cont.metal_models:
+            f = X_model.get_amplitude(zs, like_params=like_params)
+            adamp = X_model.get_damping(zs, like_params=like_params)
+            dict_out["nuisance"][X_model.metal_label] = {}
+            dict_out["nuisance"][X_model.metal_label]["f"] = f
+            dict_out["nuisance"][X_model.metal_label]["adamp"] = adamp
 
         # FITTER
         dict_out["fitter"] = {}
@@ -775,30 +823,31 @@ class Fitter(object):
         dict_out["fitter"]["mle_cosmo"] = self.mle_cosmo
         dict_out["fitter"]["mle"] = self.mle
         dict_out["fitter"]["lnprob_mle"] = self.lnprop_mle
-        dict_out["fitter"]["lnprob"] = self.lnprob
-        dict_out["fitter"]["chain"] = self.chain
-        dict_out["fitter"]["blobs"] = self.blobs
 
-        # min_value + x * (max_value - min_value)
-        dict_out["fitter"]["chain_from_cube"] = {}
-        for ip in range(self.chain.shape[-1]):
-            param = self.like.free_params[ip]
-            dict_out["fitter"]["chain_from_cube"][param.name] = np.zeros(2)
-            dict_out["fitter"]["chain_from_cube"][param.name][
-                0
-            ] = param.min_value
-            dict_out["fitter"]["chain_from_cube"][param.name][
-                1
-            ] = param.max_value
+        if save_chains:
+            dict_out["fitter"]["lnprob"] = self.lnprob
+            dict_out["fitter"]["chain"] = self.chain
+            dict_out["fitter"]["blobs"] = self.blobs
 
-        dict_out["fitter"]["chain_names_latex"] = self.paramstrings
-        dict_out["fitter"]["blobs_names"] = blob_strings_orig
-        dict_out["fitter"]["blobs_names_latex"] = blob_strings
-        dict_out["fitter"]["chain_names"] = []
-        for key in dict_out["fitter"]["chain_names_latex"]:
-            dict_out["fitter"]["chain_names"].append(param_dict_rev[key])
+            dict_out["fitter"]["chain_from_cube"] = {}
+            for ip in range(self.chain.shape[-1]):
+                param = self.like.free_params[ip]
+                dict_out["fitter"]["chain_from_cube"][param.name] = np.zeros(2)
+                dict_out["fitter"]["chain_from_cube"][param.name][
+                    0
+                ] = param.min_value
+                dict_out["fitter"]["chain_from_cube"][param.name][
+                    1
+                ] = param.max_value
 
-        out_file = self.save_directory + "/sampler_results.npy"
+            dict_out["fitter"]["chain_names_latex"] = self.paramstrings
+            dict_out["fitter"]["blobs_names"] = blob_strings_orig
+            dict_out["fitter"]["blobs_names_latex"] = blob_strings
+            dict_out["fitter"]["chain_names"] = []
+            for key in dict_out["fitter"]["chain_names_latex"]:
+                dict_out["fitter"]["chain_names"].append(param_dict_rev[key])
+
+        out_file = self.save_directory + "/fitter_results.npy"
         print("Saving chain to " + out_file)
         np.save(out_file, dict_out)
 

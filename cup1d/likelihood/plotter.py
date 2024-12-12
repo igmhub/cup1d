@@ -104,6 +104,8 @@ class Plotter(object):
         if self.fitter.fix_cosmology == False:
             self.plot_corner(only_cosmo=True)
             plt.close()
+            self.plot_corner(only_cosmo=True, only_cosmo_lims=True)
+            plt.close()
 
         # plot corner
         self.plot_corner()
@@ -324,6 +326,7 @@ class Plotter(object):
         usetex=True,
         only_cosmo=False,
         extra_nburn=0,
+        only_cosmo_lims=True,
     ):
         """Make corner plot in ChainConsumer
         - if delta_lnprob_cut is set, keep only high-prob points"""
@@ -405,11 +408,12 @@ class Plotter(object):
 
                 ax.scatter(x, y, marker="o", color="C1", alpha=0.5)
 
-                diff = 0.05 * (y.max() - y.min())
-                ax.set_ylim(
-                    np.min([y.min(), ychain.min()]) - diff,
-                    np.max([y.max(), ychain.max()]) + diff,
-                )
+                if only_cosmo_lims:
+                    diff = 0.05 * (y.max() - y.min())
+                    ax.set_ylim(
+                        np.min([y.min(), ychain.min()]) - diff,
+                        np.max([y.max(), ychain.max()]) + diff,
+                    )
 
             for ii in range(len(axs)):
                 if ii == 0:
@@ -429,16 +433,20 @@ class Plotter(object):
                     ]
                     xchain = chain[:, _]
 
-                for jj in range(len(axs)):
-                    diff = 0.05 * (x.max() - x.min())
-                    axs[jj, ii].set_xlim(
-                        np.min([x.min(), xchain.min()]) - diff,
-                        np.max([x.max(), xchain.max()]) + diff,
-                    )
+                if only_cosmo_lims:
+                    for jj in range(len(axs)):
+                        diff = 0.05 * (x.max() - x.min())
+                        axs[jj, ii].set_xlim(
+                            np.min([x.min(), xchain.min()]) - diff,
+                            np.max([x.max(), xchain.max()]) + diff,
+                        )
 
         if self.save_directory is not None:
             if only_cosmo:
-                name = self.save_directory + "/corner_cosmo"
+                if only_cosmo_lims:
+                    name = self.save_directory + "/corner_cosmo_full"
+                else:
+                    name = self.save_directory + "/corner_cosmo"
             else:
                 name = self.save_directory + "/corner"
             plt.savefig(name + ".pdf")
