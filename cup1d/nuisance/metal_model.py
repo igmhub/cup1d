@@ -271,7 +271,7 @@ class MetalModel(object):
 
         a = f / (1 - mF)
         # faster damping than exponential, but still long tail
-        alpha = 1.5
+        alpha = 1.0
         adim_damp = adamp * k_kms
         damping = (1 + adim_damp) ** alpha * np.exp(-1 * adim_damp**alpha)
         cont = 1 + a**2 + 2 * a * np.cos(self.dv * k_kms) * damping
