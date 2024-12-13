@@ -346,10 +346,12 @@ class Args:
     n_sigT: int = 2
     n_gamma: int = 2
     n_kF: int = 2
-    n_SiIII: int = 0
-    n_SiII: int = 0
+    n_x_SiIII: int = 0
+    n_x_SiII: int = 0
     n_d_SiIII: int = 0
     n_d_SiII: int = 0
+    n_a_SiIII: int = 0
+    n_a_SiII: int = 0
     n_dla: int = 0
     n_sn: int = 0
     n_agn: int = 0

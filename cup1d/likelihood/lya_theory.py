@@ -779,6 +779,8 @@ class Theory(object):
                 params.append(par)
             for par in metal.get_D_parameters():
                 params.append(par)
+            for par in metal.get_A_parameters():
+                params.append(par)
 
         # get parameters from HCD contamination model
         for par in self.model_cont.hcd_model.get_parameters():

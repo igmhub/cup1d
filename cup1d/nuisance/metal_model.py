@@ -56,12 +56,12 @@ class MetalModel(object):
         else:
             if free_param_names:
                 # figure out number of free params for this metal line
-                param_tag = "ln_" + metal_label + "_"
+                param_tag = "ln_x_" + metal_label + "_"
                 n_X = len([p for p in free_param_names if param_tag in p])
                 if n_X == 0:
                     n_X = 1
 
-                param_tag = "d_" + metal_label + "_"
+                param_tag = "ln_d_" + metal_label + "_"
                 n_D = len([p for p in free_param_names if param_tag in p])
                 if n_D == 0:
                     n_D = 1
@@ -76,17 +76,25 @@ class MetalModel(object):
                 n_A = 1
             # start with value from McDonald et al. (2006), and no z evolution
             self.ln_X_coeff = np.zeros((n_X))
-            for ii in range(n_X):
-                self.ln_X_coeff[ii] = X_fid_value[-1 + ii]
-            print("fiducial X coeff", self.ln_X_coeff)
+            if n_X == 1:
+                self.ln_X_coeff[0] = X_fid_value[-1]
+            else:
+                for ii in range(n_X):
+                    self.ln_X_coeff[ii] = X_fid_value[ii]
 
             self.ln_D_coeff = np.zeros((n_D))
-            for ii in range(n_D):
-                self.ln_D_coeff[ii] = D_fid_value[-1 + ii]
+            if n_D == 1:
+                self.ln_D_coeff[0] = D_fid_value[-1]
+            else:
+                for ii in range(n_D):
+                    self.ln_D_coeff[ii] = D_fid_value[ii]
 
             self.A_coeff = np.zeros((n_A))
-            for ii in range(n_A):
-                self.A_coeff[ii] = A_fid_value[-1 + ii]
+            if n_A == 1:
+                self.A_coeff[0] = A_fid_value[-1]
+            else:
+                for ii in range(n_A):
+                    self.A_coeff[ii] = A_fid_value[ii]
 
         # store list of likelihood parameters (might be fixed or free)
         self.set_X_parameters()
@@ -109,7 +117,7 @@ class MetalModel(object):
         self.X_params = []
         Npar = len(self.ln_X_coeff)
         for i in range(Npar):
-            name = "ln_" + self.metal_label + "_" + str(i)
+            name = "ln_x_" + self.metal_label + "_" + str(i)
             if i == 0:
                 # log of overall amplitude at z_X
                 # no contamination
@@ -134,7 +142,7 @@ class MetalModel(object):
         self.D_params = []
         Npar = len(self.ln_D_coeff)
         for i in range(Npar):
-            name = "d_" + self.metal_label + "_" + str(i)
+            name = "ln_d_" + self.metal_label + "_" + str(i)
             if i == 0:
                 # log of overall amplitude at z_X
                 # no contamination (0.3% at high k)
@@ -198,7 +206,7 @@ class MetalModel(object):
             array_names = []
             array_values = []
             for par in like_params:
-                if "ln_" + self.metal_label + "_" in par.name:
+                if "ln_x_" + self.metal_label + "_" in par.name:
                     Npar += 1
                     array_names.append(par.name)
                     array_values.append(par.value)
@@ -215,7 +223,7 @@ class MetalModel(object):
                 _ = np.argwhere(self.X_params[ip].name == array_names)[:, 0]
                 if len(_) != 1:
                     raise ValueError(
-                        "could not update parameter" + self.X_params[ip].name
+                        "could not update parameter " + self.X_params[ip].name
                     )
                 else:
                     ln_X_coeff[Npar - ip - 1] = array_values[_[0]]
@@ -233,7 +241,7 @@ class MetalModel(object):
             array_names = []
             array_values = []
             for par in like_params:
-                if "d_" + self.metal_label + "_" in par.name:
+                if "ln_d_" + self.metal_label + "_" in par.name:
                     Npar += 1
                     array_names.append(par.name)
                     array_values.append(par.value)
@@ -250,7 +258,7 @@ class MetalModel(object):
                 _ = np.argwhere(self.D_params[ip].name == array_names)[:, 0]
                 if len(_) != 1:
                     raise ValueError(
-                        "could not update parameter" + self.D_params[ip].name
+                        "could not update parameter " + self.D_params[ip].name
                     )
                 else:
                     ln_D_coeff[Npar - ip - 1] = array_values[_[0]]
@@ -268,7 +276,7 @@ class MetalModel(object):
             array_names = []
             array_values = []
             for par in like_params:
-                if "d_" + self.metal_label + "_" in par.name:
+                if "a_" + self.metal_label + "_" in par.name:
                     Npar += 1
                     array_names.append(par.name)
                     array_values.append(par.value)
@@ -278,14 +286,14 @@ class MetalModel(object):
             # use fiducial value (no contamination)
             if Npar == 0:
                 return self.A_coeff
-            elif Npar != len(self.D_params):
+            elif Npar != len(self.A_params):
                 raise ValueError("number of params mismatch in get_A_coeffs")
 
             for ip in range(Npar):
-                _ = np.argwhere(self.D_params[ip].name == array_names)[:, 0]
+                _ = np.argwhere(self.A_params[ip].name == array_names)[:, 0]
                 if len(_) != 1:
                     raise ValueError(
-                        "could not update parameter" + self.D_params[ip].name
+                        "could not update parameter " + self.A_params[ip].name
                     )
                 else:
                     A_coeff[Npar - ip - 1] = array_values[_[0]]
@@ -324,9 +332,9 @@ class MetalModel(object):
 
         A_coeff = self.get_A_coeffs(like_params)
 
-        xz = np.log((1 + z) / (1 + self.z_X))
+        xz = (1 + z) / (1 + self.z_X)
         poly = np.poly1d(A_coeff)
-        return np.exp(poly(xz))
+        return poly(xz)
 
     def get_dv_kms(self):
         """Velocity separation where the contamination is stronger"""
