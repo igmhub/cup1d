@@ -15,15 +15,15 @@ class MetalModel(object):
         z_X=3.0,
         ln_X_coeff=None,
         ln_D_coeff=None,
-        fid_value=[[0, 0], [-4, -10]],
-        null_value=[-4, -10],
+        A_coeff=None,
+        X_fid_value=[0, -10],
+        D_fid_value=[0, -4],
+        A_fid_value=[0, 1.5],
+        X_null_value=-10,
         free_param_names=None,
     ):
         """Model the evolution of a metal contamination (SiII or SiIII).
         We use a power law around z_X=3."""
-
-        if fid_value is None:
-            fid_value = [[0, 0], [2, -10]]
 
         # label identifying the metal line
         self.metal_label = metal_label
@@ -39,15 +39,20 @@ class MetalModel(object):
         # power law pivot point
         self.z_X = z_X
         # value below which no contamination (speed up model)
-        self.null_value = null_value
+        self.X_null_value = X_null_value
         self.dv = self.get_dv_kms()
 
         # figure out parameters
-        if (ln_X_coeff is not None) and (ln_D_coeff is not None):
+        if (
+            (ln_X_coeff is not None)
+            and (ln_D_coeff is not None)
+            and (A_coeff is not None)
+        ):
             if free_param_names is not None:
                 raise ValueError("cannot specify coeff and free_param_names")
             self.ln_X_coeff = ln_X_coeff
             self.ln_D_coeff = ln_D_coeff
+            self.A_coeff = A_coeff
         else:
             if free_param_names:
                 # figure out number of free params for this metal line
@@ -60,30 +65,43 @@ class MetalModel(object):
                 n_D = len([p for p in free_param_names if param_tag in p])
                 if n_D == 0:
                     n_D = 1
+
+                param_tag = "a_" + metal_label + "_"
+                n_A = len([p for p in free_param_names if param_tag in p])
+                if n_A == 0:
+                    n_A = 1
             else:
                 n_X = 1
                 n_D = 1
+                n_A = 1
             # start with value from McDonald et al. (2006), and no z evolution
-            self.ln_X_coeff = [0.0] * n_X
-            self.ln_X_coeff[-1] = fid_value[-1][-1]
-            if n_X == 2:
-                self.ln_X_coeff[-2] = fid_value[-2][-1]
+            self.ln_X_coeff = np.zeros((n_X))
+            for ii in range(n_X):
+                self.ln_X_coeff[ii] = X_fid_value[-1 + ii]
+            print("fiducial X coeff", self.ln_X_coeff)
 
-            # this is for the k-dependent damping
-            self.ln_D_coeff = [0.0] * n_D
-            self.ln_D_coeff[-1] = fid_value[-1][0]
-            if n_D == 2:
-                self.ln_D_coeff[-2] = fid_value[-2][0]
+            self.ln_D_coeff = np.zeros((n_D))
+            for ii in range(n_D):
+                self.ln_D_coeff[ii] = D_fid_value[-1 + ii]
+
+            self.A_coeff = np.zeros((n_A))
+            for ii in range(n_A):
+                self.A_coeff[ii] = A_fid_value[-1 + ii]
 
         # store list of likelihood parameters (might be fixed or free)
         self.set_X_parameters()
         self.set_D_parameters()
+        self.set_A_parameters()
 
     def get_Nparam(self):
         """Number of parameters in the model"""
-        if len(self.ln_X_coeff) != len(self.X_params):
+        all_par = (
+            len(self.ln_X_coeff) + len(self.ln_D_coeff) + len(self.A_coeff)
+        )
+        all_par2 = len(self.X_params) + len(self.D_params) + len(self.A_params)
+        if all_par != all_par2:
             raise ValueError("parameter size mismatch")
-        return len(self.ln_X_coeff)
+        return all_par
 
     def set_X_parameters(self):
         """Setup likelihood parameters for metal model"""
@@ -135,6 +153,30 @@ class MetalModel(object):
             self.D_params.append(par)
         return
 
+    def set_A_parameters(self):
+        """Setup likelihood parameters for metal model"""
+
+        self.A_params = []
+        Npar = len(self.A_coeff)
+        for i in range(Npar):
+            name = "a_" + self.metal_label + "_" + str(i)
+            if i == 0:
+                # less than exponential damping
+                xmin = 0.5
+                # more damping than Gaussian
+                xmax = 2.5
+            else:
+                # not optimized
+                xmin = -10
+                xmax = 10
+            # note non-trivial order in coefficients
+            value = self.A_coeff[Npar - i - 1]
+            par = likelihood_parameter.LikelihoodParameter(
+                name=name, value=value, min_value=xmin, max_value=xmax
+            )
+            self.A_params.append(par)
+        return
+
     def get_X_parameters(self):
         """Return likelihood parameters from the metal model"""
         return self.X_params
@@ -142,6 +184,10 @@ class MetalModel(object):
     def get_D_parameters(self):
         """Return likelihood parameters from the metal model"""
         return self.D_params
+
+    def get_A_parameters(self):
+        """Return likelihood parameters from the metal model"""
+        return self.A_params
 
     def get_X_coeffs(self, like_params=[]):
         """Return list of coefficients for metal model"""
@@ -178,7 +224,7 @@ class MetalModel(object):
 
         return ln_X_coeff
 
-    def get_ln_D_coeffs(self, like_params=[]):
+    def get_D_coeffs(self, like_params=[]):
         """Return list of coefficients for metal model"""
 
         if like_params:
@@ -198,7 +244,7 @@ class MetalModel(object):
             if Npar == 0:
                 return self.ln_D_coeff
             elif Npar != len(self.D_params):
-                raise ValueError("number of params mismatch in get_ln_D_coeffs")
+                raise ValueError("number of params mismatch in get_D_coeffs")
 
             for ip in range(Npar):
                 _ = np.argwhere(self.D_params[ip].name == array_names)[:, 0]
@@ -213,6 +259,41 @@ class MetalModel(object):
 
         return ln_D_coeff
 
+    def get_A_coeffs(self, like_params=[]):
+        """Return list of coefficients for metal model"""
+
+        if like_params:
+            A_coeff = self.A_coeff.copy()
+            Npar = 0
+            array_names = []
+            array_values = []
+            for par in like_params:
+                if "d_" + self.metal_label + "_" in par.name:
+                    Npar += 1
+                    array_names.append(par.name)
+                    array_values.append(par.value)
+            array_names = np.array(array_names)
+            array_values = np.array(array_values)
+
+            # use fiducial value (no contamination)
+            if Npar == 0:
+                return self.A_coeff
+            elif Npar != len(self.D_params):
+                raise ValueError("number of params mismatch in get_A_coeffs")
+
+            for ip in range(Npar):
+                _ = np.argwhere(self.D_params[ip].name == array_names)[:, 0]
+                if len(_) != 1:
+                    raise ValueError(
+                        "could not update parameter" + self.D_params[ip].name
+                    )
+                else:
+                    A_coeff[Npar - ip - 1] = array_values[_[0]]
+        else:
+            A_coeff = self.A_coeff
+
+        return A_coeff
+
     def get_amplitude(self, z, like_params=[]):
         """Amplitude of contamination at a given z"""
 
@@ -221,7 +302,7 @@ class MetalModel(object):
 
         ln_X_coeff = self.get_X_coeffs(like_params)
 
-        if ln_X_coeff[-1] <= self.null_value[-1]:
+        if ln_X_coeff[-1] <= self.X_null_value:
             return 0
 
         xz = np.log((1 + z) / (1 + self.z_X))
@@ -232,16 +313,19 @@ class MetalModel(object):
     def get_damping(self, z, like_params=[]):
         """Damping of contamination at a given z"""
 
-        # Note that this represents "f" in McDonald et al. (2006)
-        # It is later rescaled by <F> to compute "a" in eq. (15)
-
-        ln_D_coeff = self.get_ln_D_coeffs(like_params)
-
-        if ln_D_coeff[-1] <= self.null_value[0]:
-            return 0
+        ln_D_coeff = self.get_D_coeffs(like_params)
 
         xz = np.log((1 + z) / (1 + self.z_X))
         poly = np.poly1d(ln_D_coeff)
+        return np.exp(poly(xz))
+
+    def get_exp_damping(self, z, like_params=[]):
+        """Exponent of damping at a given z"""
+
+        A_coeff = self.get_A_coeffs(like_params)
+
+        xz = np.log((1 + z) / (1 + self.z_X))
+        poly = np.poly1d(A_coeff)
         return np.exp(poly(xz))
 
     def get_dv_kms(self):
@@ -268,13 +352,13 @@ class MetalModel(object):
         if f == 0:
             return 1
         adamp = self.get_damping(z, like_params=like_params)
+        alpha = self.get_exp_damping(z, like_params=like_params)
 
         a = f / (1 - mF)
-        # faster damping than exponential, but still long tail
-        alpha = 1.0
         adim_damp = adamp * k_kms
         damping = (1 + adim_damp) ** alpha * np.exp(-1 * adim_damp**alpha)
         cont = 1 + a**2 + 2 * a * np.cos(self.dv * k_kms) * damping
+
         return cont
 
     def plot_contamination(
@@ -284,6 +368,7 @@ class MetalModel(object):
         mF,
         ln_X_coeff=None,
         ln_D_coeff=None,
+        A_coeff=None,
         plot_every_iz=1,
         cmap=None,
         smooth_k=False,
@@ -298,12 +383,17 @@ class MetalModel(object):
             ln_X_coeff = self.ln_X_coeff
         if ln_D_coeff is None:
             ln_D_coeff = self.ln_D_coeff
+        if A_coeff is None:
+            A_coeff = self.A_coeff
 
         if cmap is None:
             cmap = get_discrete_cmap(len(z))
 
         metal_model = MetalModel(
-            self.metal_label, ln_X_coeff=ln_X_coeff, ln_D_coeff=ln_D_coeff
+            self.metal_label,
+            ln_X_coeff=ln_X_coeff,
+            ln_D_coeff=ln_D_coeff,
+            A_coeff=A_coeff,
         )
 
         yrange = [1, 1]

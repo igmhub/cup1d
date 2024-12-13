@@ -124,17 +124,7 @@ def set_P1D(
         | (data_label == "eBOSS_mock")
     ):
         theory = lya_theory.set_theory(
-            emulator,
-            use_hull=False,
-            sim_igm_mF=args.true_igm_label,
-            sim_igm_T=args.true_igm_label,
-            sim_igm_kF=args.true_igm_label,
-            SiII=args.true_SiII,
-            SiIII=args.true_SiIII,
-            HCD=args.true_HCD,
-            SN=args.true_SN,
-            AGN=args.true_AGN,
-            ic_correction=args.ic_correction,
+            args, emulator, use_hull=False, fid_or_true="true"
         )
 
     if (data_label[:3] == "mpg") | (data_label[:3] == "nyx"):
@@ -284,23 +274,8 @@ def set_like(data, emulator, args, data_hires=None):
 
     ## set theory
     theory = lya_theory.set_theory(
-        emulator,
-        free_parameters=free_parameters,
-        use_star_priors=args.use_star_priors,
-        z_star=args.z_star,
-        kp_kms=args.kp_kms,
-        sim_igm_mF=args.fid_igm_label_mF,
-        sim_igm_T=args.fid_igm_label_T,
-        sim_igm_kF=args.fid_igm_label_kF,
-        igm_priors=args.igm_priors,
-        SiIII=args.fid_SiIII,
-        SiII=args.fid_SiII,
-        HCD=args.fid_HCD,
-        SN=args.fid_SN,
-        AGN=args.fid_AGN,
-        ic_correction=args.ic_correction,
+        args, emulator, free_parameters=free_parameters
     )
-
     theory.model_igm.set_fid_igm(zs)
     fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
     theory.set_fid_cosmo(zs, input_cosmo=fid_cosmo, zs_hires=zs_hires)

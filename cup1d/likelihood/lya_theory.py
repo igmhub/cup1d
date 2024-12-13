@@ -15,25 +15,38 @@ from cup1d.utils.utils import is_number_string
 
 
 def set_theory(
-    emulator,
-    free_parameters=None,
-    use_hull=True,
-    use_star_priors=None,
-    zs_hires=None,
-    z_star=3.0,
-    kp_kms=0.009,
-    sim_igm_mF="mpg_central",
-    sim_igm_T="mpg_central",
-    sim_igm_kF="mpg_central",
-    igm_priors="hc",
-    SiIII=None,
-    SiII=None,
-    HCD=None,
-    SN=None,
-    AGN=None,
-    ic_correction=None,
+    args, emulator, free_parameters=None, use_hull=True, fid_or_true="fid"
 ):
     """Set theory"""
+
+    if fid_or_true == "fid":
+        sim_igm_mF = args.fid_sim_igm_label_mF
+        sim_igm_T = args.fid_sim_igm_label_T
+        sim_igm_kF = args.fid_sim_igm_label_kF
+        SiIII_X = args.fid_SiIII_X
+        SiIII_D = args.fid_SiIII_D
+        SiIII_A = args.fid_SiIII_A
+        SiII_X = args.fid_SiII_X
+        SiII_D = args.fid_SiII_D
+        SiII_A = args.fid_SiII_A
+        HCD = args.fid_HCD
+        SN = args.fid_SN
+        AGN = args.fid_AGN
+    elif fid_or_true == "true":
+        sim_igm_mF = args.true_sim_igm_label_mF
+        sim_igm_T = args.true_sim_igm_label_T
+        sim_igm_kF = args.true_sim_igm_label_kF
+        SiIII_X = args.true_SiIII_X
+        SiIII_D = args.true_SiIII_D
+        SiIII_A = args.true_SiIII_A
+        SiII_X = args.true_SiII_X
+        SiII_D = args.true_SiII_D
+        SiII_A = args.true_SiII_A
+        HCD = args.true_HCD
+        SN = args.true_SN
+        AGN = args.true_AGN
+    else:
+        raise ValueError("fid_or_true must be 'fid' or 'true'")
 
     # set igm model
     model_igm = IGM(
@@ -42,18 +55,22 @@ def set_theory(
         fid_sim_igm_T=sim_igm_T,
         fid_sim_igm_kF=sim_igm_kF,
         emu_suite=emulator.list_sim_cube[0][:3],
-        type_priors=igm_priors,
+        type_priors=args.igm_priors,
     )
 
     # set contaminants
     model_cont = Contaminants(
         free_param_names=free_parameters,
-        fid_SiIII=SiIII,
-        fid_SiII=SiII,
+        fid_SiIII_X=SiIII_X,
+        fid_SiIII_D=SiIII_D,
+        fid_SiIII_A=SiIII_A,
+        fid_SiII_X=SiII_X,
+        fid_SiII_D=SiII_D,
+        fid_SiII_A=SiII_A,
         fid_HCD=HCD,
         fid_SN=SN,
         fid_AGN=AGN,
-        ic_correction=ic_correction,
+        ic_correction=args.ic_correction,
     )
 
     # set theory
@@ -62,9 +79,9 @@ def set_theory(
         model_igm=model_igm,
         model_cont=model_cont,
         use_hull=use_hull,
-        use_star_priors=use_star_priors,
-        z_star=z_star,
-        kp_kms=kp_kms,
+        use_star_priors=args.use_star_priors,
+        z_star=args.z_star,
+        kp_kms=args.kp_kms,
     )
 
     return theory

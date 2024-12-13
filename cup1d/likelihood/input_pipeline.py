@@ -336,10 +336,12 @@ class Args:
     data_label_hires: str | None = None
     z_min: float = 0
     z_max: float = 10
-    fid_igm_label_mF: str = "mpg_central"
-    fid_igm_label_T: str = "mpg_central"
-    fid_igm_label_kF: str = "mpg_central"
-    true_igm_label: str | None = None
+    fid_sim_igm_label_mF: str = "mpg_central"
+    fid_sim_igm_label_T: str = "mpg_central"
+    fid_sim_igm_label_kF: str = "mpg_central"
+    true_sim_igm_label_mF: str = "mpg_central"
+    true_sim_igm_label_T: str = "mpg_central"
+    true_sim_igm_label_kF: str = "mpg_central"
     n_tau: int = 2
     n_sigT: int = 2
     n_gamma: int = 2
@@ -355,18 +357,18 @@ class Args:
     igm_priors: str = "hc"
     fid_cosmo_label: str = "mpg_central"
     true_cosmo_label: str | None = None
-    fid_SiIII: list[list[float]] = field(
-        default_factory=lambda: [[0, 0], [2, -10]]
-    )
-    true_SiIII: list[list[float]] = field(
-        default_factory=lambda: [[0, 0], [2, -10]]
-    )
-    fid_SiII: list[list[float]] = field(
-        default_factory=lambda: [[0, 0], [2, -10]]
-    )
-    true_SiII: list[list[float]] = field(
-        default_factory=lambda: [[0, 0], [2, -10]]
-    )
+    fid_SiIII_X: list[float] = field(default_factory=lambda: [0, -10])
+    true_SiIII_X: list[float] = field(default_factory=lambda: [0, -10])
+    fid_SiII_X: list[float] = field(default_factory=lambda: [0, -10])
+    true_SiII_X: list[float] = field(default_factory=lambda: [0, -10])
+    fid_SiIII_D: list[float] = field(default_factory=lambda: [0, 2])
+    true_SiIII_D: list[float] = field(default_factory=lambda: [0, 2])
+    fid_SiII_D: list[float] = field(default_factory=lambda: [0, 2])
+    true_SiII_D: list[float] = field(default_factory=lambda: [0, 2])
+    fid_SiIII_A: list[float] = field(default_factory=lambda: [0, 1.5])
+    true_SiIII_A: list[float] = field(default_factory=lambda: [0, 1.5])
+    fid_SiII_A: list[float] = field(default_factory=lambda: [0, 1.5])
+    true_SiII_A: list[float] = field(default_factory=lambda: [0, 1.5])
     fid_HCD: list[float] = field(default_factory=lambda: [0, -4])
     true_HCD: list[float] = field(default_factory=lambda: [0, -4])
     fid_SN: list[float] = field(default_factory=lambda: [0, -4])

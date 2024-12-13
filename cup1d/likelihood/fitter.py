@@ -806,16 +806,22 @@ class Fitter(object):
         # AGN
         dict_out["nuisance"][
             "AGN"
-        ] = self.like.theory.model_cont.hcd_model.get_AGN_damp(
+        ] = self.like.theory.model_cont.agn_model.get_AGN_damp(
             zs, like_params=like_params
         )
         # Metals
         for X_model in self.like.theory.model_cont.metal_models:
             f = X_model.get_amplitude(zs, like_params=like_params)
             adamp = X_model.get_damping(zs, like_params=like_params)
+            alpha = X_model.get_exp_damping(zs, like_params=like_params)
             dict_out["nuisance"][X_model.metal_label] = {}
             dict_out["nuisance"][X_model.metal_label]["f"] = f
-            dict_out["nuisance"][X_model.metal_label]["adamp"] = adamp
+            if f == 0:
+                dict_out["nuisance"][X_model.metal_label]["d"] = 0
+                dict_out["nuisance"][X_model.metal_label]["a"] = 0
+            else:
+                dict_out["nuisance"][X_model.metal_label]["d"] = adamp
+                dict_out["nuisance"][X_model.metal_label]["a"] = alpha
 
         # FITTER
         dict_out["fitter"] = {}

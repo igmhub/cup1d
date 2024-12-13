@@ -67,9 +67,9 @@ from cup1d.likelihood import CAMB_model
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 # %%
 # path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
@@ -181,7 +181,9 @@ elif choose_challenge:
     else:
         true_sim_label = None
     true_cosmo = set_cosmo(cosmo_label=true_sim_label)
-    args.true_igm_label=true_sim_label
+    args.true_sim_igm_label_mF=true_sim_label
+    args.true_sim_igm_label_T=true_sim_label
+    args.true_sim_igm_label_kF=true_sim_label
     args.z_min = 2.1
     args.z_max = 4.3
 elif choose_desiy1:
@@ -262,8 +264,8 @@ args.vary_alphas=False
 args.fid_cosmo_label="nyx_central"
 args.fid_igm_label_mF="nyx_central"
 args.fid_igm_label_T="nyx_central"
-args.fid_igm_label_kF="nyx_central"
-# args.fid_igm_label_kF="mpg_central"
+# args.fid_igm_label_kF="nyx_central"
+args.fid_igm_label_kF="mpg_central"
 
 # args.fid_cosmo_label="nyx_seed"
 
@@ -372,7 +374,7 @@ for p in like.free_params:
 
 # %%
 like.plot_p1d(residuals=False)
-like.plot_p1d(residuals=True)
+# like.plot_p1d(residuals=True)
 
 # %%
 # z = like.data.z
@@ -430,6 +432,7 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
 
 # %%
+fitter.save_fitter()
 
 # %%
 plotter = Plotter(fitter)

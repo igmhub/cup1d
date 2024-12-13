@@ -22,14 +22,22 @@ class Contaminants(object):
         agn_model=None,
         hcd_model_type="Rogers2017",
         ic_correction=False,
-        fid_SiII=[[0, 0], [2, -10]],
-        fid_SiIII=[[0, 0], [2, -10]],
+        fid_SiIII_X=[0, -10],
+        fid_SiIII_D=[0, 2],
+        fid_SiIII_A=[0, 1.5],
+        fid_SiII_X=[0, -10],
+        fid_SiII_D=[0, 2],
+        fid_SiII_A=[0, 1.5],
         fid_HCD=[0, -4],
         fid_SN=[0, -4],
         fid_AGN=[0, -5],
     ):
-        self.fid_SiII = fid_SiII
-        self.fid_SiIII = fid_SiIII
+        self.fid_SiIII_X = fid_SiIII_X
+        self.fid_SiIII_D = fid_SiIII_D
+        self.fid_SiIII_A = fid_SiIII_A
+        self.fid_SiII_X = fid_SiII_X
+        self.fid_SiII_D = fid_SiII_D
+        self.fid_SiII_A = fid_SiII_A
         self.fid_HCD = fid_HCD
         self.fid_SN = fid_SN
         self.fid_AGN = fid_AGN
@@ -43,7 +51,9 @@ class Contaminants(object):
             self.SiIII_model = metal_model.MetalModel(
                 metal_label="SiIII",
                 free_param_names=free_param_names,
-                fid_value=self.fid_SiIII,
+                X_fid_value=self.fid_SiIII_X,
+                D_fid_value=self.fid_SiIII_D,
+                A_fid_value=self.fid_SiIII_A,
             )
         self.metal_models.append(self.SiIII_model)
 
@@ -53,7 +63,9 @@ class Contaminants(object):
             self.SiII_model = metal_model.MetalModel(
                 metal_label="SiII",
                 free_param_names=free_param_names,
-                fid_value=self.fid_SiII,
+                X_fid_value=self.fid_SiII_X,
+                D_fid_value=self.fid_SiII_D,
+                A_fid_value=self.fid_SiII_A,
             )
         self.metal_models.append(self.SiII_model)
 
@@ -98,10 +110,12 @@ class Contaminants(object):
         dict_out = {}
 
         for ii in range(2):
-            dict_out["ln_SiIII_" + str(ii)] = self.fid_SiIII[-1 - ii][-1]
-            dict_out["d_SiIII_" + str(ii)] = self.fid_SiIII[-1 - ii][0]
-            dict_out["ln_SiII_" + str(ii)] = self.fid_SiII[-1 - ii][-1]
-            dict_out["d_SiII_" + str(ii)] = self.fid_SiII[-1 - ii][0]
+            dict_out["ln_f_SiIII_" + str(ii)] = self.fid_SiIII_X[-1 - ii]
+            dict_out["ln_d_SiIII_" + str(ii)] = self.fid_SiIII_D[-1 - ii]
+            dict_out["a_SiIII_" + str(ii)] = self.fid_SiIII_A[-1 - ii]
+            dict_out["ln_f_SiII_" + str(ii)] = self.fid_SiII_X[-1 - ii]
+            dict_out["ln_d_SiII_" + str(ii)] = self.fid_SiII_D[-1 - ii]
+            dict_out["a_SiII_" + str(ii)] = self.fid_SiII_A[-1 - ii]
             dict_out["ln_A_damp_" + str(ii)] = self.fid_HCD[-1 - ii]
             dict_out["ln_SN_" + str(ii)] = self.fid_SN[-1 - ii]
             dict_out["ln_AGN_" + str(ii)] = self.fid_AGN[-1 - ii]
