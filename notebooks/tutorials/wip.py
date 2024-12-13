@@ -67,9 +67,9 @@ from cup1d.likelihood import CAMB_model
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
+# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
 # %%
 # path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
@@ -101,8 +101,8 @@ else:
 choose_forecast = False
 choose_mock = False
 choose_data = False
-choose_challenge = True
-choose_desiy1 = False
+choose_challenge = False
+choose_desiy1 = True
 
 if choose_forecast:
     args.data_label_hires = None
@@ -194,7 +194,7 @@ elif choose_desiy1:
     # QMLE /global/cfs/cdirs/desicollab/users/naimgk/my-reductions/data/iron-v3/DataProducts/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits
     # FFT /global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/plots/baseline/notebook/measurement/p1d_fft_y1_measurement_kms.fits
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v2.fits"
+    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v3.fits"
     args.z_min = 2.1
     args.z_max = 4.3
 
@@ -251,21 +251,23 @@ args.ic_correction=False
 
 args.emu_cov_factor = 0.0
 # args.fid_cosmo_label="mpg_2"
-if "Nyx" in emulator.emulator_label:
-    args.fid_cosmo_label="nyx_central"
-    args.fid_igm_label="nyx_central"
-    args.vary_alphas=True
-else:
-    args.fid_cosmo_label="mpg_central"
-    args.fid_igm_label="mpg_central"
-    args.vary_alphas=False
+# if "Nyx" in emulator.emulator_label:
+#     args.fid_cosmo_label="nyx_central"
+#     args.fid_igm_label="nyx_central"
+#     args.vary_alphas=True
+# else:
+#     args.fid_cosmo_label="mpg_central"
+#     args.fid_igm_label="mpg_central"
+#     args.vary_alphas=False
 
+# args.fix_cosmo=False
+args.fix_cosmo=True
 args.vary_alphas=False
 args.fid_cosmo_label="nyx_central"
-args.fid_igm_label_mF="nyx_central"
-args.fid_igm_label_T="nyx_central"
-# args.fid_igm_label_kF="nyx_central"
-args.fid_igm_label_kF="mpg_central"
+args.fid_sim_igm_label_mF="nyx_central"
+args.fid_sim_igm_label_T="nyx_central"
+args.fid_sim_igm_label_kF="nyx_central"
+# args.fid_sim_igm_label_kF="mpg_central"
 
 # args.fid_cosmo_label="nyx_seed"
 
@@ -300,31 +302,32 @@ else:
 
 # contaminants
 # from 1 to 6, -11 to -4
-args.fid_SiIII=[[0, 0], [-4, -10]]
-args.fid_SiII=[[0, 0], [-4, -10]]
+args.fid_SiIII_X=[0, -5]
+args.fid_SiIII_D=[0, 5]
+args.fid_SiIII_A=[0, 1.5]
 # from -5 to 0
-args.fid_HCD=[0, -4]
+args.fid_HCD=[0, -2]
 # from -5 to 2
-args.fid_SN=[0, -4]
-args.fid_AGN=[0, -5]
+# args.fid_SN=[0, -4]
+# args.fid_AGN=[0, -5]
 
     
-args.fix_cosmo=False
-# args.fix_cosmo=True
 args.n_tau=2
-args.n_sigT=0
-args.n_gamma=0
-args.n_kF=0
+args.n_sigT=2
+args.n_gamma=2
+args.n_kF=2
 # args.n_tau=2
 # args.n_sigT=2
 # args.n_gamma=2
 # args.n_kF=2
-args.n_SiIII = 0
-args.n_d_SiIII = 0
-args.n_SiII = 0
-args.n_dla=0
-args.n_sn=0
-args.n_agn=0
+args.n_x_SiIII = 2
+args.n_d_SiIII = 2
+args.n_a_SiIII = 2
+
+# args.n_SiII = 0
+# args.n_dla=0
+# args.n_sn=0
+# args.n_agn=0
 
 # args.fid_SiII=[[0, 0], [-4, -10]] # null
 # args.fid_SN=[0, -4] # null
@@ -374,7 +377,7 @@ for p in like.free_params:
 
 # %%
 like.plot_p1d(residuals=False)
-# like.plot_p1d(residuals=True)
+like.plot_p1d(residuals=True)
 
 # %%
 # z = like.data.z

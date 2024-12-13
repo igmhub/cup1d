@@ -83,29 +83,16 @@ class HCD_Model_Rogers2017(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_contamination(self, z, k_kms, like_params=[]):
-        """Multiplicative contamination caused by HCDs"""
-        A_damp = self.get_A_damp(z, like_params=like_params)
-        if A_damp == 0:
-            return 1
+    # def get_contamination(self, z, k_kms, like_params=[]):
+    #     """Multiplicative contamination caused by HCDs"""
+    #     A_damp = self.get_A_damp(z, like_params=like_params)
+    #     if A_damp == 0:
+    #         return 1
 
-        # values and pivot redshift directly from arXiv:1706.08532
-        z_0 = 2
-        # parameter order: LLS, Sub-DLA, Small-DLA, Large-DLA
-        a_0 = np.array([2.2001, 1.5083, 1.1415, 0.8633])
-        a_1 = np.array([0.0134, 0.0994, 0.0937, 0.2943])
-        b_0 = np.array([36.449, 81.388, 162.95, 429.58])
-        b_1 = np.array([-0.0674, -0.2287, 0.0126, -0.4964])
-        # compute the z-dependent correction terms
-        a_z = a_0 * ((1 + z) / (1 + z_0)) ** a_1
-        b_z = b_0 * ((1 + z) / (1 + z_0)) ** b_1
+    #     a = 300
+    #     dla_corr = 1 + A_damp / np.exp(k_kms * a)
 
-        dla_corr = 1 + A_damp * (
-            (a_z[0] * np.exp(b_z[0] * k_kms) - 1) ** -2
-            + (a_z[1] * np.exp(b_z[1] * k_kms) - 1) ** -2
-        )
-
-        return dla_corr
+    #     return dla_corr
 
     def get_parameters(self):
         """Return likelihood parameters for the HCD model"""
@@ -149,7 +136,7 @@ class HCD_Model_Rogers2017(object):
 
         return ln_A_damp_coeff
 
-    def orig_get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=[]):
         """Multiplicative contamination caused by HCDs"""
         A_damp = self.get_A_damp(z, like_params=like_params)
         if A_damp == 0:
