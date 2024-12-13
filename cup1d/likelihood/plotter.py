@@ -746,39 +746,51 @@ class Plotter(object):
 
             x_list_params = {}
             d_list_params = {}
+            a_list_params = {}
             for p in self.fitter.like.free_params:
-                if "ln_" + metal + "_" in p.name:
+                if "ln_x_" + metal + "_" in p.name:
                     key = self.fitter.param_dict[p.name]
                     x_list_params[p.name] = self.fitter.mle[key]
                     print(p.name, self.fitter.mle[key])
-                if "d_" + metal + "_" in p.name:
+                if "ln_d_" + metal + "_" in p.name:
                     key = self.fitter.param_dict[p.name]
                     d_list_params[p.name] = self.fitter.mle[key]
+                    print(p.name, self.fitter.mle[key])
+                if "a_" + metal + "_" in p.name:
+                    key = self.fitter.param_dict[p.name]
+                    a_list_params[p.name] = self.fitter.mle[key]
                     print(p.name, self.fitter.mle[key])
 
             x_Npar = len(x_list_params)
             ln_X_coeff = np.zeros(x_Npar)
             for ii in range(x_Npar):
-                name = "ln_" + metal + "_" + str(ii)
+                name = "ln_x_" + metal + "_" + str(ii)
                 # note non-trivial order in coefficients
                 ln_X_coeff[x_Npar - ii - 1] = x_list_params[name]
 
             d_Npar = len(d_list_params)
             ln_D_coeff = np.zeros(d_Npar)
             for ii in range(d_Npar):
-                name = "d_" + metal + "_" + str(ii)
+                name = "ln_d_" + metal + "_" + str(ii)
                 # note non-trivial order in coefficients
                 ln_D_coeff[d_Npar - ii - 1] = d_list_params[name]
 
-            if (x_Npar == 0) and (d_Npar == 0):
+            a_Npar = len(a_list_params)
+            A_coeff = np.zeros(a_Npar)
+            for ii in range(a_Npar):
+                name = "a_" + metal + "_" + str(ii)
+                # note non-trivial order in coefficients
+                A_coeff[d_Npar - ii - 1] = a_list_params[name]
+
+            if (x_Npar == 0) and (d_Npar == 0) and (a_Npar == 0):
                 continue
 
             if x_Npar == 0:
                 ln_X_coeff = None
             if d_Npar == 0:
                 ln_D_coeff = None
-
-            print(ln_X_coeff, ln_D_coeff)
+            if a_Npar == 0:
+                A_coeff = None
 
             if self.save_directory is not None:
                 name = self.save_directory + "/" + metal + "_cont"
@@ -791,6 +803,7 @@ class Plotter(object):
                 mF,
                 ln_X_coeff=ln_X_coeff,
                 ln_D_coeff=ln_D_coeff,
+                A_coeff=A_coeff,
                 plot_every_iz=plot_every_iz,
                 cmap=self.cmap,
                 smooth_k=smooth_k,

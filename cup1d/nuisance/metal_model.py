@@ -5,6 +5,10 @@ from cup1d.utils.utils import get_discrete_cmap
 from cup1d.likelihood import likelihood_parameter
 
 
+def signed_exp(x):
+    return np.tanh(x) * np.exp(np.exp(np.abs(x)))
+
+
 class MetalModel(object):
     """Model the contamination from Silicon Lya cross-correlations"""
 
@@ -20,6 +24,7 @@ class MetalModel(object):
         D_fid_value=[0, -4],
         A_fid_value=[0, 1.5],
         X_null_value=-10,
+        A_null_value=0,
         free_param_names=None,
     ):
         """Model the evolution of a metal contamination (SiII or SiIII).
@@ -40,6 +45,7 @@ class MetalModel(object):
         self.z_X = z_X
         # value below which no contamination (speed up model)
         self.X_null_value = X_null_value
+        self.A_null_value = A_null_value
         self.dv = self.get_dv_kms()
 
         # figure out parameters
@@ -123,11 +129,11 @@ class MetalModel(object):
                 # no contamination
                 xmin = -11
                 # max 10% contamination (oscillations) -4
-                xmax = -3
+                xmax = -2.5
             else:
                 # not optimized
-                xmin = -10
-                xmax = 10
+                xmin = -1
+                xmax = 1
             # note non-trivial order in coefficients
             value = self.ln_X_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
@@ -146,13 +152,13 @@ class MetalModel(object):
             if i == 0:
                 # log of overall amplitude at z_X
                 # no contamination (0.3% at high k)
-                xmin = -5
+                xmin = 2
                 # Almost no oscillations at high k
-                xmax = 7
+                xmax = 8
             else:
                 # not optimized
-                xmin = -10
-                xmax = 10
+                xmin = -1
+                xmax = 1
             # note non-trivial order in coefficients
             value = self.ln_D_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
@@ -170,13 +176,12 @@ class MetalModel(object):
             name = "a_" + self.metal_label + "_" + str(i)
             if i == 0:
                 # less than exponential damping
-                xmin = 0.5
+                xmin = 0.0
                 # more damping than Gaussian
                 xmax = 2.5
             else:
-                # not optimized
-                xmin = -10
-                xmax = 10
+                xmin = -3
+                xmax = 3
             # note non-trivial order in coefficients
             value = self.A_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
@@ -308,29 +313,47 @@ class MetalModel(object):
         # Note that this represents "f" in McDonald et al. (2006)
         # It is later rescaled by <F> to compute "a" in eq. (15)
 
-        ln_X_coeff = self.get_X_coeffs(like_params)
+        _ln_X_coeff = self.get_X_coeffs(like_params).copy()
 
-        if ln_X_coeff[-1] <= self.X_null_value:
+        if _ln_X_coeff[-1] <= self.X_null_value:
             return 0
 
         xz = np.log((1 + z) / (1 + self.z_X))
-        ln_poly = np.poly1d(ln_X_coeff)
-        ln_out = ln_poly(xz)
-        return np.exp(ln_out)
+
+        # keep exponent for amplitude
+        _ln_X_coeff[-1] = np.exp(_ln_X_coeff[-1])
+        # for the redshift ev coeff, exp to reduce dynamic range
+        if len(_ln_X_coeff) > 1:
+            _ln_X_coeff[0] = signed_exp(_ln_X_coeff[0])
+
+        ln_poly = np.poly1d(_ln_X_coeff)
+        # redshift evolution linear
+        return ln_poly(xz)
 
     def get_damping(self, z, like_params=[]):
         """Damping of contamination at a given z"""
 
-        ln_D_coeff = self.get_D_coeffs(like_params)
+        _ln_D_coeff = self.get_D_coeffs(like_params).copy()
 
         xz = np.log((1 + z) / (1 + self.z_X))
-        poly = np.poly1d(ln_D_coeff)
-        return np.exp(poly(xz))
+
+        # keep exponent for amplitude
+        _ln_D_coeff[-1] = np.exp(_ln_D_coeff[-1])
+        # for the redshift ev coeff, exp to reduce dynamic range
+        if len(_ln_D_coeff) > 1:
+            _ln_D_coeff[0] = signed_exp(_ln_D_coeff[0])
+
+        ln_poly = np.poly1d(_ln_D_coeff)
+        # redshift evolution linear
+        return ln_poly(xz)
 
     def get_exp_damping(self, z, like_params=[]):
         """Exponent of damping at a given z"""
 
         A_coeff = self.get_A_coeffs(like_params)
+
+        if A_coeff[-1] <= self.A_null_value:
+            return 0
 
         xz = (1 + z) / (1 + self.z_X)
         poly = np.poly1d(A_coeff)
@@ -359,12 +382,15 @@ class MetalModel(object):
         f = self.get_amplitude(z, like_params=like_params)
         if f == 0:
             return 1
-        adamp = self.get_damping(z, like_params=like_params)
         alpha = self.get_exp_damping(z, like_params=like_params)
 
+        if alpha == 0:
+            damping = 1
+        else:
+            adim_damp = k_kms * self.get_damping(z, like_params=like_params)
+            damping = (1 + adim_damp) ** alpha * np.exp(-1 * adim_damp**alpha)
+
         a = f / (1 - mF)
-        adim_damp = adamp * k_kms
-        damping = (1 + adim_damp) ** alpha * np.exp(-1 * adim_damp**alpha)
         cont = 1 + a**2 + 2 * a * np.cos(self.dv * k_kms) * damping
 
         return cont
