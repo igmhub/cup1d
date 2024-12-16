@@ -182,7 +182,7 @@ for ii, z in enumerate(list_z):
         
     results['lnprob_mle'][ii] = data["fitter"]['lnprob_mle']
     results['HCD'][ii] = data["nuisance"]["HCD"][0]
-    
+
 
 # %% [markdown]
 # also save the evaluation of the IGM and contaminants for the redshifs of interest

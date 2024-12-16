@@ -29,7 +29,8 @@ def set_theory(
         SiII_X = args.fid_SiII_X
         SiII_D = args.fid_SiII_D
         SiII_A = args.fid_SiII_A
-        HCD = args.fid_HCD
+        A_damp = args.fid_A_damp
+        A_scale = args.fid_A_scale
         SN = args.fid_SN
         AGN = args.fid_AGN
     elif fid_or_true == "true":
@@ -42,7 +43,8 @@ def set_theory(
         SiII_X = args.true_SiII_X
         SiII_D = args.true_SiII_D
         SiII_A = args.true_SiII_A
-        HCD = args.true_HCD
+        A_damp = args.true_A_damp
+        A_scale = args.true_A_scale
         SN = args.true_SN
         AGN = args.true_AGN
     else:
@@ -67,7 +69,8 @@ def set_theory(
         fid_SiII_X=SiII_X,
         fid_SiII_D=SiII_D,
         fid_SiII_A=SiII_A,
-        fid_HCD=HCD,
+        fid_A_damp=A_damp,
+        fid_A_scale=A_scale,
         fid_SN=SN,
         fid_AGN=AGN,
         ic_correction=args.ic_correction,
@@ -783,7 +786,10 @@ class Theory(object):
                 params.append(par)
 
         # get parameters from HCD contamination model
-        for par in self.model_cont.hcd_model.get_parameters():
+        for par in self.model_cont.hcd_model.get_A_damp_parameters():
+            params.append(par)
+
+        for par in self.model_cont.hcd_model.get_A_scale_parameters():
             params.append(par)
 
         # get parameters from SN contamination model

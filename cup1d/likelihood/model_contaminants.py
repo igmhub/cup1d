@@ -4,6 +4,7 @@ from cup1d.nuisance import (
     metal_model,
     hcd_model_McDonald2005,
     hcd_model_Rogers2017,
+    hcd_model_new,
     SN_model,
     AGN_model,
 )
@@ -28,7 +29,8 @@ class Contaminants(object):
         fid_SiII_X=[0, -10],
         fid_SiII_D=[0, 2],
         fid_SiII_A=[0, 1.5],
-        fid_HCD=[0, -4],
+        fid_A_damp=[0, -4],
+        fid_A_scale=[0, 1],
         fid_SN=[0, -4],
         fid_AGN=[0, -5],
     ):
@@ -38,7 +40,8 @@ class Contaminants(object):
         self.fid_SiII_X = fid_SiII_X
         self.fid_SiII_D = fid_SiII_D
         self.fid_SiII_A = fid_SiII_A
-        self.fid_HCD = fid_HCD
+        self.fid_A_damp = fid_A_damp
+        self.fid_A_scale = fid_A_scale
         self.fid_SN = fid_SN
         self.fid_AGN = fid_AGN
         self.ic_correction = ic_correction
@@ -76,16 +79,23 @@ class Contaminants(object):
             if hcd_model_type == "Rogers2017":
                 self.hcd_model = hcd_model_Rogers2017.HCD_Model_Rogers2017(
                     free_param_names=free_param_names,
-                    fid_value=self.fid_HCD,
+                    fid_A_damp=self.fid_A_damp,
+                    fid_A_scale=self.fid_A_scale,
                 )
             elif hcd_model_type == "McDonald2005":
                 self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
                     free_param_names=free_param_names,
-                    fid_value=self.fid_HCD,
+                    fid_A_damp=self.fid_A_damp,
+                )
+            elif hcd_model_type == "new":
+                self.hcd_model = hcd_model_new.HCD_Model_new(
+                    free_param_names=free_param_names,
+                    fid_A_damp=self.fid_A_damp,
+                    fid_A_scale=self.fid_A_scale,
                 )
             else:
                 raise ValueError(
-                    "hcd_model_type must be one of 'Rogers2017' or 'McDonald2005'"
+                    "hcd_model_type must be one of 'Rogers2017', 'McDonald2005', or 'new'"
                 )
 
         # setup SN model
@@ -116,7 +126,8 @@ class Contaminants(object):
             dict_out["ln_f_SiII_" + str(ii)] = self.fid_SiII_X[-1 - ii]
             dict_out["ln_d_SiII_" + str(ii)] = self.fid_SiII_D[-1 - ii]
             dict_out["a_SiII_" + str(ii)] = self.fid_SiII_A[-1 - ii]
-            dict_out["ln_A_damp_" + str(ii)] = self.fid_HCD[-1 - ii]
+            dict_out["ln_A_damp_" + str(ii)] = self.fid_A_damp[-1 - ii]
+            dict_out["ln_A_scale_" + str(ii)] = self.fid_A_scale[-1 - ii]
             dict_out["ln_SN_" + str(ii)] = self.fid_SN[-1 - ii]
             dict_out["ln_AGN_" + str(ii)] = self.fid_AGN[-1 - ii]
         dict_out["ic_correction"] = self.ic_correction

@@ -5,13 +5,13 @@ from cup1d.utils.utils import get_discrete_cmap
 from cup1d.likelihood import likelihood_parameter
 
 
-class HCD_Model_Rogers2017(object):
-    """Model HCD contamination following Rogers et al. (2017)."""
+class HCD_Model_new(object):
+    """New model for HCD contamination"""
 
     def __init__(
         self,
         z_0=3.0,
-        fid_A_scale=[0, 1],
+        fid_A_scale=[0, 5],
         fid_A_damp=[0, -5],
         null_A_damp=-4,
         ln_A_damp_coeff=None,
@@ -232,39 +232,9 @@ class HCD_Model_Rogers2017(object):
         A_damp = self.get_A_damp(z, like_params=like_params)
         if A_damp == 0:
             return 1
-
         A_scale = self.get_A_scale(z, like_params=like_params)
 
-        # values and pivot redshift directly from arXiv:1706.08532
-        z_0 = 2
-        # parameter order: LLS, Sub-DLA, Small-DLA, Large-DLA
-        a_0 = np.array([2.2001, 1.5083, 1.1415, 0.8633])
-        a_1 = np.array([0.0134, 0.0994, 0.0937, 0.2943])
-        b_0 = np.array([36.449, 81.388, 162.95, 429.58])
-        b_1 = np.array([-0.0674, -0.2287, 0.0126, -0.4964])
-        # compute the z-dependent correction terms
-        a_z = a_0 * ((1 + z) / (1 + z_0)) ** a_1
-        b_z = b_0 * ((1 + z) / (1 + z_0)) ** b_1
-        dla_corr = np.ones(
-            k_kms.size
-        )  # alpha_0 degenerate with mean flux, set to 1
-        # a_lls and a_sub degenerate with each other (as are a_sdla, a_ldla), so only use two values
-        dla_corr += (
-            A_damp
-            * ((1 + z) / (1 + z_0)) ** -3.55
-            * (
-                (a_z[0] * np.exp(b_z[0] * k_kms) - 1) ** -2
-                + A_scale * (a_z[1] * np.exp(b_z[1] * k_kms) - 1) ** -2
-            )
-        )
-        # dla_corr += (
-        #     alpha[1]
-        #     * ((1 + z) / (1 + z_0)) ** -3.55
-        #     * (
-        #         (a_z[2] * np.exp(b_z[2] * k_kms) - 1) ** -2
-        #         + (a_z[3] * np.exp(b_z[3] * k_kms) - 1) ** -2
-        #     )
-        # )
+        dla_corr = 1 + A_damp / np.exp(k_kms * A_scale)
 
         return dla_corr
 

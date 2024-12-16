@@ -12,15 +12,15 @@ class HCD_Model_McDonald2005(object):
     def __init__(
         self,
         z_0=3.0,
-        fid_value=[0, -6],
+        fid_A_damp=[0, -6],
         null_value=-6,
         ln_A_damp_coeff=None,
         free_param_names=None,
     ):
         self.z_0 = z_0
         self.null_value = null_value
-        if fid_value is None:
-            fid_value = [0, -6]
+        if fid_A_damp is None:
+            fid_A_damp = [0, -6]
 
         if ln_A_damp_coeff:
             if free_param_names is not None:
@@ -36,9 +36,9 @@ class HCD_Model_McDonald2005(object):
                 n_hcd = 1
 
             self.ln_A_damp_coeff = [0.0] * n_hcd
-            self.ln_A_damp_coeff[-1] = fid_value[-1]
+            self.ln_A_damp_coeff[-1] = fid_A_damp[-1]
             if n_hcd == 2:
-                self.ln_A_damp_coeff[-2] = fid_value[-2]
+                self.ln_A_damp_coeff[-2] = fid_A_damp[-2]
 
         self.set_parameters()
 
