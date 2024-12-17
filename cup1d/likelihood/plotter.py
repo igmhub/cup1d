@@ -687,20 +687,41 @@ class Plotter(object):
             dict_data = None
 
         list_params = {}
+        Npar_damp = 0
+        Npar_scale = 0
         for p in self.fitter.like.free_params:
-            if "A_damp" in p.name:
+            if ("A_damp" in p.name) | ("A_scale" in p.name):
                 key = self.fitter.param_dict[p.name]
                 list_params[p.name] = self.fitter.mle[key]
                 print(p.name, self.fitter.mle[key])
+            if "A_damp" in p.name:
+                Npar_damp += 1
+            elif "A_scale" in p.name:
+                Npar_scale += 1
 
         Npar = len(list_params)
         if Npar == 0:
             return
-        coeff = np.zeros(Npar)
-        for ii in range(Npar):
-            name = "ln_A_damp_" + str(ii)
-            # note non-trivial order in coefficients
-            coeff[Npar - ii - 1] = list_params[name]
+
+        print(Npar, Npar_damp, Npar_scale)
+
+        if Npar_scale != 0:
+            A_scale_coeff = np.zeros(Npar_scale)
+            for ii in range(Npar_scale):
+                name = "ln_A_scale_" + str(ii)
+                # note non-trivial order in coefficients
+                A_scale_coeff[Npar_scale - ii - 1] = list_params[name]
+        else:
+            A_scale_coeff = None
+
+        if Npar_damp != 0:
+            A_damp_coeff = np.zeros(Npar_damp)
+            for ii in range(Npar_damp):
+                name = "ln_A_damp_" + str(ii)
+                # note non-trivial order in coefficients
+                A_damp_coeff[Npar_damp - ii - 1] = list_params[name]
+        else:
+            A_damp_coeff = None
 
         if self.save_directory is not None:
             name = self.save_directory + "/HCD_cont"
@@ -710,7 +731,8 @@ class Plotter(object):
         self.fitter.like.theory.model_cont.hcd_model.plot_contamination(
             self.fitter.like.data.z,
             self.fitter.like.data.k_kms,
-            coeff,
+            ln_A_damp_coeff=A_damp_coeff,
+            ln_A_scale_coeff=A_scale_coeff,
             plot_every_iz=plot_every_iz,
             cmap=self.cmap,
             smooth_k=smooth_k,

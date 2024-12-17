@@ -352,7 +352,8 @@ class Args:
     n_d_SiII: int = 0
     n_a_SiIII: int = 0
     n_a_SiII: int = 0
-    n_dla: int = 0
+    n_d_dla: int = 0
+    n_s_dla: int = 0
     n_sn: int = 0
     n_agn: int = 0
     ic_correction: bool = False
@@ -383,6 +384,7 @@ class Args:
     apply_smoothing: bool = False
     cov_label: str = "Chabanier2019"
     cov_label_hires: str = "Karacayli2022"
+    hcd_model_type: str = "Rogers2017"
     use_star_priors: Optional[dict] = None
     add_noise: bool = False
     seed_noise: int = 0

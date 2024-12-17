@@ -91,9 +91,9 @@ class HCD_Model_new(object):
             name = "ln_A_scale_" + str(i)
             if i == 0:
                 # no contamination
-                xmin = -5
+                xmin = 3
                 # 0 gives 350% contamination low k
-                xmax = 0
+                xmax = 7
             else:
                 # not optimized
                 xmin = -10
@@ -262,7 +262,7 @@ class HCD_Model_new(object):
         if cmap is None:
             cmap = get_discrete_cmap(len(z))
 
-        hcd_model = HCD_Model_Rogers2017(
+        hcd_model = HCD_Model_new(
             ln_A_damp_coeff=ln_A_damp_coeff, ln_A_scale_coeff=ln_A_scale_coeff
         )
 

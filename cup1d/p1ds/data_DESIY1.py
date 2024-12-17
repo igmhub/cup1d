@@ -64,10 +64,21 @@ def read_from_file(
         if hdu[1].header["EXTNAME"] == "P1D_BLIND":
             blinding = True
 
+    for ii in range(3, 6):
+        if "EXTNAME" in hdu[ii].header:
+            if hdu[ii].header["EXTNAME"] == "COVARIANCE_SYST":
+                cov_syst_raw = hdu[ii].data.copy()
+            elif hdu[ii].header["EXTNAME"] == "COVARIANCE_STAT":
+                cov_stat_raw = hdu[ii].data.copy()
+
+    # cov_raw = cov_stat_raw + cov_syst_raw
+    cov_raw = cov_stat_raw.copy()
+    ind = np.arange(cov_raw.shape[0])
+    cov_raw[ind, ind] += np.diag(cov_syst_raw)
+
     zs_raw = hdu[1].data["Z"]
     k_kms_raw = hdu[1].data["K"]
     Pk_kms_raw = hdu[1].data["PLYA"]
-    cov_raw = hdu[3].data.copy()
     diag_cov_raw = np.diag(cov_raw)
     if cov_only_diag:
         _cov = np.zeros_like(cov_raw)

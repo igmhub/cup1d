@@ -799,10 +799,16 @@ class Fitter(object):
         dict_out["nuisance"]["z"] = zs
         # HCD
         dict_out["nuisance"][
-            "HCD"
+            "A_damp"
         ] = self.like.theory.model_cont.hcd_model.get_A_damp(
             zs, like_params=like_params
         )
+        if self.like.args["hcd_model_type"] == "new":
+            dict_out["nuisance"][
+                "A_scale"
+            ] = self.like.theory.model_cont.hcd_model.get_A_scale(
+                zs, like_params=like_params
+            )
         # AGN
         dict_out["nuisance"][
             "AGN"
@@ -816,12 +822,8 @@ class Fitter(object):
             alpha = X_model.get_exp_damping(zs, like_params=like_params)
             dict_out["nuisance"][X_model.metal_label] = {}
             dict_out["nuisance"][X_model.metal_label]["f"] = f
-            if f == 0:
-                dict_out["nuisance"][X_model.metal_label]["d"] = 0
-                dict_out["nuisance"][X_model.metal_label]["a"] = 0
-            else:
-                dict_out["nuisance"][X_model.metal_label]["d"] = adamp
-                dict_out["nuisance"][X_model.metal_label]["a"] = alpha
+            dict_out["nuisance"][X_model.metal_label]["d"] = adamp
+            dict_out["nuisance"][X_model.metal_label]["a"] = alpha
 
         # FITTER
         dict_out["fitter"] = {}
@@ -906,12 +908,12 @@ param_dict = {
     "a_SiII_0": "$a^{SiII}_0$",
     "a_SiII_1": "$a^{SiII}_1$",
     # each HCD contamination should have its own parameters here
-    "ln_A_damp_0": "$\mathrm{ln}\,\mathrm{HCD}_0$",
-    "ln_A_damp_1": "$\mathrm{ln}\,\mathrm{HCD}_1$",
-    "ln_A_damp_2": "$\mathrm{ln}\,\mathrm{HCD}_2$",
-    "ln_A_scale_0": "$\mathrm{ln}\,\mathrm{HCD}_0$",
-    "ln_A_scale_1": "$\mathrm{ln}\,\mathrm{HCD}_1$",
-    "ln_A_scale_2": "$\mathrm{ln}\,\mathrm{HCD}_2$",
+    "ln_A_damp_0": "$\mathrm{ln}\,f^\mathrm{HCD}_0$",
+    "ln_A_damp_1": "$\mathrm{ln}\,f^\mathrm{HCD}_1$",
+    "ln_A_damp_2": "$\mathrm{ln}\,f^\mathrm{HCD}_2$",
+    "ln_A_scale_0": "$\mathrm{ln}\,s^\mathrm{HCD}_0$",
+    "ln_A_scale_1": "$\mathrm{ln}\,s^\mathrm{HCD}_1$",
+    "ln_A_scale_2": "$\mathrm{ln}\,s^\mathrm{HCD}_2$",
     "ln_SN_0": "$\mathrm{ln}\,\mathrm{SN}_0$",
     "ln_SN_1": "$\mathrm{ln}\,\mathrm{SN}_1$",
     "ln_AGN_0": "$\mathrm{ln}\,\mathrm{AGN}_0$",

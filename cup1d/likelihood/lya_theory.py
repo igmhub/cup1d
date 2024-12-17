@@ -73,6 +73,7 @@ def set_theory(
         fid_A_scale=A_scale,
         fid_SN=SN,
         fid_AGN=AGN,
+        hcd_model_type=args.hcd_model_type,
         ic_correction=args.ic_correction,
     )
 
