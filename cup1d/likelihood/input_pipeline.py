@@ -320,6 +320,21 @@ def parse_args():
     return args
 
 
+# from dataclasses import dataclass, field
+# from typing import List
+
+# @dataclass
+# class Parameter:
+#     name: str = field(default="hello", metadata={"possible_values": ["hello", "world", "parameter"]})
+
+#     def is_valid(self) -> bool:
+#         """
+#         Check if the current value of `name` is within the allowed possible values.
+#         """
+#         possible_values = self.__dataclass_fields__["name"].metadata["possible_values"]
+#         return self.name in possible_values
+
+
 @dataclass
 class Args:
     """
@@ -385,6 +400,7 @@ class Args:
     cov_label: str = "Chabanier2019"
     cov_label_hires: str = "Karacayli2022"
     hcd_model_type: str = "Rogers2017"
+    mF_model_type: str = "pivot"
     use_star_priors: Optional[dict] = None
     add_noise: bool = False
     seed_noise: int = 0

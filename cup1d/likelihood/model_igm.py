@@ -1,7 +1,12 @@
 import os
 import lace
 import numpy as np
-from cup1d.nuisance import mean_flux_model, thermal_model, pressure_model
+from cup1d.nuisance import (
+    mean_flux_model,
+    thermal_model,
+    pressure_model,
+    mean_flux_model_chunks,
+)
 from cup1d.utils.utils import is_number_string
 
 
@@ -18,6 +23,7 @@ class IGM(object):
         fid_sim_igm_mF="mpg_central",
         fid_sim_igm_T="mpg_central",
         fid_sim_igm_kF="mpg_central",
+        mF_model_type="pivot",
         emu_suite="mpg",
         type_priors="hc",
         emu_igm_params=["mF", "sigT_Mpc", "gamma", "kF_Mpc"],
@@ -41,12 +47,19 @@ class IGM(object):
         if F_model is not None:
             self.F_model = F_model
         else:
-            self.F_model = mean_flux_model.MeanFluxModel(
-                free_param_names=free_param_names,
-                fid_igm=fid_igm,
-                z_tau=z_pivot,
-                priors=self.priors,
-            )
+            if mF_model_type == "pivot":
+                self.F_model = mean_flux_model.MeanFluxModel(
+                    free_param_names=free_param_names,
+                    fid_igm=fid_igm,
+                    z_tau=z_pivot,
+                    priors=self.priors,
+                )
+            elif mF_model_type == "chunks":
+                self.F_model = mean_flux_model_chunks.MeanFluxModelChunks(
+                    free_param_names=free_param_names, fid_igm=fid_igm
+                )
+            else:
+                raise ValueError("mF_model_type must be 'scaling' or 'chunks'")
         if T_model:
             self.T_model = T_model
         else:

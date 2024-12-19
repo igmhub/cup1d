@@ -56,6 +56,7 @@ def set_theory(
         fid_sim_igm_mF=sim_igm_mF,
         fid_sim_igm_T=sim_igm_T,
         fid_sim_igm_kF=sim_igm_kF,
+        mF_model_type=args.mF_model_type,
         emu_suite=emulator.list_sim_cube[0][:3],
         type_priors=args.igm_priors,
     )

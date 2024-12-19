@@ -798,13 +798,15 @@ class Fitter(object):
         dict_out["nuisance"] = {}
         dict_out["nuisance"]["z"] = zs
         # HCD
-        dict_out["nuisance"][
+        hcd_model = self.like.args["hcd_model_type"]
+        dict_out["nuisance"]["HCD"] = hcd_model
+        dict_out["nuisance"]["HCD"][
             "A_damp"
         ] = self.like.theory.model_cont.hcd_model.get_A_damp(
             zs, like_params=like_params
         )
-        if self.like.args["hcd_model_type"] == "new":
-            dict_out["nuisance"][
+        if hcd_model == "new":
+            dict_out["nuisance"]["HCD"][
                 "A_scale"
             ] = self.like.theory.model_cont.hcd_model.get_A_scale(
                 zs, like_params=like_params
@@ -878,6 +880,14 @@ param_dict = {
     "ln_tau_2": "$\mathrm{ln}\,\\tau_2$",
     "ln_tau_3": "$\mathrm{ln}\,\\tau_3$",
     "ln_tau_4": "$\mathrm{ln}\,\\tau_4$",
+    "ln_tau_5": "$\mathrm{ln}\,\\tau_5$",
+    "ln_tau_6": "$\mathrm{ln}\,\\tau_6$",
+    "ln_tau_7": "$\mathrm{ln}\,\\tau_7$",
+    "ln_tau_8": "$\mathrm{ln}\,\\tau_8$",
+    "ln_tau_9": "$\mathrm{ln}\,\\tau_9$",
+    "ln_tau_10": "$\mathrm{ln}\,\\tau_{10}$",
+    "ln_tau_11": "$\mathrm{ln}\,\\tau_{11}$",
+    "ln_tau_12": "$\mathrm{ln}\,\\tau_{12}$",
     "ln_sigT_kms_0": "$\mathrm{ln}\,\sigma^T_0$",
     "ln_sigT_kms_1": "$\mathrm{ln}\,\sigma^T_1$",
     "ln_sigT_kms_2": "$\mathrm{ln}\,\sigma^T_2$",
