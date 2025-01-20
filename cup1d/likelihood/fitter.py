@@ -799,7 +799,8 @@ class Fitter(object):
         dict_out["nuisance"]["z"] = zs
         # HCD
         hcd_model = self.like.args["hcd_model_type"]
-        dict_out["nuisance"]["HCD"] = hcd_model
+        dict_out["nuisance"]["HCD"] = {}
+        dict_out["nuisance"]["HCD"]["hcd_model_type"] = hcd_model
         dict_out["nuisance"]["HCD"][
             "A_damp"
         ] = self.like.theory.model_cont.hcd_model.get_A_damp(

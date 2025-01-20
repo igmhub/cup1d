@@ -111,29 +111,30 @@ if choose_forecast:
     # args.data_label="mock_Karacayli2024"
     # args.data_label_hires = "mock_Karacayli2022"
     args.data_label="mock_DESIY1"
-    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms.fits"
+    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
+    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v3.fits"
 
-    # you need to provide true cosmology, IGM history, and contaminants
-    true_cosmo = set_cosmo(cosmo_label="nyx_central")
-    args.true_igm_label="nyx_central"
+    # # you need to provide true cosmology, IGM history, and contaminants
+    # true_cosmo = set_cosmo(cosmo_label="nyx_central")
+    # args.true_igm_label="nyx_central"
+    true_cosmo = set_cosmo(cosmo_label="mpg_central")
+    args.true_igm_label="mpg_central"
     # true_cosmo = set_cosmo(cosmo_label="mpg_22")
     # true_cosmo = set_cosmo(cosmo_label="Planck18")
     # args.true_igm_label="nyx_central"
     # args.true_igm_label="mpg_22"
-    # true_cosmo = set_cosmo(cosmo_label="mpg_central")
-    # args.true_igm_label="mpg_central"
     # from -11 to -4
-    args.true_SiIII=[[0, 0], [-10, -10]]
-    args.true_SiII=[[0, 0], [-10, -10]]
-    # from -7 to 0
-    args.true_HCD=[0, -6]
-    # from -5 to 2
-    args.true_SN=[0, -4]
-    # from -5 to 1.5
-    args.true_AGN=[0, -5]
+    # args.true_SiIII=[[0, 0], [-10, -10]]
+    # args.true_SiII=[[0, 0], [-10, -10]]
+    # # from -7 to 0
+    # args.true_HCD=[0, -6]
+    # # from -5 to 2
+    # args.true_SN=[0, -4]
+    # # from -5 to 1.5
+    # args.true_AGN=[0, -5]
     args.z_min = 2.1
-    args.z_max = 4.3
+    args.z_max = 3.9
+    # args.z_max = 4.3
 elif choose_mock:    
     true_cosmo=None
     # to analyze data from simulations
@@ -220,7 +221,16 @@ if args.data_label_hires is not None:
 # %%
 # hdu = fits.open(args.p1d_fname)
 # hdu[1].header
-# plt.imshow(data["P1Ds"].full_cov_kms)
+# # plt.imshow(data["P1Ds"].full_cov_kms)
+
+# rat = np.diag(hdu[5].data)/np.diag(hdu[4].data)
+# zu = np.unique(hdu[1].data["Z"])
+# for zz in zu:
+#     _ = (hdu[1].data["Z"] == zz)
+#     plt.plot(hdu[1].data["K"][_], rat[_], label=str(zz))
+# plt.legend(ncol=3)
+# plt.xscale("log")
+# plt.yscale("log")
 
 # %%
 # ntos = 100 * np.sqrt(np.diag(data["P1Ds"].cov_Pk_kms[0]))/data["P1Ds"].Pk_kms[0]
@@ -263,10 +273,23 @@ args.emu_cov_factor = 0.0
 # args.fix_cosmo=False
 args.fix_cosmo=True
 args.vary_alphas=False
+# args.fid_cosmo_label="Planck18"
 args.fid_cosmo_label="nyx_central"
-args.fid_sim_igm_label_mF="nyx_central"
-args.fid_sim_igm_label_T="nyx_central"
-args.fid_sim_igm_label_kF="nyx_central"
+args.fid_label_mF="nyx_central"
+args.fid_label_T="nyx_central"
+args.fid_label_kF="nyx_central"
+
+
+# args.fid_cosmo_label="mpg_central"
+# args.fid_sim_igm_label_mF="mpg_central"
+# args.fid_sim_igm_label_T="mpg_central"
+# args.fid_sim_igm_label_kF="mpg_central"
+
+# args.fid_cosmo_label="mpg_central"
+# args.fid_label_mF="mpg_central"
+# args.fid_label_mF="nyx_0"
+# args.fid_label_T="mpg_central"
+# # args.fid_sim_igm_label_T="nyx_0"
 # args.fid_sim_igm_label_kF="mpg_central"
 
 # args.fid_cosmo_label="nyx_seed"
@@ -280,13 +303,13 @@ args.fid_sim_igm_label_kF="nyx_central"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # args.use_star_priors = None
-args.use_star_priors = {}
+# args.use_star_priors = {}
 # Planck18 0.354 -2.300 -0.2155
 # 5 sigma 0.056 0.011 0.0028
-blob = CAMB_model.CAMBModel(zs=[3], cosmo=fid_cosmo).get_linP_params()
-amin = blob["alpha_star"] - 0.0028
-amax = blob["alpha_star"] + 0.0028
-args.use_star_priors["alpha_star"] = [amin, amax]
+# blob = CAMB_model.CAMBModel(zs=[3], cosmo=fid_cosmo).get_linP_params()
+# amin = blob["alpha_star"] - 0.0028
+# amax = blob["alpha_star"] + 0.0028
+# args.use_star_priors["alpha_star"] = [amin, amax]
 
 
 # IGM
@@ -300,34 +323,59 @@ if choose_data == False:
 else:
     args.igm_priors = "data"
 
+# args.hcd_model_type = "Rogers2017"
+args.hcd_model_type = "new"
+# args.mF_model_type = "pivot"
+args.mF_model_type = "chunks"
 # contaminants
 # from 1 to 6, -11 to -4
-args.fid_SiIII_X=[0, -5]
-args.fid_SiIII_D=[0, 5]
-args.fid_SiIII_A=[0, 1.5]
 # from -5 to 0
-args.fid_HCD=[0, -2]
+# args.fid_HCD=[0, -2]
 # from -5 to 2
 # args.fid_SN=[0, -4]
 # args.fid_AGN=[0, -5]
 
     
-args.n_tau=2
-args.n_sigT=2
-args.n_gamma=2
-args.n_kF=2
+args.n_tau=11
+args.n_sigT=1
+args.n_gamma=1
+args.n_kF=1
+
+# args.n_x_SiIII=0
+# args.n_d_SiIII=0
+# args.n_a_SiIII=0
+# args.n_d_dla = 0
+# args.n_s_dla = 0
+
+args.n_x_SiIII=1
+args.n_d_SiIII=1
+args.n_a_SiIII=0
+args.n_d_dla = 1
+args.n_s_dla = 1
+args.fid_SiIII_X=[0, -5]
+args.fid_SiIII_D=[0, 5]
+args.fid_SiIII_A=[0, 1]
+args.fid_A_damp = [0, -1]
+args.fid_A_scale = [0, 5]
+
+# args.n_x_SiIII=2
+# args.n_d_SiIII=2
+# args.n_a_SiIII=2
+# args.n_d_dla = 2
+# args.n_s_dla = 2
 # args.n_tau=2
 # args.n_sigT=2
 # args.n_gamma=2
 # args.n_kF=2
-args.n_x_SiIII = 2
-args.n_d_SiIII = 2
-args.n_a_SiIII = 2
+# args.n_x_SiIII = 2
+# args.n_d_SiIII = 2
+# args.n_a_SiIII = 2
 
 # args.n_SiII = 0
 # args.n_dla=0
 # args.n_sn=0
 # args.n_agn=0
+
 
 # args.fid_SiII=[[0, 0], [-4, -10]] # null
 # args.fid_SN=[0, -4] # null
@@ -385,7 +433,7 @@ like.plot_p1d(residuals=True)
 # like.theory.model_cont.agn_model.plot_contamination(z, k_kms)
 
 # %%
-like.plot_igm(cloud=True)
+# like.plot_igm(cloud=True)
 
 # %% [markdown]
 # ### Set fitter
@@ -422,6 +470,9 @@ fitter = Fitter(
 # %% [markdown]
 # ### Run minimizer
 
+# %% [markdown]
+# 4 min 30 s
+
 # %%
 # %%time
 if like.truth is None:
@@ -434,13 +485,37 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
 
+# %% [markdown]
+# Nyx 378.97810084186125
+# args.n_tau=11
+# args.n_sigT=1
+# args.n_gamma=1
+# args.n_kF=1
+# args.n_x_SiIII=1
+# args.n_d_SiIII=1
+# args.n_a_SiIII=0 # fid 1
+# args.n_d_dla = 1
+# args.n_s_dla = 1
+#
+# Cabayol 366.31532112361907
+# args.n_tau=10
+# args.n_sigT=1
+# args.n_gamma=1
+# args.n_kF=1
+# args.n_x_SiIII=1
+# args.n_d_SiIII=1
+# args.n_a_SiIII=1
+# args.n_d_dla = 1
+# args.n_s_dla = 1
+
 # %%
 fitter.save_fitter()
 
 # %%
-plotter = Plotter(fitter)
+plotter = Plotter(fitter, save_directory="test_nyx")
 if args.fix_cosmo == False:
     plotter.plot_mle_cosmo()
+plotter.plots_minimizer()
 
 # %%
 # fitter.write_chain_to_file()
@@ -555,10 +630,6 @@ fitter.blobs[ii,jj]
 # %%
 for par in like_params:
     print(par.name, par.value)
-
-# %%
-
-hull = fitter.like.theory.hull
 
 # %%
 

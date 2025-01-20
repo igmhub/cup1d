@@ -20,9 +20,9 @@ def set_theory(
     """Set theory"""
 
     if fid_or_true == "fid":
-        sim_igm_mF = args.fid_sim_igm_label_mF
-        sim_igm_T = args.fid_sim_igm_label_T
-        sim_igm_kF = args.fid_sim_igm_label_kF
+        sim_igm_mF = args.fid_label_mF
+        sim_igm_T = args.fid_label_T
+        sim_igm_kF = args.fid_label_kF
         SiIII_X = args.fid_SiIII_X
         SiIII_D = args.fid_SiIII_D
         SiIII_A = args.fid_SiIII_A
@@ -34,9 +34,9 @@ def set_theory(
         SN = args.fid_SN
         AGN = args.fid_AGN
     elif fid_or_true == "true":
-        sim_igm_mF = args.true_sim_igm_label_mF
-        sim_igm_T = args.true_sim_igm_label_T
-        sim_igm_kF = args.true_sim_igm_label_kF
+        sim_igm_mF = args.true_label_mF
+        sim_igm_T = args.true_label_T
+        sim_igm_kF = args.true_label_kF
         SiIII_X = args.true_SiIII_X
         SiIII_D = args.true_SiIII_D
         SiIII_A = args.true_SiIII_A

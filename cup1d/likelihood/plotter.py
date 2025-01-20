@@ -102,7 +102,7 @@ class Plotter(object):
 
         # plot cosmology
         if self.fitter.fix_cosmology == False:
-            self.plot_corner(only_cosmo=True)
+            self.plot_corner(only_cosmo=True, only_cosmo_lims=False)
             plt.close()
             self.plot_corner(only_cosmo=True, only_cosmo_lims=True)
             plt.close()
