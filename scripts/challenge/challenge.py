@@ -78,13 +78,13 @@ def main():
 
     full_cont = True  # IMPORTANT!!!
 
-    emulator_label = "Pedersen23_ext"
-    training_set = "Cabayol23"
+    # emulator_label = "Pedersen23_ext"
+    # training_set = "Cabayol23"
     # vary_alphas = False
 
-    # emulator_label = "Nyx_alphap_cov"
-    # training_set = "Nyx23_Jul2024"
-    # vary_alphas = True
+    emulator_label = "Nyx_alphap_cov"
+    training_set = "Nyx23_Jul2024"
+    vary_alphas = True
     # vary_alphas = False
 
     # emulator_label = "Cabayol23+"
@@ -103,10 +103,10 @@ def main():
 
     args.emu_cov_factor = 0.0
 
-    # args.n_steps = 1250
-    # args.n_burn_in = 1250
-    args.n_steps = 1
-    args.n_burn_in = 0
+    args.n_steps = 1250
+    args.n_burn_in = 1250
+    # args.n_steps = 1
+    # args.n_burn_in = 0
     if size > 1:
         args.parallel = True
     else:
