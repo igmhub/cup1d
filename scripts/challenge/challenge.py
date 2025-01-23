@@ -21,7 +21,7 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    version = "8"
+    version = "9fx"
 
     name_system = socket.gethostname()
     if "login" in name_system:
@@ -76,14 +76,20 @@ def main():
         for ii in range(len(files)):
             print(ii, files[ii])
 
-    # emulator_label = "Pedersen23_ext"
-    # training_set = "Cabayol23"
-    emulator_label = "Nyx_alphap_cov"
-    training_set = "Nyx23_Jul2024"
-    vary_alphas = True
+    full_cont = True  # IMPORTANT!!!
+
+    emulator_label = "Pedersen23_ext"
+    training_set = "Cabayol23"
     # vary_alphas = False
+
+    # emulator_label = "Nyx_alphap_cov"
+    # training_set = "Nyx23_Jul2024"
+    # vary_alphas = True
+    # vary_alphas = False
+
     # emulator_label = "Cabayol23+"
     # training_set = "Cabayol23"
+    # vary_alphas = False
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "challenge_DESIY1"
 
@@ -93,14 +99,14 @@ def main():
 
     # note redshift range!
     args.z_min = 2.1
-    args.z_max = 4.2
+    args.z_max = 4.3
 
     args.emu_cov_factor = 0.0
 
-    args.n_steps = 1250
-    args.n_burn_in = 1250
-    # args.n_steps = 10
-    # args.n_burn_in = 0
+    # args.n_steps = 1250
+    # args.n_burn_in = 1250
+    args.n_steps = 1
+    args.n_burn_in = 0
     if size > 1:
         args.parallel = True
     else:
@@ -114,10 +120,23 @@ def main():
     base_out_folder = os.path.join(path_out_challenge, emulator_label)
 
     # set number of free IGM parameters
-    args.n_tau = 2
-    args.n_sigT = 2
-    args.n_gamma = 2
-    args.n_kF = 2
+    args.mF_model_type = "chunks"
+    args.n_tau = 11
+    args.n_sigT = 1
+    args.n_gamma = 1
+    args.n_kF = 1
+    if full_cont:
+        args.n_x_SiIII = 1
+        args.n_d_SiIII = 1
+        args.n_a_SiIII = 1
+        args.n_d_dla = 1
+        args.n_s_dla = 1
+        args.fid_SiIII_X = [0, -10]
+        args.fid_SiIII_D = [0, 5]
+        args.fid_SiIII_A = [0, 1]
+        args.fid_A_damp = [0, -9]
+        args.fid_A_scale = [0, 5]
+        args.hcd_model_type = "new"
 
     # set archive and emulator
     if rank == 0:
@@ -166,16 +185,16 @@ def main():
             args.true_cosmo_label = true_sim_label
             args.true_igm_label = true_sim_label
             args.fid_cosmo_label = true_sim_label
-            args.fid_igm_label_mF = true_sim_label
-            args.fid_igm_label_T = true_sim_label
-            args.fid_igm_label_kF = true_sim_label
+            args.fid_label_mF = true_sim_label
+            args.fid_label_T = true_sim_label
+            args.fid_label_kF = true_sim_label
         else:
             args.true_cosmo_label = true_sim_label
             args.true_igm_label = true_sim_label
             args.fid_cosmo_label = true_sim_label
-            args.fid_igm_label_mF = true_sim_label
-            args.fid_igm_label_T = true_sim_label
-            args.fid_igm_label_kF = "mpg_central"
+            args.fid_label_mF = true_sim_label
+            args.fid_label_T = true_sim_label
+            args.fid_label_kF = "mpg_central"
 
         if impose_fid_cosmo_label is not None:
             args.fid_cosmo_label = impose_fid_cosmo_label
@@ -184,13 +203,13 @@ def main():
 
         # Planck18 0.354 -2.300 -0.2155
         # 5 sigma 0.056 0.011 0.0028
-        blob = CAMB_model.CAMBModel(zs=[3], cosmo=fid_cosmo).get_linP_params()
         # args.use_star_priors = None
-        args.use_star_priors = {}
-        args.use_star_priors["alpha_star"] = [
-            blob["alpha_star"] - 0.0028,
-            blob["alpha_star"] + 0.0028,
-        ]
+        # blob = CAMB_model.CAMBModel(zs=[3], cosmo=fid_cosmo).get_linP_params()
+        # args.use_star_priors = {}
+        # args.use_star_priors["alpha_star"] = [
+        #     blob["alpha_star"] - 0.0028,
+        #     blob["alpha_star"] + 0.0028,
+        # ]
 
         if "bar_ic" in args.p1d_fname:
             args.ic_correction = True
