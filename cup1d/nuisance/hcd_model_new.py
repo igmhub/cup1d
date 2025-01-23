@@ -12,8 +12,8 @@ class HCD_Model_new(object):
         self,
         z_0=3.0,
         fid_A_scale=[0, 5],
-        fid_A_damp=[0, -5],
-        null_A_damp=-4,
+        fid_A_damp=[0, -9],
+        null_A_damp=-9.5,
         ln_A_damp_coeff=None,
         ln_A_scale_coeff=None,
         free_param_names=None,
@@ -66,7 +66,7 @@ class HCD_Model_new(object):
             name = "ln_A_damp_" + str(i)
             if i == 0:
                 # no contamination
-                xmin = -5
+                xmin = -10
                 # 0 gives 350% contamination low k
                 xmax = 0
             else:

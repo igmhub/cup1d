@@ -56,14 +56,25 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
     except:
         raise ValueError("Cannot read: ", p1d_fname)
 
-    if "VELUNITS" in hdu[1].header:
-        if hdu[1].header["VELUNITS"] == False:
+    dict_with_keys = {}
+    for ii in range(len(hdu)):
+        if "EXTNAME" in hdu[ii].header:
+            if hdu[ii].header["EXTNAME"] == "P1D":
+                dict_with_keys[hdu[ii].header["EXTNAME"]] = ii
+            elif hdu[ii].header["EXTNAME"] == "COVARIANCE":
+                dict_with_keys[hdu[ii].header["EXTNAME"]] = ii
+            elif hdu[ii].header["EXTNAME"] == "COVARIANCE_STAT":
+                dict_with_keys[hdu[ii].header["EXTNAME"]] = ii
+            elif hdu[ii].header["EXTNAME"] == "COVARIANCE_SYST":
+                dict_with_keys[hdu[ii].header["EXTNAME"]] = ii
+
+    if "P1D" not in dict_with_keys:
+        raise ValueError("Cannot find P1D in: ", p1d_fname)
+
+    iuse = dict_with_keys["P1D"]
+    if "VELUNITS" in hdu[iuse].header:
+        if hdu[iuse].header["VELUNITS"] == False:
             raise ValueError("Not velocity units in: ", p1d_fname)
-    blinding = None
-    if "BLINDING" in hdu[1].header:
-        if hdu[1].header["BLINDING"] is not None:
-            blinding = hdu[1].header["BLINDING"]
-    # hack
     blinding = None
 
     # compressed parameters do not agree between codes!!
@@ -81,10 +92,10 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
 
     # input_sim = hdu[1].header["modelname"]
 
-    zs_raw = hdu[1].data["Z"]
-    k_kms_raw = hdu[1].data["K"]
-    Pk_kms_raw = hdu[1].data["PLYA"]
-    cov_raw = hdu[3].data.copy()
+    zs_raw = hdu[iuse].data["Z"]
+    k_kms_raw = hdu[iuse].data["K"]
+    Pk_kms_raw = hdu[iuse].data["PLYA"]
+    cov_raw = hdu[dict_with_keys["COVARIANCE"]].data.copy()
     diag_cov_raw = np.diag(cov_raw)
 
     z_unique = np.unique(zs_raw)

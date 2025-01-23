@@ -3,8 +3,7 @@ from astropy.io import fits
 import matplotlib.pyplot as plt
 import numpy as np
 
-from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
-from cup1d.likelihood import lya_theory
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_DESIY1(BaseDataP1D):
@@ -53,32 +52,45 @@ def read_from_file(
     except:
         raise ValueError("Cannot read: ", p1d_fname)
 
-    if "VELUNITS" in hdu[1].header:
-        if hdu[1].header["VELUNITS"] == False:
+    dict_with_keys = {}
+    for ii in range(len(hdu)):
+        if "EXTNAME" in hdu[ii].header:
+            if hdu[ii].header["EXTNAME"] == "P1D_BLIND":
+                dict_with_keys[hdu[ii].header["EXTNAME"]] = ii
+            elif hdu[ii].header["EXTNAME"] == "COVARIANCE":
+                dict_with_keys[hdu[ii].header["EXTNAME"]] = ii
+            elif hdu[ii].header["EXTNAME"] == "COVARIANCE_STAT":
+                dict_with_keys[hdu[ii].header["EXTNAME"]] = ii
+            elif hdu[ii].header["EXTNAME"] == "COVARIANCE_SYST":
+                dict_with_keys[hdu[ii].header["EXTNAME"]] = ii
+
+    if "P1D_BLIND" not in dict_with_keys:
+        raise ValueError("Cannot find P1D_BLIND in: ", p1d_fname)
+
+    iuse = dict_with_keys["P1D_BLIND"]
+    if "VELUNITS" in hdu[iuse].header:
+        if hdu[iuse].header["VELUNITS"] == False:
             raise ValueError("Not velocity units in: ", p1d_fname)
     blinding = None
-    if "BLINDING" in hdu[1].header:
-        if hdu[1].header["BLINDING"] is not None:
-            blinding = hdu[1].header["BLINDING"]
-    elif "EXTNAME" in hdu[1].header:
-        if hdu[1].header["EXTNAME"] == "P1D_BLIND":
+    if "BLINDING" in hdu[iuse].header:
+        if hdu[iuse].header["BLINDING"] is not None:
+            blinding = hdu[iuse].header["BLINDING"]
+    elif "EXTNAME" in hdu[iuse].header:
+        if hdu[iuse].header["EXTNAME"] == "P1D_BLIND":
             blinding = True
 
-    for ii in range(3, 6):
-        if "EXTNAME" in hdu[ii].header:
-            if hdu[ii].header["EXTNAME"] == "COVARIANCE_SYST":
-                cov_syst_raw = hdu[ii].data.copy()
-            elif hdu[ii].header["EXTNAME"] == "COVARIANCE_STAT":
-                cov_stat_raw = hdu[ii].data.copy()
+    cov_raw = hdu[dict_with_keys["COVARIANCE"]].data.copy()
+    cov_stat_raw = hdu[dict_with_keys["COVARIANCE_STAT"]].data.copy()
+    cov_syst_raw = hdu[dict_with_keys["COVARIANCE_SYST"]].data.copy()
 
-    # cov_raw = cov_stat_raw + cov_syst_raw
+    # add systematic error just to diagonal elements
     cov_raw = cov_stat_raw.copy()
     ind = np.arange(cov_raw.shape[0])
     cov_raw[ind, ind] += np.diag(cov_syst_raw)
 
-    zs_raw = hdu[1].data["Z"]
-    k_kms_raw = hdu[1].data["K"]
-    Pk_kms_raw = hdu[1].data["PLYA"]
+    zs_raw = hdu[iuse].data["Z"]
+    k_kms_raw = hdu[iuse].data["K"]
+    Pk_kms_raw = hdu[iuse].data["PLYA"]
     diag_cov_raw = np.diag(cov_raw)
     if cov_only_diag:
         _cov = np.zeros_like(cov_raw)

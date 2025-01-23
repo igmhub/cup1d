@@ -29,7 +29,7 @@ class Contaminants(object):
         fid_SiII_X=[0, -10],
         fid_SiII_D=[0, 2],
         fid_SiII_A=[0, 1.5],
-        fid_A_damp=[0, -4],
+        fid_A_damp=[0, -9],
         fid_A_scale=[0, 1],
         fid_SN=[0, -4],
         fid_AGN=[0, -5],
@@ -120,10 +120,10 @@ class Contaminants(object):
         dict_out = {}
 
         for ii in range(2):
-            dict_out["ln_f_SiIII_" + str(ii)] = self.fid_SiIII_X[-1 - ii]
+            dict_out["ln_x_SiIII_" + str(ii)] = self.fid_SiIII_X[-1 - ii]
             dict_out["ln_d_SiIII_" + str(ii)] = self.fid_SiIII_D[-1 - ii]
             dict_out["a_SiIII_" + str(ii)] = self.fid_SiIII_A[-1 - ii]
-            dict_out["ln_f_SiII_" + str(ii)] = self.fid_SiII_X[-1 - ii]
+            dict_out["ln_x_SiII_" + str(ii)] = self.fid_SiII_X[-1 - ii]
             dict_out["ln_d_SiII_" + str(ii)] = self.fid_SiII_D[-1 - ii]
             dict_out["a_SiII_" + str(ii)] = self.fid_SiII_A[-1 - ii]
             dict_out["ln_A_damp_" + str(ii)] = self.fid_A_damp[-1 - ii]

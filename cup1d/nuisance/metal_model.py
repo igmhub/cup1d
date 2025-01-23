@@ -23,7 +23,7 @@ class MetalModel(object):
         X_fid_value=[0, -10],
         D_fid_value=[0, -4],
         A_fid_value=[0, 1.5],
-        X_null_value=-10,
+        X_null_value=-10.5,
         A_null_value=0,
         free_param_names=None,
     ):

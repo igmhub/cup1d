@@ -62,6 +62,22 @@ from cup1d.likelihood import CAMB_model
 # plotter = Plotter(save_directory="test", fname_chain=fname_chain)
 # plotter.plot_corner(only_cosmo=True)
 
+# %%
+# version = "9fx"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
+# fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
+# hdu = fits.open(folder + fname)
+
+# folder2 = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/"
+# fname2 = "p1d_fft_y1_measurement_kms_v3.fits"
+# hdu2 = fits.open(folder2 + fname2)
+
+# cov_raw = hdu[3].data.copy()
+# ind = np.arange(cov_raw.shape[0])
+# cov_raw[ind, ind] += np.diag(hdu[4].data)
+
+# np.allclose(hdu2[3].data, cov_raw)
+
 # %% [markdown]
 # ### Set archive
 
@@ -101,8 +117,8 @@ else:
 choose_forecast = False
 choose_mock = False
 choose_data = False
-choose_challenge = False
-choose_desiy1 = True
+choose_challenge = True
+choose_desiy1 = False
 
 if choose_forecast:
     args.data_label_hires = None
@@ -169,9 +185,10 @@ elif choose_data:
     args.z_max = 3.9
 elif choose_challenge:
     args.data_label = "challenge_DESIY1"
-    version = "6"
+    version = "9fx"
     folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
     fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
+    # fname = "mockchallenge-0."+version+"_noise-42-0_fiducial.fits.gz"
     args.p1d_fname = folder + fname
     if "fiducial" in args.p1d_fname:
         true_sim_label = "nyx_central"
@@ -182,9 +199,9 @@ elif choose_challenge:
     else:
         true_sim_label = None
     true_cosmo = set_cosmo(cosmo_label=true_sim_label)
-    args.true_sim_igm_label_mF=true_sim_label
-    args.true_sim_igm_label_T=true_sim_label
-    args.true_sim_igm_label_kF=true_sim_label
+    args.true_label_mF=true_sim_label
+    args.true_label_T=true_sim_label
+    args.true_label_kF=true_sim_label
     args.z_min = 2.1
     args.z_max = 4.3
 elif choose_desiy1:
@@ -221,7 +238,7 @@ if args.data_label_hires is not None:
 # %%
 # hdu = fits.open(args.p1d_fname)
 # hdu[1].header
-# # plt.imshow(data["P1Ds"].full_cov_kms)
+# plt.imshow(data["P1Ds"].full_cov_kms)
 
 # rat = np.diag(hdu[5].data)/np.diag(hdu[4].data)
 # zu = np.unique(hdu[1].data["Z"])
@@ -270,9 +287,10 @@ args.emu_cov_factor = 0.0
 #     args.fid_igm_label="mpg_central"
 #     args.vary_alphas=False
 
-# args.fix_cosmo=False
-args.fix_cosmo=True
-args.vary_alphas=False
+args.fix_cosmo=False
+# args.fix_cosmo=True
+# args.vary_alphas=False
+args.vary_alphas=True
 # args.fid_cosmo_label="Planck18"
 args.fid_cosmo_label="nyx_central"
 args.fid_label_mF="nyx_central"
@@ -349,14 +367,25 @@ args.n_kF=1
 
 args.n_x_SiIII=1
 args.n_d_SiIII=1
-args.n_a_SiIII=0
+args.n_a_SiIII=1
 args.n_d_dla = 1
 args.n_s_dla = 1
-args.fid_SiIII_X=[0, -5]
+args.fid_SiIII_X=[0, -10] # fine
 args.fid_SiIII_D=[0, 5]
 args.fid_SiIII_A=[0, 1]
-args.fid_A_damp = [0, -1]
+args.fid_A_damp = [0, -9]
 args.fid_A_scale = [0, 5]
+
+# args.n_x_SiIII=1
+# args.n_d_SiIII=1
+# args.n_a_SiIII=0
+# args.n_d_dla = 1
+# args.n_s_dla = 1
+# args.fid_SiIII_X=[0, -5]
+# args.fid_SiIII_D=[0, 5]
+# args.fid_SiIII_A=[0, 1]
+# args.fid_A_damp = [0, -1]
+# args.fid_A_scale = [0, 5]
 
 # args.n_x_SiIII=2
 # args.n_d_SiIII=2
@@ -419,6 +448,13 @@ like = set_like(
 # %%
 for p in like.free_params:
     print(p.name, p.value, p.min_value, p.max_value)
+
+# %%
+# emu_call = np.load("emu_call_fiducial.npy", allow_pickle=True).item()
+# emu_call
+
+# %% [markdown]
+# 152?!
 
 # %% [markdown]
 # Compare data and fiducial/starting model
@@ -486,6 +522,19 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
 
 # %% [markdown]
+# For Nyx fiducial
+#
+# ['As', 'ns', 'nrun', 'ln_tau_0', 'ln_tau_1', 'ln_tau_2', 'ln_tau_3', 'ln_tau_4', 'ln_tau_5', 'ln_tau_6', 'ln_tau_7', 'ln_tau_8', 'ln_tau_9', 'ln_tau_10', 'ln_sigT_kms_0', 'ln_gamma_0', 'ln_kF_0']
+#
+# ['As', 'ns', 'nrun', 'ln_tau_0', 'ln_tau_1', 'ln_tau_2', 'ln_tau_3', 'ln_tau_4', 'ln_tau_5', 'ln_tau_6', 'ln_tau_7', 'ln_tau_8', 'ln_tau_9', 'ln_tau_10', 'ln_sigT_kms_0', 'ln_gamma_0', 'ln_kF_0', 'ln_x_SiIII_0', 'ln_d_SiIII_0', 'a_SiIII_0', 'ln_A_damp_0', 'ln_A_scale_0']
+
+# %% [markdown]
+# #### 2 min for the fit when varying all taus
+
+# %% [markdown]
+# For DESI FFT
+#
+#
 # Nyx 378.97810084186125
 # args.n_tau=11
 # args.n_sigT=1
@@ -512,7 +561,7 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 fitter.save_fitter()
 
 # %%
-plotter = Plotter(fitter, save_directory="test_nyx")
+plotter = Plotter(fitter, save_directory="nyx_fid_all")
 if args.fix_cosmo == False:
     plotter.plot_mle_cosmo()
 plotter.plots_minimizer()

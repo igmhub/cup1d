@@ -301,6 +301,9 @@ class Likelihood(object):
                     "linP"
                 ][pname2[par.name]]
             else:
+                if par.name not in self.truth["cont"]:
+                    print("could not find {} in truth".format(par.name))
+                    continue
                 self.truth["like_params"][par.name] = self.truth["cont"][
                     par.name
                 ]
