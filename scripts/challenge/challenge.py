@@ -2,7 +2,7 @@
 
 import socket, os, sys, glob
 
-# os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
+os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 # os.environ["OPENBLAS_NUM_THREADS"] = "4" # export OPENBLAS_NUM_THREADS=4
 # os.environ["MKL_NUM_THREADS"] = "6" # export MKL_NUM_THREADS=6
 # os.environ["VECLIB_MAXIMUM_THREADS"] = "4" # export VECLIB_MAXIMUM_THREADS=4
@@ -22,7 +22,7 @@ def main():
     size = comm.Get_size()
 
     version = "9fx"
-    run_sampler = False
+    run_sampler = True
 
     name_system = socket.gethostname()
     if "login" in name_system:
@@ -68,11 +68,11 @@ def main():
     # files = np.sort(glob.glob(folder_in + "*CGAN*.fits"))
     # files = np.sort(glob.glob(folder_in + "*grid_3.fits"))
     # files = np.sort(glob.glob(folder_in + "*bar_ic*.fits"))
-    # search = os.path.join(
-    #     path_in_challenge,
-    #     "mockchallenge-0." + version + "_nonoise_fiducial.fits.gz",
-    # )
-    search = os.path.join(path_in_challenge, "*fiducial*")
+    search = os.path.join(
+        path_in_challenge,
+        "mockchallenge-0." + version + "_nonoise_fiducial.fits.gz",
+    )
+    # search = os.path.join(path_in_challenge, "*fiducial*")
     files = np.sort(glob.glob(search))
     if rank == 0:
         for ii in range(len(files)):
