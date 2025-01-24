@@ -15,6 +15,10 @@
 
 # # Results of challenge
 
+# pair notebook
+#
+# jupytext --set-formats ipynb,py notebook.ipynb
+
 # +
 # %load_ext autoreload
 # %autoreload 2
@@ -62,10 +66,5 @@ plotter.plot_corner(only_cosmo=True, only_cosmo_lims=False, extra_data=best_fit)
 
 fname_chain = os.path.join(path_out_challenge, emulator, "mockchallenge-0.9fx_nonoise_fiducial/chain_1/fitter_results.npy")
 plotter = Plotter(save_directory="test", fname_chain=fname_chain)
-
-for jj in range(3):
-    plt.hist(best_fit[:,jj] - truth[jj], bins=30)
-
-# ## Fiducial and Errors
 
 

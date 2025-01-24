@@ -204,7 +204,8 @@ elif choose_challenge:
     args.data_label = "challenge_DESIY1"
     version = "9fx"
     folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
-    fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
+    # fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
+    fname = "mockchallenge-0."+version+"_nonoise_bar_ic_grid_3.fits.gz"
     # fname = "mockchallenge-0."+version+"_noise-42-0_fiducial.fits.gz"
     args.p1d_fname = folder + fname
     if "fiducial" in args.p1d_fname:
@@ -215,12 +216,15 @@ elif choose_challenge:
         true_sim_label = "nyx_3"
     else:
         true_sim_label = None
+
     true_cosmo = set_cosmo(cosmo_label=true_sim_label)
     args.true_label_mF=true_sim_label
     args.true_label_T=true_sim_label
     args.true_label_kF=true_sim_label
     args.z_min = 2.1
     args.z_max = 4.3
+    # args.z_min = 2.8
+    # args.z_max = 3.2
 elif choose_desiy1:
     true_cosmo = None
     args.true_igm_label= None
@@ -309,10 +313,12 @@ args.fix_cosmo=False
 # args.vary_alphas=False
 args.vary_alphas=True
 # args.fid_cosmo_label="Planck18"
-args.fid_cosmo_label="nyx_central"
-args.fid_label_mF="nyx_central"
-args.fid_label_T="nyx_central"
-args.fid_label_kF="nyx_central"
+sim_fid = "nyx_central"
+# sim_fid = "nyx_3"
+args.fid_cosmo_label=sim_fid
+args.fid_label_mF=sim_fid
+args.fid_label_T=sim_fid
+args.fid_label_kF=sim_fid
 
 
 # args.fid_cosmo_label="mpg_central"

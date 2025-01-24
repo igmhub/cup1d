@@ -191,13 +191,15 @@ def main():
         args.true_label_mF = true_sim_label
         args.true_label_T = true_sim_label
         args.true_label_kF = true_sim_label
-        args.fid_cosmo_label = true_sim_label
-        args.fid_label_mF = true_sim_label
-        args.fid_label_T = true_sim_label
+
         if "Nyx" in emulator_label:
-            args.fid_label_kF = true_sim_label
+            fid_sim_label = "nyx_central"
         else:
-            args.fid_label_kF = "mpg_central"
+            fid_sim_label = "mpg_central"
+        args.fid_cosmo_label = fid_sim_label
+        args.fid_label_mF = fid_sim_label
+        args.fid_label_T = fid_sim_label
+        args.fid_label_kF = fid_sim_label
 
         if impose_fid_cosmo_label is not None:
             args.fid_cosmo_label = impose_fid_cosmo_label
