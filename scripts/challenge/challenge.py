@@ -2,6 +2,7 @@
 
 import socket, os, sys, glob
 
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 # os.environ["OPENBLAS_NUM_THREADS"] = "4" # export OPENBLAS_NUM_THREADS=4
 # os.environ["MKL_NUM_THREADS"] = "6" # export MKL_NUM_THREADS=6
@@ -65,14 +66,14 @@ def main():
     print(path_in_challenge)
     print(path_out_challenge)
 
-    # files = np.sort(glob.glob(folder_in + "*CGAN*.fits"))
-    # files = np.sort(glob.glob(folder_in + "*grid_3.fits"))
-    # files = np.sort(glob.glob(folder_in + "*bar_ic*.fits"))
-    search = os.path.join(
-        path_in_challenge,
-        "mockchallenge-0." + version + "_nonoise_fiducial.fits.gz",
-    )
+    # files = np.sort(glob.glob(path_in_challenge + "*CGAN*.fits"))
+    # files = np.sort(glob.glob(path_in_challenge + "*bar_ic*.fits"))
+    # search = os.path.join(
+    #     path_in_challenge,
+    #     "mockchallenge-0." + version + "_nonoise_fiducial.fits.gz",
+    # )
     # search = os.path.join(path_in_challenge, "*fiducial*")
+    search = os.path.join(path_in_challenge, "*grid_3*")
     files = np.sort(glob.glob(search))
     if rank == 0:
         for ii in range(len(files)):
