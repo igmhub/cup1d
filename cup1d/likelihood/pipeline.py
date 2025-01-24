@@ -546,8 +546,8 @@ class Pipeline(object):
             data_hires=data["extra_P1Ds"],
         )
 
-        print(like.truth)
-        print("out")
+        # print(like.truth)
+        # print("out")
         # sys.exit()
 
         ## Validating likelihood

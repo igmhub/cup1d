@@ -2,7 +2,7 @@
 
 import socket, os, sys, glob
 
-os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
+# os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 # os.environ["OPENBLAS_NUM_THREADS"] = "4" # export OPENBLAS_NUM_THREADS=4
 # os.environ["MKL_NUM_THREADS"] = "6" # export MKL_NUM_THREADS=6
 # os.environ["VECLIB_MAXIMUM_THREADS"] = "4" # export VECLIB_MAXIMUM_THREADS=4
@@ -22,6 +22,7 @@ def main():
     size = comm.Get_size()
 
     version = "9fx"
+    run_sampler = False
 
     name_system = socket.gethostname()
     if "login" in name_system:
@@ -67,14 +68,17 @@ def main():
     # files = np.sort(glob.glob(folder_in + "*CGAN*.fits"))
     # files = np.sort(glob.glob(folder_in + "*grid_3.fits"))
     # files = np.sort(glob.glob(folder_in + "*bar_ic*.fits"))
-    search = os.path.join(
-        path_in_challenge,
-        "mockchallenge-0." + version + "_nonoise_fiducial.fits.gz",
-    )
+    # search = os.path.join(
+    #     path_in_challenge,
+    #     "mockchallenge-0." + version + "_nonoise_fiducial.fits.gz",
+    # )
+    search = os.path.join(path_in_challenge, "*fiducial*")
     files = np.sort(glob.glob(search))
     if rank == 0:
         for ii in range(len(files)):
             print(ii, files[ii])
+
+    # sys.exit()
 
     full_cont = True  # IMPORTANT!!!
 
@@ -103,10 +107,10 @@ def main():
 
     args.emu_cov_factor = 0.0
 
-    # args.n_steps = 1250
-    # args.n_burn_in = 1250
     args.n_steps = 1250
-    args.n_burn_in = 0
+    args.n_burn_in = 1250
+    # args.n_steps = 1250
+    # args.n_burn_in = 0
     if size > 1:
         args.parallel = True
     else:
@@ -221,14 +225,17 @@ def main():
         p0 = np.array(list(pip.fitter.like.fid["fit_cube"].values()))
         pip.run_minimizer(p0)
 
-        # run samplers, it uses as ini the results of the minimizer
-        pip.run_sampler()
+        if run_sampler:
+            # run samplers, it uses as ini the results of the minimizer
+            pip.run_sampler()
 
-        # run minimizer again, now on MLE
-        if rank == 0:
-            ind = np.argmax(pip.fitter.lnprob.reshape(-1))
-            p0 = pip.fitter.chain.reshape(-1, pip.fitter.chain.shape[-1])[ind]
-        pip.run_minimizer(p0, save_chains=True)
+            # run minimizer again, now on MLE
+            if rank == 0:
+                ind = np.argmax(pip.fitter.lnprob.reshape(-1))
+                p0 = pip.fitter.chain.reshape(-1, pip.fitter.chain.shape[-1])[
+                    ind
+                ]
+            pip.run_minimizer(p0, save_chains=True)
 
 
 if __name__ == "__main__":
