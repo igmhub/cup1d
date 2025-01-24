@@ -78,13 +78,13 @@ def main():
 
     full_cont = True  # IMPORTANT!!!
 
-    # emulator_label = "Pedersen23_ext"
-    # training_set = "Cabayol23"
-    # vary_alphas = False
+    emulator_label = "Pedersen23_ext"
+    training_set = "Cabayol23"
+    vary_alphas = False
 
-    emulator_label = "Nyx_alphap_cov"
-    training_set = "Nyx23_Jul2024"
-    vary_alphas = True
+    # emulator_label = "Nyx_alphap_cov"
+    # training_set = "Nyx23_Jul2024"
+    # vary_alphas = True
     # vary_alphas = False
 
     # emulator_label = "Cabayol23+"
@@ -181,19 +181,17 @@ def main():
         else:
             true_sim_label = None
 
+        args.true_cosmo_label = true_sim_label
+        args.true_igm_label = true_sim_label
+        args.true_label_mF = true_sim_label
+        args.true_label_T = true_sim_label
+        args.true_label_kF = true_sim_label
+        args.fid_cosmo_label = true_sim_label
+        args.fid_label_mF = true_sim_label
+        args.fid_label_T = true_sim_label
         if "Nyx" in emulator_label:
-            args.true_cosmo_label = true_sim_label
-            args.true_igm_label = true_sim_label
-            args.fid_cosmo_label = true_sim_label
-            args.fid_label_mF = true_sim_label
-            args.fid_label_T = true_sim_label
             args.fid_label_kF = true_sim_label
         else:
-            args.true_cosmo_label = true_sim_label
-            args.true_igm_label = true_sim_label
-            args.fid_cosmo_label = true_sim_label
-            args.fid_label_mF = true_sim_label
-            args.fid_label_T = true_sim_label
             args.fid_label_kF = "mpg_central"
 
         if impose_fid_cosmo_label is not None:
@@ -230,7 +228,7 @@ def main():
         if rank == 0:
             ind = np.argmax(pip.fitter.lnprob.reshape(-1))
             p0 = pip.fitter.chain.reshape(-1, pip.fitter.chain.shape[-1])[ind]
-        pip.run_minimizer(p0)
+        pip.run_minimizer(p0, save_chains=True)
 
 
 if __name__ == "__main__":

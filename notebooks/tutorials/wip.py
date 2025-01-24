@@ -58,9 +58,26 @@ from corner import corner
 from cup1d.likelihood import CAMB_model
 
 # %%
+# import numpy as np
+# from cup1d.likelihood.cosmologies import set_cosmo
+# from cup1d.likelihood import CAMB_model
+# cosmo = set_cosmo("nyx_central")
+# zs = np.arange(2.2, 4.4, 0.2)
+# camb_object = CAMB_model.CAMBModel(zs, cosmo=cosmo, z_star=3.0, kp_kms=0.009)
+# kp_Mpc = 0.7
+# lin_par = camb_object.get_linP_Mpc_params(kp_Mpc)
+
+# for ii in range(len(zs)):
+#     print(zs[ii], lin_par[ii])
+
+# %%
 # fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v6/Nyx_alphap_cov/mockchallenge-0.6_nonoise_fiducial/chain_2/sampler_results.npy"
+# fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v9fx/Nyx_alphap_cov/mockchallenge-0.9fx_nonoise_fiducial/chain_1/fitter_results.npy"
+
 # plotter = Plotter(save_directory="test", fname_chain=fname_chain)
 # plotter.plot_corner(only_cosmo=True)
+
+# %%
 
 # %%
 # version = "9fx"
@@ -406,28 +423,6 @@ args.fid_A_scale = [0, 5]
 # args.n_agn=0
 
 
-# args.fid_SiII=[[0, 0], [-4, -10]] # null
-# args.fid_SN=[0, -4] # null
-# args.fid_AGN=[0, -4] # null
-# # args.fid_SiIII=[[0, 0], [-3, -10]] # null
-# # args.fid_SiIII=[[0, 0], [-3, -5]] # 1 null
-# args.fid_SiIII=[[0, 0], [5, -5]]
-# # args.fid_HCD=[0, -4] # null
-# # args.fid_HCD=[0, -2] # 1 null
-# args.fid_HCD=[3, -1.5]
-
-# args.n_SiII=0
-# args.n_d_SiII=0
-# args.n_sn=0
-# args.n_agn=0
-# args.n_tau=2
-# args.n_sigT=2
-# args.n_gamma=2
-# args.n_kF=2
-# args.n_SiIII=1
-# args.n_d_SiIII=1
-# args.n_dla=2
-
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
 
@@ -452,9 +447,6 @@ for p in like.free_params:
 # %%
 # emu_call = np.load("emu_call_fiducial.npy", allow_pickle=True).item()
 # emu_call
-
-# %% [markdown]
-# 152?!
 
 # %% [markdown]
 # Compare data and fiducial/starting model
@@ -558,10 +550,10 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # args.n_s_dla = 1
 
 # %%
-fitter.save_fitter()
+# fitter.save_fitter()
 
 # %%
-plotter = Plotter(fitter, save_directory="nyx_fid_all")
+plotter = Plotter(fitter, save_directory=None)
 if args.fix_cosmo == False:
     plotter.plot_mle_cosmo()
 plotter.plots_minimizer()
@@ -653,292 +645,9 @@ if run_sampler:
 fitter.write_chain_to_file()
 
 # %%
+plotter = Plotter(fitter, save_directory=None)
 
 # %%
-
-# %% [markdown]
-# inside in terms of deltap and np parameters, but outside in terms of deltastar and nstar
-
-# %%
-like.theory.emulator.list_sim_cube[0][:3]
-
-# %%
-ii = 0
-jj = 0
-zs = fitter.like.data.z
-pini = fitter.chain[ii,jj,:].copy()
-pini[1] = 0.95
-like_params = fitter.like.parameters_from_sampling_point(pini)
-
-# %%
-pini
-
-# %%
-fitter.blobs[ii,jj]
-
-# %%
-for par in like_params:
-    print(par.name, par.value)
-
-# %%
-
-# %%
-
-# %%
-
-# %% [markdown]
-# why outside?
-
-# %%
-# fil = np.load("/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v2/Nyx_alphap_cov/mock_challenge_0.2_nonoise_fiducial/chain_6/sampler_results.npy", allow_pickle=True).item()
-# fil.keys()
-
-# %%
-# fil["posterior"].keys()
-# fil["posterior"]["nrun"].max()
-# plt.hist(fil["posterior"]["nrun"].reshape(-1), bins=100);
-
-# %%
-# plt.scatter(fil["posterior"]["alpha_star"].reshape(-1), fil["posterior"]["lnprob"].reshape(-1), s=1)
-
-# %%
-plotter = Plotter(fitter, save_directory=fitter.save_directory)
-
-# %%
-plotter.plots_sampler()
-
-# %%
-# chain = plotter.plot_corner(only_cosmo=True)
-
-# %%
-fitter.write_chain_to_file()
-
-# %%
-fil = np.load("/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/chain_2/chain.npy", allow_pickle=True).item()
-
-# %% [markdown]
-# ## Test pipeline
-
-# %%
-# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
-args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-
-
-# %%
-archive = set_archive(args.training_set)
-
-# %%
-
-emulator = set_emulator(
-    emulator_label=args.emulator_label,
-    archive=archive,
-)
-
-if "Nyx" in emulator.emulator_label:
-    emulator.list_sim_cube = archive.list_sim_cube
-    if "nyx_14" in emulator.list_sim_cube:
-        emulator.list_sim_cube.remove("nyx_14")
-else:
-    emulator.list_sim_cube = archive.list_sim_cube
-
-# %%
-# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-args.archive=archive
-args.emulator=emulator
-
-folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.2/"
-fname = "mock_challenge_0.2_nonoise_fiducial.fits"
-# fname = "mock_challenge_0.2_nonoise_CGAN_4096_base.fits"
-# fname = "mock_challenge_0.2_nonoise_cosmo_grid_3.fits"
-# fname = "mock_challenge_0.2_nonoise_bar_ic_grid_3.fits"
-# fname = "mock_challenge_0.2_noise-42-0_fiducial.fits"
-true_sim_label="nyx_central"
-args.data_label = "DESI_Y1"
-args.p1d_fname = folder + fname
-
-
-# cosmology
-args.ic_correction=False
-
-args.emu_cov_factor = 0.0
-# args.fid_cosmo_label="mpg_central"
-args.fid_cosmo_label="nyx_central"
-# args.fid_cosmo_label="nyx_seed"
-
-# args.fid_cosmo_label="nyx_3"
-# args.ic_correction=True
-# args.fid_cosmo_label="Planck18"
-# fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
-
-# IGM
-args.fid_igm_label="mpg_central"
-# args.fid_igm_label="nyx_central"
-# args.fid_igm_label="nyx_seed"
-# args.fid_igm_label="nyx_3"
-# args.fid_igm_label="nyx_3_1"
-
-# parameters
-args.vary_alphas=False
-# args.vary_alphas=True
-# args.fix_cosmo=False
-args.fix_cosmo=True
-
-args.n_tau=2
-args.n_sigT=2
-args.n_gamma=2
-args.n_kF=2
-
-args.n_steps=100
-args.n_burn_in=40
-args.parallel=False
-args.explore=True
-
-# %%
-out_folder = "/home/jchaves/Proyectos/projects/lya/data/tests"
-pip = Pipeline(args, make_plots=True, out_folder=out_folder)
-
-# %%
-pip.run_minimizer()
-
-# %%
-pip.run_sampler()
-
-# %%
-plotter = Plotter(pip.fitter, save_directory=pip.out_folder)
-plotter.plots_sampler()
-
-# %%
-# sampler.write_chain_to_file()
-
-# %%
-# import h5py
-# nyx_file = "/home/jchaves/Proyectos/projects/lya/data/nyx/models_Nyx_Oct2023.hdf5"
-# ff = h5py.File(nyx_file, "r")
-# sim_avail = list(ff.keys())
-
-# zkeys = list(ff["cosmo_grid_0"].keys())
-
-# snap = ff["cosmo_grid_0"][zkeys[0]]
-# list_scalings = list(snap.keys())
-
-# z = np.zeros((len(list_scalings), len(zkeys)))
-# fbar = np.zeros((len(list_scalings), len(zkeys)))
-
-# for ii in range(len(list_scalings)):
-#     for jj in range(len(zkeys)):
-#         z[ii, jj] = float(zkeys[jj][-3:])
-#         snap = ff["cosmo_grid_0"][zkeys[jj]]
-#         if list_scalings[ii] in snap:
-#             if "T_0" in snap[list_scalings[ii]].attrs.keys():
-#                 fbar[ii, jj] = snap[list_scalings[ii]].attrs["T_0"]            
-#             else:
-#                 print(list_scalings[ii], zkeys[jj]) 
-
-
-# for ii in range(len(list_scalings)):
-#     if "new" in list_scalings[ii]:
-#         col = "red"
-#     elif "native" in list_scalings[ii]:
-#         col = "k"
-#     else:
-#         col = "C1"
-#     _ = np.argwhere(fbar[ii, :] != 0)[:,0]
-#     if(len(_) > 0):
-#         plt.plot(z[ii, _], fbar[ii, _], col, label=list_scalings[ii], alpha=0.75)
-# # plt.legend()
-# plt.xlabel("z")
-# plt.ylabel("T_0")
-# plt.savefig("nyx_T0.pdf")
-# # plt.ylabel("gamma")
-# # plt.savefig("nyx_gamma.pdf")
-
-# %%
-
-# %%
-# check IGM histories
-# zs=data["P1Ds"].z
-
-# plt.plot(zs, like.theory.model_igm.F_model.get_tau_eff(zs))
-# plt.plot(like.truth["igm"]["z"], like.truth["igm"]["tau_eff"], "--")
-
-# plt.plot(zs, like.theory.model_igm.T_model.get_sigT_kms(zs))
-# plt.plot(like.truth["igm"]["z"], like.truth["igm"]["sigT_kms"], "--")
-
-# plt.plot(zs, like.theory.model_igm.T_model.get_gamma(zs))
-# plt.plot(like.truth["igm"]["z"], like.truth["igm"]["gamma"], "--")
-
-# plt.plot(zs, like.theory.model_igm.P_model.get_kF_kms(zs))
-# plt.plot(like.truth["igm"]["z"], like.truth["igm"]["kF_kms"], "--")
-
-# %% [markdown]
-# Results fiducial
-#
-# -- w/ emu error 
-#
-# - block-covariance chi2 48
-#
-# Delta2_star 0.36652 0.36004 0.00647
-#
-# n_star -2.30407 -2.29877 0.0053
-#
-# alpha_star -0.21519 -0.21614 0.00096
-#
-# - full-covariance chi2 50
-#
-# Delta2_star 0.36911 0.36004 0.00907
-#
-# n_star -2.30417 -2.29877 0.0054
-#
-# alpha_star -0.21405 -0.21614 0.00209
-#
-# -- w/o emu error 
-#
-# - block-covariance chi2 147
-#
-# Delta2_star 0.37197 0.36004 0.01193
-#
-# n_star -2.30516 -2.29877 0.00639
-#
-# alpha_star -0.21374 -0.21614 0.00241
-#
-# - full-covariance chi2 181
-#
-# Delta2_star 0.3809 0.36004 0.02086
-#
-# n_star -2.30277 -2.29877 0.00401
-#
-# alpha_star -0.2111 -0.21614 0.00504
-
-# %%
-def make_p1d_err_plot(p1ds_err, kMpc_test):
-    """
-    Plot the P1D errors with 16th and 84th percentiles shaded.
-    
-    Parameters:
-    p1ds_err (np.array): Array of P1D errors
-    kMpc_test (np.array): k values in Mpc^-1
-    """
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # Calculate median, 16th and 84th percentiles
-    p1d_median = np.nanmedian(p1ds_err.reshape(-1, len(kMpc_test)), axis=0)
-    perc_16 = np.nanpercentile(p1ds_err.reshape(-1, len(kMpc_test)), 16, axis=0)
-    perc_84 = np.nanpercentile(p1ds_err.reshape(-1, len(kMpc_test)), 84, axis=0)
-    
-    # Plot median line
-    ax.plot(kMpc_test, p1d_median,  color='crimson')
-    ax.axhline(y=0, color='black', linestyle='--', alpha=0.5)
-
-    ax.fill_between(kMpc_test, perc_16, perc_84, alpha=0.3, color='crimson')
-    
-    ax.set_xlabel('k (Mpc$^{-1}$)')
-    ax.set_ylabel('Relative Error in P1D')
-    ax.legend()
-    ax.grid(True, which="both", ls="-", alpha=0.2)
-    
-    plt.tight_layout()
-    plt.savefig(f'p1d_errors_all.pdf', bbox_inches='tight')
-    plt.close()
 
 # %%
 

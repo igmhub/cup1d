@@ -56,6 +56,7 @@ def set_cosmo(
             raise ValueError(f"{fname} not found")
 
         if cosmo_label in data_cosmo.keys():
+            # print(data_cosmo[cosmo_label]["cosmo_params"])
             cosmo = get_cosmo(data_cosmo[cosmo_label]["cosmo_params"])
         else:
             raise ValueError(f"Cosmo not found in {fname} for {cosmo_label}")

@@ -546,6 +546,10 @@ class Pipeline(object):
             data_hires=data["extra_P1Ds"],
         )
 
+        print(like.truth)
+        print("out")
+        # sys.exit()
+
         ## Validating likelihood
 
         if rank == 0:
@@ -626,7 +630,7 @@ class Pipeline(object):
                     else:
                         self.n_burn_in = 1500
 
-    def run_minimizer(self, p0, make_plots=True):
+    def run_minimizer(self, p0, make_plots=True, save_chains=False):
         """
         Run the minimizer (only rank 0)
         """
@@ -645,7 +649,7 @@ class Pipeline(object):
             )
 
             # save fit
-            self.fitter.save_fitter()
+            self.fitter.save_fitter(save_chains=save_chains)
 
             if make_plots:
                 # plot fit

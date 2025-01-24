@@ -90,9 +90,7 @@ class HCD_Model_new(object):
         for i in range(Npar):
             name = "ln_A_scale_" + str(i)
             if i == 0:
-                # no contamination
                 xmin = 3
-                # 0 gives 350% contamination low k
                 xmax = 7
             else:
                 # not optimized

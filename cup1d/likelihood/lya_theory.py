@@ -663,7 +663,8 @@ class Theory(object):
             return_blob=True,
         )
 
-        np.save("emu_call_fiducial.npy", emu_call)
+        # print(emu_call)
+        # np.save("emu_call_fiducial.npy", emu_call)
 
         # also apply priors on compressed parameters
         # temporary hack

@@ -258,14 +258,30 @@ class Likelihood(object):
         for par in self.data.truth:
             self.truth[par] = self.data.truth[par]
 
+        # make sure that we compare the correct zs
+        ztruth = self.data.truth["igm"]["z"]
+        zfid = self.theory.model_igm.fid_igm["z"]
+        mask_z = np.zeros(len(ztruth), dtype=int) - 1
+        for ii in range(len(mask_z)):
+            ind = np.argwhere(ztruth[ii] == zfid)[:, 0]
+            if len(ind) != 0:
+                mask_z[ii] = ind[0]
+
+        ind = np.argwhere(mask_z != -1)[:, 0]
+        mask_z = mask_z[ind]
+
+        # equal_IGM for each IGM differently!!!
         equal_IGM = True
         for key in self.data.truth["igm"]:
             if key not in self.theory.model_igm.fid_igm:
                 continue
             lenz = self.theory.model_igm.fid_igm[key].shape[0]
-            if np.allclose(
-                self.data.truth["igm"][key][:lenz],
-                self.theory.model_igm.fid_igm[key],
+            if (
+                np.allclose(
+                    np.array(self.data.truth["igm"][key])[mask_z],
+                    self.theory.model_igm.fid_igm[key],
+                )
+                == False
             ):
                 equal_IGM = False
                 break
@@ -281,12 +297,22 @@ class Likelihood(object):
                 | ("kF" in par.name)
             ):
                 if equal_IGM:
-                    self.truth["like_params"][par.name] = 0
-                    self.truth["like_params_cube"][
-                        par.name
-                    ] = par.get_value_in_cube(
-                        self.truth["like_params"][par.name]
-                    )
+                    if ("tau" in par.name) and (
+                        self.args["mF_model_type"] == "chunks"
+                    ):
+                        self.truth["like_params"][par.name] = 1
+                        self.truth["like_params_cube"][
+                            par.name
+                        ] = par.get_value_in_cube(
+                            self.truth["like_params"][par.name]
+                        )
+                    else:
+                        self.truth["like_params"][par.name] = 0
+                        self.truth["like_params_cube"][
+                            par.name
+                        ] = par.get_value_in_cube(
+                            self.truth["like_params"][par.name]
+                        )
                 else:
                     self.truth["like_params"][par.name] = np.infty
                     self.truth["like_params_cube"][par.name] = np.infty

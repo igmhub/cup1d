@@ -1,3 +1,4 @@
+import inspect
 import matplotlib.pyplot as plt
 from corner import corner
 import numpy as np
@@ -17,7 +18,16 @@ class Plotter(object):
             data = np.load(fname_chain, allow_pickle=True).item()
 
             # set input args to pipeline and evaluate
-            args = Args(**data["args"])
+            args_possible = res = inspect.signature(Args)
+            dict_input = {}
+            for param in args_possible.parameters.values():
+                if param.name in data["args"].keys():
+                    dict_input[param.name] = data["args"][param.name]
+                else:
+                    print(param.name)
+
+            args = Args(**dict_input)
+            args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.9fx/mockchallenge-0.9fx_nonoise_fiducial.fits.gz"
             self.fitter = Pipeline(args, out_folder=save_directory).fitter
 
             # add sampler results to fitter
@@ -25,9 +35,9 @@ class Plotter(object):
             self.fitter.mle_cosmo = data["fitter"]["mle_cosmo"]
             self.fitter.mle = data["fitter"]["mle"]
             self.fitter.lnprop_mle = data["fitter"]["lnprob_mle"]
-            self.fitter.lnprob = data["fitter"]["lnprob"]
-            self.fitter.chain = data["fitter"]["chain"]
-            self.fitter.blobs = data["fitter"]["blobs"]
+            # self.fitter.lnprob = data["fitter"]["lnprob"]
+            # self.fitter.chain = data["fitter"]["chain"]
+            # self.fitter.blobs = data["fitter"]["blobs"]
         else:
             ValueError("Provide either fitter or fname_chain")
 
@@ -328,8 +338,7 @@ class Plotter(object):
         extra_nburn=0,
         only_cosmo_lims=True,
     ):
-        """Make corner plot in ChainConsumer
-        - if delta_lnprob_cut is set, keep only high-prob points"""
+        """Make corner plot in corner"""
 
         params_plot, strings_plot, _ = self.fitter.get_all_params(
             delta_lnprob_cut=delta_lnprob_cut, extra_nburn=extra_nburn
@@ -344,27 +353,86 @@ class Plotter(object):
             yesplot = np.array(strings_plot)[diff != 0]
 
         truth = np.zeros((len(yesplot)))
+        MLE = np.zeros((len(yesplot)))
         chain = np.zeros((params_plot.shape[0], len(yesplot)))
         for ii, par in enumerate(yesplot):
             _ = np.argwhere(np.array(strings_plot) == par)[0, 0]
             chain[:, ii] = params_plot[:, _]
             if par in self.fitter.truth:
                 truth[ii] = self.fitter.truth[par]
-        # XXX check out that all relevant parameters in truth
+            if par in self.fitter.mle:
+                MLE[ii] = self.fitter.mle[par]
+            if par == "$A_s$":
+                chain[:, ii] *= 1e9
+                truth[ii] *= 1e9
+                MLE[ii] *= 1e9
+                yesplot[ii] = r"$A_s\times10^9$"
 
         fig = corner(
             chain,
             labels=yesplot,
-            quantiles=(0.16, 0.84),
+            quantiles=(0.16, 0.5, 0.84),
             levels=(0.68, 0.95),
             show_titles=True,
             title_quantiles=(0.16, 0.5, 0.84),
             title_fmt=".4f",
             plot_datapoints=False,
             plot_density=False,
-            truths=truth,
         )
 
+        # add truth and MLE
+        value1 = truth.copy()
+        value2 = MLE.copy()
+        ndim = len(value1)
+        axes = np.array(fig.axes).reshape((ndim, ndim))
+        for i in range(ndim):
+            ax = axes[i, i]
+            ax.axvline(value1[i], color="C0", label="Truth")
+            ax.axvline(value2[i], color="C2", label="MAP", linestyle=":")
+
+            # Set up x limits
+            xlim = np.array(ax.get_xlim())
+            val_min = np.min([value1[i], value2[i]])
+            val_max = np.max([value1[i], value2[i]])
+            if xlim[0] > val_min:
+                xlim[0] = val_min
+            if xlim[1] < val_max:
+                xlim[1] = val_max
+            xdiff = xlim[1] - xlim[0]
+            ax.set_xlim(xlim[0] - 0.05 * xdiff, xlim[1] + 0.05 * xdiff)
+        axes[0, 0].legend(loc="upper left")
+
+        # Loop over the histograms
+        for yi in range(ndim):
+            for xi in range(yi):
+                ax = axes[yi, xi]
+                ax.axvline(value1[xi], color="C0")
+                ax.axvline(value2[xi], color="C2", linestyle=":")
+                ax.axhline(value1[yi], color="C0")
+                ax.axhline(value2[yi], color="C2", linestyle=":")
+                ax.plot(value1[xi], value1[yi], ".C0")
+                ax.plot(value2[xi], value2[yi], ".C2", linestyle=":")
+
+                # Set up x and y limits
+                xlim = np.array(ax.get_xlim())
+                val_min = np.min([value1[xi], value2[xi]])
+                val_max = np.max([value1[xi], value2[xi]])
+                if xlim[0] > val_min:
+                    xlim[0] = val_min
+                if xlim[1] < val_max:
+                    xlim[1] = val_max
+                xdiff = xlim[1] - xlim[0]
+                ax.set_xlim(xlim[0] - 0.05 * xdiff, xlim[1] + 0.05 * xdiff)
+
+                ylim = np.array(ax.get_ylim())
+                val_min = np.min([value1[yi], value2[yi]])
+                val_max = np.max([value1[yi], value2[yi]])
+                if ylim[0] > val_min:
+                    ylim[0] = val_min
+                if ylim[1] < val_max:
+                    ylim[1] = val_max
+                ydiff = ylim[1] - ylim[0]
+                ax.set_ylim(ylim[0] - 0.05 * ydiff, ylim[1] + 0.05 * ydiff)
         if only_cosmo:
             (
                 labs,
