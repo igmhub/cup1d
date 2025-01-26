@@ -72,19 +72,21 @@ def main():
     #     path_in_challenge,
     #     "mockchallenge-0." + version + "_nonoise_fiducial.fits.gz",
     # )
-    search = os.path.join(
-        path_in_challenge, "mockchallenge-0." + version + "_nonoise_fiducial*"
-    )
+    # search = os.path.join(
+    #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_fiducial*"
+    # )
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
     # search = os.path.join(path_in_challenge, "*CGAN*")
-    # search = os.path.join(path_in_challenge, "mockchallenge-0.9fx_nonoise_*")
+    search = os.path.join(
+        path_in_challenge, "mockchallenge-0." + version + "_nonoise_*"
+    )
 
     files = np.sort(glob.glob(search))
     if rank == 0:
         for ii in range(len(files)):
             print(ii, files[ii])
 
-    # sys.exit()
+    sys.exit()
 
     full_cont = True  # IMPORTANT!!!
 
@@ -169,6 +171,9 @@ def main():
         args.vary_alphas = False
 
     for isim in range(len(files)):
+        if "fiducial" in files[isim]:
+            continue
+
         args.p1d_fname = files[isim]
         if rank == 0:
             print("Analyzing:", args.p1d_fname)
