@@ -72,7 +72,9 @@ def main():
     #     path_in_challenge,
     #     "mockchallenge-0." + version + "_nonoise_fiducial.fits.gz",
     # )
-    search = os.path.join(path_in_challenge, "*fiducial*")
+    search = os.path.join(
+        path_in_challenge, "mockchallenge-0." + version + "_nonoise_fiducial*"
+    )
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
     # search = os.path.join(path_in_challenge, "*CGAN*")
     # search = os.path.join(path_in_challenge, "mockchallenge-0.9fx_nonoise_*")
