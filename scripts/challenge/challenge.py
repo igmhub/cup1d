@@ -171,7 +171,7 @@ def main():
         args.vary_alphas = False
 
     for isim in range(len(files)):
-        if "fiducial" in files[isim]:
+        if ("fiducial" in files[isim]) | ("ACCEL2" in files[isim]):
             continue
 
         args.p1d_fname = files[isim]
@@ -194,8 +194,8 @@ def main():
         elif "grid_3" in args.p1d_fname:
             true_sim_label = "nyx_3"
         else:
-            # ACCEL check out!!!!
-            true_sim_label = "nyx_central"
+            print("Missing true sim label!!")
+            sys.exit()
 
         args.true_cosmo_label = true_sim_label
         args.true_igm_label = true_sim_label
