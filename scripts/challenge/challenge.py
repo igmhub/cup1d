@@ -194,7 +194,8 @@ def main():
         elif "grid_3" in args.p1d_fname:
             true_sim_label = "nyx_3"
         else:
-            true_sim_label = None
+            # ACCEL check out!!!!
+            true_sim_label = "nyx_central"
 
         args.true_cosmo_label = true_sim_label
         args.true_igm_label = true_sim_label
