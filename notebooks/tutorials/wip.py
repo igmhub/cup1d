@@ -71,16 +71,13 @@ from cup1d.likelihood import CAMB_model
 #     print(zs[ii], lin_par[ii])
 
 # %%
-
 # fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v6/Nyx_alphap_cov/mockchallenge-0.6_nonoise_fiducial/chain_2/sampler_results.npy"
-mod = "mockchallenge-0.9fx_nonoise_fiducial/chain_1"
-mod = "mockchallenge-0.9fx_nonoise_fiducial/chain_3"
-fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v9fx/Nyx_alphap_cov/"+mod+"/fitter_results.npy"
+# mod = "mockchallenge-0.9fx_nonoise_fiducial/chain_1"
+# mod = "mockchallenge-0.9fx_nonoise_fiducial/chain_4"
+# fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v9fx/Nyx_alphap_cov/"+mod+"/fitter_results.npy"
 
-plotter = Plotter(save_directory="test", fname_chain=fname_chain)
-plotter.plot_corner(only_cosmo=True)
-
-# %%
+# plotter = Plotter(save_directory="test", fname_chain=fname_chain)
+# plotter.plot_corner(only_cosmo=True)
 
 # %%
 # version = "9fx"
@@ -207,8 +204,8 @@ elif choose_challenge:
     args.data_label = "challenge_DESIY1"
     version = "9fx"
     folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
-    # fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
-    fname = "mockchallenge-0."+version+"_nonoise_bar_ic_grid_3.fits.gz"
+    fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
+    # fname = "mockchallenge-0."+version+"_nonoise_bar_ic_grid_3.fits.gz"
     # fname = "mockchallenge-0."+version+"_noise-42-0_fiducial.fits.gz"
     args.p1d_fname = folder + fname
     if "fiducial" in args.p1d_fname:

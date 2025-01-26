@@ -676,56 +676,6 @@ class Fitter(object):
 
         return best_values
 
-    # def save_minimizer(self):
-    #     """Write results of minimizer to file"""
-
-    #     dict_out = {}
-
-    #     dict_out["emu_label"] = self.like.theory.emulator.emulator_label
-    #     dict_out["z_star"] = self.like.theory.z_star
-    #     dict_out["kp_kms"] = self.like.theory.kp_kms
-    #     dict_out["mle"] = self.mle
-    #     dict_out["mle_cube"] = self.mle_cube
-    #     dict_out["lnprob_mle"] = self.lnprop_mle
-
-    #     dict_out["cosmo_best"] = {}
-    #     dict_out["cosmo_fid"] = {}
-    #     dict_out["cosmo_true"] = {}
-    #     dict_out["cosmo_reldiff"] = {}
-
-    #     pars = {
-    #         "Delta2_star": "$\\Delta^2_\\star$",
-    #         "n_star": "$n_\\star$",
-    #         "alpha_star": "$\\alpha_\\star$",
-    #     }
-
-    #     for par in pars:
-    #         if (
-    #             (par == "alpha_star")
-    #             and ("nrun" not in self.like.free_param_names)
-    #         ) | (
-    #             (par == "n_star") and ("ns" not in self.like.free_param_names)
-    #         ) or (
-    #             (par == "Delta2_star")
-    #             and ("As" not in self.like.free_param_names)
-    #         ):
-    #             continue
-
-    #         dict_out["cosmo_best"][par] = self.mle_cosmo[par]
-    #         dict_out["cosmo_fid"][par] = self.like.fid["fit"][par]
-
-    #         if self.truth is not None:
-    #             dict_out["cosmo_true"][par] = self.truth[pars[par]]
-    #             dict_out["cosmo_reldiff"][par] = (
-    #                 dict_out["cosmo_best"][par] / dict_out["cosmo_true"][par]
-    #                 - 1
-    #             ) * 100
-
-    #     if self.truth is not None:
-    #         dict_out["truth"] = self.truth
-
-    #     np.save(self.save_directory + "/minimizer_results.npy", dict_out)
-
     def save_fitter(self, save_chains=False):
         """Write flat chain to file"""
 

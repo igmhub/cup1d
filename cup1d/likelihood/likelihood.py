@@ -420,6 +420,17 @@ class Likelihood(object):
         """Compute log(likelihood), including determinant of covariance
         unless you are setting ignore_log_det_cov=True."""
 
+        # what to return if we are out of priors
+        null_out = [-np.inf, -np.inf]
+        if return_blob:
+            blob = (0, 0, 0, 0, 0, 0)
+            null_out.append(blob)
+
+        # check that we are within unit cube
+        if values is not None:
+            if (values > 1.0).any() | (values < 0.0).any():
+                return null_out
+
         # ask emulator prediction for P1D in each bin
         _res = self.get_p1d_kms(
             self.data.z,
@@ -427,15 +438,9 @@ class Likelihood(object):
             values,
             return_blob=return_blob,
         )
-        # XXX
+        # out of priors
         if _res is None:
-            # out of priors
-            log_like = -np.inf
-            out = [log_like, log_like]
-            if return_blob:
-                blob = (0, 0, 0, 0, 0, 0)
-                out.append(blob)
-            return out
+            return null_out
 
         if return_blob:
             emu_p1d, blob = _res
@@ -452,14 +457,9 @@ class Likelihood(object):
                 values,
                 return_blob=False,
             )
+            # out of priors
             if emu_p1d_extra is None:
-                # out of priors
-                log_like = -np.inf
-                out = [log_like, log_like]
-                if return_blob:
-                    blob = (0, 0, 0, 0, 0, 0)
-                    out.append(blob)
-                return out
+                return null_out
 
         else:
             length = 1
@@ -509,8 +509,9 @@ class Likelihood(object):
                     )
                     log_like += -0.5 * (chi2_all + log_det_cov)
 
+        # something went wrong
         if np.isnan(log_like):
-            log_like = -np.inf
+            return null_out
 
         out = [log_like, log_like_all]
         if return_blob:
