@@ -72,9 +72,11 @@ def main():
     #     path_in_challenge,
     #     "mockchallenge-0." + version + "_nonoise_fiducial.fits.gz",
     # )
-    # search = os.path.join(path_in_challenge, "*fiducial*")
+    search = os.path.join(path_in_challenge, "*fiducial*")
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
-    search = os.path.join(path_in_challenge, "*CGAN*")
+    # search = os.path.join(path_in_challenge, "*CGAN*")
+    # search = os.path.join(path_in_challenge, "mockchallenge-0.9fx_nonoise_*")
+
     files = np.sort(glob.glob(search))
     if rank == 0:
         for ii in range(len(files)):
@@ -219,7 +221,7 @@ def main():
 
         if "bar_ic" in args.p1d_fname:
             args.ic_correction = True
-            args.ic_correction = False
+            # args.ic_correction = False
         else:
             args.ic_correction = False
 
