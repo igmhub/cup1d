@@ -86,7 +86,7 @@ def main():
         for ii in range(len(files)):
             print(ii, files[ii])
 
-    sys.exit()
+    # sys.exit()
 
     full_cont = True  # IMPORTANT!!!
 
