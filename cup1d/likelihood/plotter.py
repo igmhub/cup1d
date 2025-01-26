@@ -394,8 +394,8 @@ class Plotter(object):
 
             # Set up x limits
             xlim = np.array(ax.get_xlim())
-            val_min = np.min([value1[i], value2[i]])
-            val_max = np.max([value1[i], value2[i]])
+            val_min = np.nanmin([value1[i], value2[i]])
+            val_max = np.nanmax([value1[i], value2[i]])
             if (xlim[0] > val_min) and np.isfinite(val_min):
                 xlim[0] = val_min
             if (xlim[1] < val_max) and np.isfinite(val_max):
