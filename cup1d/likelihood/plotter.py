@@ -35,9 +35,10 @@ class Plotter(object):
             self.fitter.mle_cosmo = data["fitter"]["mle_cosmo"]
             self.fitter.mle = data["fitter"]["mle"]
             self.fitter.lnprop_mle = data["fitter"]["lnprob_mle"]
-            self.fitter.lnprob = data["fitter"]["lnprob"]
-            self.fitter.chain = data["fitter"]["chain"]
-            self.fitter.blobs = data["fitter"]["blobs"]
+            if "lnprob" in data["fitter"].keys():
+                self.fitter.lnprob = data["fitter"]["lnprob"]
+                self.fitter.chain = data["fitter"]["chain"]
+                self.fitter.blobs = data["fitter"]["blobs"]
         else:
             ValueError("Provide either fitter or fname_chain")
 
@@ -395,9 +396,9 @@ class Plotter(object):
             xlim = np.array(ax.get_xlim())
             val_min = np.min([value1[i], value2[i]])
             val_max = np.max([value1[i], value2[i]])
-            if xlim[0] > val_min:
+            if (xlim[0] > val_min) and np.isfinite(val_min):
                 xlim[0] = val_min
-            if xlim[1] < val_max:
+            if (xlim[1] < val_max) and np.isfinite(val_max):
                 xlim[1] = val_max
             xdiff = xlim[1] - xlim[0]
             ax.set_xlim(xlim[0] - 0.05 * xdiff, xlim[1] + 0.05 * xdiff)

@@ -58,13 +58,10 @@ for ii in range(len(files)):
         if ii == 0:
             truth[jj] = data["truth"][key]            
         best_fit[ii, jj] = data["fitter"]["mle"][key]
-
-# +
-
-plotter.plot_corner(only_cosmo=True, only_cosmo_lims=False, extra_data=best_fit)
 # -
 
-fname_chain = os.path.join(path_out_challenge, emulator, "mockchallenge-0.9fx_nonoise_fiducial/chain_1/fitter_results.npy")
+fname_chain = os.path.join(path_out_challenge, emulator, "mockchallenge-0.9fx_nonoise_fiducial/chain_4/fitter_results.npy")
 plotter = Plotter(save_directory="test", fname_chain=fname_chain)
+plotter.plot_corner(only_cosmo=True, only_cosmo_lims=False, extra_data=best_fit)
 
 

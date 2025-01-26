@@ -71,11 +71,14 @@ from cup1d.likelihood import CAMB_model
 #     print(zs[ii], lin_par[ii])
 
 # %%
-# fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v6/Nyx_alphap_cov/mockchallenge-0.6_nonoise_fiducial/chain_2/sampler_results.npy"
-# fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v9fx/Nyx_alphap_cov/mockchallenge-0.9fx_nonoise_fiducial/chain_1/fitter_results.npy"
 
-# plotter = Plotter(save_directory="test", fname_chain=fname_chain)
-# plotter.plot_corner(only_cosmo=True)
+# fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v6/Nyx_alphap_cov/mockchallenge-0.6_nonoise_fiducial/chain_2/sampler_results.npy"
+mod = "mockchallenge-0.9fx_nonoise_fiducial/chain_1"
+mod = "mockchallenge-0.9fx_nonoise_fiducial/chain_3"
+fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v9fx/Nyx_alphap_cov/"+mod+"/fitter_results.npy"
+
+plotter = Plotter(save_directory="test", fname_chain=fname_chain)
+plotter.plot_corner(only_cosmo=True)
 
 # %%
 

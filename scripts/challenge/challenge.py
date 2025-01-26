@@ -73,7 +73,7 @@ def main():
     #     "mockchallenge-0." + version + "_nonoise_fiducial.fits.gz",
     # )
     # search = os.path.join(path_in_challenge, "*fiducial*")
-    search = os.path.join(path_in_challenge, "*grid_3*")
+    search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
     files = np.sort(glob.glob(search))
     if rank == 0:
         for ii in range(len(files)):
