@@ -94,14 +94,14 @@ def main():
     # training_set = "Cabayol23"
     # vary_alphas = False
 
-    emulator_label = "Nyx_alphap_cov"
-    training_set = "Nyx23_Jul2024"
-    vary_alphas = True
+    # emulator_label = "Nyx_alphap_cov"
+    # training_set = "Nyx23_Jul2024"
+    # vary_alphas = True
     # vary_alphas = False
 
-    # emulator_label = "Cabayol23+"
-    # training_set = "Cabayol23"
-    # vary_alphas = False
+    emulator_label = "Cabayol23+"
+    training_set = "Cabayol23"
+    vary_alphas = False
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "challenge_DESIY1"
 
@@ -171,11 +171,13 @@ def main():
         args.vary_alphas = False
 
     for isim in range(len(files)):
-        if (
-            ("fiducial" in files[isim])
-            | ("ACCEL2" in files[isim])
-            | ("CGAN" in files[isim])
-        ):
+        # if (
+        #     ("fiducial" in files[isim])
+        #     | ("ACCEL2" in files[isim])
+        #     | ("CGAN" in files[isim])
+        # ):
+        #     continue
+        if "ACCEL2" in files[isim]:
             continue
 
         args.p1d_fname = files[isim]
