@@ -419,9 +419,9 @@ class Plotter(object):
                 xlim = np.array(ax.get_xlim())
                 val_min = np.min([value1[xi], value2[xi]])
                 val_max = np.max([value1[xi], value2[xi]])
-                if xlim[0] > val_min:
+                if (xlim[0] > val_min) and np.isfinite(val_min):
                     xlim[0] = val_min
-                if xlim[1] < val_max:
+                if (xlim[1] < val_max) and np.isfinite(val_max):
                     xlim[1] = val_max
                 xdiff = xlim[1] - xlim[0]
                 ax.set_xlim(xlim[0] - 0.05 * xdiff, xlim[1] + 0.05 * xdiff)
@@ -429,9 +429,9 @@ class Plotter(object):
                 ylim = np.array(ax.get_ylim())
                 val_min = np.min([value1[yi], value2[yi]])
                 val_max = np.max([value1[yi], value2[yi]])
-                if ylim[0] > val_min:
+                if (ylim[0] > val_min) and np.isfinite(val_min):
                     ylim[0] = val_min
-                if ylim[1] < val_max:
+                if (ylim[1] < val_max) and np.isfinite(val_max):
                     ylim[1] = val_max
                 ydiff = ylim[1] - ylim[0]
                 ax.set_ylim(ylim[0] - 0.05 * ydiff, ylim[1] + 0.05 * ydiff)

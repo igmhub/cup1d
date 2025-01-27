@@ -171,7 +171,11 @@ def main():
         args.vary_alphas = False
 
     for isim in range(len(files)):
-        if ("fiducial" in files[isim]) | ("ACCEL2" in files[isim]):
+        if (
+            ("fiducial" in files[isim])
+            | ("ACCEL2" in files[isim])
+            | ("CGAN" in files[isim])
+        ):
             continue
 
         args.p1d_fname = files[isim]
