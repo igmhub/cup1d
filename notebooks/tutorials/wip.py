@@ -74,16 +74,20 @@ from cup1d.likelihood import CAMB_model
 # fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v6/Nyx_alphap_cov/mockchallenge-0.6_nonoise_fiducial/chain_2/sampler_results.npy"
 # mod = "mockchallenge-0.9fx_nonoise_fiducial/chain_1"
 # mod = "mockchallenge-0.9fx_nonoise_fiducial/chain_4"
-# fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v9fx/Nyx_alphap_cov/"+mod+"/fitter_results.npy"
+mod = "mockchallenge-0.9fx_nonoise_CGAN_4096_base/chain_2"
+fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v9fx/Nyx_alphap_cov/"+mod+"/fitter_results.npy"
 
-# plotter = Plotter(save_directory="test", fname_chain=fname_chain)
-# plotter.plot_corner(only_cosmo=True)
+plotter = Plotter(save_directory="test", fname_chain=fname_chain)
+plotter.plot_corner(only_cosmo=True)
 
 # %%
-# version = "9fx"
-# folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
+version = "9fx"
+folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
 # fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
-# hdu = fits.open(folder + fname)
+fname = "mockchallenge-0."+version+"_nonoise_Sherwood_2048_40.fits.gz"
+# fname = "mockchallenge-0."+version+"_nonoise_CGAN_4096_base.fits.gz"
+# fname = "mockchallenge-0."+version+"_nonoise_ACCEL2_6144_160.fits.gz"
+hdu = fits.open(folder + fname)
 
 # folder2 = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/"
 # fname2 = "p1d_fft_y1_measurement_kms_v3.fits"
@@ -94,6 +98,12 @@ from cup1d.likelihood import CAMB_model
 # cov_raw[ind, ind] += np.diag(hdu[4].data)
 
 # np.allclose(hdu2[3].data, cov_raw)
+
+# %%
+hdu[1].header
+
+# %%
+-np.log(0.8601131)
 
 # %% [markdown]
 # ### Set archive
@@ -207,20 +217,41 @@ elif choose_challenge:
     fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
     # fname = "mockchallenge-0."+version+"_nonoise_bar_ic_grid_3.fits.gz"
     # fname = "mockchallenge-0."+version+"_noise-42-0_fiducial.fits.gz"
+    # fname = "mockchallenge-0."+version+"_nonoise_ACCEL2_6144_160.fits.gz"
+    # fname = "mockchallenge-0."+version+"_nonoise_CGAN_4096_base.fits.gz"
+    fname = "mockchallenge-0."+version+"_nonoise_Sherwood_2048_40.fits.gz"
     args.p1d_fname = folder + fname
     if "fiducial" in args.p1d_fname:
         true_sim_label = "nyx_central"
+        args.true_label_mF=true_sim_label
+        args.true_label_T=true_sim_label
+        args.true_label_kF=true_sim_label
     elif "CGAN" in args.p1d_fname:
-        true_sim_label = "nyx_seed"
+        true_sim_label = "nyx_seed"        
+        args.true_label_mF=true_sim_label
+        args.true_label_T=true_sim_label
+        args.true_label_kF=true_sim_label
     elif "grid_3" in args.p1d_fname:
         true_sim_label = "nyx_3"
+        args.true_label_mF=true_sim_label
+        args.true_label_T=true_sim_label
+        args.true_label_kF=true_sim_label
+    elif "Sherwood_2048_40" in args.p1d_fname:
+        true_sim_label = "Sherwood_2048_40"
+        args.true_label_mF=true_sim_label
+        args.true_label_T="nyx_central"
+        args.true_label_kF="nyx_central"
+    elif "ACCEL2_6144_160" in args.p1d_fname:
+        true_sim_label = "ACCEL2_6144_160"
+        args.true_label_mF=true_sim_label
+        args.true_label_T=true_sim_label
+        args.true_label_kF="nyx_central"
     else:
         true_sim_label = None
+    # true_sim_label = "nyx_central"
 
     true_cosmo = set_cosmo(cosmo_label=true_sim_label)
-    args.true_label_mF=true_sim_label
-    args.true_label_T=true_sim_label
-    args.true_label_kF=true_sim_label
+    
     args.z_min = 2.1
     args.z_max = 4.3
     # args.z_min = 2.8
@@ -377,27 +408,27 @@ args.mF_model_type = "chunks"
 # args.fid_AGN=[0, -5]
 
     
-args.n_tau=11
+args.n_tau=len(data["P1Ds"].z)
 args.n_sigT=1
 args.n_gamma=1
 args.n_kF=1
 
-# args.n_x_SiIII=0
-# args.n_d_SiIII=0
-# args.n_a_SiIII=0
-# args.n_d_dla = 0
-# args.n_s_dla = 0
+args.n_x_SiIII=0
+args.n_d_SiIII=0
+args.n_a_SiIII=0
+args.n_d_dla = 0
+args.n_s_dla = 0
 
-args.n_x_SiIII=1
-args.n_d_SiIII=1
-args.n_a_SiIII=1
-args.n_d_dla = 1
-args.n_s_dla = 1
-args.fid_SiIII_X=[0, -10] # fine
-args.fid_SiIII_D=[0, 5]
-args.fid_SiIII_A=[0, 1]
-args.fid_A_damp = [0, -9]
-args.fid_A_scale = [0, 5]
+# args.n_x_SiIII=1
+# args.n_d_SiIII=1
+# args.n_a_SiIII=1
+# args.n_d_dla = 1
+# args.n_s_dla = 1
+# args.fid_SiIII_X=[0, -10] # fine
+# args.fid_SiIII_D=[0, 5]
+# args.fid_SiIII_A=[0, 1]
+# args.fid_A_damp = [0, -9]
+# args.fid_A_scale = [0, 5]
 
 # args.n_x_SiIII=1
 # args.n_d_SiIII=1
@@ -431,6 +462,8 @@ args.fid_A_scale = [0, 5]
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
+
+# %%
 
 # %% [markdown]
 # ### Set likelihood

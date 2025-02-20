@@ -76,10 +76,11 @@ def main():
     #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_fiducial*"
     # )
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
-    # search = os.path.join(path_in_challenge, "*CGAN*")
-    search = os.path.join(
-        path_in_challenge, "mockchallenge-0." + version + "_nonoise_*"
-    )
+    # search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
+    search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
+    # search = os.path.join(
+    #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_*"
+    # )
 
     files = np.sort(glob.glob(search))
     if rank == 0:
@@ -133,7 +134,8 @@ def main():
 
     # set number of free IGM parameters
     args.mF_model_type = "chunks"
-    args.n_tau = 11
+    # I set it below so it is equal to number of z
+    # args.n_tau = 11
     args.n_sigT = 1
     args.n_gamma = 1
     args.n_kF = 1
@@ -177,8 +179,10 @@ def main():
         #     | ("CGAN" in files[isim])
         # ):
         #     continue
-        if "ACCEL2" in files[isim]:
-            continue
+        if "ACCEL2_6144_160" in files[isim]:
+            args.n_tau = 4
+        else:
+            args.n_tau = 11
 
         args.p1d_fname = files[isim]
         if rank == 0:

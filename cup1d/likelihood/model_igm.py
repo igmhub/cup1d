@@ -117,11 +117,83 @@ class IGM(object):
 
         sim_igms = [sim_igm_mF, sim_igm_T, sim_igm_kF]
 
+        igms_return = {}
         for ii, sim_igm in enumerate(sim_igms):
             if sim_igm[:3] == "mpg":
                 igm_hist = self.igm_hist_mpg
             elif sim_igm[:3] == "nyx":
                 igm_hist = self.igm_hist_nyx
+            elif sim_igm == "Sherwood_2048_40":
+                if ii == 0:
+                    igms_return["z_tau"] = np.array(
+                        [
+                            2,
+                            2.2,
+                            2.4,
+                            2.6,
+                            2.8,
+                            3,
+                            3.2,
+                            3.4,
+                            3.6,
+                            3.8,
+                            4,
+                            4.2,
+                            4.4,
+                            4.6,
+                            4.8,
+                        ]
+                    )
+                    igms_return["mF"] = np.array(
+                        [
+                            0.86011,
+                            0.83376,
+                            0.80085,
+                            0.76215,
+                            0.71673,
+                            0.66472,
+                            0.60507,
+                            0.53798,
+                            0.47115,
+                            0.40178,
+                            0.33226,
+                            0.2657,
+                            0.20532,
+                            0.15381,
+                            0.11188,
+                        ]
+                    )
+                    igms_return["tau_eff"] = -np.log(igms_return["mF"])
+                    continue
+
+            elif sim_igm == "ACCEL2_6144_160":
+                from lace.cosmo.thermal_broadening import thermal_broadening_kms
+
+                z = np.array([2.0, 2.6, 3, 3.6, 4.0])
+                if ii == 0:
+                    igms_return["z_tau"] = z
+                    igms_return["mF"] = np.array(
+                        [0.86296, 0.7487, 0.65228, 0.48841, 0.37691]
+                    )
+                    igms_return["tau_eff"] = -np.log(igms_return["mF"])
+                    continue
+                elif ii == 1:
+                    igms_return["z_T"] = z
+                    igms_return["gamma"] = np.array(
+                        [1.61814, 1.57246, 1.53676, 1.49324, 1.49695]
+                    )
+                    igms_return["sigT_kms"] = thermal_broadening_kms(
+                        np.array(
+                            [
+                                11016.59832,
+                                11818.89632,
+                                12298.49122,
+                                10611.60476,
+                                9288.34321,
+                            ]
+                        )
+                    )
+                    continue
             else:
                 ValueError("sim_igm must be 'mpg' or 'nyx'")
 
@@ -131,8 +203,9 @@ class IGM(object):
                 igm_return = igm_hist[sim_igm]
 
             if ii == 0:
-                igms_return = igm_return
                 igms_return["z_tau"] = igm_return["z"]
+                igms_return["tau_eff"] = igm_return["tau_eff"]
+                igms_return["mF"] = igm_return["mF"]
             elif ii == 1:
                 igms_return["gamma"] = igm_return["gamma"]
                 igms_return["sigT_kms"] = igm_return["sigT_kms"]
@@ -144,6 +217,7 @@ class IGM(object):
                 igms_return["z_kF"] = igm_return["z"]
 
             # important for nyx simulations, not all have kF
+            # if so, we assign the values for nyx_central
             if np.sum(igm_return["kF_kms"] != 0) == 0:
                 igms_return["kF_Mpc"] = igm_hist["nyx_central"]["kF_Mpc"]
                 igms_return["kF_kms"] = igm_hist["nyx_central"]["kF_kms"]
@@ -174,13 +248,19 @@ class IGM(object):
         self.priors = {}
         for par in fid_igm:
             if (
-                (par == "z")
-                | (par == "val_scaling")
+                (par == "val_scaling")
                 | (par == "z_tau")
                 | (par == "z_T")
                 | (par == "z_kF")
             ):
                 continue
+
+            if (par == "mF") | (par == "tau_eff"):
+                z = fid_igm["z_tau"]
+            elif (par == "kF_Mpc") | (par == "kF_kms"):
+                z = fid_igm["z_kF"]
+            elif (par == "gamma") | (par == "sigT_Mpc") | (par == "sigT_kms"):
+                z = fid_igm["z_T"]
 
             res_div = np.zeros((len(all_igm), 2))
             for ii, sim in enumerate(all_igm):
@@ -221,7 +301,7 @@ class IGM(object):
             )[:, 0]
             y0_min = np.abs(np.log(np.percentile(1 / res_div[_, 1], percent)))
             y0_cen = 0.5 * (y0_max + y0_min)
-            y1 = y0_cen / np.log((1 + fid_igm["z"].max()) / (1 + self.z_pivot))
+            y1 = y0_cen / np.log((1 + z.max()) / (1 + self.z_pivot))
             self.priors[par] = [
                 [-y1 * 1.05, y1 * 1.05],
                 [-y0_min * 1.05, y0_max * 1.05],

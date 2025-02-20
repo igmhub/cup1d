@@ -87,6 +87,46 @@ def set_cosmo(
             pivot_scalar=0.05,
             w=-1,
         )
+    elif cosmo_label == "ACCEL2_6144_160":
+        # https://arxiv.org/pdf/2407.04473
+        # Planck15 ΛCDM Planck TT,TE,EE+lowP (approx...)
+        Omegam = 0.31
+        Omegab = 0.0487
+        h = 0.675
+        omch2 = (Omegam - Omegab) * h**2
+        ombh2 = Omegab * h**2
+        cosmo = camb_cosmo.get_cosmology(
+            H0=h * 100,
+            mnu=0.0,
+            omch2=omch2,
+            ombh2=ombh2,
+            omk=0.0,
+            As=np.exp(3.094) / 1e10,  # Planck15 ΛCDM Planck TT,TE,EE+lowP
+            ns=0.96,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
+    elif cosmo_label == "Sherwood_2048_40":
+        # https://academic.oup.com/mnras/article/464/1/897/2236089
+        # Planck13 ΛCDM Planck+WP+highL+BAO
+        Omegam = 0.308
+        Omegab = 0.0482
+        h = 0.678
+        omch2 = (Omegam - Omegab) * h**2
+        ombh2 = Omegab * h**2
+        cosmo = camb_cosmo.get_cosmology(
+            H0=h * 100,
+            mnu=0.0,
+            omch2=omch2,
+            ombh2=ombh2,
+            omk=0.0,
+            As=np.exp(3.0973) / 1e10,  # Planck13 ΛCDM Planck+WP+highL+BAO
+            ns=0.961,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
     else:
         raise ValueError(f"cosmo_label {cosmo_label} not implemented")
 
