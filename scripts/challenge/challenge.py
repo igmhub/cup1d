@@ -125,6 +125,8 @@ def main():
     args.n_steps = 1250
     if "Sherwood_2048_40" in files[0]:
         args.n_burn_in = 2500
+    elif "CGAN" in files[0]:
+        args.n_burn_in = 3000
     else:
         args.n_burn_in = 1250
     # print("AAAAAAAAn_burn_in", args.n_burn_in)
