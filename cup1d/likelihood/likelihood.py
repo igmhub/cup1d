@@ -49,10 +49,9 @@ class Likelihood(object):
             if attr not in ["archive", "emulator"]:
                 self.args[attr] = value
 
+        self.theory = theory
         # Set inverse covariance. We do it here so we can account for emulator error
         self.set_icov()
-
-        self.theory = theory
 
         # setup parameters
         self.free_param_names = free_param_names
@@ -138,7 +137,13 @@ class Likelihood(object):
                 # Indices of the diagonal elements
                 ind = np.arange(len(data.Pk_kms[ii]))
                 # Add emulator error to the diagonal
-                cov[ind, ind] += (data.Pk_kms[ii] * self.emu_cov_factor) ** 2
+                if self.emu_cov_factor is not None:
+                    dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
+                        data.z[ii]
+                    )
+                    k_Mpc = data.k_kms[ii] * dkms_dMpc
+                    rat = np.poly1d(self.emu_cov_factor)(k_Mpc)
+                    cov[ind, ind] += (data.Pk_kms[ii] * rat) ** 2
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
                     self.icov_Pk_kms.append(np.linalg.inv(cov))
@@ -152,7 +157,14 @@ class Likelihood(object):
                 # Indices of the diagonal elements
                 ind = np.arange(len(data.full_Pk_kms))
                 # Add emulator error to the diagonal
-                cov[ind, ind] += (data.full_Pk_kms * self.emu_cov_factor) ** 2
+                if self.emu_cov_factor is not None:
+                    dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
+                        data.z[ii]
+                    )
+                    k_Mpc = data.full_k_kms[ii] / dkms_dMpc
+                    rat = np.poly1d(self.emu_cov_factor)(k_Mpc)
+                    cov[ind, ind] += (data.full_Pk_kms[ii] * rat) ** 2
+
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
                     self.full_icov_Pk_kms = np.linalg.inv(cov)

@@ -98,6 +98,8 @@ class BaseDataP1D(object):
             self.full_cov_Pk_kms,
         ) = res
 
+        self.full_k_kms = np.concatenate(self.k_kms)
+
         # decide if applying blinding
         self.apply_blinding = False
         if hasattr(self, "blinding"):

@@ -75,9 +75,10 @@ def main():
     # search = os.path.join(
     #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_fiducial*"
     # )
+    search = os.path.join(path_in_challenge, "*CGAN*")
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
     # search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
-    search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
+    # search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
     # search = os.path.join(
     #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_*"
     # )
@@ -89,6 +90,7 @@ def main():
 
     # sys.exit()
 
+    # include all contaminants in the fit or not
     full_cont = True  # IMPORTANT!!!
 
     # emulator_label = "Pedersen23_ext"
@@ -114,11 +116,19 @@ def main():
     args.z_min = 2.1
     args.z_max = 4.3
 
-    args.emu_cov_factor = 0.0
+    # args.emu_cov_factor = None
+    # stat
+    # args.emu_cov_factor = np.array([-0.00109798,  0.00691753])
+    # bias + stat
+    args.emu_cov_factor = np.array([-0.0058123, 0.0237336])
 
     args.n_steps = 1250
-    args.n_burn_in = 1250
-    # args.n_steps = 1250
+    if "Sherwood_2048_40" in files[0]:
+        args.n_burn_in = 2500
+    else:
+        args.n_burn_in = 1250
+    # print("AAAAAAAAn_burn_in", args.n_burn_in)
+    # args.n_steps = 5
     # args.n_burn_in = 0
     if size > 1:
         args.parallel = True
@@ -135,7 +145,7 @@ def main():
     # set number of free IGM parameters
     args.mF_model_type = "chunks"
     # I set it below so it is equal to number of z
-    # args.n_tau = 11
+    args.n_tau = 11
     args.n_sigT = 1
     args.n_gamma = 1
     args.n_kF = 1
@@ -188,7 +198,7 @@ def main():
         if rank == 0:
             print("Analyzing:", args.p1d_fname)
         file_sim = os.path.basename(args.p1d_fname)[:-8]
-        if args.emu_cov_factor != 0:
+        if args.emu_cov_factor is not None:
             dir_out = os.path.join(base_out_folder + "err", file_sim)
         else:
             dir_out = os.path.join(base_out_folder, file_sim)
@@ -203,6 +213,10 @@ def main():
             true_sim_label = "nyx_seed"
         elif "grid_3" in args.p1d_fname:
             true_sim_label = "nyx_3"
+        elif "Sherwood_2048_40" in args.p1d_fname:
+            true_sim_label = "nyx_central"
+        elif "ACCEL2_6144_160" in args.p1d_fname:
+            true_sim_label = "nyx_central"
         else:
             print("Missing true sim label!!")
             sys.exit()
@@ -212,6 +226,14 @@ def main():
         args.true_label_mF = true_sim_label
         args.true_label_T = true_sim_label
         args.true_label_kF = true_sim_label
+
+        if "ACCEL2_6144_160" in args.p1d_fname:
+            args.true_cosmo_label = "ACCEL2_6144_160"
+            args.true_label_mF = "ACCEL2_6144_160"
+            args.true_label_T = "ACCEL2_6144_160"
+        elif "Sherwood_2048_40" in args.p1d_fname:
+            args.true_cosmo_label = "Sherwood_2048_40"
+            args.true_label_mF = "Sherwood_2048_40"
 
         if "Nyx" in emulator_label:
             fid_sim_label = "nyx_central"
@@ -255,11 +277,7 @@ def main():
 
             # run minimizer again, now on MLE
             if rank == 0:
-                ind = np.argmax(pip.fitter.lnprob.reshape(-1))
-                p0 = pip.fitter.chain.reshape(-1, pip.fitter.chain.shape[-1])[
-                    ind
-                ]
-            pip.run_minimizer(p0, save_chains=True)
+                pip.run_minimizer(pip.fitter.mle_cube, save_chains=True)
 
 
 if __name__ == "__main__":

@@ -23,11 +23,11 @@ class Plotter(object):
             for param in args_possible.parameters.values():
                 if param.name in data["args"].keys():
                     dict_input[param.name] = data["args"][param.name]
+                    # print(param.name, data["args"][param.name])
                 else:
                     print(param.name)
 
             args = Args(**dict_input)
-            args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0.9fx/mockchallenge-0.9fx_nonoise_fiducial.fits.gz"
             self.fitter = Pipeline(args, out_folder=save_directory).fitter
 
             # add sampler results to fitter
@@ -224,28 +224,49 @@ class Plotter(object):
                     fontsize=8,
                 )
 
-        ax[0].scatter(
-            self.fitter.mle_cosmo["Delta2_star"],
-            self.fitter.mle_cosmo["n_star"],
-            marker="X",
-            color="C1",
-        )
-        if suite_emu != "mpg":
-            ax[1].scatter(
-                self.fitter.mle_cosmo["Delta2_star"],
-                self.fitter.mle_cosmo["alpha_star"],
-                marker="X",
-                color="C1",
+        for ii in range(2):
+            # best
+            if ii == 0:
+                marker = "X"
+                color = "C1"
+                Delta2_star = self.fitter.mle_cosmo["Delta2_star"]
+                n_star = self.fitter.mle_cosmo["n_star"]
+                if suite_emu != "mpg":
+                    alpha_star = self.fitter.mle_cosmo["alpha_star"]
+                label = "MLE"
+            # truth
+            else:
+                if self.fitter.like.truth is not None:
+                    marker = "s"
+                    color = "C3"
+                    Delta2_star = self.fitter.like.truth["linP"]["Delta2_star"]
+                    n_star = self.fitter.like.truth["linP"]["n_star"]
+                    if suite_emu != "mpg":
+                        alpha_star = self.fitter.like.truth["linP"][
+                            "alpha_star"
+                        ]
+                    label = "truth"
+                else:
+                    continue
+
+            ax[0].scatter(
+                Delta2_star, n_star, marker=marker, color=color, label=label
             )
-            ax[2].scatter(
-                self.fitter.mle_cosmo["n_star"],
-                self.fitter.mle_cosmo["alpha_star"],
-                marker="X",
-                color="C1",
-            )
+            if suite_emu != "mpg":
+                ax[1].scatter(
+                    Delta2_star,
+                    alpha_star,
+                    marker=marker,
+                    color=color,
+                    label=label,
+                )
+                ax[2].scatter(
+                    n_star, alpha_star, marker=marker, color=color, label=label
+                )
 
         ax[0].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
         ax[0].set_ylabel(r"$n_\star$", fontsize=fontsize)
+        ax[0].legend()
         if suite_emu != "mpg":
             ax[1].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
             ax[1].set_ylabel(r"$\alpha_\star$", fontsize=fontsize)

@@ -74,7 +74,8 @@ from cup1d.likelihood import CAMB_model
 # fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v6/Nyx_alphap_cov/mockchallenge-0.6_nonoise_fiducial/chain_2/sampler_results.npy"
 # mod = "mockchallenge-0.9fx_nonoise_fiducial/chain_1"
 # mod = "mockchallenge-0.9fx_nonoise_fiducial/chain_4"
-mod = "mockchallenge-0.9fx_nonoise_CGAN_4096_base/chain_2"
+# mod = "mockchallenge-0.9fx_nonoise_CGAN_4096_base/chain_2"
+mod = "mockchallenge-0.9fx_nonoise_ACCEL2_6144_160/chain_1"
 fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v9fx/Nyx_alphap_cov/"+mod+"/fitter_results.npy"
 
 plotter = Plotter(save_directory="test", fname_chain=fname_chain)
@@ -99,12 +100,6 @@ hdu = fits.open(folder + fname)
 
 # np.allclose(hdu2[3].data, cov_raw)
 
-# %%
-hdu[1].header
-
-# %%
--np.log(0.8601131)
-
 # %% [markdown]
 # ### Set archive
 
@@ -117,6 +112,79 @@ args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
 # %%
 # path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
 archive = set_archive(args.training_set)
+
+# %%
+
+# %% [markdown]
+# Get cosmic variance
+
+# %%
+# cgan = archive.get_testing_data("nyx_seed")
+# fid = archive.get_testing_data("nyx_central")
+
+# params = ["mF", "sigT_Mpc", "gamma"]
+
+# res = []
+# kk = 0
+# for ii in range(len(fid)):
+#     for jj in range(len(cgan)):
+#         if np.abs(cgan[jj]["z"] - fid[ii]["z"]) > 0.01:
+#             continue
+#         else:
+#             if kk > 9:
+#                 continue
+#             col = "C"+str(kk)
+#             # for par in params:
+#             #     print(fid[ii][par], cgan[jj][par])
+#             # print(fid[ii]['mF'], cgan[jj]['mF'])
+#             rescale = fid[ii]['mF']**2/cgan[jj]['mF']**2
+#             # rescale = fid[ii]['mF']/cgan[jj]['mF']
+#             # rescale = 1
+#             # ind = fid[ii]['k_Mpc'] < 4
+#             # plt.plot(fid[ii]['k_Mpc'][ind], (fid[ii]['k_Mpc']*fid[ii]['p1d_Mpc'])[ind], col, label=np.round(fid[ii]["z"], 2))
+#             ind = cgan[jj]['k_Mpc'] < 4
+#             # plt.plot(cgan[jj]['k_Mpc'][ind], (cgan[jj]['k_Mpc']*cgan[jj]['p1d_Mpc'] / rescale)[ind], col+"--")
+
+#             rescale = 1/np.mean(fid[ii]['p1d_Mpc'][ind]/cgan[jj]['p1d_Mpc'][ind])
+#             rat = fid[ii]['p1d_Mpc'][ind]/cgan[jj]['p1d_Mpc'][ind]*rescale-1
+#             res.append(rat)
+#             plt.plot(fid[ii]['k_Mpc'][ind], rat, col, label=np.round(fid[ii]["z"], 2))
+#             kk += 1
+
+# # plt.savefig("s0.png")
+# plt.legend()
+# plt.xscale("log")
+
+# %%
+# res = np.array(res)
+# mean = np.mean(res, axis=0)
+# std = np.std(res, axis=0)
+
+# # plt.plot(fid[ii]['k_Mpc'][ind], np.abs(mean))
+# # plt.plot(fid[ii]['k_Mpc'][ind], std)
+# x = fid[ii]['k_Mpc'][ind]
+
+# fit1 = np.polyfit(x, std, deg=1)
+# p = np.poly1d(fit1)
+# plt.plot(x, p(x)*1.3)
+
+# max_both = np.maximum(std, np.abs(mean))
+# plt.plot(fid[ii]['k_Mpc'][ind], max_both)
+
+
+# fit2 = np.polyfit(x, max_both, deg=1)
+# p = np.poly1d(fit2)
+# plt.plot(x, p(x)*0.8)
+
+# plt.xscale("log")
+
+# %%
+# # std
+# p2 = np.array([-0.00109798,  0.00691753])
+# # bias + std
+# p2 = np.array([-0.0058123,  0.0237336])
+
+# %%
 
 # %% [markdown]
 # ### Set emulator
@@ -217,9 +285,9 @@ elif choose_challenge:
     fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
     # fname = "mockchallenge-0."+version+"_nonoise_bar_ic_grid_3.fits.gz"
     # fname = "mockchallenge-0."+version+"_noise-42-0_fiducial.fits.gz"
-    # fname = "mockchallenge-0."+version+"_nonoise_ACCEL2_6144_160.fits.gz"
+    fname = "mockchallenge-0."+version+"_nonoise_ACCEL2_6144_160.fits.gz"
     # fname = "mockchallenge-0."+version+"_nonoise_CGAN_4096_base.fits.gz"
-    fname = "mockchallenge-0."+version+"_nonoise_Sherwood_2048_40.fits.gz"
+    # fname = "mockchallenge-0."+version+"_nonoise_Sherwood_2048_40.fits.gz"
     args.p1d_fname = folder + fname
     if "fiducial" in args.p1d_fname:
         true_sim_label = "nyx_central"
@@ -325,10 +393,18 @@ except:
 # #### Set fiducial/initial options for the fit
 
 # %%
+# # std
+# p2 = np.array([-0.00109798,  0.00691753])
+# # bias + std
+# p2 = np.array([-0.0058123,  0.0237336])
+
+# %%
 # cosmology
 args.ic_correction=False
 
-args.emu_cov_factor = 0.0
+# args.emu_cov_factor = None
+# args.emu_cov_factor = np.array([-0.00109798,  0.00691753])
+args.emu_cov_factor = np.array([-0.0058123,  0.0237336])
 # args.fid_cosmo_label="mpg_2"
 # if "Nyx" in emulator.emulator_label:
 #     args.fid_cosmo_label="nyx_central"
@@ -424,11 +500,11 @@ args.n_s_dla = 0
 # args.n_a_SiIII=1
 # args.n_d_dla = 1
 # args.n_s_dla = 1
-# args.fid_SiIII_X=[0, -10] # fine
-# args.fid_SiIII_D=[0, 5]
-# args.fid_SiIII_A=[0, 1]
-# args.fid_A_damp = [0, -9]
-# args.fid_A_scale = [0, 5]
+args.fid_SiIII_X=[0, -10] # fine
+args.fid_SiIII_D=[0, 5]
+args.fid_SiIII_A=[0, 1]
+args.fid_A_damp = [0, -9]
+args.fid_A_scale = [0, 5]
 
 # args.n_x_SiIII=1
 # args.n_d_SiIII=1
@@ -484,6 +560,8 @@ for p in like.free_params:
     print(p.name, p.value, p.min_value, p.max_value)
 
 # %%
+
+# %%
 # emu_call = np.load("emu_call_fiducial.npy", allow_pickle=True).item()
 # emu_call
 
@@ -498,6 +576,11 @@ like.plot_p1d(residuals=True)
 # z = like.data.z
 # k_kms = like.data.k_kms
 # like.theory.model_cont.agn_model.plot_contamination(z, k_kms)
+
+# %%
+# z = like.data.z
+# k_kms = like.data.k_kms
+# like.theory.model_cont.hcd_model.plot_contamination(z, k_kms);
 
 # %%
 # like.plot_igm(cloud=True)
@@ -532,7 +615,6 @@ fitter = Fitter(
 )
 
 # %%
-# fitter.like.data.truth
 
 # %% [markdown]
 # ### Run minimizer

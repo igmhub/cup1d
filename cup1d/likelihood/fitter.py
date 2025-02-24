@@ -248,6 +248,13 @@ class Fitter(object):
                 self.chain = np.concatenate(chain, axis=1)
                 self.blobs = np.concatenate(blobs, axis=1)
 
+                map_ind = np.argmax(self.lnprob.reshape(-1))
+                map_chi2 = -2.0 * self.lnprob.reshape(-1)[map_ind]
+                map_chain = self.chain.reshape(-1, self.chain.shape[-1])[
+                    map_ind
+                ]
+                self.set_mle(map_chain, map_chi2)
+
                 # apply masking (only to star parameters)
                 self.blobs = self.apply_blinding(self.blobs, sample="chains")
 
@@ -259,14 +266,14 @@ class Fitter(object):
 
         if p0 is None:
             # star at the center of the parameter space
-            mle = np.ones(npars) * 0.5
-            chi2 = log_func_minimize(mle)
+            mle_cube = np.ones(npars) * 0.5
+            chi2 = log_func_minimize(mle_cube)
             chi2_ini = chi2 * 1
             arr_p0 = lhs(npars, samples=nsamples) - 0.5
-            # sigma to search around mle
+            # sigma to search around mle_cube
             sig = 0.1
             for ii in range(nsamples):
-                pini = mle.copy() + arr_p0[ii] * sig
+                pini = mle_cube.copy() + arr_p0[ii] * sig
                 pini[pini <= 0] = 0.05
                 pini[pini >= 1] = 0.95
                 res = scipy.optimize.minimize(
@@ -277,12 +284,12 @@ class Fitter(object):
                 )
                 if res.fun < chi2:
                     chi2 = res.fun
-                    mle = res.x
+                    mle_cube = res.x
                     # reduce sigma
                     sig *= 0.5
 
             # start at the minimum
-            pini = mle.copy()
+            pini = mle_cube.copy()
             res = scipy.optimize.minimize(
                 log_func_minimize,
                 pini,
@@ -291,16 +298,16 @@ class Fitter(object):
             )
             if res.fun < chi2:
                 chi2 = res.fun
-                mle = res.x
+                mle_cube = res.x
 
             print("Minimization improved:", chi2_ini, chi2, flush=True)
         else:
             # start at the initial value
-            mle = p0.copy()
+            mle_cube = p0.copy()
             chi2 = log_func_minimize(p0)
             chi2_ini = chi2 * 1
             for ii in range(1):
-                pini = mle.copy()
+                pini = mle_cube.copy()
                 res = scipy.optimize.minimize(
                     log_func_minimize,
                     pini,
@@ -309,14 +316,28 @@ class Fitter(object):
                 )
                 if res.fun < chi2:
                     chi2 = res.fun
-                    mle = res.x
+                    mle_cube = res.x
             print("Minimization improved:", chi2_ini, chi2, flush=True)
 
-        self.mle_cube = mle
-        mle_no_cube = mle.copy()
+        self.set_mle(mle_cube, chi2)
+
+    def set_mle(self, mle_cube, mle_chi2):
+        """Set the maximum likelihood solution"""
+
+        if hasattr(self, "mle_chi2"):
+            if mle_chi2 < self.mle_chi2:
+                print("updating mle from ", self.mle_chi2, "to", mle_chi2)
+                self.mle_chi2 = mle_chi2
+            else:
+                return
+        else:
+            self.mle_chi2 = mle_chi2
+
+        self.mle_cube = mle_cube
+        mle_no_cube = mle_cube.copy()
         for ii, par_i in enumerate(self.like.free_params):
             scale_i = par_i.max_value - par_i.min_value
-            mle_no_cube[ii] = par_i.value_from_cube(mle[ii])
+            mle_no_cube[ii] = par_i.value_from_cube(mle_cube[ii])
 
         print("Fit params cube:", self.mle_cube, flush=True)
         print("Fit params no cube:", mle_no_cube, flush=True)
