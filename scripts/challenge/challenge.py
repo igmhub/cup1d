@@ -75,9 +75,9 @@ def main():
     # search = os.path.join(
     #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_fiducial*"
     # )
-    # search = os.path.join(path_in_challenge, "*CGAN*")
+    search = os.path.join(path_in_challenge, "*CGAN*")
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
-    search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
+    # search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
     # search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
     # search = os.path.join(
     #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_*"
@@ -117,8 +117,13 @@ def main():
     args.z_max = 4.3
 
     if "Nyx" in emulator_label:
+        # 1.5 sigma
+        # args.emu_cov_factor = np.array(
+        #     [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.56919148e00]
+        # )
+        # 2 sigma
         args.emu_cov_factor = np.array(
-            [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.56919148e00]
+            [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.28150941e00]
         )
     else:
         args.emu_cov_factor = None
