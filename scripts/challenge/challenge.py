@@ -117,7 +117,10 @@ def main():
     args.z_max = 4.3
 
     if "Nyx" in emulator_label:
-        args.emu_cov_factor = np.array([0.10212854, -0.42362763, -4.48318468])
+        # cvar
+        # args.emu_cov_factor = np.array([0.10212854, -0.42362763, -4.48318468])
+        # cvar + L1O
+        args.emu_cov_factor = np.array([0.08497236, -0.06633055, -3.21636128])
     else:
         args.emu_cov_factor = None
 
