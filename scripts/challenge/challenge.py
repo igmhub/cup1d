@@ -75,9 +75,9 @@ def main():
     # search = os.path.join(
     #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_fiducial*"
     # )
-    # search = os.path.join(path_in_challenge, "*CGAN*")
+    search = os.path.join(path_in_challenge, "*CGAN*")
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
-    search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
+    # search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
     # search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
     # search = os.path.join(
     #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_*"
