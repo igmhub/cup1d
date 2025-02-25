@@ -120,12 +120,8 @@ def main():
         # cvar
         # args.emu_cov_factor = np.array([0.10212854, -0.42362763, -4.48318468])
         # cvar + L1O
-        # args.emu_cov_factor = np.array([0.08497236, -0.06633055, -3.21636128])
-        # args.emu_cov_factor = np.array(
-        #     [-5.50557593e-02, -2.03566432e-04, 5.72331591e-02, -3.18260876e00]
-        # )
         args.emu_cov_factor = np.array(
-            [-6.74155794e-02, 5.70913378e-05, 5.07637587e-02, -3.13722907e00]
+            [-6.93721149e-02, -2.43173756e-04, 4.91541477e-02, -2.90469219e00]
         )
     else:
         args.emu_cov_factor = None

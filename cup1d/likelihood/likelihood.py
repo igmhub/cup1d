@@ -20,7 +20,7 @@ class Likelihood(object):
         free_param_limits=None,
         verbose=False,
         prior_Gauss_rms=0.2,
-        emu_cov_factor=1,
+        emu_cov_factor=None,
         extra_data=None,
         min_log_like=-1e100,
         args=None,
@@ -113,14 +113,18 @@ class Likelihood(object):
                 data = self.data
                 # Initialize list to store inverse covariance matrices for Pk_kms
                 self.icov_Pk_kms = []
+                self.cov_Pk_kms = []
                 # Initialize the full inverse covariance matrix for Pk_kms
                 self.full_icov_Pk_kms = None
+                self.full_cov_Pk_kms = None
             else:  # Additional dataset
                 data = self.extra_data
                 # Initialize list for extra inverse covariance matrices
                 self.extra_icov_Pk_kms = []
+                self.extra_cov_Pk_kms = []
                 # Initialize the full inverse covariance matrix for extra data
                 self.extra_full_icov_Pk_kms = None
+                self.extra_full_cov_Pk_kms = None
 
             if data is None:  # Skip if no data is provided for this dataset
                 continue
@@ -150,8 +154,10 @@ class Likelihood(object):
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
                     self.icov_Pk_kms.append(np.linalg.inv(cov))
+                    self.cov_Pk_kms.append(cov)
                 else:
                     self.extra_icov_Pk_kms.append(np.linalg.inv(cov))
+                    self.extra_cov_Pk_kms.append(cov)
 
             # Process the full power spectrum data if available
             if data.full_Pk_kms is not None:
@@ -171,8 +177,10 @@ class Likelihood(object):
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
                     self.full_icov_Pk_kms = np.linalg.inv(cov)
+                    self.full_cov_Pk_kms = cov
                 else:
                     self.extra_full_icov_Pk_kms = np.linalg.inv(cov)
+                    self.extra_full_cov_Pk_kms = cov
 
     def set_free_parameters(self, free_param_names, free_param_limits):
         """Setup likelihood parameters that we want to vary"""
@@ -644,6 +652,7 @@ class Likelihood(object):
         print_ratio=False,
         print_chi2=True,
         return_all=False,
+        collapse=False,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
@@ -767,7 +776,8 @@ class Likelihood(object):
                 z = zs[iz]
                 k_kms = data.k_kms[iz]
                 p1d_data = data.Pk_kms[iz]
-                p1d_cov = data.cov_Pk_kms[iz]
+                # p1d_cov = data.cov_Pk_kms[iz]
+                p1d_cov = self.cov_Pk_kms[iz]
                 p1d_err = np.sqrt(np.diag(p1d_cov))
                 p1d_theory = emu_p1d_use[iz]
                 if rand_posterior is None:
@@ -780,7 +790,10 @@ class Likelihood(object):
                 # plot everything
                 if Nz > 1:
                     col = plt.cm.jet(iz / (Nz - 1))
-                    yshift = 4 * iz / (Nz - 1)
+                    if collapse:
+                        yshift = 0
+                    else:
+                        yshift = 4 * iz / (Nz - 1)
                 else:
                     col = "blue"
                     yshift = 0
