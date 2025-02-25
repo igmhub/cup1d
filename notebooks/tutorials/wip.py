@@ -119,64 +119,74 @@ archive = set_archive(args.training_set)
 # Get cosmic variance
 
 # %%
-# cgan = archive.get_testing_data("nyx_seed")
-# fid = archive.get_testing_data("nyx_central")
+cgan = archive.get_testing_data("nyx_seed")
+fid = archive.get_testing_data("nyx_central")
 
-# params = ["mF", "sigT_Mpc", "gamma"]
+params = ["mF", "sigT_Mpc", "gamma"]
 
-# res = []
-# kk = 0
-# for ii in range(len(fid)):
-#     for jj in range(len(cgan)):
-#         if np.abs(cgan[jj]["z"] - fid[ii]["z"]) > 0.01:
-#             continue
-#         else:
-#             if kk > 9:
-#                 continue
-#             col = "C"+str(kk)
-#             # for par in params:
-#             #     print(fid[ii][par], cgan[jj][par])
-#             # print(fid[ii]['mF'], cgan[jj]['mF'])
-#             rescale = fid[ii]['mF']**2/cgan[jj]['mF']**2
-#             # rescale = fid[ii]['mF']/cgan[jj]['mF']
-#             # rescale = 1
-#             # ind = fid[ii]['k_Mpc'] < 4
-#             # plt.plot(fid[ii]['k_Mpc'][ind], (fid[ii]['k_Mpc']*fid[ii]['p1d_Mpc'])[ind], col, label=np.round(fid[ii]["z"], 2))
-#             ind = cgan[jj]['k_Mpc'] < 4
-#             # plt.plot(cgan[jj]['k_Mpc'][ind], (cgan[jj]['k_Mpc']*cgan[jj]['p1d_Mpc'] / rescale)[ind], col+"--")
+res = []
+kk = 0
+for ii in range(len(fid)):
+    for jj in range(len(cgan)):
+        if np.abs(cgan[jj]["z"] - fid[ii]["z"]) > 0.01:
+            continue
+        else:
+            if kk > 9:
+                continue
+            col = "C"+str(kk)
+            # for par in params:
+            #     print(fid[ii][par], cgan[jj][par])
+            # print(fid[ii]['mF'], cgan[jj]['mF'])
+            rescale = fid[ii]['mF']**2/cgan[jj]['mF']**2
+            # rescale = fid[ii]['mF']/cgan[jj]['mF']
+            # rescale = 1
+            # ind = fid[ii]['k_Mpc'] < 4
+            # plt.plot(fid[ii]['k_Mpc'][ind], (fid[ii]['k_Mpc']*fid[ii]['p1d_Mpc'])[ind], col, label=np.round(fid[ii]["z"], 2))
+            ind = cgan[jj]['k_Mpc'] < 4
+            # plt.plot(cgan[jj]['k_Mpc'][ind], (cgan[jj]['k_Mpc']*cgan[jj]['p1d_Mpc'] / rescale)[ind], col+"--")
 
-#             rescale = 1/np.mean(fid[ii]['p1d_Mpc'][ind]/cgan[jj]['p1d_Mpc'][ind])
-#             rat = fid[ii]['p1d_Mpc'][ind]/cgan[jj]['p1d_Mpc'][ind]*rescale-1
-#             res.append(rat)
-#             plt.plot(fid[ii]['k_Mpc'][ind], rat, col, label=np.round(fid[ii]["z"], 2))
-#             kk += 1
+            rescale = 1/np.mean(fid[ii]['p1d_Mpc'][ind]/cgan[jj]['p1d_Mpc'][ind])
+            rat = fid[ii]['p1d_Mpc'][ind]/cgan[jj]['p1d_Mpc'][ind]*rescale-1
+            res.append(rat)
+            plt.plot(fid[ii]['k_Mpc'][ind], rat, col, label=np.round(fid[ii]["z"], 2))
+            kk += 1
 
-# # plt.savefig("s0.png")
-# plt.legend()
-# plt.xscale("log")
+# plt.savefig("s0.png")
+plt.legend()
+plt.xlabel("k")
+plt.ylabel("Delta P1D")
+plt.xscale("log")
 
 # %%
-# res = np.array(res)
-# mean = np.mean(res, axis=0)
-# std = np.std(res, axis=0)
+res = np.array(res)
+mean = np.mean(res, axis=0)
+std = np.std(res, axis=0)
 
-# # plt.plot(fid[ii]['k_Mpc'][ind], np.abs(mean))
-# # plt.plot(fid[ii]['k_Mpc'][ind], std)
-# x = fid[ii]['k_Mpc'][ind]
+# plt.plot(fid[ii]['k_Mpc'][ind], np.abs(mean))
+# plt.plot(fid[ii]['k_Mpc'][ind], std)
+x = fid[ii]['k_Mpc'][ind]
 
 # fit1 = np.polyfit(x, std, deg=1)
 # p = np.poly1d(fit1)
-# plt.plot(x, p(x)*1.3)
+# plt.plot(x, p(x))
 
-# max_both = np.maximum(std, np.abs(mean))
-# plt.plot(fid[ii]['k_Mpc'][ind], max_both)
+max_both = np.maximum(std, np.abs(mean))
+plt.plot(fid[ii]['k_Mpc'][ind], max_both)
 
 
-# fit2 = np.polyfit(x, max_both, deg=1)
-# p = np.poly1d(fit2)
-# plt.plot(x, p(x)*0.8)
+fit2 = np.polyfit(np.log(x), np.log(max_both), deg=2)
+fit2[-1] += 0.2
+p = np.poly1d(fit2)
+plt.plot(x, np.exp(p(np.log(x))))
 
-# plt.xscale("log")
+plt.plot(x, x[:] * 0 + 1)
+
+plt.xlabel("k")
+plt.ylabel("Delta P1D")
+plt.xscale("log")
+
+# %%
+fit2
 
 # %%
 # # std
@@ -403,8 +413,7 @@ except:
 args.ic_correction=False
 
 # args.emu_cov_factor = None
-# args.emu_cov_factor = np.array([-0.00109798,  0.00691753])
-args.emu_cov_factor = np.array([-0.0058123,  0.0237336])
+args.emu_cov_factor = np.array([ 0.10212854, -0.42362763, -4.48318468])
 # args.fid_cosmo_label="mpg_2"
 # if "Nyx" in emulator.emulator_label:
 #     args.fid_cosmo_label="nyx_central"

@@ -116,11 +116,10 @@ def main():
     args.z_min = 2.1
     args.z_max = 4.3
 
-    # args.emu_cov_factor = None
-    # stat
-    # args.emu_cov_factor = np.array([-0.00109798,  0.00691753])
-    # bias + stat
-    args.emu_cov_factor = np.array([-0.0058123, 0.0237336])
+    if "Nyx" in emulator_label:
+        args.emu_cov_factor = np.array([0.10212854, -0.42362763, -4.48318468])
+    else:
+        args.emu_cov_factor = None
 
     args.n_steps = 1250
     if "Sherwood_2048_40" in files[0]:

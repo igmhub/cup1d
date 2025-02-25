@@ -141,8 +141,8 @@ class Likelihood(object):
                     dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
                         data.z[ii]
                     )
-                    k_Mpc = data.k_kms[ii] * dkms_dMpc
-                    rat = np.poly1d(self.emu_cov_factor)(k_Mpc)
+                    logk_Mpc = np.log(data.k_kms[ii] * dkms_dMpc)
+                    rat = np.exp(np.poly1d(self.emu_cov_factor)(logk_Mpc))
                     cov[ind, ind] += (data.Pk_kms[ii] * rat) ** 2
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
@@ -161,9 +161,9 @@ class Likelihood(object):
                     dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
                         data.z[ii]
                     )
-                    k_Mpc = data.full_k_kms[ii] / dkms_dMpc
-                    rat = np.poly1d(self.emu_cov_factor)(k_Mpc)
-                    cov[ind, ind] += (data.full_Pk_kms[ii] * rat) ** 2
+                    logk_Mpc = np.log(data.full_k_kms * dkms_dMpc)
+                    rat = np.exp(np.poly1d(self.emu_cov_factor)(logk_Mpc))
+                    cov[ind, ind] += (data.full_Pk_kms * rat) ** 2
 
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
