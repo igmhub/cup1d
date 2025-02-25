@@ -117,37 +117,9 @@ def main():
     args.z_max = 4.3
 
     if "Nyx" in emulator_label:
-        # cvar
-        # args.emu_cov_factor = np.array([0.10212854, -0.42362763, -4.48318468])
-        # cvar + L1O
-        if "Sherwood_2048_40" in files[0]:
-            # additional 5% error from shot noise
-            args.emu_cov_factor = np.array(
-                [
-                    -5.93203738e-02,
-                    -2.28378781e-04,
-                    5.83767345e-02,
-                    -2.60428575e00,
-                ]
-            )
-        else:
-            # args.emu_cov_factor = np.array(
-            #     [
-            #         -6.93721149e-02,
-            #         -2.43173756e-04,
-            #         4.91541477e-02,
-            #         -2.90469219e00,
-            #     ]
-            # )
-            # 2 sigma
-            args.emu_cov_factor = np.array(
-                [
-                    -4.78752514e-02,
-                    -8.60779305e-04,
-                    5.60692510e-02,
-                    -2.56919148e00,
-                ]
-            )
+        args.emu_cov_factor = np.array(
+            [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.56919148e00]
+        )
     else:
         args.emu_cov_factor = None
 
