@@ -21,7 +21,7 @@ class MetalModel(object):
         ln_D_coeff=None,
         A_coeff=None,
         X_fid_value=[0, -10],
-        D_fid_value=[0, -4],
+        D_fid_value=[0, 5],
         A_fid_value=[0, 1.5],
         X_null_value=-10.5,
         A_null_value=0,
@@ -154,7 +154,7 @@ class MetalModel(object):
                 # no contamination (0.3% at high k)
                 xmin = 2
                 # Almost no oscillations at high k
-                xmax = 8
+                xmax = 6
             else:
                 # not optimized
                 xmin = -1
