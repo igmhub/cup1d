@@ -143,6 +143,9 @@ class Likelihood(object):
                     )
                     logk_Mpc = np.log(data.k_kms[ii] * dkms_dMpc)
                     rat = np.exp(np.poly1d(self.emu_cov_factor)(logk_Mpc))
+                    # print(data.z[ii])
+                    # print(data.k_kms[ii] * dkms_dMpc)
+                    # print(rat)
                     cov[ind, ind] += (data.Pk_kms[ii] * rat) ** 2
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
