@@ -75,9 +75,9 @@ def main():
     # search = os.path.join(
     #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_fiducial*"
     # )
-    search = os.path.join(path_in_challenge, "*CGAN*")
+    # search = os.path.join(path_in_challenge, "*CGAN*")
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
-    # search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
+    search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
     # search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
     # search = os.path.join(
     #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_*"
@@ -120,9 +120,25 @@ def main():
         # cvar
         # args.emu_cov_factor = np.array([0.10212854, -0.42362763, -4.48318468])
         # cvar + L1O
-        args.emu_cov_factor = np.array(
-            [-6.93721149e-02, -2.43173756e-04, 4.91541477e-02, -2.90469219e00]
-        )
+        if "Sherwood_2048_40" in files[0]:
+            # additional 5% error from shot noise
+            args.emu_cov_factor = np.array(
+                [
+                    -5.93203738e-02,
+                    -2.28378781e-04,
+                    5.83767345e-02,
+                    -2.60428575e00,
+                ]
+            )
+        else:
+            args.emu_cov_factor = np.array(
+                [
+                    -6.93721149e-02,
+                    -2.43173756e-04,
+                    4.91541477e-02,
+                    -2.90469219e00,
+                ]
+            )
     else:
         args.emu_cov_factor = None
 
