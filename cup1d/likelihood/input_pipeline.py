@@ -407,7 +407,7 @@ class Args:
     fix_cosmo: bool = False
     vary_alphas: bool = False
     prior_Gauss_rms: float | None = None
-    emu_cov_factor: float = 0
+    emu_cov_factor: None = None
     verbose: bool = True
     test: bool = False
     explore: bool = False

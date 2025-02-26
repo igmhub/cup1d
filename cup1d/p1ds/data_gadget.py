@@ -67,11 +67,13 @@ class Gadget_P1D(BaseMockP1D):
             dkms_dMpc.append(testing_data[ii]["dkms_dMpc"])
         self.dkms_dMpc = np.array(dkms_dMpc)
 
-        # setup P1D using covariance and testing sim
+        # setup P1D from mock with k values from data_cov_label
+        # as well as covariance matrix
         zs, k_kms, Pk_kms, cov = self._load_p1d()
-        theory.set_fid_cosmo(zs, input_cosmo=true_cosmo)
 
-        self.set_truth(theory, zs)
+        # set theory (just to save truth)
+        theory.model_igm.set_fid_igm(np.array(zs))
+        theory.set_fid_cosmo(zs, input_cosmo=true_cosmo)
 
         # apply contaminants
         for iz, z in enumerate(zs):
@@ -92,102 +94,66 @@ class Gadget_P1D(BaseMockP1D):
             seed=seed,
             z_min=z_min,
             z_max=z_max,
+            theory=theory,
         )
 
         return
 
-    def _get_cosmo(self):
-        # get cosmology
-        repo = os.path.dirname(lace.__path__[0]) + "/"
-        fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
-        data_cosmo = np.load(fname, allow_pickle=True)
+    # def set_truth(self, theory, zs):
+    #     # setup fiducial cosmology
+    #     self.truth = {}
 
-        true_cosmo = None
-        for ii in range(len(data_cosmo)):
-            if data_cosmo[ii]["sim_label"] == self.input_sim:
-                true_cosmo = camb_cosmo.get_cosmology_from_dictionary(
-                    data_cosmo[ii]["cosmo_params"]
-                )
-                break
-        if true_cosmo is None:
-            raise ValueError(f"Cosmo not found in {fname} for {self.input_sim}")
+    #     sim_cosmo = theory.fid_cosmo["cosmo"].cosmo
 
-        return true_cosmo
+    #     self.truth["cosmo"] = {}
+    #     self.truth["cosmo"]["ombh2"] = sim_cosmo.ombh2
+    #     self.truth["cosmo"]["omch2"] = sim_cosmo.omch2
+    #     self.truth["cosmo"]["As"] = sim_cosmo.InitPower.As
+    #     self.truth["cosmo"]["ns"] = sim_cosmo.InitPower.ns
+    #     self.truth["cosmo"]["nrun"] = sim_cosmo.InitPower.nrun
+    #     self.truth["cosmo"]["H0"] = sim_cosmo.H0
+    #     self.truth["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
 
-    def _get_igm(self):
-        """Load IGM history"""
-        repo = os.path.dirname(lace.__path__[0]) + "/"
-        fname = repo + "/data/sim_suites/Australia20/IGM_histories.npy"
-        igm_hist = np.load(fname, allow_pickle=True).item()
-        if self.input_sim not in igm_hist:
-            raise ValueError(
-                self.input_sim
-                + " not found in "
-                + fname
-                + r"\n Check out the LaCE script save_"
-                + self.input_sim[:3]
-                + "_IGM.py"
-            )
-        else:
-            true_igm = igm_hist[self.input_sim]
+    #     self.truth["linP"] = {}
+    #     blob_params = ["Delta2_star", "n_star", "alpha_star"]
+    #     blob = theory.fid_cosmo["cosmo"].get_linP_params()
+    #     for ii in range(len(blob_params)):
+    #         self.truth["linP"][blob_params[ii]] = blob[blob_params[ii]]
 
-        return true_igm
+    #     self.truth["igm"] = {}
+    #     self.truth["igm"]["label"] = self.input_sim
+    #     zs = np.array(zs)
+    #     self.truth["igm"]["z"] = zs
+    #     self.truth["igm"]["tau_eff"] = theory.model_igm.F_model.get_tau_eff(zs)
+    #     self.truth["igm"]["gamma"] = theory.model_igm.T_model.get_gamma(zs)
+    #     self.truth["igm"]["sigT_kms"] = theory.model_igm.T_model.get_sigT_kms(
+    #         zs
+    #     )
+    #     self.truth["igm"]["kF_kms"] = theory.model_igm.P_model.get_kF_kms(zs)
 
-    def set_truth(self, theory, zs):
-        # setup fiducial cosmology
-        self.truth = {}
-
-        sim_cosmo = theory.fid_cosmo["cosmo"].cosmo
-
-        self.truth["cosmo"] = {}
-        self.truth["cosmo"]["ombh2"] = sim_cosmo.ombh2
-        self.truth["cosmo"]["omch2"] = sim_cosmo.omch2
-        self.truth["cosmo"]["As"] = sim_cosmo.InitPower.As
-        self.truth["cosmo"]["ns"] = sim_cosmo.InitPower.ns
-        self.truth["cosmo"]["nrun"] = sim_cosmo.InitPower.nrun
-        self.truth["cosmo"]["H0"] = sim_cosmo.H0
-        self.truth["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
-
-        self.truth["linP"] = {}
-        blob_params = ["Delta2_star", "n_star", "alpha_star"]
-        blob = theory.fid_cosmo["cosmo"].get_linP_params()
-        for ii in range(len(blob_params)):
-            self.truth["linP"][blob_params[ii]] = blob[blob_params[ii]]
-
-        self.truth["igm"] = {}
-        self.truth["igm"]["label"] = self.input_sim
-        zs = np.array(zs)
-        self.truth["igm"]["z"] = zs
-        self.truth["igm"]["tau_eff"] = theory.model_igm.F_model.get_tau_eff(zs)
-        self.truth["igm"]["gamma"] = theory.model_igm.T_model.get_gamma(zs)
-        self.truth["igm"]["sigT_kms"] = theory.model_igm.T_model.get_sigT_kms(
-            zs
-        )
-        self.truth["igm"]["kF_kms"] = theory.model_igm.P_model.get_kF_kms(zs)
-
-        self.truth["cont"] = {}
-        for ii in range(2):
-            self.truth["cont"][
-                "ln_SiIII_" + str(ii)
-            ] = theory.model_cont.fid_SiIII[-1 - ii][-1]
-            self.truth["cont"][
-                "d_SiIII_" + str(ii)
-            ] = theory.model_cont.fid_SiIII[-1 - ii][0]
-            self.truth["cont"][
-                "ln_SiII_" + str(ii)
-            ] = theory.model_cont.fid_SiII[-1 - ii][-1]
-            self.truth["cont"][
-                "d_SiII_" + str(ii)
-            ] = theory.model_cont.fid_SiII[-1 - ii][0]
-            self.truth["cont"][
-                "ln_A_damp_" + str(ii)
-            ] = theory.model_cont.fid_HCD[-1 - ii]
-            self.truth["cont"]["ln_SN_" + str(ii)] = theory.model_cont.fid_SN[
-                -1 - ii
-            ]
-            self.truth["cont"]["ln_AGN_" + str(ii)] = theory.model_cont.fid_AGN[
-                -1 - ii
-            ]
+    #     self.truth["cont"] = {}
+    #     for ii in range(2):
+    #         self.truth["cont"][
+    #             "ln_SiIII_" + str(ii)
+    #         ] = theory.model_cont.fid_SiIII[-1 - ii][-1]
+    #         self.truth["cont"][
+    #             "d_SiIII_" + str(ii)
+    #         ] = theory.model_cont.fid_SiIII[-1 - ii][0]
+    #         self.truth["cont"][
+    #             "ln_SiII_" + str(ii)
+    #         ] = theory.model_cont.fid_SiII[-1 - ii][-1]
+    #         self.truth["cont"][
+    #             "d_SiII_" + str(ii)
+    #         ] = theory.model_cont.fid_SiII[-1 - ii][0]
+    #         self.truth["cont"][
+    #             "ln_A_damp_" + str(ii)
+    #         ] = theory.model_cont.fid_HCD[-1 - ii]
+    #         self.truth["cont"]["ln_SN_" + str(ii)] = theory.model_cont.fid_SN[
+    #             -1 - ii
+    #         ]
+    #         self.truth["cont"]["ln_AGN_" + str(ii)] = theory.model_cont.fid_AGN[
+    #             -1 - ii
+    #         ]
 
     def _load_p1d(self):
         # figure out dataset to mimic

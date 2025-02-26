@@ -162,7 +162,7 @@ res = np.array(res)
 mean = np.mean(res, axis=0)
 std = np.std(res, axis=0)
 
-# plt.plot(fid[ii]['k_Mpc'][ind], np.abs(mean))
+plt.plot(fid[ii]['k_Mpc'][ind], np.abs(mean))
 # plt.plot(fid[ii]['k_Mpc'][ind], std)
 x = fid[ii]['k_Mpc'][ind]
 
@@ -170,16 +170,23 @@ x = fid[ii]['k_Mpc'][ind]
 # p = np.poly1d(fit1)
 # plt.plot(x, p(x))
 
-max_both = np.maximum(std, np.abs(mean))
-plt.plot(fid[ii]['k_Mpc'][ind], max_both)
+factor_sigma = 2.5
 
+cvar_emu = np.maximum(std, np.abs(mean))
+plt.plot(fid[ii]['k_Mpc'][ind], cvar_emu)
+error_emu = 0.05
 
-fit2 = np.polyfit(np.log(x), np.log(max_both), deg=2)
-fit2[-1] += 0.2
+all_err = np.sqrt(cvar_emu**2 + error_emu**2) * factor_sigma
+plt.plot(fid[ii]['k_Mpc'][ind], all_err)
+fit2 = np.polyfit(np.log(x), np.log(all_err), deg=3)
+# fit2[-1] += 0.2
 p = np.poly1d(fit2)
 plt.plot(x, np.exp(p(np.log(x))))
 
-plt.plot(x, x[:] * 0 + 1)
+plt.plot(x, x[:] * 0 + 0.01, "k:")
+plt.plot(x, x[:] * 0 + 0.05, "k:")
+plt.plot(x, x[:] * 0 + 0.10, "k:")
+plt.plot(x, x[:] * 0 + 0.15, "k:")
 
 plt.xlabel("k")
 plt.ylabel("Delta P1D")
@@ -219,10 +226,15 @@ else:
 # #### Set either mock data or real data
 
 # %%
-choose_forecast = False
-choose_mock = False
+# for forecast, just start label of observational data with mock
+choose_forecast = False 
+# to analyze data from simulations
+choose_mock = True
+# to analyze data from observations
 choose_data = False
-choose_challenge = True
+# to analyze data from mock challenge
+choose_challenge = False
+# to analyze data from desiy1
 choose_desiy1 = False
 
 if choose_forecast:
@@ -259,9 +271,12 @@ if choose_forecast:
 elif choose_mock:    
     true_cosmo=None
     # to analyze data from simulations
-    args.data_label = "mpg_central"    
-    args.true_cosmo_label="mpg_central"
-    args.true_igm_label="mpg_central"
+    true_sim = "nyx_central"    
+    args.data_label = true_sim
+    args.true_cosmo_label=true_sim
+    args.true_label_mF=true_sim
+    args.true_label_T=true_sim
+    args.true_label_kF=true_sim
     # args.data_label="nyx_central"
     # args.data_label="nyx_seed"
     # args.data_label_hires="mpg_central"
@@ -292,11 +307,11 @@ elif choose_challenge:
     args.data_label = "challenge_DESIY1"
     version = "9fx"
     folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
-    fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
+    # fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
     # fname = "mockchallenge-0."+version+"_nonoise_bar_ic_grid_3.fits.gz"
     # fname = "mockchallenge-0."+version+"_noise-42-0_fiducial.fits.gz"
-    fname = "mockchallenge-0."+version+"_nonoise_ACCEL2_6144_160.fits.gz"
-    # fname = "mockchallenge-0."+version+"_nonoise_CGAN_4096_base.fits.gz"
+    # fname = "mockchallenge-0."+version+"_nonoise_ACCEL2_6144_160.fits.gz"
+    fname = "mockchallenge-0."+version+"_nonoise_CGAN_4096_base.fits.gz"
     # fname = "mockchallenge-0."+version+"_nonoise_Sherwood_2048_40.fits.gz"
     args.p1d_fname = folder + fname
     if "fiducial" in args.p1d_fname:
@@ -413,7 +428,11 @@ except:
 args.ic_correction=False
 
 # args.emu_cov_factor = None
-args.emu_cov_factor = np.array([ 0.10212854, -0.42362763, -4.48318468])
+# args.emu_cov_factor = np.array([ 0.10212854, -0.42362763, -4.48318468])
+# args.emu_cov_factor = np.array([-6.93721149e-02, -2.43173756e-04,  4.91541477e-02, -2.90469219e+00])
+args.emu_cov_factor = np.array([-4.78752514e-02, -8.60779305e-04,  5.60692510e-02, -2.56919148e+00])
+
+
 # args.fid_cosmo_label="mpg_2"
 # if "Nyx" in emulator.emulator_label:
 #     args.fid_cosmo_label="nyx_central"
@@ -430,6 +449,7 @@ args.fix_cosmo=False
 args.vary_alphas=True
 # args.fid_cosmo_label="Planck18"
 sim_fid = "nyx_central"
+# sim_fid = "nyx_seed"
 # sim_fid = "nyx_3"
 args.fid_cosmo_label=sim_fid
 args.fid_label_mF=sim_fid
@@ -548,8 +568,6 @@ args.fid_A_scale = [0, 5]
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
 
-# %%
-
 # %% [markdown]
 # ### Set likelihood
 
@@ -569,8 +587,6 @@ for p in like.free_params:
     print(p.name, p.value, p.min_value, p.max_value)
 
 # %%
-
-# %%
 # emu_call = np.load("emu_call_fiducial.npy", allow_pickle=True).item()
 # emu_call
 
@@ -580,6 +596,26 @@ for p in like.free_params:
 # %%
 like.plot_p1d(residuals=False)
 like.plot_p1d(residuals=True)
+
+# %%
+
+# %%
+for ii in range(10):
+    col = "C"+str(ii)
+    print(data["P1Ds"].z[ii])
+    rat = np.sqrt(np.diag(data["P1Ds"].cov_Pk_kms[ii]))/data["P1Ds"].Pk_kms[ii]
+    plt.plot(data["P1Ds"].k_kms[ii], rat, col)
+    
+    dkms_dMpc = like.theory.fid_cosmo["cosmo"].dkms_dMpc(
+        like.data.z[ii]
+    )
+    logk_Mpc = np.log(like.data.k_kms[ii] * dkms_dMpc)
+    rat2 = np.exp(np.poly1d(like.emu_cov_factor)(logk_Mpc))
+    
+    plt.plot(data["P1Ds"].k_kms[ii], rat2, col+"--")
+    # plt.plot(data["P1Ds"].k_kms[ii], np.sqrt(rat**2 + rat2**2))
+plt.xscale("log")
+plt.yscale("log")
 
 # %%
 # z = like.data.z
