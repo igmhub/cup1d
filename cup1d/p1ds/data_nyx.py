@@ -11,6 +11,8 @@ from cup1d.p1ds import (
     data_Chabanier2019,
     data_QMLE_Ohio,
     data_Karacayli2022,
+    data_DESIY1,
+    challenge_DESIY1,
 )
 from cup1d.likelihood import lya_theory
 from cup1d.likelihood.model_contaminants import Contaminants
@@ -29,6 +31,7 @@ class Nyx_P1D(BaseMockP1D):
         apply_smoothing=True,
         input_sim="nyx_central",
         data_cov_label="Chabanier2019",
+        cov_fname=None,
         data_cov_factor=1.0,
         add_syst=True,
         add_noise=False,
@@ -50,6 +53,7 @@ class Nyx_P1D(BaseMockP1D):
         self.data_cov_factor = data_cov_factor
         self.data_cov_label = data_cov_label
         self.input_sim = input_sim
+        self.cov_fname = cov_fname
 
         if apply_smoothing:
             self.testing_data = super().set_smoothing_Mpc(
@@ -67,7 +71,7 @@ class Nyx_P1D(BaseMockP1D):
 
         # setup P1D from mock with k values from data_cov_label
         # as well as covariance matrix
-        zs, k_kms, Pk_kms, cov = self._load_p1d()
+        zs, k_kms, Pk_kms, cov = self._load_p1d(theory, true_cosmo)
 
         # set theory (just to save truth)
         theory.model_igm.set_fid_igm(np.array(zs))
@@ -144,7 +148,7 @@ class Nyx_P1D(BaseMockP1D):
     #             -1 - ii
     #         ]
 
-    def _load_p1d(self):
+    def _load_p1d(self, theory, true_cosmo):
         # figure out dataset to mimic
         if self.data_cov_label == "Chabanier2019":
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)
@@ -154,6 +158,11 @@ class Nyx_P1D(BaseMockP1D):
             data = data_QMLE_Ohio.P1D_QMLE_Ohio()
         elif self.data_cov_label == "Karacayli2022":
             data = data_Karacayli2022.P1D_Karacayli2022()
+        elif self.data_cov_label == "DESIY1":
+            # data = data_DESIY1.P1D_DESIY1(p1d_fname=self.cov_fname)
+            data = challenge_DESIY1.P1D_challenge_DESIY1(
+                theory, true_cosmo, p1d_fname=self.cov_fname
+            )
         else:
             raise ValueError("Unknown data_cov_label", self.data_cov_label)
 

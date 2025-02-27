@@ -272,15 +272,28 @@ elif choose_mock:
     true_cosmo=None
     # to analyze data from simulations
     true_sim = "nyx_central"    
+    true_sim = "nyx_seed"
     args.data_label = true_sim
     args.true_cosmo_label=true_sim
     args.true_label_mF=true_sim
+    args.mF_model_type="pivot"
     args.true_label_T=true_sim
     args.true_label_kF=true_sim
     # args.data_label="nyx_central"
     # args.data_label="nyx_seed"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
+    args.apply_smoothing=True
+    # args.apply_smoothing=False
+
+    args.cov_label = "DESIY1"
+    version = "9fx"
+    folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
+    fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
+    # fname = "mockchallenge-0."+version+"_nonoise_ACCEL2_6144_160.fits.gz"
+    # fname = "mockchallenge-0."+version+"_nonoise_CGAN_4096_base.fits.gz"
+    # fname = "mockchallenge-0."+version+"_nonoise_Sherwood_2048_40.fits.gz"
+    args.cov_fname = folder + fname
 
     # provide cosmology only to cull the data
     # args.true_cosmo_label="mpg_central"
@@ -290,13 +303,14 @@ elif choose_mock:
 
     # you may provide contaminants
     # from 1 to 6, -11 to -4
-    args.true_SiIII=[[0, 0], [2, -10]]
-    args.true_SiII=[[0, 0], [2, -10]]
-    # from -5 to 0
-    args.true_HCD=[0, -4]
-    # from -5 to 2
-    args.true_SN=[0, -4]
-    args.true_AGN=[0, -5]
+    # args.true_SiIII=[[0, 0], [2, -10]]
+    # args.true_SiII=[[0, 0], [2, -10]]
+    # # from -5 to 0
+    # args.true_HCD=[0, -4]
+    # # from -5 to 2
+    # args.true_SN=[0, -4]
+    # args.true_AGN=[0, -5]
+    args.z_max=4.3
 elif choose_data:    
     true_cosmo=None
     args.data_label = "Chabanier2019"
@@ -427,10 +441,11 @@ except:
 # cosmology
 args.ic_correction=False
 
-# args.emu_cov_factor = None
-# args.emu_cov_factor = np.array([ 0.10212854, -0.42362763, -4.48318468])
+args.emu_cov_factor = None
+# 1 sigma
 # args.emu_cov_factor = np.array([-6.93721149e-02, -2.43173756e-04,  4.91541477e-02, -2.90469219e+00])
-args.emu_cov_factor = np.array([-4.78752514e-02, -8.60779305e-04,  5.60692510e-02, -2.56919148e+00])
+# 2 sigma
+# args.emu_cov_factor = np.array([-4.78752514e-02, -8.60779305e-04,  5.60692510e-02, -2.56919148e+00])
 
 
 # args.fid_cosmo_label="mpg_2"
@@ -594,7 +609,11 @@ for p in like.free_params:
 # Compare data and fiducial/starting model
 
 # %%
-like.plot_p1d(residuals=False)
+
+like.plot_p1d(residuals=True)
+
+# %%
+# like.plot_p1d(residuals=False)
 like.plot_p1d(residuals=True)
 
 # %%

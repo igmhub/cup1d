@@ -91,6 +91,7 @@ class BaseMockP1D(BaseDataP1D):
         """Smooth data in 1/Mpc"""
 
         apply_smoothing(emulator, list_data_Mpc, fprint=fprint)
+        print(list_data_Mpc[0]["k_Mpc"].max())
         for ii in range(len(list_data_Mpc)):
             if "p1d_Mpc_smooth" in list_data_Mpc[ii]:
                 list_data_Mpc[ii]["p1d_Mpc"] = list_data_Mpc[ii][

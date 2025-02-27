@@ -170,6 +170,7 @@ def set_P1D(
             p1d_ideal,
             input_sim=data_label,
             data_cov_label=args.cov_label,
+            cov_fname=args.p1d_fname,
             apply_smoothing=args.apply_smoothing,
             add_noise=args.add_noise,
             seed=args.seed_noise,
