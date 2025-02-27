@@ -118,21 +118,21 @@ def main():
 
     if "Nyx" in emulator_label:
         # check out 1 sigma!!
-        # 1.5 sigma
-        # args.emu_cov_factor = np.array(
-        #     [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.56919148e00]
-        # )
+        # 1 sigma
+        args.emu_cov_factor = np.array(
+            [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.97465659e00]
+        )
         # 2 sigma
         # args.emu_cov_factor = np.array(
         #     [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.28150941e00]
         # )
         # 2.5 sigma
-        args.emu_cov_factor = np.array(
-            [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.05836586e00]
-        )
+        # args.emu_cov_factor = np.array(
+        #     [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.05836586e00]
+        # )
     else:
         args.emu_cov_factor = None
-    args.emu_cov_factor = None
+    # args.emu_cov_factor = None
 
     args.n_steps = 1250
     if "Sherwood_2048_40" in files[0]:
