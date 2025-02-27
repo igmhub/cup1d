@@ -118,15 +118,22 @@ def main():
 
     if "Nyx" in emulator_label:
         # check out 1 sigma!!
-        # 1 sigma
+        # 1 sigma w/ cosmic variance
+        # args.emu_cov_factor = np.array(
+        #     [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.97465659e00]
+        # )
+        # 1 sigma (5% error)
+        # args.emu_cov_factor = np.array([-2.97465659e00])
+        # 1 sigma (7.5% error)
         args.emu_cov_factor = np.array(
-            [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.97465659e00]
+            [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.28]
         )
         # 2 sigma
         # args.emu_cov_factor = np.array(
         #     [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.28150941e00]
         # )
-        # 2.5 sigma
+        # args.emu_cov_factor = np.array([-2.28150941e00])
+        # 2.5 sigma (needed for getting within 1 sigma simulations not smoothed)
         # args.emu_cov_factor = np.array(
         #     [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.05836586e00]
         # )
@@ -139,6 +146,7 @@ def main():
         args.n_burn_in = 2500
     elif "CGAN" in files[0]:
         args.n_burn_in = 3000
+        args.n_burn_in = 1250
     else:
         args.n_burn_in = 1250
     # print("n_burn_in", args.n_burn_in)
