@@ -105,7 +105,8 @@ def main():
     # vary_alphas = False
     args = Args(emulator_label=emulator_label, training_set=training_set)
 
-    args.apply_smoothing = True
+    # args.apply_smoothing = True
+    args.apply_smoothing = False
     args.cov_label = "DESIY1"
 
     impose_fid_cosmo_label = None
@@ -221,7 +222,14 @@ def main():
             print("Analyzing:", args.p1d_fname)
         file_sim = os.path.basename(files[isim])[:-8]
         if args.emu_cov_factor is not None:
-            dir_out = os.path.join(base_out_folder + "_smooth_err", file_sim)
+            if args.apply_smoothing:
+                dir_out = os.path.join(
+                    base_out_folder + "_smooth_err", file_sim
+                )
+            else:
+                dir_out = os.path.join(
+                    base_out_folder + "_nsmooth_err", file_sim
+                )
         else:
             if args.apply_smoothing:
                 dir_out = os.path.join(base_out_folder + "_ysmooth", file_sim)
