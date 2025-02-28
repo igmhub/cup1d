@@ -266,6 +266,8 @@ def main():
         else:
             fid_sim_label = "mpg_central"
 
+        fid_sim_label = "nyx_seed"
+
         args.fid_cosmo_label = fid_sim_label
         args.fid_label_mF = fid_sim_label
         args.fid_label_T = fid_sim_label
