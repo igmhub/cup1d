@@ -22,7 +22,7 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    version = "9fx"
+    version = "10fxh"
     run_sampler = True
 
     name_system = socket.gethostname()
@@ -66,22 +66,13 @@ def main():
     print(path_in_challenge)
     print(path_out_challenge)
 
-    # files = np.sort(glob.glob(path_in_challenge + "*CGAN*.fits"))
-    # files = np.sort(glob.glob(path_in_challenge + "*bar_ic*.fits"))
-    # search = os.path.join(
-    #     path_in_challenge,
-    #     "mockchallenge-0." + version + "_nonoise_fiducial.fits.gz",
-    # )
-    # search = os.path.join(
-    #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_fiducial*"
-    # )
-    # search = os.path.join(path_in_challenge, "*CGAN*")
+    search = os.path.join(path_in_challenge, "*_nonoise_fiducial*")
+    # search = os.path.join(path_in_challenge, "*CGAN_4096_base*")
+    # search = os.path.join(path_in_challenge, "*CGAN_4096_val*")
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
-    search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
+    # files = np.sort(glob.glob(path_in_challenge + "*bar_ic*.fits"))
+    # search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
     # search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
-    # search = os.path.join(
-    #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_*"
-    # )
 
     files = np.sort(glob.glob(search))
     if rank == 0:
@@ -94,13 +85,15 @@ def main():
     full_cont = True  # IMPORTANT!!!
 
     # emulator_label = "Pedersen23_ext"
-    # training_set = "Cabayol23"
-    # vary_alphas = False
 
-    emulator_label = "Nyx_alphap_cov"
-    training_set = "Nyx23_Jul2024"
-    # vary_alphas = True
+    emulator_label = "Cabayol23+"
+    training_set = "Cabayol23"
     vary_alphas = False
+
+    # emulator_label = "Nyx_alphap_cov"
+    # training_set = "Nyx23_Jul2024"
+    # vary_alphas = True
+    # vary_alphas = False
 
     # emulator_label = "Cabayol23+"
     # training_set = "Cabayol23"
@@ -117,20 +110,9 @@ def main():
     args.z_max = 4.3
 
     if "Nyx" in emulator_label:
-        # 1.5 sigma
-        # args.emu_cov_factor = np.array(
-        #     [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.56919148e00]
-        # )
-        # 2 sigma
-        # args.emu_cov_factor = np.array(
-        #     [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.28150941e00]
-        # )
-        # 2.5 sigma
-        args.emu_cov_factor = np.array(
-            [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.05836586e00]
-        )
+        args.emu_cov_factor = np.array([np.log(0.05)])
     else:
-        args.emu_cov_factor = None
+        args.emu_cov_factor = np.array([np.log(0.02)])
 
     args.n_steps = 1250
     if "Sherwood_2048_40" in files[0]:
@@ -139,6 +121,7 @@ def main():
         args.n_burn_in = 3000
     else:
         args.n_burn_in = 1250
+    args.n_burn_in = 1250
     # print("AAAAAAAAn_burn_in", args.n_burn_in)
     # args.n_steps = 5
     # args.n_burn_in = 0
@@ -251,6 +234,7 @@ def main():
             fid_sim_label = "nyx_central"
         else:
             fid_sim_label = "mpg_central"
+
         args.fid_cosmo_label = fid_sim_label
         args.fid_label_mF = fid_sim_label
         args.fid_label_T = fid_sim_label
