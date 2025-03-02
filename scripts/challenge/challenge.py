@@ -66,7 +66,9 @@ def main():
     print(path_in_challenge)
     print(path_out_challenge)
 
-    search = os.path.join(path_in_challenge, "*_nonoise_fiducial*")
+    search = os.path.join(
+        path_in_challenge, "v" + version + "_nonoise_fiducial*"
+    )
     # search = os.path.join(path_in_challenge, "*CGAN_4096_base*")
     # search = os.path.join(path_in_challenge, "*CGAN_4096_val*")
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
