@@ -22,7 +22,7 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    version = "10fxh"
+    version = "1.0fxh"
     run_sampler = True
 
     name_system = socket.gethostname()
@@ -39,7 +39,7 @@ def main():
             "likelihood_files",
             "data_files",
             "MockChallengeSnapshot",
-            "mockchallenge-0." + version,
+            "mockchallenge-" + version,
         ]
         path_in_challenge = os.path.join(*path_in_challenge)
         path_out_challenge = os.path.join(
@@ -54,7 +54,7 @@ def main():
             "data",
             "mock_challenge",
             "MockChallengeSnapshot",
-            "mockchallenge-0." + version,
+            "mockchallenge-" + version,
         )
         path_out_challenge = os.path.join(
             os.path.dirname(get_path_repo("cup1d")),
@@ -67,7 +67,7 @@ def main():
     print(path_out_challenge)
 
     search = os.path.join(
-        path_in_challenge, "*v" + version + "_nonoise_fiducial*"
+        path_in_challenge, "*" + version + "_nonoise_fiducial*"
     )
     # search = os.path.join(path_in_challenge, "*CGAN_4096_base*")
     # search = os.path.join(path_in_challenge, "*CGAN_4096_val*")
@@ -76,6 +76,7 @@ def main():
     # search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
     # search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
 
+    # print(search)
     files = np.sort(glob.glob(search))
     if rank == 0:
         for ii in range(len(files)):
