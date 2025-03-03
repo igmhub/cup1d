@@ -226,7 +226,8 @@ def main():
         else:
             args.n_tau = 11
 
-        true_sim_label = "mpg_central"
+        # true_sim_label = "mpg_central"
+        true_sim_label = "mpg_seed"
 
         args.p1d_fname = files[isim]
         if rank == 0:
