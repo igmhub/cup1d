@@ -134,9 +134,9 @@ def main():
         # 1 sigma (5% error)
         # args.emu_cov_factor = np.array([-2.97465659e00])
         # 1 sigma (7.5% error)
-        args.emu_cov_factor = np.array(
-            [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.28]
-        )
+        # args.emu_cov_factor = np.array(
+        #     [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.28]
+        # )
         # 2 sigma
         # args.emu_cov_factor = np.array(
         #     [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.28150941e00]
@@ -146,8 +146,9 @@ def main():
         # args.emu_cov_factor = np.array(
         #     [-4.78752514e-02, -8.60779305e-04, 5.60692510e-02, -2.05836586e00]
         # )
+        args.emu_cov_factor = np.array([np.log(0.05)])
     else:
-        args.emu_cov_factor = None
+        args.emu_cov_factor = np.array([np.log(0.02)])
     # args.emu_cov_factor = None
 
     args.n_steps = 1250
