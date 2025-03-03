@@ -124,7 +124,7 @@ def main():
         args.n_burn_in = 3000
     else:
         args.n_burn_in = 1250
-    args.n_burn_in = 1250
+    # args.n_burn_in = 1250
     # print("AAAAAAAAn_burn_in", args.n_burn_in)
     # args.n_steps = 5
     # args.n_burn_in = 0
