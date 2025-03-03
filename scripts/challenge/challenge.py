@@ -70,10 +70,10 @@ def main():
     #     path_in_challenge, "*" + version + "_nonoise_fiducial*"
     # )
     # search = os.path.join(path_in_challenge, "*CGAN_4096_base*")
-    search = os.path.join(path_in_challenge, "*CGAN_4096_val*")
+    # search = os.path.join(path_in_challenge, "*CGAN_4096_val*")
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
     # files = np.sort(glob.glob(path_in_challenge + "*bar_ic*.fits"))
-    # search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
+    search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
     # search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
 
     # print(search)
