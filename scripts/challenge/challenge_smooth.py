@@ -22,7 +22,8 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    version = "9fx"
+    # version = "9fx"
+    version = "10fxh"
     run_sampler = True
 
     name_system = socket.gethostname()
@@ -147,9 +148,9 @@ def main():
         args.n_burn_in = 2500
     elif "CGAN" in files[0]:
         args.n_burn_in = 3000
-        args.n_burn_in = 1250
     else:
         args.n_burn_in = 1250
+    args.n_burn_in = 1250
     # print("n_burn_in", args.n_burn_in)
     # args.n_steps = 5
     # args.n_burn_in = 0
@@ -254,6 +255,8 @@ def main():
             print("Missing true sim label!!")
             sys.exit()
 
+        true_sim_label = "mpg_central"
+
         args.data_label = true_sim_label
         args.true_cosmo_label = true_sim_label
         args.true_label_mF = true_sim_label
@@ -261,13 +264,13 @@ def main():
         args.true_label_T = true_sim_label
         args.true_label_kF = true_sim_label
 
-        if "ACCEL2_6144_160" in args.p1d_fname:
-            args.true_cosmo_label = "ACCEL2_6144_160"
-            args.true_label_mF = "ACCEL2_6144_160"
-            args.true_label_T = "ACCEL2_6144_160"
-        elif "Sherwood_2048_40" in args.p1d_fname:
-            args.true_cosmo_label = "Sherwood_2048_40"
-            args.true_label_mF = "Sherwood_2048_40"
+        # if "ACCEL2_6144_160" in args.p1d_fname:
+        #     args.true_cosmo_label = "ACCEL2_6144_160"
+        #     args.true_label_mF = "ACCEL2_6144_160"
+        #     args.true_label_T = "ACCEL2_6144_160"
+        # elif "Sherwood_2048_40" in args.p1d_fname:
+        #     args.true_cosmo_label = "Sherwood_2048_40"
+        #     args.true_label_mF = "Sherwood_2048_40"
 
         if "Nyx" in emulator_label:
             fid_sim_label = "nyx_central"

@@ -7,7 +7,9 @@ from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
 
 
 class Plotter(object):
-    def __init__(self, fitter=None, save_directory=None, fname_chain=None):
+    def __init__(
+        self, fitter=None, save_directory=None, fname_chain=None, args={}
+    ):
         if fitter is not None:
             self.fitter = fitter
         elif fname_chain is not None:
@@ -18,11 +20,14 @@ class Plotter(object):
             data = np.load(fname_chain, allow_pickle=True).item()
 
             # set input args to pipeline and evaluate
-            args_possible = res = inspect.signature(Args)
+            args_possible = inspect.signature(Args)
             dict_input = {}
             for param in args_possible.parameters.values():
                 if param.name in data["args"].keys():
-                    dict_input[param.name] = data["args"][param.name]
+                    if param.name in args:
+                        dict_input[param.name] = args[param.name]
+                    else:
+                        dict_input[param.name] = data["args"][param.name]
                     # print(param.name, data["args"][param.name])
                 else:
                     print(param.name)
