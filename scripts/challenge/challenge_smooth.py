@@ -23,7 +23,8 @@ def main():
     size = comm.Get_size()
 
     # version = "9fx"
-    version = "10fxh"
+    # version = "10fxh"
+    version = "1.0fxh"
     run_sampler = True
 
     name_system = socket.gethostname()
@@ -40,7 +41,7 @@ def main():
             "likelihood_files",
             "data_files",
             "MockChallengeSnapshot",
-            "mockchallenge-0." + version,
+            "mockchallenge-" + version,
         ]
         path_in_challenge = os.path.join(*path_in_challenge)
         path_out_challenge = os.path.join(
@@ -55,7 +56,7 @@ def main():
             "data",
             "mock_challenge",
             "MockChallengeSnapshot",
-            "mockchallenge-0." + version,
+            "mockchallenge-" + version,
         )
         path_out_challenge = os.path.join(
             os.path.dirname(get_path_repo("cup1d")),
@@ -76,18 +77,24 @@ def main():
     # search = os.path.join(
     #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_fiducial*"
     # )
-    search = os.path.join(path_in_challenge, "*CGAN*")
+    search = os.path.join(
+        path_in_challenge, "*" + version + "_nonoise_fiducial*"
+    )
+    # search = os.path.join(path_in_challenge, "*CGAN*")
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
     # search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
     # search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
     # search = os.path.join(
     #     path_in_challenge, "mockchallenge-0." + version + "_nonoise_*"
     # )
+    print(search)
 
     files = np.sort(glob.glob(search))
     if rank == 0:
         for ii in range(len(files)):
             print(ii, files[ii])
+
+    # sys.exit(0)
 
     # include all contaminants in the fit or not
     full_cont = True  # IMPORTANT!!!
@@ -96,14 +103,14 @@ def main():
     # training_set = "Cabayol23"
     # vary_alphas = False
 
-    emulator_label = "Nyx_alphap_cov"
-    training_set = "Nyx23_Jul2024"
+    # emulator_label = "Nyx_alphap_cov"
+    # training_set = "Nyx23_Jul2024"
     # vary_alphas = True
-    vary_alphas = False
-
-    # emulator_label = "Cabayol23+"
-    # training_set = "Cabayol23"
     # vary_alphas = False
+
+    emulator_label = "Cabayol23+"
+    training_set = "Cabayol23"
+    vary_alphas = False
     args = Args(emulator_label=emulator_label, training_set=training_set)
 
     # args.apply_smoothing = True
@@ -144,12 +151,12 @@ def main():
     # args.emu_cov_factor = None
 
     args.n_steps = 1250
-    if "Sherwood_2048_40" in files[0]:
-        args.n_burn_in = 2500
-    elif "CGAN" in files[0]:
-        args.n_burn_in = 3000
-    else:
-        args.n_burn_in = 1250
+    # if "Sherwood_2048_40" in files[0]:
+    #     args.n_burn_in = 2500
+    # elif "CGAN" in files[0]:
+    #     args.n_burn_in = 3000
+    # else:
+    #     args.n_burn_in = 1250
     args.n_burn_in = 1250
     # print("n_burn_in", args.n_burn_in)
     # args.n_steps = 5
@@ -218,6 +225,8 @@ def main():
         else:
             args.n_tau = 11
 
+        true_sim_label = "mpg_central"
+
         args.p1d_fname = files[isim]
         if rank == 0:
             print("Analyzing:", args.p1d_fname)
@@ -225,37 +234,39 @@ def main():
         if args.emu_cov_factor is not None:
             if args.apply_smoothing:
                 dir_out = os.path.join(
-                    base_out_folder + "_smooth_err", file_sim
+                    base_out_folder + "_ysmooth_err", true_sim_label
                 )
             else:
                 dir_out = os.path.join(
-                    base_out_folder + "_nsmooth_err", file_sim
+                    base_out_folder + "_nsmooth_err", true_sim_label
                 )
         else:
             if args.apply_smoothing:
-                dir_out = os.path.join(base_out_folder + "_ysmooth", file_sim)
+                dir_out = os.path.join(
+                    base_out_folder + "_ysmooth", true_sim_label
+                )
             else:
-                dir_out = os.path.join(base_out_folder + "_nsmooth", file_sim)
+                dir_out = os.path.join(
+                    base_out_folder + "_nsmooth", true_sim_label
+                )
         if rank == 0:
             os.makedirs(dir_out, exist_ok=True)
             print("Output in:", dir_out)
 
         # same true and fiducial IGM
-        if "fiducial" in args.p1d_fname:
-            true_sim_label = "nyx_central"
-        elif "CGAN" in args.p1d_fname:
-            true_sim_label = "nyx_seed"
-        elif "grid_3" in args.p1d_fname:
-            true_sim_label = "nyx_3"
-        elif "Sherwood_2048_40" in args.p1d_fname:
-            true_sim_label = "nyx_central"
-        elif "ACCEL2_6144_160" in args.p1d_fname:
-            true_sim_label = "nyx_central"
-        else:
-            print("Missing true sim label!!")
-            sys.exit()
-
-        true_sim_label = "mpg_central"
+        # if "fiducial" in args.p1d_fname:
+        #     true_sim_label = "nyx_central"
+        # elif "CGAN" in args.p1d_fname:
+        #     true_sim_label = "nyx_seed"
+        # elif "grid_3" in args.p1d_fname:
+        #     true_sim_label = "nyx_3"
+        # elif "Sherwood_2048_40" in args.p1d_fname:
+        #     true_sim_label = "nyx_central"
+        # elif "ACCEL2_6144_160" in args.p1d_fname:
+        #     true_sim_label = "nyx_central"
+        # else:
+        #     print("Missing true sim label!!")
+        #     sys.exit()
 
         args.data_label = true_sim_label
         args.true_cosmo_label = true_sim_label
@@ -276,8 +287,6 @@ def main():
             fid_sim_label = "nyx_central"
         else:
             fid_sim_label = "mpg_central"
-
-        fid_sim_label = "nyx_seed"
 
         args.fid_cosmo_label = fid_sim_label
         args.fid_label_mF = fid_sim_label
