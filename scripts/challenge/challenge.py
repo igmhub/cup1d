@@ -69,12 +69,12 @@ def main():
     # search = os.path.join(
     #     path_in_challenge, "*" + version + "_nonoise_fiducial*"
     # )
-    # search = os.path.join(path_in_challenge, "*CGAN_4096_base*")
+    search = os.path.join(path_in_challenge, "*CGAN_4096_base*")
     # search = os.path.join(path_in_challenge, "*CGAN_4096_val*")
     # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
     # files = np.sort(glob.glob(path_in_challenge + "*bar_ic*.fits"))
     # search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
-    search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
+    # search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
 
     # print(search)
     files = np.sort(glob.glob(search))
@@ -89,18 +89,15 @@ def main():
 
     # emulator_label = "Pedersen23_ext"
 
-    emulator_label = "Cabayol23+"
-    training_set = "Cabayol23"
-    vary_alphas = False
-
-    # emulator_label = "Nyx_alphap_cov"
-    # training_set = "Nyx23_Jul2024"
-    # vary_alphas = True
-    # vary_alphas = False
-
     # emulator_label = "Cabayol23+"
     # training_set = "Cabayol23"
     # vary_alphas = False
+
+    emulator_label = "Nyx_alphap_cov"
+    training_set = "Nyx23_Jul2024"
+    # vary_alphas = True
+    vary_alphas = False
+
     args = Args(emulator_label=emulator_label, training_set=training_set)
     args.data_label = "challenge_DESIY1"
 
@@ -124,8 +121,7 @@ def main():
         args.n_burn_in = 3000
     else:
         args.n_burn_in = 1250
-    # args.n_burn_in = 1250
-    # print("AAAAAAAAn_burn_in", args.n_burn_in)
+
     # args.n_steps = 5
     # args.n_burn_in = 0
     if size > 1:
