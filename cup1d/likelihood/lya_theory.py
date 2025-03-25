@@ -708,9 +708,10 @@ class Theory(object):
             kin_Mpc[iz, : len(k_kms[iz])] = k_kms[iz] * M_of_z[iz]
 
         # call emulator
-        _res = self.emulator.emulate_p1d_Mpc(
-            emu_call, kin_Mpc, return_covar=return_covar, z=zs
-        )
+        # _res = self.emulator.emulate_p1d_Mpc(
+        #     emu_call, kin_Mpc, return_covar=return_covar, z=zs
+        # )
+        _res = self.emulator.emulate_p1d_Mpc(emu_call, kin_Mpc)
         if return_covar:
             p1d_Mpc, cov_Mpc = _res
         else:

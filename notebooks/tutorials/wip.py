@@ -57,156 +57,18 @@ from cup1d.likelihood.input_pipeline import Args
 from corner import corner
 from cup1d.likelihood import CAMB_model
 
-# %%
-# import numpy as np
-# from cup1d.likelihood.cosmologies import set_cosmo
-# from cup1d.likelihood import CAMB_model
-# cosmo = set_cosmo("nyx_central")
-# zs = np.arange(2.2, 4.4, 0.2)
-# camb_object = CAMB_model.CAMBModel(zs, cosmo=cosmo, z_star=3.0, kp_kms=0.009)
-# kp_Mpc = 0.7
-# lin_par = camb_object.get_linP_Mpc_params(kp_Mpc)
-
-# for ii in range(len(zs)):
-#     print(zs[ii], lin_par[ii])
-
-# %%
-# fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v6/Nyx_alphap_cov/mockchallenge-0.6_nonoise_fiducial/chain_2/sampler_results.npy"
-# mod = "mockchallenge-0.9fx_nonoise_fiducial/chain_1"
-# mod = "mockchallenge-0.9fx_nonoise_fiducial/chain_4"
-# mod = "mockchallenge-0.9fx_nonoise_CGAN_4096_base/chain_2"
-mod = "mockchallenge-0.9fx_nonoise_ACCEL2_6144_160/chain_1"
-fname_chain = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v9fx/Nyx_alphap_cov/"+mod+"/fitter_results.npy"
-
-plotter = Plotter(save_directory="test", fname_chain=fname_chain)
-plotter.plot_corner(only_cosmo=True)
-
-# %%
-version = "9fx"
-folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
-# fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
-fname = "mockchallenge-0."+version+"_nonoise_Sherwood_2048_40.fits.gz"
-# fname = "mockchallenge-0."+version+"_nonoise_CGAN_4096_base.fits.gz"
-# fname = "mockchallenge-0."+version+"_nonoise_ACCEL2_6144_160.fits.gz"
-hdu = fits.open(folder + fname)
-
-# folder2 = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/"
-# fname2 = "p1d_fft_y1_measurement_kms_v3.fits"
-# hdu2 = fits.open(folder2 + fname2)
-
-# cov_raw = hdu[3].data.copy()
-# ind = np.arange(cov_raw.shape[0])
-# cov_raw[ind, ind] += np.diag(hdu[4].data)
-
-# np.allclose(hdu2[3].data, cov_raw)
-
 # %% [markdown]
-# ### Set archive
+# ### Set archive (old)
 
 # %%
 # args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
+# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
 # args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
 # args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
 
-# %%
 # path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
 archive = set_archive(args.training_set)
 
-# %%
-
-# %% [markdown]
-# Get cosmic variance
-
-# %%
-cgan = archive.get_testing_data("nyx_seed")
-fid = archive.get_testing_data("nyx_central")
-
-params = ["mF", "sigT_Mpc", "gamma"]
-
-res = []
-kk = 0
-for ii in range(len(fid)):
-    for jj in range(len(cgan)):
-        if np.abs(cgan[jj]["z"] - fid[ii]["z"]) > 0.01:
-            continue
-        else:
-            if kk > 9:
-                continue
-            col = "C"+str(kk)
-            # for par in params:
-            #     print(fid[ii][par], cgan[jj][par])
-            # print(fid[ii]['mF'], cgan[jj]['mF'])
-            rescale = fid[ii]['mF']**2/cgan[jj]['mF']**2
-            # rescale = fid[ii]['mF']/cgan[jj]['mF']
-            # rescale = 1
-            # ind = fid[ii]['k_Mpc'] < 4
-            # plt.plot(fid[ii]['k_Mpc'][ind], (fid[ii]['k_Mpc']*fid[ii]['p1d_Mpc'])[ind], col, label=np.round(fid[ii]["z"], 2))
-            ind = cgan[jj]['k_Mpc'] < 4
-            # plt.plot(cgan[jj]['k_Mpc'][ind], (cgan[jj]['k_Mpc']*cgan[jj]['p1d_Mpc'] / rescale)[ind], col+"--")
-
-            rescale = 1/np.mean(fid[ii]['p1d_Mpc'][ind]/cgan[jj]['p1d_Mpc'][ind])
-            rat = fid[ii]['p1d_Mpc'][ind]/cgan[jj]['p1d_Mpc'][ind]*rescale-1
-            res.append(rat)
-            plt.plot(fid[ii]['k_Mpc'][ind], rat, col, label=np.round(fid[ii]["z"], 2))
-            kk += 1
-
-# plt.savefig("s0.png")
-plt.legend()
-plt.xlabel("k")
-plt.ylabel("Delta P1D")
-plt.xscale("log")
-
-# %%
-res = np.array(res)
-mean = np.mean(res, axis=0)
-std = np.std(res, axis=0)
-
-plt.plot(fid[ii]['k_Mpc'][ind], np.abs(mean))
-# plt.plot(fid[ii]['k_Mpc'][ind], std)
-x = fid[ii]['k_Mpc'][ind]
-
-# fit1 = np.polyfit(x, std, deg=1)
-# p = np.poly1d(fit1)
-# plt.plot(x, p(x))
-
-factor_sigma = 2.5
-
-cvar_emu = np.maximum(std, np.abs(mean))
-plt.plot(fid[ii]['k_Mpc'][ind], cvar_emu)
-error_emu = 0.05
-
-all_err = np.sqrt(cvar_emu**2 + error_emu**2) * factor_sigma
-plt.plot(fid[ii]['k_Mpc'][ind], all_err)
-fit2 = np.polyfit(np.log(x), np.log(all_err), deg=3)
-# fit2[-1] += 0.2
-p = np.poly1d(fit2)
-plt.plot(x, np.exp(p(np.log(x))))
-
-plt.plot(x, x[:] * 0 + 0.01, "k:")
-plt.plot(x, x[:] * 0 + 0.05, "k:")
-plt.plot(x, x[:] * 0 + 0.10, "k:")
-plt.plot(x, x[:] * 0 + 0.15, "k:")
-
-plt.xlabel("k")
-plt.ylabel("Delta P1D")
-plt.xscale("log")
-
-# %%
-fit2
-
-# %%
-# # std
-# p2 = np.array([-0.00109798,  0.00691753])
-# # bias + std
-# p2 = np.array([-0.0058123,  0.0237336])
-
-# %%
-
-# %% [markdown]
-# ### Set emulator
-
-# %%
 # set output directory for this test
 output_dir = "."
 
@@ -223,13 +85,29 @@ else:
     emulator.list_sim_cube = archive.list_sim_cube
 
 # %% [markdown]
+# ### New
+
+# %%
+
+# args = Args(emulator_label="CH24_nyx_gp", training_set="Nyx23_Jul2024")
+args = Args(emulator_label="CH24_mpg_gp", training_set="Cabayol23")
+output_dir = "."
+
+emulator = set_emulator(
+    emulator_label=args.emulator_label,
+)
+
+# %% [markdown]
+# ### Set emulator
+
+# %% [markdown]
 # #### Set either mock data or real data
 
 # %%
 # for forecast, just start label of observational data with mock
-choose_forecast = False 
+choose_forecast = True 
 # to analyze data from simulations
-choose_mock = True
+choose_mock = False
 # to analyze data from observations
 choose_data = False
 # to analyze data from mock challenge
@@ -250,8 +128,15 @@ if choose_forecast:
     # # you need to provide true cosmology, IGM history, and contaminants
     # true_cosmo = set_cosmo(cosmo_label="nyx_central")
     # args.true_igm_label="nyx_central"
-    true_cosmo = set_cosmo(cosmo_label="mpg_central")
-    args.true_igm_label="mpg_central"
+    true_sim = "nyx_central"
+    true_sim = "mpg_central"
+    true_cosmo = set_cosmo(cosmo_label=true_sim)
+    args.true_label_mF=true_sim
+    args.mF_model_type="chunks"
+    args.true_label_T=true_sim
+    args.true_label_kF=true_sim
+    true_cosmo = set_cosmo(cosmo_label=true_sim)
+    
     # true_cosmo = set_cosmo(cosmo_label="mpg_22")
     # true_cosmo = set_cosmo(cosmo_label="Planck18")
     # args.true_igm_label="nyx_central"
@@ -266,27 +151,28 @@ if choose_forecast:
     # # from -5 to 1.5
     # args.true_AGN=[0, -5]
     args.z_min = 2.1
-    args.z_max = 3.9
-    # args.z_max = 4.3
+    args.z_max = 4.3
 elif choose_mock:    
-    true_cosmo=None
+    # true_cosmo=None
     # to analyze data from simulations
-    true_sim = "nyx_central"    
-    true_sim = "nyx_seed"
-    args.data_label = true_sim
+    true_sim = "nyx_central"
+    # true_sim = "nyx_seed"
+    # true_sim = "nyx_central"
+    # args.data_label = "mock_DESIY1"
     args.true_cosmo_label=true_sim
     args.true_label_mF=true_sim
-    args.mF_model_type="pivot"
+    # args.mF_model_type="pivot"
+    args.mF_model_type="chunks"
     args.true_label_T=true_sim
     args.true_label_kF=true_sim
     # args.data_label="nyx_central"
     # args.data_label="nyx_seed"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
-    args.apply_smoothing=True
-    # args.apply_smoothing=False
+    # args.apply_smoothing=True
+    args.apply_smoothing=False
 
-    args.cov_label = "DESIY1"
+    # args.cov_label = "DESIY1"
     version = "9fx"
     folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
     fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
@@ -294,11 +180,13 @@ elif choose_mock:
     # fname = "mockchallenge-0."+version+"_nonoise_CGAN_4096_base.fits.gz"
     # fname = "mockchallenge-0."+version+"_nonoise_Sherwood_2048_40.fits.gz"
     args.cov_fname = folder + fname
+    # args.p1d_fname = folder + fname
+    # args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v3.fits"
 
     # provide cosmology only to cull the data
     # args.true_cosmo_label="mpg_central"
     # args.true_cosmo_label="nyx_central"
-    true_cosmo = set_cosmo(cosmo_label=args.data_label)
+    true_cosmo = set_cosmo(cosmo_label=true_sim)
     # args.true_cosmo_label="nyx_seed"
 
     # you may provide contaminants
@@ -463,7 +351,8 @@ args.fix_cosmo=False
 # args.vary_alphas=False
 args.vary_alphas=True
 # args.fid_cosmo_label="Planck18"
-sim_fid = "nyx_central"
+# sim_fid = "nyx_central"
+sim_fid = "mpg_central"
 # sim_fid = "nyx_seed"
 # sim_fid = "nyx_3"
 args.fid_cosmo_label=sim_fid
@@ -609,14 +498,13 @@ for p in like.free_params:
 # Compare data and fiducial/starting model
 
 # %%
-
+like.plot_p1d(residuals=False)
 like.plot_p1d(residuals=True)
 
 # %%
-# like.plot_p1d(residuals=False)
-like.plot_p1d(residuals=True)
 
-# %%
+# %% [markdown]
+# ### Relative error
 
 # %%
 for ii in range(10):

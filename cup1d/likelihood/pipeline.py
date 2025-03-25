@@ -436,11 +436,14 @@ class Pipeline(object):
                 _drop_sim = args.data_label
 
             if args.emulator is None:
-                emulator = set_emulator(
-                    emulator_label=args.emulator_label,
-                    archive=archive,
-                    drop_sim=_drop_sim,
-                )
+                if args.emulator_label in ["CH24_mpg_gp", "CH24_nyx_gp"]:
+                    emulator = set_emulator(args.emulator_label)
+                else:
+                    emulator = set_emulator(
+                        emulator_label=args.emulator_label,
+                        archive=archive,
+                        drop_sim=_drop_sim,
+                    )
 
                 if "Nyx" in emulator.emulator_label:
                     emulator.list_sim_cube = archive.list_sim_cube
