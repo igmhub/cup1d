@@ -182,7 +182,7 @@ class Theory(object):
                     )
 
         # setup fiducial cosmology (used for fitting)
-        if not input_cosmo:
+        if input_cosmo is None:
             input_cosmo = camb_cosmo.get_cosmology()
 
         # setup CAMB object for the fiducial cosmology and precompute some things

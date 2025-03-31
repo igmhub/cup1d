@@ -410,19 +410,34 @@ class Pipeline(object):
 
         ## set training set (only for rank 0)
         if rank == 0:
+            # start all clocks
             start_all = time.time()
-            start = time.time()
-            fprint("----------")
-            fprint("Setting training set " + args.training_set)
 
-            # only when reusing archive
-            if args.archive is None:
-                archive = set_archive(args.training_set)
+            # only do it if running on mocks or using old emulators
+            read_archive = False
+            # running on mocks
+            if args.data_label[:3] in ["mpg", "nyx"]:
+                read_archive = True
+            elif args.emulator_label not in ["CH24_mpg_gp", "CH24_nyx_gp"]:
+                read_archive = True
             else:
-                archive = args.archive
-            end = time.time()
-            multi_time = str(np.round(end - start, 2))
-            fprint("Training set loaded in " + multi_time + " s")
+                read_archive = False
+
+            if read_archive:
+                start = time.time()
+                fprint("----------")
+                fprint("Setting training set " + args.training_set)
+
+                # only when reusing archive
+                if args.archive is None:
+                    archive = set_archive(args.training_set)
+                else:
+                    archive = args.archive
+                end = time.time()
+                multi_time = str(np.round(end - start, 2))
+                fprint("Training set loaded in " + multi_time + " s")
+            else:
+                archive = None
         #######################
 
         ## set emulator
@@ -431,26 +446,23 @@ class Pipeline(object):
             fprint("Setting emulator")
             start = time.time()
 
-            _drop_sim = None
-            if args.drop_sim & (args.data_label in archive.list_sim_cube):
-                _drop_sim = args.data_label
-
             if args.emulator is None:
-                if args.emulator_label in ["CH24_mpg_gp", "CH24_nyx_gp"]:
-                    emulator = set_emulator(args.emulator_label)
-                else:
-                    emulator = set_emulator(
-                        emulator_label=args.emulator_label,
-                        archive=archive,
-                        drop_sim=_drop_sim,
-                    )
+                _drop_sim = None
+                if args.drop_sim:
+                    _drop_sim = args.data_label
 
-                if "Nyx" in emulator.emulator_label:
-                    emulator.list_sim_cube = archive.list_sim_cube
-                    if "nyx_14" in emulator.list_sim_cube:
-                        emulator.list_sim_cube.remove("nyx_14")
-                else:
-                    emulator.list_sim_cube = archive.list_sim_cube
+                emulator = set_emulator(
+                    emulator_label=args.emulator_label,
+                    archive=archive,
+                    drop_sim=_drop_sim,
+                )
+
+                # if "Nyx" in emulator.emulator_label:
+                #     emulator.list_sim_cube = archive.list_sim_cube
+                #     if "nyx_14" in emulator.list_sim_cube:
+                #         emulator.list_sim_cube.remove("nyx_14")
+                # else:
+                #     emulator.list_sim_cube = archive.list_sim_cube
             else:
                 emulator = args.emulator
 
@@ -494,7 +506,7 @@ class Pipeline(object):
 
             # set hires P1D
             if args.data_label_hires is not None:
-                data["extra_P1Ds"] = set_P1D_hires(
+                data["extra_P1Ds"] = set_P1D(
                     args,
                     archive=archive,
                     true_cosmo=true_cosmo,

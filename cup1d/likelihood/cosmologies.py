@@ -74,6 +74,19 @@ def set_cosmo(
             pivot_scalar=0.05,
             w=-1,
         )
+    elif cosmo_label == "Planck18_low":
+        cosmo = camb_cosmo.get_cosmology(
+            H0=67.66,
+            mnu=0.0,
+            omch2=0.119,
+            ombh2=0.0224,
+            omk=0.0,
+            As=1.65e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
     elif cosmo_label == "Planck18_h74":
         cosmo = camb_cosmo.get_cosmology(
             H0=74,

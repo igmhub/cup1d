@@ -118,11 +118,21 @@ class ThermalModel(object):
             if high:
                 igm_to_inter[-1] = p(z_to_inter[-1])
 
+            ind_all = np.arange(z_to_inter.shape[0])
+            if low and high:
+                ind_use = ind_all[1:-1]
+            elif low:
+                ind_use = ind_all[1:]
+            elif high:
+                ind_use = ind_all[:-1]
+            else:
+                ind_use = ind_all
+
             # apply smoothing to IGM history
             if smoothing:
-                igm_to_inter[1:-1] = p(z_to_inter[1:-1])
+                igm_to_inter[ind_use] = p(z_to_inter[ind_use])
             else:
-                igm_to_inter[1:-1] = fid_prop
+                igm_to_inter[ind_use] = fid_prop
 
             if ii == 0:
                 self.fid_gamma_interp = interp1d(

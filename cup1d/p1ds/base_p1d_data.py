@@ -39,7 +39,7 @@ def _drop_zbins(
         full_Pk_kms = full_Pk_kms[ind]
         full_cov_kms = full_cov_kms[ind, :][:, ind]
 
-    return z_out, k_out, Pk_out, cov_out, full_Pk_kms, full_cov_kms
+    return z_out, k_out, Pk_out, cov_out, full_zs, full_Pk_kms, full_cov_kms
 
 
 class BaseDataP1D(object):
@@ -94,6 +94,7 @@ class BaseDataP1D(object):
             self.k_kms,
             self.Pk_kms,
             self.cov_Pk_kms,
+            self.full_zs,
             self.full_Pk_kms,
             self.full_cov_Pk_kms,
         ) = res

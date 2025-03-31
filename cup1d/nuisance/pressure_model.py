@@ -92,11 +92,21 @@ class PressureModel(object):
         if high:
             igm_to_inter[-1] = p(z_to_inter[-1])
 
+        ind_all = np.arange(z_to_inter.shape[0])
+        if low and high:
+            ind_use = ind_all[1:-1]
+        elif low:
+            ind_use = ind_all[1:]
+        elif high:
+            ind_use = ind_all[:-1]
+        else:
+            ind_use = ind_all
+
         # apply smoothing to IGM history
         if smoothing:
-            igm_to_inter[1:-1] = p(z_to_inter[1:-1])
+            igm_to_inter[ind_use] = p(z_to_inter[ind_use])
         else:
-            igm_to_inter[1:-1] = self.fid_kF
+            igm_to_inter[ind_use] = self.fid_kF
 
         self.fid_kF_interp = interp1d(z_to_inter, igm_to_inter, kind="cubic")
 

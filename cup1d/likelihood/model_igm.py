@@ -105,7 +105,6 @@ class IGM(object):
             )
 
         fname = os.path.join(os.environ["NYX_PATH"], "IGM_histories.npy")
-        igm_hist_nyx = np.load(fname, allow_pickle=True).item()
         try:
             self.igm_hist_nyx = np.load(fname, allow_pickle=True).item()
         except:
@@ -194,6 +193,12 @@ class IGM(object):
                         )
                     )
                     continue
+            elif sim_igm == "kF_both":
+                res_fit = np.array([0.00078134, 0.00028125, 0.15766722])
+                zz = np.linspace(1.8, 6, 100)
+                igms_return["z_kF"] = zz
+                igms_return["kF_kms"] = np.poly1d(res_fit)(zz)
+                continue
             else:
                 ValueError("sim_igm must be 'mpg' or 'nyx'")
 

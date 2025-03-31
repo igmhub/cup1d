@@ -11,6 +11,7 @@ from cup1d.p1ds import (
     data_QMLE_Ohio,
     data_Karacayli2024,
     data_DESIY1,
+    challenge_DESIY1,
 )
 from cup1d.likelihood import lya_theory
 from cup1d.likelihood.model_contaminants import Contaminants
@@ -68,38 +69,56 @@ class Mock_P1D(BaseMockP1D):
                     "Must provide p1d_fname if loading DESI_Y1 data"
                 )
             else:
-                data_from_obs = data_DESIY1.read_from_file(p1d_fname=p1d_fname)
+                data_from_obs = data_DESIY1.read_from_file(
+                    p1d_fname=p1d_fname,
+                    z_min=z_min,
+                    z_max=z_max,
+                )
+        elif data_label == "challenge_DESIY1":
+            if p1d_fname is None:
+                raise ValueError(
+                    "Must provide p1d_fname if loading challenge_DESIY1 data"
+                )
+            else:
+                data_from_obs = challenge_DESIY1.P1D_challenge_DESIY1(
+                    theory,
+                    true_cosmo,
+                    p1d_fname=p1d_fname,
+                    z_min=z_min,
+                    z_max=z_max,
+                )
         else:
             raise ValueError("Unknown data_label", data_label)
 
-        (
-            zs,
-            k_kms,
-            Pk_kms,
-            cov_Pk_kms,
-            full_zs,
-            full_Pk_kms,
-            full_cov_kms,
-            blind,
-        ) = data_from_obs
+        # (
+        #     zs,
+        #     k_kms,
+        #     Pk_kms,
+        #     cov_Pk_kms,
+        #     full_zs,
+        #     full_Pk_kms,
+        #     full_cov_kms,
+        #     blind,
+        # ) = data_from_obs
 
-        # evaluate theory at k_kms, for all redshifts
-        theory.model_igm.set_fid_igm(np.array(zs))
+        # evaluate theory at k_kms, for all redshifts. get Pk_kms from emulator
+        zs = np.array(data_from_obs.z)
+        theory.model_igm.set_fid_igm(zs)
         theory.set_fid_cosmo(zs, input_cosmo=true_cosmo)
-        Pk_kms = theory.get_p1d_kms(np.array(zs), k_kms, return_blob=False)
+        Pk_kms = theory.get_p1d_kms(zs, data_from_obs.k_kms, return_blob=False)
         full_Pk_kms = np.concatenate(np.array(Pk_kms, dtype=object)).reshape(-1)
 
         super().__init__(
-            zs=zs,
-            k_kms=k_kms,
+            zs=data_from_obs.z,
+            k_kms=data_from_obs.k_kms,
             Pk_kms=Pk_kms,
-            cov_Pk_kms=cov_Pk_kms,
+            cov_Pk_kms=data_from_obs.cov_Pk_kms,
             add_noise=add_noise,
             seed=seed,
             z_min=z_min,
             z_max=z_max,
-            full_zs=full_zs,
+            full_zs=data_from_obs.full_zs,
             full_Pk_kms=full_Pk_kms,
-            full_cov_kms=full_cov_kms,
+            full_cov_kms=data_from_obs.full_cov_Pk_kms,
             theory=theory,
         )
