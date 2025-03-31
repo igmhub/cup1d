@@ -48,8 +48,8 @@ def main():
 
     # emulator_label = "CH24_mpg_gp"
     # emulator_label = "CH24"
-    # emulator_label = "CH24_nyx_gp"
-    emulator_label = "CH24_NYX"
+    emulator_label = "CH24_nyx_gp"
+    # emulator_label = "CH24_NYX"
 
     emu_cov_factor = None
     if emu_cov_factor is None:
