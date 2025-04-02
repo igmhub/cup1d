@@ -4,7 +4,9 @@ import os
 import math
 from scipy.stats.distributions import chi2 as chi2_scipy
 from scipy.optimize import minimize
+from scipy.linalg import block_diag
 
+import lace
 from lace.cosmo import camb_cosmo
 from cup1d.utils.utils import is_number_string
 
@@ -107,6 +109,17 @@ class Likelihood(object):
             If the covariance matrix inversion fails (e.g., due to singularity).
         """
 
+        # get emulator error
+        filename = "cov_" + self.theory.emulator.emulator_label + ".npy"
+        full_path = os.path.join(
+            os.path.dirname(lace.__path__[0]), "data", "covariance", filename
+        )
+        dict_save = np.load(full_path, allow_pickle=True).item()
+        emu_cov = dict_save["cov"]
+        emu_cov_zz = dict_save["zz"]
+        emu_cov_unique_zz = np.unique(emu_cov_zz)
+        emu_cov_k_Mpc = dict_save["k_Mpc"]
+
         # Iterate over both datasets: main dataset (idata = 0) and additional dataset (idata = 1)
         for idata in range(2):
             if idata == 0:  # Main dataset
@@ -135,22 +148,61 @@ class Likelihood(object):
                 nks += len(data.Pk_kms[ii])
 
             # Process each redshift bin
+            emu_cov_blocks = []
             for ii in range(len(data.z)):
                 # Copy the covariance matrix for the current redshift bin
                 cov = data.cov_Pk_kms[ii].copy()
                 # Indices of the diagonal elements
-                ind = np.arange(len(data.Pk_kms[ii]))
-                # Add emulator error to the diagonal
+                # Add emulator error
                 if self.emu_cov_factor is not None:
-                    dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
-                        data.z[ii]
-                    )
-                    logk_Mpc = np.log(data.k_kms[ii] * dkms_dMpc)
-                    rat = np.exp(np.poly1d(self.emu_cov_factor)(logk_Mpc))
-                    # print(data.z[ii])
-                    # print(data.k_kms[ii] * dkms_dMpc)
-                    # print(rat)
-                    cov[ind, ind] += (data.Pk_kms[ii] * rat) ** 2
+                    if self.emu_cov_factor != 0:
+                        dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
+                            data.z[ii]
+                        )
+                        # data k_kms to Mpc
+                        k_Mpc = data.k_kms[ii] * dkms_dMpc
+                        add_emu_cov_kms = np.zeros(
+                            (k_Mpc.shape[0], k_Mpc.shape[0])
+                        )
+
+                        # find closest z in cov
+                        ind = np.argmin(np.abs(emu_cov_unique_zz - data.z[ii]))
+                        zz_closest = ind_zclosest[ind]
+                        # get cov from closest z
+                        ind = np.argwhere(emu_cov_zz == zz_closest)[:, 0]
+                        _emu_cov = emu_cov[ind, :][:, ind]
+                        _k_Mpc = emu_cov_k_Mpc[ind]
+
+                        # rescale covariance matrix by power spectrum,
+                        # I stored the relative error
+                        for i0 in range(k_Mpc.shape[0]):
+                            # get closest k in emu cov matrix
+                            j0 = np.argmin(np.abs(k_Mpc[i0] - _k_Mpc))
+                            for i1 in range(k_Mpc.shape[1]):
+                                # skip if diagonal and i0 != i1
+                                if (self.emu_cov_type == "diagonal") & (
+                                    i0 != i1
+                                ):
+                                    continue
+
+                                # get closest k in emu cov matrix
+                                j1 = np.argmin(np.abs(k_Mpc[i1] - _k_Mpc))
+                                add_emu_cov_kms[i0, i1] = (
+                                    _emu_cov[j0, j1]
+                                    * dkms_dMpc**2  # emu to kms
+                                    * data.Pk_kms[i0]
+                                    * data.Pk_kms[i1]
+                                )
+                        emu_cov_blocks.append(add_emu_cov_kms)
+                        # from Pk in Mpc to Pk in km/s
+                        # add to cov
+                        for i0 in range(k_Mpc.shape[1]):
+                            for i1 in range(k_Mpc.shape[0]):
+                                cov[i0, i1] += (
+                                    add_emu_cov_kms[i0, i1]
+                                    * self.emu_cov_factor
+                                )
+
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
                     self.icov_Pk_kms.append(np.linalg.inv(cov))
@@ -164,15 +216,55 @@ class Likelihood(object):
                 # Copy the full covariance matrix
                 cov = data.full_cov_Pk_kms.copy()
                 # Indices of the diagonal elements
-                ind = np.arange(len(data.full_Pk_kms))
-                # Add emulator error to the diagonal
                 if self.emu_cov_factor is not None:
-                    dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
-                        data.z[ii]
-                    )
-                    logk_Mpc = np.log(data.full_k_kms * dkms_dMpc)
-                    rat = np.exp(np.poly1d(self.emu_cov_factor)(logk_Mpc))
-                    cov[ind, ind] += (data.full_Pk_kms * rat) ** 2
+                    if self.emu_cov_factor != 0:
+                        # diagonal
+                        if emu_cov_type == "diagonal":
+                            diag_emu_cov = []
+                            for ii in range(len(emu_cov_blocks)):
+                                diag.append(np.diag(emu_cov_blocks[ii]))
+                            diag_emu_cov = np.diag(np.concatenate(diag))
+                            ind = np.diag_indices_from(cov)
+                            cov[ind] += diag_emu_cov * self.emu_cov_factor
+                        # block
+                        elif emu_cov_type == "block":
+                            block_emu_cov = block_diag(*emu_cov_blocks)
+                            cov += block_emu_cov * self.emu_cov_factor
+                        # full
+                        else:
+                            full_emu_cov = np.zeros_like(cov)
+                            for i0 in range(cov.shape[0]):
+                                dkms_dMpc = self.theory.fid_cosmo[
+                                    "cosmo"
+                                ].dkms_dMpc(data.full_z[i0])
+                                j0 = np.argmin(
+                                    (data.full_z[i0] - emu_cov_zz) ** 2
+                                    + (
+                                        data.full_k_kms[i0] * dkms_dMpc
+                                        - emu_cov_k_Mpc
+                                    )
+                                    ** 2
+                                )
+                                for i1 in range(cov.shape[1]):
+                                    dkms_dMpc = self.theory.fid_cosmo[
+                                        "cosmo"
+                                    ].dkms_dMpc(data.full_z[i1])
+                                    j1 = np.argmin(
+                                        (data.full_z[i1] - emu_cov_zz) ** 2
+                                        + (
+                                            data.full_k_kms[i1] * dkms_dMpc
+                                            - emu_cov_k_Mpc
+                                        )
+                                        ** 2
+                                    )
+                                    full_emu_cov[i0, i1] = (
+                                        emu_cov[j0, j1]
+                                        * dkms_dMpc**2  # emu to kms
+                                        * data.full_Pk_kms[i0]
+                                        * data.full_Pk_kms[i1]
+                                    )
+
+                            cov += full_emu_cov * self.emu_cov_factor
 
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
