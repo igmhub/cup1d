@@ -47,15 +47,23 @@ def main():
     data_like = "mock_challenge_DESIY1"
 
     emulator_label = "CH24_mpg_gp"
-    # emulator_label = "CH24"
     # emulator_label = "CH24_nyx_gp"
+    # emulator_label = "CH24"
     # emulator_label = "CH24_NYX"
+    emu_cov_factor = 1.0
+    # emu_cov_type = "diagonal"
+    # emu_cov_type = "block"
+    emu_cov_type = "full"
 
-    emu_cov_factor = None
     if emu_cov_factor is None:
         lab_err = "no_emu_err"
     else:
-        lab_err = "emu_err"
+        if emu_cov_type == "diagonal":
+            lab_err = "emu_err_diag"
+        elif emu_cov_type == "block":
+            lab_err = "emu_err_block"
+        else:
+            lab_err = "emu_err_full"
 
     base_out_folder = os.path.join(
         os.path.dirname(get_path_repo("cup1d")),
@@ -72,11 +80,17 @@ def main():
         data_like,
         path_p1d_mock,
         emu_cov_factor,
+        emu_cov_type,
     )
 
 
 def run_forecast(
-    emulator_label, base_out_folder, data_like, path_p1d_mock, emu_cov_factor
+    emulator_label,
+    base_out_folder,
+    data_like,
+    path_p1d_mock,
+    emu_cov_factor,
+    emu_cov_type,
 ):
     """Validate assuming a fiducial cosmology against forecast data"""
 
@@ -86,6 +100,8 @@ def run_forecast(
 
     # set fiducial args
     args = Args(emulator_label=emulator_label)
+    args.emu_cov_factor = emu_cov_factor
+    args.emu_cov_type = emu_cov_type
 
     args.n_steps = 1000
     args.n_burn_in = 500
@@ -109,23 +125,39 @@ def run_forecast(
     args.p1d_fname = path_p1d_mock
 
     # set true igm and cosmo
-    args.true_label_mF = "mpg_central"
-    args.true_label_T = "mpg_central"
-    args.true_label_kF = "kF_both"
-    args.true_cosmo_label = "Planck18_low"
+    if "mpg" in emulator_label:
+        true_sim = "mpg_central"
+    elif "nyx" in emulator_label:
+        true_sim = "nyx_central"
+    else:
+        true_sim = "mpg_central"
+
+    args.true_label_mF = true_sim
+    args.true_label_T = true_sim
+    args.true_label_kF = true_sim
+    args.true_cosmo_label = true_sim
+    # args.true_label_mF = "mpg_central"
+    # args.true_label_T = "mpg_central"
+    # args.true_label_kF = "kF_both"
+    # args.true_cosmo_label = "Planck18_low"
 
     # set fiducial igm and cosmo
-    args.n_tau = 11
-    args.fid_label_mF = "mpg_central"
-    args.fid_label_T = "mpg_central"
-    args.fid_label_kF = "kF_both"
-    args.fid_cosmo_label = "Planck18_low"
-
-    # set number of free IGM parameters
     args.mF_model_type = "chunks"
+    args.n_tau = 11  # XXX use number of z by default
     args.n_sigT = 1
     args.n_gamma = 1
     args.n_kF = 1
+
+    args.fid_label_mF = true_sim
+    args.fid_label_T = true_sim
+    args.fid_label_kF = true_sim
+    args.fid_cosmo_label = true_sim
+    # args.fid_label_mF = "mpg_central"
+    # args.fid_label_T = "mpg_central"
+    # args.fid_label_kF = "kF_both"
+    # args.fid_cosmo_label = "Planck18_low"
+
+    # set number of free IGM parameters
 
     # set systematics
     ## SiIII
