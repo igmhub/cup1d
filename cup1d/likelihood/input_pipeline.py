@@ -407,7 +407,8 @@ class Args:
     fix_cosmo: bool = False
     vary_alphas: bool = False
     prior_Gauss_rms: float | None = None
-    emu_cov_factor: None = None
+    emu_cov_factor: int | None = None
+    emu_cov_type: str = "diagonal"
     verbose: bool = True
     test: bool = False
     explore: bool = False
@@ -425,7 +426,6 @@ class Args:
             "Pedersen23",
             "Pedersen23_ext",
             "Pedersen23_ext8",
-            "CH24",
             "Cabayol23",
             "Cabayol23_extended",
             "Cabayol23+",
@@ -434,6 +434,10 @@ class Args:
             # "Nyx_v0_extended",
             "Nyx_alphap",
             "Nyx_alphap_cov",
+            "CH24",
+            "CH24_Nyx",
+            "CH24_mpg_gp",
+            "CH24_nyx_gp",
         ]
         if self.emulator_label not in avail_emulator_label:
             raise ValueError(

@@ -57,6 +57,82 @@ from cup1d.likelihood.input_pipeline import Args
 from corner import corner
 from cup1d.likelihood import CAMB_model
 
+# %%
+combine_posteriors = False
+if combine_posteriors:
+
+    folder_in = "/home/jchaves/Proyectos/projects/lya/data/forecast/mock_challenge_DESIY1_1.0fxh/"
+    file_mpg_nn = folder_in + "CH24/no_emu_err/chain_1/fitter_results.npy"
+    file_mpg_gp = folder_in + "CH24_mpg_gp/no_emu_err/chain_1/fitter_results.npy"
+    file_nyx_nn = folder_in + "CH24_NYX/no_emu_err/chain_1/fitter_results.npy"
+    file_nyx_gp = folder_in + "CH24_nyx_gp/no_emu_err/chain_1/fitter_results.npy"
+    files = [file_mpg_nn, file_mpg_gp, file_nyx_nn, file_nyx_gp]
+    arr_lab = ["mpg_nn", "mpg_gp", "nyx_nn", "nyx_gp"]
+    
+    arr_par = []
+    for file in files:
+        res = np.load(file, allow_pickle=True).item()
+        ds = res["fitter"]["blobs"]["Delta2_star"].reshape(-1)
+        ns = res["fitter"]["blobs"]["n_star"].reshape(-1)
+        
+        par = np.zeros((ds.shape[0], 2))
+        par[:, 0] = ds
+        par[:, 1] = ns
+        arr_par.append(par)
+    
+    fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+    
+    for ii in range(len(arr_par)):
+        corner(
+            arr_par[ii], 
+            fig=fig, 
+            color="C"+str(ii), 
+            plot_datapoints=False, 
+            plot_density=False, 
+            levels=np.array([0.393, 0.864]),
+        );
+        ax[0, 0].scatter(
+            res["truth"]['$\\Delta^2_\\star$'],
+            0,
+            # res["truth"]['$n_\\star$'],
+            color="C"+str(ii),
+            label=arr_lab[ii],
+            s=10
+        )
+        
+    ax[1, 0].axhline(
+        res["truth"]['$n_\\star$'],
+        color="k",
+        linestyle=":",
+    )
+    ax[1, 0].axvline(
+        res["truth"]['$\\Delta^2_\\star$'],
+        color="k",
+        linestyle=":",
+    )
+    ax[0, 0].axvline(
+        res["truth"]['$\\Delta^2_\\star$'],
+        color="k",
+        linestyle=":",
+    )
+    ax[1, 1].axvline(
+        res["truth"]['$n_\\star$'],
+        color="k",
+        linestyle=":",
+    )
+    ax[0, 0].legend()
+    
+    
+    labels=[r"$\Delta^2_\star$", r"$n_\star$"]
+    ax[1, 0].set_xlabel(labels[0], fontsize=15)
+    ax[1, 0].set_ylabel(labels[1], fontsize=15)
+    ax[1, 1].set_xlabel(labels[0], fontsize=15)
+    
+    plt.tight_layout()
+    plt.savefig("forecast_emus.pdf")
+
+# %%
+
 # %% [markdown]
 # ### Set archive (old)
 
@@ -91,11 +167,16 @@ else:
 
 # args = Args(emulator_label="CH24_nyx_gp", training_set="Nyx23_Jul2024")
 args = Args(emulator_label="CH24_mpg_gp", training_set="Cabayol23")
+# args = Args(emulator_label="CH24", training_set="Cabayol23")
+# args = Args(emulator_label="CH24_NYX", training_set="Nyx23_Jul2024")
 output_dir = "."
 
 emulator = set_emulator(
     emulator_label=args.emulator_label,
 )
+archive = None
+
+# %%
 
 # %% [markdown]
 # ### Set emulator
@@ -106,6 +187,7 @@ emulator = set_emulator(
 # %%
 # for forecast, just start label of observational data with mock
 choose_forecast = True 
+# choose_forecast = False
 # to analyze data from simulations
 choose_mock = False
 # to analyze data from observations
@@ -121,21 +203,28 @@ if choose_forecast:
     # args.data_label = "mock_Chabanier2019"
     # args.data_label="mock_Karacayli2024"
     # args.data_label_hires = "mock_Karacayli2022"
-    args.data_label="mock_DESIY1"
+    args.data_label="mock_challenge_DESIY1"
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v3.fits"
+    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v3.fits"
+    version = "9fx"
+    folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
+    fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
+    args.p1d_fname=folder + fname
 
     # # you need to provide true cosmology, IGM history, and contaminants
     # true_cosmo = set_cosmo(cosmo_label="nyx_central")
     # args.true_igm_label="nyx_central"
-    true_sim = "nyx_central"
+    # true_sim = "nyx_central"
     true_sim = "mpg_central"
-    true_cosmo = set_cosmo(cosmo_label=true_sim)
+    true_sim_cosmo = "mpg_central"
     args.true_label_mF=true_sim
-    args.mF_model_type="chunks"
     args.true_label_T=true_sim
     args.true_label_kF=true_sim
-    true_cosmo = set_cosmo(cosmo_label=true_sim)
+    
+    # true_sim_cosmo = "Planck18_low"
+    # args.true_label_kF="kF_both"
+    args.mF_model_type="chunks"
+    true_cosmo = set_cosmo(cosmo_label=true_sim_cosmo)
     
     # true_cosmo = set_cosmo(cosmo_label="mpg_22")
     # true_cosmo = set_cosmo(cosmo_label="Planck18")
@@ -329,7 +418,11 @@ except:
 # cosmology
 args.ic_correction=False
 
-args.emu_cov_factor = None
+# args.emu_cov_factor = None
+args.emu_cov_factor = 1
+# args.emu_cov_type = "diagonal"
+# args.emu_cov_type = "block"
+args.emu_cov_type = "full"
 # 1 sigma
 # args.emu_cov_factor = np.array([-6.93721149e-02, -2.43173756e-04,  4.91541477e-02, -2.90469219e+00])
 # 2 sigma
@@ -348,17 +441,20 @@ args.emu_cov_factor = None
 
 args.fix_cosmo=False
 # args.fix_cosmo=True
-# args.vary_alphas=False
-args.vary_alphas=True
+args.vary_alphas=False
+# args.vary_alphas=True
 # args.fid_cosmo_label="Planck18"
+# args.fid_cosmo_label="Planck18_low"
 # sim_fid = "nyx_central"
 sim_fid = "mpg_central"
+args.fid_cosmo_label=sim_fid
 # sim_fid = "nyx_seed"
 # sim_fid = "nyx_3"
-args.fid_cosmo_label=sim_fid
+# args.fid_cosmo_label=sim_fid
 args.fid_label_mF=sim_fid
 args.fid_label_T=sim_fid
 args.fid_label_kF=sim_fid
+# args.fid_label_kF="kF_both"
 
 
 # args.fid_cosmo_label="mpg_central"
@@ -449,7 +545,6 @@ args.fid_A_scale = [0, 5]
 # args.fid_SiIII_A=[0, 1]
 # args.fid_A_damp = [0, -1]
 # args.fid_A_scale = [0, 5]
-
 # args.n_x_SiIII=2
 # args.n_d_SiIII=2
 # args.n_a_SiIII=2
@@ -483,8 +578,66 @@ like = set_like(
     data_hires=data["extra_P1Ds"],
 )
 
-# %% [markdown]
-# Sampling parameters
+# %%
+# for ii in range(len(cov0)):
+for ii in range(10):
+    plt.plot(like.data.k_kms[ii], np.diag(cov1[ii])/np.diag(cov0[ii]), label=like.data.z[ii])
+    # plt.plot(like.data.k_kms[ii], np.diag(like.cov_Pk_kms[ii]), "C"+str(ii), label=like.data.z[ii])
+    # plt.plot(like.data.k_kms[ii], np.diag(like.cov_Pk_kms[ii]) - np.diag(like.emu_cov_Pk_kms[ii]), "C"+str(ii)+"--")
+plt.xscale("log")
+plt.yscale("log")
+plt.legend()
+
+
+# %%
+def correlation_from_covariance(covariance):
+    v = np.sqrt(np.diag(covariance))
+    outer_v = np.outer(v, v)
+    correlation = covariance / outer_v
+    correlation[covariance == 0] = 0
+    return correlation
+def is_pos_def(x):
+    return np.all(np.linalg.eigvals(x) > 0)
+
+# plt.imshow(correlation_from_covariance(like.emu_full_cov_Pk_kms))
+plt.imshow(correlation_from_covariance(like.full_cov_Pk_kms))
+plt.colorbar()
+
+# %%
+# plt.imshow(correlation_from_covariance(like.emu_full_cov_Pk_kms))
+plt.imshow(correlation_from_covariance(like.full_cov_Pk_kms-like.emu_full_cov_Pk_kms))
+plt.colorbar()
+
+# %%
+is_pos_def(like.full_cov_Pk_kms)
+
+# %%
+# plt.plot(like.data.full_k_kms, like.full_cov_Pk_kms[0])
+# plt.plot(like.data.full_k_kms, like.full_cov_Pk_kms[0]-like.emu_full_cov_Pk_kms[0])
+# plt.plot(like.data.full_k_kms, like.emu_full_cov_Pk_kms[0])
+ii =20
+plt.plot(like.full_cov_Pk_kms[ii])
+plt.plot(like.full_cov_Pk_kms[ii]-like.emu_full_cov_Pk_kms[ii])
+plt.plot(like.emu_full_cov_Pk_kms[ii])
+# plt.xscale("log")
+plt.yscale("log")
+plt.xlim(
+
+# %%
+# emu_call, M_of_z = like.theory.get_emulator_calls(like.data.z)
+# p1 = np.zeros(
+#     (
+#         like.theory.hull.nz,
+#         len(like.theory.hull.params),
+#     )
+# )
+# for jj, key in enumerate(like.theory.hull.params):
+#     p1[:, jj] = emu_call[key]
+
+# like.theory.hull.plot_hulls(p1)
+
+# %%
+# like.plot_igm(cloud=True)
 
 # %%
 for p in like.free_params:
@@ -494,11 +647,13 @@ for p in like.free_params:
 # emu_call = np.load("emu_call_fiducial.npy", allow_pickle=True).item()
 # emu_call
 
+# %%
+
 # %% [markdown]
 # Compare data and fiducial/starting model
 
 # %%
-like.plot_p1d(residuals=False)
+# like.plot_p1d(residuals=False)
 like.plot_p1d(residuals=True)
 
 # %%

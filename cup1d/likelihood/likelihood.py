@@ -23,6 +23,7 @@ class Likelihood(object):
         verbose=False,
         prior_Gauss_rms=0.2,
         emu_cov_factor=None,
+        emu_cov_type="diagonal",
         extra_data=None,
         min_log_like=-1e100,
         args=None,
@@ -42,6 +43,7 @@ class Likelihood(object):
         self.verbose = verbose
         self.prior_Gauss_rms = prior_Gauss_rms
         self.emu_cov_factor = emu_cov_factor
+        self.emu_cov_type = emu_cov_type
         self.min_log_like = min_log_like
         self.data = data
         self.extra_data = extra_data
@@ -155,6 +157,11 @@ class Likelihood(object):
                 # Indices of the diagonal elements
                 # Add emulator error
                 if self.emu_cov_factor is not None:
+                    if ii == 0:
+                        if idata == 0:
+                            self.emu_cov_Pk_kms = []
+                        else:
+                            self.extra_emu_cov_Pk_kms = []
                     if self.emu_cov_factor != 0:
                         dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
                             data.z[ii]
@@ -167,9 +174,10 @@ class Likelihood(object):
 
                         # find closest z in cov
                         ind = np.argmin(np.abs(emu_cov_unique_zz - data.z[ii]))
-                        zz_closest = ind_zclosest[ind]
                         # get cov from closest z
-                        ind = np.argwhere(emu_cov_zz == zz_closest)[:, 0]
+                        ind = np.argwhere(emu_cov_zz == emu_cov_unique_zz[ind])[
+                            :, 0
+                        ]
                         _emu_cov = emu_cov[ind, :][:, ind]
                         _k_Mpc = emu_cov_k_Mpc[ind]
 
@@ -178,7 +186,7 @@ class Likelihood(object):
                         for i0 in range(k_Mpc.shape[0]):
                             # get closest k in emu cov matrix
                             j0 = np.argmin(np.abs(k_Mpc[i0] - _k_Mpc))
-                            for i1 in range(k_Mpc.shape[1]):
+                            for i1 in range(k_Mpc.shape[0]):
                                 # skip if diagonal and i0 != i1
                                 if (self.emu_cov_type == "diagonal") & (
                                     i0 != i1
@@ -189,15 +197,18 @@ class Likelihood(object):
                                 j1 = np.argmin(np.abs(k_Mpc[i1] - _k_Mpc))
                                 add_emu_cov_kms[i0, i1] = (
                                     _emu_cov[j0, j1]
-                                    * dkms_dMpc**2  # emu to kms
-                                    * data.Pk_kms[i0]
-                                    * data.Pk_kms[i1]
+                                    * data.Pk_kms[ii][i0]
+                                    * data.Pk_kms[ii][i1]
                                 )
                         emu_cov_blocks.append(add_emu_cov_kms)
                         # from Pk in Mpc to Pk in km/s
                         # add to cov
-                        for i0 in range(k_Mpc.shape[1]):
+                        for i0 in range(k_Mpc.shape[0]):
                             for i1 in range(k_Mpc.shape[0]):
+                                y = (
+                                    add_emu_cov_kms[i0, i1]
+                                    * self.emu_cov_factor
+                                )
                                 cov[i0, i1] += (
                                     add_emu_cov_kms[i0, i1]
                                     * self.emu_cov_factor
@@ -207,9 +218,15 @@ class Likelihood(object):
                 if idata == 0:
                     self.icov_Pk_kms.append(np.linalg.inv(cov))
                     self.cov_Pk_kms.append(cov)
+                    self.emu_cov_Pk_kms.append(
+                        add_emu_cov_kms * self.emu_cov_factor
+                    )
                 else:
                     self.extra_icov_Pk_kms.append(np.linalg.inv(cov))
                     self.extra_cov_Pk_kms.append(cov)
+                    self.extra_emu_cov_Pk_kms.append(
+                        add_emu_cov_kms * self.emu_cov_factor
+                    )
 
             # Process the full power spectrum data if available
             if data.full_Pk_kms is not None:
@@ -219,38 +236,38 @@ class Likelihood(object):
                 if self.emu_cov_factor is not None:
                     if self.emu_cov_factor != 0:
                         # diagonal
-                        if emu_cov_type == "diagonal":
+                        if self.emu_cov_type == "diagonal":
                             diag_emu_cov = []
                             for ii in range(len(emu_cov_blocks)):
-                                diag.append(np.diag(emu_cov_blocks[ii]))
-                            diag_emu_cov = np.diag(np.concatenate(diag))
+                                diag_emu_cov.append(np.diag(emu_cov_blocks[ii]))
+                            full_emu_cov = np.concatenate(diag_emu_cov)
                             ind = np.diag_indices_from(cov)
-                            cov[ind] += diag_emu_cov * self.emu_cov_factor
+                            cov[ind] += full_emu_cov * self.emu_cov_factor
                         # block
-                        elif emu_cov_type == "block":
-                            block_emu_cov = block_diag(*emu_cov_blocks)
-                            cov += block_emu_cov * self.emu_cov_factor
+                        elif self.emu_cov_type == "block":
+                            full_emu_cov = block_diag(*emu_cov_blocks)
+                            cov += full_emu_cov * self.emu_cov_factor
                         # full
                         else:
                             full_emu_cov = np.zeros_like(cov)
                             for i0 in range(cov.shape[0]):
                                 dkms_dMpc = self.theory.fid_cosmo[
                                     "cosmo"
-                                ].dkms_dMpc(data.full_z[i0])
+                                ].dkms_dMpc(data.full_zs[i0])
                                 j0 = np.argmin(
-                                    (data.full_z[i0] - emu_cov_zz) ** 2
+                                    (data.full_zs[i0] - emu_cov_zz) ** 2
                                     + (
                                         data.full_k_kms[i0] * dkms_dMpc
                                         - emu_cov_k_Mpc
                                     )
                                     ** 2
                                 )
-                                for i1 in range(cov.shape[1]):
+                                for i1 in range(cov.shape[0]):
                                     dkms_dMpc = self.theory.fid_cosmo[
                                         "cosmo"
-                                    ].dkms_dMpc(data.full_z[i1])
+                                    ].dkms_dMpc(data.full_zs[i1])
                                     j1 = np.argmin(
-                                        (data.full_z[i1] - emu_cov_zz) ** 2
+                                        (data.full_zs[i1] - emu_cov_zz) ** 2
                                         + (
                                             data.full_k_kms[i1] * dkms_dMpc
                                             - emu_cov_k_Mpc
@@ -259,7 +276,6 @@ class Likelihood(object):
                                     )
                                     full_emu_cov[i0, i1] = (
                                         emu_cov[j0, j1]
-                                        * dkms_dMpc**2  # emu to kms
                                         * data.full_Pk_kms[i0]
                                         * data.full_Pk_kms[i1]
                                     )
@@ -270,9 +286,19 @@ class Likelihood(object):
                 if idata == 0:
                     self.full_icov_Pk_kms = np.linalg.inv(cov)
                     self.full_cov_Pk_kms = cov
+                    if self.emu_cov_factor is not None:
+                        if self.emu_cov_factor != 0:
+                            self.emu_full_cov_Pk_kms = (
+                                full_emu_cov * self.emu_cov_factor
+                            )
                 else:
                     self.extra_full_icov_Pk_kms = np.linalg.inv(cov)
                     self.extra_full_cov_Pk_kms = cov
+                    if self.emu_cov_factor is not None:
+                        if self.emu_cov_factor != 0:
+                            self.extra_emu_full_cov_Pk_kms = (
+                                full_emu_cov * self.emu_cov_factor
+                            )
 
     def set_free_parameters(self, free_param_names, free_param_limits):
         """Setup likelihood parameters that we want to vary"""
@@ -868,7 +894,6 @@ class Likelihood(object):
                 z = zs[iz]
                 k_kms = data.k_kms[iz]
                 p1d_data = data.Pk_kms[iz]
-                # p1d_cov = data.cov_Pk_kms[iz]
                 p1d_cov = self.cov_Pk_kms[iz]
                 p1d_err = np.sqrt(np.diag(p1d_cov))
                 p1d_theory = emu_p1d_use[iz]
