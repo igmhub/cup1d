@@ -47,13 +47,13 @@ def main():
     data_like = "mock_challenge_DESIY1"
 
     emulator_label = "CH24_mpg_gp"
-    emulator_label = "CH24_nyx_gp"
+    # emulator_label = "CH24_nyx_gp"
     # emulator_label = "CH24"
     # emulator_label = "CH24_NYX"
     emu_cov_factor = 1.0
     # emu_cov_type = "diagonal"
-    # emu_cov_type = "block"
-    emu_cov_type = "full"
+    emu_cov_type = "block"
+    # emu_cov_type = "full"
 
     if emu_cov_factor is None:
         lab_err = "no_emu_err"
