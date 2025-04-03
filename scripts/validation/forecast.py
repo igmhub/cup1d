@@ -47,7 +47,7 @@ def main():
     data_like = "mock_challenge_DESIY1"
 
     emulator_label = "CH24_mpg_gp"
-    # emulator_label = "CH24_nyx_gp"
+    emulator_label = "CH24_nyx_gp"
     # emulator_label = "CH24"
     # emulator_label = "CH24_NYX"
     emu_cov_factor = 1.0
