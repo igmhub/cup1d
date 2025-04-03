@@ -53,8 +53,8 @@ def main():
     # emu_cov_factor = None
     emu_cov_factor = 1.0
     # emu_cov_type = "diagonal"
-    # emu_cov_type = "block"
-    emu_cov_type = "full"
+    emu_cov_type = "block"
+    # emu_cov_type = "full"
 
     if emu_cov_factor is None:
         lab_err = "no_emu_err"
