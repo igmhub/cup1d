@@ -157,12 +157,13 @@ class Likelihood(object):
                 # Indices of the diagonal elements
                 # Add emulator error
                 if self.emu_cov_factor is not None:
-                    if ii == 0:
-                        if idata == 0:
-                            self.emu_cov_Pk_kms = []
-                        else:
-                            self.extra_emu_cov_Pk_kms = []
                     if self.emu_cov_factor != 0:
+                        if ii == 0:
+                            if idata == 0:
+                                self.emu_cov_Pk_kms = []
+                            else:
+                                self.extra_emu_cov_Pk_kms = []
+
                         dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
                             data.z[ii]
                         )
@@ -218,15 +219,19 @@ class Likelihood(object):
                 if idata == 0:
                     self.icov_Pk_kms.append(np.linalg.inv(cov))
                     self.cov_Pk_kms.append(cov)
-                    self.emu_cov_Pk_kms.append(
-                        add_emu_cov_kms * self.emu_cov_factor
-                    )
+                    if self.emu_cov_factor is not None:
+                        if self.emu_cov_factor != 0:
+                            self.emu_cov_Pk_kms.append(
+                                add_emu_cov_kms * self.emu_cov_factor
+                            )
                 else:
                     self.extra_icov_Pk_kms.append(np.linalg.inv(cov))
                     self.extra_cov_Pk_kms.append(cov)
-                    self.extra_emu_cov_Pk_kms.append(
-                        add_emu_cov_kms * self.emu_cov_factor
-                    )
+                    if self.emu_cov_factor is not None:
+                        if self.emu_cov_factor != 0:
+                            self.extra_emu_cov_Pk_kms.append(
+                                add_emu_cov_kms * self.emu_cov_factor
+                            )
 
             # Process the full power spectrum data if available
             if data.full_Pk_kms is not None:
