@@ -120,17 +120,17 @@ def main():
     args.z_min = 2.1
     args.z_max = 4.3
 
-    # args.emu_cov_factor = None
-    args.emu_cov_factor = 1.0
-    # args.emu_cov_type = "diagonal"
+    args.emu_cov_factor = None
+    # args.emu_cov_factor = 1.0
+    args.emu_cov_type = "diagonal"
     # args.emu_cov_type = "block"
-    args.emu_cov_type = "full"
+    # args.emu_cov_type = "full"
 
-    args.n_steps = 1500
+    args.n_steps = 2000
     if "Sherwood_2048_40" in files[0]:
         args.n_burn_in = 2500
     elif "CGAN" in files[0]:
-        args.n_burn_in = 3000
+        args.n_burn_in = 2500
     else:
         # args.n_burn_in = 1250
         args.n_burn_in = 750
