@@ -151,8 +151,8 @@ def main():
     args.mF_model_type = "chunks"
     # I set it below so it is equal to number of z
     args.n_tau = 11
-    args.n_sigT = 1
-    args.n_gamma = 1
+    args.n_sigT = 2
+    args.n_gamma = 2
     args.n_kF = 1
     if full_cont:
         args.n_x_SiIII = 1
