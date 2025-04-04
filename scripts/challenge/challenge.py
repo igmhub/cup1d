@@ -249,7 +249,7 @@ def main():
             args.true_cosmo_label = "Sherwood_2048_40"
             args.true_label_mF = "Sherwood_2048_40"
 
-        if "Nyx" in emulator_label:
+        if ("Nyx" in emulator_label) | ("nyx" in emulator_label):
             fid_sim_label = "nyx_central"
         else:
             fid_sim_label = "mpg_central"
