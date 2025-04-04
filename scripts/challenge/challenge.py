@@ -132,8 +132,8 @@ def main():
     else:
         args.n_burn_in = 1250
 
-    args.n_steps = 500
-    args.n_burn_in = 0
+    args.n_steps = 1500
+    args.n_burn_in = 750
     if size > 1:
         args.parallel = True
     else:
