@@ -126,16 +126,17 @@ def main():
     # args.emu_cov_type = "block"
     args.emu_cov_type = "full"
 
-    args.n_steps = 1250
+    args.n_steps = 1500
     if "Sherwood_2048_40" in files[0]:
         args.n_burn_in = 2500
     elif "CGAN" in files[0]:
         args.n_burn_in = 3000
     else:
         args.n_burn_in = 1250
+        args.n_burn_in = 750
 
-    args.n_steps = 1500
-    args.n_burn_in = 750
+    # args.n_steps = 1500
+    # args.n_burn_in = 750
     if size > 1:
         args.parallel = True
     else:
