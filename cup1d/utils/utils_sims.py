@@ -4,7 +4,11 @@ from cup1d.utils.utils import is_number_string
 from cup1d.utils.utils import get_path_repo
 
 
-def get_training_hc(sim_suite, emu_params=None, nyx_version="Jul2024"):
+def get_training_hc(
+    sim_suite,
+    emu_params=None,
+    nyx_version="models_Nyx_Mar2025_with_CGAN_val_3axes",
+):
     """
     Loads and processes the training data for the emulator, including cosmological and IGM parameters.
 
@@ -119,7 +123,9 @@ def get_training_hc(sim_suite, emu_params=None, nyx_version="Jul2024"):
     sim_label_cosmo = ["_".join(s.split("_")[:2]) for s in igm_all.keys()]
     for ii, sim_label in enumerate(igm_all):
         # only use simulations in the training set
-        if is_number_string(sim_label_cosmo[ii][-1]) == False:
+        if (is_number_string(sim_label[-1]) == False) | (
+            sim_label_cosmo[ii] == "accel2"
+        ):
             continue
 
         mask = igm_all[sim_label]["z"] != 0

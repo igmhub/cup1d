@@ -27,7 +27,9 @@ def get_cosmology_from_label(cosmo_label="default"):
 
 
 def set_cosmo(
-    cosmo_label="mpg_central", return_all=False, nyx_version="Jul2024"
+    cosmo_label="mpg_central",
+    return_all=False,
+    nyx_version="models_Nyx_Mar2025_with_CGAN_val_3axes",
 ):
     """Set fiducial cosmology
 
@@ -100,7 +102,7 @@ def set_cosmo(
             pivot_scalar=0.05,
             w=-1,
         )
-    elif cosmo_label == "ACCEL2_6144_160":
+    elif (cosmo_label == "ACCEL2_6144_160") | (cosmo_label == "accel2"):
         # https://arxiv.org/pdf/2407.04473
         # Planck15 ΛCDM Planck TT,TE,EE+lowP (approx...)
         Omegam = 0.31
@@ -120,7 +122,7 @@ def set_cosmo(
             pivot_scalar=0.05,
             w=-1,
         )
-    elif cosmo_label == "Sherwood_2048_40":
+    elif (cosmo_label == "Sherwood_2048_40") | (cosmo_label == "sherwood"):
         # https://academic.oup.com/mnras/article/464/1/897/2236089
         # Planck13 ΛCDM Planck+WP+highL+BAO
         Omegam = 0.308

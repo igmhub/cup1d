@@ -23,6 +23,7 @@ class PressureModel(object):
         order_extra=3,
         smoothing=False,
         priors=None,
+        back_igm=None,
     ):
         """Construct model with central redshift and (x2,x1,x0) polynomial."""
 
@@ -42,9 +43,11 @@ class PressureModel(object):
         self.fid_igm = fid_igm
         self.priors = priors
 
-        mask = fid_igm["kF_kms"] != 0
+        mask = (fid_igm["kF_kms"] != 0) & np.isfinite(fid_igm["kF_kms"])
         if np.sum(mask) == 0:
-            raise ValueError("No non-zero kF in fiducial IGM")
+            print("No non-zero kF in fiducial IGM, switching to back_igm")
+            fid_igm = back_igm
+            mask = (fid_igm["kF_kms"] != 0) & np.isfinite(fid_igm["kF_kms"])
         elif np.sum(mask) != fid_igm["kF_kms"].shape[0]:
             print(
                 "The fiducial value of kF is zero for z: ",
@@ -56,13 +59,13 @@ class PressureModel(object):
             fid_igm["z_kF"][mask], fid_igm["kF_kms"][mask], order_extra
         )
         p = np.poly1d(pfit)
-        _ = fid_igm["z_kF"] != 0
+        _ = (fid_igm["z_kF"] != 0) & np.isfinite(fid_igm["z_kF"])
         ind = np.argsort(fid_igm["z_kF"][_])
         self.fid_z = fid_igm["z_kF"][_][ind]
         self.fid_kF = fid_igm["kF_kms"][_][ind]
 
         # use poly fit to interpolate when data is missing (needed for Nyx)
-        mask2 = self.fid_kF == 0
+        mask2 = (self.fid_kF == 0) | np.isnan(self.fid_kF)
         self.fid_kF[mask2] = p(self.fid_z[mask2])
 
         # extrapolate to z=1.9 and 5.5 (if needed)

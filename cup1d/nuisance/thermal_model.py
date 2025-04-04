@@ -23,6 +23,8 @@ class ThermalModel(object):
         order_extra=2,
         smoothing=False,
         priors=None,
+        emu_suite="mpg",
+        back_igm=None,
     ):
         """Model the redshift evolution of the thermal broadening scale and gamma.
         We use a power law rescaling around a fiducial simulation at the centre
@@ -44,13 +46,13 @@ class ThermalModel(object):
         self.priors = priors
         self.fid_igm = fid_igm
 
-        mask = fid_igm["gamma"] != 0
+        mask = (fid_igm["gamma"] != 0) & np.isfinite(fid_igm["gamma"])
         if np.sum(mask) != fid_igm["gamma"].shape[0]:
             print(
                 "The fiducial value of gamma is zero for z: ",
                 fid_igm["z_T"][mask == False],
             )
-        mask = fid_igm["sigT_kms"] != 0
+        mask = (fid_igm["sigT_kms"] != 0) & np.isfinite(fid_igm["sigT_kms"])
         if np.sum(mask) != fid_igm["sigT_kms"].shape[0]:
             print(
                 "The fiducial value of sigT_kms is zero for z: ",
@@ -61,9 +63,20 @@ class ThermalModel(object):
             (fid_igm["gamma"] != 0)
             & (fid_igm["sigT_kms"] != 0)
             & (fid_igm["z_T"] != 0)
+            & np.isfinite(fid_igm["z_T"])
+            & np.isfinite(fid_igm["gamma"])
+            & np.isfinite(fid_igm["sigT_kms"])
         )
         if np.sum(mask) == 0:
-            raise ValueError("No non-zero gamma and sigT_kms in fiducial IGM")
+            print(
+                "No non-zero gamma and sigT_kms in fiducial IGM, switching to back_igm"
+            )
+            fid_igm = back_igm
+            mask = (
+                (fid_igm["gamma"] != 0)
+                & (fid_igm["sigT_kms"] != 0)
+                & (fid_igm["z_T"] != 0)
+            )
 
         # fit power law to fiducial data to reduce noise, and extrapolate when needed
         for ii in range(2):
@@ -88,7 +101,7 @@ class ThermalModel(object):
                 fid_prop = self.fid_sigT_kms
 
             # use poly fit to interpolate when data is missing (needed for Nyx)
-            mask2 = fid_prop == 0
+            mask2 = (fid_prop == 0) | np.isnan(fid_prop)
             fid_prop[mask2] = p(self.fid_z[mask2])
 
             # extrapolate to z=1.9 and 5.5 (if needed)

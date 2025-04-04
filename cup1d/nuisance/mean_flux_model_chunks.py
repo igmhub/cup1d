@@ -29,6 +29,24 @@ def split_into_n_chunks(array, num_chunks):
     return central_values, chunk_indexes
 
 
+def get_fid_igm():
+    repo = os.path.dirname(lace.__path__[0])
+    fname = os.path.join(
+        repo, "data", "sim_suites", "Australia20", "IGM_histories.npy"
+    )
+    try:
+        igm_hist = np.load(fname, allow_pickle=True).item()
+    except:
+        raise ValueError(
+            fname
+            + " not found. You can produce it using the LaCE"
+            + r" script save_mpg_IGM.py"
+        )
+    else:
+        fid_igm = igm_hist["mpg_central"]
+    return fid_igm
+
+
 class MeanFluxModelChunks(object):
     """Use a handful of parameters to model the mean transmitted flux fraction
     (or mean flux) as a function of redshift.
@@ -47,25 +65,12 @@ class MeanFluxModelChunks(object):
         """Construct model as a rescaling around a fiducial mean flux"""
 
         if fid_igm is None:
-            repo = os.path.dirname(lace.__path__[0])
-            fname = os.path.join(
-                repo, "data", "sim_suites", "Australia20", "IGM_histories.npy"
-            )
-            try:
-                igm_hist = np.load(fname, allow_pickle=True).item()
-            except:
-                raise ValueError(
-                    fname
-                    + " not found. You can produce it using the LaCE"
-                    + r" script save_mpg_IGM.py"
-                )
-            else:
-                fid_igm = igm_hist["mpg_central"]
+            fid_igm = get_fid_igm()
 
         self.fid_igm = fid_igm
         self.priors = priors
 
-        mask = fid_igm["tau_eff"] != 0
+        mask = (fid_igm["tau_eff"] != 0) & np.isfinite(fid_igm["tau_eff"])
         if np.sum(mask) == 0:
             raise ValueError("No non-zero tau_eff in fiducial IGM")
         elif np.sum(mask) != fid_igm["tau_eff"].shape[0]:
@@ -87,7 +92,7 @@ class MeanFluxModelChunks(object):
         self.fid_tau_eff = fid_igm["tau_eff"][_][ind]
 
         # use poly fit to interpolate when data is missing (needed for Nyx)
-        mask2 = self.fid_tau_eff == 0
+        mask2 = (self.fid_tau_eff == 0) | np.isnan(self.fid_tau_eff)
         self.fid_tau_eff[mask2] = np.exp(p(self.fid_z[mask2]))
 
         # extrapolate to z=1.9 and 5.5 (if needed)

@@ -41,6 +41,21 @@ class IGM(object):
             sim_igm_kF=fid_sim_igm_kF,
         )
 
+        if emu_suite == "mpg":
+            back_igm = self.get_igm(
+                sim_igm_mF="mpg_central",
+                sim_igm_T="mpg_central",
+                sim_igm_kF="mpg_central",
+            )
+        elif emu_suite == "nyx":
+            back_igm = self.get_igm(
+                sim_igm_mF="nyx_central",
+                sim_igm_T="nyx_central",
+                sim_igm_kF="nyx_central",
+            )
+        else:
+            raise ValueError("emu_suite must be 'mpg' or 'nyx'")
+
         self.set_priors(fid_igm, emu_suite=emu_suite, type_priors=type_priors)
 
         # setup fiducial IGM models
@@ -68,6 +83,7 @@ class IGM(object):
                 fid_igm=fid_igm,
                 z_T=z_pivot,
                 priors=self.priors,
+                back_igm=back_igm,
             )
 
         if P_model:
@@ -78,6 +94,7 @@ class IGM(object):
                 fid_igm=fid_igm,
                 z_kF=z_pivot,
                 priors=self.priors,
+                back_igm=back_igm,
             )
 
     def set_fid_igm(self, zs):
@@ -122,77 +139,8 @@ class IGM(object):
                 igm_hist = self.igm_hist_mpg
             elif sim_igm[:3] == "nyx":
                 igm_hist = self.igm_hist_nyx
-            elif sim_igm == "Sherwood_2048_40":
-                if ii == 0:
-                    igms_return["z_tau"] = np.array(
-                        [
-                            2,
-                            2.2,
-                            2.4,
-                            2.6,
-                            2.8,
-                            3,
-                            3.2,
-                            3.4,
-                            3.6,
-                            3.8,
-                            4,
-                            4.2,
-                            4.4,
-                            4.6,
-                            4.8,
-                        ]
-                    )
-                    igms_return["mF"] = np.array(
-                        [
-                            0.86011,
-                            0.83376,
-                            0.80085,
-                            0.76215,
-                            0.71673,
-                            0.66472,
-                            0.60507,
-                            0.53798,
-                            0.47115,
-                            0.40178,
-                            0.33226,
-                            0.2657,
-                            0.20532,
-                            0.15381,
-                            0.11188,
-                        ]
-                    )
-                    igms_return["tau_eff"] = -np.log(igms_return["mF"])
-                    continue
-
-            elif sim_igm == "ACCEL2_6144_160":
-                from lace.cosmo.thermal_broadening import thermal_broadening_kms
-
-                z = np.array([2.0, 2.6, 3, 3.6, 4.0])
-                if ii == 0:
-                    igms_return["z_tau"] = z
-                    igms_return["mF"] = np.array(
-                        [0.86296, 0.7487, 0.65228, 0.48841, 0.37691]
-                    )
-                    igms_return["tau_eff"] = -np.log(igms_return["mF"])
-                    continue
-                elif ii == 1:
-                    igms_return["z_T"] = z
-                    igms_return["gamma"] = np.array(
-                        [1.61814, 1.57246, 1.53676, 1.49324, 1.49695]
-                    )
-                    igms_return["sigT_kms"] = thermal_broadening_kms(
-                        np.array(
-                            [
-                                11016.59832,
-                                11818.89632,
-                                12298.49122,
-                                10611.60476,
-                                9288.34321,
-                            ]
-                        )
-                    )
-                    continue
+            elif sim_igm in self.igm_hist_nyx:
+                igm_hist = self.igm_hist_nyx
             elif sim_igm == "kF_both":
                 res_fit = np.array([0.00078134, 0.00028125, 0.15766722])
                 zz = np.linspace(1.8, 6, 100)
@@ -269,6 +217,9 @@ class IGM(object):
 
             res_div = np.zeros((len(all_igm), 2))
             for ii, sim in enumerate(all_igm):
+                if (sim in ["accel2"]) | (np.char.isnumeric(sim[-1]) == False):
+                    continue
+
                 string_split = sim.split("_")
                 sim_label = string_split[0] + "_" + string_split[1]
                 if is_number_string(sim_label[-1]) == False:
@@ -276,7 +227,9 @@ class IGM(object):
 
                 try:
                     _ = np.argwhere(
-                        (fid_igm[par] != 0) & (all_igm[sim][par] != 0)
+                        np.isfinite(fid_igm[par])
+                        & (fid_igm[par] != 0)
+                        & (all_igm[sim][par] != 0)
                     )[:, 0]
                 except:
                     continue

@@ -224,14 +224,16 @@ def main():
         # same true and fiducial IGM
         if "fiducial" in args.p1d_fname:
             true_sim_label = "nyx_central"
-        elif "CGAN" in args.p1d_fname:
+        elif "CGAN_4096_base" in args.p1d_fname:
             true_sim_label = "nyx_seed"
+        elif "CGAN_4096_val" in args.p1d_fname:
+            true_sim_label = "nyx_seed_val"
         elif "grid_3" in args.p1d_fname:
-            true_sim_label = "nyx_3"
+            true_sim_label = "nyx_3_ic"
         elif "Sherwood_2048_40" in args.p1d_fname:
-            true_sim_label = "nyx_central"
+            true_sim_label = "sherwood"
         elif "ACCEL2_6144_160" in args.p1d_fname:
-            true_sim_label = "nyx_central"
+            true_sim_label = "accel2"
         else:
             print("Missing true sim label!!")
             sys.exit()
