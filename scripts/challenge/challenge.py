@@ -88,9 +88,9 @@ def main():
     full_cont = True  # IMPORTANT!!!
 
     # emulator_label = "Pedersen23_ext"
-    emulator_label = "CH24"
-    training_set = "Cabayol23"
-    vary_alphas = False
+    # emulator_label = "CH24"
+    # training_set = "Cabayol23"
+    # vary_alphas = False
 
     # emulator_label = "Cabayol23+"
     # training_set = "Cabayol23"
@@ -101,7 +101,13 @@ def main():
     # # vary_alphas = True
     # vary_alphas = False
 
-    args = Args(emulator_label=emulator_label, training_set=training_set)
+    # args = Args(emulator_label=emulator_label, training_set=training_set)
+
+    emulator_label = "CH24_mpg_gp"
+    # emulator_label = "CH24_nyx_gp"
+    vary_alphas = False
+
+    args = Args(emulator_label=emulator_label)
     args.data_label = "challenge_DESIY1"
 
     impose_fid_cosmo_label = None
@@ -112,12 +118,11 @@ def main():
     args.z_min = 2.1
     args.z_max = 4.3
 
-    if "Nyx" in emulator_label:
-        args.emu_cov_factor = np.array([np.log(0.05)])
-        # args.emu_cov_factor = np.array([np.log(0.075)])
-    else:
-        # args.emu_cov_factor = np.array([np.log(0.02)])
-        args.emu_cov_factor = np.array([np.log(0.005)])
+    # args.emu_cov_factor = None
+    args.emu_cov_factor = 1.0
+    # args.emu_cov_type = "diagonal"
+    # args.emu_cov_type = "block"
+    args.emu_cov_type = "full"
 
     args.n_steps = 1250
     if "Sherwood_2048_40" in files[0]:
@@ -127,8 +132,8 @@ def main():
     else:
         args.n_burn_in = 1250
 
-    # args.n_steps = 5
-    # args.n_burn_in = 0
+    args.n_steps = 500
+    args.n_burn_in = 0
     if size > 1:
         args.parallel = True
     else:
@@ -163,18 +168,20 @@ def main():
 
     # set archive and emulator
     if rank == 0:
-        args.archive = set_archive(args.training_set)
-        args.emulator = set_emulator(
-            emulator_label=args.emulator_label,
-            archive=args.archive,
-        )
-
-        if "Nyx" in emulator_label:
-            args.emulator.list_sim_cube = args.archive.list_sim_cube
-            if "nyx_14" in args.emulator.list_sim_cube:
-                args.emulator.list_sim_cube.remove("nyx_14")
+        if emulator_label not in ["CH24_mpg_gp", "CH24_nyx_gp"]:
+            args.archive = set_archive(args.training_set)
+            args.emulator = set_emulator(
+                emulator_label=args.emulator_label,
+                archive=args.archive,
+            )
+            if "Nyx" in emulator_label:
+                args.emulator.list_sim_cube = args.archive.list_sim_cube
+                if "nyx_14" in args.emulator.list_sim_cube:
+                    args.emulator.list_sim_cube.remove("nyx_14")
+            else:
+                args.emulator.list_sim_cube = args.archive.list_sim_cube
         else:
-            args.emulator.list_sim_cube = args.archive.list_sim_cube
+            args.emulator = set_emulator(emulator_label=args.emulator_label)
 
     if ("Nyx" in emulator_label) and vary_alphas:
         args.vary_alphas = True
@@ -197,10 +204,18 @@ def main():
         if rank == 0:
             print("Analyzing:", args.p1d_fname)
         file_sim = os.path.basename(args.p1d_fname)[:-8]
-        if args.emu_cov_factor is not None:
-            dir_out = os.path.join(base_out_folder + "err", file_sim)
+
+        if args.emu_cov_factor is None:
+            lab_err = ""
         else:
-            dir_out = os.path.join(base_out_folder, file_sim)
+            if args.emu_cov_type == "diagonal":
+                lab_err = "_emu_err_diag"
+            elif args.emu_cov_type == "block":
+                lab_err = "_emu_err_block"
+            else:
+                lab_err = "_emu_err_full"
+
+        dir_out = os.path.join(base_out_folder + lab_err, file_sim)
         if rank == 0:
             os.makedirs(dir_out, exist_ok=True)
             print("Output in:", dir_out)
@@ -239,13 +254,13 @@ def main():
         else:
             fid_sim_label = "mpg_central"
 
-        args.fid_cosmo_label = fid_sim_label
         args.fid_label_mF = fid_sim_label
         args.fid_label_T = fid_sim_label
         args.fid_label_kF = fid_sim_label
-
         if impose_fid_cosmo_label is not None:
             args.fid_cosmo_label = impose_fid_cosmo_label
+        else:
+            args.fid_cosmo_label = fid_sim_label
 
         fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
