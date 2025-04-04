@@ -105,8 +105,8 @@ def main():
 
     # args = Args(emulator_label=emulator_label, training_set=training_set)
 
-    # emulator_label = "CH24_mpg_gp"
-    emulator_label = "CH24_nyx_gp"
+    emulator_label = "CH24_mpg_gp"
+    # emulator_label = "CH24_nyx_gp"
     vary_alphas = False
 
     args = Args(emulator_label=emulator_label)
@@ -132,11 +132,9 @@ def main():
     elif "CGAN" in files[0]:
         args.n_burn_in = 3000
     else:
-        args.n_burn_in = 1250
+        # args.n_burn_in = 1250
         args.n_burn_in = 750
 
-    # args.n_steps = 1500
-    # args.n_burn_in = 750
     if size > 1:
         args.parallel = True
     else:
