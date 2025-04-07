@@ -71,7 +71,8 @@ def main():
         path_in_challenge,
         # "*CGAN_4096_base*",
         # "*CGAN_4096_val*",
-        "*ACCEL2_6144_160*",
+        # "*ACCEL2_6144_160*",
+        "*Sherwood_2048_40*",
     )
     # search = os.path.join(path_in_challenge, "*CGAN_4096_base*")
     # search = os.path.join(path_in_challenge, "*CGAN_4096_val*")
@@ -192,12 +193,6 @@ def main():
         args.vary_alphas = False
 
     for isim in range(len(files)):
-        # if (
-        #     ("fiducial" in files[isim])
-        #     | ("ACCEL2" in files[isim])
-        #     | ("CGAN" in files[isim])
-        # ):
-        #     continue
         if "ACCEL2_6144_160" in files[isim]:
             args.n_tau = 4
         else:
