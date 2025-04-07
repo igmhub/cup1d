@@ -246,14 +246,6 @@ def main():
         args.true_label_T = true_sim_label
         args.true_label_kF = true_sim_label
 
-        if "ACCEL2_6144_160" in args.p1d_fname:
-            args.true_cosmo_label = "ACCEL2_6144_160"
-            args.true_label_mF = "ACCEL2_6144_160"
-            args.true_label_T = "ACCEL2_6144_160"
-        elif "Sherwood_2048_40" in args.p1d_fname:
-            args.true_cosmo_label = "Sherwood_2048_40"
-            args.true_label_mF = "Sherwood_2048_40"
-
         if ("Nyx" in emulator_label) | ("nyx" in emulator_label):
             fid_sim_label = "nyx_central"
         else:
