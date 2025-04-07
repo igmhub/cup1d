@@ -69,7 +69,8 @@ def main():
     search = os.path.join(
         # path_in_challenge, "*" + version + "_nonoise_fiducial*"
         path_in_challenge,
-        "*CGAN_4096_base*",
+        # "*CGAN_4096_base*",
+        "*CGAN_4096_val*",
     )
     # search = os.path.join(path_in_challenge, "*CGAN_4096_base*")
     # search = os.path.join(path_in_challenge, "*CGAN_4096_val*")
@@ -105,8 +106,8 @@ def main():
 
     # args = Args(emulator_label=emulator_label, training_set=training_set)
 
-    emulator_label = "CH24_mpg_gp"
-    # emulator_label = "CH24_nyx_gp"
+    # emulator_label = "CH24_mpg_gp"
+    emulator_label = "CH24_nyx_gp"
     vary_alphas = False
 
     args = Args(emulator_label=emulator_label)
@@ -120,13 +121,13 @@ def main():
     args.z_min = 2.1
     args.z_max = 4.3
 
-    args.emu_cov_factor = None
-    # args.emu_cov_factor = 1.0
-    args.emu_cov_type = "diagonal"
+    # args.emu_cov_factor = None
+    args.emu_cov_factor = 1.0
+    # args.emu_cov_type = "diagonal"
     # args.emu_cov_type = "block"
-    # args.emu_cov_type = "full"
+    args.emu_cov_type = "full"
 
-    args.n_steps = 2000
+    args.n_steps = 2500
     if "Sherwood_2048_40" in files[0]:
         args.n_burn_in = 2500
     elif "CGAN" in files[0]:
