@@ -106,8 +106,8 @@ def main():
 
     # args = Args(emulator_label=emulator_label, training_set=training_set)
 
-    # emulator_label = "CH24_mpg_gp"
-    emulator_label = "CH24_nyx_gp"
+    emulator_label = "CH24_mpg_gp"
+    # emulator_label = "CH24_nyx_gp"
     vary_alphas = False
 
     args = Args(emulator_label=emulator_label)
