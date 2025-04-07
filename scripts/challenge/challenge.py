@@ -70,7 +70,8 @@ def main():
         # path_in_challenge, "*" + version + "_nonoise_fiducial*"
         path_in_challenge,
         # "*CGAN_4096_base*",
-        "*CGAN_4096_val*",
+        # "*CGAN_4096_val*",
+        "*ACCEL2_6144_160*",
     )
     # search = os.path.join(path_in_challenge, "*CGAN_4096_base*")
     # search = os.path.join(path_in_challenge, "*CGAN_4096_val*")
@@ -106,8 +107,8 @@ def main():
 
     # args = Args(emulator_label=emulator_label, training_set=training_set)
 
-    emulator_label = "CH24_mpg_gp"
-    # emulator_label = "CH24_nyx_gp"
+    # emulator_label = "CH24_mpg_gp"
+    emulator_label = "CH24_nyx_gp"
     vary_alphas = False
 
     args = Args(emulator_label=emulator_label)
