@@ -68,10 +68,10 @@ def main():
 
     search = os.path.join(
         path_in_challenge,
-        "*" + version + "_nonoise_fiducial*"
+        # "*" + version + "_nonoise_fiducial*"
         # "*CGAN_4096_base*",
         # "*CGAN_4096_val*",
-        # "*ACCEL2_6144_160*",
+        "*ACCEL2_6144_160*",
         # "*Sherwood_2048_40*",
         # "*cosmo_grid_3*",
     )
