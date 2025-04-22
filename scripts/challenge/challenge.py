@@ -67,20 +67,14 @@ def main():
     print(path_out_challenge)
 
     search = os.path.join(
-        # path_in_challenge, "*" + version + "_nonoise_fiducial*"
         path_in_challenge,
+        "*" + version + "_nonoise_fiducial*"
         # "*CGAN_4096_base*",
         # "*CGAN_4096_val*",
         # "*ACCEL2_6144_160*",
         # "*Sherwood_2048_40*",
-        "*cosmo_grid_3*",
+        # "*cosmo_grid_3*",
     )
-    # search = os.path.join(path_in_challenge, "*CGAN_4096_base*")
-    # search = os.path.join(path_in_challenge, "*CGAN_4096_val*")
-    # search = os.path.join(path_in_challenge, "*cosmo_grid_3*")
-    # files = np.sort(glob.glob(path_in_challenge + "*bar_ic*.fits"))
-    # search = os.path.join(path_in_challenge, "*Sherwood_2048_40*")
-    # search = os.path.join(path_in_challenge, "*ACCEL2_6144_160*")
 
     # print(search)
     files = np.sort(glob.glob(search))
@@ -110,7 +104,8 @@ def main():
     # args = Args(emulator_label=emulator_label, training_set=training_set)
 
     # emulator_label = "CH24_mpg_gp"
-    emulator_label = "CH24_nyx_gp"
+    # emulator_label = "CH24_nyx_gp"
+    emulator_label = "CH24_nyx_gpr"
     vary_alphas = False
 
     args = Args(emulator_label=emulator_label)
@@ -173,7 +168,7 @@ def main():
 
     # set archive and emulator
     if rank == 0:
-        if emulator_label not in ["CH24_mpg_gp", "CH24_nyx_gp"]:
+        if emulator_label not in ["CH24_mpg_gp", "CH24_nyx_gp", "CH24_nyx_gpr"]:
             args.archive = set_archive(args.training_set)
             args.emulator = set_emulator(
                 emulator_label=args.emulator_label,
