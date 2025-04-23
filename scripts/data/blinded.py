@@ -22,9 +22,9 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    run_sampler = True
-    data_type = "FFT"
-    # data_type = "QMLE"
+    test = True
+    # data_type = "FFT"
+    data_type = "QMLE"
     ic_correction = False
 
     name_system = socket.gethostname()
@@ -115,8 +115,12 @@ def main():
     # args.emu_cov_type = "block"
     args.emu_cov_type = "full"
 
-    args.n_steps = 2500
-    args.n_burn_in = 1250
+    if test:
+        args.n_steps = 500
+        args.n_burn_in = 0
+    else:
+        args.n_steps = 2500
+        args.n_burn_in = 1250
 
     if size > 1:
         args.parallel = True
@@ -232,13 +236,12 @@ def main():
     p0 = np.array(list(pip.fitter.like.fid["fit_cube"].values()))
     pip.run_minimizer(p0)
 
-    if run_sampler:
-        # run samplers, it uses as ini the results of the minimizer
-        pip.run_sampler()
+    # run samplers, it uses as ini the results of the minimizer
+    pip.run_sampler()
 
-        # run minimizer again, now on MLE
-        if rank == 0:
-            pip.run_minimizer(pip.fitter.mle_cube, save_chains=True)
+    # run minimizer again, now on MLE
+    if rank == 0:
+        pip.run_minimizer(pip.fitter.mle_cube, save_chains=True)
 
 
 if __name__ == "__main__":

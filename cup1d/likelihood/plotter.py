@@ -386,8 +386,9 @@ class Plotter(object):
         for ii, par in enumerate(yesplot):
             _ = np.argwhere(np.array(strings_plot) == par)[0, 0]
             chain[:, ii] = params_plot[:, _]
-            if par in self.fitter.truth:
-                truth[ii] = self.fitter.truth[par]
+            if self.fitter.truth is not None:
+                if par in self.fitter.truth:
+                    truth[ii] = self.fitter.truth[par]
             if par in self.fitter.mle:
                 MLE[ii] = self.fitter.mle[par]
             if par == "$A_s$":
@@ -415,13 +416,19 @@ class Plotter(object):
         axes = np.array(fig.axes).reshape((ndim, ndim))
         for i in range(ndim):
             ax = axes[i, i]
-            ax.axvline(value1[i], color="C0", label="Truth")
+            if self.fitter.truth is not None:
+                ax.axvline(value1[i], color="C0", label="Truth")
             ax.axvline(value2[i], color="C2", label="MAP", linestyle=":")
 
             # Set up x limits
             xlim = np.array(ax.get_xlim())
-            val_min = np.nanmin([value1[i], value2[i]])
-            val_max = np.nanmax([value1[i], value2[i]])
+            if self.fitter.truth is not None:
+                val_min = np.nanmin([value1[i], value2[i]])
+                val_max = np.nanmax([value1[i], value2[i]])
+            else:
+                val_min = np.nanmin([value2[i]])
+                val_max = np.nanmax([value2[i]])
+
             if (xlim[0] > val_min) and np.isfinite(val_min):
                 xlim[0] = val_min
             if (xlim[1] < val_max) and np.isfinite(val_max):
@@ -434,17 +441,24 @@ class Plotter(object):
         for yi in range(ndim):
             for xi in range(yi):
                 ax = axes[yi, xi]
-                ax.axvline(value1[xi], color="C0")
+
+                if self.fitter.truth is not None:
+                    ax.axvline(value1[xi], color="C0")
+                    ax.axhline(value1[yi], color="C0")
+                    ax.plot(value1[xi], value1[yi], ".C0")
+
                 ax.axvline(value2[xi], color="C2", linestyle=":")
-                ax.axhline(value1[yi], color="C0")
                 ax.axhline(value2[yi], color="C2", linestyle=":")
-                ax.plot(value1[xi], value1[yi], ".C0")
                 ax.plot(value2[xi], value2[yi], ".C2", linestyle=":")
 
                 # Set up x and y limits
                 xlim = np.array(ax.get_xlim())
-                val_min = np.min([value1[xi], value2[xi]])
-                val_max = np.max([value1[xi], value2[xi]])
+                if self.fitter.truth is not None:
+                    val_min = np.min([value1[xi], value2[xi]])
+                    val_max = np.max([value1[xi], value2[xi]])
+                else:
+                    val_min = np.min([value2[xi]])
+                    val_max = np.max([value2[xi]])
                 if (xlim[0] > val_min) and np.isfinite(val_min):
                     xlim[0] = val_min
                 if (xlim[1] < val_max) and np.isfinite(val_max):
@@ -453,8 +467,12 @@ class Plotter(object):
                 ax.set_xlim(xlim[0] - 0.05 * xdiff, xlim[1] + 0.05 * xdiff)
 
                 ylim = np.array(ax.get_ylim())
-                val_min = np.min([value1[yi], value2[yi]])
-                val_max = np.max([value1[yi], value2[yi]])
+                if self.fitter.truth is not None:
+                    val_min = np.min([value1[yi], value2[yi]])
+                    val_max = np.max([value1[yi], value2[yi]])
+                else:
+                    val_min = np.min([value2[yi]])
+                    val_max = np.max([value2[yi]])
                 if (ylim[0] > val_min) and np.isfinite(val_min):
                     ylim[0] = val_min
                 if (ylim[1] < val_max) and np.isfinite(val_max):
