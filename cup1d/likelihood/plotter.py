@@ -33,6 +33,7 @@ class Plotter(object):
                     print(param.name)
 
             args = Args(**dict_input)
+            # args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
             self.fitter = Pipeline(args, out_folder=save_directory).fitter
 
             # add sampler results to fitter

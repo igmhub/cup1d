@@ -22,7 +22,7 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    test = True
+    test = False
     # data_type = "FFT"
     data_type = "QMLE"
     ic_correction = False
