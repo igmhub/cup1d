@@ -91,7 +91,7 @@ class HCD_Model_new(object):
             name = "ln_A_scale_" + str(i)
             if i == 0:
                 xmin = 3
-                xmax = 7
+                xmax = 10
             else:
                 # not optimized
                 xmin = -10

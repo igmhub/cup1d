@@ -156,7 +156,7 @@ class Theory(object):
             self.model_cont = model_cont
 
     def set_fid_cosmo(
-        self, zs, zs_hires=None, input_cosmo=None, extra_factor=0.95
+        self, zs, zs_hires=None, input_cosmo=None, extra_factor=1.15
     ):
         """Setup fiducial cosmology"""
 
@@ -211,7 +211,7 @@ class Theory(object):
         # when using a fiducial cosmology, easy to change in other cases (TODO)
         self.set_cosmo_priors()
 
-    def set_cosmo_priors(self, extra_factor=1):
+    def set_cosmo_priors(self, extra_factor=1.25):
         """Set priors for cosmological parameters
 
         We get the priors on As, ns, and nrun from differences in star parameters in the training set

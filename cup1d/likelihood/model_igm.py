@@ -261,7 +261,7 @@ class IGM(object):
             y0_cen = 0.5 * (y0_max + y0_min)
             y1 = y0_cen / np.log((1 + z.max()) / (1 + self.z_pivot))
             self.priors[par] = [
-                [-y1 * 1.05, y1 * 1.05],
+                [-y1 * 2, y1 * 2],
                 [-y0_min * 1.05, y0_max * 1.05],
             ]
 

@@ -890,6 +890,14 @@ class Likelihood(object):
                 out["extra_chi2"] = []
                 out["extra_prob"] = []
 
+            full_emu_p1d = np.concatenate(emu_p1d_use)
+            nsamples = 1000
+            perturb = np.random.multivariate_normal(
+                full_emu_p1d, self.full_cov_Pk_kms, nsamples
+            )
+            av_perturb = np.mean(perturb, axis=0)
+            err_perturb = np.std(perturb, axis=0)
+
             zs = data.z
             Nz = len(zs)
 
@@ -902,6 +910,7 @@ class Likelihood(object):
                 p1d_cov = self.cov_Pk_kms[iz]
                 p1d_err = np.sqrt(np.diag(p1d_cov))
                 p1d_theory = emu_p1d_use[iz]
+
                 if rand_posterior is None:
                     if return_covar:
                         cov_theory = emu_cov_use[iz]
@@ -931,6 +940,15 @@ class Likelihood(object):
                         ms="4",
                         label="z=" + str(np.round(z, 2)),
                     )
+
+                    ind = self.data.full_zs == z
+                    for kk in range(30):
+                        ax[ii].plot(
+                            k_kms,
+                            perturb[kk, ind] / p1d_theory + yshift,
+                            color=col,
+                            alpha=0.4,
+                        )
 
                     # print chi2
                     xpos = k_kms[0]
@@ -977,6 +995,22 @@ class Likelihood(object):
                         ms="4",
                         label="z=" + str(np.round(z, 2)),
                     )
+
+                    ind = self.data.full_zs == z
+                    # ax[ii].fill_between(
+                    #     k_kms,
+                    #     (av_perturb[ind] - err_perturb[ind]) * k_kms / np.pi,
+                    #     (av_perturb[ind] + err_perturb[ind]) * k_kms / np.pi,
+                    #     alpha=0.5,
+                    #     color=col,
+                    # )
+                    for kk in range(25):
+                        ax[ii].plot(
+                            k_kms,
+                            perturb[kk, ind] * k_kms / np.pi,
+                            color=col,
+                            alpha=0.1,
+                        )
 
                     # print chi2
                     xpos = k_kms[-1] + 0.001

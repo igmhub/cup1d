@@ -68,7 +68,7 @@ def main():
 
     path_in_challenge = os.path.join(*path_in_challenge)
     path_out_challenge = os.path.join(
-        os.path.dirname(get_path_repo("cup1d")), "data", "obs"
+        os.path.dirname(get_path_repo("cup1d")), "data", "obs", data_type
     )
 
     print(path_in_challenge)
@@ -115,6 +115,9 @@ def main():
     # args.emu_cov_type = "block"
     args.emu_cov_type = "full"
 
+    args.cov_only_diag = False
+    args.sys_only_diag = False
+
     if test:
         args.n_steps = 500
         args.n_burn_in = 0
@@ -132,7 +135,16 @@ def main():
     else:
         args.explore = False
 
-    base_out_folder = os.path.join(path_out_challenge, emulator_label)
+    flags = emulator_label
+    if args.sys_only_diag:
+        flags = emulator_label + "_sysdiag"
+    if args.emu_cov_factor is not None:
+        if args.emu_cov_type == "diagonal":
+            flags += "_emudiag"
+        elif args.emu_cov_type == "block":
+            flags += "_emublock"
+        else:
+            flags += "_emufull"
 
     # set number of free IGM parameters
     args.mF_model_type = "chunks"
@@ -158,6 +170,28 @@ def main():
         args.fid_A_damp = [0, -1]
         args.fid_A_scale = [0, 5]
         args.hcd_model_type = "new"
+
+    flags_igm = (
+        "ntau"
+        + str(args.n_tau)
+        + "_nsigT"
+        + str(args.n_sigT)
+        + "_ngamma"
+        + str(args.n_gamma)
+        + "_nkF"
+        + str(args.n_kF)
+        + "_nxSiIII"
+        + str(args.n_x_SiIII)
+        + "_ndSiIII"
+        + str(args.n_d_SiIII)
+        + "_naSiIII"
+        + str(args.n_a_SiIII)
+        + "_nddla"
+        + str(args.n_d_dla)
+        + "_nsdla"
+        + str(args.n_s_dla)
+    )
+    dir_out = os.path.join(path_out_challenge, flags, flags_igm)
 
     # set archive and emulator
     if rank == 0:
@@ -185,17 +219,6 @@ def main():
     if rank == 0:
         print("Analyzing:", args.p1d_fname)
 
-    if args.emu_cov_factor is None:
-        lab_err = ""
-    else:
-        if args.emu_cov_type == "diagonal":
-            lab_err = "_emu_err_diag"
-        elif args.emu_cov_type == "block":
-            lab_err = "_emu_err_block"
-        else:
-            lab_err = "_emu_err_full"
-
-    dir_out = os.path.join(base_out_folder + lab_err)
     if rank == 0:
         os.makedirs(dir_out, exist_ok=True)
         print("Output in:", dir_out)

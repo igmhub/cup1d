@@ -7,14 +7,25 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_DESIY1(BaseDataP1D):
-    def __init__(self, p1d_fname=None, z_min=0, z_max=10, cov_only_diag=False):
+    def __init__(
+        self,
+        p1d_fname=None,
+        z_min=0,
+        z_max=10,
+        cov_only_diag=False,
+        sys_only_diag=False,
+    ):
         """Read measured P1D from file.
         - full_cov: for now, no covariance between redshift bins
         - z_min: z=2.0 bin is not recommended by Karacayli2024
         - z_max: maximum redshift to include"""
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        res = read_from_file(p1d_fname=p1d_fname, cov_only_diag=cov_only_diag)
+        res = read_from_file(
+            p1d_fname=p1d_fname,
+            cov_only_diag=cov_only_diag,
+            sys_only_diag=sys_only_diag,
+        )
         (
             zs,
             k_kms,
@@ -42,7 +53,12 @@ class P1D_DESIY1(BaseDataP1D):
 
 
 def read_from_file(
-    p1d_fname=None, kmin=1e-3, nknyq=0.5, max_cov=1e3, cov_only_diag=False
+    p1d_fname=None,
+    kmin=1e-3,
+    nknyq=0.5,
+    max_cov=1e3,
+    cov_only_diag=False,
+    sys_only_diag=False,
 ):
     """Read file containing P1D"""
 
@@ -79,14 +95,15 @@ def read_from_file(
         if hdu[iuse].header["EXTNAME"] == "P1D_BLIND":
             blinding = True
 
-    cov_raw = hdu[dict_with_keys["COVARIANCE"]].data.copy()
-    cov_stat_raw = hdu[dict_with_keys["COVARIANCE_STAT"]].data.copy()
-    cov_syst_raw = hdu[dict_with_keys["COVARIANCE_SYST"]].data.copy()
-
-    # add systematic error just to diagonal elements
-    cov_raw = cov_stat_raw.copy()
-    ind = np.arange(cov_raw.shape[0])
-    cov_raw[ind, ind] += np.diag(cov_syst_raw)
+    if sys_only_diag:
+        cov_stat_raw = hdu[dict_with_keys["COVARIANCE_STAT"]].data.copy()
+        cov_syst_raw = hdu[dict_with_keys["COVARIANCE_SYST"]].data.copy()
+        # add systematic error just to diagonal elements
+        cov_raw = cov_stat_raw.copy()
+        ind = np.arange(cov_raw.shape[0])
+        cov_raw[ind, ind] += np.diag(cov_syst_raw)
+    else:
+        cov_raw = hdu[dict_with_keys["COVARIANCE"]].data.copy()
 
     zs_raw = hdu[iuse].data["Z"]
     k_kms_raw = hdu[iuse].data["K"]

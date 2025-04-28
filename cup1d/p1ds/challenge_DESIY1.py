@@ -7,14 +7,27 @@ from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 
 
 class P1D_challenge_DESIY1(BaseMockP1D):
-    def __init__(self, theory, true_cosmo, p1d_fname=None, z_min=0, z_max=10):
+    def __init__(
+        self,
+        theory,
+        true_cosmo,
+        p1d_fname=None,
+        z_min=0,
+        z_max=10,
+        cov_only_diag=False,
+        sys_only_diag=False,
+    ):
         """Read measured P1D from file.
         - full_cov: for now, no covariance between redshift bins
         - z_min: z=2.0 bin is not recommended by Karacayli2024
         - z_max: maximum redshift to include"""
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        res = read_from_file(p1d_fname=p1d_fname)
+        res = read_from_file(
+            p1d_fname=p1d_fname,
+            cov_only_diag=cov_only_diag,
+            sys_only_diag=sys_only_diag,
+        )
         (
             zs,
             k_kms,
@@ -46,7 +59,14 @@ class P1D_challenge_DESIY1(BaseMockP1D):
         return
 
 
-def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
+def read_from_file(
+    p1d_fname=None,
+    kmin=1e-3,
+    nknyq=0.5,
+    max_cov=1e3,
+    cov_only_diag=False,
+    sys_only_diag=False,
+):
     """Read file containing P1D"""
 
     # folder storing P1D measurement
@@ -92,11 +112,24 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
 
     # input_sim = hdu[1].header["modelname"]
 
+    if sys_only_diag:
+        cov_stat_raw = hdu[dict_with_keys["COVARIANCE_STAT"]].data.copy()
+        cov_syst_raw = hdu[dict_with_keys["COVARIANCE_SYST"]].data.copy()
+        # add systematic error just to diagonal elements
+        cov_raw = cov_stat_raw.copy()
+        ind = np.arange(cov_raw.shape[0])
+        cov_raw[ind, ind] += np.diag(cov_syst_raw)
+    else:
+        cov_raw = hdu[dict_with_keys["COVARIANCE"]].data.copy()
+
     zs_raw = hdu[iuse].data["Z"]
     k_kms_raw = hdu[iuse].data["K"]
     Pk_kms_raw = hdu[iuse].data["PLYA"]
-    cov_raw = hdu[dict_with_keys["COVARIANCE"]].data.copy()
     diag_cov_raw = np.diag(cov_raw)
+    if cov_only_diag:
+        _cov = np.zeros_like(cov_raw)
+        _cov[np.arange(_cov.shape[0]), np.arange(_cov.shape[0])] = diag_cov_raw
+        cov_raw = _cov
 
     z_unique = np.unique(zs_raw)
     mask_raw = np.zeros(len(k_kms_raw), dtype=bool)
@@ -105,7 +138,6 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
     k_kms = []
     Pk_kms = []
     cov = []
-    tot = 0
     for z in z_unique:
         dv = 2.99792458e5 * 0.8 / 1215.67 / (1 + z)
         k_nyq = np.pi / dv
@@ -117,7 +149,6 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5):
             & (k_kms_raw > kmin)
             & (k_kms_raw < k_nyq * nknyq)
         )[:, 0]
-        tot += len(mask)
         mask_raw[mask] = True
 
         slice_cov = slice(mask[0], mask[-1] + 1)

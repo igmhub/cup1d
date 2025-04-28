@@ -348,6 +348,7 @@ class Args:
     data_label: str = "mpg_central"
     p1d_fname: str | None = None
     cov_only_diag: bool = False
+    sys_only_diag: bool = False
     data_label_hires: str | None = None
     z_min: float = 0
     z_max: float = 10
