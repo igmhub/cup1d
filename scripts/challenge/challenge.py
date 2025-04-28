@@ -22,7 +22,8 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    version = "1.0fxh"
+    version = "1.9fsh"
+    # version = "1.10qsh"
     run_sampler = True
 
     name_system = socket.gethostname()
@@ -68,11 +69,11 @@ def main():
 
     search = os.path.join(
         path_in_challenge,
-        # "*" + version + "_nonoise_fiducial*"
+        "*" + version + "_nonoise_fiducial*"
         # "*CGAN_4096_base*",
         # "*CGAN_4096_val*",
         # "*ACCEL2_6144_160*",
-        "*Sherwood_2048_40*",
+        # "*Sherwood_2048_40*",
         # "*cosmo_grid_3*",
     )
 
@@ -105,7 +106,7 @@ def main():
 
     # emulator_label = "CH24_mpg_gp"
     # emulator_label = "CH24_nyx_gp"
-    emulator_label = "CH24_nyx_gpr"
+    emulator_label = "CH24_nyxcen_gpr"
     vary_alphas = False
 
     args = Args(emulator_label=emulator_label)
@@ -168,7 +169,12 @@ def main():
 
     # set archive and emulator
     if rank == 0:
-        if emulator_label not in ["CH24_mpg_gp", "CH24_nyx_gp", "CH24_nyx_gpr"]:
+        if emulator_label not in [
+            "CH24_mpg_gp",
+            "CH24_nyx_gp",
+            "CH24_nyx_gpr",
+            "CH24_nyxcen_gpr",
+        ]:
             args.archive = set_archive(args.training_set)
             args.emulator = set_emulator(
                 emulator_label=args.emulator_label,

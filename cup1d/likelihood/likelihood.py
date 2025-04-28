@@ -776,6 +776,7 @@ class Likelihood(object):
         print_chi2=True,
         return_all=False,
         collapse=False,
+        plot_realizations=True,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
@@ -941,14 +942,15 @@ class Likelihood(object):
                         label="z=" + str(np.round(z, 2)),
                     )
 
-                    ind = self.data.full_zs == z
-                    for kk in range(30):
-                        ax[ii].plot(
-                            k_kms,
-                            perturb[kk, ind] / p1d_theory + yshift,
-                            color=col,
-                            alpha=0.4,
-                        )
+                    if plot_realizations:
+                        ind = self.data.full_zs == z
+                        for kk in range(30):
+                            ax[ii].plot(
+                                k_kms,
+                                perturb[kk, ind] / p1d_theory + yshift,
+                                color=col,
+                                alpha=0.05,
+                            )
 
                     # print chi2
                     xpos = k_kms[0]
@@ -1004,13 +1006,14 @@ class Likelihood(object):
                     #     alpha=0.5,
                     #     color=col,
                     # )
-                    for kk in range(25):
-                        ax[ii].plot(
-                            k_kms,
-                            perturb[kk, ind] * k_kms / np.pi,
-                            color=col,
-                            alpha=0.1,
-                        )
+                    if plot_realizations:
+                        for kk in range(30):
+                            ax[ii].plot(
+                                k_kms,
+                                perturb[kk, ind] * k_kms / np.pi,
+                                color=col,
+                                alpha=0.05,
+                            )
 
                     # print chi2
                     xpos = k_kms[-1] + 0.001

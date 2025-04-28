@@ -95,7 +95,8 @@ def main():
 
     # emulator_label = "CH24_mpg_gp"
     # emulator_label = "CH24_nyx_gp"
-    emulator_label = "CH24_nyx_gpr"
+    # emulator_label = "CH24_nyx_gpr"
+    emulator_label = "CH24_nyxcen_gpr"
     vary_alphas = False
 
     args = Args(emulator_label=emulator_label)
@@ -195,7 +196,12 @@ def main():
 
     # set archive and emulator
     if rank == 0:
-        if emulator_label not in ["CH24_mpg_gp", "CH24_nyx_gp", "CH24_nyx_gpr"]:
+        if emulator_label not in [
+            "CH24_mpg_gp",
+            "CH24_nyx_gp",
+            "CH24_nyx_gpr",
+            "CH24_nyxcen_gpr",
+        ]:
             args.archive = set_archive(args.training_set)
             args.emulator = set_emulator(
                 emulator_label=args.emulator_label,
