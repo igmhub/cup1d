@@ -22,7 +22,7 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    test = True
+    test = False
     # data_type = "FFT"
     data_type = "QMLE"
     ic_correction = False
@@ -117,7 +117,7 @@ def main():
     args.emu_cov_type = "full"
 
     args.cov_only_diag = False
-    args.sys_only_diag = False
+    args.sys_only_diag = True
 
     if test:
         args.n_steps = 10
@@ -138,7 +138,7 @@ def main():
 
     flags = emulator_label
     if args.sys_only_diag:
-        flags = emulator_label + "_sysdiag"
+        flags += "_sysdiag"
     if args.emu_cov_factor is not None:
         if args.emu_cov_type == "diagonal":
             flags += "_emudiag"
