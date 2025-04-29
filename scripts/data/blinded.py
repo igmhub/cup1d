@@ -117,7 +117,7 @@ def main():
     args.emu_cov_type = "full"
 
     args.cov_only_diag = False
-    args.sys_only_diag = True
+    args.sys_only_diag = False
 
     if test:
         args.n_steps = 10
