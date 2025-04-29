@@ -129,7 +129,7 @@ class MetalModel(object):
                 # no contamination
                 xmin = -11
                 # max 10% contamination (oscillations) -4
-                xmax = -2.5
+                xmax = -3
             else:
                 # not optimized
                 xmin = -1
@@ -154,7 +154,7 @@ class MetalModel(object):
                 # no contamination (0.3% at high k)
                 xmin = 2
                 # Almost no oscillations at high k
-                xmax = 6
+                xmax = 6.5
             else:
                 # not optimized
                 xmin = -1

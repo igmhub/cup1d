@@ -57,7 +57,7 @@ class CAMBModel(object):
             min_val = cosmo_priors["As"][0]
             max_val = cosmo_priors["As"][1]
         else:
-            min_val = 0.70e-09
+            min_val = 0.90e-09
             max_val = 3.60e-09
         params.append(
             likelihood_parameter.LikelihoodParameter(
@@ -72,8 +72,8 @@ class CAMBModel(object):
             min_val = cosmo_priors["ns"][0]
             max_val = cosmo_priors["ns"][1]
         else:
-            min_val = 0.80
-            max_val = 1.15
+            min_val = 0.85
+            max_val = 1.10
         params.append(
             likelihood_parameter.LikelihoodParameter(
                 name="ns",

@@ -22,7 +22,7 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    test = False
+    test = True
     # data_type = "FFT"
     data_type = "QMLE"
     ic_correction = False
@@ -120,11 +120,11 @@ def main():
     args.sys_only_diag = False
 
     if test:
-        args.n_steps = 500
+        args.n_steps = 10
         args.n_burn_in = 0
     else:
         args.n_steps = 2500
-        args.n_burn_in = 1250
+        args.n_burn_in = 4000
 
     if size > 1:
         args.parallel = True

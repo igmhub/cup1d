@@ -36,7 +36,9 @@ def set_free_like_parameters(params, emulator_label):
     if params.fix_cosmo:
         free_parameters = []
     else:
-        if params.vary_alphas and ("Nyx_alphap" in emulator_label):
+        if params.vary_alphas and (
+            ("nyx" in emulator_label) | ("Nyx" in emulator_label)
+        ):
             free_parameters = ["As", "ns", "nrun"]
         else:
             free_parameters = ["As", "ns"]
@@ -141,7 +143,7 @@ def set_P1D(
             if data_label[:3] == "mpg":
                 archive_mock = set_archive(training_set="Cabayol23")
             elif data_label[:3] == "nyx":
-                archive_mock = set_archive(training_set="Nyx24_Oct2023")
+                archive_mock = set_archive(training_set=args.nyx_training_set)
 
         if data_label not in archive_mock.list_sim:
             raise ValueError(

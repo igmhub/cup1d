@@ -68,7 +68,7 @@ class HCD_Model_new(object):
                 # no contamination
                 xmin = -10
                 # 0 gives 350% contamination low k
-                xmax = 0
+                xmax = 0.50
             else:
                 # not optimized
                 xmin = -10

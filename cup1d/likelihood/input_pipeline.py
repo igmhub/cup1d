@@ -344,6 +344,7 @@ class Args:
     archive: str | None = None
     emulator: str | None = None
     training_set: str = "Pedersen21"
+    nyx_training_set: str = "models_Nyx_Mar2025_with_CGAN_val_3axes"
     emulator_label: str = "Pedersen21"
     data_label: str = "mpg_central"
     p1d_fname: str | None = None
