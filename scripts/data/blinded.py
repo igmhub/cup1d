@@ -23,8 +23,8 @@ def main():
     size = comm.Get_size()
 
     test = False
-    # data_type = "FFT"
-    data_type = "QMLE"
+    data_type = "FFT"
+    # data_type = "QMLE"
     ic_correction = False
 
     name_system = socket.gethostname()
