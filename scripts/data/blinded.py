@@ -153,23 +153,23 @@ def main():
     args.n_tau = 11
     args.n_sigT = 2
     args.n_gamma = 2
-    args.n_kF = 1
+    args.n_kF = 2
     if full_cont:
         args.n_x_SiIII = 1
         args.n_d_SiIII = 1
         args.n_a_SiIII = 1
-        args.n_d_dla = 1
+        args.n_d_dla = 2
         args.n_s_dla = 1
         # args.fid_SiIII_X = [0, -10]
         # args.fid_SiIII_D = [0, 5]
         # args.fid_SiIII_A = [0, 1]
         # args.fid_A_damp = [0, -9]
         # args.fid_A_scale = [0, 5]
-        args.fid_SiIII_X = [0, -5]
+        args.fid_SiIII_X = [0, -4]
         args.fid_SiIII_D = [0, 5]
         args.fid_SiIII_A = [0, 1]
-        args.fid_A_damp = [0, -1]
-        args.fid_A_scale = [0, 5]
+        args.fid_A_damp = [0, 0]
+        args.fid_A_scale = [0, 7]
         args.hcd_model_type = "new"
 
     flags_igm = (
