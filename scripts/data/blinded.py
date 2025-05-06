@@ -216,7 +216,7 @@ def main():
         else:
             args.emulator = set_emulator(emulator_label=args.emulator_label)
 
-    if ("Nyx" in emulator_label) and vary_alphas:
+    if (("Nyx" in emulator_label) | ("nyx" in emulator_label)) and vary_alphas:
         args.vary_alphas = True
     else:
         args.vary_alphas = False

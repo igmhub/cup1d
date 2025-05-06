@@ -144,6 +144,11 @@ class Likelihood(object):
             if data is None:  # Skip if no data is provided for this dataset
                 continue
 
+            if data.Pksmooth_kms is not None:
+                pksmooth = data.Pksmooth_kms
+            else:
+                pksmooth = data.Pk_kms
+
             # Total number of k values across all redshifts
             nks = 0
             for ii in range(len(data.z)):
@@ -154,15 +159,16 @@ class Likelihood(object):
             for ii in range(len(data.z)):
                 # Copy the covariance matrix for the current redshift bin
                 cov = data.cov_Pk_kms[ii].copy()
+                covemu = np.zeros_like(cov)
                 # Indices of the diagonal elements
                 # Add emulator error
                 if self.emu_cov_factor is not None:
                     if self.emu_cov_factor != 0:
                         if ii == 0:
                             if idata == 0:
-                                self.emu_cov_Pk_kms = []
+                                self.covemu_Pk_kms = []
                             else:
-                                self.extra_emu_cov_Pk_kms = []
+                                self.extra_covemu_Pk_kms = []
 
                         dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
                             data.z[ii]
@@ -198,18 +204,14 @@ class Likelihood(object):
                                 j1 = np.argmin(np.abs(k_Mpc[i1] - _k_Mpc))
                                 add_emu_cov_kms[i0, i1] = (
                                     _emu_cov[j0, j1]
-                                    * data.Pk_kms[ii][i0]
-                                    * data.Pk_kms[ii][i1]
+                                    * pksmooth[ii][i0]
+                                    * pksmooth[ii][i1]
                                 )
                         emu_cov_blocks.append(add_emu_cov_kms)
                         # from Pk in Mpc to Pk in km/s
                         # add to cov
                         for i0 in range(k_Mpc.shape[0]):
                             for i1 in range(k_Mpc.shape[0]):
-                                y = (
-                                    add_emu_cov_kms[i0, i1]
-                                    * self.emu_cov_factor
-                                )
                                 cov[i0, i1] += (
                                     add_emu_cov_kms[i0, i1]
                                     * self.emu_cov_factor
@@ -221,7 +223,7 @@ class Likelihood(object):
                     self.cov_Pk_kms.append(cov)
                     if self.emu_cov_factor is not None:
                         if self.emu_cov_factor != 0:
-                            self.emu_cov_Pk_kms.append(
+                            self.covemu_Pk_kms.append(
                                 add_emu_cov_kms * self.emu_cov_factor
                             )
                 else:
@@ -229,7 +231,7 @@ class Likelihood(object):
                     self.extra_cov_Pk_kms.append(cov)
                     if self.emu_cov_factor is not None:
                         if self.emu_cov_factor != 0:
-                            self.extra_emu_cov_Pk_kms.append(
+                            self.extra_covemu_Pk_kms.append(
                                 add_emu_cov_kms * self.emu_cov_factor
                             )
 
@@ -1288,6 +1290,114 @@ class Likelihood(object):
             name = os.path.join(
                 save_directory, "IGM_histories_" + stat_best_fit
             )
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
+        else:
+            plt.show()
+
+    def plot_cov_terms(self, save_directory=None):
+        npanels = int(np.round(np.sqrt(len(self.cov_Pk_kms))))
+        fig, ax = plt.subplots(
+            npanels + 1, npanels, sharex=True, sharey=True, figsize=(10, 8)
+        )
+        ax = ax.reshape(-1)
+        for ii in range(len(self.cov_Pk_kms)):
+            cov_stat = np.diag(self.data.covstat_Pk_kms[ii])
+            cov_syst = np.diag(self.data.cov_Pk_kms[ii]) - cov_stat
+            cov_emu = np.diag(self.covemu_Pk_kms[ii])
+            cov_tot = np.diag(self.cov_Pk_kms[ii])
+            ax[ii].plot(
+                self.data.k_kms[ii], cov_stat / cov_tot, label=r"$x$ = Stat"
+            )
+            ax[ii].plot(
+                self.data.k_kms[ii], cov_syst / cov_tot, label=r"$x$ = Syst"
+            )
+            ax[ii].plot(
+                self.data.k_kms[ii], cov_emu / cov_tot, label=r"$x$ = Emu"
+            )
+            ax[ii].text(0.0, 0.1, "z=" + str(self.data.z[ii]))
+        if len(ax) > len(self.cov_Pk_kms):
+            for ii in range(len(self.cov_Pk_kms), len(ax)):
+                ax[ii].axis("off")
+        ax[0].legend()
+        fig.supxlabel(r"$k\,[\mathrm{km}^{-1}\mathrm{s}]$")
+        fig.supylabel(r"$\sigma^2_x/\sigma^2_\mathrm{total}$")
+        plt.tight_layout()
+
+        if save_directory is not None:
+            name = os.path.join(save_directory, "cov_terms")
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
+        else:
+            plt.show()
+
+    def plot_cov_to_pk(self, use_pk_smooth=True, save_directory=None):
+        npanels = int(np.round(np.sqrt(len(self.cov_Pk_kms))))
+
+        fig, ax = plt.subplots(
+            npanels + 1, npanels, sharex=True, figsize=(10, 8)
+        )
+        ax = ax.reshape(-1)
+        for ii in range(len(self.cov_Pk_kms)):
+            cov_stat = np.diag(self.data.covstat_Pk_kms[ii])
+            cov_syst = np.diag(self.data.cov_Pk_kms[ii]) - cov_stat
+            cov_emu = np.diag(self.covemu_Pk_kms[ii])
+            cov_tot = np.diag(self.cov_Pk_kms[ii])
+            if use_pk_smooth:
+                pk = self.data.Pksmooth_kms[ii].copy()
+            else:
+                pk = self.data.Pk_kms[ii].copy()
+            ax[ii].plot(
+                self.data.k_kms[ii], np.sqrt(cov_stat) / pk, label=r"$x$ = Stat"
+            )
+            ax[ii].plot(
+                self.data.k_kms[ii], np.sqrt(cov_syst) / pk, label=r"$x$ = Syst"
+            )
+            ax[ii].plot(
+                self.data.k_kms[ii], np.sqrt(cov_emu) / pk, label=r"$x$ = Emu"
+            )
+            ax[ii].plot(
+                self.data.k_kms[ii], np.sqrt(cov_tot) / pk, label=r"$x$ = Total"
+            )
+            ax[ii].text(
+                0.2,
+                0.97,
+                "z=" + str(self.data.z[ii]),
+                ha="right",
+                va="top",
+                transform=ax[ii].transAxes,
+            )
+        if len(ax) > len(self.cov_Pk_kms):
+            for ii in range(len(self.cov_Pk_kms), len(ax)):
+                ax[ii].axis("off")
+        ax[0].legend(ncols=2)
+        fig.supxlabel(r"$k\,[\mathrm{km}^{-1}\mathrm{s}]$")
+        fig.supylabel(r"$\sigma_x/P_\mathrm{1D}$")
+        plt.tight_layout()
+
+        if save_directory is not None:
+            name = os.path.join(save_directory, "cov_to_pk")
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
+        else:
+            plt.show()
+
+    def plot_correlation_matrix(self, save_directory=None):
+        def correlation_from_covariance(covariance):
+            v = np.sqrt(np.diag(covariance))
+            outer_v = np.outer(v, v)
+            correlation = covariance / outer_v
+            correlation[covariance == 0] = 0
+            return correlation
+
+        def is_pos_def(x):
+            return np.all(np.linalg.eigvals(x) > 0)
+
+        plt.imshow(correlation_from_covariance(self.full_cov_Pk_kms))
+        plt.colorbar()
+
+        if save_directory is not None:
+            name = os.path.join(save_directory, "correlation")
             plt.savefig(name + ".pdf")
             plt.savefig(name + ".png")
         else:

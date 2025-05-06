@@ -16,6 +16,8 @@ def _drop_zbins(
     full_zs=None,
     full_Pk_kms=None,
     full_cov_kms=None,
+    Pksmooth_kms=None,
+    cov_stat=None,
 ):
     """Drop redshift bins below z_min or above z_max"""
 
@@ -25,13 +27,20 @@ def _drop_zbins(
 
     k_out = []
     Pk_out = []
+    Pksmooth_out = []
     cov_out = []
+    if cov_stat is not None:
+        cov_stat_out = []
     for jj in ind:
         # remove tailing zeros
         ind = np.argwhere(Pk_in[jj] != 0)[:, 0]
         k_out.append(k_in[jj][ind])
         Pk_out.append(Pk_in[jj][ind])
+        if Pksmooth_kms is not None:
+            Pksmooth_out.append(Pksmooth_kms[jj][ind])
         cov_out.append(cov_in[jj][ind, :][:, ind])
+        if cov_stat is not None:
+            cov_stat_out.append(cov_stat[jj][ind, :][:, ind])
 
     if full_zs is not None:
         ind = np.argwhere((full_zs >= z_min) & (full_zs <= z_max))[:, 0]
@@ -39,7 +48,17 @@ def _drop_zbins(
         full_Pk_kms = full_Pk_kms[ind]
         full_cov_kms = full_cov_kms[ind, :][:, ind]
 
-    return z_out, k_out, Pk_out, cov_out, full_zs, full_Pk_kms, full_cov_kms
+    return (
+        z_out,
+        k_out,
+        Pk_out,
+        cov_out,
+        full_zs,
+        full_Pk_kms,
+        full_cov_kms,
+        Pksmooth_out,
+        cov_stat_out,
+    )
 
 
 class BaseDataP1D(object):
@@ -58,6 +77,8 @@ class BaseDataP1D(object):
         full_zs=None,
         full_Pk_kms=None,
         full_cov_kms=None,
+        Pksmooth_kms=None,
+        cov_stat=None,
     ):
         """Construct base P1D class, from measured power and covariance"""
 
@@ -87,6 +108,8 @@ class BaseDataP1D(object):
             full_zs=full_zs,
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=full_cov_kms,
+            Pksmooth_kms=Pksmooth_kms,
+            cov_stat=cov_stat,
         )
 
         (
@@ -97,6 +120,8 @@ class BaseDataP1D(object):
             self.full_zs,
             self.full_Pk_kms,
             self.full_cov_Pk_kms,
+            self.Pksmooth_kms,
+            self.covstat_Pk_kms,
         ) = res
 
         self.full_k_kms = np.concatenate(self.k_kms)

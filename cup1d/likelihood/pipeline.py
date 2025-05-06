@@ -190,6 +190,7 @@ def set_P1D(
             z_min=args.z_min,
             z_max=args.z_max,
             p1d_fname=args.p1d_fname,
+            cov_only_diag=args.cov_syst_type,
         )
 
     elif data_label == "challenge_DESIY1":
@@ -199,8 +200,6 @@ def set_P1D(
             p1d_fname=args.p1d_fname,
             z_min=args.z_min,
             z_max=args.z_max,
-            cov_only_diag=args.cov_only_diag,
-            sys_only_diag=args.sys_only_diag,
         )
 
     elif data_label == "eBOSS_mock":
@@ -247,8 +246,7 @@ def set_P1D(
             p1d_fname=args.p1d_fname,
             z_min=args.z_min,
             z_max=args.z_max,
-            cov_only_diag=args.cov_only_diag,
-            sys_only_diag=args.sys_only_diag,
+            cov_syst_type=args.cov_syst_type,
         )
     else:
         raise ValueError(f"data_label {data_label} not implemented")
