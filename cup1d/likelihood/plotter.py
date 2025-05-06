@@ -8,8 +8,14 @@ from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
 
 class Plotter(object):
     def __init__(
-        self, fitter=None, save_directory=None, fname_chain=None, args={}
+        self,
+        fitter=None,
+        save_directory=None,
+        fname_chain=None,
+        zmask=None,
+        args={},
     ):
+        self.zmask = zmask
         if fitter is not None:
             self.fitter = fitter
         elif fname_chain is not None:
@@ -62,20 +68,24 @@ class Plotter(object):
             plot_every_iz=1,
             return_all=True,
             show=False,
+            zmask=zmask,
         )
 
-    def plots_minimizer(self, zrange=[0, 10]):
+    def plots_minimizer(self, zrange=[0, 10], zmask=None):
+        if self.zmask is not None:
+            zmask = self.zmask
+            zrange = [np.min(zmask) - 0.01, np.max(zmask) + 0.01]
         plt.close("all")
         # plot initial P1D (before fitting)
-        self.plot_P1D_initial(residuals=False)
+        self.plot_P1D_initial(residuals=False, zmask=zmask)
         plt.close()
-        self.plot_P1D_initial(residuals=True)
+        self.plot_P1D_initial(residuals=True, zmask=zmask)
         plt.close()
 
         # plot best fit
-        self.plot_p1d(residuals=False, stat_best_fit="mle")
+        self.plot_p1d(residuals=False, stat_best_fit="mle", zmask=zmask)
         plt.close()
-        self.plot_p1d(residuals=True, stat_best_fit="mle")
+        self.plot_p1d(residuals=True, stat_best_fit="mle", zmask=zmask)
         plt.close()
 
         # plot cosmology
@@ -84,7 +94,7 @@ class Plotter(object):
             plt.close()
 
         # plot IGM histories
-        self.plot_igm(cloud=True)
+        self.plot_igm(cloud=True, zmask=zmask)
         plt.close()
 
         # plot contamination
@@ -96,7 +106,7 @@ class Plotter(object):
         plt.close()
 
         # plot fit in hull
-        self.plot_hull()
+        self.plot_hull(zmask=zmask)
         plt.close()
 
     def plots_sampler(self):
@@ -601,6 +611,7 @@ class Plotter(object):
         residuals=False,
         rand_posterior=None,
         stat_best_fit="mle",
+        zmask=None,
     ):
         """Plot the P1D of the data and the emulator prediction
         for the MCMC best fit
@@ -628,9 +639,10 @@ class Plotter(object):
             residuals=residuals,
             rand_posterior=rand_posterior,
             plot_fname=plot_fname,
+            zmask=zmask,
         )
 
-    def plot_P1D_initial(self, plot_every_iz=1, residuals=False):
+    def plot_P1D_initial(self, plot_every_iz=1, residuals=False, zmask=None):
         """Plot the P1D of the data and the emulator prediction
         for the fiducial model"""
 
@@ -647,6 +659,7 @@ class Plotter(object):
             plot_every_iz=plot_every_iz,
             residuals=residuals,
             plot_fname=plot_fname,
+            zmask=zmask,
         )
 
     def plot_histograms(self, cube=False, delta_lnprob_cut=None):
@@ -682,6 +695,7 @@ class Plotter(object):
         rand_sample=None,
         stat_best_fit="mle",
         cloud=True,
+        zmask=None,
     ):
         """Plot IGM histories"""
 
@@ -693,6 +707,7 @@ class Plotter(object):
             free_params=self.like_params,
             stat_best_fit=stat_best_fit,
             save_directory=self.save_directory,
+            zmask=zmask,
         )
 
         # if rand_sample is not None:
@@ -1009,7 +1024,7 @@ class Plotter(object):
             name=name,
         )
 
-    def plot_hull(self, p0=None, save_plot=True):
+    def plot_hull(self, p0=None, save_plot=True, zmask=None):
         """Function to plot data within hull"""
 
         if p0 is None:
@@ -1017,8 +1032,13 @@ class Plotter(object):
 
         like_params = self.fitter.like.parameters_from_sampling_point(p0)
 
+        if zmask is not None:
+            _z = zmask
+        else:
+            _z = self.fitter.like.data.z
+
         emu_call, M_of_z, blob = self.fitter.like.theory.get_emulator_calls(
-            self.fitter.like.data.z,
+            _z,
             like_params=like_params,
             return_M_of_z=True,
             return_blob=True,
@@ -1033,7 +1053,6 @@ class Plotter(object):
         for jj, key in enumerate(self.fitter.like.theory.hull.params):
             p1[:, jj] = emu_call[key]
 
-        # print(self.fitter.like.theory.hull.in_hulls(p1))
         self.fitter.like.theory.hull.plot_hulls(p1)
 
         if self.save_directory is not None:

@@ -57,81 +57,439 @@ from cup1d.likelihood.input_pipeline import Args
 from corner import corner
 from cup1d.likelihood import CAMB_model
 
-# %%
-combine_posteriors = False
-if combine_posteriors:
+from cup1d.utils.utils import get_path_repo
 
-    folder_in = "/home/jchaves/Proyectos/projects/lya/data/forecast/mock_challenge_DESIY1_1.0fxh/"
-    file_mpg_nn = folder_in + "CH24/no_emu_err/chain_1/fitter_results.npy"
-    file_mpg_gp = folder_in + "CH24_mpg_gp/no_emu_err/chain_1/fitter_results.npy"
-    file_nyx_nn = folder_in + "CH24_NYX/no_emu_err/chain_1/fitter_results.npy"
-    file_nyx_gp = folder_in + "CH24_nyx_gp/no_emu_err/chain_1/fitter_results.npy"
-    files = [file_mpg_nn, file_mpg_gp, file_nyx_nn, file_nyx_gp]
-    arr_lab = ["mpg_nn", "mpg_gp", "nyx_nn", "nyx_gp"]
-    
-    arr_par = []
-    for file in files:
-        res = np.load(file, allow_pickle=True).item()
-        ds = res["fitter"]["blobs"]["Delta2_star"].reshape(-1)
-        ns = res["fitter"]["blobs"]["n_star"].reshape(-1)
-        
-        par = np.zeros((ds.shape[0], 2))
-        par[:, 0] = ds
-        par[:, 1] = ns
-        arr_par.append(par)
-    
-    fig, ax = plt.subplots(2, 2, figsize=(10, 10))
-    
-    for ii in range(len(arr_par)):
-        corner(
-            arr_par[ii], 
-            fig=fig, 
-            color="C"+str(ii), 
-            plot_datapoints=False, 
-            plot_density=False, 
-            levels=np.array([0.393, 0.864]),
-        );
-        ax[0, 0].scatter(
-            res["truth"]['$\\Delta^2_\\star$'],
-            0,
-            # res["truth"]['$n_\\star$'],
-            color="C"+str(ii),
-            label=arr_lab[ii],
-            s=10
-        )
-        
-    ax[1, 0].axhline(
-        res["truth"]['$n_\\star$'],
-        color="k",
-        linestyle=":",
-    )
-    ax[1, 0].axvline(
-        res["truth"]['$\\Delta^2_\\star$'],
-        color="k",
-        linestyle=":",
-    )
-    ax[0, 0].axvline(
-        res["truth"]['$\\Delta^2_\\star$'],
-        color="k",
-        linestyle=":",
-    )
-    ax[1, 1].axvline(
-        res["truth"]['$n_\\star$'],
-        color="k",
-        linestyle=":",
-    )
-    ax[0, 0].legend()
-    
-    
-    labels=[r"$\Delta^2_\star$", r"$n_\star$"]
-    ax[1, 0].set_xlabel(labels[0], fontsize=15)
-    ax[1, 0].set_ylabel(labels[1], fontsize=15)
-    ax[1, 1].set_xlabel(labels[0], fontsize=15)
-    
-    plt.tight_layout()
-    plt.savefig("forecast_emus.pdf")
+from lace.archive.nyx_archive import NyxArchive
 
 # %%
+
+
+# fname_chain = "/home/jchaves/Proyectos/projects/lya/data/obs/CH24_nyx_gpr_emu_err_full/chain_2/fitter_results.npy"
+# plotter = Plotter(fname_chain=fname_chain)
+
+# %%
+# plotter.plot_corner(only_cosmo=True)
+
+# %%
+
+# %%
+nyx_file = "models_Nyx_Mar2025_with_CGAN_val_3axes"
+archive = NyxArchive(nyx_version=nyx_file)
+# archive = NyxArchive(nyx_version=nyx_file)
+
+# %%
+seed_1 = archive.get_testing_data("nyx_seed")
+seed_2 = archive.get_testing_data("nyx_seed_val")
+cen = archive.get_testing_data("nyx_central")
+
+# %%
+# par = "T0"
+par = "sigT_Mpc"
+# par = "gamma"
+# par = "mF"
+
+for ii in range(len(seed_1)):
+    plt.scatter(seed_1[ii]["z"], seed_1[ii][par], color="C0")
+for ii in range(len(seed_2)):
+    plt.scatter(seed_2[ii]["z"], seed_2[ii][par], color="C1")
+for ii in range(len(cen)):
+    plt.scatter(cen[ii]["z"], cen[ii][par], color="C2")
+
+# %%
+mask = (seed[ii]["z"]
+p1d_all = np.zeros((nn, 3))
+for ii in range(len(test2)):
+    print(test1[ii]["z"], test2[ii]["z"])
+
+# %%
+test1[ii].keys()
+
+# %%
+
+
+
+# %%
+p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v2.fits"
+# p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
+hdu = fits.open(p1d_fname)
+
+# %%
+for ii in range(len(hdu)):
+    if "EXTNAME" in hdu[ii].header:
+        print(ii, hdu[ii].header["EXTNAME"])
+
+# %%
+zz = np.unique(hdu[2].data["Z"])
+for ii in range(len(zz)):
+    ind = hdu[1].data["Z"] == zz[ii]
+    plt.plot(hdu[2].data["K"][ind], hdu[2].data["E_RESOLUTION"][ind], label=str(zz[ii]))
+plt.legend()
+
+# %%
+ind = hdu[1].data["Z"] == 3.6
+plt.plot(hdu[1].data["K"][ind], hdu[1].data["PLYA"][ind])
+plt.plot(hdu[1].data["K"][ind], hdu[1].data["PSMOOTH"][ind])
+plt.plot(hdu[1].data["K"][ind], hdu[1].data["PSMOOTH"][ind]*0.95)
+plt.yscale("log")
+plt.ylim(1, 1e2)
+
+# %%
+# # FFT
+
+# sys_labels = [
+#     "E_SYST",
+#     "E_PSF",
+#     "E_RESOLUTION",
+#     "E_SIDE_BAND",
+#     "E_LINES",
+#     "E_DLA",
+#     "E_BAL",
+#     "E_CONTINUUM",
+#     "E_DLA_COMPLETENESS",
+#     "E_BAL_COMPLETENESS",
+# ]
+
+# sys_include = [
+#     # "E_SYST",
+#     "E_PSF",
+#     "E_RESOLUTION",
+#     "E_SIDE_BAND",
+#     "E_LINES",
+#     "E_DLA",
+#     "E_BAL",
+#     "E_CONTINUUM",
+#     "E_DLA_COMPLETENESS",
+#     "E_BAL_COMPLETENESS",
+# ]
+    
+
+# %%
+# QMLE
+
+sys_labels = [
+    "E_DLA_COMPLETENESS",
+    "E_BAL_COMPLETENESS",
+    "E_RESOLUTION",
+    "E_CONTINUUM",
+    "E_CONTINUUM_ADD",
+    "E_NOISE_SCALE",
+    "E_NOISE_ADD",
+    "E_SYST",
+]
+sys_corr = [
+    "E_DLA_COMPLETENESS",
+    "E_BAL_COMPLETENESS",
+    "E_RESOLUTION",
+    "E_CONTINUUM_ADD",
+    "E_CONTINUUM",
+    "E_NOISE_ADD",
+    "E_NOISE_SCALE",
+]
+
+sys_diag = [
+    # "E_DLA_COMPLETENESS",
+    # "E_BAL_COMPLETENESS",
+    # "E_RESOLUTION",
+    # "E_CONTINUUM",
+    # "E_CONTINUUM_ADD",
+    # "E_NOISE_ADD",
+    # "E_NOISE_SCALE", # goes to diagonal
+]
+
+sys_corr_red = [
+    # "E_DLA_COMPLETENESS",
+    # "E_BAL_COMPLETENESS",
+    "E_RESOLUTION",
+    "E_CONTINUUM_ADD",
+    "E_CONTINUUM",
+    "E_NOISE_ADD",
+    "E_NOISE_SCALE",
+]
+
+
+sys_diag_red = [
+    # "E_DLA_COMPLETENESS",
+    # "E_BAL_COMPLETENESS",
+    # "E_RESOLUTION",
+    # "E_CONTINUUM_ADD",
+    # "E_CONTINUUM",
+    # "E_NOISE_ADD",
+    # "E_NOISE_SCALE",
+]
+sys_corr_xred = [
+    # "E_DLA_COMPLETENESS",
+    # "E_BAL_COMPLETENESS",
+    "E_RESOLUTION",
+    "E_CONTINUUM_ADD",
+    "E_CONTINUUM",
+    # "E_NOISE_ADD",
+    # "E_NOISE_SCALE",
+]
+
+
+sys_diag_xred = [
+    # "E_DLA_COMPLETENESS",
+    # "E_BAL_COMPLETENESS",
+    # "E_RESOLUTION",
+    # "E_CONTINUUM_ADD",
+    # "E_CONTINUUM",
+    # "E_NOISE_ADD",
+    # "E_NOISE_SCALE",
+]
+
+# %%
+diag_emu = np.sqrt(np.diag(dict_save["cov"]))
+emu_cov_zz = dict_save["zz"]
+emu_cov_k_Mpc = dict_save["k_Mpc"]
+emu_cov_unique_zz = np.unique(emu_cov_zz)
+emu_cov_k_kms = np.zeros_like(emu_cov_k_Mpc)
+
+for jj in range(len(emu_cov_unique_zz)):
+    ind = emu_cov_zz == emu_cov_unique_zz[jj]
+    dkms_dMpc = like.theory.fid_cosmo["cosmo"].dkms_dMpc(emu_cov_unique_zz[jj])
+    emu_cov_k_kms[ind] = emu_cov_k_Mpc[ind] / dkms_dMpc
+
+
+
+diag_emu2 = np.sqrt(np.diag(dict_save2["cov"]))
+emu_cov_zz2 = dict_save2["zz"]
+emu_cov_k_Mpc2 = dict_save2["k_Mpc"]
+emu_cov_unique_zz2 = np.unique(emu_cov_zz2)
+emu_cov_k_kms2 = np.zeros_like(emu_cov_k_Mpc2)
+
+for jj in range(len(emu_cov_unique_zz2)):
+    ind = emu_cov_zz2 == emu_cov_unique_zz2[jj]
+    dkms_dMpc = like.theory.fid_cosmo["cosmo"].dkms_dMpc(emu_cov_unique_zz2[jj])
+    emu_cov_k_kms2[ind] = emu_cov_k_Mpc2[ind] / dkms_dMpc
+
+
+# %%
+
+# %%
+cov = compute_cov(hdu[2].data, type_analysis="xred")
+
+# %%
+
+# %%
+
+# %%
+zz = np.unique(hdu[2].data["Z"])
+
+fig, ax = plt.subplots(4, 3, sharex=True, sharey=True, figsize=(12, 10))
+ax = ax.reshape(-1)
+
+diag_stat = np.sqrt(np.diag(hdu[4].data))
+
+for jj in range(len(zz) - 1):
+
+    ind = (hdu[2].data["Z"] == zz[jj]) & (hdu[2].data["K"] > 1e-3)
+    
+    diag = np.zeros(np.sum(ind))
+    diag_red = np.zeros(np.sum(ind))
+    diag_xred = np.zeros(np.sum(ind))
+    for lab in sys_labels:
+        ax[jj].plot(hdu[2].data["K"][ind], hdu[2].data[lab][ind], label=lab)
+        if lab in sys_corr:
+            diag += hdu[2].data[lab][ind]**2
+        if lab in sys_corr_red:
+            diag_red += hdu[2].data[lab][ind]**2
+        if lab in sys_corr_xred:
+            diag_xred += hdu[2].data[lab][ind]**2
+    
+    cov = np.outer(np.sqrt(diag), np.sqrt(diag))
+    cov_red = np.outer(np.sqrt(diag_red), np.sqrt(diag_red))
+    cov_xred = np.outer(np.sqrt(diag_xred), np.sqrt(diag_xred))
+    
+    for lab in sys_diag:
+        cov[np.diag_indices_from(cov)] += hdu[2].data[lab][ind]**2
+    for lab in sys_diag_red:
+        cov_red[np.diag_indices_from(cov_red)] += hdu[2].data[lab][ind]**2
+    for lab in sys_diag_xred:
+        cov_xred[np.diag_indices_from(cov_xred)] += hdu[2].data[lab][ind]**2
+        
+    ax[jj].plot(hdu[2].data["K"][ind], diag_stat[ind], ".-", label="Stat")   
+
+    ax[jj].text(1.2e-3, 10, "z="+str(zz[jj]))
+
+    indz = np.argmin(np.abs(emu_cov_zz - zz[jj]))
+    ind2 = (emu_cov_zz == emu_cov_zz[indz]) & (emu_cov_k_kms > 0.5e-3)
+    interp_y = np.interp(hdu[2].data["K"][ind], emu_cov_k_kms[ind2], diag_emu[ind2])
+    # ax[jj].plot(hdu[2].data["K"][ind], interp_y * hdu[1].data["PLYA"][ind], label="Emu")
+    ax[jj].plot(hdu[2].data["K"][ind], interp_y * hdu[1].data["PSMOOTH"][ind], "C0-.", label="Emu nyx")
+
+    fid = np.sqrt(
+        np.sqrt(np.diag(cov))**2 
+      + diag_stat[ind]**2 
+      + (interp_y * hdu[1].data["PSMOOTH"][ind])**2
+    )
+    # red = np.sqrt(
+    #     np.sqrt(np.diag(cov_red))**2 
+    #   + diag_stat[ind]**2 
+    #   + (interp_y * hdu[1].data["PSMOOTH"][ind])**2
+    # )
+    xred1 = np.sqrt(
+        np.sqrt(np.diag(cov_xred))**2 
+      + diag_stat[ind]**2 
+      # + (interp_y * hdu[1].data["PSMOOTH"][ind])**2
+    )
+    xred2 = np.sqrt(
+        np.sqrt(np.diag(cov_xred))**2 
+      + diag_stat[ind]**2 
+      + (interp_y * hdu[1].data["PSMOOTH"][ind])**2
+    )
+
+    
+    indz = np.argmin(np.abs(emu_cov_zz2 - zz[jj]))
+    ind2 = (emu_cov_zz2 == emu_cov_zz2[indz]) & (emu_cov_k_kms2 > 0.5e-3)
+    interp_y = np.interp(hdu[2].data["K"][ind], emu_cov_k_kms2[ind2], diag_emu2[ind2])
+    # ax[jj].plot(hdu[2].data["K"][ind], interp_y * hdu[1].data["PLYA"][ind], label="Emu")
+    ax[jj].plot(hdu[2].data["K"][ind], interp_y * hdu[1].data["PSMOOTH"][ind], "C1-.", label="Emu mpg")
+    
+    ax[jj].plot(hdu[2].data["K"][ind], fid, "k:", label="fid")
+    # ax[jj].plot(hdu[2].data["K"][ind], red, "k--", label="red")
+    ax[jj].plot(hdu[2].data["K"][ind], xred1, "k--", label="stat+xred")
+    ax[jj].plot(hdu[2].data["K"][ind], xred2, "k-", label="stat+xred+emu")
+    
+    
+    # if(jj == 0):
+ax[0].legend(ncols=2, loc="upper right", fontsize=5)
+ax[-1].axis('off')
+
+fig.supxlabel(r'$k[\mathrm{km}^{-1}\mathrm{s}]$')
+fig.supylabel(r'$\sigma$')
+
+
+plt.xscale("log")
+plt.yscale("log")
+plt.ylim(7e-3, 20)
+plt.tight_layout()
+plt.savefig("nyx_qmle.pdf")
+
+# %%
+zz = np.unique(hdu[2].data["Z"])
+
+fig, ax = plt.subplots(4, 3, sharex=True, sharey=True, figsize=(12, 10))
+ax = ax.reshape(-1)
+
+diag_stat = np.sqrt(np.diag(hdu[4].data))
+
+for jj in range(len(zz) - 1):
+
+    ind = (hdu[2].data["Z"] == zz[jj]) & (hdu[2].data["K"] > 1e-3)
+    psmooth = hdu[1].data["PSMOOTH"][ind]
+    
+    diag = np.zeros(np.sum(ind))
+    diag_red = np.zeros(np.sum(ind))
+    diag_xred = np.zeros(np.sum(ind))
+    for lab in sys_labels:
+        ax[jj].plot(hdu[2].data["K"][ind], hdu[2].data[lab][ind]/psmooth, label=lab)
+        if lab in sys_corr:
+            diag += hdu[2].data[lab][ind]**2
+        if lab in sys_corr_red:
+            diag_red += hdu[2].data[lab][ind]**2
+        if lab in sys_corr_xred:
+            diag_xred += hdu[2].data[lab][ind]**2
+    
+    cov = np.outer(np.sqrt(diag), np.sqrt(diag))
+    cov_red = np.outer(np.sqrt(diag_red), np.sqrt(diag_red))
+    cov_xred = np.outer(np.sqrt(diag_xred), np.sqrt(diag_xred))
+    
+    for lab in sys_diag:
+        cov[np.diag_indices_from(cov)] += hdu[2].data[lab][ind]**2
+    for lab in sys_diag_red:
+        cov_red[np.diag_indices_from(cov_red)] += hdu[2].data[lab][ind]**2
+    for lab in sys_diag_xred:
+        cov_xred[np.diag_indices_from(cov_xred)] += hdu[2].data[lab][ind]**2
+        
+    ax[jj].plot(hdu[2].data["K"][ind], diag_stat[ind]/psmooth, ".-", label="Stat")
+
+    ax[jj].text(1.2e-3, 0.07, "z="+str(zz[jj]))
+
+    indz = np.argmin(np.abs(emu_cov_zz - zz[jj]))
+    ind2 = (emu_cov_zz == emu_cov_zz[indz]) & (emu_cov_k_kms > 0.5e-3)
+    interp_y = np.interp(hdu[2].data["K"][ind], emu_cov_k_kms[ind2], diag_emu[ind2])
+    # ax[jj].plot(hdu[2].data["K"][ind], interp_y * hdu[1].data["PLYA"][ind], label="Emu")
+    ax[jj].plot(hdu[2].data["K"][ind], interp_y * hdu[1].data["PSMOOTH"][ind]/psmooth, "C0-.", label="Emu nyx")
+
+    fid_nyx = np.sqrt(
+        np.sqrt(np.diag(cov))**2 
+      + diag_stat[ind]**2 
+      + (interp_y * hdu[1].data["PSMOOTH"][ind])**2
+    )
+    red_nyx = np.sqrt(
+        np.sqrt(np.diag(cov_red))**2 
+      + diag_stat[ind]**2 
+      + (interp_y * hdu[1].data["PSMOOTH"][ind])**2
+    )
+    xred_nyx = np.sqrt(
+        np.sqrt(np.diag(cov_xred))**2 
+      + diag_stat[ind]**2 
+      + (interp_y * hdu[1].data["PSMOOTH"][ind])**2
+    )
+
+    
+    indz = np.argmin(np.abs(emu_cov_zz2 - zz[jj]))
+    ind2 = (emu_cov_zz2 == emu_cov_zz2[indz]) & (emu_cov_k_kms2 > 0.5e-3)
+    interp_y = np.interp(hdu[2].data["K"][ind], emu_cov_k_kms2[ind2], diag_emu2[ind2])
+
+    fid_mpg = np.sqrt(
+        np.sqrt(np.diag(cov))**2 
+      + diag_stat[ind]**2 
+      + (interp_y * hdu[1].data["PSMOOTH"][ind])**2
+    )
+    red_mpg = np.sqrt(
+        np.sqrt(np.diag(cov_red))**2 
+      + diag_stat[ind]**2 
+      + (interp_y * hdu[1].data["PSMOOTH"][ind])**2
+    )
+    xred_mpg = np.sqrt(
+        np.sqrt(np.diag(cov_xred))**2 
+      + diag_stat[ind]**2 
+      + (interp_y * hdu[1].data["PSMOOTH"][ind])**2
+    )
+    
+    # ax[jj].plot(hdu[2].data["K"][ind], interp_y * hdu[1].data["PLYA"][ind], label="Emu")
+    ax[jj].plot(hdu[2].data["K"][ind], interp_y * hdu[1].data["PSMOOTH"][ind]/psmooth, "C1-.", label="Emu mpg")
+    
+    ax[jj].plot(hdu[2].data["K"][ind], fid_nyx/psmooth, "k:", label="fid nyx")
+    ax[jj].plot(hdu[2].data["K"][ind], fid_mpg/psmooth, "r:", label="fid mpg")
+    ax[jj].plot(hdu[2].data["K"][ind], red_nyx/psmooth, "k-.", label="red nyx")
+    ax[jj].plot(hdu[2].data["K"][ind], red_mpg/psmooth, "r-.", label="red mpg")
+    ax[jj].plot(hdu[2].data["K"][ind], xred_nyx/psmooth, "k--", label="xred nyx")
+    ax[jj].plot(hdu[2].data["K"][ind], xred_mpg/psmooth, "r--", label="xred mpg")
+    
+    
+    # if(jj == 0):
+ax[0].legend(ncols=2, loc="upper right", fontsize=5)
+ax[-1].axis('off')
+
+fig.supxlabel(r'$k[\mathrm{km}^{-1}\mathrm{s}]$')
+fig.supylabel(r'$\sigma/P1D$')
+
+
+ax[0].set_xscale("log")
+ax[0].set_yscale("log")
+ax[0].set_ylim(5e-3, 0.1)
+plt.tight_layout()
+plt.savefig("qmle_error_ratio.pdf")
+
+# %%
+
+# %%
+diag = np.zeros(len(hdu[2].data["Z"]))
+for lab in sys_include:
+    diag += hdu[2].data[lab]**2
+
+cov = np.outer(np.sqrt(diag), np.sqrt(diag))
+
+for lab in sys_diag:
+    cov[np.diag_indices_from(cov)] += hdu[2].data[lab]**2
+
+# %%
+hdu[5].data[:10,0]/cov[:10,0]
+
+# %%
+hdu[5].data[:10,0]/cov[:10,0]
 
 # %% [markdown]
 # ### Set archive (old)
@@ -165,8 +523,13 @@ else:
 
 # %%
 
+args = Args(emulator_label="CH24_nyxcen_gpr", training_set="models_Nyx_Mar2025_with_CGAN_val_3axes")
+# args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
+
+
 # args = Args(emulator_label="CH24_nyx_gp", training_set="Nyx23_Jul2024")
-args = Args(emulator_label="CH24_mpg_gp", training_set="Cabayol23")
+# args = Args(emulator_label="CH24_nyx_gp", training_set="models_Nyx_Mar2025_with_CGAN_val_3axes")
+# args = Args(emulator_label="CH24_nyx_gpr", training_set="models_Nyx_Mar2025_with_CGAN_val_3axes")
 # args = Args(emulator_label="CH24", training_set="Cabayol23")
 # args = Args(emulator_label="CH24_NYX", training_set="Nyx23_Jul2024")
 output_dir = "."
@@ -176,8 +539,6 @@ emulator = set_emulator(
 )
 archive = None
 
-# %%
-
 # %% [markdown]
 # ### Set emulator
 
@@ -186,16 +547,17 @@ archive = None
 
 # %%
 # for forecast, just start label of observational data with mock
-choose_forecast = True 
-# choose_forecast = False
+# choose_forecast = True 
+choose_forecast = False
 # to analyze data from simulations
 choose_mock = False
+# choose_mock = True
 # to analyze data from observations
 choose_data = False
 # to analyze data from mock challenge
 choose_challenge = False
 # to analyze data from desiy1
-choose_desiy1 = False
+choose_desiy1 = True
 
 if choose_forecast:
     args.data_label_hires = None
@@ -214,17 +576,23 @@ if choose_forecast:
     # # you need to provide true cosmology, IGM history, and contaminants
     # true_cosmo = set_cosmo(cosmo_label="nyx_central")
     # args.true_igm_label="nyx_central"
+    # true_sim = "nyx_seed"
+    true_sim = "nyx_seed_val"
+    # true_sim = "sherwood"
+    # true_sim = "accel2"
     # true_sim = "nyx_central"
-    true_sim = "mpg_central"
-    true_sim_cosmo = "mpg_central"
+    # true_sim = "mpg_central"
+    # true_sim_cosmo = "mpg_central"
+    args.mF_model_type="chunks"
+    true_cosmo = set_cosmo(cosmo_label=true_sim)
     args.true_label_mF=true_sim
     args.true_label_T=true_sim
+    
+    # true_sim = "nyx_central"
     args.true_label_kF=true_sim
     
     # true_sim_cosmo = "Planck18_low"
     # args.true_label_kF="kF_both"
-    args.mF_model_type="chunks"
-    true_cosmo = set_cosmo(cosmo_label=true_sim_cosmo)
     
     # true_cosmo = set_cosmo(cosmo_label="mpg_22")
     # true_cosmo = set_cosmo(cosmo_label="Planck18")
@@ -254,7 +622,6 @@ elif choose_mock:
     args.mF_model_type="chunks"
     args.true_label_T=true_sim
     args.true_label_kF=true_sim
-    # args.data_label="nyx_central"
     # args.data_label="nyx_seed"
     # args.data_label_hires="mpg_central"
     args.data_label_hires = None
@@ -296,13 +663,17 @@ elif choose_data:
     args.z_max = 3.9
 elif choose_challenge:
     args.data_label = "challenge_DESIY1"
-    version = "9fx"
-    folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
-    # fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
+    # version = "1.1qh"
+    # version = "1.9fsh"
+    version = "1.10qsh"
+    folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-"+version+"/"
+    fname = "mockchallenge-"+version+"_nonoise_fiducial.fits.gz"
+    # fname = "mockchallenge-"+version+"_fsiiii1.3e-03_fsiii1.1e-03_nonoise_fiducial.fits.gz"
+    # fname = "mockchallenge-"+version+"_noise-42-0_fiducial.fits.gz"
     # fname = "mockchallenge-0."+version+"_nonoise_bar_ic_grid_3.fits.gz"
     # fname = "mockchallenge-0."+version+"_noise-42-0_fiducial.fits.gz"
     # fname = "mockchallenge-0."+version+"_nonoise_ACCEL2_6144_160.fits.gz"
-    fname = "mockchallenge-0."+version+"_nonoise_CGAN_4096_base.fits.gz"
+    # fname = "mockchallenge-0."+version+"_nonoise_CGAN_4096_base.fits.gz"
     # fname = "mockchallenge-0."+version+"_nonoise_Sherwood_2048_40.fits.gz"
     args.p1d_fname = folder + fname
     if "fiducial" in args.p1d_fname:
@@ -344,11 +715,17 @@ elif choose_desiy1:
     true_cosmo = None
     args.true_igm_label= None
     args.data_label = "DESIY1"
+    # args.cov_syst_type = "xred"
+    # args.cov_syst_type = "fid"
+    args.cov_syst_type = "red"
     # in NERSC
     # QMLE /global/cfs/cdirs/desicollab/users/naimgk/my-reductions/data/iron-v3/DataProducts/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits
     # FFT /global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/plots/baseline/notebook/measurement/p1d_fft_y1_measurement_kms.fits
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v3.fits"
+    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_resocorr_v2.fits"
+    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v2.fits"
+    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
+    
     args.z_min = 2.1
     args.z_max = 4.3
 
@@ -405,6 +782,8 @@ try:
 except:
     print("Real data, no true IGM history")
 
+# %%
+
 # %% [markdown]
 # #### Set fiducial/initial options for the fit
 
@@ -423,60 +802,26 @@ args.emu_cov_factor = 1
 # args.emu_cov_type = "diagonal"
 # args.emu_cov_type = "block"
 args.emu_cov_type = "full"
-# 1 sigma
-# args.emu_cov_factor = np.array([-6.93721149e-02, -2.43173756e-04,  4.91541477e-02, -2.90469219e+00])
-# 2 sigma
-# args.emu_cov_factor = np.array([-4.78752514e-02, -8.60779305e-04,  5.60692510e-02, -2.56919148e+00])
 
 
-# args.fid_cosmo_label="mpg_2"
-# if "Nyx" in emulator.emulator_label:
-#     args.fid_cosmo_label="nyx_central"
-#     args.fid_igm_label="nyx_central"
-#     args.vary_alphas=True
-# else:
-#     args.fid_cosmo_label="mpg_central"
-#     args.fid_igm_label="mpg_central"
-#     args.vary_alphas=False
 
 args.fix_cosmo=False
 # args.fix_cosmo=True
 args.vary_alphas=False
 # args.vary_alphas=True
-# args.fid_cosmo_label="Planck18"
-# args.fid_cosmo_label="Planck18_low"
-# sim_fid = "nyx_central"
-sim_fid = "mpg_central"
-args.fid_cosmo_label=sim_fid
-# sim_fid = "nyx_seed"
-# sim_fid = "nyx_3"
-# args.fid_cosmo_label=sim_fid
+args.fid_cosmo_label="Planck18"
+if "nyx" in args.emulator_label:
+    sim_fid = "nyx_central"
+    args.ic_correction=True
+    # args.ic_correction=False
+else:
+    sim_fid = "mpg_central"
+    args.ic_correction=False
 args.fid_label_mF=sim_fid
 args.fid_label_T=sim_fid
 args.fid_label_kF=sim_fid
-# args.fid_label_kF="kF_both"
 
 
-# args.fid_cosmo_label="mpg_central"
-# args.fid_sim_igm_label_mF="mpg_central"
-# args.fid_sim_igm_label_T="mpg_central"
-# args.fid_sim_igm_label_kF="mpg_central"
-
-# args.fid_cosmo_label="mpg_central"
-# args.fid_label_mF="mpg_central"
-# args.fid_label_mF="nyx_0"
-# args.fid_label_T="mpg_central"
-# # args.fid_sim_igm_label_T="nyx_0"
-# args.fid_sim_igm_label_kF="mpg_central"
-
-# args.fid_cosmo_label="nyx_seed"
-
-# args.fid_igm_label="mpg_22"
-# args.fid_cosmo_label="mpg_22"
-
-# args.fid_igm_label="mpg_central"
-# args.ic_correction=True
-# args.fid_cosmo_label="Planck18"
 fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 # args.use_star_priors = None
@@ -490,20 +835,39 @@ fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 
 
 # IGM
-# args.fid_igm_label="nyx_13"
-# args.fid_igm_label="mpg_2"
-# args.fid_igm_label="nyx_seed"
-# args.fid_igm_label="nyx_3"
-# args.fid_igm_label="nyx_3_1"
 if choose_data == False:
     args.igm_priors = "hc"
 else:
     args.igm_priors = "data"
 
-# args.hcd_model_type = "Rogers2017"
 args.hcd_model_type = "new"
-# args.mF_model_type = "pivot"
-args.mF_model_type = "chunks"
+# args.hcd_model_type = "Rogers2017"
+# all z
+args.mF_model_type = "chunks"    
+args.n_tau=len(data["P1Ds"].z)
+args.n_sigT=2
+args.n_gamma=2
+args.n_kF=2
+
+args.n_x_SiIII=1
+args.n_d_SiIII=1
+args.n_a_SiIII=1
+args.n_d_dla = 2
+args.n_s_dla = 1
+
+# one z at a time
+args.mF_model_type = "pivot"
+args.n_tau=1
+args.n_sigT=1
+args.n_gamma=1
+args.n_kF=1
+
+args.n_x_SiIII=1
+args.n_d_SiIII=1
+args.n_a_SiIII=1
+args.n_d_dla = 1
+args.n_s_dla = 1
+
 # contaminants
 # from 1 to 6, -11 to -4
 # from -5 to 0
@@ -512,56 +876,17 @@ args.mF_model_type = "chunks"
 # args.fid_SN=[0, -4]
 # args.fid_AGN=[0, -5]
 
-    
-args.n_tau=len(data["P1Ds"].z)
-args.n_sigT=1
-args.n_gamma=1
-args.n_kF=1
-
-args.n_x_SiIII=0
-args.n_d_SiIII=0
-args.n_a_SiIII=0
-args.n_d_dla = 0
-args.n_s_dla = 0
-
-# args.n_x_SiIII=1
-# args.n_d_SiIII=1
-# args.n_a_SiIII=1
-# args.n_d_dla = 1
-# args.n_s_dla = 1
-args.fid_SiIII_X=[0, -10] # fine
-args.fid_SiIII_D=[0, 5]
-args.fid_SiIII_A=[0, 1]
-args.fid_A_damp = [0, -9]
-args.fid_A_scale = [0, 5]
-
-# args.n_x_SiIII=1
-# args.n_d_SiIII=1
-# args.n_a_SiIII=0
-# args.n_d_dla = 1
-# args.n_s_dla = 1
-# args.fid_SiIII_X=[0, -5]
+# args.fid_SiIII_X=[0, -10] # fine
 # args.fid_SiIII_D=[0, 5]
 # args.fid_SiIII_A=[0, 1]
-# args.fid_A_damp = [0, -1]
+# args.fid_A_damp = [0, -9]
 # args.fid_A_scale = [0, 5]
-# args.n_x_SiIII=2
-# args.n_d_SiIII=2
-# args.n_a_SiIII=2
-# args.n_d_dla = 2
-# args.n_s_dla = 2
-# args.n_tau=2
-# args.n_sigT=2
-# args.n_gamma=2
-# args.n_kF=2
-# args.n_x_SiIII = 2
-# args.n_d_SiIII = 2
-# args.n_a_SiIII = 2
 
-# args.n_SiII = 0
-# args.n_dla=0
-# args.n_sn=0
-# args.n_agn=0
+args.fid_SiIII_X=[0, -4.]
+args.fid_SiIII_D=[0, 5.5]
+args.fid_SiIII_A=[0, 0.8]
+args.fid_A_damp = [0, 0.]
+args.fid_A_scale = [0, 7.]
 
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
@@ -579,75 +904,27 @@ like = set_like(
 )
 
 # %%
-# for ii in range(len(cov0)):
-for ii in range(10):
-    plt.plot(like.data.k_kms[ii], np.diag(cov1[ii])/np.diag(cov0[ii]), label=like.data.z[ii])
-    # plt.plot(like.data.k_kms[ii], np.diag(like.cov_Pk_kms[ii]), "C"+str(ii), label=like.data.z[ii])
-    # plt.plot(like.data.k_kms[ii], np.diag(like.cov_Pk_kms[ii]) - np.diag(like.emu_cov_Pk_kms[ii]), "C"+str(ii)+"--")
-plt.xscale("log")
-plt.yscale("log")
-plt.legend()
-
+# like.plot_cov_to_pk()
+# like.plot_correlation_matrix()
 
 # %%
-def correlation_from_covariance(covariance):
-    v = np.sqrt(np.diag(covariance))
-    outer_v = np.outer(v, v)
-    correlation = covariance / outer_v
-    correlation[covariance == 0] = 0
-    return correlation
-def is_pos_def(x):
-    return np.all(np.linalg.eigvals(x) > 0)
-
-# plt.imshow(correlation_from_covariance(like.emu_full_cov_Pk_kms))
-plt.imshow(correlation_from_covariance(like.full_cov_Pk_kms))
-plt.colorbar()
-
-# %%
-# plt.imshow(correlation_from_covariance(like.emu_full_cov_Pk_kms))
-plt.imshow(correlation_from_covariance(like.full_cov_Pk_kms-like.emu_full_cov_Pk_kms))
-plt.colorbar()
-
-# %%
-is_pos_def(like.full_cov_Pk_kms)
-
-# %%
-# plt.plot(like.data.full_k_kms, like.full_cov_Pk_kms[0])
-# plt.plot(like.data.full_k_kms, like.full_cov_Pk_kms[0]-like.emu_full_cov_Pk_kms[0])
-# plt.plot(like.data.full_k_kms, like.emu_full_cov_Pk_kms[0])
-ii =20
-plt.plot(like.full_cov_Pk_kms[ii])
-plt.plot(like.full_cov_Pk_kms[ii]-like.emu_full_cov_Pk_kms[ii])
-plt.plot(like.emu_full_cov_Pk_kms[ii])
-# plt.xscale("log")
-plt.yscale("log")
-plt.xlim(
-
-# %%
-# emu_call, M_of_z = like.theory.get_emulator_calls(like.data.z)
-# p1 = np.zeros(
-#     (
-#         like.theory.hull.nz,
-#         len(like.theory.hull.params),
-#     )
-# )
-# for jj, key in enumerate(like.theory.hull.params):
-#     p1[:, jj] = emu_call[key]
-
-# like.theory.hull.plot_hulls(p1)
+# like.plot_hull_fid()
 
 # %%
 # like.plot_igm(cloud=True)
 
 # %%
+# z = like.data.z
+# k_kms = like.data.k_kms
+# like.theory.model_cont.agn_model.plot_contamination(z, k_kms)
+
+# z = like.data.z
+# k_kms = like.data.k_kms
+# like.theory.model_cont.hcd_model.plot_contamination(z, k_kms);
+
+# %%
 for p in like.free_params:
     print(p.name, p.value, p.min_value, p.max_value)
-
-# %%
-# emu_call = np.load("emu_call_fiducial.npy", allow_pickle=True).item()
-# emu_call
-
-# %%
 
 # %% [markdown]
 # Compare data and fiducial/starting model
@@ -655,42 +932,6 @@ for p in like.free_params:
 # %%
 # like.plot_p1d(residuals=False)
 like.plot_p1d(residuals=True)
-
-# %%
-
-# %% [markdown]
-# ### Relative error
-
-# %%
-for ii in range(10):
-    col = "C"+str(ii)
-    print(data["P1Ds"].z[ii])
-    rat = np.sqrt(np.diag(data["P1Ds"].cov_Pk_kms[ii]))/data["P1Ds"].Pk_kms[ii]
-    plt.plot(data["P1Ds"].k_kms[ii], rat, col)
-    
-    dkms_dMpc = like.theory.fid_cosmo["cosmo"].dkms_dMpc(
-        like.data.z[ii]
-    )
-    logk_Mpc = np.log(like.data.k_kms[ii] * dkms_dMpc)
-    rat2 = np.exp(np.poly1d(like.emu_cov_factor)(logk_Mpc))
-    
-    plt.plot(data["P1Ds"].k_kms[ii], rat2, col+"--")
-    # plt.plot(data["P1Ds"].k_kms[ii], np.sqrt(rat**2 + rat2**2))
-plt.xscale("log")
-plt.yscale("log")
-
-# %%
-# z = like.data.z
-# k_kms = like.data.k_kms
-# like.theory.model_cont.agn_model.plot_contamination(z, k_kms)
-
-# %%
-# z = like.data.z
-# k_kms = like.data.k_kms
-# like.theory.model_cont.hcd_model.plot_contamination(z, k_kms);
-
-# %%
-# like.plot_igm(cloud=True)
 
 # %% [markdown]
 # ### Set fitter
@@ -723,6 +964,16 @@ fitter = Fitter(
 
 # %%
 
+p0 = np.array([
+ 0.6366421 , 0.42374987, 0.46354075, 0.38460337, 0.34002087, 0.29838805,
+ 0.2587064 , 0.26210722, 0.27425286, 0.27541571, 0.30049338, 0.27480147,
+ 0.28571747, 0.5205094 , 0.61749434, 0.62331515, 0.2279429 , 0.90873359,
+ 0.80715694, 0.82782957, 0.36942603, 0.98957962, 0.62601621])
+
+
+# %%
+# plotter.plot_hull(p0=p0)
+
 # %% [markdown]
 # ### Run minimizer
 
@@ -737,9 +988,23 @@ if like.truth is None:
 else:
     p0 = np.array(list(like.truth["like_params_cube"].values()))*1.01
 p0 = np.array(list(like.fid["fit_cube"].values()))
+# p0 = np.array([
+#  0.5366421 , 0.42374987, 0.5, 0.46354075, 0.38460337, 0.34002087, 0.29838805,
+#  0.2587064 , 0.26210722, 0.27425286, 0.27541571, 0.30049338, 0.27480147,
+#  0.28571747, 0.5205094 , 0.61749434, 0.62331515, 0.2279429 , 0.5, 0.5,
+#  0.80715694, 0.82782957, 0.36942603, 0.9, 0.5, 0.62601621])
 # p0[:] = 0.5
-fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
+# fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
+zmask = np.array([2.2])
+fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
+
+# %%
+# I now have a version 3: /global/cfs/cdirs/desicollab/science/lya/y1-p1d/iron-baseline/qmle_measurement/DataProducts/v3 . These have resolution systematics updated and propagated to higher redshifts. I suggest you try what happens with resolution correction. This is still not the baseline, but made this variation for testing purposes.
+# desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits
+# and
+# desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_resocorr_v3.fits
+# There is also SNR>3 variation which should have minimal to zero noise systematics
 
 # %% [markdown]
 # For Nyx fiducial
@@ -748,37 +1013,27 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 #
 # ['As', 'ns', 'nrun', 'ln_tau_0', 'ln_tau_1', 'ln_tau_2', 'ln_tau_3', 'ln_tau_4', 'ln_tau_5', 'ln_tau_6', 'ln_tau_7', 'ln_tau_8', 'ln_tau_9', 'ln_tau_10', 'ln_sigT_kms_0', 'ln_gamma_0', 'ln_kF_0', 'ln_x_SiIII_0', 'ln_d_SiIII_0', 'a_SiIII_0', 'ln_A_damp_0', 'ln_A_scale_0']
 
-# %% [markdown]
-# #### 2 min for the fit when varying all taus
-
-# %% [markdown]
-# For DESI FFT
-#
-#
-# Nyx 378.97810084186125
-# args.n_tau=11
-# args.n_sigT=1
-# args.n_gamma=1
-# args.n_kF=1
-# args.n_x_SiIII=1
-# args.n_d_SiIII=1
-# args.n_a_SiIII=0 # fid 1
-# args.n_d_dla = 1
-# args.n_s_dla = 1
-#
-# Cabayol 366.31532112361907
-# args.n_tau=10
-# args.n_sigT=1
-# args.n_gamma=1
-# args.n_kF=1
-# args.n_x_SiIII=1
-# args.n_d_SiIII=1
-# args.n_a_SiIII=1
-# args.n_d_dla = 1
-# args.n_s_dla = 1
+# %%
+# plotter.plot_p1d(zmask=zmask, residuals=True)
+# plotter.plot_igm(zmask=zmask)
+# plotter.plot_hcd_cont(plot_data=True)
+# plotter.plot_metal_cont(plot_data=True)
 
 # %%
-# fitter.save_fitter()
+plotter = Plotter(fitter, save_directory=None, zmask=zmask)
+if args.fix_cosmo == False:
+    plotter.plot_mle_cosmo()
+plotter.plots_minimizer()
+
+# %%
+
+# %%
+plotter = Plotter(fitter, save_directory=None, zmask=zmask)
+if args.fix_cosmo == False:
+    plotter.plot_mle_cosmo()
+plotter.plots_minimizer()
+
+# %%
 
 # %%
 plotter = Plotter(fitter, save_directory=None)
@@ -787,93 +1042,6 @@ if args.fix_cosmo == False:
 plotter.plots_minimizer()
 
 # %%
-# fitter.write_chain_to_file()
-
-# %%
-# fft Cabayol23 free cosmo z_max = 4.3
-# SiIII dSiIII DLA
-# 1 1 2 1502
-# 1 0 2 2521 # We need 1 params for damping! dchi2 = 1000
-# 1 1 0 2272 # We need (at least) 1 param for DLAs! dchi2 = 700
-# 1 1 1 1700 # We need 2 params for DLAs dchi2 = 100
-# 0 0 0 6726
-
-# fft Planck18 z_max = 4.3
-# Cabayol23+ 1 1 2 1504
-# pedersen23 1 1 2 1501
-# Nyx_cov    1 1 2 1667
-
-# fft Planck18 zmin=2.3 z_max = 4.3
-# Nyx_cov    1 1 2 1327
-
-# qmle Planck18 z_max = 4.3
-# Cabayol23+ 1 1 2 1813
-# Nyx_cov    1 1 2 2100
-
-# %%
-# fil = np.load(fitter.save_directory + "/minimizer_results.npy", allow_pickle=True).item()
-# for key in fil:
-#     print(key, fil[key])
-
-# %%
-# fitter.save_minimizer()
-
-# %%
-
-# %%
-
-# %%
-plotter.plot_p1d(residuals=False, plot_every_iz=1)
-plotter.plot_p1d(residuals=True, plot_every_iz=1)
-
-# %%
-plotter.plot_igm()
-
-# %%
-
-# %%
-# plotter.plot_hcd_cont(plot_data=True)
-
-# %%
-# plotter.plot_metal_cont(smooth_k=True, plot_data=True)
-
-# %%
-# plotter.plot_agn_cont(plot_data=True)
-
-# %%
-# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/test_qmle/"
-folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/ca_test_fft_111/"
-# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/ca_test_qmle_112/"
-# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/pe_test_fft_112/"
-# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/nyx_test_fft_112/"
-# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/nyx_test_qmle_112/"
-# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/nyx_zmin_test_fft_112/"
-plotter = Plotter(fitter, save_directory=folder)
-
-# %%
-plotter.plots_minimizer()
-
-
-# %% [markdown]
-# ### Run sampler
-# It takes less than 2 min on my laptop without any parallelization
-
-# %%
-# %%time
-
-def func_for_sampler(p0):
-    res = fitter.like.get_log_like(values=p0, return_blob=True)
-    return res[0], *res[2]
-
-run_sampler = True
-if run_sampler:    
-    _emcee_sam = fitter.run_sampler(pini=fitter.mle_cube, log_func=func_for_sampler)
-
-# %%
-fitter.write_chain_to_file()
-
-# %%
-plotter = Plotter(fitter, save_directory=None)
 
 # %%
 

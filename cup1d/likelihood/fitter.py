@@ -260,14 +260,21 @@ class Fitter(object):
 
         return sampler
 
-    def run_minimizer(self, log_func_minimize=None, p0=None, nsamples=8):
+    def run_minimizer(
+        self, log_func_minimize=None, p0=None, nsamples=8, zmask=None
+    ):
         """Minimizer"""
         npars = len(self.like.free_params)
+
+        if zmask is not None:
+            _log_func_minimize = lambda x: log_func_minimize(x, zmask=zmask)
+        else:
+            _log_func_minimize = log_func_minimize
 
         if p0 is None:
             # star at the center of the parameter space
             mle_cube = np.ones(npars) * 0.5
-            chi2 = log_func_minimize(mle_cube)
+            chi2 = _log_func_minimize(mle_cube)
             chi2_ini = chi2 * 1
             arr_p0 = lhs(npars, samples=nsamples) - 0.5
             # sigma to search around mle_cube
@@ -277,7 +284,7 @@ class Fitter(object):
                 pini[pini <= 0] = 0.05
                 pini[pini >= 1] = 0.95
                 res = scipy.optimize.minimize(
-                    log_func_minimize,
+                    _log_func_minimize,
                     pini,
                     method="Nelder-Mead",
                     bounds=((0.0, 1.0),) * npars,
@@ -291,7 +298,7 @@ class Fitter(object):
             # start at the minimum
             pini = mle_cube.copy()
             res = scipy.optimize.minimize(
-                log_func_minimize,
+                _log_func_minimize,
                 pini,
                 method="Nelder-Mead",
                 bounds=((0.0, 1.0),) * npars,
@@ -304,12 +311,12 @@ class Fitter(object):
         else:
             # start at the initial value
             mle_cube = p0.copy()
-            chi2 = log_func_minimize(p0)
+            chi2 = _log_func_minimize(p0)
             chi2_ini = chi2 * 1
             for ii in range(1):
                 pini = mle_cube.copy()
                 res = scipy.optimize.minimize(
-                    log_func_minimize,
+                    _log_func_minimize,
                     pini,
                     method="Nelder-Mead",
                     bounds=((0.0, 1.0),) * npars,

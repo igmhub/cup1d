@@ -68,7 +68,7 @@ class HCD_Model_new(object):
                 # no contamination
                 xmin = -10
                 # 0 gives 350% contamination low k
-                xmax = 1.0
+                xmax = 2
             else:
                 # not optimized
                 xmin = -10
@@ -273,6 +273,15 @@ class HCD_Model_new(object):
             ax2 = [ax2]
 
         for ii in range(0, len(z), plot_every_iz):
+            indz = np.argwhere(np.abs(dict_data["zs"] - z[ii]) < 1.0e-3)[:, 0]
+            if len(indz) != 1:
+                continue
+            else:
+                indz = indz[0]
+
+            if (z[ii] > zrange[1]) | (z[ii] < zrange[0]):
+                continue
+
             if smooth_k:
                 k_use = np.logspace(
                     np.log10(k_kms[ii][0]), np.log10(k_kms[ii][-1]), 200
@@ -291,27 +300,27 @@ class HCD_Model_new(object):
 
             if dict_data is not None:
                 yy = (
-                    dict_data["p1d_data"][ii]
-                    / dict_data["p1d_model"][ii]
+                    dict_data["p1d_data"][indz]
+                    / dict_data["p1d_model"][indz]
                     * cont
                 )
                 err_yy = (
-                    dict_data["p1d_err"][ii] / dict_data["p1d_model"][ii] * cont
+                    dict_data["p1d_err"][indz]
+                    / dict_data["p1d_model"][indz]
+                    * cont
                 )
-                if (z[ii] > zrange[1]) | (z[ii] < zrange[0]):
-                    pass
-                else:
-                    ax1.errorbar(
-                        dict_data["k_kms"][ii],
-                        yy,
-                        err_yy,
-                        marker="o",
-                        linestyle=":",
-                        color=cmap(ii),
-                        alpha=0.5,
-                    )
+
+                ax1.errorbar(
+                    dict_data["k_kms"][indz],
+                    yy,
+                    err_yy,
+                    marker="o",
+                    linestyle=":",
+                    color=cmap(ii),
+                    alpha=0.5,
+                )
                 ax2[ii].errorbar(
-                    dict_data["k_kms"][ii],
+                    dict_data["k_kms"][indz],
                     yy,
                     err_yy,
                     marker="o",

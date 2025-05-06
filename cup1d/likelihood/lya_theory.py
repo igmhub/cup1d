@@ -649,6 +649,8 @@ class Theory(object):
         return_covar=False,
         return_blob=True,
         return_emu_params=False,
+        apply_hull=True,
+        hires=False,
     ):
         """Emulate P1D in velocity units, for all redshift bins,
         as a function of input likelihood parameters.
@@ -683,18 +685,17 @@ class Theory(object):
                     return None
 
         # check priors
-        if self.use_hull:
-            if len(zs) == self.hull.nz:
+        if self.use_hull & apply_hull:
+            if hires == False:
                 hull = self.hull
             else:
                 hull = self.hull_hires
 
-            p0 = np.zeros((hull.nz, len(hull.params)))
+            p0 = np.zeros((len(zs), len(hull.params)))
             for jj, key in enumerate(hull.params):
                 p0[:, jj] = emu_call[key]
 
-            if hull.in_hulls(p0) == False:
-                # print(p0)
+            if hull.in_hulls(p0, zs=zs) == False:
                 return None
 
         # compute input k to emulator in Mpc
@@ -708,32 +709,26 @@ class Theory(object):
             kin_Mpc[iz, : len(k_kms[iz])] = k_kms[iz] * M_of_z[iz]
 
         # call emulator
-        # _res = self.emulator.emulate_p1d_Mpc(
-        #     emu_call, kin_Mpc, return_covar=return_covar, z=zs
-        # )
         _res = self.emulator.emulate_p1d_Mpc(emu_call, kin_Mpc)
-        if return_covar:
-            p1d_Mpc, cov_Mpc = _res
-        else:
-            p1d_Mpc = _res
+        # if return_covar:
+        #     p1d_Mpc, cov_Mpc = _res
+        # else:
+        #     p1d_Mpc = _res
+        p1d_Mpc = _res
 
         # move from Mpc to kms
         p1d_kms = []
         covars = []
         for iz in range(Nz):
-            try:
-                p1d_kms.append(p1d_Mpc[iz][: len(k_kms[iz])] * M_of_z[iz])
-            except:
-                # needed for one redshift at a time
-                p1d_kms.append(p1d_Mpc[: len(k_kms[iz])] * M_of_z[iz])
-            if return_covar:
-                if cov_Mpc is None:
-                    covars.append(None)
-                else:
-                    covars.append(
-                        cov_Mpc[iz][: len(k_kms[iz]), : len(k_kms[iz])]
-                        * M_of_z[iz] ** 2
-                    )
+            p1d_kms.append(p1d_Mpc[iz][: len(k_kms[iz])] * M_of_z[iz])
+            # if return_covar:
+            #     if cov_Mpc is None:
+            #         covars.append(None)
+            #     else:
+            #         covars.append(
+            #             cov_Mpc[iz][: len(k_kms[iz]), : len(k_kms[iz])]
+            #             * M_of_z[iz] ** 2
+            #         )
 
         # apply contaminants
         for iz, z in enumerate(zs):
@@ -814,7 +809,12 @@ class Theory(object):
         return params
 
     def plot_p1d(
-        self, k_kms, like_params=[], plot_every_iz=1, k_kms_hires=None
+        self,
+        k_kms,
+        like_params=[],
+        plot_every_iz=1,
+        k_kms_hires=None,
+        zmask=None,
     ):
         """Emulate and plot P1D in velocity units, for all redshift bins,
         as a function of input likelihood parameters"""

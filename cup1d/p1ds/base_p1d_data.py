@@ -27,10 +27,14 @@ def _drop_zbins(
 
     k_out = []
     Pk_out = []
-    Pksmooth_out = []
     cov_out = []
-    if cov_stat is not None:
-        cov_stat_out = []
+    cov_stat_out = []
+    if Pksmooth_kms is None:
+        Pksmooth_out = None
+    else:
+        Pksmooth_out = []
+    if Pksmooth_kms is None:
+        Pksmooth_out = None
     for jj in ind:
         # remove tailing zeros
         ind = np.argwhere(Pk_in[jj] != 0)[:, 0]

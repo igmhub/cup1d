@@ -525,6 +525,7 @@ class Likelihood(object):
         return_covar=False,
         return_blob=False,
         return_emu_params=False,
+        apply_hull=True,
     ):
         """Compute theoretical prediction for 1D P(k)"""
 
@@ -547,14 +548,15 @@ class Likelihood(object):
             return_covar=return_covar,
             return_blob=return_blob,
             return_emu_params=return_emu_params,
+            apply_hull=apply_hull,
         )
 
-    def get_chi2(self, values=None, return_all=False):
+    def get_chi2(self, values=None, return_all=False, zmask=None):
         """Compute chi2 using data and theory, without adding
         emulator covariance"""
 
         log_like, log_like_all = self.get_log_like(
-            values, ignore_log_det_cov=True
+            values, ignore_log_det_cov=True, zmask=zmask
         )
 
         if return_all:
@@ -563,7 +565,11 @@ class Likelihood(object):
             return -2.0 * log_like
 
     def get_log_like(
-        self, values=None, ignore_log_det_cov=True, return_blob=False
+        self,
+        values=None,
+        ignore_log_det_cov=True,
+        return_blob=False,
+        zmask=None,
     ):
         """Compute log(likelihood), including determinant of covariance
         unless you are setting ignore_log_det_cov=True."""
@@ -580,12 +586,29 @@ class Likelihood(object):
                 return null_out
 
         # ask emulator prediction for P1D in each bin
-        _res = self.get_p1d_kms(
-            self.data.z,
-            self.data.k_kms,
-            values,
-            return_blob=return_blob,
-        )
+        if zmask is not None:
+            _res = []
+            for iz in range(len(self.data.z)):
+                ind = np.argwhere(np.abs(zmask - self.data.z[iz]) < 1e-3)
+                if len(ind) == 0:
+                    _res.append(0)
+                else:
+                    _ = self.get_p1d_kms(
+                        np.atleast_1d(self.data.z[iz]),
+                        np.atleast_2d(self.data.k_kms[iz]),
+                        values,
+                        return_blob=return_blob,
+                    )
+                    if _ is None:
+                        _res = None
+                        break
+                    else:
+                        _res.append(_[0])
+        else:
+            _res = self.get_p1d_kms(
+                self.data.z, self.data.k_kms, values, return_blob=return_blob
+            )
+
         # out of priors
         if _res is None:
             return null_out
@@ -599,12 +622,31 @@ class Likelihood(object):
         if self.extra_data is not None:
             length = 2
             nz = np.max([len(self.data.z), len(self.extra_data.z)])
-            emu_p1d_extra = self.get_p1d_kms(
-                self.extra_data.z,
-                self.extra_data.k_kms,
-                values,
-                return_blob=False,
-            )
+
+            if zmask is not None:
+                _res = []
+                for iz in range(len(self.extra_data.z)):
+                    ind = np.argwhere(
+                        np.abs(zmask - self.extra_data.z[iz]) < 1e-3
+                    )
+                    if len(ind) == 0:
+                        _res.append(0)
+                    else:
+                        _res = self.get_p1d_kms(
+                            np.atleast_1d(self.extra_data.z[iz]),
+                            np.atleast_1d(self.extra_data.k_kms[iz]),
+                            values,
+                            return_blob=return_blob,
+                        )
+            else:
+                _res = self.get_p1d_kms(
+                    self.extra_data.z,
+                    self.extra_data.k_kms,
+                    values,
+                    return_blob=return_blob,
+                )
+
+            emu_p1d_extra = _res
             # out of priors
             if emu_p1d_extra is None:
                 return null_out
@@ -631,6 +673,10 @@ class Likelihood(object):
 
             # loop over redshift bins
             for iz in range(len(data.z)):
+                if zmask is not None:
+                    ind = np.argwhere(np.abs(zmask - data.z[iz]) < 1e-3)
+                    if len(ind) == 0:
+                        continue
                 # compute chi2 for this redshift bin
                 diff = data.Pk_kms[iz] - emu_p1d_use[iz]
                 chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
@@ -643,7 +689,7 @@ class Likelihood(object):
                     )
                     log_like_all[ii, iz] = -0.5 * (chi2_z + log_det_cov)
 
-            if full_icov_Pk_kms is None:
+            if (full_icov_Pk_kms is None) | (zmask is not None):
                 log_like += np.sum(log_like_all[ii])
             else:
                 # compute chi2 using full cov
@@ -779,12 +825,30 @@ class Likelihood(object):
         return_all=False,
         collapse=False,
         plot_realizations=True,
+        zmask=None,
+        n_perturb=100,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
 
+        if (zmask is not None) | (plot_realizations == False):
+            n_perturb = 0
+
+        if zmask is None:
+            _data_z = self.data.z
+            _data_k_kms = self.data.k_kms
+        else:
+            _data_z = []
+            _data_k_kms = []
+            for iz in range(len(self.data.z)):
+                _ = np.argwhere(np.abs(zmask - self.data.z[iz]) < 1e-3)
+                if len(_) != 0:
+                    _data_z.append(self.data.z[iz])
+                    _data_k_kms.append(self.data.k_kms[iz])
+            _data_z = np.array(_data_z)
+
         _res = self.get_p1d_kms(
-            self.data.z, self.data.k_kms, values, return_covar=return_covar
+            _data_z, _data_k_kms, values, return_covar=return_covar
         )
         if _res is None:
             return print("Prior out of range")
@@ -808,7 +872,9 @@ class Likelihood(object):
                 emu_p1d_extra = _res
 
         # the sum of chi2_all may be different from chi2 due to covariance
-        chi2, chi2_all = self.get_chi2(values=values, return_all=True)
+        chi2, chi2_all = self.get_chi2(
+            values=values, return_all=True, zmask=zmask
+        )
 
         # if rand_posterior is not None:
         #     Nz = len(self.data.z)
@@ -873,6 +939,7 @@ class Likelihood(object):
                     emu_cov_use = emu_cov
                 if rand_posterior is not None:
                     err_posterior_use = err_posterior
+                out["zs"] = []
                 out["k_kms"] = []
                 out["p1d_data"] = []
                 out["p1d_model"] = []
@@ -886,6 +953,7 @@ class Likelihood(object):
                     emu_cov_use = emu_cov_extra
                 if rand_posterior is not None:
                     err_posterior_use = err_posterior_extra
+                out["extra_zs"] = []
                 out["extra_k_kms"] = []
                 out["extra_p1d_data"] = []
                 out["extra_p1d_model"] = []
@@ -894,25 +962,31 @@ class Likelihood(object):
                 out["extra_prob"] = []
 
             full_emu_p1d = np.concatenate(emu_p1d_use)
-            nsamples = 1000
-            perturb = np.random.multivariate_normal(
-                full_emu_p1d, self.full_cov_Pk_kms, nsamples
-            )
-            av_perturb = np.mean(perturb, axis=0)
-            err_perturb = np.std(perturb, axis=0)
+            if n_perturb > 0:
+                perturb = np.random.multivariate_normal(
+                    full_emu_p1d, self.full_cov_Pk_kms, n_perturb
+                )
 
             zs = data.z
             Nz = len(zs)
 
             # plot only few redshifts for clarity
             for iz in range(0, Nz, plot_every_iz):
+                if zmask is not None:
+                    indemu = np.argwhere(np.abs(zmask - zs[iz]) < 1e-3)[:, 0]
+                    if len(indemu) == 0:
+                        continue
+                    else:
+                        indemu = indemu[0]
+                else:
+                    indemu = iz
                 # access data for this redshift
                 z = zs[iz]
                 k_kms = data.k_kms[iz]
                 p1d_data = data.Pk_kms[iz]
                 p1d_cov = self.cov_Pk_kms[iz]
                 p1d_err = np.sqrt(np.diag(p1d_cov))
-                p1d_theory = emu_p1d_use[iz]
+                p1d_theory = emu_p1d_use[indemu]
 
                 if rand_posterior is None:
                     if return_covar:
@@ -944,15 +1018,14 @@ class Likelihood(object):
                         label="z=" + str(np.round(z, 2)),
                     )
 
-                    if plot_realizations:
-                        ind = self.data.full_zs == z
-                        for kk in range(30):
-                            ax[ii].plot(
-                                k_kms,
-                                perturb[kk, ind] / p1d_theory + yshift,
-                                color=col,
-                                alpha=0.05,
-                            )
+                    ind = self.data.full_zs == z
+                    for kk in range(n_perturb):
+                        ax[ii].plot(
+                            k_kms,
+                            perturb[kk, ind] / p1d_theory + yshift,
+                            color=col,
+                            alpha=0.05,
+                        )
 
                     # print chi2
                     xpos = k_kms[0]
@@ -1001,21 +1074,13 @@ class Likelihood(object):
                     )
 
                     ind = self.data.full_zs == z
-                    # ax[ii].fill_between(
-                    #     k_kms,
-                    #     (av_perturb[ind] - err_perturb[ind]) * k_kms / np.pi,
-                    #     (av_perturb[ind] + err_perturb[ind]) * k_kms / np.pi,
-                    #     alpha=0.5,
-                    #     color=col,
-                    # )
-                    if plot_realizations:
-                        for kk in range(30):
-                            ax[ii].plot(
-                                k_kms,
-                                perturb[kk, ind] * k_kms / np.pi,
-                                color=col,
-                                alpha=0.05,
-                            )
+                    for kk in range(n_perturb):
+                        ax[ii].plot(
+                            k_kms,
+                            perturb[kk, ind] * k_kms / np.pi,
+                            color=col,
+                            alpha=0.05,
+                        )
 
                     # print chi2
                     xpos = k_kms[-1] + 0.001
@@ -1052,6 +1117,7 @@ class Likelihood(object):
                     ymax = max(ymax, max(p1d_data * k_kms / np.pi))
 
                 if ii == 0:
+                    out["zs"].append(z)
                     out["k_kms"].append(k_kms)
                     out["p1d_data"].append(p1d_data)
                     out["p1d_model"].append(p1d_theory)
@@ -1059,6 +1125,7 @@ class Likelihood(object):
                     out["chi2"].append(chi2_all[ii, iz])
                     out["prob"].append(prob)
                 else:
+                    out["extra_zs"].append(z)
                     out["extra_k_kms"].append(k_kms)
                     out["extra_p1d_data"].append(p1d_data)
                     out["extra_p1d_model"].append(p1d_theory)
@@ -1180,6 +1247,7 @@ class Likelihood(object):
         free_params=None,
         save_directory=None,
         stat_best_fit="mle",
+        zmask=None,
     ):
         """Plot IGM histories"""
 
@@ -1200,7 +1268,10 @@ class Likelihood(object):
         pars_fid["kF_kms"] = self.fid["igm"]["kF_kms"]
 
         if free_params is not None:
-            zs = self.fid["igm"]["z"]
+            if zmask is not None:
+                zs = zmask
+            else:
+                zs = self.fid["igm"]["z"]
             pars_test = {}
             pars_test["z"] = zs
             pars_test["tau_eff"] = self.theory.model_igm.F_model.get_tau_eff(
@@ -1253,7 +1324,7 @@ class Likelihood(object):
                 ax[ii].plot(
                     pars_test["z"][_],
                     pars_test[arr_labs[ii]][_],
-                    "C2.-.",
+                    "C2o-.",
                     label="fit",
                     alpha=0.75,
                     lw=3,
@@ -1402,3 +1473,16 @@ class Likelihood(object):
             plt.savefig(name + ".png")
         else:
             plt.show()
+
+    def plot_hull_fid(self):
+        emu_call, M_of_z = self.theory.get_emulator_calls(self.data.z)
+        p1 = np.zeros(
+            (
+                self.theory.hull.nz,
+                len(self.theory.hull.params),
+            )
+        )
+        for jj, key in enumerate(self.theory.hull.params):
+            p1[:, jj] = emu_call[key]
+
+        self.theory.hull.plot_hulls(p1)

@@ -7,7 +7,7 @@ from cup1d.utils.utils import get_path_repo
 
 
 def in_hull(hull, p):
-    return np.all(hull.eq @ p.T + hull.eq2 <= hull.tol, 0)
+    return np.all(hull.eq @ p.T + hull.eq2[:, : p.shape[0]] <= hull.tol, 0)
 
 
 class Hull(object):
@@ -78,6 +78,7 @@ class Hull(object):
         """
 
         self.nz = len(zs)
+        self.zs = zs
         self.tol = tol
         if suite == "mpg":
             self.params = [
@@ -153,7 +154,7 @@ class Hull(object):
 
         return hulls
 
-    def in_hulls(self, p):
+    def in_hulls(self, p, zs=None):
         for jj in range(len(self.hulls)):
             res = in_hull(
                 self.hulls[jj], p[:, [self.hulls[jj].dim0, self.hulls[jj].dim1]]
