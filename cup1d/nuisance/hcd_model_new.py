@@ -68,7 +68,7 @@ class HCD_Model_new(object):
                 # no contamination
                 xmin = -10
                 # 0 gives 350% contamination low k
-                xmax = 2
+                xmax = 1.5
             else:
                 # not optimized
                 xmin = -10
@@ -273,11 +273,14 @@ class HCD_Model_new(object):
             ax2 = [ax2]
 
         for ii in range(0, len(z), plot_every_iz):
-            indz = np.argwhere(np.abs(dict_data["zs"] - z[ii]) < 1.0e-3)[:, 0]
-            if len(indz) != 1:
-                continue
-            else:
-                indz = indz[0]
+            if dict_data is not None:
+                indz = np.argwhere(np.abs(dict_data["zs"] - z[ii]) < 1.0e-3)[
+                    :, 0
+                ]
+                if len(indz) != 1:
+                    continue
+                else:
+                    indz = indz[0]
 
             if (z[ii] > zrange[1]) | (z[ii] < zrange[0]):
                 continue

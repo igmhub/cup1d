@@ -261,9 +261,18 @@ class Fitter(object):
         return sampler
 
     def run_minimizer(
-        self, log_func_minimize=None, p0=None, nsamples=8, zmask=None
+        self,
+        log_func_minimize=None,
+        p0=None,
+        nsamples=8,
+        zmask=None,
+        restart=False,
     ):
         """Minimizer"""
+
+        if restart:
+            self.mle_chi2 = 1e10
+
         npars = len(self.like.free_params)
 
         if zmask is not None:
@@ -363,14 +372,11 @@ class Fitter(object):
 
         self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(self.mle_cube)
 
-        # Array for all parameters
-        all_params = np.hstack([mle_no_cube, np.array(blobs)])
-        # Ordered strings for all parameters
-        all_strings = self.paramstrings + blob_strings
-
         self.mle = {}
-        for ii, par in enumerate(all_strings):
-            self.mle[par] = all_params[ii]
+        for ii, par in enumerate(self.paramstrings):
+            self.mle[par] = mle_no_cube[ii]
+        for par in self.mle_cosmo:
+            self.mle[par] = self.mle_cosmo[par]
 
         if "A_s" not in self.paramstrings[0]:
             return
@@ -389,7 +395,6 @@ class Fitter(object):
                 else:
                     print("MLE")
 
-            print(par)
             val = np.round(self.mle_cosmo[par], 5)
             if self.like.truth is not None:
                 if par in self.like.truth["like_params"]:
@@ -400,9 +405,9 @@ class Fitter(object):
                         - 1,
                         5,
                     )
-                    print(val, true, rat)
+                    print(par, val, true, rat)
             else:
-                print(val)
+                print(par, val)
 
     def get_cosmo_err(self, fun_minimize):
         """Deprecated

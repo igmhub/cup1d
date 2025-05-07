@@ -100,7 +100,7 @@ class Plotter(object):
         # plot contamination
         self.plot_hcd_cont(plot_data=True, zrange=zrange)
         plt.close()
-        self.plot_metal_cont(smooth_k=True, plot_data=True, zrange=zrange)
+        self.plot_metal_cont(smooth_k=False, plot_data=True, zrange=zrange)
         plt.close()
         self.plot_agn_cont(plot_data=True, zrange=zrange)
         plt.close()
@@ -891,11 +891,15 @@ class Plotter(object):
         smooth_k=False,
         plot_data=False,
         zrange=[0, 10],
+        mle_results=None,
     ):
         """Function to plot metal contamination"""
 
         if plot_data:
-            dict_data = self.mle_results
+            if mle_results is not None:
+                dict_data = mle_results
+            else:
+                dict_data = self.mle_results
         else:
             dict_data = None
 

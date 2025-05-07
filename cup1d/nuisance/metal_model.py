@@ -33,7 +33,8 @@ class MetalModel(object):
         # label identifying the metal line
         self.metal_label = metal_label
         if metal_label == "SiIII":
-            self.lambda_rest = 1206.50  # from McDonald et al. 2006
+            # self.lambda_rest = 1206.50  # from McDonald et al. 2006
+            self.lambda_rest = 1206.5  # from Naim et al. 2024
         elif metal_label == "SiII":
             self.lambda_rest = 1192.5  # like in Chabanier+19, Karacali+24
         else:
@@ -387,12 +388,12 @@ class MetalModel(object):
         if alpha == 0:
             damping = 1
         else:
-            adim_damp = k_kms * self.get_damping(z, like_params=like_params)
+            damp_coeff = self.get_damping(z, like_params=like_params)
+            adim_damp = k_kms * damp_coeff
             damping = (1 + adim_damp) ** alpha * np.exp(-1 * adim_damp**alpha)
 
         a = f / (1 - mF)
         cont = 1 + a**2 + 2 * a * np.cos(self.dv * k_kms) * damping
-
         return cont
 
     def plot_contamination(
@@ -439,11 +440,14 @@ class MetalModel(object):
             ax2 = [ax2]
 
         for ii in range(0, len(z), plot_every_iz):
-            indz = np.argwhere(np.abs(dict_data["zs"] - z[ii]) < 1.0e-3)[:, 0]
-            if len(indz) != 1:
-                continue
-            else:
-                indz = indz[0]
+            if dict_data is not None:
+                indz = np.argwhere(np.abs(dict_data["zs"] - z[ii]) < 1.0e-3)[
+                    :, 0
+                ]
+                if len(indz) != 1:
+                    continue
+                else:
+                    indz = indz[0]
 
             if (z[ii] > zrange[1]) | (z[ii] < zrange[0]):
                 continue
