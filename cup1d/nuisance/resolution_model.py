@@ -1,139 +1,124 @@
 import numpy as np
-import copy
-import os
-import cup1d
-from cup1d.likelihood import likelihood_parameter
-from scipy.interpolate import interp1d
-from cup1d.utils.utils import get_discrete_cmap
+import copy, os
 from matplotlib import pyplot as plt
+from cup1d.utils.utils import get_discrete_cmap
+from cup1d.likelihood import likelihood_parameter
 
 
-class AGN_Model(object):
-    """Model AGN contamination
+def get_Rz(z, k_kms):
+    # fig 32 https://arxiv.org/pdf/2205.10939
+    # lambda_AA = np.arange([3523.626, 3993.217, 4413.652, 4752.203, 5019.740, 5243.594, 5522.035, 5767.681, 5996.975, 6226.294, 6471.940, 6783.036])
+    # resolution = np.array([2012.821, 2272.247, 2513.575, 2694.570, 2857.466, 2996.229, 3177.225, 3364.253, 3521.116, 3659.879, 3846.908, 4124.434])
+    # rfit = np.polyfit(lambda_AA, resolution, 2)
+    # plt.plot(lambda_AA, np.poly1d(rfit)(lambda_AA))
 
-    Model Chabanier et al. 2020, Eq. 21 for correction:
+    c_kms = 2.99792458e5
+    lya_AA = 1215.67
+    rfit = np.array([4.53087663e-05, 1.70716005e-01, 8.60679006e02])
+    R_coeff_lambda = np.poly1d(rfit)
+    kms2AA = lya_AA * (1 + z) / c_kms
+    # lambda_kms = lambda_AA * AA2kms
+    k_AA = k_kms / kms2AA
+    lambda_AA = 2 * np.pi / k_AA
 
-    P1D(AGN) = (1 + beta) * P1D(noAGN)
-    """
+    Rz = c_kms / (2.355 * R_coeff_lambda(lambda_AA))
+
+    return Rz
+
+
+class Resolution_Model(object):
+    """New model for Resolution systematics"""
 
     def __init__(
         self,
         z_0=3.0,
-        fid_value=[0, -5],
-        null_value=-5.5,
-        ln_AGN_coeff=None,
+        fid_R_coeff=[0, 0],
+        R_coeff=None,
         free_param_names=None,
     ):
         self.z_0 = z_0
-        if fid_value is None:
-            fid_value = [0, -5]
-        self.null_value = null_value
 
-        if ln_AGN_coeff is not None:
+        if R_coeff is not None:
             if free_param_names is not None:
                 raise ValueError("can not specify coeff and free_param_names")
-            self.ln_AGN_coeff = ln_AGN_coeff
+            self.R_coeff = R_coeff
         else:
             if free_param_names:
-                # figure out number of AGN free params
-                n_AGN = len([p for p in free_param_names if "ln_AGN_" in p])
-                if n_AGN == 0:
-                    n_AGN = 1
+                # figure out number of Resolution_Model free params
+                n_R = len([p for p in free_param_names if "R_coeff_" in p])
+                if n_R == 0:
+                    n_R = 1
             else:
-                n_AGN = 1
+                n_R = 1
 
-            self.ln_AGN_coeff = [0.0] * n_AGN
-            self.ln_AGN_coeff[-1] = fid_value[-1]
-            if n_AGN == 2:
-                self.ln_AGN_coeff[-2] = fid_value[-2]
+            self.R_coeff = [0.0] * n_R
+            self.R_coeff[-1] = fid_R_coeff[-1]
+            if n_R == 2:
+                self.R_coeff[-2] = fid_R_coeff[-2]
 
-        self.set_parameters()
+        self.set_R_parameters()
 
-        self.AGN_z, self.AGN_expansion = _load_agn_file()
+    def set_R_parameters(self):
+        """Setup likelihood parameters in the Resolution_Model model"""
 
-    def set_parameters(self):
-        """Setup likelihood parameters in the HCD model"""
-
-        self.params = []
-        Npar = len(self.ln_AGN_coeff)
+        self.R_params = []
+        Npar = len(self.R_coeff)
         for i in range(Npar):
-            name = "ln_AGN_" + str(i)
-            # priors optimized so we do not get negative values
+            name = "R_coeff_" + str(i)
             if i == 0:
-                xmin = -5
-                xmax = 1
+                # no contamination
+                xmin = -3
+                # 0 gives 200% contamination high k
+                xmax = +3
             else:
+                # not optimized
                 xmin = -10
                 xmax = 10
             # note non-trivial order in coefficients
-            value = self.ln_AGN_coeff[Npar - i - 1]
+            value = self.R_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
                 name=name, value=value, min_value=xmin, max_value=xmax
             )
-            self.params.append(par)
+            self.R_params.append(par)
 
         return
 
     def get_Nparam(self):
         """Number of parameters in the model"""
-        assert len(self.ln_AGN_coeff) == len(self.params), "size mismatch"
-        return len(self.ln_AGN_coeff)
+        all_par = len(self.R_coeff)
+        all_par2 = len(self.R_params)
+        if all_par != all_par2:
+            raise ValueError("parameter size mismatch")
+        return all_par
 
-    def get_AGN_damp(self, z, like_params=[]):
-        """Amplitude of AGN contamination around z_0"""
+    def get_R(self, z, like_params=[]):
+        """Amplitude of Resolution_Model contamination around z_0"""
 
-        ln_AGN_coeff = self.get_AGN_coeffs(like_params=like_params)
-        if ln_AGN_coeff[-1] <= self.null_value:
-            return 0
+        R_coeff = self.get_R_coeffs(like_params=like_params)
 
-        xz = np.log((1 + z) / (1 + self.z_0))
-        ln_poly = np.poly1d(ln_AGN_coeff)
-        ln_out = ln_poly(xz)
-        return np.exp(ln_out)
+        # xz = np.log((1 + z) / (1 + self.z_0))
+        # ln_poly = np.poly1d(R_coeff)
+        # ln_out = ln_poly(xz)
+        # return np.exp(ln_out)
 
-    def get_contamination(self, z, k_kms, like_params=[]):
-        """Multiplicative contamination caused by AGNs"""
+        xz = (1 + z) / (1 + self.z_0)
+        poly = np.poly1d(R_coeff)
+        return poly(xz)
 
-        fAGN = self.get_AGN_damp(z, like_params=like_params)
-        if fAGN == 0:
-            return 1
+    def get_R_parameters(self):
+        """Return likelihood parameters for the Resolution_Model model"""
+        return self.R_params
 
-        if z <= np.max(self.AGN_z):
-            yy = self.AGN_expansion[:, 0][None, :] + self.AGN_expansion[:, 1][
-                None, :
-            ] * np.exp(-self.AGN_expansion[:, 2][None, :] * k_kms[:, None])
-            delta = interp1d(self.AGN_z, yy)(z)
-        else:
-            AGN_upper = self.AGN_expansion[0, 0] + self.AGN_expansion[
-                0, 1
-            ] * np.exp(-self.AGN_expansion[0, 2] * k_kms)
-            AGN_lower = self.AGN_expansion[1, 0] + self.AGN_expansion[
-                1, 1
-            ] * np.exp(-self.AGN_expansion[1, 2] * k_kms)
-            z_upper = self.AGN_z[0]
-            z_lower = self.AGN_z[1]
-            delta = (AGN_upper - AGN_lower) / (z_upper - z_lower) * (
-                z - z_upper
-            ) + AGN_upper
-
-        beta = delta * fAGN
-
-        return 1 + beta
-
-    def get_parameters(self):
-        """Return likelihood parameters for the HCD model"""
-        return self.params
-
-    def get_AGN_coeffs(self, like_params=[]):
+    def get_R_coeffs(self, like_params=[]):
         """Return list of mean flux coefficients"""
 
         if like_params:
-            ln_AGN_coeff = self.ln_AGN_coeff.copy()
+            R_coeff = self.R_coeff.copy()
             Npar = 0
             array_names = []
             array_values = []
             for par in like_params:
-                if "ln_AGN" in par.name:
+                if "R_coeff_" in par.name:
                     Npar += 1
                     array_names.append(par.name)
                     array_values.append(par.value)
@@ -142,29 +127,37 @@ class AGN_Model(object):
 
             # use fiducial value (no contamination)
             if Npar == 0:
-                return self.ln_AGN_coeff
-            elif Npar != len(self.params):
-                print(Npar, len(self.params))
-                raise ValueError("number of params mismatch in get_AGN_coeffs")
+                return self.R_coeff
+            elif Npar != len(self.R_params):
+                print(Npar, len(self.R_params))
+                raise ValueError("number of params mismatch in get_R_coeffs")
 
             for ip in range(Npar):
-                _ = np.argwhere(self.params[ip].name == array_names)[:, 0]
+                _ = np.argwhere(self.R_params[ip].name == array_names)[:, 0]
                 if len(_) != 1:
                     raise ValueError(
-                        "could not update parameter" + self.params[ip].name
+                        "could not update parameter" + self.R_params[ip].name
                     )
                 else:
-                    ln_AGN_coeff[Npar - ip - 1] = array_values[_[0]]
+                    R_coeff[Npar - ip - 1] = array_values[_[0]]
         else:
-            ln_AGN_coeff = self.ln_AGN_coeff
+            R_coeff = self.R_coeff
 
-        return ln_AGN_coeff
+        return R_coeff
+
+    def get_contamination(self, z, k_kms, like_params=[]):
+        """Multiplicative contamination caused by Resolution"""
+        A = self.get_R(z, like_params=like_params)
+        if A == 0:
+            return 1
+        else:
+            return 1 + 1e-2 * A * get_Rz(z, k_kms) ** 2 * k_kms**2
 
     def plot_contamination(
         self,
         z,
         k_kms,
-        ln_AGN_coeff=None,
+        R_coeff=None,
         plot_every_iz=1,
         cmap=None,
         smooth_k=False,
@@ -175,13 +168,13 @@ class AGN_Model(object):
         """Plot the contamination model"""
 
         # plot for fiducial value
-        if ln_AGN_coeff is None:
-            ln_AGN_coeff = self.ln_AGN_coeff
+        if R_coeff is None:
+            R_coeff = self.R_coeff
 
         if cmap is None:
             cmap = get_discrete_cmap(len(z))
 
-        agn_model = AGN_Model(ln_AGN_coeff=ln_AGN_coeff)
+        resolution_model = Resolution_Model(R_coeff=R_coeff)
 
         yrange = [1, 1]
         fig1, ax1 = plt.subplots(figsize=(8, 6))
@@ -210,7 +203,7 @@ class AGN_Model(object):
                 )
             else:
                 k_use = k_kms[ii]
-            cont = agn_model.get_contamination(z[ii], k_use)
+            cont = resolution_model.get_contamination(z[ii], k_use)
             if isinstance(cont, int):
                 cont = np.ones_like(k_use)
 
@@ -256,13 +249,13 @@ class AGN_Model(object):
         ax1.set_ylim(yrange[0] * 0.95, yrange[1] * 1.05)
         ax1.set_xscale("log")
         ax1.set_xlabel(r"$k$ [1/Mpc]")
-        ax1.set_ylabel(r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,AGN}$")
+        ax1.set_ylabel(r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,Res}$")
         for ax in ax2:
             ax.axhline(1, color="k", linestyle=":")
             ax.legend()
             ax.set_ylim(yrange[0] * 0.95, yrange[1] * 1.05)
             ax.set_xlabel(r"$k$ [1/Mpc]")
-            ax.set_ylabel(r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,AGN}$")
+            ax.set_ylabel(r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,Res}$")
             ax.set_xscale("log")
 
         fig1.tight_layout()
@@ -279,20 +272,3 @@ class AGN_Model(object):
             fig2.savefig(name + "_z.png")
 
         return
-
-
-def _load_agn_file():
-    agn_corr_filename = (
-        os.path.dirname(cup1d.__path__[0]) + "/data/nuisance/AGN_corr.dat"
-    )
-    NzAGN = 9
-    datafile = open(agn_corr_filename, "r")
-    AGN_z = np.ndarray(NzAGN, "float")
-    AGN_expansion = np.ndarray((NzAGN, 3), "float")
-    for i in range(NzAGN):
-        line = datafile.readline()
-        values = [float(valstring) for valstring in line.split()]
-        AGN_z[i] = values[0]
-        AGN_expansion[i] = values[1:]
-    datafile.close()
-    return AGN_z, AGN_expansion

@@ -100,6 +100,11 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red"):
     cov = np.zeros((nelem, nelem))
     ind_diag = np.diag_indices_from(cov)
     for lab in sys_labels:
+        try:
+            _ = syst[lab]
+        except:
+            print(lab, " not in syst")
+            continue
         if lab in sys_labels_ucorr:
             cov[ind_diag] += syst[lab] ** 2
         elif lab in sys_labels_corr:

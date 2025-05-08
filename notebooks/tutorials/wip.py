@@ -366,6 +366,12 @@ plt.tight_layout()
 plt.savefig("nyx_qmle.pdf")
 
 # %%
+
+# %%
+
+# %%
+
+# %%
 zz = np.unique(hdu[2].data["Z"])
 
 fig, ax = plt.subplots(4, 3, sharex=True, sharey=True, figsize=(12, 10))
@@ -719,11 +725,18 @@ elif choose_desiy1:
     # args.cov_syst_type = "fid"
     args.cov_syst_type = "red"
     # in NERSC
+    # /global/cfs/cdirs/desicollab/science/lya/y1-p1d/iron-baseline/qmle_measurement/DataProducts/
     # QMLE /global/cfs/cdirs/desicollab/users/naimgk/my-reductions/data/iron-v3/DataProducts/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits
     # FFT /global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/plots/baseline/notebook/measurement/p1d_fft_y1_measurement_kms.fits
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_resocorr_v2.fits"
-    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v2.fits"
+    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v2.fits"
+    
+    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
+    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_resocorr_v3.fits"
+    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
+    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_xe_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
+    
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
     
     args.z_min = 2.1
@@ -810,7 +823,6 @@ except:
 
 # %%
 # cosmology
-args.ic_correction=False
 
 # args.emu_cov_factor = None
 args.emu_cov_factor = 1
@@ -823,9 +835,9 @@ args.emu_cov_type = "full"
 args.fix_cosmo=False
 # args.fix_cosmo=True
 # args.vary_alphas=False
-args.vary_alphas=True
-# args.fid_cosmo_label="Planck18"
-args.fid_cosmo_label="Planck18_low"
+args.vary_alphas=False
+args.fid_cosmo_label="Planck18"
+# args.fid_cosmo_label="Planck18_low"
 if "nyx" in args.emulator_label:
     sim_fid = "nyx_central"
     args.ic_correction=True
@@ -876,29 +888,23 @@ else:
 # one z at a time
 args.mF_model_type = "pivot"
 # args.mF_model_type = "chunks"
-args.n_tau=0
-args.n_sigT=0
-args.n_gamma=0
-args.n_kF=0
+args.n_tau=2
+args.n_sigT=1
+args.n_gamma=2
+args.n_kF=1
 
-args.n_x_SiII=0
-args.n_d_SiII=0
-args.n_a_SiII=0
+args.n_x_SiII=1
+args.n_d_SiII=1
+args.n_a_SiII=1
 
-args.n_x_SiIII=0
-args.n_d_SiIII=0
-args.n_a_SiIII=0
+args.n_x_SiIII=1
+args.n_d_SiIII=1
+args.n_a_SiIII=1
 
-args.n_d_dla = 0
-args.n_s_dla = 0
+args.n_d_dla = 1
+args.n_s_dla = 1
 
-# contaminants
-# from 1 to 6, -11 to -4
-# from -5 to 0
-# args.fid_HCD=[0, -2]
-# from -5 to 2
-# args.fid_SN=[0, -4]
-# args.fid_AGN=[0, -5]
+args.n_agn = 1
 
 # args.fid_SiIII_X=[0, -10] # fine
 # args.fid_SiIII_D=[0, 5]
@@ -906,17 +912,26 @@ args.n_s_dla = 0
 # args.fid_A_damp = [0, -9]
 # args.fid_A_scale = [0, 5]
 
-args.fid_SiII_X=[0, -5.6]
-args.fid_SiII_D=[0, 6.1]
-args.fid_SiII_A=[0, 1.25]
-
 args.fid_SiIII_X=[0, -4.2]
 args.fid_SiIII_D=[0, 5.1]
 args.fid_SiIII_A=[0, 1.0]
 
+args.fid_SiII_X=[0, -5.6]
+args.fid_SiII_D=[0, 6.1]
+args.fid_SiII_A=[0, 1.25]
+
 args.fid_A_damp = [0, -0.8]
 args.fid_A_scale = [0, 7.2]
 
+args.fid_AGN = [0, -1.5]
+
+# 1309
+# Fit params no cube: [ 2.57392369e-09  9.38081163e-01 
+#  -2.32907115e-02 -5.63143248e-02 1.25715055e-01  1.50849502e-02 -6.43016274e-03 
+#  -4.25355260e+00 5.07771208e+00  1.07178963e+00 
+# -5.17128039e+00  6.36987725e+00 1.17152887e+00 
+# -8.55561903e-01  7.11276860e+00 
+# -2.03653868e+00]
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
@@ -963,7 +978,7 @@ like.theory.model_igm.T_model.fid_gamma_interp = interp1d(like.theory.model_igm.
 # %%
 
 # %%
-# like.plot_cov_to_pk()
+like.plot_cov_to_pk()
 # like.plot_correlation_matrix()
 
 # %%
@@ -991,6 +1006,12 @@ for p in like.free_params:
 # %%
 # like.plot_p1d(residuals=False)
 like.plot_p1d(residuals=True)
+
+# %%
+# baseline 1354
+# snr3 1149
+# xe 2373
+# fft 3358
 
 # %% [markdown]
 # ### Set fitter
@@ -1053,10 +1074,63 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 #  0.28571747, 0.5205094 , 0.61749434, 0.62331515, 0.2279429 , 0.5, 0.5,
 #  0.80715694, 0.82782957, 0.36942603, 0.9, 0.5, 0.62601621])
 # p0[:] = 0.5
-# fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
-zmask = np.array([2.4])
-fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask)
+fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
+# zmask = np.array([2.4])
+# fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
+
+# %%
+# best tau1 gamma1
+# 2.81088837e-09  9.48127221e-01 -3.79717927e-02  7.87958087e-02
+ #  3.18150211e-02  6.54919898e-02  2.82125158e-01 -3.43838518e-02
+ # -4.26424457e+00  5.09204280e+00  1.04988765e+00 -5.59784575e+00
+ #  6.12524700e+00  1.50930398e+00 -8.21067126e-01  7.09653527e+00
+ # -2.67688389e+00
+
+# %%
+plotter = Plotter(fitter, save_directory=None)
+# if args.fix_cosmo == False:
+    # plotter.plot_mle_cosmo()
+plotter.plots_minimizer()
+
+# %%
+# QMLE v3
+# baseline 1309, 986.21
+# w/ rescorr 1346, 983
+# snr 1111, 845 (no z dependence!)
+# xe (up to z=3.8) 2299, 1972
+# fft 1399, 1179
+
+# baseline
+# Fit params no cube: [ 2.57392369e-09  9.38081163e-01 -2.32907115e-02 -5.63143248e-02
+#   1.25715055e-01  1.50849502e-02 -6.43016274e-03 -4.25355260e+00
+#   5.07771208e+00  1.07178963e+00 -5.17128039e+00  6.36987725e+00
+#   1.17152887e+00 -8.55561903e-01  7.11276860e+00 -2.03653868e+00]
+# $\mathrm{ln}\,\tau_0$ -0.05327614106312262
+# $\mathrm{ln}\,\sigma^T_0$ -0.21475119400021098
+# $\mathrm{ln}\,\gamma_0$ 0.007708478413611053
+# $\mathrm{ln}\,k^F_0$ 0.0082702143141003
+# $\mathrm{ln}\,f^{SiIII}_0$ -4.184385480417157
+# $\mathrm{ln}\,d^{SiIII}_0$ 5.22986622701272
+# $a^{SiIII}_0$ 0.9835026303734834
+# $\mathrm{ln}\,f^{SiII}_0$ -5.77632130037337
+# $\mathrm{ln}\,d^{SiII}_0$ 6.004611334746445
+# $a^{SiII}_0$ 1.4272487413191837
+# $\mathrm{ln}\,f^\mathrm{HCD}_0$ -0.20194201272522783
+# $\mathrm{ln}\,s^\mathrm{HCD}_0$ 7.233054495813131
+# Delta2_star 0.6144759530287037
+# n_star -2.261580861937121
+# $A_s$ 3.301904862136354e-09
+# $n_s$ 1.0046175332038638
+# $\mathrm{ln}\,\mathrm{AGN}_0$ -1.7825685481689622
+
+# fft
+# Fit params no cube: [ 2.70795062e-09  9.59887430e-01 
+# -5.89238167e-02 -6.57261002e-02 2.03845630e-01  5.88594448e-02  2.46042037e-01 -1.72288393e-02
+#  -4.75898427e+00  5.04208770e+00  1.06470466e+00 
+# -5.57316079e+00 6.45162450e+00  7.45457315e-01 
+# -1.95259166e+00  6.83429638e+00
+#  -1.82567876e+00]
 
 # %% [markdown]
 # ### Run one z at a time
@@ -1075,6 +1149,7 @@ for ii in range(len(like.data.z)):
 
 # %%
 # plotter = Plotter(fitter, save_directory=None, zmask=zmask)
+# plotter = Plotter(fitter, save_directory=None)
 # plotter.plots_minimizer()
 
 # %%
@@ -1091,35 +1166,38 @@ for ii in range(len(like.data.z)):
 # plotter.plot_metal_cont(zrange=[2.3, 2.5], plot_data=True, mle_results=mle_results)
 
 # %%
+
+# %%
 print(np.sum(np.array(out_chi2)))
 plt.plot(like.data.z, np.array(out_chi2))
 
 # %%
 keys_plot = [
-    # '$\\mathrm{ln}\\,\\tau_0$', 
-    # '$\\mathrm{ln}\\,\\sigma^T_0$', 
-    # '$\\mathrm{ln}\\,\\gamma_0$',
-    # '$\\mathrm{ln}\\,k^F_0$',
-    # '$\\mathrm{ln}\\,f^{SiIII}_0$',
-    # '$\\mathrm{ln}\\,d^{SiIII}_0$',
-    # '$a^{SiIII}_0$',
-    # '$\\mathrm{ln}\\,f^{SiII}_0$',
-    # '$\\mathrm{ln}\\,d^{SiII}_0$',
-    # '$a^{SiII}_0$',
-    # '$\\mathrm{ln}\\,f^\\mathrm{HCD}_0$',
-    # '$\\mathrm{ln}\\,s^\\mathrm{HCD}_0$',
-    # '$\\Delta^2_\\star$',
+    '$\\mathrm{ln}\\,\\tau_0$', 
+    '$\\mathrm{ln}\\,\\sigma^T_0$', 
+    '$\\mathrm{ln}\\,\\gamma_0$',
+    '$\\mathrm{ln}\\,k^F_0$',
+    '$\\mathrm{ln}\\,f^{SiIII}_0$',
+    '$\\mathrm{ln}\\,d^{SiIII}_0$',
+    '$a^{SiIII}_0$',
+    '$\\mathrm{ln}\\,f^{SiII}_0$',
+    '$\\mathrm{ln}\\,d^{SiII}_0$',
+    '$a^{SiII}_0$',
+    '$\\mathrm{ln}\\,f^\\mathrm{HCD}_0$',
+    '$\\mathrm{ln}\\,s^\\mathrm{HCD}_0$',
     'Delta2_star',
-    # '$n_\\star$',
     'n_star',
     '$A_s$',
-    '$n_s$'
+    '$n_s$',
+    "$\\mathrm{ln}\\,\\mathrm{AGN}_0$",
+    # '$\\Delta^2_\\star$',
+    # '$n_\\star$',
 ]
 
 # %%
 
 # fig, ax = plt.subplots(4, 3, figsize=(10, 8))
-fig, ax = plt.subplots(3, 2, figsize=(10, 8), sharex=True)
+fig, ax = plt.subplots(6, 3, figsize=(10, 8), sharex=True)
 ax = ax.reshape(-1)
 dict_out = {}
 for ii, key in enumerate(keys_plot):
@@ -1135,9 +1213,6 @@ for ii, key in enumerate(keys_plot):
     ax[ii].plot(like.data.z, like.data.z[:]*0 + np.median(dict_out[key]))
     
 plt.tight_layout()
-
-# %%
-dict_out.keys()
 
 # %%
 plt.plot(like.data.z, dict_out['$\\mathrm{ln}\\,\\tau_0$'])
