@@ -7,6 +7,7 @@ from lace.emulator import gp_emulator
 
 from cup1d.likelihood import CAMB_model
 from cup1d.likelihood.model_contaminants import Contaminants
+from cup1d.likelihood.model_systematics import Systematics
 from cup1d.likelihood.model_igm import IGM
 from cup1d.likelihood.cosmologies import set_cosmo
 from cup1d.utils.utils_sims import get_training_hc
@@ -23,30 +24,46 @@ def set_theory(
         sim_igm_mF = args.fid_label_mF
         sim_igm_T = args.fid_label_T
         sim_igm_kF = args.fid_label_kF
+        val_par_mF = args.fid_val_mF
+        val_par_sigT = args.fid_val_sigT
+        val_par_gamma = args.fid_val_gamma
+        val_par_kF = args.fid_val_kF
         SiIII_X = args.fid_SiIII_X
         SiIII_D = args.fid_SiIII_D
         SiIII_A = args.fid_SiIII_A
         SiII_X = args.fid_SiII_X
         SiII_D = args.fid_SiII_D
         SiII_A = args.fid_SiII_A
+        CIV_X = args.fid_CIV_X
+        CIV_D = args.fid_CIV_D
+        CIV_A = args.fid_CIV_A
         A_damp = args.fid_A_damp
         A_scale = args.fid_A_scale
         SN = args.fid_SN
         AGN = args.fid_AGN
+        R_coeff = args.fid_R_coeff
     elif fid_or_true == "true":
         sim_igm_mF = args.true_label_mF
         sim_igm_T = args.true_label_T
         sim_igm_kF = args.true_label_kF
+        val_par_mF = args.true_val_mF
+        val_par_sigT = args.true_val_sigT
+        val_par_gamma = args.true_val_gamma
+        val_par_kF = args.true_val_kF
         SiIII_X = args.true_SiIII_X
         SiIII_D = args.true_SiIII_D
         SiIII_A = args.true_SiIII_A
         SiII_X = args.true_SiII_X
         SiII_D = args.true_SiII_D
         SiII_A = args.true_SiII_A
+        CIV_X = args.true_CIV_X
+        CIV_D = args.true_CIV_D
+        CIV_A = args.true_CIV_A
         A_damp = args.true_A_damp
         A_scale = args.true_A_scale
         SN = args.true_SN
         AGN = args.true_AGN
+        R_coeff = args.true_R_coeff
     else:
         raise ValueError("fid_or_true must be 'fid' or 'true'")
 
@@ -56,6 +73,10 @@ def set_theory(
         fid_sim_igm_mF=sim_igm_mF,
         fid_sim_igm_T=sim_igm_T,
         fid_sim_igm_kF=sim_igm_kF,
+        fid_val_par_mF=val_par_mF,
+        fid_val_par_sigT=val_par_sigT,
+        fid_val_par_gamma=val_par_gamma,
+        fid_val_par_kF=val_par_kF,
         mF_model_type=args.mF_model_type,
         emu_suite=emulator.list_sim_cube[0][:3],
         type_priors=args.igm_priors,
@@ -70,6 +91,9 @@ def set_theory(
         fid_SiII_X=SiII_X,
         fid_SiII_D=SiII_D,
         fid_SiII_A=SiII_A,
+        fid_CIV_X=CIV_X,
+        fid_CIV_D=CIV_D,
+        fid_CIV_A=CIV_A,
         fid_A_damp=A_damp,
         fid_A_scale=A_scale,
         fid_SN=SN,
@@ -78,11 +102,18 @@ def set_theory(
         ic_correction=args.ic_correction,
     )
 
+    # set systematics
+    model_syst = Systematics(
+        free_param_names=free_parameters,
+        fid_R_coeff=R_coeff,
+    )
+
     # set theory
     theory = Theory(
         emulator=emulator,
         model_igm=model_igm,
         model_cont=model_cont,
+        model_syst=model_syst,
         use_hull=use_hull,
         use_star_priors=args.use_star_priors,
         z_star=args.z_star,
@@ -102,6 +133,7 @@ class Theory(object):
         emulator=None,
         model_igm=None,
         model_cont=None,
+        model_syst=None,
         use_hull=True,
         verbose=False,
         z_star=3.0,
@@ -154,6 +186,12 @@ class Theory(object):
             self.model_cont = Contaminants()
         else:
             self.model_cont = model_cont
+
+        # setup model_syst
+        if model_syst is None:
+            self.model_syst = Systematics()
+        else:
+            self.model_syst = model_syst
 
     def set_fid_cosmo(
         self, zs, zs_hires=None, input_cosmo=None, extra_factor=1.15
@@ -739,10 +777,18 @@ class Theory(object):
                 M_of_z[iz],
                 like_params=like_params,
             )
+
+            syst_total = self.model_syst.get_contamination(
+                z,
+                k_kms[iz],
+                like_params=like_params,
+            )
+
             if cont_total is None:
                 return None
             else:
-                p1d_kms[iz] *= cont_total
+                cont_syst = cont_total * syst_total
+                p1d_kms[iz] *= cont_syst
 
         # decide what to return, and return it
         out = [p1d_kms]
@@ -799,6 +845,10 @@ class Theory(object):
 
         # get parameters from AGN contamination model
         for par in self.model_cont.agn_model.get_parameters():
+            params.append(par)
+
+        # get parameters from systematic model
+        for par in self.model_syst.resolution_model.get_parameters():
             params.append(par)
 
         if self.verbose:

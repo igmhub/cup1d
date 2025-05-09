@@ -24,6 +24,7 @@ class PressureModel(object):
         smoothing=False,
         priors=None,
         back_igm=None,
+        fid_value=[0, 0],
     ):
         """Construct model with central redshift and (x2,x1,x0) polynomial."""
 
@@ -124,6 +125,8 @@ class PressureModel(object):
             else:
                 n_kF = 2
             self.ln_kF_coeff = [0.0] * n_kF
+            for ii in range(n_kF):
+                self.ln_kF_coeff[-(ii + 1)] = fid_value[-(ii + 1)]
         # store list of likelihood parameters (might be fixed or free)
         self.set_parameters()
 

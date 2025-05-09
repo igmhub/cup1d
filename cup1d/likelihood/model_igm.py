@@ -23,6 +23,10 @@ class IGM(object):
         fid_sim_igm_mF="mpg_central",
         fid_sim_igm_T="mpg_central",
         fid_sim_igm_kF="mpg_central",
+        fid_val_par_mF=[0, 0],
+        fid_val_par_sigT=[0, 0],
+        fid_val_par_gamma=[0, 0],
+        fid_val_par_kF=[0, 0],
         mF_model_type="pivot",
         emu_suite="mpg",
         type_priors="hc",
@@ -66,6 +70,7 @@ class IGM(object):
                 self.F_model = mean_flux_model.MeanFluxModel(
                     free_param_names=free_param_names,
                     fid_igm=fid_igm,
+                    fid_value=fid_val_par_mF,
                     z_tau=z_pivot,
                     priors=self.priors,
                 )
@@ -81,6 +86,8 @@ class IGM(object):
             self.T_model = thermal_model.ThermalModel(
                 free_param_names=free_param_names,
                 fid_igm=fid_igm,
+                fid_value_sigT=fid_val_par_sigT,
+                fid_value_gamma=fid_val_par_gamma,
                 z_T=z_pivot,
                 priors=self.priors,
                 back_igm=back_igm,
@@ -92,6 +99,7 @@ class IGM(object):
             self.P_model = pressure_model.PressureModel(
                 free_param_names=free_param_names,
                 fid_igm=fid_igm,
+                fid_value=fid_val_par_kF,
                 z_kF=z_pivot,
                 priors=self.priors,
                 back_igm=back_igm,

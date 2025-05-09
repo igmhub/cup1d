@@ -34,7 +34,7 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red"):
             sys_labels_corr = [
                 # "E_DLA_COMPLETENESS",
                 # "E_BAL_COMPLETENESS",
-                "E_RESOLUTION",
+                # "E_RESOLUTION",
                 "E_CONTINUUM",
                 "E_NOISE_SCALE",
             ]

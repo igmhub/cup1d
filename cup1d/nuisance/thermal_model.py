@@ -25,10 +25,45 @@ class ThermalModel(object):
         priors=None,
         emu_suite="mpg",
         back_igm=None,
+        fid_value_sigT=[0, 0],
+        fid_value_gamma=[0, 0],
     ):
         """Model the redshift evolution of the thermal broadening scale and gamma.
         We use a power law rescaling around a fiducial simulation at the centre
         of the initial Latin hypercube in simulation space."""
+
+        self.z_T = z_T
+        self.priors = priors
+
+        # figure out parameters for sigT_kms (T0)
+        if ln_sigT_kms_coeff:
+            assert free_param_names is None
+            self.ln_sigT_kms_coeff = ln_sigT_kms_coeff
+        else:
+            if free_param_names:
+                # figure out number of sigT free params
+                n_sigT = len(
+                    [p for p in free_param_names if "ln_sigT_kms_" in p]
+                )
+            else:
+                n_sigT = 2
+            self.ln_sigT_kms_coeff = [0.0] * n_sigT
+        # store list of likelihood parameters (might be fixed or free)
+        self.set_sigT_kms_parameters()
+
+        # figure out parameters for gamma (T0)
+        if ln_gamma_coeff:
+            assert free_param_names is None
+            self.ln_gamma_coeff = ln_gamma_coeff
+        else:
+            if free_param_names:
+                # figure out number of gamma free params
+                n_gamma = len([p for p in free_param_names if "ln_gamma_" in p])
+            else:
+                n_gamma = 2
+            self.ln_gamma_coeff = [0.0] * n_gamma
+        # store list of likelihood parameters (might be fixed or free)
+        self.set_gamma_parameters()
 
         if fid_igm is None:
             repo = os.path.dirname(lace.__path__[0]) + "/"
@@ -43,7 +78,6 @@ class ThermalModel(object):
                 )
             else:
                 fid_igm = igm_hist["mpg_central"]
-        self.priors = priors
         self.fid_igm = fid_igm
 
         mask = (fid_igm["gamma"] != 0) & np.isfinite(fid_igm["gamma"])
@@ -82,7 +116,6 @@ class ThermalModel(object):
         for ii in range(2):
             if ii == 0:
                 label = "gamma"
-
             else:
                 label = "sigT_kms"
             pfit = np.polyfit(
@@ -151,42 +184,30 @@ class ThermalModel(object):
                 self.fid_gamma_interp = interp1d(
                     z_to_inter, igm_to_inter, kind="cubic"
                 )
+                # apply fiducial distortion
+                gamma_fid = np.zeros(len(fid_value_gamma))
+                for ii in range(len(fid_value_gamma)):
+                    gamma_fid[-(ii + 1)] = fid_value_gamma[-(ii + 1)]
+                igm_to_inter = self.get_gamma(
+                    z_to_inter, over_ln_gamma_coeff=gamma_fid
+                )
+                self.fid_gamma_interp = interp1d(
+                    z_to_inter, igm_to_inter, kind="cubic"
+                )
             else:
                 self.fid_sigT_kms_interp = interp1d(
                     z_to_inter, igm_to_inter, kind="cubic"
                 )
-
-        self.z_T = z_T
-
-        # figure out parameters for sigT_kms (T0)
-        if ln_sigT_kms_coeff:
-            assert free_param_names is None
-            self.ln_sigT_kms_coeff = ln_sigT_kms_coeff
-        else:
-            if free_param_names:
-                # figure out number of sigT free params
-                n_sigT = len(
-                    [p for p in free_param_names if "ln_sigT_kms_" in p]
+                # apply fiducial distortion
+                sigT_fid = np.zeros(len(fid_value_sigT))
+                for ii in range(len(fid_value_sigT)):
+                    sigT_fid[-(ii + 1)] = fid_value_sigT[-(ii + 1)]
+                igm_to_inter = self.get_sigT_kms(
+                    z_to_inter, over_ln_sigT_kms_coeff=sigT_fid
                 )
-            else:
-                n_sigT = 2
-            self.ln_sigT_kms_coeff = [0.0] * n_sigT
-        # store list of likelihood parameters (might be fixed or free)
-        self.set_sigT_kms_parameters()
-
-        # figure out parameters for gamma (T0)
-        if ln_gamma_coeff:
-            assert free_param_names is None
-            self.ln_gamma_coeff = ln_gamma_coeff
-        else:
-            if free_param_names:
-                # figure out number of gamma free params
-                n_gamma = len([p for p in free_param_names if "ln_gamma_" in p])
-            else:
-                n_gamma = 2
-            self.ln_gamma_coeff = [0.0] * n_gamma
-        # store list of likelihood parameters (might be fixed or free)
-        self.set_gamma_parameters()
+                self.fid_sigT_kms_interp = interp1d(
+                    z_to_inter, igm_to_inter, kind="cubic"
+                )
 
     def get_sigT_kms_Nparam(self):
         """Number of parameters in the model of T_0"""
@@ -202,30 +223,42 @@ class ThermalModel(object):
         ), "size mismatch"
         return len(self.ln_gamma_coeff)
 
-    def power_law_scaling_gamma(self, z, like_params=[]):
+    def power_law_scaling_gamma(
+        self, z, like_params=[], over_ln_gamma_coeff=None
+    ):
         """Power law rescaling around z_T"""
 
-        ln_gamma_coeff = self.get_gamma_coeffs(like_params=like_params)
+        if over_ln_gamma_coeff is not None:
+            ln_gamma_coeff = over_ln_gamma_coeff
+        else:
+            ln_gamma_coeff = self.get_gamma_coeffs(like_params=like_params)
 
         xz = np.log((1 + z) / (1 + self.z_T))
         ln_poly = np.poly1d(ln_gamma_coeff)
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def power_law_scaling_sigT_kms(self, z, like_params=[]):
+    def power_law_scaling_sigT_kms(
+        self, z, like_params=[], over_ln_sigT_kms_coeff=None
+    ):
         """Power law rescaling around z_T"""
 
-        ln_sigT_kms_coeff = self.get_sigT_coeffs(like_params=like_params)
+        if over_ln_sigT_kms_coeff is not None:
+            ln_sigT_kms_coeff = over_ln_sigT_kms_coeff
+        else:
+            ln_sigT_kms_coeff = self.get_sigT_coeffs(like_params=like_params)
 
         xz = np.log((1 + z) / (1 + self.z_T))
         ln_poly = np.poly1d(ln_sigT_kms_coeff)
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_sigT_kms(self, z, like_params=[]):
+    def get_sigT_kms(self, z, like_params=[], over_ln_sigT_kms_coeff=None):
         """sigT_kms at the input redshift"""
         sigT_kms = self.power_law_scaling_sigT_kms(
-            z, like_params=like_params
+            z,
+            like_params=like_params,
+            over_ln_sigT_kms_coeff=over_ln_sigT_kms_coeff,
         ) * self.fid_sigT_kms_interp(z)
         return sigT_kms
 
@@ -237,10 +270,12 @@ class ThermalModel(object):
         T0 = thermal_broadening.T0_from_broadening_kms(sigT_kms)
         return T0
 
-    def get_gamma(self, z, like_params=[]):
+    def get_gamma(self, z, like_params=[], over_ln_gamma_coeff=None):
         """gamma at the input redshift"""
         gamma = self.power_law_scaling_gamma(
-            z, like_params=like_params
+            z,
+            like_params=like_params,
+            over_ln_gamma_coeff=over_ln_gamma_coeff,
         ) * self.fid_gamma_interp(z)
         return gamma
 

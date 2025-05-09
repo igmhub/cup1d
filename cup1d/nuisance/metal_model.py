@@ -33,10 +33,11 @@ class MetalModel(object):
         # label identifying the metal line
         self.metal_label = metal_label
         if metal_label == "SiIII":
-            # self.lambda_rest = 1206.50  # from McDonald et al. 2006
-            self.lambda_rest = 1206.5  # from Naim et al. 2024
+            self.lambda_rest = 1206.50  # from McDonald et al. 2006
         elif metal_label == "SiII":
             self.lambda_rest = 1192.5  # like in Chabanier+19, Karacali+24
+        elif metal_label == "CIV":
+            self.lambda_rest = 1212.6
         else:
             if lambda_rest is None:
                 raise ValueError("need to specify lambda_rest", metal_label)
@@ -153,7 +154,7 @@ class MetalModel(object):
             if i == 0:
                 # log of overall amplitude at z_X
                 # no contamination (0.3% at high k)
-                xmin = 2
+                xmin = 1.5
                 # Almost no oscillations at high k
                 xmax = 6.5
             else:
@@ -179,7 +180,8 @@ class MetalModel(object):
                 # less than exponential damping
                 xmin = 0.0
                 # more damping than Gaussian
-                xmax = 2.5
+                # xmax = 4.5
+                xmax = 8
             else:
                 xmin = -3
                 xmax = 3

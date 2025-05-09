@@ -67,9 +67,9 @@ class Resolution_Model(object):
             name = "R_coeff_" + str(i)
             if i == 0:
                 # no contamination
-                xmin = -3
+                xmin = -1
                 # 0 gives 200% contamination high k
-                xmax = +3
+                xmax = +1
             else:
                 # not optimized
                 xmin = -10
@@ -105,7 +105,7 @@ class Resolution_Model(object):
         poly = np.poly1d(R_coeff)
         return poly(xz)
 
-    def get_R_parameters(self):
+    def get_parameters(self):
         """Return likelihood parameters for the Resolution_Model model"""
         return self.R_params
 

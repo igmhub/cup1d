@@ -1,6 +1,6 @@
 import numpy as np
 
-from cup1d.nuisance import resolution_model
+from cup1d.nuisance.resolution_model import Resolution_Model
 
 
 class Systematics(object):
@@ -18,7 +18,7 @@ class Systematics(object):
         if resolution_model:
             self.resolution_model = resolution_model
         else:
-            self.resolution_model = resolution_model.Resolution_Model(
+            self.resolution_model = Resolution_Model(
                 free_param_names=free_param_names, fid_R_coeff=self.fid_R_coeff
             )
 
@@ -36,6 +36,6 @@ class Systematics(object):
             z=z, k_kms=k_kms, like_params=like_params
         )
 
-        cont_total = cont_resolution
+        # print("cont_resolution", cont_resolution)
 
-        return cont_total
+        return cont_resolution

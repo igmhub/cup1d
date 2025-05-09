@@ -21,8 +21,24 @@ class MeanFluxModel(object):
         order_extra=2,
         smoothing=False,
         priors=None,
+        fid_value=[0, 0, 0],
     ):
         """Construct model as a rescaling around a fiducial mean flux"""
+
+        self.z_tau = z_tau
+        if ln_tau_coeff:
+            assert free_param_names is None
+            self.ln_tau_coeff = ln_tau_coeff
+        else:
+            if free_param_names:
+                # figure out number of mean flux free params
+                n_mf = len([p for p in free_param_names if "ln_tau_" in p])
+            else:
+                n_mf = 3
+            self.ln_tau_coeff = [0.0] * n_mf
+        # store list of likelihood parameters (might be fixed or free)
+        self.priors = priors
+        self.set_parameters()
 
         if fid_igm is None:
             repo = os.path.dirname(lace.__path__[0]) + "/"
@@ -38,7 +54,6 @@ class MeanFluxModel(object):
             else:
                 fid_igm = igm_hist["mpg_central"]
         self.fid_igm = fid_igm
-        self.priors = priors
 
         mask = fid_igm["tau_eff"] != 0
         if np.sum(mask) == 0:
@@ -110,39 +125,35 @@ class MeanFluxModel(object):
 
         self.fid_tau_interp = interp1d(z_to_inter, igm_to_inter, kind="cubic")
 
-        self.z_tau = z_tau
-        if ln_tau_coeff:
-            assert free_param_names is None
-            self.ln_tau_coeff = ln_tau_coeff
-        else:
-            if free_param_names:
-                # figure out number of mean flux free params
-                n_mf = len([p for p in free_param_names if "ln_tau_" in p])
-            else:
-                n_mf = 2
-            self.ln_tau_coeff = [0.0] * n_mf
-        # store list of likelihood parameters (might be fixed or free)
-        self.set_parameters()
+        # apply fiducial distortion
+        tau_fid = np.zeros(len(fid_value))
+        for ii in range(len(fid_value)):
+            tau_fid[-(ii + 1)] = fid_value[-(ii + 1)]
+        igm_to_inter = self.get_tau_eff(z_to_inter, over_ln_tau_coeff=tau_fid)
+        self.fid_tau_interp = interp1d(z_to_inter, igm_to_inter, kind="cubic")
 
     def get_Nparam(self):
         """Number of parameters in the model"""
         assert len(self.ln_tau_coeff) == len(self.params), "size mismatch"
         return len(self.ln_tau_coeff)
 
-    def power_law_scaling(self, z, like_params=[]):
+    def power_law_scaling(self, z, like_params=[], over_ln_tau_coeff=None):
         """Power law rescaling around z_tau"""
 
-        ln_tau_coeff = self.get_tau_coeffs(like_params=like_params)
+        if over_ln_tau_coeff is not None:
+            ln_tau_coeff = over_ln_tau_coeff
+        else:
+            ln_tau_coeff = self.get_tau_coeffs(like_params=like_params)
 
         xz = np.log((1 + z) / (1 + self.z_tau))
         ln_poly = np.poly1d(ln_tau_coeff)
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_tau_eff(self, z, like_params=[]):
+    def get_tau_eff(self, z, like_params=[], over_ln_tau_coeff=None):
         """Effective optical depth at the input redshift"""
         tau_eff = self.power_law_scaling(
-            z, like_params=like_params
+            z, like_params=like_params, over_ln_tau_coeff=over_ln_tau_coeff
         ) * self.fid_tau_interp(z)
         return tau_eff
 

@@ -62,6 +62,16 @@ from cup1d.utils.utils import get_path_repo
 from lace.archive.nyx_archive import NyxArchive
 
 # %%
+# from cup1d.likelihood.model_systematics import Systematics
+# k_kms = np.logspace(-3, -1, 100)
+# syst_model = Systematics(fid_R_coeff=[0,0.01])
+# syst_model.get_contamination(z=2, k_kms=k_kms)
+
+# %%
+
+# %%
+
+# %%
 
 
 # fname_chain = "/home/jchaves/Proyectos/projects/lya/data/obs/CH24_nyx_gpr_emu_err_full/chain_2/fitter_results.npy"
@@ -827,17 +837,17 @@ except:
 # args.emu_cov_factor = None
 args.emu_cov_factor = 1
 # args.emu_cov_type = "diagonal"
-# args.emu_cov_type = "block"
-args.emu_cov_type = "full"
+args.emu_cov_type = "block"
+# args.emu_cov_type = "full"
 
 
 
-args.fix_cosmo=False
 # args.fix_cosmo=True
-# args.vary_alphas=False
+args.fix_cosmo=False
 args.vary_alphas=False
-args.fid_cosmo_label="Planck18"
-# args.fid_cosmo_label="Planck18_low"
+# args.vary_alphas=True
+# args.fid_cosmo_label="Planck18"
+args.fid_cosmo_label="Planck18_low"
 if "nyx" in args.emulator_label:
     sim_fid = "nyx_central"
     args.ic_correction=True
@@ -861,7 +871,6 @@ fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
 # amax = blob["alpha_star"] + 0.0028
 # args.use_star_priors["alpha_star"] = [amin, amax]
 
-
 # IGM
 if choose_data == False:
     args.igm_priors = "hc"
@@ -872,7 +881,7 @@ else:
 # all z
 
 # full
-# args.hcd_model_type = "new"
+args.hcd_model_type = "new"
 # args.mF_model_type = "chunks"    
 # args.n_tau=len(data["P1Ds"].z)
 # args.n_sigT=2
@@ -887,8 +896,9 @@ else:
 
 # one z at a time
 args.mF_model_type = "pivot"
+args.n_tau=3
 # args.mF_model_type = "chunks"
-args.n_tau=2
+# args.n_tau=11
 args.n_sigT=1
 args.n_gamma=2
 args.n_kF=1
@@ -901,37 +911,49 @@ args.n_x_SiIII=1
 args.n_d_SiIII=1
 args.n_a_SiIII=1
 
+args.n_x_CIV=1
+args.n_d_CIV=1
+args.n_a_CIV=1
+
+args.hcd_model_type = "new"
 args.n_d_dla = 1
 args.n_s_dla = 1
 
-args.n_agn = 1
+args.n_agn = 0
+
+args.n_res = 0
 
 # args.fid_SiIII_X=[0, -10] # fine
 # args.fid_SiIII_D=[0, 5]
 # args.fid_SiIII_A=[0, 1]
 # args.fid_A_damp = [0, -9]
 # args.fid_A_scale = [0, 5]
+args.fid_val_mF = [2.48, -6.0e-1, 7.46e-2]
+# args.fid_val_mF = [0,0,0]
+args.fid_val_gamma = [-0.425, 0.13]
+# args.fid_val_gamma = [0,0]
+args.fid_val_sigT = [0, 5.82e-2]
+# args.fid_val_sigT = [0,0]
 
 args.fid_SiIII_X=[0, -4.2]
 args.fid_SiIII_D=[0, 5.1]
 args.fid_SiIII_A=[0, 1.0]
 
-args.fid_SiII_X=[0, -5.6]
-args.fid_SiII_D=[0, 6.1]
+args.fid_SiII_X=[0, -5.4]
+args.fid_SiII_D=[0, 6.0]
 args.fid_SiII_A=[0, 1.25]
 
-args.fid_A_damp = [0, -0.8]
+args.fid_CIV_X=[0, -8.3]
+args.fid_CIV_D=[0, 4.7]
+args.fid_CIV_A=[0, 5]
+
+args.fid_A_damp = [0, -0.78]
 args.fid_A_scale = [0, 7.2]
 
-args.fid_AGN = [0, -1.5]
+args.fid_AGN = [0, -5.5]
+# args.fid_AGN = [0, -1.5]
 
-# 1309
-# Fit params no cube: [ 2.57392369e-09  9.38081163e-01 
-#  -2.32907115e-02 -5.63143248e-02 1.25715055e-01  1.50849502e-02 -6.43016274e-03 
-#  -4.25355260e+00 5.07771208e+00  1.07178963e+00 
-# -5.17128039e+00  6.36987725e+00 1.17152887e+00 
-# -8.55561903e-01  7.11276860e+00 
-# -2.03653868e+00]
+args.fid_R_coeff = [0,  0]
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
@@ -950,35 +972,39 @@ like = set_like(
 # %%
 
 # %%
-from scipy.interpolate import interp1d
+# from scipy.interpolate import interp1d
 
 # %%
-# priors_tau = np.array([1.42945563, 1.29749214, 1.18380211, 1.08838556, 1.01124247,
-#        0.95237286, 0.91177671, 0.88945402, 0.88540481, 0.89962906,
-#        0.93212679])
+# # priors_tau = np.array([1.42945563, 1.29749214, 1.18380211, 1.08838556, 1.01124247,
+# #        0.95237286, 0.91177671, 0.88945402, 0.88540481, 0.89962906,
+# #        0.93212679])
 
-priors_tau = np.exp(np.array([0.29331159, 0.22252288, 0.16153526, 0.11034872, 0.06896327,
-       0.0373789 , 0.01559561, 0.0036134 , 0.00143228, 0.00905224,
-       0.02647328]))
+# priors_tau = np.exp(np.array([ 0.30973341,  0.23064586,  0.14973022,  0.06698649, 0.01817552,
+#         0.00985069,  0.00152586, -0.00679897, -0.0151238 , -0.02344864,
+#        -0.03177347]))
 
-plt.plot(like.theory.model_igm.F_model.fid_z[:11], like.theory.model_igm.F_model.fid_tau_interp(like.theory.model_igm.F_model.fid_z[:11]) * priors_tau)
-plt.plot(like.theory.model_igm.F_model.fid_z[:11], like.theory.model_igm.F_model.fid_tau_interp(like.theory.model_igm.F_model.fid_z[:11]))
+# plt.plot(like.theory.model_igm.F_model.fid_z[:11], like.theory.model_igm.F_model.fid_tau_interp(like.theory.model_igm.F_model.fid_z[:11]) * priors_tau)
+# plt.plot(like.theory.model_igm.F_model.fid_z[:11], like.theory.model_igm.F_model.fid_tau_interp(like.theory.model_igm.F_model.fid_z[:11]))
 
 
-like.theory.model_igm.F_model.fid_tau_interp = interp1d(like.theory.model_igm.F_model.fid_z[:11], like.theory.model_igm.F_model.fid_tau_interp(like.theory.model_igm.F_model.fid_z[:11]) * priors_tau, kind="cubic")
-
-# %%
-priors_gamma = np.exp(np.array([ 0.19772908,  0.20287637,  0.19365744,  0.17007226,  0.13212085,
-        0.07980321,  0.01311933, -0.06793078, -0.16334713, -0.27312971,
-       -0.39727853]))
-plt.plot(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_gamma_interp(like.theory.model_igm.T_model.fid_z[:11]) * priors_gamma)
-plt.plot(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_gamma_interp(like.theory.model_igm.T_model.fid_z[:11]))
-like.theory.model_igm.T_model.fid_gamma_interp = interp1d(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_gamma_interp(like.theory.model_igm.T_model.fid_z[:11]) * priors_gamma, kind="cubic")
+# like.theory.model_igm.F_model.fid_tau_interp = interp1d(like.theory.model_igm.F_model.fid_z[:11], like.theory.model_igm.F_model.fid_tau_interp(like.theory.model_igm.F_model.fid_z[:11]) * priors_tau, kind="cubic")
 
 # %%
+# priors_gamma = np.exp(np.array([ 0.21143884,  0.2070271 ,  0.19430682,  0.173278  ,  0.14394062,
+#         0.10629471,  0.06034025,  0.00607725, -0.0564943 , -0.12737439,
+#        -0.20656303]))
+# plt.plot(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_gamma_interp(like.theory.model_igm.T_model.fid_z[:11]) * priors_gamma)
+# plt.plot(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_gamma_interp(like.theory.model_igm.T_model.fid_z[:11]))
+# like.theory.model_igm.T_model.fid_gamma_interp = interp1d(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_gamma_interp(like.theory.model_igm.T_model.fid_z[:11]) * priors_gamma, kind="cubic")
 
 # %%
-like.plot_cov_to_pk()
+# priors_sigT_kms = np.exp(0.15)
+# plt.plot(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_sigT_kms_interp(like.theory.model_igm.T_model.fid_z[:11]) * priors_sigT_kms)
+# plt.plot(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_sigT_kms_interp(like.theory.model_igm.T_model.fid_z[:11]))
+# like.theory.model_igm.T_model.fid_sigT_kms_interp = interp1d(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_sigT_kms_interp(like.theory.model_igm.T_model.fid_z[:11]) * priors_sigT_kms, kind="cubic")
+
+# %%
+# like.plot_cov_to_pk()
 # like.plot_correlation_matrix()
 
 # %%
@@ -1004,12 +1030,15 @@ for p in like.free_params:
 # Compare data and fiducial/starting model
 
 # %%
-# like.plot_p1d(residuals=False)
+
+like.plot_p1d(residuals=False)
 like.plot_p1d(residuals=True)
 
 # %%
+
+# %%
 # baseline 1354
-# snr3 1149
+# snr3 1088
 # xe 2373
 # fft 3358
 
@@ -1043,15 +1072,6 @@ fitter = Fitter(
 )
 
 # %%
-
-p0 = np.array([
- 0.6366421 , 0.42374987, 0.46354075, 0.38460337, 0.34002087, 0.29838805,
- 0.2587064 , 0.26210722, 0.27425286, 0.27541571, 0.30049338, 0.27480147,
- 0.28571747, 0.5205094 , 0.61749434, 0.62331515, 0.2279429 , 0.90873359,
- 0.80715694, 0.82782957, 0.36942603, 0.98957962, 0.62601621])
-
-
-# %%
 # plotter.plot_hull(p0=p0)
 
 # %% [markdown]
@@ -1068,11 +1088,6 @@ if like.truth is None:
 else:
     p0 = np.array(list(like.truth["like_params_cube"].values()))*1.01
 p0 = np.array(list(like.fid["fit_cube"].values()))
-# p0 = np.array([
-#  0.5366421 , 0.42374987, 0.5, 0.46354075, 0.38460337, 0.34002087, 0.29838805,
-#  0.2587064 , 0.26210722, 0.27425286, 0.27541571, 0.30049338, 0.27480147,
-#  0.28571747, 0.5205094 , 0.61749434, 0.62331515, 0.2279429 , 0.5, 0.5,
-#  0.80715694, 0.82782957, 0.36942603, 0.9, 0.5, 0.62601621])
 # p0[:] = 0.5
 fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # zmask = np.array([2.4])
@@ -1080,18 +1095,65 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
 
 # %%
-# best tau1 gamma1
-# 2.81088837e-09  9.48127221e-01 -3.79717927e-02  7.87958087e-02
- #  3.18150211e-02  6.54919898e-02  2.82125158e-01 -3.43838518e-02
- # -4.26424457e+00  5.09204280e+00  1.04988765e+00 -5.59784575e+00
- #  6.12524700e+00  1.50930398e+00 -8.21067126e-01  7.09653527e+00
- # -2.67688389e+00
+## mpg (cosmo estable between tau3 and tau11)
+# cosmo, tau3 1346
+# [ 2.86243181e-09  9.22639007e-01]
+# Delta2_star 0.42953
+# n_star -2.34356
+
+# cosmo, tau11, 1289
+# [ 2.88678243e-09  9.17074644e-01]
+# Delta2_star 0.4269
+# n_star -2.34912
+
+## nyx full_emu_cov (Delta2_star not estable between tau3 and tau11)
+# cosmo, tau11, 1108, varies a lot!
+# [ 2.67372327e-09  9.45267892e-01]
+# Delta2_star 0.42575
+# n_star -2.32093
+
+# cosmo, tau3, 1144
+# [ 2.28964445e-09  9.39897597e-01]
+# Delta2_star 0.35949
+# n_star -2.3263
+
+# cosmo, tau3, 1144 (no IC correction, cosmo estable)
+# [ 2.31703526e-09  9.31103034e-01]
+# Delta2_star 0.35549
+# n_star -2.3351
+
+# cosmo, tau3, 1040 (CIV)
+# 2.33627483e-09  9.35807556e-01
+# Delta2_star 0.36289
+# n_star -2.33039
+
+# full baseline nyx 1021
+# 2.38475206e-09  9.36796097e-01
+# Delta2_star 0.37139
+# n_star -2.3294
 
 # %%
 plotter = Plotter(fitter, save_directory=None)
+plotter.plot_metal_cont(plot_data=True)
+
+# %%
+
+# %%
+# plotter = Plotter(fitter, save_directory=None)
 # if args.fix_cosmo == False:
     # plotter.plot_mle_cosmo()
 plotter.plots_minimizer()
+
+# %%
+# help(plotter.plot_hcd_cont)
+
+# %%
+
+# plotter.plot_metal_cont(plot_data=True)
+
+# %%
+
+# plotter.plot_hcd_cont(plot_data=True)
 
 # %%
 # QMLE v3
@@ -1139,8 +1201,8 @@ plotter.plots_minimizer()
 p0 = np.array(list(like.fid["fit_cube"].values()))
 out_mle = []
 out_chi2 = []
-for ii in range(len(like.data.z)): 
-# for ii in range(1, 2): 
+# for ii in range(len(like.data.z)): 
+for ii in range(1): 
     print(ii)
     zmask = np.array([like.data.z[ii]])
     fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask, restart=True)
@@ -1148,7 +1210,10 @@ for ii in range(len(like.data.z)):
     out_chi2.append(fitter.mle_chi2)
 
 # %%
-# plotter = Plotter(fitter, save_directory=None, zmask=zmask)
+1215.67 / 1.00
+
+# %%
+plotter = Plotter(fitter, save_directory=None, zmask=zmask)
 # plotter = Plotter(fitter, save_directory=None)
 # plotter.plots_minimizer()
 
@@ -1187,42 +1252,63 @@ keys_plot = [
     '$\\mathrm{ln}\\,s^\\mathrm{HCD}_0$',
     'Delta2_star',
     'n_star',
-    '$A_s$',
-    '$n_s$',
+    "alpha_star",
+    # '$A_s$',
+    # '$n_s$',
     "$\\mathrm{ln}\\,\\mathrm{AGN}_0$",
+    '$\\mathrm{R}_0$',
     # '$\\Delta^2_\\star$',
     # '$n_\\star$',
 ]
 
 # %%
 
+# %%
+
 # fig, ax = plt.subplots(4, 3, figsize=(10, 8))
-fig, ax = plt.subplots(6, 3, figsize=(10, 8), sharex=True)
+fig, ax = plt.subplots(5, 3, figsize=(10, 8), sharex=True)
 ax = ax.reshape(-1)
 dict_out = {}
+jj = 0
 for ii, key in enumerate(keys_plot):
+    if key not in out_mle[0]:
+        continue
     dict_out[key] = np.zeros(len(like.data.z))
     for iz in range(len(like.data.z)):
-        ax[ii].scatter(like.data.z[iz], out_mle[iz][key])
+        ax[jj].scatter(like.data.z[iz], out_mle[iz][key])
         dict_out[key][iz] = out_mle[iz][key]
-    ax[ii].set_ylabel(key)
-    ax[ii].set_xlabel(r"$z$")
+    ax[jj].set_ylabel(key)
+    ax[jj].set_xlabel(r"$z$")
+    jj += 1
 
+jj = 0
 for ii, key in enumerate(keys_plot):
+    if key not in dict_out:
+        continue
     print(key, np.median(dict_out[key]))
-    ax[ii].plot(like.data.z, like.data.z[:]*0 + np.median(dict_out[key]))
+    ax[jj].plot(like.data.z, like.data.z[:]*0 + np.median(dict_out[key]))
+    jj += 1
     
 plt.tight_layout()
+
+# %%
+for key in dict_out:
+    print(key, np.median(dict_out[key]))
 
 # %%
 plt.plot(like.data.z, dict_out['$\\mathrm{ln}\\,\\tau_0$'])
 x = like.data.z
 y = dict_out['$\\mathrm{ln}\\,\\tau_0$']
-fit = np.polyfit(x, y, 2)
+fit = np.polyfit(x[6:], y[6:], 1)
 plt.plot(like.data.z, np.poly1d(fit)(like.data.z))
 
 # %%
 np.poly1d(fit)(like.data.z)
+
+# %%
+np.poly1d(fit)(like.data.z)
+
+# %%
 
 # %%
 plt.plot(like.data.z, dict_out['$\\mathrm{ln}\\,\\gamma_0$'])
@@ -1232,14 +1318,20 @@ fit = np.polyfit(x, y, 2)
 plt.plot(like.data.z, np.poly1d(fit)(like.data.z))
 
 # %%
-np.poly1d(fit)(like.data.z)
+np.poly1d(fit)(like.data.z) 
+
+# %%
+plt.plot(like.data.z, dict_out['$\\mathrm{ln}\\,\\sigma^T_0$'])
+x = like.data.z
+y = dict_out['$\\mathrm{ln}\\,\\sigma^T_0$']
+fit = np.polyfit(x[:-3], y[:-3], 1)
+plt.plot(like.data.z, np.poly1d(fit)(like.data.z))
 
 # %% [markdown]
 # return IGM parameters!!
 
 # %%
-for key in dict_out:
-    print(key, np.median(dict_out[key][:5]))
+np.poly1d(fit)(like.data.z) 
 
 # %%
 # I now have a version 3: /global/cfs/cdirs/desicollab/science/lya/y1-p1d/iron-baseline/qmle_measurement/DataProducts/v3 . These have resolution systematics updated and propagated to higher redshifts. I suggest you try what happens with resolution correction. This is still not the baseline, but made this variation for testing purposes.

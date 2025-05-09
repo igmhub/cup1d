@@ -345,7 +345,7 @@ class Args:
     emulator: str | None = None
     training_set: str = "Pedersen21"
     nyx_training_set: str = "models_Nyx_Mar2025_with_CGAN_val_3axes"
-    emulator_label: str = "Pedersen21"
+    emulator_label: str = "CH24_nyxcen_gpr"
     data_label: str = "mpg_central"
     p1d_fname: str | None = None
     cov_syst_type: str = "red"
@@ -368,26 +368,44 @@ class Args:
     n_d_SiII: int = 0
     n_a_SiIII: int = 0
     n_a_SiII: int = 0
+    n_x_CIV: int = 0
+    n_d_CIV: int = 0
+    n_a_CIV: int = 0
     n_d_dla: int = 0
     n_s_dla: int = 0
     n_sn: int = 0
     n_agn: int = 0
+    n_res: int = 0
     ic_correction: bool = False
     igm_priors: str = "hc"
     fid_cosmo_label: str = "mpg_central"
     true_cosmo_label: str | None = None
+    fid_val_mF: list[float] = field(default_factory=lambda: [0, 0])
+    true_val_mF: list[float] = field(default_factory=lambda: [0, 0])
+    fid_val_sigT: list[float] = field(default_factory=lambda: [0, 0])
+    true_val_sigT: list[float] = field(default_factory=lambda: [0, 0])
+    fid_val_gamma: list[float] = field(default_factory=lambda: [0, 0])
+    true_val_gamma: list[float] = field(default_factory=lambda: [0, 0])
+    fid_val_kF: list[float] = field(default_factory=lambda: [0, 0])
+    true_val_kF: list[float] = field(default_factory=lambda: [0, 0])
     fid_SiIII_X: list[float] = field(default_factory=lambda: [0, -10])
     true_SiIII_X: list[float] = field(default_factory=lambda: [0, -10])
     fid_SiII_X: list[float] = field(default_factory=lambda: [0, -10])
     true_SiII_X: list[float] = field(default_factory=lambda: [0, -10])
+    fid_CIV_X: list[float] = field(default_factory=lambda: [0, -10])
+    true_CIV_X: list[float] = field(default_factory=lambda: [0, -10])
     fid_SiIII_D: list[float] = field(default_factory=lambda: [0, 5])
     true_SiIII_D: list[float] = field(default_factory=lambda: [0, 5])
     fid_SiII_D: list[float] = field(default_factory=lambda: [0, 5])
     true_SiII_D: list[float] = field(default_factory=lambda: [0, 5])
+    fid_CIV_D: list[float] = field(default_factory=lambda: [0, 5])
+    true_CIV_D: list[float] = field(default_factory=lambda: [0, 5])
     fid_SiIII_A: list[float] = field(default_factory=lambda: [0, 1.5])
     true_SiIII_A: list[float] = field(default_factory=lambda: [0, 1.5])
     fid_SiII_A: list[float] = field(default_factory=lambda: [0, 1.5])
     true_SiII_A: list[float] = field(default_factory=lambda: [0, 1.5])
+    fid_CIV_A: list[float] = field(default_factory=lambda: [0, 1.5])
+    true_CIV_A: list[float] = field(default_factory=lambda: [0, 1.5])
     fid_A_damp: list[float] = field(default_factory=lambda: [0, -9])
     true_A_damp: list[float] = field(default_factory=lambda: [0, -9])
     fid_A_scale: list[float] = field(default_factory=lambda: [0, 5])
@@ -396,6 +414,8 @@ class Args:
     true_SN: list[float] = field(default_factory=lambda: [0, -4])
     fid_AGN: list[float] = field(default_factory=lambda: [0, -5])
     true_AGN: list[float] = field(default_factory=lambda: [0, -5])
+    fid_R_coeff: list[float] = field(default_factory=lambda: [0, 0])
+    true_R_coeff: list[float] = field(default_factory=lambda: [0, 0])
     drop_sim: bool = False
     apply_smoothing: bool = False
     cov_label: str = "Chabanier2019"
@@ -408,8 +428,8 @@ class Args:
     fix_cosmo: bool = False
     vary_alphas: bool = False
     prior_Gauss_rms: float | None = None
-    emu_cov_factor: int | None = None
-    emu_cov_type: str = "diagonal"
+    emu_cov_factor: int | None = 1
+    emu_cov_type: str = "full"
     verbose: bool = True
     test: bool = False
     explore: bool = False
@@ -437,8 +457,8 @@ class Args:
             "Nyx_alphap_cov",
             "CH24",
             "CH24_Nyx",
-            "CH24_mpg_gp",
-            "CH24_nyx_gp",
+            "CH24_mpgcen_gpr",
+            "CH24_nyxcen_gpr",
         ]
         if self.emulator_label not in avail_emulator_label:
             raise ValueError(
