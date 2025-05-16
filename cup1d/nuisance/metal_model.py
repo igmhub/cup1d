@@ -32,23 +32,39 @@ class MetalModel(object):
 
         # label identifying the metal line
         self.metal_label = metal_label
+        c_kms = 299792.458
         if metal_label == "SiIII":
-            self.lambda_rest = 1206.50  # from McDonald et al. 2006
+            lambda_lya = 1215.67
+            self.lambda_rest = 1206.52  # from Karacali+25
+            self.dv = (lambda_lya - self.lambda_rest) / lambda_lya * c_kms
         elif metal_label == "SiII":
-            self.lambda_rest = 1192.5  # like in Chabanier+19, Karacali+24
+            lambda_lya = 1215.67
+            self.lambda_rest = 1193.28  # from Karacali+25
+            self.dv = (lambda_lya - self.lambda_rest) / lambda_lya * c_kms
         elif metal_label == "CIV":
-            self.lambda_rest = 1212.6
+            self.lambda_rest = [1548.187, 1550.772]
+            self.dv = (
+                (self.lambda_rest[1] - self.lambda_rest[0])
+                / self.lambda_rest[0]
+                * c_kms
+            )
+        elif metal_label == "MgII":
+            # self.lambda_rest = [2795.528, 2802.705] # MgII
+            self.lambda_rest = [1190.42, 1193.28]  # SiIIa-SiIIb
+            self.dv = (
+                (self.lambda_rest[1] - self.lambda_rest[0])
+                / self.lambda_rest[0]
+                * c_kms
+            )
         else:
             if lambda_rest is None:
                 raise ValueError("need to specify lambda_rest", metal_label)
-            self.lambda_rest = lambda_rest
 
         # power law pivot point
         self.z_X = z_X
         # value below which no contamination (speed up model)
         self.X_null_value = X_null_value
         self.A_null_value = A_null_value
-        self.dv = self.get_dv_kms()
 
         # figure out parameters
         if (
@@ -152,11 +168,8 @@ class MetalModel(object):
         for i in range(Npar):
             name = "ln_d_" + self.metal_label + "_" + str(i)
             if i == 0:
-                # log of overall amplitude at z_X
-                # no contamination (0.3% at high k)
-                xmin = 1.5
-                # Almost no oscillations at high k
-                xmax = 6.5
+                xmin = 0
+                xmax = 2
             else:
                 # not optimized
                 xmin = -1
@@ -177,11 +190,8 @@ class MetalModel(object):
         for i in range(Npar):
             name = "a_" + self.metal_label + "_" + str(i)
             if i == 0:
-                # less than exponential damping
-                xmin = 0.0
-                # more damping than Gaussian
-                # xmax = 4.5
-                xmax = 8
+                xmin = -7
+                xmax = 7
             else:
                 xmin = -3
                 xmax = 3
@@ -310,71 +320,75 @@ class MetalModel(object):
 
         return A_coeff
 
+    # def get_amplitude(self, z, like_params=[]):
+    #     """Amplitude of contamination at a given z"""
+
+    #     # Note that this represents "f" in McDonald et al. (2006)
+    #     # It is later rescaled by <F> to compute "a" in eq. (15)
+
+    #     _ln_X_coeff = self.get_X_coeffs(like_params).copy()
+
+    #     if _ln_X_coeff[-1] <= self.X_null_value:
+    #         return 0
+
+    #     xz = np.log((1 + z) / (1 + self.z_X))
+
+    #     # keep exponent for amplitude
+    #     _ln_X_coeff[-1] = np.exp(_ln_X_coeff[-1])
+    #     # for the redshift ev coeff, exp to reduce dynamic range
+    #     if len(_ln_X_coeff) > 1:
+    #         _ln_X_coeff[0] = signed_exp(_ln_X_coeff[0])
+
+    #     ln_poly = np.poly1d(_ln_X_coeff)
+    #     # redshift evolution linear
+    #     return ln_poly(xz)
+
+    # def get_damping(self, z, like_params=[]):
+    #     """Damping of contamination at a given z"""
+
+    #     _ln_D_coeff = self.get_D_coeffs(like_params).copy()
+
+    #     xz = np.log((1 + z) / (1 + self.z_X))
+
+    #     # keep exponent for amplitude
+    #     _ln_D_coeff[-1] = np.exp(_ln_D_coeff[-1])
+    #     # for the redshift ev coeff, exp to reduce dynamic range
+    #     if len(_ln_D_coeff) > 1:
+    #         _ln_D_coeff[0] = signed_exp(_ln_D_coeff[0])
+
+    #     ln_poly = np.poly1d(_ln_D_coeff)
+    #     # redshift evolution linear
+    #     return ln_poly(xz)
+
     def get_amplitude(self, z, like_params=[]):
-        """Amplitude of contamination at a given z"""
+        """Exponent of damping at a given z"""
 
-        # Note that this represents "f" in McDonald et al. (2006)
-        # It is later rescaled by <F> to compute "a" in eq. (15)
+        ln_X_coeff = self.get_X_coeffs(like_params)
 
-        _ln_X_coeff = self.get_X_coeffs(like_params).copy()
-
-        if _ln_X_coeff[-1] <= self.X_null_value:
+        if ln_X_coeff[-1] <= self.X_null_value:
             return 0
 
-        xz = np.log((1 + z) / (1 + self.z_X))
-
-        # keep exponent for amplitude
-        _ln_X_coeff[-1] = np.exp(_ln_X_coeff[-1])
-        # for the redshift ev coeff, exp to reduce dynamic range
-        if len(_ln_X_coeff) > 1:
-            _ln_X_coeff[0] = signed_exp(_ln_X_coeff[0])
-
-        ln_poly = np.poly1d(_ln_X_coeff)
-        # redshift evolution linear
-        return ln_poly(xz)
+        xz = (1 + z) / (1 + self.z_X)
+        poly = np.poly1d(ln_X_coeff)
+        return np.exp(poly(xz))
 
     def get_damping(self, z, like_params=[]):
-        """Damping of contamination at a given z"""
+        """Exponent of damping at a given z"""
 
-        _ln_D_coeff = self.get_D_coeffs(like_params).copy()
+        ln_D_coeff = self.get_D_coeffs(like_params)
 
-        xz = np.log((1 + z) / (1 + self.z_X))
-
-        # keep exponent for amplitude
-        _ln_D_coeff[-1] = np.exp(_ln_D_coeff[-1])
-        # for the redshift ev coeff, exp to reduce dynamic range
-        if len(_ln_D_coeff) > 1:
-            _ln_D_coeff[0] = signed_exp(_ln_D_coeff[0])
-
-        ln_poly = np.poly1d(_ln_D_coeff)
-        # redshift evolution linear
-        return ln_poly(xz)
+        xz = (1 + z) / (1 + self.z_X)
+        poly = np.poly1d(ln_D_coeff)
+        return poly(xz)
 
     def get_exp_damping(self, z, like_params=[]):
         """Exponent of damping at a given z"""
 
         A_coeff = self.get_A_coeffs(like_params)
 
-        if A_coeff[-1] <= self.A_null_value:
-            return 0
-
         xz = (1 + z) / (1 + self.z_X)
         poly = np.poly1d(A_coeff)
         return poly(xz)
-
-    def get_dv_kms(self):
-        """Velocity separation where the contamination is stronger"""
-
-        # these constants should be written elsewhere
-        lambda_lya = 1215.67
-        c_kms = 2.997e5
-
-        # we should properly compute this (check McDonald et al. 2006)
-        # dv_kms = (lambda_lya-self.lambda_rest)/lambda_lya*c_kms
-        # v3 in McDonald et al. (2006)
-        dv_kms = np.log(lambda_lya / self.lambda_rest) * c_kms
-
-        return dv_kms
 
     def get_contamination(self, z, k_kms, mF, like_params=[]):
         """Multiplicative contamination at a given z and k (in s/km).
@@ -387,15 +401,28 @@ class MetalModel(object):
             return 1
         alpha = self.get_exp_damping(z, like_params=like_params)
 
-        if alpha == 0:
-            damping = 1
-        else:
-            damp_coeff = self.get_damping(z, like_params=like_params)
-            adim_damp = k_kms * damp_coeff
-            damping = (1 + adim_damp) ** alpha * np.exp(-1 * adim_damp**alpha)
+        # if self.metal_label == "MgII":
+        #     alpha = -0.1
+        #     print(alpha)
+
+        damp_coeff = self.get_damping(z, like_params=like_params)
+        # adim_damp = k_kms * damp_coeff
+        # damping = (1 + adim_damp) ** alpha * np.exp(-1 * adim_damp**alpha)
+        # damping = adim_damp**alpha * np.exp(-1 * adim_damp**alpha)
+        # damping = np.exp(-1 * adim_damp**alpha)
+        # print(self.metal_label, f, damp_coeff, alpha)
+        damping = 1 / (1 + np.exp(alpha * 1e2 * (k_kms - damp_coeff * 1e-2)))
 
         a = f / (1 - mF)
-        cont = 1 + a**2 + 2 * a * np.cos(self.dv * k_kms) * damping
+        # cont = (
+        #     1
+        #     + a**2
+        #     + 2 * a * np.cos(self.dv * k_kms) * damping / np.max(damping)
+        # )
+
+        cont = 1 + 2 * a * np.cos(self.dv * k_kms) * damping / np.max(damping)
+        # print(damp_coeff, alpha)
+
         return cont
 
     def plot_contamination(
@@ -412,6 +439,7 @@ class MetalModel(object):
         dict_data=None,
         zrange=[0, 10],
         name=None,
+        plot_panels=True,
     ):
         """Plot the contamination model"""
 
@@ -435,11 +463,12 @@ class MetalModel(object):
 
         yrange = [1, 1]
         fig1, ax1 = plt.subplots(figsize=(8, 6))
-        fig2, ax2 = plt.subplots(
-            len(z), sharex=True, sharey=True, figsize=(8, len(z) * 4)
-        )
-        if len(z) == 1:
-            ax2 = [ax2]
+        if plot_panels:
+            fig2, ax2 = plt.subplots(
+                len(z), sharex=True, sharey=True, figsize=(8, len(z) * 4)
+            )
+            if len(z) == 1:
+                ax2 = [ax2]
 
         for ii in range(0, len(z), plot_every_iz):
             if dict_data is not None:
@@ -465,7 +494,10 @@ class MetalModel(object):
                 cont = np.ones_like(k_use)
 
             ax1.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
-            ax2[ii].plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
+            if plot_panels:
+                ax2[ii].plot(
+                    k_use, cont, color=cmap(ii), label="z=" + str(z[ii])
+                )
 
             yrange[0] = min(yrange[0], np.min(cont))
             yrange[1] = max(yrange[1], np.max(cont))
@@ -496,15 +528,16 @@ class MetalModel(object):
                     color=cmap(ii),
                     alpha=0.5,
                 )
-                ax2[ii].errorbar(
-                    dict_data["k_kms"][indz],
-                    yy,
-                    err_yy,
-                    marker="o",
-                    linestyle=":",
-                    color=cmap(ii),
-                    alpha=0.5,
-                )
+                if plot_panels:
+                    ax2[ii].errorbar(
+                        dict_data["k_kms"][indz],
+                        yy,
+                        err_yy,
+                        marker="o",
+                        linestyle=":",
+                        color=cmap(ii),
+                        alpha=0.5,
+                    )
 
         ax1.axhline(1, color="k", linestyle=":")
         ax1.legend(ncol=4)
@@ -516,29 +549,33 @@ class MetalModel(object):
             + self.metal_label
             + "}$"
         )
-        for ax in ax2:
-            ax.axhline(1, color="k", linestyle=":")
-            ax.legend()
-            ax.set_ylim(yrange[0] * 0.95, yrange[1] * 1.05)
-            ax.set_xlabel(r"$k$ [1/Mpc]")
-            ax.set_ylabel(
-                r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,"
-                + self.metal_label
-                + "}$"
-            )
-            ax.set_xscale("log")
-
         fig1.tight_layout()
-        fig2.tight_layout()
+
+        if plot_panels:
+            for ax in ax2:
+                ax.axhline(1, color="k", linestyle=":")
+                ax.legend()
+                ax.set_ylim(yrange[0] * 0.95, yrange[1] * 1.05)
+                ax.set_xlabel(r"$k$ [1/Mpc]")
+                ax.set_ylabel(
+                    r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,"
+                    + self.metal_label
+                    + "}$"
+                )
+                ax.set_xscale("log")
+            fig2.tight_layout()
 
         if name is None:
             fig1.show()
-            fig2.show()
+            if plot_panels:
+                fig2.show()
         else:
             if len(z) != 1:
                 fig1.savefig(name + "_all.pdf")
                 fig1.savefig(name + "_all.png")
-            fig2.savefig(name + "_z.pdf")
-            fig2.savefig(name + "_z.png")
+
+            if plot_panels:
+                fig2.savefig(name + "_z.pdf")
+                fig2.savefig(name + "_z.png")
 
         return

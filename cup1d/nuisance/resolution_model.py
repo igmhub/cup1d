@@ -66,10 +66,9 @@ class Resolution_Model(object):
         for i in range(Npar):
             name = "R_coeff_" + str(i)
             if i == 0:
-                # no contamination
-                xmin = -1
-                # 0 gives 200% contamination high k
-                xmax = +1
+                # 1.5% Gaussian prior, allow for 3 sigma
+                xmin = -4.5
+                xmax = +4.5
             else:
                 # not optimized
                 xmin = -10
@@ -147,11 +146,20 @@ class Resolution_Model(object):
 
     def get_contamination(self, z, k_kms, like_params=[]):
         """Multiplicative contamination caused by Resolution"""
+        nelem = len(np.atleast_1d(z))
+        res = []
         A = self.get_R(z, like_params=like_params)
-        if A == 0:
-            return 1
-        else:
-            return 1 + 1e-2 * A * get_Rz(z, k_kms) ** 2 * k_kms**2
+        for ii in range(nelem):
+            # if nelem == 1:
+            #     print(A, get_Rz(z, k_kms), k_kms)
+            #     return 1 + 1e-2 * A * get_Rz(z, k_kms) ** 2 * k_kms**2
+            # else:
+            res.append(
+                1
+                + 1e-2 * A[ii] * get_Rz(z[ii], k_kms[ii]) ** 2 * k_kms[ii] ** 2
+            )
+
+        return res
 
     def plot_contamination(
         self,

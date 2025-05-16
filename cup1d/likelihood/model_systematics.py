@@ -1,6 +1,7 @@
 import numpy as np
 
 from cup1d.nuisance.resolution_model import Resolution_Model
+from cup1d.nuisance.resolution_model_chunks import Resolution_Model_Chunks
 
 
 class Systematics(object):
@@ -10,23 +11,39 @@ class Systematics(object):
         self,
         free_param_names=None,
         resolution_model=None,
+        resolution_model_type="chunks",
         fid_R_coeff=[0.0, 0.0],
     ):
-        self.fid_R_coeff = fid_R_coeff
-
         # setup Resolution model
         if resolution_model:
             self.resolution_model = resolution_model
         else:
-            self.resolution_model = Resolution_Model(
-                free_param_names=free_param_names, fid_R_coeff=self.fid_R_coeff
-            )
+            if resolution_model_type == "pivot":
+                self.resolution_model = Resolution_Model(
+                    free_param_names=free_param_names,
+                    fid_R_coeff=fid_R_coeff,
+                )
+                self.fid_R_coeff = fid_R_coeff
+            elif resolution_model_type == "chunks":
+                self.resolution_model = Resolution_Model_Chunks(
+                    free_param_names=free_param_names,
+                    # fid_R_coeff=self.fid_R_coeff,
+                )
+                self.fid_R_coeff = None
+            else:
+                raise ValueError(
+                    "resolution_model_type must be 'pivot' or 'chunks'"
+                )
 
     def get_dict_cont(self):
         dict_out = {}
 
-        for ii in range(2):
-            dict_out["R_coeff_" + str(ii)] = self.fid_R_coeff[-1 - ii]
+        if self.fid_R_coeff is not None:
+            for ii in range(len(self.fid_R_coeff)):
+                dict_out["R_coeff_" + str(ii)] = self.fid_R_coeff[-1 - ii]
+        else:
+            for ii in range(self.resolution_model.get_Nparam()):
+                dict_out["R_coeff_" + str(ii)] = 0
 
         return dict_out
 

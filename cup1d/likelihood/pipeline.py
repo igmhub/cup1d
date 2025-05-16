@@ -69,6 +69,12 @@ def set_free_like_parameters(params, emulator_label):
         free_parameters.append(f"ln_d_CIV_{ii}")
     for ii in range(params.n_a_CIV):
         free_parameters.append(f"a_CIV_{ii}")
+    for ii in range(params.n_x_MgII):
+        free_parameters.append(f"ln_x_MgII_{ii}")
+    for ii in range(params.n_d_MgII):
+        free_parameters.append(f"ln_d_MgII_{ii}")
+    for ii in range(params.n_a_MgII):
+        free_parameters.append(f"a_MgII_{ii}")
     for ii in range(params.n_d_dla):
         free_parameters.append(f"ln_A_damp_{ii}")
     for ii in range(params.n_s_dla):

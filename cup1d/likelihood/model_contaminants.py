@@ -19,6 +19,7 @@ class Contaminants(object):
         SiII_model=None,
         SiIII_model=None,
         CIV_model=None,
+        MgII_model=None,
         hcd_model=None,
         sn_model=None,
         agn_model=None,
@@ -33,6 +34,9 @@ class Contaminants(object):
         fid_CIV_X=[0, -10],
         fid_CIV_D=[0, 2],
         fid_CIV_A=[0, 1.5],
+        fid_MgII_X=[0, -10],
+        fid_MgII_D=[0, 2],
+        fid_MgII_A=[0, 1.5],
         fid_A_damp=[0, -9],
         fid_A_scale=[0, 1],
         fid_SN=[0, -4],
@@ -47,6 +51,9 @@ class Contaminants(object):
         self.fid_CIV_X = fid_CIV_X
         self.fid_CIV_D = fid_CIV_D
         self.fid_CIV_A = fid_CIV_A
+        self.fid_MgII_X = fid_MgII_X
+        self.fid_MgII_D = fid_MgII_D
+        self.fid_MgII_A = fid_MgII_A
         self.fid_A_damp = fid_A_damp
         self.fid_A_scale = fid_A_scale
         self.fid_SN = fid_SN
@@ -90,6 +97,18 @@ class Contaminants(object):
                 A_fid_value=self.fid_CIV_A,
             )
         self.metal_models.append(self.CIV_model)
+
+        if MgII_model:
+            self.MgII_model = MgII_model
+        else:
+            self.MgII_model = metal_model.MetalModel(
+                metal_label="MgII",
+                free_param_names=free_param_names,
+                X_fid_value=self.fid_MgII_X,
+                D_fid_value=self.fid_MgII_D,
+                A_fid_value=self.fid_MgII_A,
+            )
+        self.metal_models.append(self.MgII_model)
 
         # setup HCD model
         if hcd_model:

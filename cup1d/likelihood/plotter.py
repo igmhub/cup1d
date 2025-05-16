@@ -87,6 +87,10 @@ class Plotter(object):
         plt.close()
         self.plot_p1d(residuals=True, stat_best_fit="mle", zmask=zmask)
         plt.close()
+        self.plot_p1d(
+            residuals=True, stat_best_fit="mle", zmask=zmask, plot_panels=True
+        )
+        plt.close()
 
         # plot cosmology
         if self.fitter.fix_cosmology == False:
@@ -125,6 +129,8 @@ class Plotter(object):
         self.plot_p1d(residuals=False, stat_best_fit="mle")
         plt.close()
         self.plot_p1d(residuals=True, stat_best_fit="mle")
+        plt.close()
+        self.plot_p1d(residuals=True, stat_best_fit="mle", plot_panels=True)
         plt.close()
 
         # plot cosmology
@@ -612,6 +618,7 @@ class Plotter(object):
         rand_posterior=None,
         stat_best_fit="mle",
         zmask=None,
+        plot_panels=False,
     ):
         """Plot the P1D of the data and the emulator prediction
         for the MCMC best fit
@@ -621,6 +628,10 @@ class Plotter(object):
         if values is None:
             values = self.mle_values
 
+        if plot_panels:
+            if residuals == False:
+                plot_panels = False
+
         if self.save_directory is not None:
             if rand_posterior is None:
                 fname = "P1D_mle"
@@ -628,6 +639,8 @@ class Plotter(object):
                 fname = "best_fit_" + stat_best_fit + "_err_posterior"
             if residuals:
                 plot_fname = self.save_directory + "/" + fname + "_residuals"
+                if plot_panels:
+                    plot_fname += "_panels"
             else:
                 plot_fname = self.save_directory + "/" + fname
         else:
@@ -640,6 +653,7 @@ class Plotter(object):
             rand_posterior=rand_posterior,
             plot_fname=plot_fname,
             zmask=zmask,
+            plot_panels=plot_panels,
         )
 
     def plot_P1D_initial(self, plot_every_iz=1, residuals=False, zmask=None):
@@ -892,6 +906,7 @@ class Plotter(object):
         plot_data=False,
         zrange=[0, 10],
         mle_results=None,
+        plot_panels=True,
     ):
         """Function to plot metal contamination"""
 
@@ -979,6 +994,7 @@ class Plotter(object):
                 dict_data=dict_data,
                 zrange=zrange,
                 name=name,
+                plot_panels=plot_panels,
             )
 
     def plot_agn_cont(
@@ -1020,6 +1036,53 @@ class Plotter(object):
             self.fitter.like.data.z,
             self.fitter.like.data.k_kms,
             coeff,
+            plot_every_iz=plot_every_iz,
+            cmap=self.cmap,
+            smooth_k=smooth_k,
+            dict_data=dict_data,
+            zrange=zrange,
+            name=name,
+        )
+
+    def plot_res_cont(
+        self,
+        plot_every_iz=1,
+        smooth_k=False,
+        plot_data=False,
+        zrange=[0, 10],
+    ):
+        """Function to plot AGN contamination"""
+
+        if plot_data:
+            dict_data = self.mle_results
+        else:
+            dict_data = None
+
+        list_params = {}
+        for p in self.fitter.like.free_params:
+            if "R_coeff" in p.name:
+                key = self.fitter.param_dict[p.name]
+                list_params[p.name] = self.fitter.mle[key]
+                print(p.name, self.fitter.mle[key])
+
+        Npar = len(list_params)
+        if Npar == 0:
+            return
+        coeff = np.zeros(Npar)
+        for ii in range(Npar):
+            name = "R_coeff_" + str(ii)
+            # note non-trivial order in coefficients
+            coeff[Npar - ii - 1] = list_params[name]
+
+        if self.save_directory is not None:
+            name = self.save_directory + "/resolution_cont"
+        else:
+            name = None
+
+        self.fitter.like.theory.model_syst.resolution_model.plot_contamination(
+            self.fitter.like.data.z,
+            self.fitter.like.data.k_kms,
+            R_coeff=coeff,
             plot_every_iz=plot_every_iz,
             cmap=self.cmap,
             smooth_k=smooth_k,

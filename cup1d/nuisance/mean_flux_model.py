@@ -177,13 +177,16 @@ class MeanFluxModel(object):
                 else:
                     xmin = -0.2
                     xmax = 0.2
-            else:
+            elif i == 1:
                 if self.priors is not None:
                     xmin = self.priors[pname][-2][0]
                     xmax = self.priors[pname][-2][1]
                 else:
                     xmin = -0.5
                     xmax = 0.5
+            else:
+                xmin = -4
+                xmax = 4
             # note non-trivial order in coefficients
             value = self.ln_tau_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(

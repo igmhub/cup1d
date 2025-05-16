@@ -171,7 +171,7 @@ plt.ylim(1, 1e2)
 #     "E_DLA_COMPLETENESS",
 #     "E_BAL_COMPLETENESS",
 # ]
-    
+
 
 # %%
 # QMLE
@@ -539,8 +539,8 @@ else:
 
 # %%
 
-args = Args(emulator_label="CH24_nyxcen_gpr", training_set="models_Nyx_Mar2025_with_CGAN_val_3axes")
-# args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
+# args = Args(emulator_label="CH24_nyxcen_gpr", training_set="models_Nyx_Mar2025_with_CGAN_val_3axes")
+args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
 
 
 # args = Args(emulator_label="CH24_nyx_gp", training_set="Nyx23_Jul2024")
@@ -846,15 +846,17 @@ args.emu_cov_type = "block"
 args.fix_cosmo=False
 args.vary_alphas=False
 # args.vary_alphas=True
-# args.fid_cosmo_label="Planck18"
-args.fid_cosmo_label="Planck18_low"
 if "nyx" in args.emulator_label:
     sim_fid = "nyx_central"
     args.ic_correction=True
     # args.ic_correction=False
+    args.fid_cosmo_label="Planck18_nyx"
 else:
     sim_fid = "mpg_central"
     args.ic_correction=False
+    args.fid_cosmo_label="Planck18_mpg"
+# args.fid_cosmo_label="Planck18"
+
 args.fid_label_mF=sim_fid
 args.fid_label_T=sim_fid
 args.fid_label_kF=sim_fid
@@ -895,13 +897,28 @@ args.hcd_model_type = "new"
 # args.n_s_dla = 1
 
 # one z at a time
+# args.mF_model_type = "chunks"
+# args.n_tau=len(data["P1Ds"].z)
+
 args.mF_model_type = "pivot"
 args.n_tau=3
-# args.mF_model_type = "chunks"
-# args.n_tau=11
-args.n_sigT=1
 args.n_gamma=2
-args.n_kF=1
+args.n_sigT=2
+args.n_kF=2
+
+# z at a time
+# args.n_tau=1
+# args.n_gamma=1
+# args.n_sigT=1
+# args.n_kF=1
+
+args.resolution_model_type = "chunks"
+args.n_res = len(data["P1Ds"].z)
+
+# z at a time
+# args.resolution_model_type = "pivot"
+# args.n_res = 1
+
 
 args.n_x_SiII=1
 args.n_d_SiII=1
@@ -915,40 +932,80 @@ args.n_x_CIV=1
 args.n_d_CIV=1
 args.n_a_CIV=1
 
+args.n_x_MgII=1
+args.n_d_MgII=1
+args.n_a_MgII=1
+
 args.hcd_model_type = "new"
 args.n_d_dla = 1
 args.n_s_dla = 1
 
 args.n_agn = 0
 
-args.n_res = 0
+
 
 # args.fid_SiIII_X=[0, -10] # fine
 # args.fid_SiIII_D=[0, 5]
 # args.fid_SiIII_A=[0, 1]
 # args.fid_A_damp = [0, -9]
 # args.fid_A_scale = [0, 5]
-args.fid_val_mF = [2.48, -6.0e-1, 7.46e-2]
+if "nyx" in args.emulator_label:
+    args.fid_val_mF = [2.48, -6.0e-1, 7.46e-2]
+    args.fid_val_gamma = [-0.425, 0.13]
+    args.fid_val_sigT = [0, 5.82e-2]
+
+    args.fid_SiIII_X=[0, -4.2]
+    args.fid_SiIII_D=[0, 5.1]
+    args.fid_SiIII_A=[0, 1.0]
+    
+    args.fid_SiII_X=[0, -5.4]
+    args.fid_SiII_D=[0, 6.0]
+    args.fid_SiII_A=[0, 1.25]
+    
+    args.fid_CIV_X=[0, -8.3]
+    args.fid_CIV_D=[0, 4.7]
+    args.fid_CIV_A=[0, 5]
+    
+    args.fid_A_damp = [0, -0.78]
+    args.fid_A_scale = [0, 7.2]
+else:
+    args.fid_val_mF = [1.50, -5.97e-1, -7.51e-2]
+    args.fid_val_gamma = [-6.16e-1, 4.39e-2]
+    args.fid_val_sigT = [0, 1.08e-2]
+
+    args.fid_SiIII_X=[0, -4.7]
+    args.fid_SiIII_D=[0, 4.8]
+    args.fid_SiIII_A=[0, 1.4]
+    
+    args.fid_SiII_X=[0, -5.8]
+    args.fid_SiII_D=[0, 6.0]
+    args.fid_SiII_A=[0, 1.7]
+    
+    args.fid_CIV_X=[0, -8.5]
+    args.fid_CIV_D=[0, 4.8]
+    args.fid_CIV_A=[0, 5.8]
+    
+    args.fid_A_damp = [0, -1.43]
+    args.fid_A_scale = [0, 5.4]
+
+
+args.fid_SiII_X=[0, -5]
+args.fid_SiII_D=[0, 1]
+args.fid_SiII_A=[0, 1]
+args.fid_SiIII_X=[0, -5]
+args.fid_SiIII_D=[0, 1]
+args.fid_SiIII_A=[0, 1]
+args.fid_CIV_X=[0, -5]
+args.fid_CIV_D=[0, 1]
+args.fid_CIV_A=[0, 1]
+args.fid_MgII_X=[0, -5]
+args.fid_MgII_D=[0, 1]
+args.fid_MgII_A=[0, 1]
+    
 # args.fid_val_mF = [0,0,0]
-args.fid_val_gamma = [-0.425, 0.13]
 # args.fid_val_gamma = [0,0]
-args.fid_val_sigT = [0, 5.82e-2]
 # args.fid_val_sigT = [0,0]
 
-args.fid_SiIII_X=[0, -4.2]
-args.fid_SiIII_D=[0, 5.1]
-args.fid_SiIII_A=[0, 1.0]
-
-args.fid_SiII_X=[0, -5.4]
-args.fid_SiII_D=[0, 6.0]
-args.fid_SiII_A=[0, 1.25]
-
-args.fid_CIV_X=[0, -8.3]
-args.fid_CIV_D=[0, 4.7]
-args.fid_CIV_A=[0, 5]
-
-args.fid_A_damp = [0, -0.78]
-args.fid_A_scale = [0, 7.2]
 
 args.fid_AGN = [0, -5.5]
 # args.fid_AGN = [0, -1.5]
@@ -957,6 +1014,8 @@ args.fid_R_coeff = [0,  0]
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
+
+# %%
 
 # %% [markdown]
 # ### Set likelihood
@@ -1072,6 +1131,8 @@ fitter = Fitter(
 )
 
 # %%
+
+# %%
 # plotter.plot_hull(p0=p0)
 
 # %% [markdown]
@@ -1093,6 +1154,18 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # zmask = np.array([2.4])
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
+
+# %%
+955
+
+# %% [markdown]
+# stop 3.8 fid
+#
+# nyx 811, 807 with z-evolve SiIII (1.85108976e-03?!)
+#
+# mpg
+
+# %%
 
 # %%
 ## mpg (cosmo estable between tau3 and tau11)
@@ -1133,8 +1206,18 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # n_star -2.3294
 
 # %%
-plotter = Plotter(fitter, save_directory=None)
-plotter.plot_metal_cont(plot_data=True)
+# plotter.plot_p1d(residuals=True, plot_panels=True)
+
+# %%
+plotter = Plotter(fitter, save_directory="mpg_baseline_chunk")
+plotter.plots_minimizer()
+# plotter.plot_metal_cont(plot_data=True)
+
+# %%
+# plotter.plot_igm()
+
+# %%
+# plotter.plot_mle_cosmo()
 
 # %%
 
@@ -1142,7 +1225,7 @@ plotter.plot_metal_cont(plot_data=True)
 # plotter = Plotter(fitter, save_directory=None)
 # if args.fix_cosmo == False:
     # plotter.plot_mle_cosmo()
-plotter.plots_minimizer()
+# plotter.plots_minimizer()
 
 # %%
 # help(plotter.plot_hcd_cont)
@@ -1198,37 +1281,174 @@ plotter.plots_minimizer()
 # ### Run one z at a time
 
 # %%
+args.fid_MgII_X = [0, -5]
+args.fid_MgII_D = [0, 0.5]
+args.fid_MgII_A = [0, 0]
+
+args.fid_SiIII_X = [0, -5]
+args.fid_SiIII_D = [0, 1]
+args.fid_SiIII_A = [0, 1]
+
+args.fid_SiII_X = [0, -5]
+args.fid_SiII_D = [0, 1]
+args.fid_SiII_A = [0, 6]
+
+
+args.fid_CIV_X=[0, -5]
+args.fid_CIV_D=[0, 1]
+args.fid_CIV_A=[0, 0]
+
+# args.fid_AGN = [-2]
+
+like = set_like(
+    data["P1Ds"],
+    emulator,
+    args,
+    data_hires=data["extra_P1Ds"],
+)
+
+fitter = Fitter(
+    like=like,
+    rootdir=output_dir,
+    nburnin=args.n_burn_in,
+    nsteps=args.n_steps,
+    parallel=args.parallel,
+    explore=args.explore,
+    fix_cosmology=args.fix_cosmo,
+)
+
 p0 = np.array(list(like.fid["fit_cube"].values()))
 out_mle = []
 out_chi2 = []
 # for ii in range(len(like.data.z)): 
-for ii in range(1): 
+for ii in range(2,3): 
     print(ii)
     zmask = np.array([like.data.z[ii]])
     fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask, restart=True)
     out_mle.append(fitter.mle)
     out_chi2.append(fitter.mle_chi2)
+    # plotter = Plotter(fitter, zmask=zmask, save_directory="mpg_baseline/"+str(ii))
+    # plotter.plots_minimizer()
 
 # %%
-1215.67 / 1.00
+66
 
 # %%
-plotter = Plotter(fitter, save_directory=None, zmask=zmask)
+-4.47170249e+00  7.91460529e-01  1.52984703e+00 
+-5.51025276e+00  5.66789498e-01  2.69205069e+00
+-5.95337137e+00  9.93091827e-01 -1.12098517e-01
+
+0.81603719 0.15829211 0.7549745  
+0.68621841 0.1133579  0.94867511
+ 0.63082858 0.19861837 0.48131691
+
+# %%
+-4.93667451e+00  5.08733031e+00 9.00758381e-02
+
+# %%
+# plotter = Plotter(fitter, save_directory=None, zmask=zmask)
 # plotter = Plotter(fitter, save_directory=None)
 # plotter.plots_minimizer()
 
 # %%
-# fitter.mle_cube
-# plotter.fitter.mle_cube[-5] = 0.9
-# plotter.fitter.mle_cube[-4] = 0.7
-# plotter.fitter.mle_cube[-3] = 0.9
+# plotter.plot_res_cont(zmask=zmask)
+
+# %%
+plotter = Plotter(fitter, save_directory=None, zmask=zmask)
+plotter.plot_metal_cont(plot_data=True, plot_panels=False)
+
+# %%
+dv = 2250
+dv = 720
+
+
+plt.plot(k_kms, np.cos(k_kms * dv))
+a1 = 0.09 * 1e2
+a1 = 100 # alpha
+a2 = 161.95 * 1e-3
+a2 = 1e-2 # damp
+
+a2 = 0.5044365312410204
+a1 = -2.0643981142654413
+
+
+a2 = 0.5
+a1 = -5
+
+
+
+damp = 1/(1+np.exp(a1 * 1e2 * (k_kms - a2 * 1e-2)))
+plt.plot(k_kms, np.cos(k_kms * dv) * damp/np.max(damp))
+plt.plot(k_kms, damp/np.max(damp))
+plt.xscale("log")
+
+# %%
+np.exp(-5)
+
+# %%
+
+# %%
+k_kms = data["P1Ds"].k_kms[0].copy()
+damp_coeff = 178.9100418222273 
+alphas = np.linspace(0, 2, 10)
+adim_damp = k_kms * damp_coeff
+
+for alpha in alphas:
+    damping = (adim_damp) ** alpha * np.exp(-1 * adim_damp**alpha)
+    # damping = np.exp(-1 * adim_damp**alpha)
+    plt.plot(k_kms, damping/np.max(damping), label=str(alpha))
+plt.legend()
+plt.xscale("log")
+
+# %%
+
+# %%
+plotter.plot_agn_cont(plot_data=True)
+
+# %%
+# # fitter.mle_cube
+# # plotter.fitter.mle_cube[-6] = 0.47838117
+# # plotter.fitter.mle_cube[-6] = 0.57
+# # plotter.fitter.mle_cube[-4] = 0.14
+# # plotter.fitter.mle_cube[-3] = 0.9
 # mle_results = plotter.fitter.like.plot_p1d(
 #     values=plotter.fitter.mle_cube,
 #     return_all=True,
 #     show=False,
 #     zmask=zmask,
 # )
-# plotter.plot_metal_cont(zrange=[2.3, 2.5], plot_data=True, mle_results=mle_results)
+# plotter.plot_metal_cont(plot_data=True, mle_results=mle_results, plot_panels=False)
+
+# %%
+
+(1215.67 - 1206.5)/1215.67 * c_kms
+        
+
+# %%
+SiIII 2261.384125511053
+SiII 5713.878973619503
+CIV 757.0827988352504
+
+# %%
+c_kms = 299792.458
+lambda_lya = 1215.67
+lambda_rest = [1206.52, 1193.28]
+for ii in range(len(lambda_rest)):
+    dv = (lambda_lya - lambda_rest[ii]) / lambda_lya * c_kms
+    print(dv)
+
+# %%
+c_kms = 299792.458
+# http://astronomy.nmsu.edu/drewski/tableofemissionlines.html
+lambda_rest = [1548.187, 1550.772]
+lambda_rest = [2795.528, 2802.705]
+lambda_rest = [1190.42, 1193.28]
+dv = (lambda_rest[0] - lambda_rest[1]) / lambda_rest[0] * c_kms
+dv
+
+# %%
+
+plotter.plot_metal_cont(plot_data=True, mle_results=mle_results, plot_panels=False)
 
 # %%
 

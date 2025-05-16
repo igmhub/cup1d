@@ -37,6 +37,9 @@ def set_theory(
         CIV_X = args.fid_CIV_X
         CIV_D = args.fid_CIV_D
         CIV_A = args.fid_CIV_A
+        MgII_X = args.fid_MgII_X
+        MgII_D = args.fid_MgII_D
+        MgII_A = args.fid_MgII_A
         A_damp = args.fid_A_damp
         A_scale = args.fid_A_scale
         SN = args.fid_SN
@@ -59,6 +62,9 @@ def set_theory(
         CIV_X = args.true_CIV_X
         CIV_D = args.true_CIV_D
         CIV_A = args.true_CIV_A
+        MgII_X = args.true_MgII_X
+        MgII_D = args.true_MgII_D
+        MgII_A = args.true_MgII_A
         A_damp = args.true_A_damp
         A_scale = args.true_A_scale
         SN = args.true_SN
@@ -94,6 +100,9 @@ def set_theory(
         fid_CIV_X=CIV_X,
         fid_CIV_D=CIV_D,
         fid_CIV_A=CIV_A,
+        fid_MgII_X=MgII_X,
+        fid_MgII_D=MgII_D,
+        fid_MgII_A=MgII_A,
         fid_A_damp=A_damp,
         fid_A_scale=A_scale,
         fid_SN=SN,
@@ -104,6 +113,7 @@ def set_theory(
 
     # set systematics
     model_syst = Systematics(
+        resolution_model_type=args.resolution_model_type,
         free_param_names=free_parameters,
         fid_R_coeff=R_coeff,
     )
@@ -769,6 +779,10 @@ class Theory(object):
             #         )
 
         # apply contaminants
+        syst_total = self.model_syst.get_contamination(
+            zs, k_kms, like_params=like_params
+        )
+
         for iz, z in enumerate(zs):
             cont_total = self.model_cont.get_contamination(
                 z,
@@ -778,16 +792,10 @@ class Theory(object):
                 like_params=like_params,
             )
 
-            syst_total = self.model_syst.get_contamination(
-                z,
-                k_kms[iz],
-                like_params=like_params,
-            )
-
             if cont_total is None:
                 return None
             else:
-                cont_syst = cont_total * syst_total
+                cont_syst = cont_total * syst_total[iz]
                 p1d_kms[iz] *= cont_syst
 
         # decide what to return, and return it
