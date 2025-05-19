@@ -51,30 +51,15 @@ def set_free_like_parameters(params, emulator_label):
         free_parameters.append(f"ln_gamma_{ii}")
     for ii in range(params.n_kF):
         free_parameters.append(f"ln_kF_{ii}")
-    for ii in range(params.n_x_SiIII):
-        free_parameters.append(f"ln_x_SiIII_{ii}")
-    for ii in range(params.n_d_SiIII):
-        free_parameters.append(f"ln_d_SiIII_{ii}")
-    for ii in range(params.n_a_SiIII):
-        free_parameters.append(f"a_SiIII_{ii}")
-    for ii in range(params.n_x_SiII):
-        free_parameters.append(f"ln_x_SiII_{ii}")
-    for ii in range(params.n_d_SiII):
-        free_parameters.append(f"ln_d_SiII_{ii}")
-    for ii in range(params.n_a_SiII):
-        free_parameters.append(f"a_SiII_{ii}")
-    for ii in range(params.n_x_CIV):
-        free_parameters.append(f"ln_x_CIV_{ii}")
-    for ii in range(params.n_d_CIV):
-        free_parameters.append(f"ln_d_CIV_{ii}")
-    for ii in range(params.n_a_CIV):
-        free_parameters.append(f"a_CIV_{ii}")
-    for ii in range(params.n_x_MgII):
-        free_parameters.append(f"ln_x_MgII_{ii}")
-    for ii in range(params.n_d_MgII):
-        free_parameters.append(f"ln_d_MgII_{ii}")
-    for ii in range(params.n_a_MgII):
-        free_parameters.append(f"a_MgII_{ii}")
+    for metal_line in params.metal_lines:
+        for ii in range(params.n_metals["n_x_" + metal_line]):
+            free_parameters.append(f"ln_x_{metal_line}_{ii}")
+        for ii in range(params.n_metals["n_d_" + metal_line]):
+            free_parameters.append(f"d_{metal_line}_{ii}")
+        for ii in range(params.n_metals["n_l_" + metal_line]):
+            free_parameters.append(f"l_{metal_line}_{ii}")
+        for ii in range(params.n_metals["n_a_" + metal_line]):
+            free_parameters.append(f"a_{metal_line}_{ii}")
     for ii in range(params.n_d_dla):
         free_parameters.append(f"ln_A_damp_{ii}")
     for ii in range(params.n_s_dla):
@@ -216,21 +201,17 @@ def set_P1D(
             z_max=args.z_max,
         )
 
-    elif data_label == "eBOSS_mock":
-        # need to be tested
-        data = data_eBOSS_mock.P1D_eBOSS_mock(
-            emulator=emulator,
-            apply_smoothing=args.apply_smoothing,
-            true_SiII=args.true_SiII,
-            true_SiIII=args.true_SiIII,
-            true_HCD=args.true_HCD,
-            true_SN=args.true_SN,
-            true_AGN=args.true_AGN,
-            add_noise=args.add_noise,
-            seed=args.seed_noise,
-            z_min=args.z_min,
-            z_max=args.z_max,
-        )
+    # elif data_label == "eBOSS_mock":
+    #     # need to be tested
+    #     data = data_eBOSS_mock.P1D_eBOSS_mock(
+    #         theory,
+    #         true_cosmo,
+    #         apply_smoothing=args.apply_smoothing,
+    #         add_noise=args.add_noise,
+    #         seed=args.seed_noise,
+    #         z_min=args.z_min,
+    #         z_max=args.z_max,
+    #     )
     elif data_label == "Chabanier2019":
         data = data_Chabanier2019.P1D_Chabanier2019(
             z_min=args.z_min, z_max=args.z_max

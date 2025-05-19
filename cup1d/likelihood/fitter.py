@@ -889,30 +889,6 @@ param_dict = {
     "ln_kF_3": "$\mathrm{ln}\,k^F_3$",
     "ln_kF_4": "$\mathrm{ln}\,k^F_4$",
     # each metal contamination should have its own parameters here
-    "ln_x_SiIII_0": "$\mathrm{ln}\,f^{SiIII}_0$",
-    "ln_x_SiIII_1": "$\mathrm{ln}\,f^{SiIII}_1$",
-    "ln_x_SiII_0": "$\mathrm{ln}\,f^{SiII}_0$",
-    "ln_x_SiII_1": "$\mathrm{ln}\,f^{SiII}_1$",
-    "ln_x_CIV_0": "$\mathrm{ln}\,f^{CIV}_0$",
-    "ln_x_CIV_1": "$\mathrm{ln}\,f^{CIV}_1$",
-    "ln_x_MgII_0": "$\mathrm{ln}\,f^{MgII}_0$",
-    "ln_x_MgII_1": "$\mathrm{ln}\,f^{MgII}_1$",
-    "ln_d_SiIII_0": "$\mathrm{ln}\,d^{SiIII}_0$",
-    "ln_d_SiIII_1": "$\mathrm{ln}\,d^{SiIII}_1$",
-    "ln_d_SiII_0": "$\mathrm{ln}\,d^{SiII}_0$",
-    "ln_d_SiII_1": "$\mathrm{ln}\,d^{SiII}_1$",
-    "ln_d_CIV_0": "$\mathrm{ln}\,d^{CIV}_0$",
-    "ln_d_CIV_1": "$\mathrm{ln}\,d^{CIV}_1$",
-    "ln_d_MgII_0": "$\mathrm{ln}\,d^{MgII}_0$",
-    "ln_d_MgII_1": "$\mathrm{ln}\,d^{MgII}_1$",
-    "a_SiIII_0": "$a^{SiIII}_0$",
-    "a_SiIII_1": "$a^{SiIII}_1$",
-    "a_SiII_0": "$a^{SiII}_0$",
-    "a_SiII_1": "$a^{SiII}_1$",
-    "a_CIV_0": "$a^{CIV}_0$",
-    "a_CIV_1": "$a^{CIV}_1$",
-    "a_MgII_0": "$a^{MgII}_0$",
-    "a_MgII_1": "$a^{MgII}_1$",
     # each HCD contamination should have its own parameters here
     "ln_A_damp_0": "$\mathrm{ln}\,f^\mathrm{HCD}_0$",
     "ln_A_damp_1": "$\mathrm{ln}\,f^\mathrm{HCD}_1$",
@@ -946,6 +922,30 @@ param_dict = {
     "omch2": "$\omega_c$",
     "cosmomc_theta": "$\\theta_{MC}$",
 }
+
+metal_lines = [
+    "Lya_SiIII",
+    "Lya_SiII",
+    "CIV_CIV",
+    "MgII_MgII",
+    "SiII_SiII",
+    "SiII_SiIII",
+]
+for metal_line in metal_lines:
+    for ii in range(2):
+        param_dict["ln_x_" + metal_line + "_" + str(ii)] = (
+            "$\mathrm{ln}\,f^{" + metal_line + "_" + str(ii) + "}$"
+        )
+        param_dict["d_" + metal_line + "_" + str(ii)] = (
+            "$d^{" + metal_line + "_" + str(ii) + "}$"
+        )
+        param_dict["l_" + metal_line + "_" + str(ii)] = (
+            "$l^{" + metal_line + "_" + str(ii) + "}$"
+        )
+        param_dict["a_" + metal_line + "_" + str(ii)] = (
+            "$a^{" + metal_line + "_" + str(ii) + "}$"
+        )
+
 param_dict_rev = {v: k for k, v in param_dict.items()}
 
 

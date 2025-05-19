@@ -16,116 +16,63 @@ class Contaminants(object):
     def __init__(
         self,
         free_param_names=None,
-        SiII_model=None,
-        SiIII_model=None,
-        CIV_model=None,
-        MgII_model=None,
+        dict_models=None,
         hcd_model=None,
         sn_model=None,
         agn_model=None,
-        hcd_model_type="Rogers2017",
-        ic_correction=False,
-        fid_SiIII_X=[0, -10],
-        fid_SiIII_D=[0, 2],
-        fid_SiIII_A=[0, 1.5],
-        fid_SiII_X=[0, -10],
-        fid_SiII_D=[0, 2],
-        fid_SiII_A=[0, 1.5],
-        fid_CIV_X=[0, -10],
-        fid_CIV_D=[0, 2],
-        fid_CIV_A=[0, 1.5],
-        fid_MgII_X=[0, -10],
-        fid_MgII_D=[0, 2],
-        fid_MgII_A=[0, 1.5],
-        fid_A_damp=[0, -9],
-        fid_A_scale=[0, 1],
-        fid_SN=[0, -4],
-        fid_AGN=[0, -5],
+        metal_lines=None,
+        fid_metals=None,
+        fid_A_damp=None,
+        fid_A_scale=None,
+        fid_SN=None,
+        fid_AGN=None,
+        hcd_model_type=None,
+        ic_correction=None,
     ):
-        self.fid_SiIII_X = fid_SiIII_X
-        self.fid_SiIII_D = fid_SiIII_D
-        self.fid_SiIII_A = fid_SiIII_A
-        self.fid_SiII_X = fid_SiII_X
-        self.fid_SiII_D = fid_SiII_D
-        self.fid_SiII_A = fid_SiII_A
-        self.fid_CIV_X = fid_CIV_X
-        self.fid_CIV_D = fid_CIV_D
-        self.fid_CIV_A = fid_CIV_A
-        self.fid_MgII_X = fid_MgII_X
-        self.fid_MgII_D = fid_MgII_D
-        self.fid_MgII_A = fid_MgII_A
+        self.metal_lines = metal_lines
+        self.fid_metals = fid_metals
         self.fid_A_damp = fid_A_damp
         self.fid_A_scale = fid_A_scale
         self.fid_SN = fid_SN
         self.fid_AGN = fid_AGN
+        self.hcd_model_type = hcd_model_type
         self.ic_correction = ic_correction
 
         # setup metal models
-        self.metal_models = []
-        if SiIII_model:
-            self.SiIII_model = SiIII_model
-        else:
-            self.SiIII_model = metal_model.MetalModel(
-                metal_label="SiIII",
-                free_param_names=free_param_names,
-                X_fid_value=self.fid_SiIII_X,
-                D_fid_value=self.fid_SiIII_D,
-                A_fid_value=self.fid_SiIII_A,
-            )
-        self.metal_models.append(self.SiIII_model)
+        self.metal_models = {}
 
-        if SiII_model:
-            self.SiII_model = SiII_model
-        else:
-            self.SiII_model = metal_model.MetalModel(
-                metal_label="SiII",
-                free_param_names=free_param_names,
-                X_fid_value=self.fid_SiII_X,
-                D_fid_value=self.fid_SiII_D,
-                A_fid_value=self.fid_SiII_A,
-            )
-        self.metal_models.append(self.SiII_model)
-
-        if CIV_model:
-            self.CIV_model = CIV_model
-        else:
-            self.CIV_model = metal_model.MetalModel(
-                metal_label="CIV",
-                free_param_names=free_param_names,
-                X_fid_value=self.fid_CIV_X,
-                D_fid_value=self.fid_CIV_D,
-                A_fid_value=self.fid_CIV_A,
-            )
-        self.metal_models.append(self.CIV_model)
-
-        if MgII_model:
-            self.MgII_model = MgII_model
-        else:
-            self.MgII_model = metal_model.MetalModel(
-                metal_label="MgII",
-                free_param_names=free_param_names,
-                X_fid_value=self.fid_MgII_X,
-                D_fid_value=self.fid_MgII_D,
-                A_fid_value=self.fid_MgII_A,
-            )
-        self.metal_models.append(self.MgII_model)
+        for metal_line in self.metal_lines:
+            create_model = True
+            if dict_models is not None:
+                if metal_line in dict_models:
+                    self.metal_models[metal_line] = dict_models[metal_line]
+                    create_model = False
+            if create_model:
+                self.metal_models[metal_line] = metal_model.MetalModel(
+                    metal_label=metal_line,
+                    free_param_names=free_param_names,
+                    X_fid_value=self.fid_metals[metal_line + "_X"],
+                    D_fid_value=self.fid_metals[metal_line + "_D"],
+                    L_fid_value=self.fid_metals[metal_line + "_L"],
+                    A_fid_value=self.fid_metals[metal_line + "_A"],
+                )
 
         # setup HCD model
         if hcd_model:
             self.hcd_model = hcd_model
         else:
-            if hcd_model_type == "Rogers2017":
+            if self.hcd_model_type == "Rogers2017":
                 self.hcd_model = hcd_model_Rogers2017.HCD_Model_Rogers2017(
                     free_param_names=free_param_names,
                     fid_A_damp=self.fid_A_damp,
                     fid_A_scale=self.fid_A_scale,
                 )
-            elif hcd_model_type == "McDonald2005":
+            elif self.hcd_model_type == "McDonald2005":
                 self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
                     free_param_names=free_param_names,
                     fid_A_damp=self.fid_A_damp,
                 )
-            elif hcd_model_type == "new":
+            elif self.hcd_model_type == "new":
                 self.hcd_model = hcd_model_new.HCD_Model_new(
                     free_param_names=free_param_names,
                     fid_A_damp=self.fid_A_damp,
@@ -157,13 +104,17 @@ class Contaminants(object):
     def get_dict_cont(self):
         dict_out = {}
 
+        # maximum number of parameters
         for ii in range(2):
-            dict_out["ln_x_SiIII_" + str(ii)] = self.fid_SiIII_X[-1 - ii]
-            dict_out["ln_d_SiIII_" + str(ii)] = self.fid_SiIII_D[-1 - ii]
-            dict_out["a_SiIII_" + str(ii)] = self.fid_SiIII_A[-1 - ii]
-            dict_out["ln_x_SiII_" + str(ii)] = self.fid_SiII_X[-1 - ii]
-            dict_out["ln_d_SiII_" + str(ii)] = self.fid_SiII_D[-1 - ii]
-            dict_out["a_SiII_" + str(ii)] = self.fid_SiII_A[-1 - ii]
+            for metal_line in self.metal_lines:
+                flag = "ln_x_" + metal_line + "_" + str(ii)
+                dict_out[flag] = self.fid_metals[metal_line + "_X"][-1 - ii]
+                flag = "d_" + metal_line + "_" + str(ii)
+                dict_out[flag] = self.fid_metals[metal_line + "_D"][-1 - ii]
+                flag = "l_" + metal_line + "_" + str(ii)
+                dict_out[flag] = self.fid_metals[metal_line + "_L"][-1 - ii]
+                flag = "a_" + metal_line + "_" + str(ii)
+                dict_out[flag] = self.fid_metals[metal_line + "_A"][-1 - ii]
             dict_out["ln_A_damp_" + str(ii)] = self.fid_A_damp[-1 - ii]
             dict_out["ln_A_scale_" + str(ii)] = self.fid_A_scale[-1 - ii]
             dict_out["ln_SN_" + str(ii)] = self.fid_SN[-1 - ii]
@@ -175,8 +126,9 @@ class Contaminants(object):
     def get_contamination(self, z, k_kms, mF, M_of_z, like_params=[]):
         # include multiplicative metal contamination
         cont_metals = 1
-        for X_model in self.metal_models:
-            cont = X_model.get_contamination(
+        for model_name in self.metal_models:
+            metal_model = self.metal_models[model_name]
+            cont = metal_model.get_contamination(
                 z=z,
                 k_kms=k_kms,
                 mF=mF,

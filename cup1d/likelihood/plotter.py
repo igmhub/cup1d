@@ -925,11 +925,12 @@ class Plotter(object):
 
         # plot contamination of all metals
         metal_models = self.fitter.like.theory.model_cont.metal_models
-        for jj in range(len(metal_models)):
-            metal = metal_models[jj].metal_label
+        for model_name in metal_models:
+            metal = metal_models[model_name].metal_label
 
             x_list_params = {}
             d_list_params = {}
+            l_list_params = {}
             a_list_params = {}
             for p in self.fitter.like.free_params:
                 if "ln_x_" + metal + "_" in p.name:
@@ -939,6 +940,10 @@ class Plotter(object):
                 if "ln_d_" + metal + "_" in p.name:
                     key = self.fitter.param_dict[p.name]
                     d_list_params[p.name] = self.fitter.mle[key]
+                    print(p.name, self.fitter.mle[key])
+                if "ln_l_" + metal + "_" in p.name:
+                    key = self.fitter.param_dict[p.name]
+                    l_list_params[p.name] = self.fitter.mle[key]
                     print(p.name, self.fitter.mle[key])
                 if "a_" + metal + "_" in p.name:
                     key = self.fitter.param_dict[p.name]
@@ -959,20 +964,34 @@ class Plotter(object):
                 # note non-trivial order in coefficients
                 ln_D_coeff[d_Npar - ii - 1] = d_list_params[name]
 
+            l_Npar = len(l_list_params)
+            ln_L_coeff = np.zeros(l_Npar)
+            for ii in range(l_Npar):
+                name = "ln_l_" + metal + "_" + str(ii)
+                # note non-trivial order in coefficients
+                ln_L_coeff[l_Npar - ii - 1] = l_list_params[name]
+
             a_Npar = len(a_list_params)
             A_coeff = np.zeros(a_Npar)
             for ii in range(a_Npar):
                 name = "a_" + metal + "_" + str(ii)
                 # note non-trivial order in coefficients
-                A_coeff[d_Npar - ii - 1] = a_list_params[name]
+                A_coeff[a_Npar - ii - 1] = a_list_params[name]
 
-            if (x_Npar == 0) and (d_Npar == 0) and (a_Npar == 0):
+            if (
+                (x_Npar == 0)
+                and (d_Npar == 0)
+                and (l_Npar == 0)
+                and (a_Npar == 0)
+            ):
                 continue
 
             if x_Npar == 0:
                 ln_X_coeff = None
             if d_Npar == 0:
                 ln_D_coeff = None
+            if l_Npar == 0:
+                ln_N_coeff = None
             if a_Npar == 0:
                 A_coeff = None
 
@@ -981,12 +1000,13 @@ class Plotter(object):
             else:
                 name = None
 
-            metal_models[jj].plot_contamination(
+            metal_models[model_name].plot_contamination(
                 self.fitter.like.data.z,
                 self.fitter.like.data.k_kms,
                 mF,
                 ln_X_coeff=ln_X_coeff,
-                ln_D_coeff=ln_D_coeff,
+                D_coeff=ln_D_coeff,
+                L_coeff=ln_L_coeff,
                 A_coeff=A_coeff,
                 plot_every_iz=plot_every_iz,
                 cmap=self.cmap,

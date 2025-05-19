@@ -362,15 +362,6 @@ class Args:
     n_sigT: int = 2
     n_gamma: int = 2
     n_kF: int = 2
-    n_x_SiIII: int = 0
-    n_x_SiII: int = 0
-    n_d_SiIII: int = 0
-    n_d_SiII: int = 0
-    n_a_SiIII: int = 0
-    n_a_SiII: int = 0
-    n_x_CIV: int = 0
-    n_d_CIV: int = 0
-    n_a_CIV: int = 0
     n_d_dla: int = 0
     n_s_dla: int = 0
     n_sn: int = 0
@@ -388,30 +379,6 @@ class Args:
     true_val_gamma: list[float] = field(default_factory=lambda: [0, 0])
     fid_val_kF: list[float] = field(default_factory=lambda: [0, 0])
     true_val_kF: list[float] = field(default_factory=lambda: [0, 0])
-    fid_SiIII_X: list[float] = field(default_factory=lambda: [0, -10])
-    true_SiIII_X: list[float] = field(default_factory=lambda: [0, -10])
-    fid_SiII_X: list[float] = field(default_factory=lambda: [0, -10])
-    true_SiII_X: list[float] = field(default_factory=lambda: [0, -10])
-    fid_CIV_X: list[float] = field(default_factory=lambda: [0, -10])
-    true_CIV_X: list[float] = field(default_factory=lambda: [0, -10])
-    fid_MgII_X: list[float] = field(default_factory=lambda: [0, -10])
-    true_MgII_X: list[float] = field(default_factory=lambda: [0, -10])
-    fid_SiIII_D: list[float] = field(default_factory=lambda: [0, 5])
-    true_SiIII_D: list[float] = field(default_factory=lambda: [0, 5])
-    fid_SiII_D: list[float] = field(default_factory=lambda: [0, 5])
-    true_SiII_D: list[float] = field(default_factory=lambda: [0, 5])
-    fid_CIV_D: list[float] = field(default_factory=lambda: [0, 5])
-    true_CIV_D: list[float] = field(default_factory=lambda: [0, 5])
-    fid_MgII_D: list[float] = field(default_factory=lambda: [0, 5])
-    true_MgII_D: list[float] = field(default_factory=lambda: [0, 5])
-    fid_SiIII_A: list[float] = field(default_factory=lambda: [0, 1.5])
-    true_SiIII_A: list[float] = field(default_factory=lambda: [0, 1.5])
-    fid_SiII_A: list[float] = field(default_factory=lambda: [0, 1.5])
-    true_SiII_A: list[float] = field(default_factory=lambda: [0, 1.5])
-    fid_CIV_A: list[float] = field(default_factory=lambda: [0, 1.5])
-    true_CIV_A: list[float] = field(default_factory=lambda: [0, 1.5])
-    fid_MgII_A: list[float] = field(default_factory=lambda: [0, 1.5])
-    true_MgII_A: list[float] = field(default_factory=lambda: [0, 1.5])
     fid_A_damp: list[float] = field(default_factory=lambda: [0, -9])
     true_A_damp: list[float] = field(default_factory=lambda: [0, -9])
     fid_A_scale: list[float] = field(default_factory=lambda: [0, 5])
@@ -444,6 +411,37 @@ class Args:
     n_steps: int = 0
     z_star: float = 3
     kp_kms: float = 0.009
+    fid_metals: dict = field(default_factory=lambda: {})
+    true_metals: dict = field(default_factory=lambda: {})
+    n_metals: dict = field(default_factory=lambda: {})
+    metal_lines: list[str] = field(
+        default_factory=lambda: [
+            "Lya_SiIII",
+            "Lya_SiII",
+            "CIV_CIV",
+            "MgII_MgII",
+            "SiII_SiII",
+            "SiII_SiIII",
+        ]
+    )
+
+    def __post_init__(self):
+        for metal_line in self.metal_lines:
+            # setting fiducial and true values of parameters for each metal line
+            self.fid_metals[metal_line + "_X"] = [0, -10.5]
+            self.true_metals[metal_line + "_X"] = [0, -10.5]
+            self.fid_metals[metal_line + "_D"] = [0, 5]
+            self.true_metals[metal_line + "_D"] = [0, 5]
+            self.fid_metals[metal_line + "_L"] = [0, 0]
+            self.true_metals[metal_line + "_L"] = [0, 0]
+            self.fid_metals[metal_line + "_A"] = [0, 0]
+            self.true_metals[metal_line + "_A"] = [0, 0]
+
+            # setting number of X, D, L, A parameters for each metal line
+            self.n_metals["n_x_" + metal_line] = 0
+            self.n_metals["n_d_" + metal_line] = 0
+            self.n_metals["n_l_" + metal_line] = 0
+            self.n_metals["n_a_" + metal_line] = 0
 
     def check_emulator_label(self):
         avail_emulator_label = [

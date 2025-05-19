@@ -842,8 +842,8 @@ args.emu_cov_type = "block"
 
 
 
-# args.fix_cosmo=True
-args.fix_cosmo=False
+args.fix_cosmo=True
+# args.fix_cosmo=False
 args.vary_alphas=False
 # args.vary_alphas=True
 if "nyx" in args.emulator_label:
@@ -906,35 +906,42 @@ args.n_gamma=2
 args.n_sigT=2
 args.n_kF=2
 
+args.resolution_model_type = "chunks"
+args.n_res = len(data["P1Ds"].z)
+
 # z at a time
 # args.n_tau=1
 # args.n_gamma=1
 # args.n_sigT=1
 # args.n_kF=1
-
-args.resolution_model_type = "chunks"
-args.n_res = len(data["P1Ds"].z)
-
-# z at a time
 # args.resolution_model_type = "pivot"
 # args.n_res = 1
 
+lines_use = [
+    "Lya_SiIII",
+    "Lya_SiII",
+    "MgII_MgII",
+    "SiII_SiII",
+    "SiII_SiIII",
+]
 
-args.n_x_SiII=1
-args.n_d_SiII=1
-args.n_a_SiII=1
+for metal_line in lines_use:
+    args.fid_metals[metal_line + "_X"] = [0, -5]
+    args.fid_metals[metal_line + "_D"] = [0, 1]
+    args.fid_metals[metal_line + "_L"] = [0, 0]
+    args.fid_metals[metal_line + "_A"] = [0, 1]
+    args.n_metals["n_x_" + metal_line] = 1
+    args.n_metals["n_d_" + metal_line] = 1
+    args.n_metals["n_l_" + metal_line] = 0
+    args.n_metals["n_a_" + metal_line] = 1
 
-args.n_x_SiIII=1
-args.n_d_SiIII=1
-args.n_a_SiIII=1
+metal_line = "CIV_CIV"
+args.fid_metals[metal_line + "_X"] = [0, -10.5]
+args.n_metals["n_x_" + metal_line] = 0
+args.n_metals["n_d_" + metal_line] = 0
+args.n_metals["n_l_" + metal_line] = 0
+args.n_metals["n_a_" + metal_line] = 0
 
-args.n_x_CIV=1
-args.n_d_CIV=1
-args.n_a_CIV=1
-
-args.n_x_MgII=1
-args.n_d_MgII=1
-args.n_a_MgII=1
 
 args.hcd_model_type = "new"
 args.n_d_dla = 1
@@ -954,17 +961,17 @@ if "nyx" in args.emulator_label:
     args.fid_val_gamma = [-0.425, 0.13]
     args.fid_val_sigT = [0, 5.82e-2]
 
-    args.fid_SiIII_X=[0, -4.2]
-    args.fid_SiIII_D=[0, 5.1]
-    args.fid_SiIII_A=[0, 1.0]
+    # args.fid_SiIII_X=[0, -4.2]
+    # args.fid_SiIII_D=[0, 5.1]
+    # args.fid_SiIII_A=[0, 1.0]
     
-    args.fid_SiII_X=[0, -5.4]
-    args.fid_SiII_D=[0, 6.0]
-    args.fid_SiII_A=[0, 1.25]
+    # args.fid_SiII_X=[0, -5.4]
+    # args.fid_SiII_D=[0, 6.0]
+    # args.fid_SiII_A=[0, 1.25]
     
-    args.fid_CIV_X=[0, -8.3]
-    args.fid_CIV_D=[0, 4.7]
-    args.fid_CIV_A=[0, 5]
+    # args.fid_CIV_X=[0, -8.3]
+    # args.fid_CIV_D=[0, 4.7]
+    # args.fid_CIV_A=[0, 5]
     
     args.fid_A_damp = [0, -0.78]
     args.fid_A_scale = [0, 7.2]
@@ -973,34 +980,21 @@ else:
     args.fid_val_gamma = [-6.16e-1, 4.39e-2]
     args.fid_val_sigT = [0, 1.08e-2]
 
-    args.fid_SiIII_X=[0, -4.7]
-    args.fid_SiIII_D=[0, 4.8]
-    args.fid_SiIII_A=[0, 1.4]
+    # args.fid_SiIII_X=[0, -4.7]
+    # args.fid_SiIII_D=[0, 4.8]
+    # args.fid_SiIII_A=[0, 1.4]
     
-    args.fid_SiII_X=[0, -5.8]
-    args.fid_SiII_D=[0, 6.0]
-    args.fid_SiII_A=[0, 1.7]
+    # args.fid_SiII_X=[0, -5.8]
+    # args.fid_SiII_D=[0, 6.0]
+    # args.fid_SiII_A=[0, 1.7]
     
-    args.fid_CIV_X=[0, -8.5]
-    args.fid_CIV_D=[0, 4.8]
-    args.fid_CIV_A=[0, 5.8]
+    # args.fid_CIV_X=[0, -8.5]
+    # args.fid_CIV_D=[0, 4.8]
+    # args.fid_CIV_A=[0, 5.8]
     
     args.fid_A_damp = [0, -1.43]
     args.fid_A_scale = [0, 5.4]
 
-
-args.fid_SiII_X=[0, -5]
-args.fid_SiII_D=[0, 1]
-args.fid_SiII_A=[0, 1]
-args.fid_SiIII_X=[0, -5]
-args.fid_SiIII_D=[0, 1]
-args.fid_SiIII_A=[0, 1]
-args.fid_CIV_X=[0, -5]
-args.fid_CIV_D=[0, 1]
-args.fid_CIV_A=[0, 1]
-args.fid_MgII_X=[0, -5]
-args.fid_MgII_D=[0, 1]
-args.fid_MgII_A=[0, 1]
     
 # args.fid_val_mF = [0,0,0]
 # args.fid_val_gamma = [0,0]
@@ -1281,22 +1275,41 @@ plotter.plots_minimizer()
 # ### Run one z at a time
 
 # %%
-args.fid_MgII_X = [0, -5]
-args.fid_MgII_D = [0, 0.5]
-args.fid_MgII_A = [0, 0]
+lines_use = [
+    "Lya_SiIII",
+    "Lya_SiII",
+    # "CIV_CIV",
+    "MgII_MgII",
+    "SiII_SiII",
+    "SiII_SiIII",
+]
 
-args.fid_SiIII_X = [0, -5]
-args.fid_SiIII_D = [0, 1]
-args.fid_SiIII_A = [0, 1]
+for metal_line in lines_use:
+    args.fid_metals[metal_line + "_X"] = [0, -5]
+    args.fid_metals[metal_line + "_D"] = [0, 1]
+    args.fid_metals[metal_line + "_L"] = [0, 0]
+    args.fid_metals[metal_line + "_A"] = [0, 1]
+    args.n_metals["n_x_" + metal_line] = 1
+    args.n_metals["n_d_" + metal_line] = 1
+    args.n_metals["n_l_" + metal_line] = 0
+    args.n_metals["n_a_" + metal_line] = 1
 
-args.fid_SiII_X = [0, -5]
-args.fid_SiII_D = [0, 1]
-args.fid_SiII_A = [0, 6]
+
+# -4.34712583e+00  1.66871420e-01  1.32176591e+00 
+# -4.88155384e+00  1.13478268e-03  4.84141611e+00 
+# -6.63453577e+00  2.40570327e+00  1.59713154e+00 
+# -5.90411461e+00  1.95398104e+00  1.62359235e+00
+# -6.31163090e+00  8.43803196e-01 -4.47010190e-02
+
+metal_line = "CIV_CIV"
+args.fid_metals[metal_line + "_X"] = [0, -10.5]
+args.n_metals["n_x_" + metal_line] = 0
+args.n_metals["n_d_" + metal_line] = 0
+args.n_metals["n_l_" + metal_line] = 0
+args.n_metals["n_a_" + metal_line] = 0
 
 
-args.fid_CIV_X=[0, -5]
-args.fid_CIV_D=[0, 1]
-args.fid_CIV_A=[0, 0]
+free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 
 # args.fid_AGN = [-2]
 
@@ -1317,11 +1330,12 @@ fitter = Fitter(
     fix_cosmology=args.fix_cosmo,
 )
 
+# %%
 p0 = np.array(list(like.fid["fit_cube"].values()))
 out_mle = []
 out_chi2 = []
-# for ii in range(len(like.data.z)): 
-for ii in range(2,3): 
+for ii in range(len(like.data.z)): 
+# for ii in range(1): 
     print(ii)
     zmask = np.array([like.data.z[ii]])
     fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask, restart=True)
@@ -1331,19 +1345,16 @@ for ii in range(2,3):
     # plotter.plots_minimizer()
 
 # %%
-66
+np.sum(out_chi2)
 
 # %%
--4.47170249e+00  7.91460529e-01  1.52984703e+00 
--5.51025276e+00  5.66789498e-01  2.69205069e+00
--5.95337137e+00  9.93091827e-01 -1.12098517e-01
-
-0.81603719 0.15829211 0.7549745  
-0.68621841 0.1133579  0.94867511
- 0.63082858 0.19861837 0.48131691
+np.sum(out_chi2)
 
 # %%
--4.93667451e+00  5.08733031e+00 9.00758381e-02
+plt.plot(out_chi2)
+
+# %% [markdown]
+# chi2 8 bettern with CIV?!
 
 # %%
 # plotter = Plotter(fitter, save_directory=None, zmask=zmask)
@@ -1358,28 +1369,58 @@ plotter = Plotter(fitter, save_directory=None, zmask=zmask)
 plotter.plot_metal_cont(plot_data=True, plot_panels=False)
 
 # %%
+k_kms = data["P1Ds"].k_kms[0].copy()
+
 dv = 2250
-dv = 720
+# dv = 720
 
 
 plt.plot(k_kms, np.cos(k_kms * dv))
-a1 = 0.09 * 1e2
-a1 = 100 # alpha
-a2 = 161.95 * 1e-3
-a2 = 1e-2 # damp
-
-a2 = 0.5044365312410204
-a1 = -2.0643981142654413
+# a1 = 0.09 * 1e2
+a1 = 0.98 # alpha
+# a2 = 161.95 * 1e-3
+a2 = 2.25 # damp
 
 
-a2 = 0.5
-a1 = -5
+a1 = 0.90 # alpha
+# a2 = 161.95 * 1e-3
+a2 = 7.00 # damp
 
+a1 = 1.01 # alpha
+# a2 = 161.95 * 1e-3
+a2 = 2.36 # damp
+
+# a2 = 0.5044365312410204
+# a1 = -2.0643981142654413
+
+# a2 = 0.5
+# a1 = -5
+
+a1 = 1.93
+a2 = 1
+damp_lim=0
 
 
 damp = 1/(1+np.exp(a1 * 1e2 * (k_kms - a2 * 1e-2)))
-plt.plot(k_kms, np.cos(k_kms * dv) * damp/np.max(damp))
 plt.plot(k_kms, damp/np.max(damp))
+plt.plot(k_kms, np.cos(k_kms * dv) * damp/np.max(damp))
+
+damp_lim = -0.5
+damp = 1+ (damp_lim - 1) / (
+    1 + np.exp(-a1 * 1e2 * (k_kms - a2 * 1e-2))
+)
+plt.plot(k_kms, damp/np.max(damp))
+# plt.plot(k_kms, np.cos(k_kms * dv) * damp/np.max(damp))
+
+
+# damp = 1/(1+np.exp(a1 * 0.8 * 1e2 * (k_kms - a2 * 1e-2)))
+# # plt.plot(k_kms, np.cos(k_kms * dv) * damp/np.max(damp))
+# plt.plot(k_kms, damp/np.max(damp))
+
+
+# damp = 1 - 1/(1+np.exp(-a1 * 1e2 * (k_kms - a2* 1e-2)))**0.25
+# plt.plot(k_kms, np.cos(k_kms * dv) * damp/np.max(damp))
+# plt.plot(k_kms, damp/np.max(damp))
 plt.xscale("log")
 
 # %%
