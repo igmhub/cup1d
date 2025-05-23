@@ -48,7 +48,7 @@ class MetalModel(object):
             )
         elif metal_label == "MgII_MgII":
             # self.lambda_rest = [2795.528, 2802.705]  # MgII-MgII
-            self.lambda_rest = [1193.28, 1206.52]  # SiII-SiIII
+            self.lambda_rest = [1193.28, 1206.52]  # SiIIb-SiIII
             self.dv = (
                 (self.lambda_rest[1] - self.lambda_rest[0])
                 / self.lambda_rest[0]
@@ -62,7 +62,7 @@ class MetalModel(object):
                 * c_kms
             )
         elif metal_label == "SiII_SiIII":
-            self.lambda_rest = [1190.42, 1206.52]  # SiII-SiIII
+            self.lambda_rest = [1190.42, 1206.52]  # SiIIa-SiIII
             self.dv = (
                 (self.lambda_rest[1] - self.lambda_rest[0])
                 / self.lambda_rest[0]

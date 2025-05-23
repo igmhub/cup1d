@@ -327,6 +327,8 @@ class Theory(object):
         # make sure you are not changing the background expansion
         assert self.fixed_background(like_params)
 
+        zs = np.atleast_1d(zs)
+
         # differences in primordial power (at CMB pivot point)
         ratio_As = 1.0
         delta_ns = 0.0
@@ -673,6 +675,8 @@ class Theory(object):
         It might also return a covariance from the emulator,
         or a blob with extra information for the fitter."""
 
+        zs = np.atleast_1d(zs)
+
         # figure out emulator calls
         emu_call, M_of_z, blob = self.get_emulator_calls(
             zs,
@@ -717,9 +721,16 @@ class Theory(object):
         # compute input k to emulator in Mpc
         Nz = len(zs)
         length = 0
-        for iz in range(Nz):
-            if len(k_kms[iz]) > length:
-                length = len(k_kms[iz])
+        if Nz > 1:
+            for iz in range(Nz):
+                if len(k_kms[iz]) > length:
+                    length = len(k_kms[iz])
+        else:
+            if len(k_kms) == 1:
+                k_kms = k_kms[0]
+            length = len(k_kms)
+            k_kms = [k_kms]
+
         kin_Mpc = np.zeros((Nz, length))
         for iz in range(Nz):
             kin_Mpc[iz, : len(k_kms[iz])] = k_kms[iz] * M_of_z[iz]

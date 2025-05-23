@@ -828,6 +828,8 @@ class Likelihood(object):
         zmask=None,
         n_perturb=100,
         plot_panels=False,
+        z_at_time=False,
+        fontsize=16,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
@@ -848,15 +850,52 @@ class Likelihood(object):
                     _data_k_kms.append(self.data.k_kms[iz])
             _data_z = np.array(_data_z)
 
-        _res = self.get_p1d_kms(
-            _data_z, _data_k_kms, values, return_covar=return_covar
-        )
-        if _res is None:
-            return print("Prior out of range")
-        if return_covar:
-            emu_p1d, emu_cov = _res
+        # z at time fits or full fit
+        if z_at_time is False:
+            _res = self.get_p1d_kms(
+                _data_z, _data_k_kms, values, return_covar=return_covar
+            )
+            if _res is None:
+                return print("Prior out of range")
+            if return_covar:
+                emu_p1d, emu_cov = _res
+            else:
+                emu_p1d = _res
+
+            # the sum of chi2_all may be different from chi2 due to covariance
+            chi2, chi2_all = self.get_chi2(
+                values=values, return_all=True, zmask=zmask
+            )
         else:
-            emu_p1d = _res
+            emu_p1d = []
+            chi2_all = []
+            for iz in range(len(_data_z)):
+                _res = self.get_p1d_kms(
+                    _data_z[iz],
+                    _data_k_kms[iz],
+                    values[iz],
+                    return_covar=return_covar,
+                )
+                # print(iz, _data_z[iz], _res)
+                if _res is None:
+                    return print("Prior out of range for z = ", _data_z[iz])
+                if return_covar:
+                    emu_p1d.append(_res[0])
+                else:
+                    if len(_res) == 1:
+                        emu_p1d.append(_res[0])
+                    else:
+                        emu_p1d.append(_res)
+
+                _chi2, _ = self.get_chi2(
+                    values=values[iz],
+                    return_all=True,
+                    zmask=np.array([_data_z[iz]]),
+                )
+                chi2_all.append(_chi2)
+            chi2 = np.sum(chi2_all)
+            # account for extra_data
+            chi2_all = np.array([chi2_all])
 
         if self.extra_data is not None:
             _res = self.get_p1d_kms(
@@ -871,11 +910,6 @@ class Likelihood(object):
                 emu_p1d_extra, emu_cov_extra = _res
             else:
                 emu_p1d_extra = _res
-
-        # the sum of chi2_all may be different from chi2 due to covariance
-        chi2, chi2_all = self.get_chi2(
-            values=values, return_all=True, zmask=zmask
-        )
 
         # if rand_posterior is not None:
         #     Nz = len(self.data.z)
@@ -900,13 +934,19 @@ class Likelihood(object):
         if self.extra_data is None:
             if plot_panels:
                 fig, ax = plt.subplots(
-                    len(_data_z), 1, figsize=(8, len(_data_z) * 2), sharex=True
+                    len(_data_z) // 2 + len(_data_z) % 2,
+                    2,
+                    figsize=(12, len(_data_z)),
+                    sharex=True,
+                    sharey="row",
                 )
                 if len(_data_z) == 1:
                     ax = [ax]
                 else:
                     ax = ax.reshape(-1)
                 length = 1
+                if len(_data_z) % 2 != 0:
+                    ax[-1].axis("off")
             else:
                 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
                 length = 1
@@ -928,17 +968,22 @@ class Likelihood(object):
             for iz in range(len(self.extra_data.k_kms)):
                 ndeg += np.sum(self.extra_data.Pk_kms[iz] != 0)
         prob = chi2_scipy.sf(chi2, ndeg - n_free_p)
-        label = (
-            r"$\chi^2=$"
-            + str(np.round(chi2, 6))
-            + " (ndeg="
-            + str(ndeg - n_free_p)
-            + ", prob="
-            + str(np.round(prob * 100, 6))
-            + "%)"
-        )
+
+        if plot_panels == False:
+            label = (
+                r"$\chi^2=$"
+                + str(np.round(chi2, 6))
+                + " (ndeg="
+                + str(ndeg - n_free_p)
+                + ", prob="
+                + str(np.round(prob * 100, 6))
+                + "%)"
+            )
+        else:
+            label = r"$\chi_\mathrm{all}^2=$" + str(np.round(chi2, 2))
+
         if print_chi2:
-            ax[0].set_title(label, fontsize=14)
+            fig.suptitle(label, fontsize=fontsize)
 
         out = {}
 
@@ -1014,7 +1059,11 @@ class Likelihood(object):
                     else:
                         yshift = 4 * iz / (Nz - 1)
                 else:
-                    col = "blue"
+                    col = "C0"
+                    yshift = 0
+
+                if plot_panels:
+                    col = "C0"
                     yshift = 0
 
                 if residuals:
@@ -1023,6 +1072,10 @@ class Likelihood(object):
                         yshift = 0
                     else:
                         axs = ax[ii]
+
+                    axs.tick_params(
+                        axis="both", which="major", labelsize=fontsize - 4
+                    )
                     # shift data in y axis for clarity
                     axs.errorbar(
                         k_kms,
@@ -1066,12 +1119,9 @@ class Likelihood(object):
                         print(p1d_data / p1d_theory)
                     ymin = min(ymin, min(p1d_data / p1d_theory + yshift))
                     ymax = max(ymax, max(p1d_data / p1d_theory + yshift))
-                    axs.plot(
-                        k_kms,
-                        p1d_theory / p1d_theory + yshift,
-                        color=col,
-                        linestyle="dashed",
-                    )
+
+                    axs.axhline(1, color="k", linestyle=":", alpha=0.5)
+
                     if return_covar | (rand_posterior is not None):
                         axs.fill_between(
                             k_kms,
@@ -1136,14 +1186,25 @@ class Likelihood(object):
 
                 if residuals & plot_panels:
                     axs.legend(loc="upper right")
-                    ymin = 1 - min(p1d_data / p1d_theory + yshift)
-                    ymax = 1 - max(p1d_data / p1d_theory + yshift)
-                    y2plot = 1.25 * np.max([np.abs(ymin), np.abs(ymax)])
-                    axs.set_ylim(1 - y2plot, 1 + y2plot)
+                    ymin = 1 - min((p1d_data - p1d_err) / p1d_theory + yshift)
+                    ymax = 1 - max((p1d_data + p1d_err) / p1d_theory + yshift)
+                    y2plot = 1.05 * np.max([np.abs(ymin), np.abs(ymax)])
+                    if iz % 2 == 1:
+                        # y2plot0 = ax[iz - 1].get_ylim()[1] - 1
+                        # print(y2plot, y2plot0)
+                        # y2plot = np.max([y2plot, y2plot0])
+                        axs.set_ylim(1 - y2plot, 1 + y2plot)
+                    elif iz == len(zs) - 1:
+                        axs.set_ylim(1 - y2plot, 1 + y2plot)
 
                     if print_chi2:
-                        ypos = 0.05 * y2plot + (1 - y2plot)
-                        axs.text(xpos, ypos, label, fontsize=10)
+                        axs.text(
+                            0.05,
+                            0.05,
+                            label,
+                            fontsize=10,
+                            transform=axs.transAxes,
+                        )
 
                 if ii == 0:
                     out["zs"].append(z)
@@ -1168,30 +1229,34 @@ class Likelihood(object):
                 if plot_panels == False:
                     ax[ii].legend()
             else:
-                ax[ii].legend(loc="lower right", ncol=4)
+                ax[ii].legend(loc="lower right", ncol=4, fontsize=fontsize - 2)
 
             # ax[ii].set_xlim(min(k_kms[0]) - 0.001, max(k_kms[-1]) + 0.001)
-            if plot_panels == False:
-                ax[ii].set_xlabel(r"$k_\parallel$ [s/km]")
-            else:
-                ax[-1].set_xlabel(r"$k_\parallel$ [s/km]")
+            # if plot_panels == False:
+            # ax[ii].set_xlabel(r"$k_\parallel$ [s/km]")
+            # else:
+            # ax[-1].set_xlabel(r"$k_\parallel$ [s/km]")
 
             if residuals:
                 if plot_panels == False:
                     ax[ii].set_ylabel(
-                        r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$"
+                        r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$",
+                        fontsize=fontsize,
                     )
                     ax[ii].set_ylim(ymin - 0.3, ymax + 0.3)
-                else:
-                    fig.supylabel(
-                        r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$"
-                    )
             else:
                 ax[ii].set_ylim(0.8 * ymin, 1.3 * ymax)
                 ax[ii].set_yscale("log")
                 ax[ii].set_ylabel(
-                    r"$k_\parallel \, P_{\rm 1D}(z, k_\parallel) / \pi$"
+                    r"$k_\parallel \, P_{\rm 1D}(z, k_\parallel) / \pi$",
+                    fontsize=fontsize,
                 )
+
+        fig.supxlabel(r"$k_\parallel$ [s/km]", fontsize=fontsize)
+        fig.supylabel(
+            r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$",
+            fontsize=fontsize,
+        )
 
         plt.tight_layout()
         # plt.savefig("test.pdf")

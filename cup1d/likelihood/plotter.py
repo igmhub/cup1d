@@ -619,6 +619,7 @@ class Plotter(object):
         stat_best_fit="mle",
         zmask=None,
         plot_panels=False,
+        z_at_time=False,
     ):
         """Plot the P1D of the data and the emulator prediction
         for the MCMC best fit
@@ -654,6 +655,7 @@ class Plotter(object):
             plot_fname=plot_fname,
             zmask=zmask,
             plot_panels=plot_panels,
+            z_at_time=z_at_time,
         )
 
     def plot_P1D_initial(self, plot_every_iz=1, residuals=False, zmask=None):
@@ -860,7 +862,7 @@ class Plotter(object):
         if Npar == 0:
             return
 
-        print(Npar, Npar_damp, Npar_scale)
+        # print(Npar, Npar_damp, Npar_scale)
 
         if Npar_scale != 0:
             A_scale_coeff = np.zeros(Npar_scale)
@@ -1149,3 +1151,327 @@ class Plotter(object):
                 plt.savefig(name + ".png")
         else:
             plt.show()
+
+    def plot_illustrate_contaminants(
+        self, values, zmask, fontsize=18, lines_use=None
+    ):
+        all_contaminants = np.array(lines_use + ["DLA", "res", ""])
+
+        # cont2label = {
+        #     "Lya_SiIII": "+ Lya-SiIII(1206)",
+        #     "DLA": "+ HCDs",
+        #     "Lya_SiII": "+ Lya-SiII(1193)",
+        #     "res": "+ resolution",
+        #     "SiII_SiII": "+ SiII(1190)-SiII(1193)",
+        #     "SiII_SiIII": "+ SiII(1190)-SiIII(1206)",
+        #     "MgII_MgII": "+ SiII(1193)-SiIII(1206)",
+        # }
+        cont2label = {
+            "Lya_SiIII": r"Ly$\alpha$-SiIII",
+            "DLA": "HCDs",
+            "Lya_SiII": r"Ly$\alpha$-SiII",
+            "res": "resolution",
+            "SiII_SiII": "SiII(1190)-SiII(1193)",
+            "SiII_SiIII": "SiII(1190)-SiIII",
+            "MgII_MgII": "SiII(1193)-SiIII",
+            "CIV_CIV": "CIV-CIV",
+        }
+
+        _data_z = []
+        _data_k_kms = []
+        _data_Pk_kms = []
+        _data_ePk_kms = []
+        _data_icov_kms = []
+        for iz in range(len(self.fitter.like.data.z)):
+            _ = np.argwhere(np.abs(zmask - self.fitter.like.data.z[iz]) < 1e-3)
+            if len(_) != 0:
+                _data_z.append(self.fitter.like.data.z[iz])
+                _data_k_kms.append(self.fitter.like.data.k_kms[iz])
+                _data_Pk_kms.append(self.fitter.like.data.Pk_kms[iz])
+                _data_ePk_kms.append(
+                    np.sqrt(np.diag(self.fitter.like.data.cov_Pk_kms[iz]))
+                )
+                _data_icov_kms.append(
+                    np.linalg.inv(self.fitter.like.data.cov_Pk_kms[iz])
+                )
+        _data_z = np.array(_data_z)
+
+        # compute which contaminants produce greatest change in chi2
+
+        chi2_each = np.zeros(len(all_contaminants))
+        for icont, conts in enumerate(all_contaminants):
+            _values = values.copy()
+            if "DLA" in conts:
+                ind = np.argwhere(
+                    np.array(self.fitter.like.free_param_names) == "ln_A_damp_0"
+                )[0, 0]
+                _values[ind] = 0
+            if "res" in conts:
+                ind = np.argwhere(
+                    np.array(self.fitter.like.free_param_names) == "R_coeff_0"
+                )[0, 0]
+                _values[ind] = 0.5
+
+            for line in self.fitter.like.theory.model_cont.metal_lines:
+                if line in conts:
+                    ind = np.argwhere(
+                        np.array(self.fitter.like.free_param_names)
+                        == "ln_x_" + line + "_0"
+                    )[0, 0]
+                    _values[ind] = 0.0
+
+            _res = self.fitter.like.get_p1d_kms(_data_z, _data_k_kms, _values)
+            diff = _data_Pk_kms[0] - _res[0]
+            chi2_each[icont] = np.dot(np.dot(_data_icov_kms[0], diff), diff)
+
+        ind = np.argsort(chi2_each[:-1] - chi2_each[-1])[::-1]
+
+        remove_contaminants = []
+        labels = []
+        remove_contaminants.append(list(all_contaminants[:-1]))
+        labels.append("base")
+        for ii in range(len(ind)):
+            _remove = []
+            labels.append(cont2label[all_contaminants[ind[ii]]])
+            for cont in all_contaminants[:-1]:
+                if cont not in (all_contaminants[:-1])[ind[: ii + 1]]:
+                    _remove.append(cont)
+            remove_contaminants.append(_remove)
+        labels.append("full")
+        # for ii in range(len(remove_contaminants)):
+        #     print(ii, remove_contaminants[ii])
+        # for ii in range(len(labels)):
+        #     print(ii, labels[ii])
+
+        emu_p1d = []
+        chi2_all = []
+        for conts in remove_contaminants:
+            _values = values.copy()
+            if "DLA" in conts:
+                ind = np.argwhere(
+                    np.array(self.fitter.like.free_param_names) == "ln_A_damp_0"
+                )[0, 0]
+                _values[ind] = 0
+            if "res" in conts:
+                ind = np.argwhere(
+                    np.array(self.fitter.like.free_param_names) == "R_coeff_0"
+                )[0, 0]
+                _values[ind] = 0.5
+
+            for line in self.fitter.like.theory.model_cont.metal_lines:
+                if line in conts:
+                    ind = np.argwhere(
+                        np.array(self.fitter.like.free_param_names)
+                        == "ln_x_" + line + "_0"
+                    )[0, 0]
+                    _values[ind] = 0.0
+
+            _res = self.fitter.like.get_p1d_kms(_data_z, _data_k_kms, _values)
+            emu_p1d.append(_res[0])
+
+            diff = _data_Pk_kms[0] - _res[0]
+            chi2_all.append(np.dot(np.dot(_data_icov_kms[0], diff), diff))
+
+        nax = len(all_contaminants) // 2
+        naxres = len(all_contaminants) % 2
+        fig, ax = plt.subplots(
+            nax + naxres,
+            2,
+            sharex=True,
+            sharey="row",
+            figsize=(12, (nax + naxres) * 2.5),
+        )
+        ax = ax.reshape(-1)
+
+        for ii in range(len(emu_p1d)):
+            if ii == 0:
+                lab = labels[ii]
+            else:
+                lab = "... + " + labels[ii]
+            ax[ii].errorbar(
+                _data_k_kms[0],
+                _data_Pk_kms[0] / emu_p1d[ii] - 1,
+                _data_ePk_kms[0] / emu_p1d[ii],
+                color="C0",
+                ls=":",
+                marker=".",
+                label=lab,
+            )
+            if ii != len(emu_p1d) - 1:
+                ax[ii].plot(
+                    _data_k_kms[0],
+                    emu_p1d[ii + 1] / emu_p1d[ii] - 1,
+                    "C1-",
+                    label=labels[ii + 1],
+                )
+                ax[ii].text(
+                    0.05,
+                    0.1,
+                    r"$\Delta\chi^2=$"
+                    + str(np.round(chi2_all[ii + 1] - chi2_all[ii], 1)),
+                    fontsize=fontsize - 2,
+                    transform=ax[ii].transAxes,
+                )
+            else:
+                ax[ii].text(
+                    0.05,
+                    0.1,
+                    r"$\chi^2=$" + str(np.round(chi2_all[ii], 1)),
+                    fontsize=fontsize - 2,
+                    transform=ax[ii].transAxes,
+                )
+            ax[ii].axhline(color="k", ls=":", alpha=0.5)
+
+            ax[ii].tick_params(
+                axis="both", which="major", labelsize=fontsize - 2
+            )
+            _handles, _labels = ax[ii].get_legend_handles_labels()
+            if ii != len(emu_p1d) - 1:
+                order = [1, 0]
+            else:
+                order = [0]
+            ax[ii].legend(
+                [_handles[idx] for idx in order],
+                [_labels[idx] for idx in order],
+                loc="upper right",
+                fontsize=fontsize - 4,
+            )
+            # ax[ii].legend(loc="upper right", fontsize=fontsize - 2)
+        ax[-2].set_xlabel(r"$k_\parallel$ [s/km]", fontsize=fontsize)
+        ax[-1].set_xlabel(r"$k_\parallel$ [s/km]", fontsize=fontsize)
+        # fig.suptitle(r"$z=$" + str(zmask[0]), fontsize=fontsize + 2)
+        if naxres == 1:
+            ax[-1].axis("off")
+
+        fig.supylabel(
+            # r"$P_{\rm 1D}/P_{\rm 1D}^{\rm model}-1$",
+            r"Residuals",
+            x=0.01,
+            fontsize=fontsize + 2,
+        )
+        plt.tight_layout()
+
+        # ax[0].set_ylim(-1.05*max_min, 1.05*max_min)
+        # ax[0].set_ylim(-0.2, 0.2)
+
+        if self.save_directory is not None:
+            name = self.save_directory + "/cont_illustrate" + str(zmask[0])
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
+        else:
+            plt.show()
+
+
+def plot_cov(
+    p1d_fname, kmin=1e-3, nknyq=0.5, fontsize=14, save_directory=None, lab=""
+):
+    from astropy.io import fits
+
+    try:
+        hdu = fits.open(p1d_fname)
+    except:
+        raise ValueError("Cannot read: ", p1d_fname)
+
+    if "fft" in p1d_fname:
+        type_measurement = "FFT"
+    elif "qmle" in p1d_fname:
+        type_measurement = "QMLE"
+    else:
+        raise ValueError("Cannot find type_measurement in: ", p1d_fname)
+
+    dict_with_keys = {}
+    for ii in range(len(hdu)):
+        if "EXTNAME" in hdu[ii].header:
+            dict_with_keys[hdu[ii].header["EXTNAME"]] = ii
+
+    pk = hdu[dict_with_keys["P1D_BLIND"]].data["PLYA"]
+    stat = hdu[dict_with_keys["COVARIANCE_STAT"]].data
+    syst = hdu[dict_with_keys["SYSTEMATICS"]].data
+
+    # print(hdu[dict_with_keys["SYSTEMATICS"]].header)
+
+    if type_measurement == "QMLE":
+        sys_labels = [
+            "E_DLA_COMPLETENESS",
+            "E_BAL_COMPLETENESS",
+            "E_RESOLUTION",
+            "E_CONTINUUM",
+            "E_CONTINUUM_ADD",
+            "E_NOISE_SCALE",
+            "E_NOISE_ADD",
+        ]
+
+    elif type_measurement == "FFT":
+        sys_labels = [
+            "E_PSF",
+            "E_RESOLUTION",
+            "E_SIDE_BAND",
+            "E_LINES",
+            "E_DLA",
+            "E_BAL",
+            "E_CONTINUUM",
+            "E_DLA_COMPLETENESS",
+            "E_BAL_COMPLETENESS",
+        ]
+
+    zz_unique = np.unique(syst["Z"])
+    nz = len(zz_unique)
+    nelem = len(sys_labels)
+
+    diag_stat = np.sqrt(np.diag(stat))
+
+    nax = int(np.ceil(nz / 3))
+
+    fig, ax = plt.subplots(nax, 3, sharex=True, sharey=True, figsize=(20, 16))
+    ax = ax.reshape(-1)
+
+    for iz in range(len(zz_unique)):
+        dv = 2.99792458e5 * 0.8 / 1215.67 / (1 + zz_unique[iz])
+        k_nyq = np.pi / dv
+        ind = np.argwhere(
+            (syst["Z"] == zz_unique[iz])
+            # & (diag_cov_raw > 0)
+            # & (diag_cov_raw < max_cov)
+            # & np.isfinite(Pk_kms_raw)
+            # & np.isfinite(diag_cov_raw)
+            & (syst["K"] > kmin)
+            & (syst["K"] < k_nyq * nknyq)
+        )[:, 0]
+
+        for ii in range(nelem):
+            y = syst[sys_labels[ii]][ind] / pk[ind]
+            _ = np.isfinite(y) & (y > 0)
+            ax[iz].plot(
+                (syst["K"][ind])[_],
+                y[_],
+                color="C" + str(ii),
+                label=sys_labels[ii],
+            )
+
+        ax[iz].plot(
+            syst["K"][ind],
+            diag_stat[ind] / pk[ind],
+            color="k",
+            label="stat",
+        )
+        ax[iz].set_title(r"$z = $" + str(zz_unique[iz]), fontsize=fontsize)
+    ax[iz].set_yscale("log")
+    ax[iz].set_xscale("log")
+    ax[iz].set_ylim(1e-3, 0.5)
+
+    ax[0].legend(fontsize=fontsize - 4, loc="upper right", ncol=3)
+
+    if type_measurement == "FFT":
+        ax[-1].axis("off")
+
+    fig.supxlabel(r"$k[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize)
+    fig.supylabel(r"$\sigma/P$", fontsize=fontsize)
+
+    plt.tight_layout()
+
+    if save_directory is not None:
+        name = save_directory + "/cov_err_" + type_measurement + "_"
+        plt.savefig(name + lab + ".pdf")
+        plt.savefig(name + lab + ".png")
+    else:
+        plt.show()
