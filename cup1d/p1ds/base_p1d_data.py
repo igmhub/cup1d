@@ -18,6 +18,8 @@ def _drop_zbins(
     full_cov_kms=None,
     Pksmooth_kms=None,
     cov_stat=None,
+    kmin_in=None,
+    kmax_in=None,
 ):
     """Drop redshift bins below z_min or above z_max"""
 
@@ -26,6 +28,8 @@ def _drop_zbins(
     z_out = z_in[ind]
 
     k_out = []
+    kmin_out = []
+    kmax_out = []
     Pk_out = []
     cov_out = []
     cov_stat_out = []
@@ -39,6 +43,8 @@ def _drop_zbins(
         # remove tailing zeros
         ind = np.argwhere(Pk_in[jj] != 0)[:, 0]
         k_out.append(k_in[jj][ind])
+        kmin_out.append(kmin_in[jj][ind])
+        kmax_out.append(kmax_in[jj][ind])
         Pk_out.append(Pk_in[jj][ind])
         if Pksmooth_kms is not None:
             Pksmooth_out.append(Pksmooth_kms[jj][ind])
@@ -62,6 +68,8 @@ def _drop_zbins(
         full_cov_kms,
         Pksmooth_out,
         cov_stat_out,
+        kmin_out,
+        kmax_out,
     )
 
 
@@ -83,6 +91,8 @@ class BaseDataP1D(object):
         full_cov_kms=None,
         Pksmooth_kms=None,
         cov_stat=None,
+        k_kms_min=None,
+        k_kms_max=None,
     ):
         """Construct base P1D class, from measured power and covariance"""
 
@@ -114,6 +124,8 @@ class BaseDataP1D(object):
             full_cov_kms=full_cov_kms,
             Pksmooth_kms=Pksmooth_kms,
             cov_stat=cov_stat,
+            kmin_in=k_kms_min,
+            kmax_in=k_kms_max,
         )
 
         (
@@ -126,6 +138,8 @@ class BaseDataP1D(object):
             self.full_cov_Pk_kms,
             self.Pksmooth_kms,
             self.covstat_Pk_kms,
+            self.k_kms_min,
+            self.k_kms_max,
         ) = res
 
         self.full_k_kms = np.concatenate(self.k_kms)

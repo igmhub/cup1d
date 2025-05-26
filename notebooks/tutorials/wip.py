@@ -306,8 +306,8 @@ elif choose_desiy1:
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
     folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/fft_measurement/"
     # args.p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7_no_metal_corr.fits"
-    args.p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7.fits"
-    # args.p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits"
+    # args.p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7.fits"
+    args.p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits"
     
     args.z_min = 2.1
     args.z_max = 4.3
@@ -332,18 +332,22 @@ if args.data_label_hires is not None:
     )
 
 # %%
-from cup1d.likelihood.plotter import plot_cov
+# Plot covariance
 
-# %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/fft_measurement/"
-p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7.fits"
+
+# from cup1d.likelihood.plotter import plot_cov
+
+# folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/fft_measurement/"
+# p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7.fits"
 
 # folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/"
 # p1d_fname = folder + "desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
 # p1d_fname = folder + "desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
 
 
-plot_cov(p1d_fname, save_directory='.', lab = "fid")
+# plot_cov(p1d_fname, save_directory='.', lab = "fid")
+
+
 
 # %%
 # different contributions to QMLE P1D
@@ -643,6 +647,17 @@ free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
 
 # %%
+args.rebin_k = 6
+# Impact of rebinning
+# 11064 100
+# 11042 10
+# 11030 8
+# 11004 6
+# 10978 5
+# 10932 4
+# 10834 3
+# 10578 2
+# 14083 no
 
 # %% [markdown]
 # ### Set likelihood
@@ -654,8 +669,6 @@ like = set_like(
     args,
     data_hires=data["extra_P1Ds"],
 )
-
-# %%
 
 # %%
 # from scipy.interpolate import interp1d
@@ -691,11 +704,7 @@ like = set_like(
 
 # %%
 like.plot_cov_to_pk()
-like.plot_correlation_matrix()
-
-# %%
-like.plot_cov_to_pk()
-like.plot_correlation_matrix()
+# like.plot_correlation_matrix()
 
 # %%
 # like.plot_hull_fid()
@@ -717,12 +726,17 @@ for p in like.free_params:
     print(p.name, p.value, p.min_value, p.max_value)
 
 # %% [markdown]
-# Compare data and fiducial/starting model
+#
 
 # %%
 
+# %% [markdown]
+# Compare data and fiducial/starting model
+
+# %%
+# %%time
 like.plot_p1d(residuals=False)
-like.plot_p1d(residuals=True)
+# like.plot_p1d(residuals=True)
 
 # %%
 
@@ -916,11 +930,13 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # ### Run one z at a time
 
 # %%
+args.rebin_k = 6
+
 # z at a time
-args.n_tau=1
-args.n_gamma=1
-args.n_sigT=1
-args.n_kF=1
+args.n_tau=0
+args.n_gamma=0
+args.n_sigT=0
+args.n_kF=0
 args.resolution_model_type = "pivot"
 args.n_res = 1
 
@@ -929,15 +945,15 @@ lines_use = [
     "Lya_SiIII",
     "Lya_SiII",
     "SiII_SiII",
-    # "SiII_SiIII",
-    # "MgII_MgII",
+    "SiII_SiIII",
+    "MgII_MgII",
     # "CIV_CIV",
 ]
 
 lines_not_use = [
     # "SiII_SiII",
-    "SiII_SiIII",
-    "MgII_MgII",
+    # "SiII_SiIII",
+    # "MgII_MgII",
     "CIV_CIV",
 ]
 
@@ -1003,7 +1019,7 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 out_mle = []
 out_chi2 = []
 for ii in range(len(like.data.z)): 
-# for ii in range(1): 
+# for ii in range(1,2): 
     print(ii)
     zmask = np.array([like.data.z[ii]])
     fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask, restart=True)
@@ -1013,13 +1029,17 @@ for ii in range(len(like.data.z)):
     # plotter.plots_minimizer()
 
 # %%
+# plotter.plot_p1d(zmask=zmask)
 
 # %%
-
-# %%
-diru = "fft_fid_mpg_z_at_time"
-# diru = "fft_dirmetal_mpg_z_at_time"
+# diru = "fft_fid_mpg_z_at_time"
+diru = "fft_dirmetal_mpg_z_at_time_fulllines"
+# diru = "fft_dirmetal_mpg_z_at_time_norebinning"
+# diru = None
 plotter = Plotter(fitter, save_directory=diru, zmask=zmask)
+
+# %%
+1028
 
 # %%
 plotter.plot_p1d(out_mle, z_at_time=True, plot_panels=True, residuals=True)
@@ -1028,7 +1048,7 @@ plotter.plot_p1d(out_mle, z_at_time=True, plot_panels=True, residuals=True)
 plotter.plot_illustrate_contaminants(out_mle[0].copy(), [2.2], lines_use=lines_use)
 
 # %%
-plotter.plot_illustrate_contaminants(out_mle[1].copy(), [2.4], lines_use=lines_use)
+plotter.plot_illustrate_contaminants(out_mle[0].copy(), [2.4], lines_use=lines_use)
 
 # %%
 

@@ -11,6 +11,19 @@ from lace.cosmo import camb_cosmo
 from cup1d.utils.utils import is_number_string
 
 
+def get_bin_coverage(xmin_o, xmax_o, xmin_n, xmax_n):
+    """Trick to accelerate rebinning"""
+    # check out https://stcorp.github.io/harp/doc/html/algorithms/regridding.html
+    cover = np.zeros((len(xmin_n), len(xmin_o)))
+    for jj in range(len(xmin_n)):
+        cover[jj] = np.fmax(
+            (np.fmin(xmax_o, xmax_n[jj]) - np.fmax(xmin_o, xmin_n[jj]))
+            / (xmax_o - xmin_o),
+            0,
+        )
+    return cover
+
+
 class Likelihood(object):
     """Likelihood class, holds data, theory, and knows about parameters"""
 
@@ -53,6 +66,35 @@ class Likelihood(object):
             if attr not in ["archive", "emulator"]:
                 self.args[attr] = value
 
+        if "rebin_k" not in self.args:
+            self.args["rebin_k"] = 1
+
+        # k_kms_new2 = np.linspace(kmin[0], kmax[-1], len(k_kms) * 20)
+        if self.args["rebin_k"] != 1:
+            self.rebin = {}
+            self.rebin["k_kms"] = []  # new k_kms
+            self.rebin["cover"] = []  # to accelerate rebinning
+            self.rebin["sum_cover"] = []  # to accelerate rebinning
+            for iz in range(len(self.data.z)):
+                nelem = len(self.data.k_kms[iz]) * self.args["rebin_k"]
+                _kms_reb = np.linspace(
+                    self.data.k_kms_min[iz][0],
+                    self.data.k_kms_max[iz][-1],
+                    nelem,
+                )
+                self.rebin["k_kms"].append(_kms_reb)
+                xmin_o = _kms_reb - 0.5 * (_kms_reb[1] - _kms_reb[0])
+                xmax_o = _kms_reb + 0.5 * (_kms_reb[1] - _kms_reb[0])
+
+                _cover = get_bin_coverage(
+                    xmin_o,
+                    xmax_o,
+                    self.data.k_kms_min[iz],
+                    self.data.k_kms_max[iz],
+                )
+                self.rebin["cover"].append(_cover)
+                self.rebin["sum_cover"].append(np.sum(_cover, axis=1))
+
         self.theory = theory
         # Set inverse covariance. We do it here so we can account for emulator error
         self.set_icov()
@@ -68,6 +110,22 @@ class Likelihood(object):
 
         # store also fiducial model
         self.set_fid()
+
+    def rebinning(self, zs, Pk_kms_finek):
+        """For rebinning Pk predictions"""
+        Pk_kms_origk = []
+        # _Pk_kms_finek = np.atleast_1d(Pk_kms_finek)
+        for iz in range(len(zs)):
+            indz = np.argmin(np.abs(self.data.z - zs[iz]))
+            _Pk_kms = (
+                np.sum(
+                    self.rebin["cover"][indz] * Pk_kms_finek[iz][np.newaxis, :],
+                    axis=1,
+                )
+                / self.rebin["sum_cover"][indz]
+            )
+            Pk_kms_origk.append(_Pk_kms)
+        return Pk_kms_origk
 
     def set_icov(self):
         """
@@ -520,7 +578,7 @@ class Likelihood(object):
     def get_p1d_kms(
         self,
         zs=None,
-        k_kms=None,
+        _k_kms=None,
         values=None,
         return_covar=False,
         return_blob=False,
@@ -529,11 +587,20 @@ class Likelihood(object):
     ):
         """Compute theoretical prediction for 1D P(k)"""
 
-        if k_kms is None:
+        if _k_kms is None:
             k_kms = self.data.k_kms
 
         if zs is None:
             zs = self.data.z
+
+        if self.args["rebin_k"] != 1:
+            k_kms = []
+            zs = np.atleast_1d(zs)
+            for iz in range(len(zs)):
+                ind = np.argmin(np.abs(zs[iz] - self.data.z))
+                k_kms.append(self.rebin["k_kms"][ind])
+        else:
+            k_kms = _k_kms
 
         # translate sampling point (in unit cube) to parameter values
         if values is not None:
@@ -541,7 +608,7 @@ class Likelihood(object):
         else:
             like_params = []
 
-        return self.theory.get_p1d_kms(
+        results = self.theory.get_p1d_kms(
             zs,
             k_kms,
             like_params=like_params,
@@ -550,6 +617,21 @@ class Likelihood(object):
             return_emu_params=return_emu_params,
             apply_hull=apply_hull,
         )
+
+        if results is None:
+            return None
+        else:
+            if self.args["rebin_k"] == 1:
+                return results
+            else:
+                if return_blob | return_emu_params:
+                    results2 = []
+                    results2.append(self.rebinning(zs, results[0]))
+                    for ii in range(1, len(results)):
+                        results2.append(results[ii])
+                    return results2
+                else:
+                    return self.rebinning(zs, results)
 
     def get_chi2(self, values=None, return_all=False, zmask=None):
         """Compute chi2 using data and theory, without adding
@@ -1510,7 +1592,7 @@ class Likelihood(object):
         npanels = int(np.round(np.sqrt(len(self.cov_Pk_kms))))
 
         fig, ax = plt.subplots(
-            npanels + 1, npanels, sharex=True, figsize=(10, 8)
+            npanels + 1, npanels, sharex=True, sharey="row", figsize=(10, 8)
         )
         ax = ax.reshape(-1)
         for ii in range(len(self.cov_Pk_kms)):

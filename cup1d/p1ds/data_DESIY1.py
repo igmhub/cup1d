@@ -92,8 +92,8 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red"):
                 # "E_BAL_COMPLETENESS",
             ]
             sys_labels_ucorr = [
-                "E_LINES",
-                "E_SIDE_BAND",
+                # "E_LINES",
+                # "E_SIDE_BAND",
             ]
     else:
         return None
@@ -145,6 +145,8 @@ class P1D_DESIY1(BaseDataP1D):
             self.blinding,
             Pksmooth_kms,
             cov_stat,
+            k_kms_min,
+            k_kms_max,
         ) = res
 
         super().__init__(
@@ -159,6 +161,8 @@ class P1D_DESIY1(BaseDataP1D):
             full_cov_kms=full_cov_kms,
             Pksmooth_kms=Pksmooth_kms,
             cov_stat=cov_stat,
+            k_kms_min=k_kms_min,
+            k_kms_max=k_kms_max,
         )
 
         return
@@ -217,6 +221,8 @@ def read_from_file(
 
     zs_raw = hdu[iuse].data["Z"]
     k_kms_raw = hdu[iuse].data["K"]
+    k_kms_min_raw = hdu[iuse].data["K1"]
+    k_kms_max_raw = hdu[iuse].data["K2"]
     Pk_kms_raw = hdu[iuse].data["PLYA"]
     diag_cov_raw = np.diag(cov_raw)
 
@@ -238,6 +244,8 @@ def read_from_file(
 
     zs = []
     k_kms = []
+    k_kms_min = []
+    k_kms_max = []
     Pk_kms = []
     Pksmooth_kms = []
     cov = []
@@ -259,6 +267,8 @@ def read_from_file(
 
         slice_cov = slice(mask[0], mask[-1] + 1)
         k_kms.append(np.array(k_kms_raw[mask]))
+        k_kms_min.append(np.array(k_kms_min_raw[mask]))
+        k_kms_max.append(np.array(k_kms_max_raw[mask]))
 
         # add emulator error
         _pk = np.array(Pk_kms_raw[mask])
@@ -293,4 +303,6 @@ def read_from_file(
         blinding,
         Pksmooth_kms,
         cov_stat,
+        k_kms_min,
+        k_kms_max,
     )
