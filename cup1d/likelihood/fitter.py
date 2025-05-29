@@ -283,7 +283,7 @@ class Fitter(object):
         if p0 is None:
             # star at the center of the parameter space
             mle_cube = np.ones(npars) * 0.5
-            chi2 = _log_func_minimize(mle_cube)
+            chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
             chi2_ini = chi2 * 1
             arr_p0 = lhs(npars, samples=nsamples) - 0.5
             # sigma to search around mle_cube
@@ -298,9 +298,10 @@ class Fitter(object):
                     method="Nelder-Mead",
                     bounds=((0.0, 1.0),) * npars,
                 )
-                if res.fun < chi2:
-                    chi2 = res.fun
-                    mle_cube = res.x
+                _chi2 = self.like.get_chi2(res.x, zmask=zmask)
+                if _chi2 < chi2:
+                    chi2 = _chi2.copy()
+                    mle_cube = res.x.copy()
                     # reduce sigma
                     sig *= 0.5
 
@@ -312,15 +313,16 @@ class Fitter(object):
                 method="Nelder-Mead",
                 bounds=((0.0, 1.0),) * npars,
             )
-            if res.fun < chi2:
-                chi2 = res.fun
-                mle_cube = res.x
+            _chi2 = self.like.get_chi2(res.x, zmask=zmask)
+            if _chi2 < chi2:
+                chi2 = _chi2.copy()
+                mle_cube = res.x.copy()
 
             print("Minimization improved:", chi2_ini, chi2, flush=True)
         else:
             # start at the initial value
             mle_cube = p0.copy()
-            chi2 = _log_func_minimize(p0)
+            chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
             chi2_ini = chi2 * 1
             for ii in range(1):
                 pini = mle_cube.copy()
@@ -330,9 +332,10 @@ class Fitter(object):
                     method="Nelder-Mead",
                     bounds=((0.0, 1.0),) * npars,
                 )
-                if res.fun < chi2:
-                    chi2 = res.fun
-                    mle_cube = res.x
+                _chi2 = self.like.get_chi2(res.x, zmask=zmask)
+                if _chi2 < chi2:
+                    chi2 = _chi2.copy()
+                    mle_cube = res.x.copy()
             print("Minimization improved:", chi2_ini, chi2, flush=True)
 
         self.set_mle(mle_cube, chi2)
@@ -927,12 +930,12 @@ metal_lines = [
     "Lya_SiIII",
     "Lya_SiII",
     "CIV_CIV",
-    "MgII_MgII",
+    "SiIIb_SiIII",
     "SiII_SiII",
-    "SiII_SiIII",
+    "SiIIa_SiIII",
 ]
 for metal_line in metal_lines:
-    for ii in range(2):
+    for ii in range(12):
         param_dict["ln_x_" + metal_line + "_" + str(ii)] = (
             "$\mathrm{ln}\,f^{" + metal_line + "_" + str(ii) + "}$"
         )

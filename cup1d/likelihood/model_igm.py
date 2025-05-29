@@ -31,6 +31,7 @@ class IGM(object):
         emu_suite="mpg",
         type_priors="hc",
         emu_igm_params=["mF", "sigT_Mpc", "gamma", "kF_Mpc"],
+        Gauss_priors=None,
         # set_metric=False,
     ):
         # load fiducial IGM history (used for fitting)
@@ -73,10 +74,13 @@ class IGM(object):
                     fid_value=fid_val_par_mF,
                     z_tau=z_pivot,
                     priors=self.priors,
+                    Gauss_priors=Gauss_priors,
                 )
             elif mF_model_type == "chunks":
                 self.F_model = mean_flux_model_chunks.MeanFluxModelChunks(
-                    free_param_names=free_param_names, fid_igm=fid_igm
+                    free_param_names=free_param_names,
+                    fid_igm=fid_igm,
+                    Gauss_priors=Gauss_priors,
                 )
             else:
                 raise ValueError("mF_model_type must be 'scaling' or 'chunks'")
@@ -91,6 +95,7 @@ class IGM(object):
                 z_T=z_pivot,
                 priors=self.priors,
                 back_igm=back_igm,
+                Gauss_priors=Gauss_priors,
             )
 
         if P_model:
@@ -103,6 +108,7 @@ class IGM(object):
                 z_kF=z_pivot,
                 priors=self.priors,
                 back_igm=back_igm,
+                Gauss_priors=Gauss_priors,
             )
 
     def set_fid_igm(self, zs):

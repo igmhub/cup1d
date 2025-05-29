@@ -291,7 +291,7 @@ def set_like(data, emulator, args, data_hires=None):
         theory,
         extra_data=data_hires,
         free_param_names=free_parameters,
-        prior_Gauss_rms=args.prior_Gauss_rms,
+        cov_factor=args.cov_factor,
         emu_cov_factor=args.emu_cov_factor,
         emu_cov_type=args.emu_cov_type,
         args=args,

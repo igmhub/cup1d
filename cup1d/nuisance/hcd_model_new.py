@@ -17,8 +17,10 @@ class HCD_Model_new(object):
         ln_A_damp_coeff=None,
         ln_A_scale_coeff=None,
         free_param_names=None,
+        Gauss_priors=None,
     ):
         self.z_0 = z_0
+        self.Gauss_priors = Gauss_priors
         self.null_A_damp = null_A_damp
 
         if (ln_A_damp_coeff is not None) and (ln_A_scale_coeff is not None):
@@ -68,15 +70,23 @@ class HCD_Model_new(object):
                 # no contamination
                 xmin = -10
                 # 0 gives 350% contamination low k
-                xmax = 1.5
+                xmax = -1
             else:
-                # not optimized
-                xmin = -10
-                xmax = 10
+                xmin = -0.5
+                xmax = 0.5
             # note non-trivial order in coefficients
+            Gwidth = None
+            if self.Gauss_priors is not None:
+                if name in self.Gauss_priors:
+                    Gwidth = self.Gauss_priors[name][-(i + 1)]
+
             value = self.ln_A_damp_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
-                name=name, value=value, min_value=xmin, max_value=xmax
+                name=name,
+                value=value,
+                min_value=xmin,
+                max_value=xmax,
+                Gauss_priors_width=Gwidth,
             )
             self.A_damp_params.append(par)
 
@@ -90,16 +100,24 @@ class HCD_Model_new(object):
         for i in range(Npar):
             name = "ln_A_scale_" + str(i)
             if i == 0:
-                xmin = 3
-                xmax = 10
+                xmin = 4
+                xmax = 6.5
             else:
-                # not optimized
-                xmin = -10
-                xmax = 10
+                xmin = -1
+                xmax = 1
             # note non-trivial order in coefficients
+            Gwidth = None
+            if self.Gauss_priors is not None:
+                if name in self.Gauss_priors:
+                    Gwidth = self.Gauss_priors[name][-(i + 1)]
+
             value = self.ln_A_scale_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
-                name=name, value=value, min_value=xmin, max_value=xmax
+                name=name,
+                value=value,
+                min_value=xmin,
+                max_value=xmax,
+                Gauss_priors_width=Gwidth,
             )
             self.A_scale_params.append(par)
 
@@ -118,7 +136,7 @@ class HCD_Model_new(object):
 
         ln_A_damp_coeff = self.get_A_damp_coeffs(like_params=like_params)
         if ln_A_damp_coeff[-1] <= self.null_A_damp:
-            return 0
+            return None
 
         xz = np.log((1 + z) / (1 + self.z_0))
         ln_poly = np.poly1d(ln_A_damp_coeff)
@@ -228,11 +246,18 @@ class HCD_Model_new(object):
     def get_contamination(self, z, k_kms, like_params=[]):
         """Multiplicative contamination caused by HCDs"""
         A_damp = self.get_A_damp(z, like_params=like_params)
-        if A_damp == 0:
+        if A_damp is None:
             return 1
         A_scale = self.get_A_scale(z, like_params=like_params)
 
-        dla_corr = 1 + A_damp / np.exp(k_kms * A_scale)
+        if len(z) == 1:
+            dla_corr = 1 + A_damp / np.exp(k_kms[0] * A_scale)
+        else:
+            dla_corr = []
+            for iz in range(len(z)):
+                dla_corr.append(
+                    1 + A_damp[iz] / np.exp(k_kms[iz] * A_scale[iz])
+                )
 
         return dla_corr
 

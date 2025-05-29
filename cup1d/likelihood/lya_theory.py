@@ -64,6 +64,7 @@ def set_theory(
         mF_model_type=args.mF_model_type,
         emu_suite=emulator.list_sim_cube[0][:3],
         type_priors=args.igm_priors,
+        Gauss_priors=args.Gauss_priors,
     )
 
     # set contaminants
@@ -77,6 +78,7 @@ def set_theory(
         fid_AGN=val_AGN,
         hcd_model_type=args.hcd_model_type,
         ic_correction=args.ic_correction,
+        Gauss_priors=args.Gauss_priors,
     )
 
     # set systematics
@@ -84,6 +86,7 @@ def set_theory(
         resolution_model_type=args.resolution_model_type,
         free_param_names=free_parameters,
         fid_R_coeff=val_R_coeff,
+        Gauss_priors=args.Gauss_priors,
     )
 
     # set theory
@@ -761,21 +764,19 @@ class Theory(object):
         syst_total = self.model_syst.get_contamination(
             zs, k_kms, like_params=like_params
         )
+        cont_total = self.model_cont.get_contamination(
+            zs,
+            k_kms,
+            emu_call["mF"],
+            M_of_z,
+            like_params=like_params,
+        )
+        if cont_total is None:
+            return None
 
         for iz, z in enumerate(zs):
-            cont_total = self.model_cont.get_contamination(
-                z,
-                k_kms[iz],
-                emu_call["mF"][iz],
-                M_of_z[iz],
-                like_params=like_params,
-            )
-
-            if cont_total is None:
-                return None
-            else:
-                cont_syst = cont_total * syst_total[iz]
-                p1d_kms[iz] *= cont_syst
+            cont_syst = cont_total[iz] * syst_total[iz]
+            p1d_kms[iz] *= cont_syst
 
         # decide what to return, and return it
         out = [p1d_kms]

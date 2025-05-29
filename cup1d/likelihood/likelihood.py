@@ -34,9 +34,10 @@ class Likelihood(object):
         free_param_names=None,
         free_param_limits=None,
         verbose=False,
-        prior_Gauss_rms=0.2,
+        cov_factor=1.0,
+        prior_Gauss_rms=None,
         emu_cov_factor=None,
-        emu_cov_type="diagonal",
+        emu_cov_type="block",
         extra_data=None,
         min_log_like=-1e100,
         args=None,
@@ -48,6 +49,7 @@ class Likelihood(object):
         - free_param_limits list of tuples, same order than free_param_names
         - if prior_Gauss_rms is None it will use uniform priors
         - ignore k-bins with k > kmin_kms
+        - cov_factor adjusts the contribution from data covariance
         - emu_cov_factor adjusts the contribution from emulator covariance
         set between 0 and 1.
         - extra_p1d_data: extra P1D data, e.g., from HIRES
@@ -55,6 +57,7 @@ class Likelihood(object):
 
         self.verbose = verbose
         self.prior_Gauss_rms = prior_Gauss_rms
+        self.cov_factor = cov_factor
         self.emu_cov_factor = emu_cov_factor
         self.emu_cov_type = emu_cov_type
         self.min_log_like = min_log_like
@@ -105,6 +108,8 @@ class Likelihood(object):
         if verbose:
             print(len(self.free_params), "free parameters")
 
+        self.set_Gauss_priors()
+
         # sometimes we want to know the true theory (when working with mocks)
         self.set_truth()
 
@@ -126,6 +131,26 @@ class Likelihood(object):
             )
             Pk_kms_origk.append(_Pk_kms)
         return Pk_kms_origk
+
+    def set_Gauss_priors(self):
+        """
+        Sets Gaussian priors on the parameters
+        """
+
+        self.Gauss_priors = np.ones((len(self.free_params)))
+        for ii, par_like in enumerate(self.free_params):
+            if self.prior_Gauss_rms is not None:
+                _prior = self.prior_Gauss_rms
+            elif par_like.Gauss_priors_width is not None:
+                _fid = par_like.value
+                _width = par_like.Gauss_priors_width
+                _low = par_like.get_value_in_cube(_fid - 0.5 * _width)
+                _high = par_like.get_value_in_cube(_fid + 0.5 * _width)
+                _prior = _high - _low
+            else:
+                _prior = 1e4  # so we get zero
+
+            self.Gauss_priors[ii] = _prior
 
     def set_icov(self):
         """
@@ -275,6 +300,8 @@ class Likelihood(object):
                                     * self.emu_cov_factor
                                 )
 
+                # inflate errors
+                cov *= self.cov_factor
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
                     self.icov_Pk_kms.append(np.linalg.inv(cov))
@@ -347,6 +374,8 @@ class Likelihood(object):
 
                             cov += full_emu_cov * self.emu_cov_factor
 
+                # inflate errors
+                cov *= self.cov_factor
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
                     self.full_icov_Pk_kms = np.linalg.inv(cov)
@@ -641,6 +670,8 @@ class Likelihood(object):
             values, ignore_log_det_cov=True, zmask=zmask
         )
 
+        # print(-2 * log_like, -2 * log_like_all, -2 * np.sum(log_like_all))
+
         if return_all:
             return -2.0 * log_like, -2.0 * log_like_all
         else:
@@ -803,7 +834,7 @@ class Likelihood(object):
         return max(self.min_log_like, log_like)
 
     def compute_log_prob(
-        self, values, return_blob=False, ignore_log_det_cov=False
+        self, values, return_blob=False, ignore_log_det_cov=False, zmask=None
     ):
         """Compute log likelihood plus log priors for input values
         - if return_blob==True, it will return also extra information"""
@@ -822,11 +853,17 @@ class Likelihood(object):
         # compute log_like (option to ignore emulator covariance)
         if return_blob:
             log_like, chi2_all, blob = self.get_log_like(
-                values, ignore_log_det_cov=ignore_log_det_cov, return_blob=True
+                values,
+                ignore_log_det_cov=ignore_log_det_cov,
+                return_blob=True,
+                zmask=zmask,
             )
         else:
             log_like, chi2_all = self.get_log_like(
-                values, ignore_log_det_cov=ignore_log_det_cov, return_blob=False
+                values,
+                ignore_log_det_cov=ignore_log_det_cov,
+                return_blob=False,
+                zmask=zmask,
             )
 
         # regulate log-like (not NaN, not tiny)
@@ -837,11 +874,14 @@ class Likelihood(object):
         else:
             return log_like + log_prior
 
-    def log_prob(self, values, ignore_log_det_cov=False):
+    def log_prob(self, values, ignore_log_det_cov=False, zmask=None):
         """Return log likelihood plus log priors"""
 
         return self.compute_log_prob(
-            values, return_blob=False, ignore_log_det_cov=ignore_log_det_cov
+            values,
+            return_blob=False,
+            ignore_log_det_cov=ignore_log_det_cov,
+            zmask=zmask,
         )
 
     def log_prob_and_blobs(self, values, ignore_log_det_cov=False):
@@ -865,20 +905,16 @@ class Likelihood(object):
         if min(values) < 0:
             return self.min_log_like
 
-        if self.prior_Gauss_rms is None:
-            return 0
-        else:
-            rms = self.prior_Gauss_rms
-            fid_values = [p.value_in_cube() for p in self.free_params]
-            log_prior = -np.sum(
-                (np.array(fid_values) - values) ** 2 / (2 * rms**2)
-            )
-            return log_prior
+        fid_values = [p.value_in_cube() for p in self.free_params]
+        log_prior = -np.sum(
+            (np.array(fid_values) - values) ** 2 / (2 * self.Gauss_priors**2)
+        )
+        return log_prior
 
-    def minus_log_prob(self, values):
+    def minus_log_prob(self, values, zmask=None):
         """Return minus log_prob (needed to maximise posterior)"""
 
-        return -1.0 * self.log_prob(values)
+        return -1.0 * self.log_prob(values, zmask=zmask)
 
     def maximise_posterior(
         self, initial_values=None, method="nelder-mead", tol=1e-4
@@ -900,7 +936,6 @@ class Likelihood(object):
         plot_fname=None,
         rand_posterior=None,
         show=True,
-        sampling_p1d=100,
         return_covar=False,
         print_ratio=False,
         print_chi2=True,
@@ -1353,6 +1388,167 @@ class Likelihood(object):
             return out
         else:
             return
+
+    def plot_p1d_errors(
+        self,
+        values=None,
+        plot_fname=None,
+        show=True,
+        zmask=None,
+        z_at_time=False,
+        fontsize=16,
+    ):
+        """Plot P1D in theory vs data. If plot_every_iz >1,
+        plot only few redshift bins"""
+
+        import scipy.stats as stats
+
+        if zmask is None:
+            _data_z = self.data.z
+            _data_k_kms = self.data.k_kms
+        else:
+            _data_z = []
+            _data_k_kms = []
+            for iz in range(len(self.data.z)):
+                _ = np.argwhere(np.abs(zmask - self.data.z[iz]) < 1e-3)
+                if len(_) != 0:
+                    _data_z.append(self.data.z[iz])
+                    _data_k_kms.append(self.data.k_kms[iz])
+            _data_z = np.array(_data_z)
+
+        # z at time fits or full fit
+        if z_at_time is False:
+            _res = self.get_p1d_kms(
+                _data_z, _data_k_kms, values, return_covar=False
+            )
+            if _res is None:
+                return print("Prior out of range")
+            emu_p1d = _res
+
+            # the sum of chi2_all may be different from chi2 due to covariance
+            chi2, chi2_all = self.get_chi2(
+                values=values, return_all=True, zmask=zmask
+            )
+        else:
+            emu_p1d = []
+            for iz in range(len(_data_z)):
+                _res = self.get_p1d_kms(
+                    _data_z[iz],
+                    _data_k_kms[iz],
+                    values[iz],
+                    return_covar=False,
+                )
+                # print(iz, _data_z[iz], _res)
+                if _res is None:
+                    return print("Prior out of range for z = ", _data_z[iz])
+                if len(_res) == 1:
+                    emu_p1d.append(_res[0])
+                else:
+                    emu_p1d.append(_res)
+
+        if self.extra_data is not None:
+            _res = self.get_p1d_kms(
+                self.extra_data.z,
+                self.extra_data.k_kms,
+                values,
+                return_covar=return_covar,
+            )
+            if _res is None:
+                return print("Prior out of range")
+            if return_covar:
+                emu_p1d_extra, emu_cov_extra = _res
+            else:
+                emu_p1d_extra = _res
+
+        fig, ax = plt.subplots(
+            len(_data_z) // 2 + len(_data_z) % 2,
+            2,
+            figsize=(12, len(_data_z)),
+            sharex=True,
+            sharey=True,
+        )
+        if len(_data_z) == 1:
+            ax = [ax]
+        else:
+            ax = ax.reshape(-1)
+        length = 1
+        # if (len(_data_z) % 2 + 1) != 0:
+        #     ax[-1].axis("off")
+
+        out = {}
+        bins = np.linspace(-5, 5, 50)
+        out["bins"] = bins
+
+        data = self.data
+        emu_p1d_use = emu_p1d
+        out["zs"] = []
+        out["(d-m)/err"] = []
+
+        mu = 0
+        sigma = 1
+        x = np.linspace(mu - 5 * sigma, mu + 5 * sigma, 100)
+
+        zs = data.z
+        Nz = len(zs)
+
+        for iz in range(0, Nz):
+            if zmask is not None:
+                indemu = np.argwhere(np.abs(zmask - zs[iz]) < 1e-3)[:, 0]
+                if len(indemu) == 0:
+                    continue
+                else:
+                    indemu = indemu[0]
+            else:
+                indemu = iz
+
+            # access data for this redshift
+            z = zs[iz]
+            k_kms = data.k_kms[iz]
+            p1d_data = data.Pk_kms[iz]
+            p1d_cov = self.cov_Pk_kms[iz]
+            p1d_err = np.sqrt(np.diag(p1d_cov))
+            p1d_theory = emu_p1d_use[indemu]
+
+            dme = (p1d_data - p1d_theory) / p1d_err
+
+            ax[iz].tick_params(
+                axis="both", which="major", labelsize=fontsize - 4
+            )
+            ax[iz].hist(
+                dme,
+                label="z=" + str(np.round(z, 2)),
+                bins=bins,
+                color="C0",
+                density=True,
+            )
+
+            ax[iz].plot(x, stats.norm.pdf(x, mu, sigma), color="C1")
+
+            out["zs"].append(z)
+            out["(d-m)/err"].append(dme)
+
+            ax[iz].legend()
+
+        dme = np.concatenate(out["(d-m)/err"])
+        print("dme, mean", np.mean(dme))
+        print("dme, std", np.std(dme))
+        ax[iz + 1].hist(dme, label="All", bins=bins, density=True)
+        ax[iz + 1].plot(x, stats.norm.pdf(x, mu, sigma), color="C1")
+        ax[iz + 1].legend()
+
+        fig.supxlabel(r"(d-m)/err", fontsize=fontsize)
+        fig.supylabel(r"$PDF$", fontsize=fontsize)
+
+        plt.tight_layout()
+        # plt.savefig("test.pdf")
+        if plot_fname is not None:
+            plt.savefig(plot_fname + ".pdf")
+            plt.savefig(plot_fname + ".png")
+        else:
+            if show:
+                plt.show()
+
+        return out
 
     # def overplot_emulator_calls(
     #     self,

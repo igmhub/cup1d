@@ -5,29 +5,7 @@ import lace
 from scipy.interpolate import interp1d
 from cup1d.likelihood import likelihood_parameter
 from cup1d.nuisance.resolution_model import get_Rz
-
-
-def split_into_n_chunks(array, num_chunks):
-    # Compute base chunk size and remainder
-    chunk_size, remainder = divmod(len(array), num_chunks)
-
-    # Create chunks and indexes
-    chunks = []
-    chunk_indexes = []
-    start_idx = 0
-
-    for i in range(num_chunks):
-        # Distribute the remainder to make chunks as equal as possible
-        extra = 1 if i < remainder else 0
-        end_idx = start_idx + chunk_size + extra
-        chunks.append(array[start_idx:end_idx])
-        chunk_indexes.append(list(range(start_idx, end_idx)))
-        start_idx = end_idx
-
-    # Compute central values
-    central_values = [np.median(chunk) for chunk in chunks]
-
-    return central_values, chunk_indexes
+from cup1d.nuisance.mean_flux_model_chunks import split_into_n_chunks
 
 
 class Resolution_Model_Chunks(object):
@@ -41,12 +19,14 @@ class Resolution_Model_Chunks(object):
         R_coeff=None,
         free_param_names=None,
         fid_R_coeff=None,
-        prior_width=1.5,
+        max_width=0.5,
+        Gauss_priors=None,
     ):
         """Construct model as a rescaling around a fiducial mean flux"""
 
         # Gaussian prior, translate to flat prior * 3 sigma
-        self.prior_width = prior_width * 3
+        self.Gauss_priors = Gauss_priors
+        self.max_width = max_width
 
         if R_coeff is not None:
             if free_param_names is not None:
@@ -75,11 +55,16 @@ class Resolution_Model_Chunks(object):
         for ii in range(Npar):
             name = "R_coeff_" + str(ii)
             value = self.R_coeff[ii]
+            Gwidth = None
+            if self.Gauss_priors is not None:
+                if name in self.Gauss_priors:
+                    Gwidth = self.Gauss_priors[name][ii]
             par = likelihood_parameter.LikelihoodParameter(
                 name=name,
                 value=value,
-                min_value=-self.prior_width,
-                max_value=self.prior_width,
+                min_value=-self.max_width,
+                max_value=self.max_width,
+                Gauss_priors_width=Gwidth,
             )
             self.params.append(par)
 

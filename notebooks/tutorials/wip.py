@@ -64,34 +64,7 @@ from lace.archive.nyx_archive import NyxArchive
 # %%
 
 # %% [markdown]
-# ### Set archive (old)
-
-# %%
-# args = Args(emulator_label="Nyx_alphap", training_set="Nyx23_Jul2024")
-# args = Args(emulator_label="Nyx_alphap_cov", training_set="Nyx23_Jul2024")
-# args = Args(emulator_label="Cabayol23+", training_set="Cabayol23")
-# args = Args(emulator_label="Pedersen23_ext", training_set="Cabayol23")
-
-# path nyx files in NERSC /global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/
-archive = set_archive(args.training_set)
-
-# set output directory for this test
-output_dir = "."
-
-emulator = set_emulator(
-    emulator_label=args.emulator_label,
-    archive=archive,
-)
-
-if "Nyx" in emulator.emulator_label:
-    emulator.list_sim_cube = archive.list_sim_cube
-    if "nyx_14" in emulator.list_sim_cube:
-        emulator.list_sim_cube.remove("nyx_14")
-else:
-    emulator.list_sim_cube = archive.list_sim_cube
-
-# %% [markdown]
-# ### New
+# ### Set arguments
 
 # %%
 
@@ -300,17 +273,18 @@ elif choose_desiy1:
     
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_resocorr_v3.fits"
-    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
+    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_xe_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
     
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
-    folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/fft_measurement/"
+    # folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/fft_measurement/"
     # args.p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7_no_metal_corr.fits"
     # args.p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7.fits"
-    args.p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits"
+    # args.p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits"
     
     args.z_min = 2.1
     args.z_max = 4.3
+    # args.z_max = 2.9
 
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
@@ -479,8 +453,8 @@ args.emu_cov_type = "block"
 
 
 
+# args.fix_cosmo=True
 args.fix_cosmo=True
-# args.fix_cosmo=False
 args.vary_alphas=False
 # args.vary_alphas=True
 if "nyx" in args.emulator_label:
@@ -539,9 +513,10 @@ args.hcd_model_type = "new"
 
 args.mF_model_type = "pivot"
 args.n_tau=3
+
 args.n_gamma=2
-args.n_sigT=2
-args.n_kF=2
+args.n_sigT=1
+args.n_kF=1
 
 args.resolution_model_type = "chunks"
 args.n_res = len(data["P1Ds"].z)
@@ -557,20 +532,73 @@ args.n_res = len(data["P1Ds"].z)
 lines_use = [
     "Lya_SiIII",
     "Lya_SiII",
-    "MgII_MgII",
     "SiII_SiII",
-    "SiII_SiIII",
+    "SiIIb_SiIII",
+    "SiIIa_SiIII",
 ]
 
+# at a time
+f_prior = {
+    "Lya_SiIII": -4.2,
+    "Lya_SiII": -4.6,
+    "SiIIb_SiIII": -6.6,
+    "SiII_SiII": -5.5,
+    "SiIIa_SiIII": -6.2,
+    "CIV_CIV": -10.5,
+}
+
+
+# all z
+# d_prior = {
+#     "Lya_SiIII": 0.6,
+#     "Lya_SiII": -0.3,
+#     "SiIIb_SiIII": 3,
+#     "SiII_SiII": 1,
+#     "SiIIa_SiIII": 1.4,
+#     "CIV_CIV": 0,
+# }
+
+# at a time
+d_prior = {
+    "Lya_SiIII": 0.4,
+    "Lya_SiII": -0.9,
+    "SiIIb_SiIII": 2.7,
+    "SiII_SiII": 0.8,
+    "SiIIa_SiIII": 1.6,
+    "CIV_CIV": 0,
+}
+
+# all z
+# a_prior = {
+#     "Lya_SiIII": 1.5,
+#     "Lya_SiII": 3,
+#     "SiIIb_SiIII": 3.5,
+#     "SiII_SiII": 3.5,
+#     "SiIIa_SiIII": 0.5,
+#     "CIV_CIV": 0,
+# }
+
+# at a time
+a_prior = {
+    "Lya_SiIII": 1.5,
+    "Lya_SiII": 4.0,
+    "SiIIb_SiIII": 2.5,
+    "SiII_SiII": 4.0,
+    "SiIIa_SiIII": 0.5,
+    "CIV_CIV": 0,
+}
+    
+
 for metal_line in lines_use:
-    args.fid_metals[metal_line + "_X"] = [0, -5]
-    args.fid_metals[metal_line + "_D"] = [0, 1]
+    args.fid_metals[metal_line + "_X"] = [0, 0, f_prior[metal_line]]
+    args.fid_metals[metal_line + "_D"] = [0, d_prior[metal_line]]
     args.fid_metals[metal_line + "_L"] = [0, 0]
-    args.fid_metals[metal_line + "_A"] = [0, 1]
+    args.fid_metals[metal_line + "_A"] = [0, a_prior[metal_line]]
     args.n_metals["n_x_" + metal_line] = 1
     args.n_metals["n_d_" + metal_line] = 1
     args.n_metals["n_l_" + metal_line] = 0
     args.n_metals["n_a_" + metal_line] = 1
+
 
 metal_line = "CIV_CIV"
 args.fid_metals[metal_line + "_X"] = [0, -10.5]
@@ -613,10 +641,10 @@ if "nyx" in args.emulator_label:
     args.fid_A_damp = [0, -0.78]
     args.fid_A_scale = [0, 7.2]
 else:
-    args.fid_val_mF = [1.50, -5.97e-1, -7.51e-2]
-    args.fid_val_gamma = [-6.16e-1, 4.39e-2]
-    args.fid_val_sigT = [0, 1.08e-2]
-
+    args.fid_val_mF = [0.727, -0.558, -0.057]
+    args.fid_val_gamma = [-0.61, 0.037]
+    args.fid_val_sigT = [0, -0.004]
+    args.fid_val_kF = [0, -0.049]
     # args.fid_SiIII_X=[0, -4.7]
     # args.fid_SiIII_D=[0, 4.8]
     # args.fid_SiIII_A=[0, 1.4]
@@ -643,11 +671,14 @@ args.fid_AGN = [0, -5.5]
 
 args.fid_R_coeff = [0,  0]
 
+args.rebin_k = 6
+args.cov_factor = 1
+
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
 
 # %%
-args.rebin_k = 6
+
 # Impact of rebinning
 # 11064 100
 # 11042 10
@@ -663,12 +694,28 @@ args.rebin_k = 6
 # ### Set likelihood
 
 # %%
+args.prior_Gauss_rms = None
+args.Gauss_priors = {}
+args.Gauss_priors["ln_x_Lya_SiIII_0"] = [0.2]
+
+# %%
 like = set_like(
     data["P1Ds"],
     emulator,
     args,
     data_hires=data["extra_P1Ds"],
 )
+
+# %%
+
+# %%
+for p in like.free_params:
+    print(p.name, '\t', p.value, '\t', np.round(p.min_value, 3), '\t', np.round(p.max_value, 3), '\t', p.Gauss_priors_width)
+
+# %%
+# Gaussian_priors
+
+# %%
 
 # %%
 # from scipy.interpolate import interp1d
@@ -703,7 +750,7 @@ like = set_like(
 # like.theory.model_igm.T_model.fid_sigT_kms_interp = interp1d(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_sigT_kms_interp(like.theory.model_igm.T_model.fid_z[:11]) * priors_sigT_kms, kind="cubic")
 
 # %%
-like.plot_cov_to_pk()
+# like.plot_cov_to_pk()
 # like.plot_correlation_matrix()
 
 # %%
@@ -722,11 +769,6 @@ like.plot_cov_to_pk()
 # like.theory.model_cont.hcd_model.plot_contamination(z, k_kms);
 
 # %%
-for p in like.free_params:
-    print(p.name, p.value, p.min_value, p.max_value)
-
-# %% [markdown]
-#
 
 # %%
 
@@ -734,7 +776,7 @@ for p in like.free_params:
 # Compare data and fiducial/starting model
 
 # %%
-# %%time
+# # %%time
 like.plot_p1d(residuals=False)
 # like.plot_p1d(residuals=True)
 
@@ -775,11 +817,6 @@ fitter = Fitter(
     fix_cosmology=args.fix_cosmo,
 )
 
-# %%
-
-# %%
-# plotter.plot_hull(p0=p0)
-
 # %% [markdown]
 # ### Run minimizer
 
@@ -801,19 +838,44 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
 
 # %%
-955
+fitter.like.get_chi2(fitter.mle_cube)
 
 # %%
-881
 
 # %% [markdown]
-# stop 3.8 fid
+# #### Latest
+
+# %% [markdown]
+# snr3 mpg fixcosmo chunk_tau 825
 #
-# nyx 811, 807 with z-evolve SiIII (1.85108976e-03?!)
+# snr3 mpg fixcosmo 3 tau 855
 #
-# mpg
+# snr3 mpg fixcosmo 3222 854
+#
+# snr3 mpg 3211 859?! No clear improvement when leaving cosmo free
 
 # %%
+
+# diru = "test_snr3_11_1_1_1"
+# diru = "test_snr3_3_3_1_1"
+# diru = "test_snr3_3_2_2_2"
+# diru = "test_snr3_3_2_1_1_cosmo"
+# plotter = Plotter(fitter, save_directory=diru)
+# plotter.plots_minimizer()
+
+# %%
+plotter.plot_p1d(residuals=True)
+
+# %% [markdown]
+# 1.13 inflate errors
+
+# %%
+res = plotter.plot_p1d_errors()
+
+# %%
+
+# %%
+res
 
 # %%
 ## mpg (cosmo estable between tau3 and tau11)
@@ -933,57 +995,101 @@ fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
 args.rebin_k = 6
 
 # z at a time
-args.n_tau=0
-args.n_gamma=0
-args.n_sigT=0
-args.n_kF=0
+args.n_tau=1
+args.n_gamma=1
+args.n_sigT=1
+args.n_kF=1
 args.resolution_model_type = "pivot"
 args.n_res = 1
 
+
+
+lines_not_use = [
+    "CIV_CIV",
+]
 
 lines_use = [
     "Lya_SiIII",
     "Lya_SiII",
     "SiII_SiII",
-    "SiII_SiIII",
-    "MgII_MgII",
-    # "CIV_CIV",
+    "SiIIb_SiIII",
+    "SiIIa_SiIII",
 ]
 
-lines_not_use = [
-    # "SiII_SiII",
-    # "SiII_SiIII",
-    # "MgII_MgII",
-    "CIV_CIV",
-]
+# all z
+# f_prior = {
+#     "Lya_SiIII": -4.32,
+#     "Lya_SiII": -4.72,
+#     "SiIIb_SiIII": -6.6,
+#     "SiII_SiII": -5.73,
+#     "SiIIa_SiIII": -6.0,
+#     "CIV_CIV": -10.5,
+# }
 
-tau_prior = {
-    "Lya_SiIII": -5,
-    "Lya_SiII": -5.5,
-    "SiII_SiII": -6,
-    "SiII_SiIII": -6.5,
-    "MgII_MgII": -6.5,
-    "CIV_CIV": -6.5,
+# at a time
+f_prior = {
+    "Lya_SiIII": -4.2,
+    "Lya_SiII": -4.6,
+    "SiIIb_SiIII": -6.6,
+    "SiII_SiII": -5.5,
+    "SiIIa_SiIII": -6.2,
+    "CIV_CIV": -10.5,
 }
-    
+
+
+# all z
+# d_prior = {
+#     "Lya_SiIII": 0.6,
+#     "Lya_SiII": -0.3,
+#     "SiIIb_SiIII": 3,
+#     "SiII_SiII": 1,
+#     "SiIIa_SiIII": 1.4,
+#     "CIV_CIV": 0,
+# }
+
+# at a time
+d_prior = {
+    "Lya_SiIII": 0.4,
+    "Lya_SiII": -0.9,
+    "SiIIb_SiIII": 2.7,
+    "SiII_SiII": 0.8,
+    "SiIIa_SiIII": 1.6,
+    "CIV_CIV": 0,
+}
+
+# all z
+# a_prior = {
+#     "Lya_SiIII": 1.5,
+#     "Lya_SiII": 3,
+#     "SiIIb_SiIII": 3.5,
+#     "SiII_SiII": 3.5,
+#     "SiIIa_SiIII": 0.5,
+#     "CIV_CIV": 0,
+# }
+
+# at a time
+a_prior = {
+    "Lya_SiIII": 1.5,
+    "Lya_SiII": 4.0,
+    "SiIIb_SiIII": 2.5,
+    "SiII_SiII": 4.0,
+    "SiIIa_SiIII": 0.5,
+    "CIV_CIV": 0,
+}
+
 
 for metal_line in lines_use:
-    args.fid_metals[metal_line + "_X"] = [0, tau_prior[metal_line]]
-    args.fid_metals[metal_line + "_D"] = [0, 1]
+    args.fid_metals[metal_line + "_X"] = [0, f_prior[metal_line]]
+    args.fid_metals[metal_line + "_D"] = [0, d_prior[metal_line]]
     args.fid_metals[metal_line + "_L"] = [0, 0]
-    args.fid_metals[metal_line + "_A"] = [0, 1]
+    args.fid_metals[metal_line + "_A"] = [0, a_prior[metal_line]]
     args.n_metals["n_x_" + metal_line] = 1
     args.n_metals["n_d_" + metal_line] = 1
     args.n_metals["n_l_" + metal_line] = 0
     args.n_metals["n_a_" + metal_line] = 1
 
-
-# -4.34712583e+00  1.66871420e-01  1.32176591e+00 
-# -4.88155384e+00  1.13478268e-03  4.84141611e+00 
-# -6.63453577e+00  2.40570327e+00  1.59713154e+00 
-# -5.90411461e+00  1.95398104e+00  1.62359235e+00
-# -6.31163090e+00  8.43803196e-01 -4.47010190e-02
-
+# metal_line = "Lya_SiIII"
+# args.n_metals["n_x_" + metal_line] = 1
 
 for metal_line in lines_not_use:
     args.fid_metals[metal_line + "_X"] = [0, -10.5]
@@ -992,10 +1098,63 @@ for metal_line in lines_not_use:
     args.n_metals["n_l_" + metal_line] = 0
     args.n_metals["n_a_" + metal_line] = 0
 
+args.hcd_model_type = "new"
+args.n_d_dla = 1
+args.n_s_dla = 1
+args.fid_A_damp = [0, -1.5]
+args.fid_A_scale = [0, 5.6]
+
+args.fid_val_kF = [0, -0.05]
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 
 # args.fid_AGN = [-2]
+
+# args.prior_Gauss_rms = 0.1
+args.prior_Gauss_rms = None
+
+args.Gauss_priors = {}
+args.Gauss_priors["ln_tau_0"] = [0.05]
+args.Gauss_priors["ln_sigT_kms_0"] = [0.02]
+args.Gauss_priors["ln_gamma_0"] = [0.08]
+args.Gauss_priors["ln_kF_0"] = [0.003]
+
+f_Gprior = {
+    "Lya_SiIII": 1,
+    "Lya_SiII": 0.5,
+    "SiIIb_SiIII": 0.5,
+    "SiII_SiII": 4,
+    "SiIIa_SiIII": 4,
+    # "CIV_CIV": -10.5,
+}
+
+d_Gprior = {
+    "Lya_SiIII": 2,
+    "Lya_SiII": 0.05,
+    "SiIIb_SiIII": 1,
+    "SiII_SiII": 0.2,
+    "SiIIa_SiIII": 0.03,
+    # "CIV_CIV": -10.5,
+}
+
+a_Gprior = {
+    "Lya_SiIII": 0.3,
+    "Lya_SiII": 0.2,
+    "SiIIb_SiIII": 0.01,
+    "SiII_SiII": 0.01,
+    "SiIIa_SiIII": 0.05,
+    # "CIV_CIV": -10.5,
+}
+
+for metal_line in lines_use:
+    args.Gauss_priors["ln_x_"+metal_line+"_0"] = [f_Gprior[metal_line]]
+    args.Gauss_priors["d_"+metal_line+"_0"] = [d_Gprior[metal_line]]
+    args.Gauss_priors["a_"+metal_line+"_0"] = [a_Gprior[metal_line]]
+args.Gauss_priors["ln_A_damp_0"] = [0.2]
+args.Gauss_priors["ln_A_scale_0"] = [0.2]
+args.Gauss_priors["R_coeff_0"] = [1]
+
+
 
 like = set_like(
     data["P1Ds"],
@@ -1003,6 +1162,21 @@ like = set_like(
     args,
     data_hires=data["extra_P1Ds"],
 )
+
+print()
+
+f_space_len = 14
+s_space_len = 5
+for p in like.free_params:
+    print(
+        p.name, (f_space_len-len(p.name)) * " ", "\t", 
+        np.round(p.value, 3), (s_space_len-len(str(np.round(p.value, 3)))) * " ", '\t', 
+        np.round(p.min_value, 3), (s_space_len-len(str(np.round(p.min_value, 3)))) * " ", '\t', 
+        np.round(p.max_value, 3), (s_space_len-len(str(np.round(p.max_value, 3)))) * " ", '\t', 
+        p.Gauss_priors_width
+    )
+
+print()
 
 fitter = Fitter(
     like=like,
@@ -1015,50 +1189,142 @@ fitter = Fitter(
 )
 
 # %%
+
+# %%
+# for z in fitter.like.data.z:
+#     y = like.theory.model_cont.metal_models['Lya_SiIII'].get_amplitude(z)
+#     print(np.log(y))
+
+# %% [markdown]
+# ### results (tets z at a time first 4 bins)
+#
+# #### metals (a, d, f fixed to free 198 to 245, 47):
+#
+# - 1 a for all z (delta chi2 6 fixed, 198 to 205)
+# - 1 d for all z (delta chi2 22 fixed, 205 to 228) NEED MANY, 1 param ev?
+# - 1 f for all z (delta chi2 17 fixed, 228 to 245) NEED MANY, 1 param ev?
+# - no need of l
+#
+# #### check now if all metals are the same. How much do we lose for "all z the same" for each
+#
+# - 2-3 chi2 difference for f metals, but 12 for Lya-SiIII. At least for this one, redshift evolution. 
+
+# %%
+# p0_arr = out_mle_cube.copy()
+
+# %%
 p0 = np.array(list(like.fid["fit_cube"].values()))
 out_mle = []
+out_mle_cube = []
 out_chi2 = []
 for ii in range(len(like.data.z)): 
-# for ii in range(1,2): 
+# for ii in range(1): 
     print(ii)
     zmask = np.array([like.data.z[ii]])
-    fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask, restart=True)
-    out_mle.append(fitter.mle_cube)
+    # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
+    # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask, restart=True)
+    fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True)
+    # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
+    out_mle.append(fitter.mle)
+    out_mle_cube.append(fitter.mle_cube)
     out_chi2.append(fitter.mle_chi2)
     # plotter = Plotter(fitter, zmask=zmask, save_directory="mpg_baseline/"+str(ii))
     # plotter.plots_minimizer()
+
+# %% [markdown]
+# 35.7 66.1 43.3 48.7
+#
+# 258.25019606819825 [[52.62668059 71.89440875 61.29380909 59.75298414]] 245.56788256970646
+#
+# diff in chi2 of 51.8 (245.57-193.75)
+
+# %% [markdown]
+# No priors
+
+# %%
+print(np.sum(out_chi2))
+out_chi2
+
+# %% [markdown]
+# weak priors, lose 20 chi2
+
+# %%
+print(np.sum(out_chi2))
+out_chi2
+
+# %% [markdown]
+# a bit tightter, lose 40 chi2
+
+# %%
+print(np.sum(out_chi2))
+out_chi2
+
+# %% [markdown]
+# looking right, lose 90 chi2
+
+# %%
+print(np.sum(out_chi2))
+out_chi2
+
+# %% [markdown]
+# FFT direct, starting random, 4 + fulllines 956 
+#
+# FFT fid, starting random, 4 + fulllines 1005 
+#
+# QMLE snr3, starting random, 4 + fulllines 633
+# - 703 when assuming f is not redshift dependent!
+
+# %%
+# out_chi2_dir = out_chi2.copy()
+# out_chi2_ind = out_chi2.copy()
+# out_chi2_qmle_snr3 = out_chi2.copy()
+# out_chi2_qmle_fid = out_chi2.copy()
+plt.plot(out_chi2_dir, "o-", label="FFT SB1 direct")
+plt.plot(out_chi2_ind, "o-", label="FFT SB1 model")
+plt.plot(out_chi2_qmle_snr3, "o-", label="QMLE snr3 SB1 model")
+plt.plot(out_chi2_qmle_fid, "o-", label="QMLE fid SB1 model")
+plt.legend()
+plt.xlabel(r"$z$")
+plt.ylabel(r"$\chi^2$")
+# plt.savefig("chi2_all.png")
+
+# %%
+np.sum(out_chi2)
 
 # %%
 # plotter.plot_p1d(zmask=zmask)
 
 # %%
-# diru = "fft_fid_mpg_z_at_time"
-diru = "fft_dirmetal_mpg_z_at_time_fulllines"
-# diru = "fft_dirmetal_mpg_z_at_time_norebinning"
-# diru = None
+# diru = "fft_dirmetal_mpg_z_at_time_fulllines"
+# diru = "fft_fid_mpg_z_at_time_fulllines"
+
+# diru = "qmle_snr3_mpg_z_at_time_fulllines"
+# diru = "qmle_fid_mpg_z_at_time_fulllines"
+diru = None
+
 plotter = Plotter(fitter, save_directory=diru, zmask=zmask)
 
 # %%
-1028
+plotter.plot_p1d(out_mle_cube, z_at_time=True, plot_panels=True, residuals=True)
 
 # %%
-plotter.plot_p1d(out_mle, z_at_time=True, plot_panels=True, residuals=True)
+plotter.plot_illustrate_contaminants(out_mle_cube[0].copy(), [2.2], lines_use=lines_use)
 
 # %%
-plotter.plot_illustrate_contaminants(out_mle[0].copy(), [2.2], lines_use=lines_use)
+plotter.plot_illustrate_contaminants(out_mle_cube[1].copy(), [2.4], lines_use=lines_use)
 
 # %%
-plotter.plot_illustrate_contaminants(out_mle[0].copy(), [2.4], lines_use=lines_use)
-
-# %%
+plotter.plot_illustrate_contaminants(out_mle_cube[2].copy(), [2.6], lines_use=lines_use)
 
 # %%
 
 # %%
-from cup1d.nuisance.metal_correction import SB1_power
 
-folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/fft_measurement/"
-file_metal = folder + "param_fit_side_band_1_kms.pickle"
+# %%
+# from cup1d.nuisance.metal_correction import SB1_power
+
+# folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/fft_measurement/"
+# file_metal = folder + "param_fit_side_band_1_kms.pickle"
 # Pk_cont = SB1_power(data["P1Ds"].z, data["P1Ds"].k_kms, file_metal)
 # for iz in range(0, 10):
 #     # fun = a * data["P1Ds"].k_kms[iz] ** (-b)
@@ -1071,212 +1337,49 @@ file_metal = folder + "param_fit_side_band_1_kms.pickle"
 # # plt.plot(data["P1Ds"].k_kms[iz], fun, lw=3, color="k")
 
 # %%
+# keys_plot = out_mle[0].keys()
+# keys_no_plot = 
 
 # %%
-np.sum(out_chi2)
+# keys_plot = [
+#     '$\\mathrm{ln}\\,\\tau_0$', 
+#     '$\\mathrm{ln}\\,\\sigma^T_0$', 
+#     '$\\mathrm{ln}\\,\\gamma_0$',
+#     '$\\mathrm{ln}\\,k^F_0$',
+#     '$\\mathrm{ln}\\,f^{SiIII}_0$',
+#     '$\\mathrm{ln}\\,d^{SiIII}_0$',
+#     '$a^{SiIII}_0$',
+#     '$\\mathrm{ln}\\,f^{SiII}_0$',
+#     '$\\mathrm{ln}\\,d^{SiII}_0$',
+#     '$a^{SiII}_0$',
+#     '$\\mathrm{ln}\\,f^\\mathrm{HCD}_0$',
+#     '$\\mathrm{ln}\\,s^\\mathrm{HCD}_0$',
+#     '$\\mathrm{R}_0$',
+#     # 'Delta2_star',
+#     # 'n_star',
+#     # "alpha_star",
+#     # '$A_s$',
+#     # '$n_s$',
+#     # "$\\mathrm{ln}\\,\\mathrm{AGN}_0$",
+#     # '$\\Delta^2_\\star$',
+#     # '$n_\\star$',
+# ]
 
 # %%
-np.sum(out_chi2)
-
-# %%
-881 to 677
-737 without MgII_MgII
-
-# %%
-plt.plot(out_chi2)
-
-# %% [markdown]
-# chi2 8 bettern with CIV?!
-
-# %%
-# plotter = Plotter(fitter, save_directory=None, zmask=zmask)
-# plotter = Plotter(fitter, save_directory=None)
-# plotter.plots_minimizer()
-
-# %%
-# plotter.plot_res_cont(zmask=zmask)
-
-# %%
-plotter.mle_values
-
-# %%
-fitter.mle_cube
-
-# %%
-plotter.plot_p1d(values=)
-
-# %%
-plotter = Plotter(fitter, save_directory=None, zmask=zmask)
-plotter.plot_metal_cont(plot_data=True, plot_panels=False)
-
-# %%
-k_kms = data["P1Ds"].k_kms[0].copy()
-
-dv = 2250
-# dv = 720
-
-
-plt.plot(k_kms, np.cos(k_kms * dv))
-# a1 = 0.09 * 1e2
-a1 = 0.98 # alpha
-# a2 = 161.95 * 1e-3
-a2 = 2.25 # damp
-
-
-a1 = 0.90 # alpha
-# a2 = 161.95 * 1e-3
-a2 = 7.00 # damp
-
-a1 = 1.01 # alpha
-# a2 = 161.95 * 1e-3
-a2 = 2.36 # damp
-
-# a2 = 0.5044365312410204
-# a1 = -2.0643981142654413
-
-# a2 = 0.5
-# a1 = -5
-
-a1 = 1.93
-a2 = 1
-damp_lim=0
-
-
-damp = 1/(1+np.exp(a1 * 1e2 * (k_kms - a2 * 1e-2)))
-plt.plot(k_kms, damp/np.max(damp))
-plt.plot(k_kms, np.cos(k_kms * dv) * damp/np.max(damp))
-
-damp_lim = -0.5
-damp = 1+ (damp_lim - 1) / (
-    1 + np.exp(-a1 * 1e2 * (k_kms - a2 * 1e-2))
-)
-plt.plot(k_kms, damp/np.max(damp))
-# plt.plot(k_kms, np.cos(k_kms * dv) * damp/np.max(damp))
-
-
-# damp = 1/(1+np.exp(a1 * 0.8 * 1e2 * (k_kms - a2 * 1e-2)))
-# # plt.plot(k_kms, np.cos(k_kms * dv) * damp/np.max(damp))
-# plt.plot(k_kms, damp/np.max(damp))
-
-
-# damp = 1 - 1/(1+np.exp(-a1 * 1e2 * (k_kms - a2* 1e-2)))**0.25
-# plt.plot(k_kms, np.cos(k_kms * dv) * damp/np.max(damp))
-# plt.plot(k_kms, damp/np.max(damp))
-plt.xscale("log")
-
-# %%
-np.exp(-5)
-
-# %%
-
-# %%
-k_kms = data["P1Ds"].k_kms[0].copy()
-damp_coeff = 178.9100418222273 
-alphas = np.linspace(0, 2, 10)
-adim_damp = k_kms * damp_coeff
-
-for alpha in alphas:
-    damping = (adim_damp) ** alpha * np.exp(-1 * adim_damp**alpha)
-    # damping = np.exp(-1 * adim_damp**alpha)
-    plt.plot(k_kms, damping/np.max(damping), label=str(alpha))
-plt.legend()
-plt.xscale("log")
-
-# %%
-
-# %%
-plotter.plot_agn_cont(plot_data=True)
-
-# %%
-# # fitter.mle_cube
-# # plotter.fitter.mle_cube[-6] = 0.47838117
-# # plotter.fitter.mle_cube[-6] = 0.57
-# # plotter.fitter.mle_cube[-4] = 0.14
-# # plotter.fitter.mle_cube[-3] = 0.9
-# mle_results = plotter.fitter.like.plot_p1d(
-#     values=plotter.fitter.mle_cube,
-#     return_all=True,
-#     show=False,
-#     zmask=zmask,
-# )
-# plotter.plot_metal_cont(plot_data=True, mle_results=mle_results, plot_panels=False)
-
-# %%
-
-(1215.67 - 1206.5)/1215.67 * c_kms
-
-
-# %%
-SiIII 2261.384125511053
-SiII 5713.878973619503
-CIV 757.0827988352504
-
-# %%
-c_kms = 299792.458
-lambda_lya = 1215.67
-lambda_rest = [1206.52, 1193.28]
-for ii in range(len(lambda_rest)):
-    dv = (lambda_lya - lambda_rest[ii]) / lambda_lya * c_kms
-    print(dv)
-
-# %%
-c_kms = 299792.458
-# http://astronomy.nmsu.edu/drewski/tableofemissionlines.html
-lambda_rest = [1548.187, 1550.772]
-lambda_rest = [2795.528, 2802.705]
-lambda_rest = [1190.42, 1193.28]
-dv = (lambda_rest[0] - lambda_rest[1]) / lambda_rest[0] * c_kms
-dv
-
-# %%
-
-plotter.plot_metal_cont(plot_data=True, mle_results=mle_results, plot_panels=False)
-
-# %%
-
-# %%
-print(np.sum(np.array(out_chi2)))
-plt.plot(like.data.z, np.array(out_chi2))
-
-# %%
-keys_plot = [
-    '$\\mathrm{ln}\\,\\tau_0$', 
-    '$\\mathrm{ln}\\,\\sigma^T_0$', 
-    '$\\mathrm{ln}\\,\\gamma_0$',
-    '$\\mathrm{ln}\\,k^F_0$',
-    '$\\mathrm{ln}\\,f^{SiIII}_0$',
-    '$\\mathrm{ln}\\,d^{SiIII}_0$',
-    '$a^{SiIII}_0$',
-    '$\\mathrm{ln}\\,f^{SiII}_0$',
-    '$\\mathrm{ln}\\,d^{SiII}_0$',
-    '$a^{SiII}_0$',
-    '$\\mathrm{ln}\\,f^\\mathrm{HCD}_0$',
-    '$\\mathrm{ln}\\,s^\\mathrm{HCD}_0$',
-    'Delta2_star',
-    'n_star',
-    "alpha_star",
-    # '$A_s$',
-    # '$n_s$',
-    "$\\mathrm{ln}\\,\\mathrm{AGN}_0$",
-    '$\\mathrm{R}_0$',
-    # '$\\Delta^2_\\star$',
-    # '$n_\\star$',
-]
-
-# %%
+len(fitter.paramstrings)
 
 # %%
 
 # fig, ax = plt.subplots(4, 3, figsize=(10, 8))
-fig, ax = plt.subplots(5, 3, figsize=(10, 8), sharex=True)
+fig, ax = plt.subplots(8, 3, figsize=(10, 16), sharex=True)
 ax = ax.reshape(-1)
 dict_out = {}
 jj = 0
-for ii, key in enumerate(keys_plot):
+for ii, key in enumerate(fitter.paramstrings):
     if key not in out_mle[0]:
         continue
-    dict_out[key] = np.zeros(len(like.data.z))
-    for iz in range(len(like.data.z)):
+    dict_out[key] = np.zeros(len(out_mle))
+    for iz in range(len(out_mle)):
         ax[jj].scatter(like.data.z[iz], out_mle[iz][key])
         dict_out[key][iz] = out_mle[iz][key]
     ax[jj].set_ylabel(key)
@@ -1284,7 +1387,75 @@ for ii, key in enumerate(keys_plot):
     jj += 1
 
 jj = 0
-for ii, key in enumerate(keys_plot):
+for ii, key in enumerate(fitter.paramstrings):
+    if key not in dict_out:
+        continue
+    print(key, np.round(np.median(dict_out[key]), 4), np.round(np.std(dict_out[key]), 4))
+    ax[jj].plot(like.data.z, like.data.z[:]*0 + np.median(dict_out[key]))
+    jj += 1
+    
+plt.tight_layout()
+plt.savefig("pevol2.png")
+
+# %%
+
+# fig, ax = plt.subplots(4, 3, figsize=(10, 8))
+fig, ax = plt.subplots(8, 3, figsize=(10, 16), sharex=True)
+ax = ax.reshape(-1)
+dict_out = {}
+jj = 0
+for ii, key in enumerate(fitter.paramstrings):
+    if key not in out_mle[0]:
+        continue
+    dict_out[key] = np.zeros(len(out_mle))
+    for iz in range(len(out_mle)):
+        ax[jj].scatter(like.data.z[iz], out_mle[iz][key])
+        dict_out[key][iz] = out_mle[iz][key]
+    ax[jj].set_ylabel(key)
+    ax[jj].set_xlabel(r"$z$")
+    jj += 1
+
+jj = 0
+for ii, key in enumerate(fitter.paramstrings):
+    if key not in dict_out:
+        continue
+    print(key, np.round(np.median(dict_out[key]), 4), np.round(np.std(dict_out[key]), 4))
+    ax[jj].plot(like.data.z, like.data.z[:]*0 + np.median(dict_out[key]))
+    jj += 1
+    
+plt.tight_layout()
+plt.savefig("pevol0.png")
+
+# %%
+dict_out.keys()
+
+# %%
+np.median(dict_out['$\\mathrm{ln}\\,f^{Lya_SiII_0}$'][:7])
+
+# %%
+
+# %%
+
+# %%
+
+# fig, ax = plt.subplots(4, 3, figsize=(10, 8))
+fig, ax = plt.subplots(8, 3, figsize=(10, 16), sharex=True)
+ax = ax.reshape(-1)
+dict_out = {}
+jj = 0
+for ii, key in enumerate(fitter.paramstrings):
+    if key not in out_mle[0]:
+        continue
+    dict_out[key] = np.zeros(len(out_mle))
+    for iz in range(len(out_mle)):
+        ax[jj].scatter(like.data.z[iz], out_mle[iz][key])
+        dict_out[key][iz] = out_mle[iz][key]
+    ax[jj].set_ylabel(key)
+    ax[jj].set_xlabel(r"$z$")
+    jj += 1
+
+jj = 0
+for ii, key in enumerate(fitter.paramstrings):
     if key not in dict_out:
         continue
     print(key, np.median(dict_out[key]))
@@ -1292,6 +1463,8 @@ for ii, key in enumerate(keys_plot):
     jj += 1
     
 plt.tight_layout()
+
+# %%
 
 # %%
 for key in dict_out:
@@ -1336,50 +1509,10 @@ plt.plot(like.data.z, np.poly1d(fit)(like.data.z))
 np.poly1d(fit)(like.data.z) 
 
 # %%
-# I now have a version 3: /global/cfs/cdirs/desicollab/science/lya/y1-p1d/iron-baseline/qmle_measurement/DataProducts/v3 . These have resolution systematics updated and propagated to higher redshifts. I suggest you try what happens with resolution correction. This is still not the baseline, but made this variation for testing purposes.
-# desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits
-# and
-# desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_resocorr_v3.fits
-# There is also SNR>3 variation which should have minimal to zero noise systematics
-
-# %% [markdown]
-# For Nyx fiducial
-#
-# ['As', 'ns', 'nrun', 'ln_tau_0', 'ln_tau_1', 'ln_tau_2', 'ln_tau_3', 'ln_tau_4', 'ln_tau_5', 'ln_tau_6', 'ln_tau_7', 'ln_tau_8', 'ln_tau_9', 'ln_tau_10', 'ln_sigT_kms_0', 'ln_gamma_0', 'ln_kF_0']
-#
-# ['As', 'ns', 'nrun', 'ln_tau_0', 'ln_tau_1', 'ln_tau_2', 'ln_tau_3', 'ln_tau_4', 'ln_tau_5', 'ln_tau_6', 'ln_tau_7', 'ln_tau_8', 'ln_tau_9', 'ln_tau_10', 'ln_sigT_kms_0', 'ln_gamma_0', 'ln_kF_0', 'ln_x_SiIII_0', 'ln_d_SiIII_0', 'a_SiIII_0', 'ln_A_damp_0', 'ln_A_scale_0']
-
-# %%
 # plotter.plot_p1d(zmask=zmask, residuals=True)
 # plotter.plot_igm(zmask=zmask)
 # plotter.plot_hcd_cont(plot_data=True)
 # plotter.plot_metal_cont(plot_data=True)
-
-# %%
-plotter = Plotter(fitter, save_directory=None, zmask=zmask)
-if args.fix_cosmo == False:
-    plotter.plot_mle_cosmo()
-plotter.plots_minimizer()
-
-# %%
-
-# %%
-plotter = Plotter(fitter, save_directory=None, zmask=zmask)
-if args.fix_cosmo == False:
-    plotter.plot_mle_cosmo()
-plotter.plots_minimizer()
-
-# %%
-
-# %%
-plotter = Plotter(fitter, save_directory=None)
-if args.fix_cosmo == False:
-    plotter.plot_mle_cosmo()
-plotter.plots_minimizer()
-
-# %%
-
-# %%
 
 # %%
 

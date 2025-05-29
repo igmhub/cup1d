@@ -23,6 +23,7 @@ class PressureModel(object):
         order_extra=3,
         smoothing=False,
         priors=None,
+        Gauss_priors=None,
         back_igm=None,
         fid_value=[0, 0],
     ):
@@ -43,6 +44,7 @@ class PressureModel(object):
                 fid_igm = igm_hist["mpg_central"]
         self.fid_igm = fid_igm
         self.priors = priors
+        self.Gauss_priors = Gauss_priors
 
         mask = (fid_igm["kF_kms"] != 0) & np.isfinite(fid_igm["kF_kms"])
         if np.sum(mask) == 0:
@@ -159,7 +161,7 @@ class PressureModel(object):
         Npar = len(self.ln_kF_coeff)
         for i in range(Npar):
             name = "ln_kF_" + str(i)
-            pname = "kF_kms"
+            pname = "kF_kms"  # we computed the priors for this parameter
             if i == 0:
                 if self.priors is not None:
                     xmin = self.priors[pname][-1][0]
@@ -175,9 +177,18 @@ class PressureModel(object):
                     xmin = -1.0
                     xmax = 1.0
             # note non-trivial order in coefficients
+            Gwidth = None
+            if self.Gauss_priors is not None:
+                if name in self.Gauss_priors:
+                    Gwidth = self.Gauss_priors[name][-(i + 1)]
+
             value = self.ln_kF_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
-                name=name, value=value, min_value=xmin, max_value=xmax
+                name=name,
+                value=value,
+                min_value=xmin,
+                max_value=xmax,
+                Gauss_priors_width=Gwidth,
             )
             self.params.append(par)
 

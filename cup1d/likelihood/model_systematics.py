@@ -13,6 +13,7 @@ class Systematics(object):
         resolution_model=None,
         resolution_model_type="chunks",
         fid_R_coeff=[0.0, 0.0],
+        Gauss_priors=None,
     ):
         # setup Resolution model
         if resolution_model:
@@ -22,11 +23,13 @@ class Systematics(object):
                 self.resolution_model = Resolution_Model(
                     free_param_names=free_param_names,
                     fid_R_coeff=fid_R_coeff,
+                    Gauss_priors=Gauss_priors,
                 )
                 self.fid_R_coeff = fid_R_coeff
             elif resolution_model_type == "chunks":
                 self.resolution_model = Resolution_Model_Chunks(
                     free_param_names=free_param_names,
+                    Gauss_priors=Gauss_priors,
                     # fid_R_coeff=self.fid_R_coeff,
                 )
                 self.fid_R_coeff = None

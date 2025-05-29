@@ -92,6 +92,10 @@ class Plotter(object):
         )
         plt.close()
 
+        # plot errors
+        self.plot_p1d_errors()
+        plt.close()
+
         # plot cosmology
         if self.fitter.fix_cosmology == False:
             self.plot_mle_cosmo()
@@ -131,6 +135,10 @@ class Plotter(object):
         self.plot_p1d(residuals=True, stat_best_fit="mle")
         plt.close()
         self.plot_p1d(residuals=True, stat_best_fit="mle", plot_panels=True)
+        plt.close()
+
+        # plot errors
+        self.plot_p1d_errors()
         plt.close()
 
         # plot cosmology
@@ -658,6 +666,33 @@ class Plotter(object):
             z_at_time=z_at_time,
         )
 
+    def plot_p1d_errors(self, values=None, zmask=None):
+        """Plot the P1D of the data and the emulator prediction
+        for the MCMC best fit
+        """
+
+        ## Get best fit values for each parameter
+        if values is None:
+            values = self.mle_values
+
+        if self.save_directory is not None:
+            fname = "P1D_mle_errors"
+            plot_fname = self.save_directory + "/" + fname
+        else:
+            plot_fname = None
+
+        z_at_time = False
+        if zmask is not None:
+            if len(zmask) == 1:
+                z_at_time = True
+
+        self.fitter.like.plot_p1d_errors(
+            values=values,
+            plot_fname=plot_fname,
+            zmask=zmask,
+            z_at_time=z_at_time,
+        )
+
     def plot_P1D_initial(self, plot_every_iz=1, residuals=False, zmask=None):
         """Plot the P1D of the data and the emulator prediction
         for the fiducial model"""
@@ -1163,8 +1198,8 @@ class Plotter(object):
         #     "Lya_SiII": "+ Lya-SiII(1193)",
         #     "res": "+ resolution",
         #     "SiII_SiII": "+ SiII(1190)-SiII(1193)",
-        #     "SiII_SiIII": "+ SiII(1190)-SiIII(1206)",
-        #     "MgII_MgII": "+ SiII(1193)-SiIII(1206)",
+        #     "SiIIa_SiIII": "+ SiII(1190)-SiIII(1206)",
+        #     "SiIIb_SiIII": "+ SiII(1193)-SiIII(1206)",
         # }
         cont2label = {
             "Lya_SiIII": r"Ly$\alpha$-SiIII",
@@ -1172,8 +1207,8 @@ class Plotter(object):
             "Lya_SiII": r"Ly$\alpha$-SiII",
             "res": "resolution",
             "SiII_SiII": "SiII(1190)-SiII(1193)",
-            "SiII_SiIII": "SiII(1190)-SiIII",
-            "MgII_MgII": "SiII(1193)-SiIII",
+            "SiIIa_SiIII": "SiII(1190)-SiIII",
+            "SiIIb_SiIII": "SiII(1193)-SiIII",
             "CIV_CIV": "CIV-CIV",
         }
 
@@ -1213,7 +1248,9 @@ class Plotter(object):
                 _values[ind] = 0.5
 
             for line in self.fitter.like.theory.model_cont.metal_lines:
-                if line in conts:
+                if (line in conts) & (
+                    "ln_x_" + line + "_0" in self.fitter.like.free_param_names
+                ):
                     ind = np.argwhere(
                         np.array(self.fitter.like.free_param_names)
                         == "ln_x_" + line + "_0"
@@ -1259,7 +1296,9 @@ class Plotter(object):
                 _values[ind] = 0.5
 
             for line in self.fitter.like.theory.model_cont.metal_lines:
-                if line in conts:
+                if (line in conts) & (
+                    "ln_x_" + line + "_0" in self.fitter.like.free_param_names
+                ):
                     ind = np.argwhere(
                         np.array(self.fitter.like.free_param_names)
                         == "ln_x_" + line + "_0"

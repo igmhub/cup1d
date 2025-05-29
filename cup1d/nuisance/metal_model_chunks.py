@@ -6,29 +6,19 @@ from cup1d.likelihood import likelihood_parameter
 from cup1d.nuisance.mean_flux_model_chunks import split_into_n_chunks
 
 
-class MetalModel(object):
+class MetalModel_Chunks(object):
     """Model the contamination from Silicon Lya cross-correlations"""
 
     def __init__(
         self,
         metal_label,
         lambda_rest=None,
-        z_X=3.0,
         ln_X_coeff=None,
         D_coeff=None,
         L_coeff=None,
         A_coeff=None,
-        X_fid_value=[0, -10],
-        D_fid_value=[0, 5],
-        L_fid_value=[0, 0],
-        A_fid_value=[0, 1.5],
-        Gauss_priors=None,
         X_null_value=-10.5,
         free_param_names=None,
-        X_zev_type="pivot",
-        D_zev_type="pivot",
-        L_zev_type="pivot",
-        A_zev_type="pivot",
     ):
         """Model the evolution of a metal contamination (SiII or SiIII).
         We use a power law around z_X=3."""
@@ -77,16 +67,8 @@ class MetalModel(object):
             if lambda_rest is None:
                 raise ValueError("need to specify lambda_rest", metal_label)
 
-        # power law pivot point
-        self.z_X = z_X
-        self.Gauss_priors = Gauss_priors
         # value below which no contamination (speed up model)
         self.X_null_value = X_null_value
-        # type of redshift ev for models
-        self.X_zev_type = X_zev_type
-        self.D_zev_type = D_zev_type
-        self.L_zev_type = L_zev_type
-        self.A_zev_type = A_zev_type
 
         # figure out parameters
         if (
@@ -128,52 +110,18 @@ class MetalModel(object):
                 n_D = 1
                 n_L = 1
                 n_A = 1
+            # start with value from McDonald et al. (2006), and no z evolution
+            self.ln_X_coeff = np.zeros((n_X))
+            self.D_coeff = np.zeros((n_D))
+            self.L_coeff = np.zeros((n_L))
+            self.A_coeff = np.zeros((n_A))
 
-            if self.X_zev_type == "pivot":
-                self.ln_X_coeff = np.zeros((n_X))
-                if n_X == 1:
-                    self.ln_X_coeff[0] = X_fid_value[-1]
-                else:
-                    for ii in range(n_X):
-                        self.ln_X_coeff[ii] = X_fid_value[ii]
-            else:
-                self.ln_X_coeff = np.zeros((n_X)) + X_fid_value[-1]
-
-            if self.D_zev_type == "pivot":
-                self.D_coeff = np.zeros((n_D))
-                if n_D == 1:
-                    self.D_coeff[0] = D_fid_value[-1]
-                else:
-                    for ii in range(n_D):
-                        self.D_coeff[ii] = D_fid_value[ii]
-            else:
-                self.D_coeff = np.zeros((n_D)) + D_fid_value[-1]
-
-            if self.L_zev_type == "pivot":
-                self.L_coeff = np.zeros((n_L))
-                if n_L == 1:
-                    self.L_coeff[0] = L_fid_value[-1]
-                else:
-                    for ii in range(n_L):
-                        self.L_coeff[ii] = L_fid_value[ii]
-            else:
-                self.L_coeff = np.zeros((n_L)) + L_fid_value[-1]
-
-            if self.A_zev_type == "pivot":
-                self.A_coeff = np.zeros((n_A))
-                if n_A == 1:
-                    self.A_coeff[0] = A_fid_value[-1]
-                else:
-                    for ii in range(n_A):
-                        self.A_coeff[ii] = A_fid_value[ii]
-            else:
-                self.A_coeff = np.zeros((n_A)) + A_fid_value[-1]
-
-        # store list of likelihood parameters (might be fixed or free)
         self.n_X = len(self.ln_X_coeff)
         self.n_D = len(self.D_coeff)
         self.n_L = len(self.L_coeff)
         self.n_A = len(self.A_coeff)
+
+        # store list of likelihood parameters (might be fixed or free)
         self.set_X_parameters()
         self.set_D_parameters()
         self.set_L_parameters()
@@ -181,7 +129,12 @@ class MetalModel(object):
 
     def get_Nparam(self):
         """Number of parameters in the model"""
-        all_par = self.n_X + self.n_D + self.n_L + self.n_A
+        all_par = (
+            len(self.ln_X_coeff)
+            + len(self.D_coeff)
+            + len(self.L_coeff)
+            + len(self.A_coeff)
+        )
         all_par2 = (
             len(self.X_params)
             + len(self.D_params)
@@ -196,142 +149,73 @@ class MetalModel(object):
         """Setup likelihood parameters for metal model"""
 
         self.X_params = []
-        for i in range(self.n_X):
+        Npar = len(self.ln_X_coeff)
+        for i in range(Npar):
             name = "ln_x_" + self.metal_label + "_" + str(i)
-            if self.X_zev_type == "pivot":
-                if i == 0:
-                    # ln of overall amplitude at z_X
-                    xmin = -11  # no contamination
-                    xmax = -3.2
-                else:
-                    xmin = -2
-                    xmax = 2
-                # note non-trivial order in coefficients
-                value = self.ln_X_coeff[self.n_X - i - 1]
-                Gwidth = None
-                if self.Gauss_priors is not None:
-                    if name in self.Gauss_priors:
-                        Gwidth = self.Gauss_priors[name][-(i + 1)]
-            else:
-                xmin = -11
-                xmax = -3.8
-                value = self.ln_X_coeff[i]
-                Gwidth = None
-
+            xmin = -11
+            xmax = -3.8
+            value = self.ln_X_coeff[i]
             par = likelihood_parameter.LikelihoodParameter(
                 name=name,
                 value=value,
                 min_value=xmin,
                 max_value=xmax,
-                Gauss_priors_width=Gwidth,
             )
             self.X_params.append(par)
-        return
 
     def set_D_parameters(self):
         """Setup likelihood parameters for metal model"""
 
         self.D_params = []
-        for i in range(self.n_D):
+        Npar = len(self.D_coeff)
+        for i in range(Npar):
             name = "d_" + self.metal_label + "_" + str(i)
-            if self.D_zev_type == "pivot":
-                if i == 0:
-                    xmin = -1
-                    xmax = 4  # was 3
-                else:
-                    xmin = -1
-                    xmax = 1
-                # note non-trivial order in coefficients
-                value = self.D_coeff[self.n_D - i - 1]
-                Gwidth = None
-                if self.Gauss_priors is not None:
-                    if name in self.Gauss_priors:
-                        Gwidth = self.Gauss_priors[name][-(i + 1)]
-            else:
-                xmin = -1
-                xmax = 4
-                value = self.D_coeff[i]
-                Gwidth = None
-
+            xmin = -1
+            xmax = 4
+            value = self.D_coeff[i]
             par = likelihood_parameter.LikelihoodParameter(
                 name=name,
                 value=value,
                 min_value=xmin,
                 max_value=xmax,
-                Gauss_priors_width=Gwidth,
             )
             self.D_params.append(par)
-        return
 
     def set_L_parameters(self):
         """Setup likelihood parameters for metal model"""
 
         self.L_params = []
-        for i in range(self.n_L):
+        Npar = len(self.L_coeff)
+        for i in range(Npar):
             name = "l_" + self.metal_label + "_" + str(i)
-            if self.L_zev_type == "pivot":
-                if i == 0:
-                    xmin = 0
-                    xmax = 0.01
-                else:
-                    xmin = -1
-                    xmax = 1
-                # note non-trivial order in coefficients
-                value = self.L_coeff[self.n_L - i - 1]
-                Gwidth = None
-                if self.Gauss_priors is not None:
-                    if name in self.Gauss_priors:
-                        Gwidth = self.Gauss_priors[name][-(i + 1)]
-            else:
-                xmin = 0
-                xmax = 0.01
-                value = self.L_coeff[i]
-                Gwidth = None
-
+            xmin = 0
+            xmax = 0.01
+            value = self.L_coeff[i]
             par = likelihood_parameter.LikelihoodParameter(
                 name=name,
                 value=value,
                 min_value=xmin,
                 max_value=xmax,
-                Gauss_priors_width=Gwidth,
             )
             self.L_params.append(par)
-        return
 
     def set_A_parameters(self):
         """Setup likelihood parameters for metal model"""
 
         self.A_params = []
-        for i in range(self.n_A):
+        Npar = len(self.A_coeff)
+        for i in range(Npar):
             name = "a_" + self.metal_label + "_" + str(i)
-            if self.A_zev_type == "pivot":
-                if i == 0:
-                    xmin = 0
-                    xmax = 5
-                else:
-                    xmin = -3
-                    xmax = 3
-                # note non-trivial order in coefficients
-                value = self.A_coeff[self.n_A - i - 1]
-                Gwidth = None
-                if self.Gauss_priors is not None:
-                    if name in self.Gauss_priors:
-                        Gwidth = self.Gauss_priors[name][-(i + 1)]
-            else:
-                xmin = 0
-                xmax = 5
-                value = self.A_coeff[i]
-                Gwidth = None
-
+            xmin = 0
+            xmax = 5
+            value = self.A_coeff[i]
             par = likelihood_parameter.LikelihoodParameter(
                 name=name,
                 value=value,
                 min_value=xmin,
                 max_value=xmax,
-                Gauss_priors_width=Gwidth,
             )
             self.A_params.append(par)
-        return
 
     def get_X_parameters(self):
         """Return likelihood parameters from the metal model"""
@@ -378,10 +262,7 @@ class MetalModel(object):
                         "could not update parameter " + self.X_params[ip].name
                     )
                 else:
-                    if self.X_zev_type == "pivot":
-                        ln_X_coeff[Npar - ip - 1] = array_values[_[0]]
-                    else:
-                        ln_X_coeff[ip] = array_values[_[0]]
+                    ln_X_coeff[Npar - ip - 1] = array_values[_[0]]
         else:
             ln_X_coeff = self.ln_X_coeff
 
@@ -416,10 +297,7 @@ class MetalModel(object):
                         "could not update parameter " + self.D_params[ip].name
                     )
                 else:
-                    if self.D_zev_type == "pivot":
-                        D_coeff[Npar - ip - 1] = array_values[_[0]]
-                    else:
-                        D_coeff[ip] = array_values[_[0]]
+                    D_coeff[Npar - ip - 1] = array_values[_[0]]
         else:
             D_coeff = self.D_coeff
 
@@ -454,10 +332,7 @@ class MetalModel(object):
                         "could not update parameter " + self.L_params[ip].name
                     )
                 else:
-                    if self.L_zev_type == "pivot":
-                        L_coeff[Npar - ip - 1] = array_values[_[0]]
-                    else:
-                        L_coeff[ip] = array_values[_[0]]
+                    L_coeff[Npar - ip - 1] = array_values[_[0]]
         else:
             L_coeff = self.L_coeff
 
@@ -492,10 +367,7 @@ class MetalModel(object):
                         "could not update parameter " + self.A_params[ip].name
                     )
                 else:
-                    if self.A_zev_type == "pivot":
-                        A_coeff[Npar - ip - 1] = array_values[_[0]]
-                    else:
-                        A_coeff[ip] = array_values[_[0]]
+                    A_coeff[Npar - ip - 1] = array_values[_[0]]
         else:
             A_coeff = self.A_coeff
 
@@ -506,55 +378,39 @@ class MetalModel(object):
 
         ln_X_coeff = self.get_X_coeffs(like_params)
 
-        if self.X_zev_type == "pivot":
-            if ln_X_coeff[-1] <= self.X_null_value:
-                return None
+        if ln_X_coeff[-1] <= self.X_null_value:
+            return 0
 
-            xz = (1 + z) / (1 + self.z_X)
-            poly = np.poly1d(ln_X_coeff)
-            return np.exp(poly(xz))
-        else:
-            _ = np.argwhere(ln_X_coeff <= self.X_null_value)[:, 0]
-            if len(_) == self.n_X:
-                return None
-            else:
-                return np.exp(ln_X_coeff)
+        xz = (1 + z) / (1 + self.z_X)
+        poly = np.poly1d(ln_X_coeff)
+        return np.exp(poly(xz))
 
     def get_damping(self, z, like_params=[]):
         """Exponent of damping at a given z"""
 
         D_coeff = self.get_D_coeffs(like_params)
 
-        if self.D_zev_type == "pivot":
-            xz = (1 + z) / (1 + self.z_X)
-            poly = np.poly1d(D_coeff)
-            return poly(xz)
-        else:
-            return np.array(D_coeff)
+        xz = (1 + z) / (1 + self.z_X)
+        poly = np.poly1d(D_coeff)
+        return poly(xz)
 
     def get_lim_damping(self, z, like_params=[]):
         """Exponent of damping at a given z"""
 
         L_coeff = self.get_L_coeffs(like_params)
 
-        if self.L_zev_type == "pivot":
-            xz = (1 + z) / (1 + self.z_X)
-            poly = np.poly1d(L_coeff)
-            return poly(xz)
-        else:
-            return np.array(L_coeff)
+        xz = (1 + z) / (1 + self.z_X)
+        poly = np.poly1d(L_coeff)
+        return poly(xz)
 
     def get_exp_damping(self, z, like_params=[]):
         """Exponent of damping at a given z"""
 
         A_coeff = self.get_A_coeffs(like_params)
 
-        if self.A_zev_type == "pivot":
-            xz = (1 + z) / (1 + self.z_X)
-            poly = np.poly1d(A_coeff)
-            return poly(xz)
-        else:
-            return np.array(A_coeff)
+        xz = (1 + z) / (1 + self.z_X)
+        poly = np.poly1d(A_coeff)
+        return poly(xz)
 
     def get_contamination(self, z, k_kms, mF, like_params=[]):
         """Multiplicative contamination at a given z and k (in s/km).
@@ -563,7 +419,7 @@ class MetalModel(object):
         # Note that this represents "f" in McDonald et al. (2006)
         # It is later rescaled by <F> to compute "a" in eq. (15)
         f = self.get_amplitude(z, like_params=like_params)
-        if f is None:
+        if f == 0:
             return 1
 
         # We damp the oscillations using a sigmoidal function
@@ -578,39 +434,20 @@ class MetalModel(object):
         # The limiting value of the damping
         damp_lim = self.get_lim_damping(z, like_params=like_params)
 
-        a = f / (1 - mF)
+        damping = 1 + (damp_lim - 1) / (
+            1 + np.exp(-damping_growth * 1e2 * (k_kms - damp_coeff * 1e-2))
+        )
 
-        if len(z) == 1:
-            damping = 1 + (damp_lim - 1) / (
-                1
-                + np.exp(-damping_growth * 1e2 * (k_kms[0] - damp_coeff * 1e-2))
-            )
-            cont = (
-                1
-                + a**2
-                + 2 * a * np.cos(self.dv * k_kms[0]) * damping / np.max(damping)
-            )
-        else:
-            cont = []
-            for iz in range(len(z)):
-                damping = 1 + (damp_lim[iz] - 1) / (
-                    1
-                    + np.exp(
-                        -damping_growth[iz]
-                        * 1e2
-                        * (k_kms[iz] - damp_coeff[iz] * 1e-2)
-                    )
-                )
-                _cont = (
-                    1
-                    + a[iz] ** 2
-                    + 2
-                    * a[iz]
-                    * np.cos(self.dv * k_kms[iz])
-                    * damping
-                    / np.max(damping)
-                )
-                cont.append(_cont)
+        # if self.metal_label == "Lya_SiIII":
+        #     print(self.metal_label, z, f)
+        #     print(like_params)
+
+        a = f / (1 - mF)
+        cont = (
+            1
+            + a**2
+            + 2 * a * np.cos(self.dv * k_kms) * damping / np.max(damping)
+        )
 
         return cont
 

@@ -23,6 +23,7 @@ class ThermalModel(object):
         order_extra=2,
         smoothing=False,
         priors=None,
+        Gauss_priors=None,
         emu_suite="mpg",
         back_igm=None,
         fid_value_sigT=[0, 0],
@@ -34,6 +35,7 @@ class ThermalModel(object):
 
         self.z_T = z_T
         self.priors = priors
+        self.Gauss_priors = Gauss_priors
 
         # figure out parameters for sigT_kms (T0)
         if ln_sigT_kms_coeff:
@@ -286,7 +288,7 @@ class ThermalModel(object):
         Npar = len(self.ln_sigT_kms_coeff)
         for i in range(Npar):
             name = "ln_sigT_kms_" + str(i)
-            pname = "sigT_kms"
+            pname = "sigT_kms"  # we computed the priors for this parameter
             if i == 0:
                 if self.priors is not None:
                     xmin = self.priors[pname][-1][0]
@@ -301,10 +303,20 @@ class ThermalModel(object):
                 else:
                     xmin = -1.0
                     xmax = 1.0
+
+            Gwidth = None
+            if self.Gauss_priors is not None:
+                if name in self.Gauss_priors:
+                    Gwidth = self.Gauss_priors[name][-(i + 1)]
+
             # note non-trivial order in coefficients
             value = self.ln_sigT_kms_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
-                name=name, value=value, min_value=xmin, max_value=xmax
+                name=name,
+                value=value,
+                min_value=xmin,
+                max_value=xmax,
+                Gauss_priors_width=Gwidth,
             )
             self.sigT_kms_params.append(par)
         return
@@ -316,7 +328,7 @@ class ThermalModel(object):
         Npar = len(self.ln_gamma_coeff)
         for i in range(Npar):
             name = "ln_gamma_" + str(i)
-            pname = "gamma"
+            pname = "gamma"  # we computed the priors for this parameter
             if i == 0:
                 if self.priors is not None:
                     xmin = self.priors[pname][-1][0]
@@ -331,10 +343,20 @@ class ThermalModel(object):
                 else:
                     xmin = -1.0
                     xmax = 1.0
+
+            Gwidth = None
+            if self.Gauss_priors is not None:
+                if name in self.Gauss_priors:
+                    Gwidth = self.Gauss_priors[name][-(i + 1)]
+
             # note non-trivial order in coefficients
             value = self.ln_gamma_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
-                name=name, value=value, min_value=xmin, max_value=xmax
+                name=name,
+                value=value,
+                min_value=xmin,
+                max_value=xmax,
+                Gauss_priors_width=Gwidth,
             )
             self.gamma_params.append(par)
 

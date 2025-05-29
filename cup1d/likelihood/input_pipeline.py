@@ -402,6 +402,7 @@ class Args:
     vary_alphas: bool = False
     prior_Gauss_rms: float | None = None
     emu_cov_factor: int | None = 1
+    cov_factor: int = 1
     emu_cov_type: str = "full"
     verbose: bool = True
     test: bool = False
@@ -414,14 +415,15 @@ class Args:
     fid_metals: dict = field(default_factory=lambda: {})
     true_metals: dict = field(default_factory=lambda: {})
     n_metals: dict = field(default_factory=lambda: {})
+    Gauss_priors: dict | None = None
     metal_lines: list[str] = field(
         default_factory=lambda: [
             "Lya_SiIII",
             "Lya_SiII",
             "CIV_CIV",
-            "MgII_MgII",
+            "SiIIb_SiIII",
             "SiII_SiII",
-            "SiII_SiIII",
+            "SiIIa_SiIII",
         ]
     )
 

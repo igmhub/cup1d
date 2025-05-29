@@ -4,12 +4,15 @@ import numpy as np
 class LikelihoodParameter(object):
     """Base class for likelihood parameter"""
 
-    def __init__(self, name, min_value, max_value, value=None):
+    def __init__(
+        self, name, min_value, max_value, value=None, Gauss_priors_width=None
+    ):
         """Base class for parameter used in likelihood"""
         self.name = name
         self.min_value = min_value
         self.max_value = max_value
         self.value = value
+        self.Gauss_priors_width = Gauss_priors_width
         return
 
     def value_in_cube(self):
@@ -59,7 +62,10 @@ class LikelihoodParameter(object):
         """Return copy of parameter, with updated value from cube"""
 
         par = LikelihoodParameter(
-            name=self.name, min_value=self.min_value, max_value=self.max_value
+            name=self.name,
+            min_value=self.min_value,
+            max_value=self.max_value,
+            Gauss_priors_width=self.Gauss_priors_width,
         )
         par.set_from_cube(value_in_cube)
 

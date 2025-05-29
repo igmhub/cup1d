@@ -21,6 +21,7 @@ class MeanFluxModel(object):
         order_extra=2,
         smoothing=False,
         priors=None,
+        Gauss_priors=None,
         fid_value=[0, 0, 0],
     ):
         """Construct model as a rescaling around a fiducial mean flux"""
@@ -38,6 +39,7 @@ class MeanFluxModel(object):
             self.ln_tau_coeff = [0.0] * n_mf
         # store list of likelihood parameters (might be fixed or free)
         self.priors = priors
+        self.Gauss_priors = Gauss_priors
         self.set_parameters()
 
         if fid_igm is None:
@@ -169,7 +171,7 @@ class MeanFluxModel(object):
         Npar = len(self.ln_tau_coeff)
         for i in range(Npar):
             name = "ln_tau_" + str(i)
-            pname = "tau_eff"
+            pname = "tau_eff"  # we computed the priors for this parameter
             if i == 0:
                 if self.priors is not None:
                     xmin = self.priors[pname][-1][0]
@@ -185,12 +187,22 @@ class MeanFluxModel(object):
                     xmin = -0.5
                     xmax = 0.5
             else:
-                xmin = -4
-                xmax = 4
+                xmin = -2
+                xmax = 2
+
+            Gwidth = None
+            if self.Gauss_priors is not None:
+                if name in self.Gauss_priors:
+                    Gwidth = self.Gauss_priors[name][-(i + 1)]
+
             # note non-trivial order in coefficients
             value = self.ln_tau_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
-                name=name, value=value, min_value=xmin, max_value=xmax
+                name=name,
+                value=value,
+                min_value=xmin,
+                max_value=xmax,
+                Gauss_priors_width=Gwidth,
             )
             self.params.append(par)
 

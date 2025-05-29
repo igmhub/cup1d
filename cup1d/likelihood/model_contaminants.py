@@ -28,6 +28,7 @@ class Contaminants(object):
         fid_AGN=None,
         hcd_model_type=None,
         ic_correction=None,
+        Gauss_priors=None,
     ):
         self.metal_lines = metal_lines
         self.fid_metals = fid_metals
@@ -55,6 +56,7 @@ class Contaminants(object):
                     D_fid_value=self.fid_metals[metal_line + "_D"],
                     L_fid_value=self.fid_metals[metal_line + "_L"],
                     A_fid_value=self.fid_metals[metal_line + "_A"],
+                    Gauss_priors=Gauss_priors,
                 )
 
         # setup HCD model
@@ -77,6 +79,7 @@ class Contaminants(object):
                     free_param_names=free_param_names,
                     fid_A_damp=self.fid_A_damp,
                     fid_A_scale=self.fid_A_scale,
+                    Gauss_priors=Gauss_priors,
                 )
             else:
                 raise ValueError(
@@ -125,16 +128,26 @@ class Contaminants(object):
 
     def get_contamination(self, z, k_kms, mF, M_of_z, like_params=[]):
         # include multiplicative metal contamination
-        cont_metals = 1
+        if len(z) == 1:
+            cont_metals = np.ones_like(k_kms)
+        else:
+            cont_metals = []
+            for iz in range(len(z)):
+                cont_metals.append(np.ones_like(k_kms[iz]))
+
         for model_name in self.metal_models:
-            metal_model = self.metal_models[model_name]
-            cont = metal_model.get_contamination(
+            cont = self.metal_models[model_name].get_contamination(
                 z=z,
                 k_kms=k_kms,
                 mF=mF,
                 like_params=like_params,
             )
-            cont_metals *= cont
+            if len(z) == 1:
+                cont_metals *= cont
+            else:
+                for iz in range(len(z)):
+                    if type(cont) != int:
+                        cont_metals[iz] *= cont[iz]
 
         # include HCD contamination
         cont_HCD = self.hcd_model.get_contamination(
@@ -144,9 +157,15 @@ class Contaminants(object):
         )
 
         # include SN contamination
+        if len(z) != 1:
+            k_Mpc = []
+            for iz in range(len(z)):
+                k_Mpc.append(k_kms[iz] * M_of_z[iz])
+        else:
+            k_Mpc = [k_kms[0] * M_of_z[0]]
         cont_SN = self.sn_model.get_contamination(
             z=z,
-            k_Mpc=k_kms * M_of_z,
+            k_Mpc=k_Mpc,
             like_params=like_params,
         )
 
@@ -156,24 +175,53 @@ class Contaminants(object):
             k_kms=k_kms,
             like_params=like_params,
         )
+        if np.any(cont_AGN < 0):
+            return None
 
         if self.ic_correction:
             IC_corr = ref_nyx_ic_correction(k_kms, z)
         else:
             IC_corr = 1
 
-        # print("me", cont_metals)
-        # print("hcd", cont_HCD)
-        # print("sn", cont_SN)
-        # print("agn", cont_AGN)
-        # print("ic", IC_corr)
-
-        cont_total = cont_metals * cont_HCD * cont_SN * cont_AGN * IC_corr
-
-        if np.any(cont_AGN < 0):
-            return None
+        if len(z) == 1:
+            cont_total = cont_metals * cont_HCD * cont_SN * cont_AGN * IC_corr
         else:
-            return cont_total
+            cont_total = []
+            if type(cont_metals) == int:
+                _cont_metals = np.ones_like(z)
+            else:
+                _cont_metals = cont_metals
+
+            if type(cont_HCD) == int:
+                _cont_HCD = np.ones_like(z)
+            else:
+                _cont_HCD = cont_HCD
+
+            if type(cont_SN) == int:
+                _cont_SN = np.ones_like(z)
+            else:
+                _cont_SN = cont_SN
+
+            if type(cont_AGN) == int:
+                _cont_AGN = np.ones_like(z)
+            else:
+                _cont_AGN = cont_AGN
+
+            if type(IC_corr) == int:
+                _IC_corr = np.ones_like(z)
+            else:
+                _IC_corr = IC_corr
+
+            for iz in range(len(z)):
+                cont_total.append(
+                    _cont_metals[iz]
+                    * _cont_HCD[iz]
+                    * _cont_SN[iz]
+                    * _cont_AGN[iz]
+                    * _IC_corr[iz]
+                )
+
+        return cont_total
 
 
 def ref_nyx_ic_correction(k_kms, z):
@@ -183,10 +231,19 @@ def ref_nyx_ic_correction(k_kms, z):
     # - Low k term: quite uncertain, due to cosmic variance
     ic_corr_z = np.array([0.15261529, -2.30600644, 2.61877894])
     ic_corr_k = 0.003669741766936781
-    ancorIC = (ic_corr_z[0] * z**2 + ic_corr_z[1] * z + ic_corr_z[2]) * (
-        1 - np.exp(-k_kms / ic_corr_k)
-    )
-    corICs = 1 / (1 - ancorIC / 100)
+    if len(z) == 1:
+        ancorIC = (ic_corr_z[0] * z**2 + ic_corr_z[1] * z + ic_corr_z[2]) * (
+            1 - np.exp(-k_kms / ic_corr_k)
+        )
+        corICs = 1 / (1 - ancorIC / 100)
+    else:
+        corICs = []
+        for iz in range(len(z)):
+            ancorIC = (
+                ic_corr_z[0] * z[iz] ** 2 + ic_corr_z[1] * z[iz] + ic_corr_z[2]
+            ) * (1 - np.exp(-k_kms[iz] / ic_corr_k))
+            corICs.append(1 / (1 - ancorIC / 100))
+
     return corICs
 
 

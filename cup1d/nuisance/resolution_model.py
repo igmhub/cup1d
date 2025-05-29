@@ -35,8 +35,10 @@ class Resolution_Model(object):
         fid_R_coeff=[0, 0],
         R_coeff=None,
         free_param_names=None,
+        Gauss_priors=None,
     ):
         self.z_0 = z_0
+        self.Gauss_priors = Gauss_priors
 
         if R_coeff is not None:
             if free_param_names is not None:
@@ -74,9 +76,17 @@ class Resolution_Model(object):
                 xmin = -10
                 xmax = 10
             # note non-trivial order in coefficients
+            Gwidth = None
+            if self.Gauss_priors is not None:
+                if name in self.Gauss_priors:
+                    Gwidth = self.Gauss_priors[name][Npar - i - 1]
             value = self.R_coeff[Npar - i - 1]
             par = likelihood_parameter.LikelihoodParameter(
-                name=name, value=value, min_value=xmin, max_value=xmax
+                name=name,
+                value=value,
+                min_value=xmin,
+                max_value=xmax,
+                Gauss_priors_width=Gwidth,
             )
             self.R_params.append(par)
 
