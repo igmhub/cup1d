@@ -304,7 +304,7 @@ class MetalModel(object):
             name = "a_" + self.metal_label + "_" + str(i)
             if self.A_zev_type == "pivot":
                 if i == 0:
-                    xmin = -2
+                    xmin = -10
                     xmax = 10
                 else:
                     xmin = -3

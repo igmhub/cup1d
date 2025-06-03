@@ -17,128 +17,6 @@ from cup1d.likelihood import CAMB_model
 from cup1d.utils.utils import get_path_repo
 
 
-def set_baseline(args):
-    args.emu_cov_factor = 1
-    args.emu_cov_type = "block"
-    args.rebin_k = 6
-    args.cov_factor = 1
-    args.fix_cosmo = True
-    args.vary_alphas = False
-    args.ic_correction = False
-    args.fid_cosmo_label = "Planck18"
-    sim_fid = "mpg_central"
-    args.fid_label_mF = sim_fid
-    args.fid_label_T = sim_fid
-    args.fid_label_kF = sim_fid
-
-    # z at a time
-    args.mF_model_type = "pivot"
-    args.hcd_model_type = "new"
-    args.resolution_model_type = "pivot"
-
-    args.n_tau = 1
-    args.n_gamma = 1
-    args.n_sigT = 1
-    args.n_kF = 1
-    args.n_res = 1
-
-    lines_use = [
-        "Lya_SiIII",
-        "Lya_SiIIa",
-        "Lya_SiIIb",
-        "SiIIa_SiIIb",
-        "SiIIa_SiIII",
-        "SiIIb_SiIII",
-    ]
-
-    f_prior = {
-        "Lya_SiIII": -4.2,
-        "Lya_SiIIa": -4.6,
-        "Lya_SiIIb": -10.5,
-        "SiIIa_SiIIb": -5.5,
-        "SiIIa_SiIII": -6.2,
-        "SiIIb_SiIII": -6.6,
-    }
-
-    # at a time
-    d_prior = {
-        "Lya_SiIII": 0.4,
-        "Lya_SiIIa": -0.9,
-        "Lya_SiIIb": -0.9,
-        "SiIIa_SiIIb": 0.8,
-        "SiIIa_SiIII": 1.6,
-        "SiIIb_SiIII": 2.7,
-    }
-
-    # at a time
-    a_prior = {
-        "Lya_SiIII": 1.5,
-        "Lya_SiIIa": 4.0,
-        "Lya_SiIIb": 4.0,
-        "SiIIa_SiIIb": 4.0,
-        "SiIIa_SiIII": 0.5,
-        "SiIIb_SiIII": 2.5,
-    }
-
-    # n_metals = {
-    #     "Lya_SiIII": [1, 1, 1],
-    #     "Lya_SiIIa": [0, 0, 0],
-    #     "Lya_SiIIb": [1, 0, 1],
-    #     "SiIIa_SiIII": [1, 0, 0],
-    #     "SiIIb_SiIII": [1, 1, 0],
-    #     "SiIIa_SiIIb": [1, 1, 1],
-    # }
-    # n_metals = {
-    #     "Lya_SiIII": [1, 1, 1],
-    #     "Lya_SiIIa": [1, 1, 1],
-    #     "Lya_SiIIb": [1, 1, 1],
-    #     "SiIIa_SiIII": [1, 1, 1],
-    #     "SiIIb_SiIII": [1, 1, 1],
-    #     "SiIIa_SiIIb": [1, 1, 1],
-    # }
-    # nf, nd, na
-    n_metals = {
-        "Lya_SiIII": [1, 0, 1],
-        "Lya_SiIIa": [0, 0, 0],
-        "Lya_SiIIb": [1, 0, 1],
-        "SiIIa_SiIII": [0, 0, 0],
-        "SiIIb_SiIII": [0, 0, 0],
-        "SiIIa_SiIIb": [1, 0, 1],
-    }
-
-    for metal_line in lines_use:
-        args.n_metals["n_x_" + metal_line] = n_metals[metal_line][0]
-        if args.n_metals["n_x_" + metal_line] == 0:
-            args.fid_metals[metal_line + "_X"] = [0, -10.5]
-        else:
-            args.fid_metals[metal_line + "_X"] = [0, f_prior[metal_line]]
-
-        args.n_metals["n_d_" + metal_line] = n_metals[metal_line][1]
-        if args.n_metals["n_d_" + metal_line] == 0:
-            args.fid_metals[metal_line + "_D"] = [0, 0]
-        else:
-            args.fid_metals[metal_line + "_D"] = [0, d_prior[metal_line]]
-
-        args.n_metals["n_a_" + metal_line] = n_metals[metal_line][2]
-        if args.n_metals["n_a_" + metal_line] == 0:
-            args.fid_metals[metal_line + "_A"] = [0, 1]
-        else:
-            args.fid_metals[metal_line + "_A"] = [0, a_prior[metal_line]]
-
-        args.n_metals["n_l_" + metal_line] = 0
-        args.fid_metals[metal_line + "_L"] = [0, 0]
-
-    args.n_d_dla = 1
-    args.fid_A_damp = [0, -1.4]
-    args.n_s_dla = 1
-    args.fid_A_scale = [0, 5.2]
-
-    args.fid_AGN = [0, -5.5]
-
-    args.prior_Gauss_rms = None
-    args.Gauss_priors = {}
-
-
 def main():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -213,7 +91,7 @@ def main():
     args.z_min = 2.1
     args.z_max = 4.3
 
-    set_baseline(args)
+    args.set_baseline()
 
     args.p1d_fname = path_in_challenge
     if rank == 0:
@@ -233,9 +111,7 @@ def main():
         args.n_steps = 10
         args.n_burn_in = 0
     else:
-        # args.n_steps = 2500
-        # args.n_burn_in = 4000
-        args.n_steps = 1000
+        args.n_steps = 1250
         args.n_burn_in = 500
 
     if size > 1:

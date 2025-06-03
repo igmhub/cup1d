@@ -844,7 +844,7 @@ class Likelihood(object):
         return max(self.min_log_like, log_like)
 
     def compute_log_prob(
-        self, values, return_blob=False, ignore_log_det_cov=False, zmask=None
+        self, values, return_blob=False, ignore_log_det_cov=True, zmask=None
     ):
         """Compute log likelihood plus log priors for input values
         - if return_blob==True, it will return also extra information"""
@@ -884,7 +884,7 @@ class Likelihood(object):
         else:
             return log_like + log_prior
 
-    def log_prob(self, values, ignore_log_det_cov=False, zmask=None):
+    def log_prob(self, values, ignore_log_det_cov=True, zmask=None):
         """Return log likelihood plus log priors"""
 
         return self.compute_log_prob(
@@ -894,7 +894,7 @@ class Likelihood(object):
             zmask=zmask,
         )
 
-    def log_prob_and_blobs(self, values, ignore_log_det_cov=False, zmask=None):
+    def log_prob_and_blobs(self, values, ignore_log_det_cov=True, zmask=None):
         """Function used by emcee to get both log_prob and extra information"""
 
         lnprob, blob = self.compute_log_prob(

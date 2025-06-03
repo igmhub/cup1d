@@ -273,7 +273,7 @@ elif choose_desiy1:
     
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_resocorr_v3.fits"
-    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
+    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/DESI-DR1/qmle_measurement/DataProducts/v3/desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_xe_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
     
     # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
@@ -1524,6 +1524,12 @@ args.Gauss_priors = {}
 
 
 
+
+
+# %%
+args.set_baseline()
+
+# %%
 like = set_like(
     data["P1Ds"],
     emulator,
@@ -1579,7 +1585,7 @@ out_mle = []
 out_mle_cube = []
 out_chi2 = []
 # for ii in range(len(like.data.z)): 
-for ii in range(1,2): 
+for ii in range(1): 
     print(ii)
     zmask = np.array([like.data.z[ii]])
     # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
@@ -1663,7 +1669,15 @@ plotter.plot_p1d(out_mle_cube, z_at_time=True, plot_panels=True, residuals=True)
 #     plotter.plot_illustrate_contaminants(out_mle_cube[ii].copy(), [zs[ii]], lines_use=lines_use)
 
 # %%
-plotter.plot_illustrate_contaminants(out_mle_cube[0].copy(), [2.4], lines_use=lines_use)
+lines_use = [
+    "Lya_SiIII",
+    "Lya_SiIIa",
+    "Lya_SiIIb",
+    "SiIIa_SiIIb",
+    "SiIIa_SiIII",
+    "SiIIb_SiIII",
+]
+plotter.plot_illustrate_contaminants(out_mle_cube[0].copy(), [2.2], lines_use=lines_use)
 
 # %%
 # plotter.plot_illustrate_contaminants(out_mle_cube[-4].copy(), [3.6], lines_use=lines_use)
@@ -1872,26 +1886,34 @@ out_chi2
 # %%
 
 # %%
+zmask
 
 # %%
-args.parallel = False
+args.n_steps=5
+args.n_burn_in=1
+args.parallel=False
+args.explore=True
+
+fitter = Fitter(
+    like=like,
+    rootdir=output_dir,
+    nburnin=args.n_burn_in,
+    nsteps=args.n_steps,
+    parallel=args.parallel,
+    explore=args.explore,
+    fix_cosmology=args.fix_cosmo,
+)
 
 # %%
-# %%time
+# # %%time
 fitter.run_sampler(pini=p0, zmask=zmask)
 
 # %%
-1000/3600
+diru = None
+plotter = Plotter(fitter, save_directory=diru, zmask=zmask)
 
 # %%
-from corner import corner
-
-# %%
-# corner(fitter.chain.reshape(-1, 15));
-
-# %%
-for ii in range(fitter.lnprob.shape[1]):
-    plt.plot(fitter.lnprob[:, ii])
+plotter.plot_corner()
 
 # %%
 print(np.sum(out_chi2))

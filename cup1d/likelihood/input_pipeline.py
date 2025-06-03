@@ -470,3 +470,124 @@ class Args:
             raise ValueError(
                 "emulator_label " + self.emulator_label + " not implemented"
             )
+
+    def set_baseline(self):
+        self.emu_cov_factor = 1
+        self.emu_cov_type = "block"
+        self.rebin_k = 6
+        self.cov_factor = 1
+        self.fix_cosmo = True
+        self.vary_alphas = False
+        self.ic_correction = False
+        self.fid_cosmo_label = "Planck18"
+        sim_fid = "mpg_central"
+        self.fid_label_mF = sim_fid
+        self.fid_label_T = sim_fid
+        self.fid_label_kF = sim_fid
+
+        # z at a time
+        self.mF_model_type = "pivot"
+        self.hcd_model_type = "new"
+        self.resolution_model_type = "pivot"
+
+        self.n_tau = 1
+        self.n_gamma = 1
+        self.n_sigT = 1
+        self.n_kF = 1
+        self.n_res = 1
+
+        lines_use = [
+            "Lya_SiIII",
+            "Lya_SiIIa",
+            "Lya_SiIIb",
+            "SiIIa_SiIIb",
+            "SiIIa_SiIII",
+            "SiIIb_SiIII",
+        ]
+
+        f_prior = {
+            "Lya_SiIII": -4.5,
+            "Lya_SiIIa": -9.5,
+            "Lya_SiIIb": -4.5,
+            "SiIIa_SiIIb": -5.5,
+            "SiIIa_SiIII": -6.0,
+            "SiIIb_SiIII": -6.5,
+        }
+
+        # at a time
+        d_prior = {
+            "Lya_SiIII": 0.4,
+            "Lya_SiIIa": -0.9,
+            "Lya_SiIIb": -0.9,
+            "SiIIa_SiIIb": 0.8,
+            "SiIIa_SiIII": 1.6,
+            "SiIIb_SiIII": 2.7,
+        }
+
+        # at a time
+        a_prior = {
+            "Lya_SiIII": 1.5,
+            "Lya_SiIIa": 4.0,
+            "Lya_SiIIb": 4.0,
+            "SiIIa_SiIIb": 4.0,
+            "SiIIa_SiIII": 0.5,
+            "SiIIb_SiIII": 2.5,
+        }
+
+        # n_metals = {
+        #     "Lya_SiIII": [1, 1, 1],
+        #     "Lya_SiIIa": [0, 0, 0],
+        #     "Lya_SiIIb": [1, 0, 1],
+        #     "SiIIa_SiIII": [1, 0, 0],
+        #     "SiIIb_SiIII": [1, 1, 0],
+        #     "SiIIa_SiIIb": [1, 1, 1],
+        # }
+        n_metals = {
+            "Lya_SiIII": [1, 0, 1],
+            "Lya_SiIIa": [0, 0, 0],
+            "Lya_SiIIb": [1, 0, 1],
+            "SiIIa_SiIII": [1, 0, 1],
+            "SiIIb_SiIII": [1, 0, 1],
+            "SiIIa_SiIIb": [1, 0, 1],
+        }
+        # nf, nd, na
+        # n_metals = {
+        #     "Lya_SiIII": [1, 0, 1],
+        #     "Lya_SiIIa": [0, 0, 0],
+        #     "Lya_SiIIb": [1, 0, 1],
+        #     "SiIIa_SiIII": [0, 0, 0],
+        #     "SiIIb_SiIII": [0, 0, 0],
+        #     "SiIIa_SiIIb": [1, 0, 1],
+        # }
+
+        for metal_line in lines_use:
+            self.n_metals["n_x_" + metal_line] = n_metals[metal_line][0]
+            if self.n_metals["n_x_" + metal_line] == 0:
+                self.fid_metals[metal_line + "_X"] = [0, -10.5]
+            else:
+                self.fid_metals[metal_line + "_X"] = [0, f_prior[metal_line]]
+
+            self.n_metals["n_d_" + metal_line] = n_metals[metal_line][1]
+            if self.n_metals["n_d_" + metal_line] == 0:
+                self.fid_metals[metal_line + "_D"] = [0, 0]
+            else:
+                self.fid_metals[metal_line + "_D"] = [0, d_prior[metal_line]]
+
+            self.n_metals["n_a_" + metal_line] = n_metals[metal_line][2]
+            if self.n_metals["n_a_" + metal_line] == 0:
+                self.fid_metals[metal_line + "_A"] = [0, 1]
+            else:
+                self.fid_metals[metal_line + "_A"] = [0, a_prior[metal_line]]
+
+            self.n_metals["n_l_" + metal_line] = 0
+            self.fid_metals[metal_line + "_L"] = [0, 0]
+
+        self.n_d_dla = 1
+        self.fid_A_damp = [0, -1.4]
+        self.n_s_dla = 1
+        self.fid_A_scale = [0, 5.2]
+
+        self.fid_AGN = [0, -5.5]
+
+        self.prior_Gauss_rms = None
+        self.Gauss_priors = {}

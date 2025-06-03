@@ -462,6 +462,30 @@ class Plotter(object):
             ax.set_xlim(xlim[0] - 0.05 * xdiff, xlim[1] + 0.05 * xdiff)
         axes[0, 0].legend(loc="upper left")
 
+        # show priors
+        for xi in range(ndim):
+            for par in self.fitter.like.free_params:
+                if self.fitter.param_dict[par.name] == yesplot[xi]:
+                    for yi in range(xi, ndim):
+                        axes[yi, xi].axvline(
+                            par.min_value, color="k", linestyle="-"
+                        )
+                        axes[yi, xi].axvline(
+                            par.max_value, color="k", linestyle="-"
+                        )
+                    break
+        for yi in range(ndim):
+            for par in self.fitter.like.free_params:
+                if self.fitter.param_dict[par.name] == yesplot[yi]:
+                    for xi in range(yi):
+                        axes[yi, xi].axhline(
+                            par.min_value, color="k", linestyle="-"
+                        )
+                        axes[yi, xi].axhline(
+                            par.max_value, color="k", linestyle="-"
+                        )
+                    break
+
         # Loop over the histograms
         for yi in range(ndim):
             for xi in range(yi):
