@@ -680,7 +680,9 @@ class MetalModel(object):
                 )
             else:
                 k_use = k_kms[ii]
-            cont = metal_model.get_contamination(z[ii], k_use, mF[ii])
+            cont = metal_model.get_contamination(
+                np.array([z[ii]]), [k_use], mF[ii]
+            )
             if isinstance(cont, int):
                 cont = np.ones_like(k_use)
 
@@ -695,7 +697,7 @@ class MetalModel(object):
 
             if dict_data is not None:
                 cont_data_res = metal_model.get_contamination(
-                    z[ii], k_kms[ii], mF[ii]
+                    np.array([z[ii]]), [k_kms[ii]], mF[ii]
                 )
                 if isinstance(cont_data_res, int):
                     cont_data_res = np.ones_like(k_kms[ii])

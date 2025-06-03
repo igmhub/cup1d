@@ -316,7 +316,7 @@ class HCD_Model_new(object):
                 )
             else:
                 k_use = k_kms[ii]
-            cont = hcd_model.get_contamination(z[ii], k_use)
+            cont = hcd_model.get_contamination(np.array([z[ii]]), [k_use])
             if isinstance(cont, int):
                 cont = np.ones_like(k_use)
 

@@ -737,8 +737,9 @@ class Likelihood(object):
                 emu_p1d = _res
 
         # out of priors
-        if emu_p1d is None:
-            return null_out
+        if len(emu_p1d) == 1:
+            if (len(emu_p1d[0]) == 1) | (len(emu_p1d[0]) == len(self.data.z)):
+                emu_p1d = emu_p1d[0]
 
         # use high-res data
         if self.extra_data is not None:
@@ -801,7 +802,6 @@ class Likelihood(object):
                         continue
                 # compute chi2 for this redshift bin
                 diff = data.Pk_kms[iz] - np.array(emu_p1d_use[iz]).reshape(-1)
-
                 chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
                 # check whether to add determinant of covariance as well
                 if ignore_log_det_cov:
@@ -992,6 +992,9 @@ class Likelihood(object):
             else:
                 emu_p1d = _res
 
+            if len(emu_p1d) == 1:
+                emu_p1d = emu_p1d[0]
+
             # the sum of chi2_all may be different from chi2 due to covariance
             chi2, chi2_all = self.get_chi2(
                 values=values, return_all=True, zmask=zmask
@@ -1064,7 +1067,7 @@ class Likelihood(object):
         if self.extra_data is None:
             if plot_panels:
                 fig, ax = plt.subplots(
-                    len(_data_z) // 2 + len(_data_z) % 2,
+                    np.maximum(len(_data_z) // 2 + len(_data_z) % 2, 1),
                     2,
                     figsize=(12, len(_data_z)),
                     sharex=True,
@@ -1074,9 +1077,10 @@ class Likelihood(object):
                     ax = [ax]
                 else:
                     ax = ax.reshape(-1)
+                    if len(_data_z) % 2 != 0:
+                        ax[-1].axis("off")
+
                 length = 1
-                if len(_data_z) % 2 != 0:
-                    ax[-1].axis("off")
             else:
                 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
                 length = 1
@@ -1204,6 +1208,11 @@ class Likelihood(object):
                         yshift = 0
                     else:
                         axs = ax[ii]
+
+                    try:
+                        axs = axs[0]
+                    except:
+                        pass
 
                     axs.tick_params(
                         axis="both", which="major", labelsize=fontsize - 4
@@ -1356,10 +1365,10 @@ class Likelihood(object):
                     out["extra_prob"].append(prob)
 
             # ax[ii].plot(k_kms[0], 1, linestyle="-", label="Data", color="k")
-            ax[ii].plot(k_kms[0], 1, linestyle="--", label="Fit", color="k")
+            # ax[ii].plot(k_kms[0], 1, linestyle="--", label="Fit", color="k")
             if residuals:
                 if plot_panels == False:
-                    ax[ii].legend()
+                    axs.legend()
             else:
                 ax[ii].legend(loc="lower right", ncol=4, fontsize=fontsize - 2)
 
@@ -1522,7 +1531,14 @@ class Likelihood(object):
             p1d_data = data.Pk_kms[iz]
             p1d_cov = self.cov_Pk_kms[iz]
             p1d_err = np.sqrt(np.diag(p1d_cov))
-            p1d_theory = emu_p1d_use[indemu]
+
+            if len(emu_p1d_use) == 1:
+                if len(emu_p1d_use[0]) == 1:
+                    p1d_theory = emu_p1d_use[0][0]
+                else:
+                    p1d_theory = emu_p1d_use[0][indemu]
+            else:
+                p1d_theory = emu_p1d_use[indemu]
 
             dme = (p1d_data - p1d_theory) / p1d_err
 

@@ -645,7 +645,14 @@ class Pipeline(object):
                     else:
                         self.n_burn_in = 1500
 
-    def run_minimizer(self, p0, make_plots=True, save_chains=False):
+    def run_minimizer(
+        self,
+        p0,
+        make_plots=True,
+        save_chains=False,
+        zmask=None,
+        nsamples=4,
+    ):
         """
         Run the minimizer (only rank 0)
         """
@@ -660,7 +667,10 @@ class Pipeline(object):
             self.fprint("Running minimizer")
             # start fit from initial values
             self.fitter.run_minimizer(
-                log_func_minimize=self.fitter.like.get_chi2, p0=p0
+                log_func_minimize=self.fitter.like.minus_log_prob,
+                p0=p0,
+                zmask=zmask,
+                nsamples=nsamples,
             )
 
             # save fit
@@ -669,7 +679,9 @@ class Pipeline(object):
             if make_plots:
                 # plot fit
                 self.plotter = Plotter(
-                    self.fitter, save_directory=self.fitter.save_directory
+                    self.fitter,
+                    save_directory=self.fitter.save_directory,
+                    zmask=zmask,
                 )
                 self.plotter.plots_minimizer()
 
@@ -682,14 +694,14 @@ class Pipeline(object):
             # get testing_data from task 0
             self.fitter.mle_cube = comm.recv(source=0, tag=(rank + 1) * 13)
 
-    def run_sampler(self, make_plots=True):
+    def run_sampler(self, pini=None, make_plots=True, zmask=None):
         """
         Run the sampler (after minimizer)
         """
 
-        def func_for_sampler(p0):
-            res = self.fitter.like.get_log_like(values=p0, return_blob=True)
-            return res[0], *res[2]
+        # def func_for_sampler(p0):
+        #     res = self.fitter.like.get_log_like(values=p0, return_blob=True)
+        #     return res[0], *res[2]
 
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
@@ -701,9 +713,10 @@ class Pipeline(object):
             self.fprint("Running sampler")
 
         # make sure all tasks start at the same time
-        self.fitter.run_sampler(
-            pini=self.fitter.mle_cube, log_func=func_for_sampler
-        )
+        if pini is None:
+            pini = self.fitter.mle_cube
+
+        self.fitter.run_sampler(pini=pini, zmask=zmask)
 
         if rank == 0:
             end = time.time()
@@ -717,6 +730,8 @@ class Pipeline(object):
             # plot fit
             if make_plots:
                 self.plotter = Plotter(
-                    self.fitter, save_directory=self.fitter.save_directory
+                    self.fitter,
+                    save_directory=self.fitter.save_directory,
+                    zmask=zmask,
                 )
                 self.plotter.plots_sampler()

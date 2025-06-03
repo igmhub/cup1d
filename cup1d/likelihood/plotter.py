@@ -956,8 +956,12 @@ class Plotter(object):
             dict_data = None
 
         # get mean flux from best-fitting model
+        # mF = self.fitter.like.theory.model_igm.F_model.get_mean_flux(
+        #     np.array(self.fitter.like.data.z), self.like_params
+        # )
+        # get fiducial mean flux
         mF = self.fitter.like.theory.model_igm.F_model.get_mean_flux(
-            np.array(self.fitter.like.data.z), self.like_params
+            np.array(self.fitter.like.data.z),
         )
 
         # plot contamination of all metals

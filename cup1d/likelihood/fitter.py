@@ -806,7 +806,9 @@ class Fitter(object):
             zs, like_params=like_params
         )
         # Metals
-        for X_model in self.like.theory.model_cont.metal_models:
+        metal_models = self.like.theory.model_cont.metal_models
+        for model_name in metal_models:
+            X_model = metal_models[model_name]
             f = X_model.get_amplitude(zs, like_params=like_params)
             adamp = X_model.get_damping(zs, like_params=like_params)
             alpha = X_model.get_exp_damping(zs, like_params=like_params)

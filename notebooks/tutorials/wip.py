@@ -520,14 +520,16 @@ args.hcd_model_type = "new"
 # args.n_tau=len(data["P1Ds"].z)
 
 args.mF_model_type = "pivot"
-args.n_tau=3
+args.n_tau=1
 
-args.n_gamma=2
+args.n_gamma=1
 args.n_sigT=1
 args.n_kF=1
 
-args.resolution_model_type = "chunks"
-args.n_res = len(data["P1Ds"].z)
+args.resolution_model_type = "pivot"
+args.n_res = 2
+# args.resolution_model_type = "chunks"
+# args.n_res = len(data["P1Ds"].z)
 
 # z at a time
 # args.n_tau=1
@@ -538,11 +540,21 @@ args.n_res = len(data["P1Ds"].z)
 # args.n_res = 1
 
 lines_use = [
+    # "Lya_SiIII",
+    # "Lya_SiIIa",
+    # "Lya_SiIIb",
+    # "SiIIa_SiIIb",
+    # "SiIIa_SiIII",
+    # "SiIIb_SiIII",
+]
+
+lines_not_use = [
     "Lya_SiIII",
-    "Lya_SiII",
-    "SiII_SiII",
-    "SiIIb_SiIII",
+    "Lya_SiIIa",
+    "Lya_SiIIb",
+    "SiIIa_SiIIb",
     "SiIIa_SiIII",
+    "SiIIb_SiIII",
 ]
 
 # at a time
@@ -608,12 +620,12 @@ for metal_line in lines_use:
     args.n_metals["n_a_" + metal_line] = 1
 
 
-metal_line = "CIV_CIV"
-args.fid_metals[metal_line + "_X"] = [0, -10.5]
-args.n_metals["n_x_" + metal_line] = 0
-args.n_metals["n_d_" + metal_line] = 0
-args.n_metals["n_l_" + metal_line] = 0
-args.n_metals["n_a_" + metal_line] = 0
+for metal_line in lines_not_use:
+    args.fid_metals[metal_line + "_X"] = [0, -10.5]
+    args.n_metals["n_x_" + metal_line] = 0
+    args.n_metals["n_d_" + metal_line] = 0
+    args.n_metals["n_l_" + metal_line] = 0
+    args.n_metals["n_a_" + metal_line] = 0
 
 
 args.hcd_model_type = "new"
@@ -774,8 +786,6 @@ for p in like.free_params:
 
 # %%
 
-# %%
-
 # %% [markdown]
 # Compare data and fiducial/starting model
 
@@ -836,13 +846,13 @@ else:
     p0 = np.array(list(like.truth["like_params_cube"].values()))*1.01
 p0 = np.array(list(like.fid["fit_cube"].values()))
 # p0[:] = 0.5
-fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0)
+# fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=1)
+zmask = np.array([like.data.z[0]])
+# fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=1)
+fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, restart=True, nsamples=1)
 # zmask = np.array([2.4])
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
-
-# %%
-fitter.like.get_chi2(fitter.mle_cube)
 
 # %%
 
@@ -864,17 +874,15 @@ fitter.like.get_chi2(fitter.mle_cube)
 # diru = "test_snr3_3_3_1_1"
 # diru = "test_snr3_3_2_2_2"
 # diru = "test_snr3_3_2_1_1_cosmo"
-# plotter = Plotter(fitter, save_directory=diru)
-# plotter.plots_minimizer()
+diru = None
+plotter = Plotter(fitter, save_directory=diru, zmask=zmask)
+plotter.plots_minimizer()
+
+# %%
+plotter.plot_p1d_errors()
 
 # %%
 plotter.plot_p1d(residuals=True)
-
-# %% [markdown]
-# 1.13 inflate errors
-
-# %%
-res = plotter.plot_p1d_errors()
 
 # %%
 
@@ -1180,7 +1188,7 @@ def chi2_param_at_time(args, list_props):
         out_mle = []
         out_mle_cube = []
         out_chi2 = []
-        for ii in range(len(like.data.z)): 
+        for ii in range(len(like.data.z)):
         # for ii in range(2,3): 
             print(prop, like.data.z[ii])
             zmask = np.array([like.data.z[ii]])
@@ -1341,6 +1349,10 @@ for ii in range(4):
 
 # %%
 
+# %%
+
+# %%
+
 args.emu_cov_factor = 1
 args.emu_cov_type = "block"
 args.rebin_k = 6
@@ -1458,6 +1470,7 @@ args.fid_A_scale = [0, 5.2]
 
 # args.fid_val_kF = [0, -0.05]
 args.fid_val_kF = [0, 0]
+args.fid_AGN = [0, -5.5]
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 
