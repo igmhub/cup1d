@@ -445,17 +445,25 @@ except:
 # %%
 # cosmology
 
-# args.emu_cov_factor = None
 args.emu_cov_factor = 1
-# args.emu_cov_type = "diagonal"
 args.emu_cov_type = "block"
+args.rebin_k = 6
+args.cov_factor = 1
+args.fix_cosmo=True
+args.vary_alphas=False
+args.fid_cosmo_label="Planck18"
+sim_fid = "mpg_central"
+args.fid_label_mF=sim_fid
+args.fid_label_T=sim_fid
+args.fid_label_kF=sim_fid
+
+# args.emu_cov_factor = None
+# args.emu_cov_type = "diagonal"
 # args.emu_cov_type = "full"
 
 
 
 # args.fix_cosmo=True
-args.fix_cosmo=True
-args.vary_alphas=False
 # args.vary_alphas=True
 if "nyx" in args.emulator_label:
     sim_fid = "nyx_central"
@@ -641,10 +649,11 @@ if "nyx" in args.emulator_label:
     args.fid_A_damp = [0, -0.78]
     args.fid_A_scale = [0, 7.2]
 else:
-    args.fid_val_mF = [0.727, -0.558, -0.057]
-    args.fid_val_gamma = [-0.61, 0.037]
-    args.fid_val_sigT = [0, -0.004]
-    args.fid_val_kF = [0, -0.049]
+    # args.fid_val_mF = [0.727, -0.558, -0.057]
+    # args.fid_val_gamma = [-0.61, 0.037]
+    # args.fid_val_sigT = [0, -0.004]
+    # args.fid_val_kF = [0, -0.049]
+    
     # args.fid_SiIII_X=[0, -4.7]
     # args.fid_SiIII_D=[0, 4.8]
     # args.fid_SiIII_A=[0, 1.4]
@@ -671,8 +680,6 @@ args.fid_AGN = [0, -5.5]
 
 args.fid_R_coeff = [0,  0]
 
-args.rebin_k = 6
-args.cov_factor = 1
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 free_parameters
@@ -694,9 +701,6 @@ free_parameters
 # ### Set likelihood
 
 # %%
-args.prior_Gauss_rms = None
-args.Gauss_priors = {}
-args.Gauss_priors["ln_x_Lya_SiIII_0"] = [0.2]
 
 # %%
 like = set_like(
@@ -992,89 +996,432 @@ res
 # ### Run one z at a time
 
 # %%
+
+# %%
+list_props = like.free_param_names.copy()
+
+
+# %%
+
+# %%
+def chi2_param_at_time(args, list_props):
+    
+    args.emu_cov_factor = 1
+    args.emu_cov_type = "block"
+    args.rebin_k = 6
+    args.cov_factor = 1
+    args.fix_cosmo=True
+    args.vary_alphas=False
+    args.fid_cosmo_label="Planck18"
+    sim_fid = "mpg_central"
+    args.fid_label_mF=sim_fid
+    args.fid_label_T=sim_fid
+    args.fid_label_kF=sim_fid
+
+    lines_use = [
+        "Lya_SiIII",
+        "Lya_SiIIa",
+        "Lya_SiIIb",
+        "SiIIa_SiIIb",
+        "SiIIa_SiIII",
+        "SiIIb_SiIII",
+    ]
+    args.hcd_model_type = "new"
+    args.resolution_model_type = "pivot"
+    args.fid_A_scale = [0, 5]
+
+    lines_not_use = [
+        # "CIV_CIV",
+    ]
+
+    for metal_line in lines_not_use:
+        args.fid_metals[metal_line + "_X"] = [0, -10.5]
+        args.n_metals["n_x_" + metal_line] = 0
+        args.n_metals["n_d_" + metal_line] = 0
+        args.n_metals["n_l_" + metal_line] = 0
+        args.n_metals["n_a_" + metal_line] = 0
+
+    # at a time
+    f_prior = {
+        "Lya_SiIII": -4.2,
+        "Lya_SiIIa": -4.6,
+        "Lya_SiIIb": -4.6,
+        "SiIIa_SiIIb": -5.5,
+        "SiIIa_SiIII": -6.2,
+        "SiIIb_SiIII": -6.6,
+    }
+
+    # at a time
+    d_prior = {
+        "Lya_SiIII": 0.4,
+        "Lya_SiIIa": -0.9,
+        "Lya_SiIIb": -0.9,
+        "SiIIa_SiIIb": 0.8,
+        "SiIIa_SiIII": 1.6,
+        "SiIIb_SiIII": 2.7,
+    }
+    
+    # at a time
+    a_prior = {
+        "Lya_SiIII": 1.5,
+        "Lya_SiIIa": 4.0,
+        "Lya_SiIIb": 4.0,
+        "SiIIa_SiIIb": 4.0,
+        "SiIIa_SiIII": 0.5,
+        "SiIIb_SiIII": 2.5,
+    }
+
+    for prop in list_props:
+        if "ln_tau" in prop:
+            args.n_tau = 0
+        else:
+            args.n_tau = 1
+
+        if "ln_sigT" in prop:
+            args.n_sigT = 0
+        else:
+            args.n_sigT = 1
+
+        if "ln_gamma" in prop:
+            args.n_gamma = 0
+        else:
+            args.n_gamma = 1
+
+        if "ln_kF" in prop:
+            args.n_kF = 0
+        else:
+            args.n_kF = 1
+
+        for metal_line in lines_use:
+            args.fid_metals[metal_line + "_L"] = [0, 0]
+            args.n_metals["n_l_" + metal_line] = 0
+
+            if "ln_x_" + metal_line in prop:
+                args.n_metals["n_x_" + metal_line] = 0
+                args.fid_metals[metal_line + "_X"] = [0, -10.5]
+            else:
+                args.n_metals["n_x_" + metal_line] = 1
+                args.fid_metals[metal_line + "_X"] = [0, f_prior[metal_line]]
+
+            if "d_" + metal_line in prop:
+                args.n_metals["n_d_" + metal_line] = 0
+                args.fid_metals[metal_line + "_D"] = [0, 0]
+            else:
+                args.n_metals["n_d_" + metal_line] = 1
+                args.fid_metals[metal_line + "_D"] = [0, d_prior[metal_line]]
+
+            if "a_" + metal_line in prop:
+                args.n_metals["n_a_" + metal_line] = 0
+                args.fid_metals[metal_line + "_A"] = [0, 2]
+            else:
+                args.n_metals["n_a_" + metal_line] = 1
+                args.fid_metals[metal_line + "_A"] = [0, a_prior[metal_line]]
+
+        if "R_coeff" in prop:
+            args.n_res = 0
+        else:
+            args.n_res = 1
+
+        if "ln_A_damp" in prop:
+            args.n_d_dla = 0
+            args.fid_A_damp = [0, -9.5]
+        else:
+            args.n_d_dla = 1
+            args.fid_A_damp = [0, -1.5]
+
+        if "ln_A_scale" in prop:
+            args.n_s_dla = 0
+            args.fid_A_scale = [0, 5]
+        else:
+            args.n_s_dla = 1
+            args.fid_A_scale = [0, 5.6]
+
+        args.fid_AGN = [0, -5.5]
+
+        like = set_like(
+            data["P1Ds"],
+            emulator,
+            args,
+            data_hires=data["extra_P1Ds"],
+        )
+
+        # print()
+        # f_space_len = 14
+        # s_space_len = 5
+        # for p in like.free_params:
+        #     print(
+        #         p.name,
+        #         (f_space_len - len(p.name)) * " ",
+        #         "\t",
+        #         np.round(p.value, 3),
+        #         (s_space_len - len(str(np.round(p.value, 3)))) * " ",
+        #         "\t",
+        #         np.round(p.min_value, 3),
+        #         (s_space_len - len(str(np.round(p.min_value, 3)))) * " ",
+        #         "\t",
+        #         np.round(p.max_value, 3),
+        #         (s_space_len - len(str(np.round(p.max_value, 3)))) * " ",
+        #         "\t",
+        #         p.Gauss_priors_width,
+        #     )
+        # print()
+
+        fitter = Fitter(
+            like=like,
+            rootdir=output_dir,
+            nburnin=args.n_burn_in,
+            nsteps=args.n_steps,
+            parallel=args.parallel,
+            explore=args.explore,
+            fix_cosmology=args.fix_cosmo,
+        )
+
+        p0 = np.array(list(like.fid["fit_cube"].values()))
+        out_mle = []
+        out_mle_cube = []
+        out_chi2 = []
+        for ii in range(len(like.data.z)): 
+        # for ii in range(2,3): 
+            print(prop, like.data.z[ii])
+            zmask = np.array([like.data.z[ii]])
+            # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
+            # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask, restart=True)
+            fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=8)
+            # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
+            out_mle.append(fitter.mle)
+            out_mle_cube.append(fitter.mle_cube)
+            out_chi2.append(fitter.mle_chi2)
+
+        out = {}
+        out["param_names"] = list_props
+        out["zs"] = like.data.z
+        out["mle"] = out_mle
+        out["mle_cube"] = out_mle_cube
+        out["chi2"] = out_chi2
+
+        np.save("qmle3_lpo/"+prop+".npy", out)
+
+
+
+# %%
+list_props = [
+    "ln_tau_0",
+    "ln_sigT_kms_0",
+    "ln_gamma_0",
+    "ln_kF_0",
+    "ln_x_Lya_SiIII_0",
+    "d_Lya_SiIII_0",
+    "a_Lya_SiIII_0",
+    "ln_x_Lya_SiIIa_0",
+    "d_Lya_SiIIa_0",
+    "a_Lya_SiIIa_0",
+    "ln_x_Lya_SiIIb_0",
+    "d_Lya_SiIIb_0",
+    "a_Lya_SiIIb_0",
+    "ln_x_SiIIa_SiIIb_0",
+    "d_SiIIa_SiIIb_0",
+    "a_SiIIa_SiIIb_0",
+    "ln_x_SiIIa_SiIII_0",
+    "d_SiIIa_SiIII_0",
+    "a_SiIIa_SiIII_0",
+    "ln_x_SiIIb_SiIII_0",
+    "d_SiIIb_SiIII_0",
+    "a_SiIIb_SiIII_0",
+    "ln_A_damp_0",
+    "ln_A_scale_0",
+    "R_coeff_0",
+]
+
+
+list_props = ["all"]
+
+chi2_param_at_time(args, list_props)
+
+# %%
+
+prop = "all"
+res_all = np.load("qmle3_lpo/"+prop+".npy", allow_pickle=True).item()
+chi2_total = np.array(res_all["chi2"])
+zs = np.array(res_all["zs"])
+print(np.sum(chi2_total), chi2_total)
+for key in res_all["mle"][0]:
+    print(key, res_all["mle"][0][key])
+
+
+# %%
+plt.plot(zs, chi2_total, "o-", label="FFT SB1 direct")
+
+# %%
+list_props = [
+    "ln_tau_0",
+    "ln_sigT_kms_0",
+    "ln_gamma_0",
+    "ln_kF_0",
+    "ln_x_Lya_SiIII_0",
+    "d_Lya_SiIII_0",
+    "a_Lya_SiIII_0",
+    "ln_x_Lya_SiIIa_0",
+    "d_Lya_SiIIa_0",
+    "a_Lya_SiIIa_0",
+    "ln_x_Lya_SiIIb_0",
+    "d_Lya_SiIIb_0",
+    "a_Lya_SiIIb_0",
+    "ln_x_SiIIa_SiIIb_0",
+    "d_SiIIa_SiIIb_0",
+    "a_SiIIa_SiIIb_0",
+    "ln_x_SiIIa_SiIII_0",
+    "d_SiIIa_SiIII_0",
+    "a_SiIIa_SiIII_0",
+    "ln_x_SiIIb_SiIII_0",
+    "d_SiIIb_SiIII_0",
+    "a_SiIIb_SiIII_0",
+    "ln_A_damp_0",
+    "ln_A_scale_0",
+    "R_coeff_0",
+]
+
+chi2_prop = {}
+for prop in list_props:
+    chi2_prop[prop] = np.array(np.load("qmle3_lpo/"+prop+".npy", allow_pickle=True).item()["chi2"])
+
+# %%
+delta_chi2 = np.zeros((len(chi2_prop), len(chi2_total)))
+for iprop, prop in enumerate(list_props):
+    delta_chi2[iprop] = chi2_prop[prop] - chi2_total
+
+# %%
+
+# %%
+fig, ax = plt.subplots(2, 2, figsize=(10, 8))
+ax = ax.reshape(-1)
+nn = delta_chi2.shape[0]
+for jj in range(nn):
+    if jj / nn < 0.25:
+        ii = 0
+    elif (jj / nn >= 0.25) & (jj / nn < 0.5):
+        ii = 1
+    elif (jj / nn >= 0.5) & (jj / nn < 0.75):
+        ii = 2
+    if jj / nn >= 0.75:
+        ii = 3
+    ax[ii].plot(zs, delta_chi2[jj], ".-", label=list_props[jj])
+    ax[ii].axhline(2, color="k")
+
+for ii in range(4):
+    ax[ii].legend()
+    ax[ii].set_yscale("log")
+# plt.savefig("lpO_chi2z.png")
+
+# %%
+fig, ax = plt.subplots(2, 2, figsize=(10, 8))
+ax = ax.reshape(-1)
+nn = delta_chi2.shape[0]
+
+for jj in range(nn):
+    if jj / nn < 0.25:
+        ii = 0
+    elif (jj / nn >= 0.25) & (jj / nn < 0.5):
+        ii = 1
+    elif (jj / nn >= 0.5) & (jj / nn < 0.75):
+        ii = 2
+    if jj / nn >= 0.75:
+        ii = 3
+    ax[ii].scatter(jj, np.sum(delta_chi2[jj]), label=list_props[jj])
+    ax[ii].axhline(2, color="k")
+
+for ii in range(4):
+    ax[ii].legend()
+    ax[ii].set_yscale("log")
+# plt.savefig("lpO_chi2.png")
+
+# %%
+# for z in fitter.like.data.z:
+#     y = like.theory.model_cont.metal_models['Lya_SiIII'].get_amplitude(z)
+#     print(np.log(y))
+
+# %%
+
+args.emu_cov_factor = 1
+args.emu_cov_type = "block"
 args.rebin_k = 6
+args.cov_factor = 1
+args.fix_cosmo=True
+args.vary_alphas=False
+args.fid_cosmo_label="Planck18"
+sim_fid = "mpg_central"
+args.fid_label_mF=sim_fid
+args.fid_label_T=sim_fid
+args.fid_label_kF=sim_fid
 
 # z at a time
 args.n_tau=1
-args.n_gamma=1
-args.n_sigT=1
-args.n_kF=1
+args.n_gamma=0
+args.n_sigT=0
+args.n_kF=0
 args.resolution_model_type = "pivot"
 args.n_res = 1
 
 
 
 lines_not_use = [
-    "CIV_CIV",
+#     "CIV_CIV",
 ]
 
 lines_use = [
     "Lya_SiIII",
-    "Lya_SiII",
-    "SiII_SiII",
-    "SiIIb_SiIII",
+    "Lya_SiIIa",
+    "Lya_SiIIb",
+    "SiIIa_SiIIb",
     "SiIIa_SiIII",
+    "SiIIb_SiIII",
 ]
 
-# all z
-# f_prior = {
-#     "Lya_SiIII": -4.32,
-#     "Lya_SiII": -4.72,
-#     "SiIIb_SiIII": -6.6,
-#     "SiII_SiII": -5.73,
-#     "SiIIa_SiIII": -6.0,
-#     "CIV_CIV": -10.5,
-# }
 
-# at a time
 f_prior = {
     "Lya_SiIII": -4.2,
-    "Lya_SiII": -4.6,
-    "SiIIb_SiIII": -6.6,
-    "SiII_SiII": -5.5,
+    "Lya_SiIIa": -4.6,
+    "Lya_SiIIb": -4.6,
+    "SiIIa_SiIIb": -5.5,
     "SiIIa_SiIII": -6.2,
-    "CIV_CIV": -10.5,
+    "SiIIb_SiIII": -6.6,
 }
-
-
-# all z
-# d_prior = {
-#     "Lya_SiIII": 0.6,
-#     "Lya_SiII": -0.3,
-#     "SiIIb_SiIII": 3,
-#     "SiII_SiII": 1,
-#     "SiIIa_SiIII": 1.4,
-#     "CIV_CIV": 0,
-# }
 
 # at a time
 d_prior = {
     "Lya_SiIII": 0.4,
-    "Lya_SiII": -0.9,
-    "SiIIb_SiIII": 2.7,
-    "SiII_SiII": 0.8,
+    "Lya_SiIIa": -0.9,
+    "Lya_SiIIb": -0.9,
+    "SiIIa_SiIIb": 0.8,
     "SiIIa_SiIII": 1.6,
-    "CIV_CIV": 0,
+    "SiIIb_SiIII": 2.7,
 }
-
-# all z
-# a_prior = {
-#     "Lya_SiIII": 1.5,
-#     "Lya_SiII": 3,
-#     "SiIIb_SiIII": 3.5,
-#     "SiII_SiII": 3.5,
-#     "SiIIa_SiIII": 0.5,
-#     "CIV_CIV": 0,
-# }
 
 # at a time
 a_prior = {
     "Lya_SiIII": 1.5,
-    "Lya_SiII": 4.0,
-    "SiIIb_SiIII": 2.5,
-    "SiII_SiII": 4.0,
+    "Lya_SiIIa": 4.0,
+    "Lya_SiIIb": 4.0,
+    "SiIIa_SiIIb": 4.0,
     "SiIIa_SiIII": 0.5,
-    "CIV_CIV": 0,
+    "SiIIb_SiIII": 2.5,
+}
+
+
+n_metals = {
+    "Lya_SiIII": [1, 1, 1],
+    "Lya_SiIIa": [0, 0, 0],
+    "Lya_SiIIb": [1, 0, 1],
+    "SiIIa_SiIII": [1, 0, 0],
+    "SiIIb_SiIII": [1, 1, 0],
+    "SiIIa_SiIIb": [1, 1, 1],
+}
+n_metals = {
+    "Lya_SiIII": [1, 1, 1],
+    "Lya_SiIIa": [1, 1, 1],
+    "Lya_SiIIb": [1, 1, 1],
+    "SiIIa_SiIII": [1, 1, 1],
+    "SiIIb_SiIII": [1, 1, 1],
+    "SiIIa_SiIIb": [1, 1, 1],
 }
 
 
@@ -1083,10 +1430,14 @@ for metal_line in lines_use:
     args.fid_metals[metal_line + "_D"] = [0, d_prior[metal_line]]
     args.fid_metals[metal_line + "_L"] = [0, 0]
     args.fid_metals[metal_line + "_A"] = [0, a_prior[metal_line]]
-    args.n_metals["n_x_" + metal_line] = 1
-    args.n_metals["n_d_" + metal_line] = 1
+    args.n_metals["n_x_" + metal_line] = n_metals[metal_line][0]
+    args.n_metals["n_d_" + metal_line] = n_metals[metal_line][1]
+    if args.n_metals["n_d_" + metal_line] == 0:
+        args.fid_metals[metal_line + "_D"] = [0, 0]
     args.n_metals["n_l_" + metal_line] = 0
-    args.n_metals["n_a_" + metal_line] = 1
+    args.n_metals["n_a_" + metal_line] = n_metals[metal_line][2]
+    if args.n_metals["n_a_" + metal_line] == 0:
+        args.fid_metals[metal_line + "_A"] = [0, 2]
 
 # metal_line = "Lya_SiIII"
 # args.n_metals["n_x_" + metal_line] = 1
@@ -1101,10 +1452,12 @@ for metal_line in lines_not_use:
 args.hcd_model_type = "new"
 args.n_d_dla = 1
 args.n_s_dla = 1
-args.fid_A_damp = [0, -1.5]
-args.fid_A_scale = [0, 5.6]
+args.fid_A_damp = [0, -1.4]
+args.fid_A_scale = [0, 5.2]
 
-args.fid_val_kF = [0, -0.05]
+
+# args.fid_val_kF = [0, -0.05]
+args.fid_val_kF = [0, 0]
 
 free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 
@@ -1114,45 +1467,47 @@ free_parameters = set_free_like_parameters(args, emulator.emulator_label)
 args.prior_Gauss_rms = None
 
 args.Gauss_priors = {}
-args.Gauss_priors["ln_tau_0"] = [0.05]
-args.Gauss_priors["ln_sigT_kms_0"] = [0.02]
-args.Gauss_priors["ln_gamma_0"] = [0.08]
-args.Gauss_priors["ln_kF_0"] = [0.003]
+args.Gauss_priors["ln_tau_0"] = [10]
+# args.Gauss_priors["ln_sigT_kms_0"] = [0.02]
+# args.Gauss_priors["ln_gamma_0"] = [0.08]
+# args.Gauss_priors["ln_kF_0"] = [0.003]
 
 f_Gprior = {
     "Lya_SiIII": 1,
-    "Lya_SiII": 0.5,
-    "SiIIb_SiIII": 0.5,
-    "SiII_SiII": 4,
+    "Lya_SiIIa": 1,
+    "Lya_SiIIb": 1,
+    "SiIIa_SiIIb": 3,
     "SiIIa_SiIII": 4,
-    # "CIV_CIV": -10.5,
+    "SiIIb_SiIII": 3,
 }
 
 d_Gprior = {
-    "Lya_SiIII": 2,
-    "Lya_SiII": 0.05,
-    "SiIIb_SiIII": 1,
-    "SiII_SiII": 0.2,
+    "Lya_SiIII": 1.5,
+    "Lya_SiIIa": 0.05,
+    "Lya_SiIIb": 0.05,
+    "SiIIa_SiIIb": 1,
     "SiIIa_SiIII": 0.03,
-    # "CIV_CIV": -10.5,
+    "SiIIb_SiIII": 1,
 }
 
 a_Gprior = {
-    "Lya_SiIII": 0.3,
-    "Lya_SiII": 0.2,
-    "SiIIb_SiIII": 0.01,
-    "SiII_SiII": 0.01,
+    "Lya_SiIII": 10,
+    "Lya_SiIIa": 10,
+    "Lya_SiIIb": 10,
+    "SiIIa_SiIIb": 2,
     "SiIIa_SiIII": 0.05,
-    # "CIV_CIV": -10.5,
+    "SiIIb_SiIII": 0.01,
 }
 
 for metal_line in lines_use:
     args.Gauss_priors["ln_x_"+metal_line+"_0"] = [f_Gprior[metal_line]]
     args.Gauss_priors["d_"+metal_line+"_0"] = [d_Gprior[metal_line]]
     args.Gauss_priors["a_"+metal_line+"_0"] = [a_Gprior[metal_line]]
-args.Gauss_priors["ln_A_damp_0"] = [0.2]
-args.Gauss_priors["ln_A_scale_0"] = [0.2]
-args.Gauss_priors["R_coeff_0"] = [1]
+args.Gauss_priors["ln_A_damp_0"] = [0.3]
+args.Gauss_priors["ln_A_scale_0"] = [1]
+args.Gauss_priors["R_coeff_0"] = [2]
+
+args.Gauss_priors = {}
 
 
 
@@ -1188,13 +1543,6 @@ fitter = Fitter(
     fix_cosmology=args.fix_cosmo,
 )
 
-# %%
-
-# %%
-# for z in fitter.like.data.z:
-#     y = like.theory.model_cont.metal_models['Lya_SiIII'].get_amplitude(z)
-#     print(np.log(y))
-
 # %% [markdown]
 # ### results (tets z at a time first 4 bins)
 #
@@ -1217,19 +1565,21 @@ p0 = np.array(list(like.fid["fit_cube"].values()))
 out_mle = []
 out_mle_cube = []
 out_chi2 = []
-for ii in range(len(like.data.z)): 
-# for ii in range(1): 
+# for ii in range(len(like.data.z)): 
+for ii in range(1,2): 
     print(ii)
     zmask = np.array([like.data.z[ii]])
     # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
-    # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask, restart=True)
-    fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True)
+    fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=3)
     # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
     out_mle.append(fitter.mle)
     out_mle_cube.append(fitter.mle_cube)
     out_chi2.append(fitter.mle_chi2)
     # plotter = Plotter(fitter, zmask=zmask, save_directory="mpg_baseline/"+str(ii))
     # plotter.plots_minimizer()
+
+# %%
+fitter.mle
 
 # %% [markdown]
 # 35.7 66.1 43.3 48.7
@@ -1246,21 +1596,7 @@ print(np.sum(out_chi2))
 out_chi2
 
 # %% [markdown]
-# weak priors, lose 20 chi2
-
-# %%
-print(np.sum(out_chi2))
-out_chi2
-
-# %% [markdown]
-# a bit tightter, lose 40 chi2
-
-# %%
-print(np.sum(out_chi2))
-out_chi2
-
-# %% [markdown]
-# looking right, lose 90 chi2
+# New fid, Delta_chi2=12!!
 
 # %%
 print(np.sum(out_chi2))
@@ -1273,6 +1609,10 @@ out_chi2
 #
 # QMLE snr3, starting random, 4 + fulllines 633
 # - 703 when assuming f is not redshift dependent!
+
+# %%
+
+plt.plot(zs, out_chi2, "o-", label="FFT SB1 direct")
 
 # %%
 # out_chi2_dir = out_chi2.copy()
@@ -1289,9 +1629,6 @@ plt.ylabel(r"$\chi^2$")
 # plt.savefig("chi2_all.png")
 
 # %%
-np.sum(out_chi2)
-
-# %%
 # plotter.plot_p1d(zmask=zmask)
 
 # %%
@@ -1299,6 +1636,7 @@ np.sum(out_chi2)
 # diru = "fft_fid_mpg_z_at_time_fulllines"
 
 # diru = "qmle_snr3_mpg_z_at_time_fulllines"
+# diru = "qmle_snr3_mpg_z_at_time_fid_weakp"
 # diru = "qmle_fid_mpg_z_at_time_fulllines"
 diru = None
 
@@ -1308,13 +1646,14 @@ plotter = Plotter(fitter, save_directory=diru, zmask=zmask)
 plotter.plot_p1d(out_mle_cube, z_at_time=True, plot_panels=True, residuals=True)
 
 # %%
-plotter.plot_illustrate_contaminants(out_mle_cube[0].copy(), [2.2], lines_use=lines_use)
+# for ii in range(len(zs)):
+#     plotter.plot_illustrate_contaminants(out_mle_cube[ii].copy(), [zs[ii]], lines_use=lines_use)
 
 # %%
-plotter.plot_illustrate_contaminants(out_mle_cube[1].copy(), [2.4], lines_use=lines_use)
+plotter.plot_illustrate_contaminants(out_mle_cube[0].copy(), [2.4], lines_use=lines_use)
 
 # %%
-plotter.plot_illustrate_contaminants(out_mle_cube[2].copy(), [2.6], lines_use=lines_use)
+# plotter.plot_illustrate_contaminants(out_mle_cube[-4].copy(), [3.6], lines_use=lines_use)
 
 # %%
 
@@ -1368,152 +1707,233 @@ plotter.plot_illustrate_contaminants(out_mle_cube[2].copy(), [2.6], lines_use=li
 # %%
 len(fitter.paramstrings)
 
-# %%
-
-# fig, ax = plt.subplots(4, 3, figsize=(10, 8))
-fig, ax = plt.subplots(8, 3, figsize=(10, 16), sharex=True)
-ax = ax.reshape(-1)
-dict_out = {}
-jj = 0
-for ii, key in enumerate(fitter.paramstrings):
-    if key not in out_mle[0]:
-        continue
-    dict_out[key] = np.zeros(len(out_mle))
-    for iz in range(len(out_mle)):
-        ax[jj].scatter(like.data.z[iz], out_mle[iz][key])
-        dict_out[key][iz] = out_mle[iz][key]
-    ax[jj].set_ylabel(key)
-    ax[jj].set_xlabel(r"$z$")
-    jj += 1
-
-jj = 0
-for ii, key in enumerate(fitter.paramstrings):
-    if key not in dict_out:
-        continue
-    print(key, np.round(np.median(dict_out[key]), 4), np.round(np.std(dict_out[key]), 4))
-    ax[jj].plot(like.data.z, like.data.z[:]*0 + np.median(dict_out[key]))
-    jj += 1
-    
-plt.tight_layout()
-plt.savefig("pevol2.png")
-
-# %%
-
-# fig, ax = plt.subplots(4, 3, figsize=(10, 8))
-fig, ax = plt.subplots(8, 3, figsize=(10, 16), sharex=True)
-ax = ax.reshape(-1)
-dict_out = {}
-jj = 0
-for ii, key in enumerate(fitter.paramstrings):
-    if key not in out_mle[0]:
-        continue
-    dict_out[key] = np.zeros(len(out_mle))
-    for iz in range(len(out_mle)):
-        ax[jj].scatter(like.data.z[iz], out_mle[iz][key])
-        dict_out[key][iz] = out_mle[iz][key]
-    ax[jj].set_ylabel(key)
-    ax[jj].set_xlabel(r"$z$")
-    jj += 1
-
-jj = 0
-for ii, key in enumerate(fitter.paramstrings):
-    if key not in dict_out:
-        continue
-    print(key, np.round(np.median(dict_out[key]), 4), np.round(np.std(dict_out[key]), 4))
-    ax[jj].plot(like.data.z, like.data.z[:]*0 + np.median(dict_out[key]))
-    jj += 1
-    
-plt.tight_layout()
-plt.savefig("pevol0.png")
-
-# %%
-dict_out.keys()
-
-# %%
-np.median(dict_out['$\\mathrm{ln}\\,f^{Lya_SiII_0}$'][:7])
 
 # %%
 
 # %%
-
-# %%
-
-# fig, ax = plt.subplots(4, 3, figsize=(10, 8))
-fig, ax = plt.subplots(8, 3, figsize=(10, 16), sharex=True)
-ax = ax.reshape(-1)
-dict_out = {}
-jj = 0
-for ii, key in enumerate(fitter.paramstrings):
-    if key not in out_mle[0]:
-        continue
-    dict_out[key] = np.zeros(len(out_mle))
-    for iz in range(len(out_mle)):
-        ax[jj].scatter(like.data.z[iz], out_mle[iz][key])
-        dict_out[key][iz] = out_mle[iz][key]
-    ax[jj].set_ylabel(key)
-    ax[jj].set_xlabel(r"$z$")
-    jj += 1
-
-jj = 0
-for ii, key in enumerate(fitter.paramstrings):
-    if key not in dict_out:
-        continue
-    print(key, np.median(dict_out[key]))
-    ax[jj].plot(like.data.z, like.data.z[:]*0 + np.median(dict_out[key]))
-    jj += 1
-    
-plt.tight_layout()
-
-# %%
-
-# %%
-for key in dict_out:
-    print(key, np.median(dict_out[key]))
-
-# %%
-plt.plot(like.data.z, dict_out['$\\mathrm{ln}\\,\\tau_0$'])
-x = like.data.z
-y = dict_out['$\\mathrm{ln}\\,\\tau_0$']
-fit = np.polyfit(x[6:], y[6:], 1)
-plt.plot(like.data.z, np.poly1d(fit)(like.data.z))
-
-# %%
-np.poly1d(fit)(like.data.z)
-
-# %%
-np.poly1d(fit)(like.data.z)
-
-# %%
-
-# %%
-plt.plot(like.data.z, dict_out['$\\mathrm{ln}\\,\\gamma_0$'])
-x = like.data.z
-y = dict_out['$\\mathrm{ln}\\,\\gamma_0$']
-fit = np.polyfit(x, y, 2)
-plt.plot(like.data.z, np.poly1d(fit)(like.data.z))
-
-# %%
-np.poly1d(fit)(like.data.z) 
-
-# %%
-plt.plot(like.data.z, dict_out['$\\mathrm{ln}\\,\\sigma^T_0$'])
-x = like.data.z
-y = dict_out['$\\mathrm{ln}\\,\\sigma^T_0$']
-fit = np.polyfit(x[:-3], y[:-3], 1)
-plt.plot(like.data.z, np.poly1d(fit)(like.data.z))
 
 # %% [markdown]
-# return IGM parameters!!
+# ## No priors
 
 # %%
-np.poly1d(fit)(like.data.z) 
+def plot_z_at_time_params(fitter, out_mle):
+
+    ofit = {}
+    for par in fitter.paramstrings:
+        ofit[fitter.param_dict_rev[par]] = 1
+
+    weak_priors = {}
+    
+    fig, ax = plt.subplots(4, 4, figsize=(16, 16), sharex=True)
+    ax = ax.reshape(-1)
+    
+    dict_out = {}
+    jj = 0
+    for ii, key in enumerate(fitter.paramstrings):
+        if key not in out_mle[0]:
+            continue
+        dict_out[key] = np.zeros(len(out_mle))
+        for iz in range(len(out_mle)):
+            ax[jj].scatter(fitter.like.data.z[iz], out_mle[iz][key])
+            dict_out[key][iz] = out_mle[iz][key]
+        ax[jj].set_ylabel(key)
+        ax[jj].set_xlabel(r"$z$")
+        jj += 1
+    
+    jj = 0
+    for ii, key in enumerate(fitter.paramstrings):
+        if key not in dict_out:
+            continue
+        print(key, np.round(np.median(dict_out[key]), 4), np.round(np.std(dict_out[key]), 4))
+        ax[jj].plot(fitter.like.data.z, fitter.like.data.z[:]*0 + np.median(dict_out[key]))
+    
+        # ind = np.argwhere(fitter.param_dict_rev[key] == list_props)[0,0]
+        # w = np.abs(delta_chi2[ind])
+        x = fitter.like.data.z.copy()
+        y = dict_out[key].copy()
+        w = np.ones_like(x)    
+        fit = np.polyfit(x, y, ofit[fitter.param_dict_rev[key]], w=w)
+        for kk in range(3):
+            mod = np.poly1d(fit)(x)
+            std_mod = np.std(mod - y)
+            if "ln_x_" in fitter.param_dict_rev[key]:
+                _ = (np.abs(y - mod) < 2 * std_mod) & (y > -8)
+            else:
+                _ = np.abs(y - mod) < 2 * std_mod
+            x = x[_]
+            y = y[_]
+            w = w[_]
+            fit = np.polyfit(x, y, ofit[fitter.param_dict_rev[key]], w=w)
+        # ax[jj].plot(like.data.z, mod)
+        mod = np.poly1d(fit)(fitter.like.data.z)    
+        ax[jj].errorbar(fitter.like.data.z, mod, std_mod * 2)
+        weak_priors[fitter.param_dict_rev[key] + "_cen"] = mod
+        weak_priors[fitter.param_dict_rev[key] + "_std"] = std_mod
+        jj += 1
+        
+    plt.tight_layout()
+    # plt.savefig("snr3_fid_weakp.png")
+    return weak_priors
+
 
 # %%
-# plotter.plot_p1d(zmask=zmask, residuals=True)
-# plotter.plot_igm(zmask=zmask)
-# plotter.plot_hcd_cont(plot_data=True)
-# plotter.plot_metal_cont(plot_data=True)
+weak_priors = plot_z_at_time_params(fitter, out_mle)
 
 # %%
+# weak_priors
+
+# %%
+p0 = np.array(list(like.fid["fit_cube"].values()))
+out_mle = []
+out_mle_cube = []
+out_chi2 = []
+for ii in range(len(like.data.z)): 
+# for ii in range(10, 11): 
+    print(ii)
+    for par in fitter.like.free_params:
+        if par.name != "R_coeff_0":
+            par.value = weak_priors[par.name + "_cen"][ii]
+            par.min_value = weak_priors[par.name + "_cen"][ii] - 2 * weak_priors[par.name + "_std"]
+            par.max_value = weak_priors[par.name + "_cen"][ii] + 2 * weak_priors[par.name + "_std"]
+            print(par.name, par.value, par.min_value, par.max_value)
+    zmask = np.array([like.data.z[ii]])
+    # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
+    fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=2)
+    # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
+    out_mle.append(fitter.mle)
+    out_mle_cube.append(fitter.mle_cube)
+    out_chi2.append(fitter.mle_chi2)
+    # plotter = Plotter(fitter, zmask=zmask, save_directory="mpg_baseline/"+str(ii))
+    # plotter.plots_minimizer()
+
+# %% [markdown]
+# Priors, delta2chi = 2; we had 675
+
+# %%
+print(np.sum(out_chi2))
+out_chi2
+
+# %%
+weak2_priors = plot_z_at_time_params(fitter, out_mle)
+
+# %%
+
+# %%
+p0 = np.array(list(like.fid["fit_cube"].values()))
+out_mle = []
+out_mle_cube = []
+out_chi2 = []
+for ii in range(len(like.data.z)):
+# for ii in range(9, 10): 
+    print(ii)
+    for par in fitter.like.free_params:
+        if par.name != "R_coeff_0":
+            par.value = weak2_priors[par.name + "_cen"][ii]
+            par.min_value = weak2_priors[par.name + "_cen"][ii] - 2 * weak2_priors[par.name + "_std"]
+            par.max_value = weak2_priors[par.name + "_cen"][ii] + 2 * weak2_priors[par.name + "_std"]
+            print(par.name, par.value, par.min_value, par.max_value)
+    zmask = np.array([like.data.z[ii]])
+    # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
+    fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=1)
+    # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
+    out_mle.append(fitter.mle)
+    out_mle_cube.append(fitter.mle_cube)
+    out_chi2.append(fitter.mle_chi2)
+    # plotter = Plotter(fitter, zmask=zmask, save_directory="mpg_baseline/"+str(ii))
+    # plotter.plots_minimizer()
+
+# %%
+weak3_priors = plot_z_at_time_params(fitter, out_mle)
+
+# %% [markdown]
+# We had 675 original, weak priors 685, weak2priors 690
+
+# %%
+print(np.sum(out_chi2))
+out_chi2
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+args.parallel = False
+
+# %%
+# %%time
+fitter.run_sampler(pini=p0, zmask=zmask)
+
+# %%
+1000/3600
+
+# %%
+from corner import corner
+
+# %%
+# corner(fitter.chain.reshape(-1, 15));
+
+# %%
+for ii in range(fitter.lnprob.shape[1]):
+    plt.plot(fitter.lnprob[:, ii])
+
+# %%
+print(np.sum(out_chi2))
+out_chi2
+
+# %%
+weak3_priors = {}
+
+
+# fig, ax = plt.subplots(4, 3, figsize=(10, 8))
+# fig, ax = plt.subplots(8, 3, figsize=(10, 16), sharex=True)
+fig, ax = plt.subplots(4, 4, figsize=(16, 16), sharex=True)
+ax = ax.reshape(-1)
+dict_out = {}
+jj = 0
+for ii, key in enumerate(fitter.paramstrings):
+    if key not in out_mle[0]:
+        continue
+    dict_out[key] = np.zeros(len(out_mle))
+    for iz in range(len(out_mle)):
+        ax[jj].scatter(like.data.z[iz], out_mle[iz][key])
+        dict_out[key][iz] = out_mle[iz][key]
+    ax[jj].set_ylabel(key)
+    ax[jj].set_xlabel(r"$z$")
+    jj += 1
+
+jj = 0
+for ii, key in enumerate(fitter.paramstrings):
+    if key not in dict_out:
+        continue
+    print(key, np.round(np.median(dict_out[key]), 4), np.round(np.std(dict_out[key]), 4))
+    ax[jj].plot(like.data.z, like.data.z[:]*0 + np.median(dict_out[key]))
+
+    # ind = np.argwhere(fitter.param_dict_rev[key] == list_props)[0,0]
+    # w = np.abs(delta_chi2[ind])
+    x = like.data.z.copy()
+    y = dict_out[key].copy()
+    w = np.ones_like(x)    
+    fit = np.polyfit(x, y, ofit[fitter.param_dict_rev[key]], w=w)
+    for kk in range(3):
+        mod = np.poly1d(fit)(x)
+        std_mod = np.std(mod - y)
+        _ = np.abs(y - mod) < 2 * std_mod
+        x = x[_]
+        y = y[_]
+        w = w[_]
+        fit = np.polyfit(x, y, ofit[fitter.param_dict_rev[key]], w=w)
+    # ax[jj].plot(like.data.z, mod)
+    mod = np.poly1d(fit)(like.data.z)    
+    ax[jj].errorbar(like.data.z, mod, std_mod * 2)
+    weak3_priors[fitter.param_dict_rev[key] + "_cen"] = mod
+    weak3_priors[fitter.param_dict_rev[key] + "_std"] = std_mod * 3
+    jj += 1
+    
+plt.tight_layout()
+plt.savefig("snr3_fid_weakp3.png")
 
 # %%

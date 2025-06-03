@@ -507,6 +507,7 @@ class Theory(object):
                 emu_call[key] = self.model_igm.F_model.get_mean_flux(
                     zs, like_params=like_params
                 )
+                emu_call["mF_fid"] = self.model_igm.F_model.get_mean_flux(zs)
             elif key == "gamma":
                 emu_call[key] = self.model_igm.T_model.get_gamma(
                     zs, like_params=like_params
@@ -764,10 +765,11 @@ class Theory(object):
         syst_total = self.model_syst.get_contamination(
             zs, k_kms, like_params=like_params
         )
+        # note that we use mF of fiducial history for metal contamination
         cont_total = self.model_cont.get_contamination(
             zs,
             k_kms,
-            emu_call["mF"],
+            emu_call["mF_fid"],
             M_of_z,
             like_params=like_params,
         )

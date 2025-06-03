@@ -40,18 +40,16 @@ class MetalModel(object):
             lambda_lya = 1215.67
             self.lambda_rest = 1206.52
             self.dv = (lambda_lya - self.lambda_rest) / lambda_lya * c_kms
-        elif metal_label == "Lya_SiII":
+        elif metal_label == "Lya_SiIIb":
             lambda_lya = 1215.67
             self.lambda_rest = 1193.28
             self.dv = (lambda_lya - self.lambda_rest) / lambda_lya * c_kms
-        elif metal_label == "CIV_CIV":
-            self.lambda_rest = [1548.187, 1550.772]  # CIV-CIV
+        elif metal_label == "Lya_SiIIa":
+            # self.lambda_rest = [1548.187, 1550.772]  # CIV-CIV
             # self.lambda_rest = [2795.528, 2802.705]  # MgII-MgII
-            self.dv = (
-                (self.lambda_rest[1] - self.lambda_rest[0])
-                / self.lambda_rest[0]
-                * c_kms
-            )
+            lambda_lya = 1215.67
+            self.lambda_rest = 1190.42
+            self.dv = (lambda_lya - self.lambda_rest) / lambda_lya * c_kms
         elif metal_label == "SiIIb_SiIII":
             self.lambda_rest = [1193.28, 1206.52]  # SiIIb-SiIII
             self.dv = (
@@ -59,7 +57,7 @@ class MetalModel(object):
                 / self.lambda_rest[0]
                 * c_kms
             )
-        elif metal_label == "SiII_SiII":
+        elif metal_label == "SiIIa_SiIIb":
             self.lambda_rest = [1190.42, 1193.28]  # SiIIa-SiIIb
             self.dv = (
                 (self.lambda_rest[1] - self.lambda_rest[0])
@@ -236,7 +234,7 @@ class MetalModel(object):
             name = "d_" + self.metal_label + "_" + str(i)
             if self.D_zev_type == "pivot":
                 if i == 0:
-                    xmin = -1
+                    xmin = -4
                     xmax = 4  # was 3
                 else:
                     xmin = -1
@@ -306,8 +304,8 @@ class MetalModel(object):
             name = "a_" + self.metal_label + "_" + str(i)
             if self.A_zev_type == "pivot":
                 if i == 0:
-                    xmin = 0
-                    xmax = 5
+                    xmin = -2
+                    xmax = 10
                 else:
                     xmin = -3
                     xmax = 3

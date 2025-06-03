@@ -41,6 +41,7 @@ class Fitter(object):
         self.burnin_nsteps = nburnin
 
         self.param_dict = param_dict
+        self.param_dict_rev = param_dict_rev
 
         if self.parallel:
             self.comm = MPI.COMM_WORLD
@@ -152,6 +153,7 @@ class Fitter(object):
         self,
         pini=None,
         log_func=None,
+        zmask=None,
         timeout=None,
         force_timeout=False,
     ):
@@ -162,11 +164,20 @@ class Fitter(object):
             - force_timeout will continue to run the chains
               until timeout, regardless of convergence"""
 
+        if log_func is None:
+            _log_func = self.like.log_prob_and_blobs
+        else:
+            _log_func = log_func
+
+        if zmask is not None:
+            log_func = lambda x: _log_func(x, zmask=zmask)
+        else:
+            log_func = _log_func
+
         if self.parallel == False:
             ## Get initial walkers
             p0 = self.get_initial_walkers(pini=pini)
-            if log_func is None:
-                log_func = self.like.log_prob_and_blobs
+
             sampler = emcee.EnsembleSampler(
                 self.nwalkers,
                 self.ndim,
@@ -280,33 +291,30 @@ class Fitter(object):
         else:
             _log_func_minimize = log_func_minimize
 
-        if p0 is None:
+        if p0 is not None:
+            # start at the initial value
+            mle_cube = p0.copy()
+        else:
             # star at the center of the parameter space
             mle_cube = np.ones(npars) * 0.5
-            chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
-            chi2_ini = chi2 * 1
-            arr_p0 = lhs(npars, samples=nsamples) - 0.5
-            # sigma to search around mle_cube
-            sig = 0.1
-            for ii in range(nsamples):
-                pini = mle_cube.copy() + arr_p0[ii] * sig
-                pini[pini <= 0] = 0.05
-                pini[pini >= 1] = 0.95
-                res = scipy.optimize.minimize(
-                    _log_func_minimize,
-                    pini,
-                    method="Nelder-Mead",
-                    bounds=((0.0, 1.0),) * npars,
-                )
-                _chi2 = self.like.get_chi2(res.x, zmask=zmask)
-                if _chi2 < chi2:
-                    chi2 = _chi2.copy()
-                    mle_cube = res.x.copy()
-                    # reduce sigma
-                    sig *= 0.5
 
-            # start at the minimum
+        chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
+        chi2_ini = chi2 * 1
+
+        # perturbations around starting point
+        arr_p0 = lhs(npars, samples=nsamples + 1) - 0.5
+        # sigma to search around mle_cube
+        sig = 0.1
+
+        rep = 0
+        for ii in range(nsamples + 1):
             pini = mle_cube.copy()
+            if ii != 0:
+                pini += arr_p0[ii] * sig
+
+            pini[pini <= 0] = 0.05
+            pini[pini >= 1] = 0.95
+
             res = scipy.optimize.minimize(
                 _log_func_minimize,
                 pini,
@@ -314,29 +322,22 @@ class Fitter(object):
                 bounds=((0.0, 1.0),) * npars,
             )
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
+
+            # if chi2 does not get significantly better after a few it, stop
+            if chi2 - _chi2 < 0.5:
+                rep += 1
+            else:
+                rep = 0
+
             if _chi2 < chi2:
                 chi2 = _chi2.copy()
                 mle_cube = res.x.copy()
+                # reduce sigma
+                sig *= 0.9
 
             print("Minimization improved:", chi2_ini, chi2, flush=True)
-        else:
-            # start at the initial value
-            mle_cube = p0.copy()
-            chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
-            chi2_ini = chi2 * 1
-            for ii in range(1):
-                pini = mle_cube.copy()
-                res = scipy.optimize.minimize(
-                    _log_func_minimize,
-                    pini,
-                    method="Nelder-Mead",
-                    bounds=((0.0, 1.0),) * npars,
-                )
-                _chi2 = self.like.get_chi2(res.x, zmask=zmask)
-                if _chi2 < chi2:
-                    chi2 = _chi2.copy()
-                    mle_cube = res.x.copy()
-            print("Minimization improved:", chi2_ini, chi2, flush=True)
+            if rep > 3:
+                break
 
         self.set_mle(mle_cube, chi2)
 
@@ -928,25 +929,25 @@ param_dict = {
 
 metal_lines = [
     "Lya_SiIII",
-    "Lya_SiII",
-    "CIV_CIV",
+    "Lya_SiIIa",
+    "Lya_SiIIb",
     "SiIIb_SiIII",
-    "SiII_SiII",
+    "SiIIa_SiIIb",
     "SiIIa_SiIII",
 ]
 for metal_line in metal_lines:
     for ii in range(12):
         param_dict["ln_x_" + metal_line + "_" + str(ii)] = (
-            "$\mathrm{ln}\,f^{" + metal_line + "_" + str(ii) + "}$"
+            "$\mathrm{ln}\,f(" + metal_line + "_" + str(ii) + ")$"
         )
         param_dict["d_" + metal_line + "_" + str(ii)] = (
-            "$d^{" + metal_line + "_" + str(ii) + "}$"
+            "$d(" + metal_line + "_" + str(ii) + ")$"
         )
         param_dict["l_" + metal_line + "_" + str(ii)] = (
-            "$l^{" + metal_line + "_" + str(ii) + "}$"
+            "$l(" + metal_line + "_" + str(ii) + ")$"
         )
         param_dict["a_" + metal_line + "_" + str(ii)] = (
-            "$a^{" + metal_line + "_" + str(ii) + "}$"
+            "$a(" + metal_line + "_" + str(ii) + ")$"
         )
 
 param_dict_rev = {v: k for k, v in param_dict.items()}

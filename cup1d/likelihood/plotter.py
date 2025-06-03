@@ -1204,12 +1204,12 @@ class Plotter(object):
         cont2label = {
             "Lya_SiIII": r"Ly$\alpha$-SiIII",
             "DLA": "HCDs",
-            "Lya_SiII": r"Ly$\alpha$-SiII",
+            "Lya_SiIIa": r"Ly$\alpha$-SiIIa",
+            "Lya_SiIIb": r"Ly$\alpha$-SiIIb",
             "res": "resolution",
-            "SiII_SiII": "SiII(1190)-SiII(1193)",
+            "SiIIa_SiIIb": "SiII(1190)-SiII(1193)",
             "SiIIa_SiIII": "SiII(1190)-SiIII",
             "SiIIb_SiIII": "SiII(1193)-SiIII",
-            "CIV_CIV": "CIV-CIV",
         }
 
         _data_z = []
@@ -1258,7 +1258,11 @@ class Plotter(object):
                     _values[ind] = 0.0
 
             _res = self.fitter.like.get_p1d_kms(_data_z, _data_k_kms, _values)
-            diff = _data_Pk_kms[0] - _res[0]
+            if len(_res[0]) == 1:
+                _res = _res[0][0]
+            else:
+                _res = _res[0]
+            diff = _data_Pk_kms[0] - _res
             chi2_each[icont] = np.dot(np.dot(_data_icov_kms[0], diff), diff)
 
         ind = np.argsort(chi2_each[:-1] - chi2_each[-1])[::-1]
@@ -1306,9 +1310,13 @@ class Plotter(object):
                     _values[ind] = 0.0
 
             _res = self.fitter.like.get_p1d_kms(_data_z, _data_k_kms, _values)
-            emu_p1d.append(_res[0])
+            if len(_res[0]) == 1:
+                _res = _res[0][0]
+            else:
+                _res = _res[0]
+            emu_p1d.append(_res)
 
-            diff = _data_Pk_kms[0] - _res[0]
+            diff = _data_Pk_kms[0] - _res
             chi2_all.append(np.dot(np.dot(_data_icov_kms[0], diff), diff))
 
         nax = len(all_contaminants) // 2

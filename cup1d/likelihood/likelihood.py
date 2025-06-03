@@ -649,18 +649,23 @@ class Likelihood(object):
 
         if results is None:
             return None
+
+        out = []
+        if return_blob | return_emu_params:
+            p1ds = results[0]
         else:
-            if self.args["rebin_k"] == 1:
-                return results
-            else:
-                if return_blob | return_emu_params:
-                    results2 = []
-                    results2.append(self.rebinning(zs, results[0]))
-                    for ii in range(1, len(results)):
-                        results2.append(results[ii])
-                    return results2
-                else:
-                    return self.rebinning(zs, results)
+            p1ds = results
+
+        if self.args["rebin_k"] == 1:
+            out.append(p1ds)
+        else:
+            out.append(self.rebinning(zs, p1ds))
+
+        if return_blob | return_emu_params:
+            for ii in range(1, len(results)):
+                out.append(results[ii])
+
+        return out
 
     def get_chi2(self, values=None, return_all=False, zmask=None):
         """Compute chi2 using data and theory, without adding
@@ -700,36 +705,40 @@ class Likelihood(object):
 
         # ask emulator prediction for P1D in each bin
         if zmask is not None:
-            _res = []
+            emu_p1d = []
             for iz in range(len(self.data.z)):
                 ind = np.argwhere(np.abs(zmask - self.data.z[iz]) < 1e-3)
                 if len(ind) == 0:
-                    _res.append(0)
+                    emu_p1d.append(0)
                 else:
-                    _ = self.get_p1d_kms(
+                    _res = self.get_p1d_kms(
                         np.atleast_1d(self.data.z[iz]),
                         np.atleast_2d(self.data.k_kms[iz]),
                         values,
                         return_blob=return_blob,
                     )
-                    if _ is None:
-                        _res = None
-                        break
-                    else:
-                        _res.append(_[0])
+                    if _res is None:
+                        return null_out
+
+                    if return_blob:
+                        blob = _res[1]
+
+                    emu_p1d.append(_res[0])
         else:
             _res = self.get_p1d_kms(
                 self.data.z, self.data.k_kms, values, return_blob=return_blob
             )
+            if _res is None:
+                return null_out
+
+            if return_blob:
+                emu_p1d, blob = _res
+            else:
+                emu_p1d = _res
 
         # out of priors
-        if _res is None:
+        if emu_p1d is None:
             return null_out
-
-        if return_blob:
-            emu_p1d, blob = _res
-        else:
-            emu_p1d = _res
 
         # use high-res data
         if self.extra_data is not None:
@@ -791,7 +800,8 @@ class Likelihood(object):
                     if len(ind) == 0:
                         continue
                 # compute chi2 for this redshift bin
-                diff = data.Pk_kms[iz] - emu_p1d_use[iz]
+                diff = data.Pk_kms[iz] - np.array(emu_p1d_use[iz]).reshape(-1)
+
                 chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
                 # check whether to add determinant of covariance as well
                 if ignore_log_det_cov:
@@ -884,11 +894,14 @@ class Likelihood(object):
             zmask=zmask,
         )
 
-    def log_prob_and_blobs(self, values, ignore_log_det_cov=False):
+    def log_prob_and_blobs(self, values, ignore_log_det_cov=False, zmask=None):
         """Function used by emcee to get both log_prob and extra information"""
 
         lnprob, blob = self.compute_log_prob(
-            values, return_blob=True, ignore_log_det_cov=ignore_log_det_cov
+            values,
+            return_blob=True,
+            ignore_log_det_cov=ignore_log_det_cov,
+            zmask=zmask,
         )
         # unpack tuple
         out = lnprob, *blob
@@ -1160,6 +1173,8 @@ class Likelihood(object):
                 p1d_cov = self.cov_Pk_kms[iz]
                 p1d_err = np.sqrt(np.diag(p1d_cov))
                 p1d_theory = emu_p1d_use[indemu]
+                if len(p1d_theory) == 1:
+                    p1d_theory = p1d_theory[0]
 
                 if rand_posterior is None:
                     if return_covar:

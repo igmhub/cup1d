@@ -419,11 +419,11 @@ class Args:
     metal_lines: list[str] = field(
         default_factory=lambda: [
             "Lya_SiIII",
-            "Lya_SiII",
-            "CIV_CIV",
-            "SiIIb_SiIII",
-            "SiII_SiII",
+            "Lya_SiIIa",
+            "Lya_SiIIb",
+            "SiIIa_SiIIb",
             "SiIIa_SiIII",
+            "SiIIb_SiIII",
         ]
     )
 
