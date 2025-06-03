@@ -200,7 +200,7 @@ class MetalModel(object):
                 if i == 0:
                     # ln of overall amplitude at z_X
                     xmin = -11  # no contamination
-                    xmax = -3.2
+                    xmax = -1.5
                 else:
                     xmin = -2
                     xmax = 2
@@ -212,7 +212,7 @@ class MetalModel(object):
                         Gwidth = self.Gauss_priors[name][-(i + 1)]
             else:
                 xmin = -11
-                xmax = -3.8
+                xmax = -1.5
                 value = self.ln_X_coeff[i]
                 Gwidth = None
 
@@ -316,8 +316,8 @@ class MetalModel(object):
                     if name in self.Gauss_priors:
                         Gwidth = self.Gauss_priors[name][-(i + 1)]
             else:
-                xmin = 0
-                xmax = 5
+                xmin = -2
+                xmax = 10
                 value = self.A_coeff[i]
                 Gwidth = None
 
