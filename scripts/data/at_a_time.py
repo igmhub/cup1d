@@ -169,17 +169,19 @@ def main():
 
     # run minimizer on fiducial (may not get to minimum)
     p0 = np.array(list(pip.fitter.like.fid["fit_cube"].values()))
-    base_save_dir = pip.fitter.save_directory
+    if rank == 0:
+        base_save_dir = pip.fitter.save_directory
+        print("base_save_dir:", base_save_dir)
 
     for ii in range(1, len(pip.fitter.like.data.z)):
         # for ii in range(1):
         zmask = np.array([pip.fitter.like.data.z[ii]])
 
         if rank == 0:
-            print(ii, zmask)
             pip.fitter.save_directory = os.path.join(
                 base_save_dir, str(np.round(zmask[0], 2))
             )
+            print(ii, zmask, pip.fitter.save_directory)
             os.makedirs(pip.fitter.save_directory, exist_ok=True)
 
         pip.run_minimizer(
