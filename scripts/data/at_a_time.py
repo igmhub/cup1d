@@ -171,7 +171,7 @@ def main():
     p0 = np.array(list(pip.fitter.like.fid["fit_cube"].values()))
     base_save_dir = pip.fitter.save_directory
 
-    for ii in range(len(pip.fitter.like.data.z)):
+    for ii in range(1, len(pip.fitter.like.data.z)):
         # for ii in range(1):
         zmask = np.array([pip.fitter.like.data.z[ii]])
 
