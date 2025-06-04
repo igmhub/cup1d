@@ -462,16 +462,16 @@ class Plotter(object):
             ax.set_xlim(xlim[0] - 0.05 * xdiff, xlim[1] + 0.05 * xdiff)
         axes[0, 0].legend(loc="upper left")
 
-        # show priors
+        ## show flat priors for all parameters
         for xi in range(ndim):
             for par in self.fitter.like.free_params:
                 if self.fitter.param_dict[par.name] == yesplot[xi]:
                     for yi in range(xi, ndim):
                         axes[yi, xi].axvline(
-                            par.min_value, color="k", linestyle="-"
+                            par.min_value, color="r", linestyle="-"
                         )
                         axes[yi, xi].axvline(
-                            par.max_value, color="k", linestyle="-"
+                            par.max_value, color="r", linestyle="-"
                         )
                     break
         for yi in range(ndim):
@@ -479,10 +479,10 @@ class Plotter(object):
                 if self.fitter.param_dict[par.name] == yesplot[yi]:
                     for xi in range(yi):
                         axes[yi, xi].axhline(
-                            par.min_value, color="k", linestyle="-"
+                            par.min_value, color="r", linestyle="-"
                         )
                         axes[yi, xi].axhline(
-                            par.max_value, color="k", linestyle="-"
+                            par.max_value, color="r", linestyle="-"
                         )
                     break
 

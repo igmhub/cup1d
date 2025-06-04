@@ -1204,7 +1204,7 @@ class Likelihood(object):
 
                 if residuals:
                     if plot_panels:
-                        axs = ax[iz]
+                        axs = ax[indemu]
                         yshift = 0
                     else:
                         axs = ax[ii]

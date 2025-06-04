@@ -652,6 +652,7 @@ class Pipeline(object):
         save_chains=False,
         zmask=None,
         nsamples=4,
+        restart=False,
     ):
         """
         Run the minimizer (only rank 0)
@@ -671,6 +672,7 @@ class Pipeline(object):
                 p0=p0,
                 zmask=zmask,
                 nsamples=nsamples,
+                restart=restart,
             )
 
             # save fit

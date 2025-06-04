@@ -169,6 +169,7 @@ def main():
 
     # run minimizer on fiducial (may not get to minimum)
     p0 = np.array(list(pip.fitter.like.fid["fit_cube"].values()))
+    base_save_dir = pip.fitter.save_directory
 
     for ii in range(len(pip.fitter.like.data.z)):
         # for ii in range(1):
@@ -177,11 +178,13 @@ def main():
         if rank == 0:
             print(ii, zmask)
             pip.fitter.save_directory = os.path.join(
-                pip.fitter.save_directory, str(np.round(zmask[0], 2))
+                base_save_dir, str(np.round(zmask[0], 2))
             )
             os.makedirs(pip.fitter.save_directory, exist_ok=True)
 
-        pip.run_minimizer(p0=p0, zmask=zmask, nsamples=2, make_plots=False)
+        pip.run_minimizer(
+            p0=p0, zmask=zmask, nsamples=3, restart=True, make_plots=False
+        )
 
         # run samplers, it uses as ini the results of the minimizer
         pip.run_sampler(pini=pip.fitter.mle_cube, zmask=zmask)

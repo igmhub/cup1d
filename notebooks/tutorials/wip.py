@@ -1905,12 +1905,20 @@ fitter = Fitter(
 )
 
 # %%
+
+zmask = np.array([2.4])
+fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=1)
+
+# %%
 # # %%time
 fitter.run_sampler(pini=p0, zmask=zmask)
 
 # %%
 diru = None
 plotter = Plotter(fitter, save_directory=diru, zmask=zmask)
+
+# %%
+plotter.plots_minimizer()
 
 # %%
 plotter.plot_corner()
