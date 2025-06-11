@@ -393,8 +393,9 @@ class Args:
     apply_smoothing: bool = False
     cov_label: str = "Chabanier2019"
     cov_label_hires: str = "Karacayli2022"
-    hcd_model_type: str = "Rogers2017"
+    hcd_model_type: str = "new"
     mF_model_type: str = "pivot"
+    resolution_model_type: str = "pivot"
     use_star_priors: Optional[dict] = None
     add_noise: bool = False
     seed_noise: int = 0

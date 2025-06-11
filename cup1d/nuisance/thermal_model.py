@@ -190,9 +190,7 @@ class ThermalModel(object):
                 gamma_fid = np.zeros(len(fid_value_gamma))
                 for ii in range(len(fid_value_gamma)):
                     gamma_fid[-(ii + 1)] = fid_value_gamma[-(ii + 1)]
-                igm_to_inter = self.get_gamma(
-                    z_to_inter, over_ln_gamma_coeff=gamma_fid
-                )
+                igm_to_inter = self.get_gamma(z_to_inter, over_coeff=gamma_fid)
                 self.fid_gamma_interp = interp1d(
                     z_to_inter, igm_to_inter, kind="cubic"
                 )
@@ -205,7 +203,7 @@ class ThermalModel(object):
                 for ii in range(len(fid_value_sigT)):
                     sigT_fid[-(ii + 1)] = fid_value_sigT[-(ii + 1)]
                 igm_to_inter = self.get_sigT_kms(
-                    z_to_inter, over_ln_sigT_kms_coeff=sigT_fid
+                    z_to_inter, over_coeff=sigT_fid
                 )
                 self.fid_sigT_kms_interp = interp1d(
                     z_to_inter, igm_to_inter, kind="cubic"
@@ -225,13 +223,11 @@ class ThermalModel(object):
         ), "size mismatch"
         return len(self.ln_gamma_coeff)
 
-    def power_law_scaling_gamma(
-        self, z, like_params=[], over_ln_gamma_coeff=None
-    ):
+    def power_law_scaling_gamma(self, z, like_params=[], over_coeff=None):
         """Power law rescaling around z_T"""
 
-        if over_ln_gamma_coeff is not None:
-            ln_gamma_coeff = over_ln_gamma_coeff
+        if over_coeff is not None:
+            ln_gamma_coeff = over_coeff
         else:
             ln_gamma_coeff = self.get_gamma_coeffs(like_params=like_params)
 
@@ -240,13 +236,11 @@ class ThermalModel(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def power_law_scaling_sigT_kms(
-        self, z, like_params=[], over_ln_sigT_kms_coeff=None
-    ):
+    def power_law_scaling_sigT_kms(self, z, like_params=[], over_coeff=None):
         """Power law rescaling around z_T"""
 
-        if over_ln_sigT_kms_coeff is not None:
-            ln_sigT_kms_coeff = over_ln_sigT_kms_coeff
+        if over_coeff is not None:
+            ln_sigT_kms_coeff = over_coeff
         else:
             ln_sigT_kms_coeff = self.get_sigT_coeffs(like_params=like_params)
 
@@ -255,29 +249,29 @@ class ThermalModel(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_sigT_kms(self, z, like_params=[], over_ln_sigT_kms_coeff=None):
+    def get_sigT_kms(self, z, like_params=[], over_coeff=None):
         """sigT_kms at the input redshift"""
         sigT_kms = self.power_law_scaling_sigT_kms(
             z,
             like_params=like_params,
-            over_ln_sigT_kms_coeff=over_ln_sigT_kms_coeff,
+            over_coeff=over_coeff,
         ) * self.fid_sigT_kms_interp(z)
         return sigT_kms
 
-    def get_T0(self, z, like_params=[]):
+    def get_T0(self, z, like_params=[], over_coeff=None):
         """T_0 at the input redshift"""
         sigT_kms = self.power_law_scaling_sigT_kms(
-            z, like_params=like_params
+            z, like_params=like_params, over_coeff=over_coeff
         ) * self.fid_sigT_kms_interp(z)
         T0 = thermal_broadening.T0_from_broadening_kms(sigT_kms)
         return T0
 
-    def get_gamma(self, z, like_params=[], over_ln_gamma_coeff=None):
+    def get_gamma(self, z, like_params=[], over_coeff=None):
         """gamma at the input redshift"""
         gamma = self.power_law_scaling_gamma(
             z,
             like_params=like_params,
-            over_ln_gamma_coeff=over_ln_gamma_coeff,
+            over_coeff=over_coeff,
         ) * self.fid_gamma_interp(z)
         return gamma
 

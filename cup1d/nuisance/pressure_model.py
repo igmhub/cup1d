@@ -137,20 +137,23 @@ class PressureModel(object):
         assert len(self.ln_kF_coeff) == len(self.params), "size mismatch"
         return len(self.ln_kF_coeff)
 
-    def power_law_scaling(self, z, like_params=[]):
+    def power_law_scaling(self, z, like_params=[], over_coeff=None):
         """Power law rescaling around z_tau"""
 
-        ln_kF_coeff = self.get_kF_coeffs(like_params=like_params)
+        if over_coeff is None:
+            ln_kF_coeff = self.get_kF_coeffs(like_params=like_params)
+        else:
+            ln_kF_coeff = over_coeff
 
         xz = np.log((1 + z) / (1 + self.z_kF))
         ln_poly = np.poly1d(ln_kF_coeff)
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_kF_kms(self, z, like_params=[]):
+    def get_kF_kms(self, z, like_params=[], over_coeff=None):
         """kF_kms at the input redshift"""
         kF_kms = self.power_law_scaling(
-            z, like_params=like_params
+            z, like_params=like_params, over_coeff=over_coeff
         ) * self.fid_kF_interp(z)
         return kF_kms
 

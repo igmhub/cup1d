@@ -98,13 +98,12 @@ def main():
         print("Analyzing:", args.p1d_fname)
 
     # stuff for fitter
-
     if test:
         args.n_steps = 10
         args.n_burn_in = 0
     else:
-        args.n_steps = 1250
-        args.n_burn_in = 500
+        args.n_steps = 3100
+        args.n_burn_in = 100
 
     if size > 1:
         args.parallel = True
@@ -118,7 +117,9 @@ def main():
 
     flags = emulator_label
 
-    flags_igm = "fid"
+    args.cov_factor = 1e50
+
+    flags_igm = "priors"
     dir_out = os.path.join(path_out_challenge, flags, flags_igm)
     if rank == 0:
         os.makedirs(dir_out, exist_ok=True)
@@ -165,8 +166,8 @@ def main():
         base_save_dir = pip.fitter.save_directory
         print("base_save_dir:", base_save_dir)
 
-    for ii in range(1, len(pip.fitter.like.data.z)):
-        # for ii in range(1):
+    # for ii in range(1, len(pip.fitter.like.data.z)):
+    for ii in range(1):
         zmask = np.array([pip.fitter.like.data.z[ii]])
 
         if rank == 0:
@@ -177,7 +178,7 @@ def main():
             os.makedirs(pip.fitter.save_directory, exist_ok=True)
 
         pip.run_minimizer(
-            p0=p0, zmask=zmask, nsamples=3, restart=True, make_plots=False
+            p0=p0, zmask=zmask, nsamples=1, restart=True, make_plots=False
         )
 
         # run samplers, it uses as ini the results of the minimizer
@@ -188,7 +189,7 @@ def main():
             pip.run_minimizer(
                 p0=pip.fitter.mle_cube,
                 zmask=zmask,
-                nsamples=3,
+                nsamples=1,
                 save_chains=True,
             )
 

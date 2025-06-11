@@ -1979,4 +1979,45 @@ for ii, key in enumerate(fitter.paramstrings):
 plt.tight_layout()
 plt.savefig("snr3_fid_weakp3.png")
 
+# %% [markdown]
+# Get priors
+
+# %% [markdown]
+# Normal units
+
+# %%
+folder_data = "/home/jchaves/Proyectos/projects/lya/data/obs/QMLE3/CH24_mpgcen_gpr/fid/chain_5/3.0/"
+folder_priors = "/home/jchaves/Proyectos/projects/lya/data/obs/QMLE3/CH24_mpgcen_gpr/priors/chain_3/2.2/"
+file = "fitter_results.npy"
+# sampler_data = np.load(folder + file, allow_pickle=True).item()
+
+# %%
+# sampler_data.keys()
+
+# %%
+plotter = Plotter(fname_chain=folder_data + file, fname_priors=folder_priors + file)
+# plotter.fitter.like.plot_p1d(residuals=True)
+
+# %% [markdown]
+# prior out of range?!!
+
+# %%
+# plotter.fitter.like.plot_p1d()
+
+# %% [markdown]
+# #### priors: 1 and 2 sigma?
+
+# %%
+plotter.plot_corner()
+
+# %%
+
+# %%
+help(plotter.fitter.like.theory.model_igm.P_model.get_kF_kms)
+
+# %%
+plotter.plot_corner_1z_natural(2.4)
+
+# %%
+
 # %%

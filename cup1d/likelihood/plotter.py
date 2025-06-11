@@ -13,6 +13,7 @@ class Plotter(object):
         save_directory=None,
         fname_chain=None,
         zmask=None,
+        fname_priors=None,
         args={},
     ):
         self.zmask = zmask
@@ -38,8 +39,16 @@ class Plotter(object):
                 else:
                     print(param.name)
 
-            args = Args(**dict_input)
-            # args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
+            args = Args()
+            args.set_baseline()
+            for param in dict_input:
+                try:
+                    setattr(args, param, dict_input[param])
+                except:
+                    print("Not found in args", param)
+                    pass
+
+            args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/DESI-DR1/qmle_measurement/DataProducts/v3/desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"  # args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
             self.fitter = Pipeline(args, out_folder=save_directory).fitter
 
             # add sampler results to fitter
@@ -70,6 +79,13 @@ class Plotter(object):
             show=False,
             zmask=zmask,
         )
+
+        if fname_priors is not None:
+            data = np.load(fname_priors, allow_pickle=True).item()
+            self.fitter.chain_priors = data["fitter"]["chain"]
+            self.fitter.chain_priors_names = data["fitter"]["chain_names_latex"]
+        else:
+            self.fitter.chain_priors = None
 
     def plots_minimizer(self, zrange=[0, 10], zmask=None):
         if self.zmask is not None:
@@ -434,6 +450,38 @@ class Plotter(object):
             plot_density=False,
         )
 
+        # plot priors
+        if self.fitter.chain_priors is not None:
+            nelem_priors = (
+                self.fitter.chain_priors[:, :, 0].reshape(-1)
+            ).shape[0]
+            chain_priors = np.zeros((nelem_priors, len(yesplot)))
+            for ii, par in enumerate(yesplot):
+                try:
+                    _ = np.argwhere(
+                        np.array(self.fitter.chain_priors_names) == par
+                    )[0, 0]
+                except:
+                    continue
+
+                pars = self.fitter.chain_priors[:, :, _].reshape(-1)
+                chain_priors[:, ii] = self.fitter.like.free_params[
+                    ii
+                ].value_from_cube(pars)
+
+            corner(
+                chain_priors,
+                weights=np.ones((chain_priors.shape[0])) * 1e-10,
+                fig=fig,
+                levels=(0.9999,),
+                plot_datapoints=False,
+                plot_density=False,
+                fill_contours=True,
+                hist_kwargs={"linestyle": "--"},
+                contourf_kwargs={"colors": ["black", "white"], "alpha": 0.5},
+                contour_kwargs={"alpha": 0.5, "linestyles": ["--"]},
+            )
+
         # add truth and MLE
         value1 = truth.copy()
         value2 = MLE.copy()
@@ -446,7 +494,8 @@ class Plotter(object):
             ax.axvline(value2[i], color="C2", label="MAP", linestyle=":")
 
             # Set up x limits
-            xlim = np.array(ax.get_xlim())
+            # xlim = np.array(ax.get_xlim())
+            xlim = np.array([chain[:, i].min(), chain[:, i].max()])
             if self.fitter.truth is not None:
                 val_min = np.nanmin([value1[i], value2[i]])
                 val_max = np.nanmax([value1[i], value2[i]])
@@ -463,28 +512,29 @@ class Plotter(object):
         axes[0, 0].legend(loc="upper left")
 
         ## show flat priors for all parameters
-        for xi in range(ndim):
-            for par in self.fitter.like.free_params:
-                if self.fitter.param_dict[par.name] == yesplot[xi]:
-                    for yi in range(xi, ndim):
-                        axes[yi, xi].axvline(
-                            par.min_value, color="r", linestyle="-"
-                        )
-                        axes[yi, xi].axvline(
-                            par.max_value, color="r", linestyle="-"
-                        )
-                    break
-        for yi in range(ndim):
-            for par in self.fitter.like.free_params:
-                if self.fitter.param_dict[par.name] == yesplot[yi]:
-                    for xi in range(yi):
-                        axes[yi, xi].axhline(
-                            par.min_value, color="r", linestyle="-"
-                        )
-                        axes[yi, xi].axhline(
-                            par.max_value, color="r", linestyle="-"
-                        )
-                    break
+        if self.fitter.chain_priors is None:
+            for xi in range(ndim):
+                for par in self.fitter.like.free_params:
+                    if self.fitter.param_dict[par.name] == yesplot[xi]:
+                        for yi in range(xi, ndim):
+                            axes[yi, xi].axvline(
+                                par.min_value, color="r", linestyle="-"
+                            )
+                            axes[yi, xi].axvline(
+                                par.max_value, color="r", linestyle="-"
+                            )
+                        break
+            for yi in range(ndim):
+                for par in self.fitter.like.free_params:
+                    if self.fitter.param_dict[par.name] == yesplot[yi]:
+                        for xi in range(yi):
+                            axes[yi, xi].axhline(
+                                par.min_value, color="r", linestyle="-"
+                            )
+                            axes[yi, xi].axhline(
+                                par.max_value, color="r", linestyle="-"
+                            )
+                        break
 
         # Loop over the histograms
         for yi in range(ndim):
@@ -501,7 +551,9 @@ class Plotter(object):
                 ax.plot(value2[xi], value2[yi], ".C2", linestyle=":")
 
                 # Set up x and y limits
-                xlim = np.array(ax.get_xlim())
+                # xlim = np.array(ax.get_xlim())
+                xlim = np.array([chain[:, xi].min(), chain[:, xi].max()])
+                # print(yi, xi, xlim, chain[:, yi].min(), chain[:, xi].min())
                 if self.fitter.truth is not None:
                     val_min = np.min([value1[xi], value2[xi]])
                     val_max = np.max([value1[xi], value2[xi]])
@@ -515,7 +567,7 @@ class Plotter(object):
                 xdiff = xlim[1] - xlim[0]
                 ax.set_xlim(xlim[0] - 0.05 * xdiff, xlim[1] + 0.05 * xdiff)
 
-                ylim = np.array(ax.get_ylim())
+                ylim = np.array([chain[:, yi].min(), chain[:, yi].max()])
                 if self.fitter.truth is not None:
                     val_min = np.min([value1[yi], value2[yi]])
                     val_max = np.max([value1[yi], value2[yi]])
@@ -625,6 +677,180 @@ class Plotter(object):
                     name = self.save_directory + "/corner_cosmo"
             else:
                 name = self.save_directory + "/corner"
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
+
+    def plot_corner_1z_natural(
+        self,
+        z_use,
+        usetex=True,
+        delta_lnprob_cut=None,
+        extra_nburn=0,
+    ):
+        """Make corner plot in corner"""
+
+        params_plot, strings_plot, _ = self.fitter.get_all_params(
+            delta_lnprob_cut=delta_lnprob_cut, extra_nburn=extra_nburn
+        )
+
+        # only plot parameters that vary
+        diff = np.max(params_plot, axis=0) - np.min(params_plot, axis=0)
+        yesplot = np.array(strings_plot)[diff != 0]
+
+        # convert units
+        igm_params = {
+            "tau": self.fitter.like.theory.model_igm.F_model.get_mean_flux,
+            "sigT": self.fitter.like.theory.model_igm.T_model.get_T0,
+            "gamma": self.fitter.like.theory.model_igm.T_model.get_gamma,
+            "kF": self.fitter.like.theory.model_igm.P_model.get_kF_kms,
+        }
+        igm_params_labels = {
+            "tau": r"mF",
+            "sigT": r"$T_0$",
+            "gamma": r"$\gamma$",
+            "kF": r"$k_F$",
+        }
+
+        truth = np.zeros((len(yesplot)))
+        MLE = np.zeros((len(yesplot)))
+        chain = np.zeros((params_plot.shape[0], len(yesplot)))
+        for ii, par in enumerate(yesplot):
+            _ = np.argwhere(np.array(strings_plot) == par)[0, 0]
+            chain[:, ii] = params_plot[:, _]
+
+            if self.fitter.truth is not None:
+                if par in self.fitter.truth:
+                    truth[ii] = self.fitter.truth[par]
+            if par in self.fitter.mle:
+                MLE[ii] = self.fitter.mle[par]
+
+            # need to conver units
+            par_notex = self.fitter.param_dict_rev[par]
+            for pp in igm_params:
+                if pp in par_notex:
+                    for jj in range(chain.shape[0]):
+                        chain[jj, ii] = igm_params[pp](
+                            z_use, over_coeff=chain[jj, ii]
+                        )
+                    truth[ii] = igm_params[pp](z_use, over_coeff=truth[ii])
+                    MLE[ii] = igm_params[pp](z_use, over_coeff=MLE[ii])
+                    yesplot[ii] = igm_params_labels[pp]
+
+            if par == "$A_s$":
+                chain[:, ii] *= 1e9
+                truth[ii] *= 1e9
+                MLE[ii] *= 1e9
+                yesplot[ii] = r"$A_s\times10^9$"
+
+        fig = corner(
+            chain,
+            labels=yesplot,
+            quantiles=(0.16, 0.5, 0.84),
+            levels=(0.68, 0.95),
+            show_titles=True,
+            title_quantiles=(0.16, 0.5, 0.84),
+            title_fmt=".4f",
+            plot_datapoints=False,
+            plot_density=False,
+        )
+
+        # add truth and MLE
+        value1 = truth.copy()
+        value2 = MLE.copy()
+        ndim = len(value1)
+        axes = np.array(fig.axes).reshape((ndim, ndim))
+        for i in range(ndim):
+            ax = axes[i, i]
+            if self.fitter.truth is not None:
+                ax.axvline(value1[i], color="C0", label="Truth")
+            ax.axvline(value2[i], color="C2", label="MAP", linestyle=":")
+
+            # Set up x limits
+            xlim = np.array(ax.get_xlim())
+            if self.fitter.truth is not None:
+                val_min = np.nanmin([value1[i], value2[i]])
+                val_max = np.nanmax([value1[i], value2[i]])
+            else:
+                val_min = np.nanmin([value2[i]])
+                val_max = np.nanmax([value2[i]])
+
+            if (xlim[0] > val_min) and np.isfinite(val_min):
+                xlim[0] = val_min
+            if (xlim[1] < val_max) and np.isfinite(val_max):
+                xlim[1] = val_max
+            xdiff = xlim[1] - xlim[0]
+            ax.set_xlim(xlim[0] - 0.05 * xdiff, xlim[1] + 0.05 * xdiff)
+        axes[0, 0].legend(loc="upper left")
+
+        ## show flat priors for all parameters
+        for xi in range(ndim):
+            for par in self.fitter.like.free_params:
+                if self.fitter.param_dict[par.name] == yesplot[xi]:
+                    for yi in range(xi, ndim):
+                        axes[yi, xi].axvline(
+                            par.min_value, color="r", linestyle="-"
+                        )
+                        axes[yi, xi].axvline(
+                            par.max_value, color="r", linestyle="-"
+                        )
+                    break
+        for yi in range(ndim):
+            for par in self.fitter.like.free_params:
+                if self.fitter.param_dict[par.name] == yesplot[yi]:
+                    for xi in range(yi):
+                        axes[yi, xi].axhline(
+                            par.min_value, color="r", linestyle="-"
+                        )
+                        axes[yi, xi].axhline(
+                            par.max_value, color="r", linestyle="-"
+                        )
+                    break
+
+        # Loop over the histograms
+        for yi in range(ndim):
+            for xi in range(yi):
+                ax = axes[yi, xi]
+
+                if self.fitter.truth is not None:
+                    ax.axvline(value1[xi], color="C0")
+                    ax.axhline(value1[yi], color="C0")
+                    ax.plot(value1[xi], value1[yi], ".C0")
+
+                ax.axvline(value2[xi], color="C2", linestyle=":")
+                ax.axhline(value2[yi], color="C2", linestyle=":")
+                ax.plot(value2[xi], value2[yi], ".C2", linestyle=":")
+
+                # Set up x and y limits
+                xlim = np.array(ax.get_xlim())
+                if self.fitter.truth is not None:
+                    val_min = np.min([value1[xi], value2[xi]])
+                    val_max = np.max([value1[xi], value2[xi]])
+                else:
+                    val_min = np.min([value2[xi]])
+                    val_max = np.max([value2[xi]])
+                if (xlim[0] > val_min) and np.isfinite(val_min):
+                    xlim[0] = val_min
+                if (xlim[1] < val_max) and np.isfinite(val_max):
+                    xlim[1] = val_max
+                xdiff = xlim[1] - xlim[0]
+                ax.set_xlim(xlim[0] - 0.05 * xdiff, xlim[1] + 0.05 * xdiff)
+
+                ylim = np.array(ax.get_ylim())
+                if self.fitter.truth is not None:
+                    val_min = np.min([value1[yi], value2[yi]])
+                    val_max = np.max([value1[yi], value2[yi]])
+                else:
+                    val_min = np.min([value2[yi]])
+                    val_max = np.max([value2[yi]])
+                if (ylim[0] > val_min) and np.isfinite(val_min):
+                    ylim[0] = val_min
+                if (ylim[1] < val_max) and np.isfinite(val_max):
+                    ylim[1] = val_max
+                ydiff = ylim[1] - ylim[0]
+                ax.set_ylim(ylim[0] - 0.05 * ydiff, ylim[1] + 0.05 * ydiff)
+
+        if self.save_directory is not None:
+            name = self.save_directory + "/corner_natural_z" + str(z_use)
             plt.savefig(name + ".pdf")
             plt.savefig(name + ".png")
 

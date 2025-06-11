@@ -131,7 +131,7 @@ class MeanFluxModel(object):
         tau_fid = np.zeros(len(fid_value))
         for ii in range(len(fid_value)):
             tau_fid[-(ii + 1)] = fid_value[-(ii + 1)]
-        igm_to_inter = self.get_tau_eff(z_to_inter, over_ln_tau_coeff=tau_fid)
+        igm_to_inter = self.get_tau_eff(z_to_inter, over_coeff=tau_fid)
         self.fid_tau_interp = interp1d(z_to_inter, igm_to_inter, kind="cubic")
 
     def get_Nparam(self):
@@ -139,11 +139,11 @@ class MeanFluxModel(object):
         assert len(self.ln_tau_coeff) == len(self.params), "size mismatch"
         return len(self.ln_tau_coeff)
 
-    def power_law_scaling(self, z, like_params=[], over_ln_tau_coeff=None):
+    def power_law_scaling(self, z, like_params=[], over_coeff=None):
         """Power law rescaling around z_tau"""
 
-        if over_ln_tau_coeff is not None:
-            ln_tau_coeff = over_ln_tau_coeff
+        if over_coeff is not None:
+            ln_tau_coeff = over_coeff
         else:
             ln_tau_coeff = self.get_tau_coeffs(like_params=like_params)
 
@@ -152,16 +152,18 @@ class MeanFluxModel(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_tau_eff(self, z, like_params=[], over_ln_tau_coeff=None):
+    def get_tau_eff(self, z, like_params=[], over_coeff=None):
         """Effective optical depth at the input redshift"""
         tau_eff = self.power_law_scaling(
-            z, like_params=like_params, over_ln_tau_coeff=over_ln_tau_coeff
+            z, like_params=like_params, over_coeff=over_coeff
         ) * self.fid_tau_interp(z)
         return tau_eff
 
-    def get_mean_flux(self, z, like_params=[]):
+    def get_mean_flux(self, z, like_params=[], over_coeff=None):
         """Mean transmitted flux fraction at the input redshift"""
-        tau = self.get_tau_eff(z, like_params=like_params)
+        tau = self.get_tau_eff(
+            z, like_params=like_params, over_coeff=over_coeff
+        )
         return np.exp(-tau)
 
     def set_parameters(self):
