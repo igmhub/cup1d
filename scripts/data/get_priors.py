@@ -166,8 +166,8 @@ def main():
         base_save_dir = pip.fitter.save_directory
         print("base_save_dir:", base_save_dir)
 
-    # for ii in range(1, len(pip.fitter.like.data.z)):
-    for ii in range(1):
+    for ii in range(1, len(pip.fitter.like.data.z)):
+        # for ii in range(1):
         zmask = np.array([pip.fitter.like.data.z[ii]])
 
         if rank == 0:
