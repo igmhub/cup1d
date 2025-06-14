@@ -19,7 +19,7 @@ class Resolution_Model_Chunks(object):
         R_coeff=None,
         free_param_names=None,
         fid_R_coeff=None,
-        max_width=0.5,
+        max_width=1,
         Gauss_priors=None,
     ):
         """Construct model as a rescaling around a fiducial mean flux"""

@@ -896,12 +896,15 @@ param_dict = {
     "ln_kF_4": "$\mathrm{ln}\,k^F_4$",
     # each metal contamination should have its own parameters here
     # each HCD contamination should have its own parameters here
-    "ln_A_damp_0": "$\mathrm{ln}\,f^\mathrm{HCD}_0$",
-    "ln_A_damp_1": "$\mathrm{ln}\,f^\mathrm{HCD}_1$",
-    "ln_A_damp_2": "$\mathrm{ln}\,f^\mathrm{HCD}_2$",
-    "ln_A_scale_0": "$\mathrm{ln}\,s^\mathrm{HCD}_0$",
-    "ln_A_scale_1": "$\mathrm{ln}\,s^\mathrm{HCD}_1$",
-    "ln_A_scale_2": "$\mathrm{ln}\,s^\mathrm{HCD}_2$",
+    "ln_A_damp1_0": "$\mathrm{ln}\,f^\mathrm{HCD}_0$",
+    "ln_A_damp1_1": "$\mathrm{ln}\,f^\mathrm{HCD}_1$",
+    "ln_A_damp1_2": "$\mathrm{ln}\,f^\mathrm{HCD}_2$",
+    "ln_A_scale1_0": "$\mathrm{ln}\,s^\mathrm{HCD}_0$",
+    "ln_A_scale1_1": "$\mathrm{ln}\,s^\mathrm{HCD}_1$",
+    "ln_A_scale1_2": "$\mathrm{ln}\,s^\mathrm{HCD}_2$",
+    "ln_A_const_0": "$\mathrm{ln}\,c^\mathrm{HCD}_0$",
+    "ln_A_const_1": "$\mathrm{ln}\,c^\mathrm{HCD}_1$",
+    "ln_A_const_2": "$\mathrm{ln}\,c^\mathrm{HCD}_2$",
     "ln_SN_0": "$\mathrm{ln}\,\mathrm{SN}_0$",
     "ln_SN_1": "$\mathrm{ln}\,\mathrm{SN}_1$",
     "ln_AGN_0": "$\mathrm{ln}\,\mathrm{AGN}_0$",
@@ -933,23 +936,41 @@ metal_lines = [
     "Lya_SiIII",
     "Lya_SiIIa",
     "Lya_SiIIb",
-    "SiIIb_SiIII",
     "SiIIa_SiIIb",
+    "SiIIb_SiIII",
     "SiIIa_SiIII",
+    "CIVa_CIVb",
+    "MgIIa_MgIIb",
+    "Lya_SiIIc",
+    "SiIIc_SiIII",
 ]
+metal_lines_latex = {
+    "Lya_SiIII": "$\mathrm{Ly}\alpha-\mathrm{SiIII}$",
+    "Lya_SiIIa": "$\mathrm{Ly}\alpha-\mathrm{SiIIa}$",
+    "Lya_SiIIb": "$\mathrm{Ly}\alpha-\mathrm{SiIIb}$",
+    "Lya_SiIIc": "$\mathrm{Ly}\alpha-\mathrm{SiIIc}$",
+    "SiIIa_SiIIb": "$\mathrm{SiIIa}_\mathrm{SiIIb}$",
+    "SiIIc_SiIII": "$\mathrm{SiIIc}_\mathrm{SiIII}$",
+    "SiIIb_SiIII": "$\mathrm{SiIIb}_\mathrm{SiIII}$",
+    "SiIIa_SiIII": "$\mathrm{SiIIa}_\mathrm{SiIII}$",
+    "CIVa_CIVb": "$\mathrm{CIVa}_\mathrm{CIVb}$",
+    "MgIIa_MgIIb": "$\mathrm{MgIIa}_\mathrm{MgIIb}$",
+}
 for metal_line in metal_lines:
     for ii in range(12):
         param_dict["ln_x_" + metal_line + "_" + str(ii)] = (
-            "$\mathrm{ln}\,f(" + metal_line + "_" + str(ii) + ")$"
+            "$\mathrm{ln}\,f("
+            + metal_lines_latex[metal_line]
+            + "_"
+            + str(ii)
+            + ")$"
         )
-        param_dict["d_" + metal_line + "_" + str(ii)] = (
-            "$d(" + metal_line + "_" + str(ii) + ")$"
-        )
-        param_dict["l_" + metal_line + "_" + str(ii)] = (
-            "$l(" + metal_line + "_" + str(ii) + ")$"
-        )
-        param_dict["a_" + metal_line + "_" + str(ii)] = (
-            "$a(" + metal_line + "_" + str(ii) + ")$"
+        param_dict["ln_a_" + metal_line + "_" + str(ii)] = (
+            "$\mathrm{ln}\,a("
+            + metal_lines_latex[metal_line]
+            + "_"
+            + str(ii)
+            + ")$"
         )
 
 param_dict_rev = {v: k for k, v in param_dict.items()}

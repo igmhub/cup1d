@@ -21,73 +21,37 @@ def set_theory(
     """Set theory"""
 
     if fid_or_true == "fid":
-        sim_igm_mF = args.fid_label_mF
-        sim_igm_T = args.fid_label_T
-        sim_igm_kF = args.fid_label_kF
-        val_par_mF = args.fid_val_mF
-        val_par_sigT = args.fid_val_sigT
-        val_par_gamma = args.fid_val_gamma
-        val_par_kF = args.fid_val_kF
-        val_metals = args.fid_metals
-        val_A_damp = args.fid_A_damp
-        val_A_scale = args.fid_A_scale
-        val_SN = args.fid_SN
-        val_AGN = args.fid_AGN
-        val_R_coeff = args.fid_R_coeff
+        pars_igm = args.fid_igm
+        pars_cont = args.fid_cont
+        pars_syst = args.fid_syst
     elif fid_or_true == "true":
-        sim_igm_mF = args.true_label_mF
-        sim_igm_T = args.true_label_T
-        sim_igm_kF = args.true_label_kF
-        val_par_mF = args.true_val_mF
-        val_par_sigT = args.true_val_sigT
-        val_par_gamma = args.true_val_gamma
-        val_par_kF = args.true_val_kF
-        val_metals = args.true_metals
-        val_A_damp = args.true_A_damp
-        val_A_scale = args.true_A_scale
-        val_SN = args.true_SN
-        val_AGN = args.true_AGN
-        val_R_coeff = args.true_R_coeff
+        pars_igm = args.true_igm
+        pars_cont = args.true_cont
+        pars_syst = args.true_syst
     else:
         raise ValueError("fid_or_true must be 'fid' or 'true'")
 
     # set igm model
     model_igm = IGM(
         free_param_names=free_parameters,
-        fid_sim_igm_mF=sim_igm_mF,
-        fid_sim_igm_T=sim_igm_T,
-        fid_sim_igm_kF=sim_igm_kF,
-        fid_val_par_mF=val_par_mF,
-        fid_val_par_sigT=val_par_sigT,
-        fid_val_par_gamma=val_par_gamma,
-        fid_val_par_kF=val_par_kF,
-        mF_model_type=args.mF_model_type,
+        fid_sim_igm_mF=pars_igm["label_mF"],
+        fid_sim_igm_T=pars_igm["label_T"],
+        fid_sim_igm_kF=pars_igm["label_kF"],
+        fid_val_par_mF=pars_igm["mF"],
+        fid_val_par_sigT=pars_igm["sigT"],
+        fid_val_par_gamma=pars_igm["gamma"],
+        fid_val_par_kF=pars_igm["kF"],
+        mF_model_type=pars_igm["mF_model_type"],
         emu_suite=emulator.list_sim_cube[0][:3],
-        type_priors=args.igm_priors,
+        type_priors=pars_igm["priors"],
         Gauss_priors=args.Gauss_priors,
     )
 
     # set contaminants
-    model_cont = Contaminants(
-        free_param_names=free_parameters,
-        metal_lines=args.metal_lines,
-        fid_metals=val_metals,
-        fid_A_damp=val_A_damp,
-        fid_A_scale=val_A_scale,
-        fid_SN=val_SN,
-        fid_AGN=val_AGN,
-        hcd_model_type=args.hcd_model_type,
-        ic_correction=args.ic_correction,
-        Gauss_priors=args.Gauss_priors,
-    )
+    model_cont = Contaminants(free_param_names=free_parameters, args=args)
 
     # set systematics
-    model_syst = Systematics(
-        resolution_model_type=args.resolution_model_type,
-        free_param_names=free_parameters,
-        fid_R_coeff=val_R_coeff,
-        Gauss_priors=args.Gauss_priors,
-    )
+    model_syst = Systematics(free_param_names=free_parameters, args=args)
 
     # set theory
     theory = Theory(
@@ -766,19 +730,18 @@ class Theory(object):
             zs, k_kms, like_params=like_params
         )
         # note that we use mF of fiducial history for metal contamination
-        cont_total = self.model_cont.get_contamination(
+        mult_cont_total, add_cont_total = self.model_cont.get_contamination(
             zs,
             k_kms,
             emu_call["mF_fid"],
             M_of_z,
             like_params=like_params,
         )
-        if cont_total is None:
-            return None
 
         for iz, z in enumerate(zs):
-            cont_syst = cont_total[iz] * syst_total[iz]
-            p1d_kms[iz] *= cont_syst
+            p1d_kms[iz] = (
+                p1d_kms[iz] * mult_cont_total[iz] + add_cont_total[iz]
+            ) * syst_total[iz]
 
         # decide what to return, and return it
         out = [p1d_kms]
@@ -818,10 +781,6 @@ class Theory(object):
             metal = self.model_cont.metal_models[model_name]
             for par in metal.get_X_parameters():
                 params.append(par)
-            for par in metal.get_D_parameters():
-                params.append(par)
-            for par in metal.get_L_parameters():
-                params.append(par)
             for par in metal.get_A_parameters():
                 params.append(par)
 
@@ -830,6 +789,9 @@ class Theory(object):
             params.append(par)
 
         for par in self.model_cont.hcd_model.get_A_scale_parameters():
+            params.append(par)
+
+        for par in self.model_cont.hcd_model.get_A_const_parameters():
             params.append(par)
 
         # get parameters from SN contamination model

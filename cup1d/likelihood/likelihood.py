@@ -72,7 +72,6 @@ class Likelihood(object):
         if "rebin_k" not in self.args:
             self.args["rebin_k"] = 1
 
-        # k_kms_new2 = np.linspace(kmin[0], kmax[-1], len(k_kms) * 20)
         if self.args["rebin_k"] != 1:
             self.rebin = {}
             self.rebin["k_kms"] = []  # new k_kms
@@ -81,8 +80,8 @@ class Likelihood(object):
             for iz in range(len(self.data.z)):
                 nelem = len(self.data.k_kms[iz]) * self.args["rebin_k"]
                 _kms_reb = np.linspace(
-                    self.data.k_kms_min[iz][0],
-                    self.data.k_kms_max[iz][-1],
+                    self.data.k_kms_min[iz][0] * 0.95,
+                    self.data.k_kms_max[iz][-1] * 1.05,
                     nelem,
                 )
                 self.rebin["k_kms"].append(_kms_reb)
@@ -618,6 +617,8 @@ class Likelihood(object):
 
         if _k_kms is None:
             k_kms = self.data.k_kms
+        else:
+            k_kms = _k_kms
 
         if zs is None:
             zs = self.data.z
@@ -628,8 +629,6 @@ class Likelihood(object):
             for iz in range(len(zs)):
                 ind = np.argmin(np.abs(zs[iz] - self.data.z))
                 k_kms.append(self.rebin["k_kms"][ind])
-        else:
-            k_kms = _k_kms
 
         # translate sampling point (in unit cube) to parameter values
         if values is not None:
@@ -956,7 +955,7 @@ class Likelihood(object):
         collapse=False,
         plot_realizations=True,
         zmask=None,
-        n_perturb=100,
+        n_perturb=0,
         plot_panels=False,
         z_at_time=False,
         fontsize=16,
@@ -1151,8 +1150,8 @@ class Likelihood(object):
                 out["extra_chi2"] = []
                 out["extra_prob"] = []
 
-            full_emu_p1d = np.concatenate(emu_p1d_use)
             if n_perturb > 0:
+                full_emu_p1d = np.concatenate(emu_p1d_use)
                 perturb = np.random.multivariate_normal(
                     full_emu_p1d, self.full_cov_Pk_kms, n_perturb
                 )

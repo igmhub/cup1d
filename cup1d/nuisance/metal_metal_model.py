@@ -31,27 +31,20 @@ class MetalModel(object):
         # label identifying the metal line
         self.metal_label = metal_label
         c_kms = 299792.458
-        if metal_label == "Lya_SiIII":
-            self.lambda_rest = [1206.51, 1215.67]
-        elif metal_label == "Lya_SiIIa":
-            self.lambda_rest = [1190.42, 1215.67]
-        elif metal_label == "Lya_SiIIb":
-            self.lambda_rest = [1193.28, 1215.67]
-        elif metal_label == "Lya_SiIIc":
-            self.lambda_rest = [1215.67, 1260.42]
-        elif metal_label == "SiIIa_SiIII":
-            # we should model this somewhere else
-            self.lambda_rest = [1190.42, 1206.51]
-        elif metal_label == "SiIIb_SiIII":
-            # we should model this somewhere else
-            self.lambda_rest = [1193.28, 1206.51]
-        elif metal_label == "SiIIc_SiIII":
-            # we should model this somewhere else
-            self.lambda_rest = [1206.51, 1260.42]
+        if metal_label == "SiIIa_SiIIb":
+            self.lambda_rest = [1190.42, 1193.28]
+            self.osc_strength = [0.277, 0.575]
+        elif metal_label == "CIVa_CIVb":
+            self.lambda_rest = [1548.20, 1550.78]
+            self.osc_strength = [0.190, 0.095]
+        elif metal_label == "MgIIa_MgIIb":
+            self.lambda_rest = [2795.53, 2802.70]
+            self.osc_strength = [0.608, 0.303]
         else:
             if lambda_rest is None:
                 raise ValueError("need to specify lambda_rest", metal_label)
         self.dv = np.log(self.lambda_rest[1] / self.lambda_rest[0]) * c_kms
+        self.ratio_f = np.min(self.osc_strength) / np.max(self.osc_strength)
 
         # power law pivot point
         self.z_X = z_X
@@ -314,14 +307,13 @@ class MetalModel(object):
                 return np.exp(ln_A_coeff)
 
     def get_contamination(self, z, k_kms, mF, like_params=[]):
-        """Multiplicative contamination at a given z and k (in s/km).
-        The mean flux (mF) is used scale it (see McDonald et al. 2006)"""
+        """Multiplicative contamination at a given z and k (in s/km)."""
 
         # Note that this represents "f" in McDonald et al. (2006)
         # It is later rescaled by <F> to compute "a" in eq. (15)
         f = self.get_amplitude(z, like_params=like_params)
         if f is None:
-            return 1
+            return 0
 
         # We damp the oscillations using a sigmoidal function
         # https://en.wikipedia.org/wiki/Generalised_logistic_function
@@ -329,23 +321,33 @@ class MetalModel(object):
         # The rapid the damping increases
         damping_growth = self.get_exp_damping(z, like_params=like_params)
         if damping_growth is None:
-            damping_growth = np.ones_like(mF)
+            damping_growth = np.zeros_like(z)
         else:
-            damping_growth = np.zeros_like(mF) + damping_growth
-
-        a = f / (1 - mF)
+            damping_growth = np.zeros_like(z) + damping_growth
 
         if len(z) == 1:
-            damping = 1 - 1 / (1 + np.exp(-damping_growth * k_kms[0]))
-            cont = 1 + a**2 + 2 * a * np.cos(self.dv * k_kms[0]) * damping
+            damping = np.exp(-1 * damping_growth**2 * k_kms[0] ** 2)
+            cont = (
+                f
+                * (
+                    1
+                    + self.ratio_f**2
+                    + 2 * self.ratio_f * np.cos(self.dv * k_kms[0])
+                )
+                * damping
+            )
         else:
             cont = []
             for iz in range(len(z)):
-                damping = 1 - 1 / (1 + np.exp(-damping_growth[iz] * k_kms[iz]))
+                damping = np.exp(-1 * damping_growth[iz] ** 2 * k_kms[iz] ** 2)
                 _cont = (
-                    1
-                    + a[iz] ** 2
-                    + 2 * a[iz] * np.cos(self.dv * k_kms[iz]) * damping
+                    f[iz]
+                    * (
+                        1
+                        + self.ratio_f**2
+                        + 2 * self.ratio_f * np.cos(self.dv * k_kms[iz])
+                    )
+                    * damping
                 )
                 cont.append(_cont)
 
@@ -382,7 +384,7 @@ class MetalModel(object):
             self.metal_label, ln_X_coeff=ln_X_coeff, ln_A_coeff=ln_A_coeff
         )
 
-        yrange = [1, 1]
+        yrange = [0, 0]
         fig1, ax1 = plt.subplots(figsize=(8, 6))
         if plot_panels:
             fig2, ax2 = plt.subplots(
@@ -416,7 +418,7 @@ class MetalModel(object):
             )
 
             if isinstance(cont, int):
-                cont = np.ones_like(k_use)
+                cont = np.zeros_like(k_use)
             else:
                 if smooth_k == False:
                     cont_data_res = func_rebin([z[ii]], [cont])[0]
@@ -437,22 +439,10 @@ class MetalModel(object):
             yrange[1] = max(yrange[1], np.max(cont))
 
             if dict_data is not None:
-                # cont_data_res = metal_model.get_contamination(
-                #     np.array([z[ii]]), [k_kms[ii]], mF[ii]
-                # )
-                # if isinstance(cont_data_res, int):
-                #     cont_data_res = np.ones_like(k_kms[ii])
-
-                yy = (
-                    dict_data["p1d_data"][indz]
-                    / dict_data["p1d_model"][indz]
-                    * cont_data_res
+                yy = dict_data["p1d_data"][indz] - (
+                    dict_data["p1d_model"][indz] - cont_data_res
                 )
-                err_yy = (
-                    dict_data["p1d_err"][indz]
-                    / dict_data["p1d_model"][indz]
-                    * cont_data_res
-                )
+                err_yy = dict_data["p1d_err"][indz]
                 ax1.errorbar(
                     dict_data["k_kms"][indz],
                     yy,
@@ -481,13 +471,13 @@ class MetalModel(object):
                         alpha=0.5,
                     )
 
-        ax1.axhline(1, color="k", linestyle=":")
+        ax1.axhline(0, color="k", linestyle=":")
         ax1.legend(ncol=4)
-        ax1.set_ylim(yrange[0] * 0.95, yrange[1] * 1.05)
+        # ax1.set_ylim(yrange[0] * 1.05, yrange[1] * 1.05)
         # ax1.set_xscale("log")
         ax1.set_xlabel(r"$k$ [1/Mpc]")
         ax1.set_ylabel(
-            r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,"
+            r"$P_\mathrm{1D}-P_\mathrm{1D}^\mathrm{no\,"
             + self.metal_label
             + "}$"
         )
@@ -497,7 +487,7 @@ class MetalModel(object):
             for ax in ax2:
                 ax.axhline(1, color="k", linestyle=":")
                 ax.legend()
-                ax.set_ylim(yrange[0] * 0.95, yrange[1] * 1.05)
+                # ax.set_ylim(yrange[0] * 1.05, yrange[1] * 1.05)
                 ax.set_xlabel(r"$k$ [1/Mpc]")
                 ax.set_ylabel(
                     r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,"

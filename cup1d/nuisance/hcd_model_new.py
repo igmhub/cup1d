@@ -11,11 +11,13 @@ class HCD_Model_new(object):
     def __init__(
         self,
         z_0=3.0,
-        fid_A_scale=[0, 5],
         fid_A_damp=[0, -9],
+        fid_A_scale=[0, 5],
+        fid_A_const=[0, 0],
         null_A_damp=-9.5,
         ln_A_damp_coeff=None,
         ln_A_scale_coeff=None,
+        ln_A_const_coeff=None,
         free_param_names=None,
         Gauss_priors=None,
     ):
@@ -23,28 +25,40 @@ class HCD_Model_new(object):
         self.Gauss_priors = Gauss_priors
         self.null_A_damp = null_A_damp
 
-        if (ln_A_damp_coeff is not None) and (ln_A_scale_coeff is not None):
+        if (
+            (ln_A_damp_coeff is not None)
+            and (ln_A_scale_coeff is not None)
+            and (ln_A_const_coeff is not None)
+        ):
             if free_param_names is not None:
                 raise ValueError("can not specify coeff and free_param_names")
             self.ln_A_damp_coeff = ln_A_damp_coeff
             self.ln_A_scale_coeff = ln_A_scale_coeff
+            self.ln_A_const_coeff = ln_A_const_coeff
         else:
             if free_param_names:
                 # figure out number of HCD free params
                 n_A_damp = len(
-                    [p for p in free_param_names if "ln_A_damp_" in p]
+                    [p for p in free_param_names if "ln_A_damp1_" in p]
                 )
                 if n_A_damp == 0:
                     n_A_damp = 1
 
                 n_A_scale = len(
-                    [p for p in free_param_names if "ln_A_scale_" in p]
+                    [p for p in free_param_names if "ln_A_scale1_" in p]
                 )
                 if n_A_scale == 0:
                     n_A_scale = 1
+
+                n_A_const = len(
+                    [p for p in free_param_names if "ln_A_const_" in p]
+                )
+                if n_A_const == 0:
+                    n_A_const = 1
             else:
                 n_A_damp = 1
                 n_A_scale = 1
+                n_A_const = 1
 
             self.ln_A_damp_coeff = [0.0] * n_A_damp
             self.ln_A_damp_coeff[-1] = fid_A_damp[-1]
@@ -56,8 +70,14 @@ class HCD_Model_new(object):
             if n_A_scale == 2:
                 self.ln_A_scale_coeff[-2] = fid_A_scale[-2]
 
+            self.ln_A_const_coeff = [0.0] * n_A_const
+            self.ln_A_const_coeff[-1] = fid_A_const[-1]
+            if n_A_const == 2:
+                self.ln_A_const_coeff[-2] = fid_A_const[-2]
+
         self.set_A_damp_parameters()
         self.set_A_scale_parameters()
+        self.set_A_const_parameters()
 
     def set_A_damp_parameters(self):
         """Setup likelihood parameters in the HCD model"""
@@ -65,12 +85,12 @@ class HCD_Model_new(object):
         self.A_damp_params = []
         Npar = len(self.ln_A_damp_coeff)
         for i in range(Npar):
-            name = "ln_A_damp_" + str(i)
+            name = "ln_A_damp1_" + str(i)
             if i == 0:
                 # no contamination
                 xmin = -10
                 # 0 gives 350% contamination low k
-                xmax = -1
+                xmax = -0.5
             else:
                 xmin = -0.5
                 xmax = 0.5
@@ -98,7 +118,7 @@ class HCD_Model_new(object):
         self.A_scale_params = []
         Npar = len(self.ln_A_scale_coeff)
         for i in range(Npar):
-            name = "ln_A_scale_" + str(i)
+            name = "ln_A_scale1_" + str(i)
             if i == 0:
                 xmin = 4
                 xmax = 6.5
@@ -123,10 +143,48 @@ class HCD_Model_new(object):
 
         return
 
+    def set_A_const_parameters(self):
+        """Setup likelihood parameters in the HCD model"""
+        self.A_const_params = []
+        Npar = len(self.ln_A_const_coeff)
+        for i in range(Npar):
+            name = "ln_A_const_" + str(i)
+            if i == 0:
+                xmin = -0.05
+                xmax = 1e-6
+            else:
+                xmin = -1
+                xmax = 1
+            # note non-trivial order in coefficients
+            Gwidth = None
+            if self.Gauss_priors is not None:
+                if name in self.Gauss_priors:
+                    Gwidth = self.Gauss_priors[name][-(i + 1)]
+
+            value = self.ln_A_const_coeff[Npar - i - 1]
+            par = likelihood_parameter.LikelihoodParameter(
+                name=name,
+                value=value,
+                min_value=xmin,
+                max_value=xmax,
+                Gauss_priors_width=Gwidth,
+            )
+            self.A_const_params.append(par)
+
+        return
+
     def get_Nparam(self):
         """Number of parameters in the model"""
-        all_par = len(self.ln_A_damp_coeff) + len(self.ln_A_scale_coeff)
-        all_par2 = len(self.A_damp_params) + len(self.A_scale_params)
+        all_par = (
+            len(self.ln_A_damp_coeff)
+            + len(self.ln_A_scale_coeff)
+            + len(self.ln_A_damp_coeff)
+        )
+        all_par2 = (
+            len(self.A_damp_params)
+            + len(self.A_scale_params)
+            + len(self.A_const_params)
+        )
         if all_par != all_par2:
             raise ValueError("parameter size mismatch")
         return all_par
@@ -153,6 +211,16 @@ class HCD_Model_new(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
+    def get_A_const(self, z, like_params=[]):
+        """Amplitude of HCD contamination around z_0"""
+
+        ln_A_const_coeff = self.get_A_const_coeffs(like_params=like_params)
+
+        xz = np.log((1 + z) / (1 + self.z_0))
+        ln_poly = np.poly1d(ln_A_const_coeff)
+        ln_out = ln_poly(xz)
+        return ln_out
+
     def get_A_damp_parameters(self):
         """Return likelihood parameters for the HCD model"""
         return self.A_damp_params
@@ -160,6 +228,10 @@ class HCD_Model_new(object):
     def get_A_scale_parameters(self):
         """Return likelihood parameters for the HCD model"""
         return self.A_scale_params
+
+    def get_A_const_parameters(self):
+        """Return likelihood parameters for the HCD model"""
+        return self.A_const_params
 
     def get_A_damp_coeffs(self, like_params=[]):
         """Return list of mean flux coefficients"""
@@ -170,7 +242,7 @@ class HCD_Model_new(object):
             array_names = []
             array_values = []
             for par in like_params:
-                if "ln_A_damp" in par.name:
+                if "ln_A_damp1" in par.name:
                     Npar += 1
                     array_names.append(par.name)
                     array_values.append(par.value)
@@ -211,7 +283,7 @@ class HCD_Model_new(object):
             array_names = []
             array_values = []
             for par in like_params:
-                if "ln_A_scale" in par.name:
+                if "ln_A_scale1" in par.name:
                     Npar += 1
                     array_names.append(par.name)
                     array_values.append(par.value)
@@ -243,20 +315,64 @@ class HCD_Model_new(object):
 
         return ln_A_scale_coeff
 
+    def get_A_const_coeffs(self, like_params=[]):
+        """Return list of mean flux coefficients"""
+
+        if like_params:
+            ln_A_const_coeff = self.ln_A_const_coeff.copy()
+            Npar = 0
+            array_names = []
+            array_values = []
+            for par in like_params:
+                if "ln_A_const" in par.name:
+                    Npar += 1
+                    array_names.append(par.name)
+                    array_values.append(par.value)
+            array_names = np.array(array_names)
+            array_values = np.array(array_values)
+
+            # use fiducial value (no contamination)
+            if Npar == 0:
+                return self.ln_A_const_coeff
+            elif Npar != len(self.A_const_params):
+                print(Npar, len(self.A_const_params))
+                raise ValueError(
+                    "number of params mismatch in get_A_const_coeffs"
+                )
+
+            for ip in range(Npar):
+                _ = np.argwhere(self.A_const_params[ip].name == array_names)[
+                    :, 0
+                ]
+                if len(_) != 1:
+                    raise ValueError(
+                        "could not update parameter"
+                        + self.A_const_params[ip].name
+                    )
+                else:
+                    ln_A_const_coeff[Npar - ip - 1] = array_values[_[0]]
+        else:
+            ln_A_const_coeff = self.ln_A_const_coeff
+
+        return ln_A_const_coeff
+
     def get_contamination(self, z, k_kms, like_params=[]):
         """Multiplicative contamination caused by HCDs"""
         A_damp = self.get_A_damp(z, like_params=like_params)
         if A_damp is None:
             return 1
         A_scale = self.get_A_scale(z, like_params=like_params)
+        A_const = self.get_A_const(z, like_params=like_params)
 
         if len(z) == 1:
-            dla_corr = 1 + A_damp / np.exp(k_kms[0] * A_scale)
+            dla_corr = 1 + A_const + A_damp / np.exp(k_kms[0] * A_scale)
         else:
             dla_corr = []
             for iz in range(len(z)):
                 dla_corr.append(
-                    1 + A_damp[iz] / np.exp(k_kms[iz] * A_scale[iz])
+                    1
+                    + A_const[iz]
+                    + A_damp[iz] / np.exp(k_kms[iz] * A_scale[iz])
                 )
 
         return dla_corr
@@ -267,6 +383,7 @@ class HCD_Model_new(object):
         k_kms,
         ln_A_damp_coeff=None,
         ln_A_scale_coeff=None,
+        ln_A_const_coeff=None,
         plot_every_iz=1,
         cmap=None,
         smooth_k=False,
@@ -281,12 +398,16 @@ class HCD_Model_new(object):
             ln_A_damp_coeff = self.ln_A_damp_coeff
         if ln_A_scale_coeff is None:
             ln_A_scale_coeff = self.ln_A_scale_coeff
+        if ln_A_const_coeff is None:
+            ln_A_const_coeff = self.ln_A_const_coeff
 
         if cmap is None:
             cmap = get_discrete_cmap(len(z))
 
         hcd_model = HCD_Model_new(
-            ln_A_damp_coeff=ln_A_damp_coeff, ln_A_scale_coeff=ln_A_scale_coeff
+            ln_A_damp_coeff=ln_A_damp_coeff,
+            ln_A_scale_coeff=ln_A_scale_coeff,
+            ln_A_const_coeff=ln_A_const_coeff,
         )
 
         yrange = [1, 1]

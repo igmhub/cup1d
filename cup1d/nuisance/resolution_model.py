@@ -6,7 +6,7 @@ from cup1d.likelihood import likelihood_parameter
 
 
 def get_Rz(z, k_kms):
-    # fig 32 https://arxiv.org/pdf/2205.10939
+    # fig 32 https://arxiv.org/abs/2205.10939
     # lambda_AA = np.arange([3523.626, 3993.217, 4413.652, 4752.203, 5019.740, 5243.594, 5522.035, 5767.681, 5996.975, 6226.294, 6471.940, 6783.036])
     # resolution = np.array([2012.821, 2272.247, 2513.575, 2694.570, 2857.466, 2996.229, 3177.225, 3364.253, 3521.116, 3659.879, 3846.908, 4124.434])
     # rfit = np.polyfit(lambda_AA, resolution, 2)
@@ -69,8 +69,8 @@ class Resolution_Model(object):
             name = "R_coeff_" + str(i)
             if i == 0:
                 # 1.5% Gaussian prior, allow for 3 sigma
-                xmin = -4.5
-                xmax = +4.5
+                xmin = -1
+                xmax = +1
             else:
                 # not optimized
                 xmin = -10

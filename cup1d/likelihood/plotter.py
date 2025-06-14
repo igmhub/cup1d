@@ -685,6 +685,7 @@ class Plotter(object):
         z_use,
         usetex=True,
         delta_lnprob_cut=None,
+        only_plot=None,
         extra_nburn=0,
     ):
         """Make corner plot in corner"""
@@ -696,6 +697,14 @@ class Plotter(object):
         # only plot parameters that vary
         diff = np.max(params_plot, axis=0) - np.min(params_plot, axis=0)
         yesplot = np.array(strings_plot)[diff != 0]
+        if only_plot is not None:
+            yesplot_new = []
+            for par in only_plot:
+                if par in yesplot:
+                    yesplot_new.append(par)
+            yesplot = yesplot_new
+
+        yesplot_orig = yesplot.copy()
 
         # convert units
         igm_params = {
@@ -714,6 +723,7 @@ class Plotter(object):
         truth = np.zeros((len(yesplot)))
         MLE = np.zeros((len(yesplot)))
         chain = np.zeros((params_plot.shape[0], len(yesplot)))
+
         for ii, par in enumerate(yesplot):
             _ = np.argwhere(np.array(strings_plot) == par)[0, 0]
             chain[:, ii] = params_plot[:, _]
@@ -741,6 +751,8 @@ class Plotter(object):
                 truth[ii] *= 1e9
                 MLE[ii] *= 1e9
                 yesplot[ii] = r"$A_s\times10^9$"
+        for ii in range(2):
+            print("b", chain[:, ii].min(), chain[:, ii].max())
 
         fig = corner(
             chain,
@@ -754,6 +766,50 @@ class Plotter(object):
             plot_density=False,
         )
 
+        # plot priors
+        if self.fitter.chain_priors is not None:
+            nelem_priors = (
+                self.fitter.chain_priors[:, :, 0].reshape(-1)
+            ).shape[0]
+            chain_priors = np.zeros((nelem_priors, len(yesplot)))
+            for ii, par in enumerate(yesplot_orig):
+                try:
+                    _ = np.argwhere(
+                        np.array(self.fitter.chain_priors_names) == par
+                    )[0, 0]
+                except:
+                    print("not found parameter", par)
+                    continue
+
+                pars = self.fitter.chain_priors[:, :, _].reshape(-1)
+                chain_priors[:, ii] = self.fitter.like.free_params[
+                    ii
+                ].value_from_cube(pars)
+
+                par_notex = self.fitter.param_dict_rev[par]
+                for pp in igm_params:
+                    if pp in par_notex:
+                        for jj in range(chain_priors.shape[0]):
+                            chain_priors[jj, ii] = igm_params[pp](
+                                z_use, over_coeff=chain_priors[jj, ii]
+                            )
+
+            for ii in range(2):
+                print("d", chain_priors[:, ii].min(), chain_priors[:, ii].max())
+
+            corner(
+                chain_priors,
+                weights=np.ones((chain_priors.shape[0])) * 1e-10,
+                fig=fig,
+                levels=(0.9999,),
+                plot_datapoints=False,
+                plot_density=False,
+                fill_contours=True,
+                hist_kwargs={"linestyle": "--"},
+                contourf_kwargs={"colors": ["black", "white"], "alpha": 0.5},
+                contour_kwargs={"alpha": 0.5, "linestyles": ["--"]},
+            )
+
         # add truth and MLE
         value1 = truth.copy()
         value2 = MLE.copy()
@@ -766,7 +822,8 @@ class Plotter(object):
             ax.axvline(value2[i], color="C2", label="MAP", linestyle=":")
 
             # Set up x limits
-            xlim = np.array(ax.get_xlim())
+            # xlim = np.array(ax.get_xlim())
+            xlim = np.array([chain[:, i].min(), chain[:, i].max()])
             if self.fitter.truth is not None:
                 val_min = np.nanmin([value1[i], value2[i]])
                 val_max = np.nanmax([value1[i], value2[i]])
@@ -783,28 +840,29 @@ class Plotter(object):
         axes[0, 0].legend(loc="upper left")
 
         ## show flat priors for all parameters
-        for xi in range(ndim):
-            for par in self.fitter.like.free_params:
-                if self.fitter.param_dict[par.name] == yesplot[xi]:
-                    for yi in range(xi, ndim):
-                        axes[yi, xi].axvline(
-                            par.min_value, color="r", linestyle="-"
-                        )
-                        axes[yi, xi].axvline(
-                            par.max_value, color="r", linestyle="-"
-                        )
-                    break
-        for yi in range(ndim):
-            for par in self.fitter.like.free_params:
-                if self.fitter.param_dict[par.name] == yesplot[yi]:
-                    for xi in range(yi):
-                        axes[yi, xi].axhline(
-                            par.min_value, color="r", linestyle="-"
-                        )
-                        axes[yi, xi].axhline(
-                            par.max_value, color="r", linestyle="-"
-                        )
-                    break
+        if self.fitter.chain_priors is None:
+            for xi in range(ndim):
+                for par in self.fitter.like.free_params:
+                    if self.fitter.param_dict[par.name] == yesplot[xi]:
+                        for yi in range(xi, ndim):
+                            axes[yi, xi].axvline(
+                                par.min_value, color="r", linestyle="-"
+                            )
+                            axes[yi, xi].axvline(
+                                par.max_value, color="r", linestyle="-"
+                            )
+                        break
+            for yi in range(ndim):
+                for par in self.fitter.like.free_params:
+                    if self.fitter.param_dict[par.name] == yesplot[yi]:
+                        for xi in range(yi):
+                            axes[yi, xi].axhline(
+                                par.min_value, color="r", linestyle="-"
+                            )
+                            axes[yi, xi].axhline(
+                                par.max_value, color="r", linestyle="-"
+                            )
+                        break
 
         # Loop over the histograms
         for yi in range(ndim):
@@ -821,7 +879,8 @@ class Plotter(object):
                 ax.plot(value2[xi], value2[yi], ".C2", linestyle=":")
 
                 # Set up x and y limits
-                xlim = np.array(ax.get_xlim())
+                # xlim = np.array(ax.get_xlim())
+                xlim = np.array([chain[:, xi].min(), chain[:, xi].max()])
                 if self.fitter.truth is not None:
                     val_min = np.min([value1[xi], value2[xi]])
                     val_max = np.max([value1[xi], value2[xi]])
@@ -835,7 +894,8 @@ class Plotter(object):
                 xdiff = xlim[1] - xlim[0]
                 ax.set_xlim(xlim[0] - 0.05 * xdiff, xlim[1] + 0.05 * xdiff)
 
-                ylim = np.array(ax.get_ylim())
+                # ylim = np.array(ax.get_ylim())
+                ylim = np.array([chain[:, yi].min(), chain[:, yi].max()])
                 if self.fitter.truth is not None:
                     val_min = np.min([value1[yi], value2[yi]])
                     val_max = np.max([value1[yi], value2[yi]])
@@ -1220,23 +1280,13 @@ class Plotter(object):
             metal = metal_models[model_name].metal_label
 
             x_list_params = {}
-            d_list_params = {}
-            l_list_params = {}
             a_list_params = {}
             for p in self.fitter.like.free_params:
                 if "ln_x_" + metal + "_" in p.name:
                     key = self.fitter.param_dict[p.name]
                     x_list_params[p.name] = self.fitter.mle[key]
                     print(p.name, self.fitter.mle[key])
-                if "ln_d_" + metal + "_" in p.name:
-                    key = self.fitter.param_dict[p.name]
-                    d_list_params[p.name] = self.fitter.mle[key]
-                    print(p.name, self.fitter.mle[key])
-                if "ln_l_" + metal + "_" in p.name:
-                    key = self.fitter.param_dict[p.name]
-                    l_list_params[p.name] = self.fitter.mle[key]
-                    print(p.name, self.fitter.mle[key])
-                if "a_" + metal + "_" in p.name:
+                if "ln_a_" + metal + "_" in p.name:
                     key = self.fitter.param_dict[p.name]
                     a_list_params[p.name] = self.fitter.mle[key]
                     print(p.name, self.fitter.mle[key])
@@ -1248,41 +1298,18 @@ class Plotter(object):
                 # note non-trivial order in coefficients
                 ln_X_coeff[x_Npar - ii - 1] = x_list_params[name]
 
-            d_Npar = len(d_list_params)
-            ln_D_coeff = np.zeros(d_Npar)
-            for ii in range(d_Npar):
-                name = "ln_d_" + metal + "_" + str(ii)
-                # note non-trivial order in coefficients
-                ln_D_coeff[d_Npar - ii - 1] = d_list_params[name]
-
-            l_Npar = len(l_list_params)
-            ln_L_coeff = np.zeros(l_Npar)
-            for ii in range(l_Npar):
-                name = "ln_l_" + metal + "_" + str(ii)
-                # note non-trivial order in coefficients
-                ln_L_coeff[l_Npar - ii - 1] = l_list_params[name]
-
             a_Npar = len(a_list_params)
             A_coeff = np.zeros(a_Npar)
             for ii in range(a_Npar):
-                name = "a_" + metal + "_" + str(ii)
+                name = "ln_a_" + metal + "_" + str(ii)
                 # note non-trivial order in coefficients
                 A_coeff[a_Npar - ii - 1] = a_list_params[name]
 
-            if (
-                (x_Npar == 0)
-                and (d_Npar == 0)
-                and (l_Npar == 0)
-                and (a_Npar == 0)
-            ):
+            if (x_Npar == 0) and (a_Npar == 0):
                 continue
 
             if x_Npar == 0:
                 ln_X_coeff = None
-            if d_Npar == 0:
-                ln_D_coeff = None
-            if l_Npar == 0:
-                ln_N_coeff = None
             if a_Npar == 0:
                 A_coeff = None
 
@@ -1293,12 +1320,10 @@ class Plotter(object):
 
             metal_models[model_name].plot_contamination(
                 self.fitter.like.data.z,
-                self.fitter.like.data.k_kms,
+                self.fitter.like.rebin["k_kms"],
                 mF,
                 ln_X_coeff=ln_X_coeff,
-                D_coeff=ln_D_coeff,
-                L_coeff=ln_L_coeff,
-                A_coeff=A_coeff,
+                ln_A_coeff=A_coeff,
                 plot_every_iz=plot_every_iz,
                 cmap=self.cmap,
                 smooth_k=smooth_k,
@@ -1306,6 +1331,7 @@ class Plotter(object):
                 zrange=zrange,
                 name=name,
                 plot_panels=plot_panels,
+                func_rebin=self.fitter.like.rebinning,
             )
 
     def plot_agn_cont(
@@ -1444,7 +1470,7 @@ class Plotter(object):
     def plot_illustrate_contaminants(
         self, values, zmask, fontsize=18, lines_use=None
     ):
-        all_contaminants = np.array(lines_use + ["DLA", "res", ""])
+        all_contaminants = np.array(lines_use + ["DLA", "res", "none"])
 
         # cont2label = {
         #     "Lya_SiIII": "+ Lya-SiIII(1206)",
@@ -1458,13 +1484,18 @@ class Plotter(object):
         cont2label = {
             "Lya_SiIII": r"Ly$\alpha$-SiIII",
             "DLA": "HCDs",
-            "Lya_SiIIa": r"Ly$\alpha$-SiIIa",
-            "Lya_SiIIb": r"Ly$\alpha$-SiIIb",
+            "Lya_SiIIa": r"Ly$\alpha$-SiII(1190)",
+            "Lya_SiIIb": r"Ly$\alpha$-SiII(1193)",
+            "Lya_SiIIc": r"Ly$\alpha$-SiII(1260)",
             "res": "resolution",
             "SiIIa_SiIIb": "SiII(1190)-SiII(1193)",
             "SiIIa_SiIII": "SiII(1190)-SiIII",
             "SiIIb_SiIII": "SiII(1193)-SiIII",
+            "SiIIc_SiIII": "SiII(1260)-SiIII",
+            "CIVa_CIVb": "CIV(1548)-CIV(1550)",
+            "MgIIa_MgIIb": "MgII(2796)-MgII(2803)",
         }
+        lab2cont = {v: k for k, v in cont2label.items()}
 
         _data_z = []
         _data_k_kms = []
@@ -1488,21 +1519,31 @@ class Plotter(object):
         # compute which contaminants produce greatest change in chi2
 
         chi2_each = np.zeros(len(all_contaminants))
+        dict_cont_each = {}
         for icont, conts in enumerate(all_contaminants):
             _values = values.copy()
-            if "DLA" in conts:
+            if "DLA" not in conts:
                 ind = np.argwhere(
-                    np.array(self.fitter.like.free_param_names) == "ln_A_damp_0"
+                    np.array(self.fitter.like.free_param_names)
+                    == "ln_A_damp1_0"
                 )[0, 0]
                 _values[ind] = 0
-            if "res" in conts:
+                try:
+                    ind = np.argwhere(
+                        np.array(self.fitter.like.free_param_names)
+                        == "ln_A_const_0"
+                    )[0, 0]
+                    _values[ind] = 1
+                except:
+                    pass
+            if "res" not in conts:
                 ind = np.argwhere(
                     np.array(self.fitter.like.free_param_names) == "R_coeff_0"
                 )[0, 0]
                 _values[ind] = 0.5
 
-            for line in self.fitter.like.theory.model_cont.metal_lines:
-                if (line in conts) & (
+            for line in self.fitter.like.args["metal_lines"]:
+                if (line not in conts) & (
                     "ln_x_" + line + "_0" in self.fitter.like.free_param_names
                 ):
                     ind = np.argwhere(
@@ -1517,14 +1558,16 @@ class Plotter(object):
             else:
                 _res = _res[0]
             diff = _data_Pk_kms[0] - _res
+
+            dict_cont_each[conts] = _res
             chi2_each[icont] = np.dot(np.dot(_data_icov_kms[0], diff), diff)
 
-        ind = np.argsort(chi2_each[:-1] - chi2_each[-1])[::-1]
+        ind = np.argsort(chi2_each[-1] - chi2_each[:-1])[::-1]
 
         remove_contaminants = []
         labels = []
         remove_contaminants.append(list(all_contaminants[:-1]))
-        labels.append("base")
+        labels.append("IGM")
         for ii in range(len(ind)):
             _remove = []
             labels.append(cont2label[all_contaminants[ind[ii]]])
@@ -1544,16 +1587,25 @@ class Plotter(object):
             _values = values.copy()
             if "DLA" in conts:
                 ind = np.argwhere(
-                    np.array(self.fitter.like.free_param_names) == "ln_A_damp_0"
+                    np.array(self.fitter.like.free_param_names)
+                    == "ln_A_damp1_0"
                 )[0, 0]
                 _values[ind] = 0
+                try:
+                    ind = np.argwhere(
+                        np.array(self.fitter.like.free_param_names)
+                        == "ln_A_const_0"
+                    )[0, 0]
+                    _values[ind] = 1
+                except:
+                    pass
             if "res" in conts:
                 ind = np.argwhere(
                     np.array(self.fitter.like.free_param_names) == "R_coeff_0"
                 )[0, 0]
                 _values[ind] = 0.5
 
-            for line in self.fitter.like.theory.model_cont.metal_lines:
+            for line in self.fitter.like.args["metal_lines"]:
                 if (line in conts) & (
                     "ln_x_" + line + "_0" in self.fitter.like.free_param_names
                 ):
@@ -1588,20 +1640,21 @@ class Plotter(object):
             if ii == 0:
                 lab = labels[ii]
             else:
-                lab = "... + " + labels[ii]
+                lab = "(... + " + labels[ii] + ")"
             ax[ii].errorbar(
                 _data_k_kms[0],
-                _data_Pk_kms[0] / emu_p1d[ii] - 1,
-                _data_ePk_kms[0] / emu_p1d[ii],
+                _data_Pk_kms[0] - emu_p1d[ii],
+                _data_ePk_kms[0],
                 color="C0",
                 ls=":",
                 marker=".",
-                label=lab,
+                label="Data - " + lab,
             )
             if ii != len(emu_p1d) - 1:
                 ax[ii].plot(
                     _data_k_kms[0],
-                    emu_p1d[ii + 1] / emu_p1d[ii] - 1,
+                    dict_cont_each[lab2cont[labels[ii + 1]]]
+                    - dict_cont_each["none"],
                     "C1-",
                     label=labels[ii + 1],
                 )
@@ -1637,7 +1690,7 @@ class Plotter(object):
                 loc="upper right",
                 fontsize=fontsize - 4,
             )
-            # ax[ii].legend(loc="upper right", fontsize=fontsize - 2)
+            ax[ii].legend(loc="upper right", fontsize=fontsize - 2)
         ax[-2].set_xlabel(r"$k_\parallel$ [s/km]", fontsize=fontsize)
         ax[-1].set_xlabel(r"$k_\parallel$ [s/km]", fontsize=fontsize)
         # fig.suptitle(r"$z=$" + str(zmask[0]), fontsize=fontsize + 2)
@@ -1646,7 +1699,7 @@ class Plotter(object):
 
         fig.supylabel(
             # r"$P_{\rm 1D}/P_{\rm 1D}^{\rm model}-1$",
-            r"Residuals",
+            r"Difference",
             x=0.01,
             fontsize=fontsize + 2,
         )

@@ -320,21 +320,6 @@ def parse_args():
     return args
 
 
-# from dataclasses import dataclass, field
-# from typing import List
-
-# @dataclass
-# class Parameter:
-#     name: str = field(default="hello", metadata={"possible_values": ["hello", "world", "parameter"]})
-
-#     def is_valid(self) -> bool:
-#         """
-#         Check if the current value of `name` is within the allowed possible values.
-#         """
-#         possible_values = self.__dataclass_fields__["name"].metadata["possible_values"]
-#         return self.name in possible_values
-
-
 @dataclass
 class Args:
     """
@@ -352,54 +337,17 @@ class Args:
     data_label_hires: str | None = None
     z_min: float = 0
     z_max: float = 10
-    fid_label_mF: str = "mpg_central"
-    fid_label_T: str = "mpg_central"
-    fid_label_kF: str = "mpg_central"
-    true_label_mF: str = "mpg_central"
-    true_label_T: str = "mpg_central"
-    true_label_kF: str = "mpg_central"
-    n_tau: int = 2
-    n_sigT: int = 2
-    n_gamma: int = 2
-    n_kF: int = 2
-    n_d_dla: int = 0
-    n_s_dla: int = 0
-    n_sn: int = 0
-    n_agn: int = 0
-    n_res: int = 0
     ic_correction: bool = False
-    igm_priors: str = "hc"
     fid_cosmo_label: str = "mpg_central"
     true_cosmo_label: str | None = None
-    fid_val_mF: list[float] = field(default_factory=lambda: [0, 0])
-    true_val_mF: list[float] = field(default_factory=lambda: [0, 0])
-    fid_val_sigT: list[float] = field(default_factory=lambda: [0, 0])
-    true_val_sigT: list[float] = field(default_factory=lambda: [0, 0])
-    fid_val_gamma: list[float] = field(default_factory=lambda: [0, 0])
-    true_val_gamma: list[float] = field(default_factory=lambda: [0, 0])
-    fid_val_kF: list[float] = field(default_factory=lambda: [0, 0])
-    true_val_kF: list[float] = field(default_factory=lambda: [0, 0])
-    fid_A_damp: list[float] = field(default_factory=lambda: [0, -9])
-    true_A_damp: list[float] = field(default_factory=lambda: [0, -9])
-    fid_A_scale: list[float] = field(default_factory=lambda: [0, 5])
-    true_A_scale: list[float] = field(default_factory=lambda: [0, 5])
-    fid_SN: list[float] = field(default_factory=lambda: [0, -4])
-    true_SN: list[float] = field(default_factory=lambda: [0, -4])
-    fid_AGN: list[float] = field(default_factory=lambda: [0, -5])
-    true_AGN: list[float] = field(default_factory=lambda: [0, -5])
-    fid_R_coeff: list[float] = field(default_factory=lambda: [0, 0])
-    true_R_coeff: list[float] = field(default_factory=lambda: [0, 0])
+    fix_cosmo: bool = False
     drop_sim: bool = False
     apply_smoothing: bool = False
     cov_label: str = "Chabanier2019"
     cov_label_hires: str = "Karacayli2022"
-    hcd_model_type: str = "new"
-    mF_model_type: str = "pivot"
-    resolution_model_type: str = "pivot"
     use_star_priors: Optional[dict] = None
     add_noise: bool = False
     seed_noise: int = 0
-    fix_cosmo: bool = False
     vary_alphas: bool = False
     prior_Gauss_rms: float | None = None
     emu_cov_factor: int | None = 1
@@ -413,38 +361,87 @@ class Args:
     n_steps: int = 0
     z_star: float = 3
     kp_kms: float = 0.009
-    fid_metals: dict = field(default_factory=lambda: {})
-    true_metals: dict = field(default_factory=lambda: {})
-    n_metals: dict = field(default_factory=lambda: {})
+    fid_igm: dict = field(default_factory=lambda: {})
+    true_igm: dict = field(default_factory=lambda: {})
+    fid_cont: dict = field(default_factory=lambda: {})
+    true_cont: dict = field(default_factory=lambda: {})
+    fid_syst: dict = field(default_factory=lambda: {})
+    true_syst: dict = field(default_factory=lambda: {})
     Gauss_priors: dict | None = None
     metal_lines: list[str] = field(
         default_factory=lambda: [
             "Lya_SiIII",
             "Lya_SiIIa",
             "Lya_SiIIb",
+            "Lya_SiIIc",
             "SiIIa_SiIIb",
             "SiIIa_SiIII",
             "SiIIb_SiIII",
+            "SiIIc_SiIII",
+            "CIVa_CIVb",
+            "MgIIa_MgIIb",
         ]
     )
 
     def __post_init__(self):
-        for metal_line in self.metal_lines:
-            # setting fiducial and true values of parameters for each metal line
-            self.fid_metals[metal_line + "_X"] = [0, -10.5]
-            self.true_metals[metal_line + "_X"] = [0, -10.5]
-            self.fid_metals[metal_line + "_D"] = [0, 5]
-            self.true_metals[metal_line + "_D"] = [0, 5]
-            self.fid_metals[metal_line + "_L"] = [0, 0]
-            self.true_metals[metal_line + "_L"] = [0, 0]
-            self.fid_metals[metal_line + "_A"] = [0, 0]
-            self.true_metals[metal_line + "_A"] = [0, 0]
+        # Setting up fiducial and true values of IGM parameters
+        igms = [self.fid_igm, self.true_igm]
+        for ii in range(2):
+            igms[ii]["priors"] = "hc"
+            igms[ii]["label_mF"] = "mpg_central"
+            igms[ii]["mF_model_type"] = "pivot"
+            igms[ii]["n_tau"] = 2
+            igms[ii]["mF"] = [0, 0]
 
-            # setting number of X, D, L, A parameters for each metal line
-            self.n_metals["n_x_" + metal_line] = 0
-            self.n_metals["n_d_" + metal_line] = 0
-            self.n_metals["n_l_" + metal_line] = 0
-            self.n_metals["n_a_" + metal_line] = 0
+            igms[ii]["label_T"] = "mpg_central"
+            igms[ii]["n_sigT"] = 1
+            igms[ii]["sigT"] = [0, 0]
+            igms[ii]["n_gamma"] = 2
+            igms[ii]["gamma"] = [0, 0]
+
+            igms[ii]["label_kF"] = "mpg_central"
+            igms[ii]["n_kF"] = 1
+            igms[ii]["kF"] = [0, 0]
+
+        # Setting up fiducial and true values of nuisance parameters
+        conts = [self.fid_cont, self.true_cont]
+        for ii in range(2):
+            # each metal line
+            for metal_line in self.metal_lines:
+                conts[ii][metal_line + "_X"] = [0, -10.5]
+                conts[ii][metal_line + "_A"] = [0, 0]
+                conts[ii]["n_x_" + metal_line] = 0
+                conts[ii]["n_a_" + metal_line] = 0
+
+            # same for dlas
+            conts[ii]["hcd_model_type"] = "new"
+            conts[ii]["n_d_dla1"] = 0
+            conts[ii]["A_damp1"] = [0, 0]
+
+            conts[ii]["n_s_dla1"] = 0
+            conts[ii]["A_scale1"] = [0, 0]
+
+            conts[ii]["n_d_dla2"] = 0
+            conts[ii]["A_damp2"] = [0, 0]
+
+            conts[ii]["n_s_dla2"] = 0
+            conts[ii]["A_scale2"] = [0, 0]
+
+            conts[ii]["n_c_dla"] = 0
+            conts[ii]["A_const"] = [0, 0]
+            # and others
+            conts[ii]["n_sn"] = 0
+            conts[ii]["SN"] = [0, -4]
+
+            conts[ii]["n_agn"] = 0
+            conts[ii]["AGN"] = [0, -5.5]
+
+        # Setting up fiducial and true values of systematic parameters
+        systs = [self.fid_syst, self.true_syst]
+        for ii in range(2):
+            systs[ii]["res_model_type"] = "pivot"
+            systs[ii]["n_res"] = 0
+            systs[ii]["R_coeff"] = [0, 0]
 
     def check_emulator_label(self):
         avail_emulator_label = [
@@ -472,123 +469,163 @@ class Args:
                 "emulator_label " + self.emulator_label + " not implemented"
             )
 
-    def set_baseline(self):
+    def set_baseline(self, fix_cosmo=True, fit_type="at_a_time"):
+        priors = {
+            "f_Lya_SiIII": -3.5,
+            "a_Lya_SiIII": 5.0,
+            "f_Lya_SiIIa": -9.5,
+            "a_Lya_SiIIa": -9,
+            "f_Lya_SiIIb": -3.5,
+            "a_Lya_SiIIb": 6.0,
+            "f_Lya_SiIIc": -3.5,
+            "a_Lya_SiIIc": -9,
+            "f_SiIIa_SiIIb": -4.0,
+            "a_SiIIa_SiIIb": -9,
+            "f_SiIIa_SiIII": -6.0,
+            "a_SiIIa_SiIII": -9,
+            "f_SiIIb_SiIII": -6.0,
+            "a_SiIIb_SiIII": -9,
+            "f_SiIIc_SiIII": -6.0,
+            "a_SiIIc_SiIII": -9,
+            "f_CIVa_CIVb": -5.0,
+            "a_CIVa_CIVb": -9,
+            "f_MgIIa_MgIIb": -9.5,
+            "a_MgIIa_MgIIb": -9,
+        }
+        self.Gauss_priors = {}
+
+        self.cov_factor = 1
+        self.cov_syst_type = "red"
         self.emu_cov_factor = 1
         self.emu_cov_type = "block"
+        self.prior_Gauss_rms = None
         self.rebin_k = 6
-        self.cov_factor = 1
-        self.fix_cosmo = True
+        if fix_cosmo:
+            self.fix_cosmo = True
+        else:
+            self.fix_cosmo = False
         self.vary_alphas = False
         self.ic_correction = False
         self.fid_cosmo_label = "Planck18"
+
         sim_fid = "mpg_central"
-        self.fid_label_mF = sim_fid
-        self.fid_label_T = sim_fid
-        self.fid_label_kF = sim_fid
+        self.fid_igm["label_mF"] = sim_fid
+        self.fid_igm["label_T"] = sim_fid
+        self.fid_igm["label_kF"] = sim_fid
+
+        self.fid_igm["mF_model_type"] = "pivot"
+        self.fid_cont["hcd_model_type"] = "new"
 
         # z at a time
-        self.mF_model_type = "pivot"
-        self.hcd_model_type = "new"
-        self.resolution_model_type = "pivot"
+        if fit_type == "at_a_time":
+            self.fid_syst["res_model_type"] = "pivot"
+            self.fid_syst["n_res"] = 1
+            self.fid_syst["R_coeff"] = [0, 0]
 
-        self.n_tau = 1
-        self.n_gamma = 1
-        self.n_sigT = 1
-        self.n_kF = 1
-        self.n_res = 1
+            self.fid_igm["n_tau"] = 1
+            self.fid_igm["n_gamma"] = 1
+            self.fid_igm["n_sigT"] = 1
+            self.fid_igm["n_kF"] = 1
 
-        lines_use = [
-            "Lya_SiIII",
-            "Lya_SiIIa",
-            "Lya_SiIIb",
-            "SiIIa_SiIIb",
-            "SiIIa_SiIII",
-            "SiIIb_SiIII",
-        ]
+            self.fid_cont["n_x_Lya_SiIII"] = 1
+            self.fid_cont["n_a_Lya_SiIII"] = 1
 
-        f_prior = {
-            "Lya_SiIII": -4.5,
-            "Lya_SiIIa": -9.5,
-            "Lya_SiIIb": -4.5,
-            "SiIIa_SiIIb": -5.5,
-            "SiIIa_SiIII": -6.0,
-            "SiIIb_SiIII": -6.5,
-        }
+            self.fid_cont["n_x_Lya_SiIIa"] = 0
+            self.fid_cont["n_a_Lya_SiIIa"] = 0
 
-        # at a time
-        d_prior = {
-            "Lya_SiIII": 0.4,
-            "Lya_SiIIa": -0.9,
-            "Lya_SiIIb": -0.9,
-            "SiIIa_SiIIb": 0.8,
-            "SiIIa_SiIII": 1.6,
-            "SiIIb_SiIII": 2.7,
-        }
+            self.fid_cont["n_x_Lya_SiIIb"] = 1
+            self.fid_cont["n_a_Lya_SiIIb"] = 1
 
-        # at a time
-        a_prior = {
-            "Lya_SiIII": 1.5,
-            "Lya_SiIIa": 4.0,
-            "Lya_SiIIb": 4.0,
-            "SiIIa_SiIIb": 4.0,
-            "SiIIa_SiIII": 0.5,
-            "SiIIb_SiIII": 2.5,
-        }
+            self.fid_cont["n_x_Lya_SiIIc"] = 0
+            self.fid_cont["n_a_Lya_SiIIc"] = 0
 
-        # n_metals = {
-        #     "Lya_SiIII": [1, 1, 1],
-        #     "Lya_SiIIa": [0, 0, 0],
-        #     "Lya_SiIIb": [1, 0, 1],
-        #     "SiIIa_SiIII": [1, 0, 0],
-        #     "SiIIb_SiIII": [1, 1, 0],
-        #     "SiIIa_SiIIb": [1, 1, 1],
-        # }
-        n_metals = {
-            "Lya_SiIII": [1, 0, 1],
-            "Lya_SiIIa": [0, 0, 0],
-            "Lya_SiIIb": [1, 0, 1],
-            "SiIIa_SiIII": [1, 0, 1],
-            "SiIIb_SiIII": [1, 0, 1],
-            "SiIIa_SiIIb": [1, 0, 1],
-        }
-        # nf, nd, na
-        # n_metals = {
-        #     "Lya_SiIII": [1, 0, 1],
-        #     "Lya_SiIIa": [0, 0, 0],
-        #     "Lya_SiIIb": [1, 0, 1],
-        #     "SiIIa_SiIII": [0, 0, 0],
-        #     "SiIIb_SiIII": [0, 0, 0],
-        #     "SiIIa_SiIIb": [1, 0, 1],
-        # }
+            self.fid_cont["n_x_SiIIa_SiIII"] = 1
+            self.fid_cont["n_a_SiIIa_SiIII"] = 0
 
-        for metal_line in lines_use:
-            self.n_metals["n_x_" + metal_line] = n_metals[metal_line][0]
-            if self.n_metals["n_x_" + metal_line] == 0:
-                self.fid_metals[metal_line + "_X"] = [0, -10.5]
+            self.fid_cont["n_x_SiIIb_SiIII"] = 1
+            self.fid_cont["n_a_SiIIb_SiIII"] = 0
+
+            self.fid_cont["n_x_SiIIc_SiIII"] = 1
+            self.fid_cont["n_a_SiIIc_SiIII"] = 0
+
+            self.fid_cont["n_x_SiIIa_SiIIb"] = 1
+            self.fid_cont["n_a_SiIIa_SiIIb"] = 0
+
+            self.fid_cont["n_x_CIVa_CIVb"] = 0
+            self.fid_cont["n_a_CIVa_CIVb"] = 0
+
+            self.fid_cont["n_d_dla1"] = 1
+            self.fid_cont["A_damp1"] = [0, -1.4]
+
+            self.fid_cont["n_s_dla1"] = 1
+            self.fid_cont["A_scale1"] = [0, 5.2]
+
+            self.fid_cont["n_d_dla2"] = 0
+            self.fid_cont["A_damp2"] = [0, -1.4]
+
+            self.fid_cont["n_s_dla2"] = 0
+            self.fid_cont["A_scale2"] = [0, 5.2]
+
+            self.fid_cont["n_c_dla"] = 1
+            self.fid_cont["A_const"] = [0, 0]
+        else:
+            self.fid_syst["res_model_type"] = "chunks"
+            self.fid_syst["n_res"] = 11
+            self.fid_syst["R_coeff"] = np.zeros((self.fid_syst["n_res"]))
+
+            self.fid_igm["n_tau"] = 2
+            self.fid_igm["n_gamma"] = 1
+            self.fid_igm["n_sigT"] = 1
+            self.fid_igm["n_kF"] = 1
+
+            self.fid_cont["n_x_Lya_SiIII"] = 1
+            self.fid_cont["n_a_Lya_SiIII"] = 1
+
+            self.fid_cont["n_x_Lya_SiIIa"] = 0
+            self.fid_cont["n_a_Lya_SiIIa"] = 0
+
+            self.fid_cont["n_x_Lya_SiIIb"] = 1
+            self.fid_cont["n_a_Lya_SiIIb"] = 1
+
+            self.fid_cont["n_x_Lya_SiIIc"] = 0
+            self.fid_cont["n_a_Lya_SiIIc"] = 0
+
+            self.fid_cont["n_x_SiIIa_SiIII"] = 1
+            self.fid_cont["n_a_SiIIa_SiIII"] = 0
+
+            self.fid_cont["n_x_SiIIb_SiIII"] = 1
+            self.fid_cont["n_a_SiIIb_SiIII"] = 0
+
+            self.fid_cont["n_x_SiIIc_SiIII"] = 1
+            self.fid_cont["n_a_SiIIc_SiIII"] = 0
+
+            self.fid_cont["n_x_SiIIa_SiIIb"] = 1
+            self.fid_cont["n_a_SiIIa_SiIIb"] = 0
+
+            self.fid_cont["n_x_CIVa_CIVb"] = 0
+            self.fid_cont["n_a_CIVa_CIVb"] = 0
+
+            self.fid_cont["n_d_dla1"] = 1
+            self.fid_cont["A_damp1"] = [0, -1.4]
+
+            self.fid_cont["n_s_dla1"] = 1
+            self.fid_cont["A_scale1"] = [0, 5.2]
+
+            self.fid_cont["n_d_dla2"] = 1
+            self.fid_cont["A_damp2"] = [0, -1.4]
+
+            self.fid_cont["n_s_dla2"] = 1
+            self.fid_cont["A_scale2"] = [0, 5.2]
+
+            self.fid_cont["n_c_dla"] = 1
+            self.fid_cont["A_const"] = [0, 0]
+
+        for metal_label in self.metal_lines:
+            if self.fid_cont["n_x_" + metal_label] == 0:
+                self.fid_cont[metal_label + "_X"] = [0, -10.5]
             else:
-                self.fid_metals[metal_line + "_X"] = [0, f_prior[metal_line]]
-
-            self.n_metals["n_d_" + metal_line] = n_metals[metal_line][1]
-            if self.n_metals["n_d_" + metal_line] == 0:
-                self.fid_metals[metal_line + "_D"] = [0, 0]
-            else:
-                self.fid_metals[metal_line + "_D"] = [0, d_prior[metal_line]]
-
-            self.n_metals["n_a_" + metal_line] = n_metals[metal_line][2]
-            if self.n_metals["n_a_" + metal_line] == 0:
-                self.fid_metals[metal_line + "_A"] = [0, 1]
-            else:
-                self.fid_metals[metal_line + "_A"] = [0, a_prior[metal_line]]
-
-            self.n_metals["n_l_" + metal_line] = 0
-            self.fid_metals[metal_line + "_L"] = [0, 0]
-
-        self.n_d_dla = 1
-        self.fid_A_damp = [0, -1.4]
-        self.n_s_dla = 1
-        self.fid_A_scale = [0, 5.2]
-
-        self.fid_AGN = [0, -5.5]
-
-        self.prior_Gauss_rms = None
-        self.Gauss_priors = {}
+                self.fid_cont[metal_label + "_X"] = [
+                    0,
+                    priors["f_" + metal_label],
+                ]
+            self.fid_cont[metal_label + "_A"] = [0, priors["a_" + metal_label]]

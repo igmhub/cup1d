@@ -33,6 +33,8 @@ from cup1d.likelihood.plotter import Plotter
 
 def set_free_like_parameters(params, emulator_label):
     """Set free parameters for likelihood"""
+
+    # cosmology
     if params.fix_cosmo:
         free_parameters = []
     else:
@@ -43,32 +45,47 @@ def set_free_like_parameters(params, emulator_label):
         else:
             free_parameters = ["As", "ns"]
 
-    for ii in range(params.n_tau):
+    # IGM
+    for ii in range(params.fid_igm["n_tau"]):
         free_parameters.append(f"ln_tau_{ii}")
-    for ii in range(params.n_sigT):
+    for ii in range(params.fid_igm["n_sigT"]):
         free_parameters.append(f"ln_sigT_kms_{ii}")
-    for ii in range(params.n_gamma):
+    for ii in range(params.fid_igm["n_gamma"]):
         free_parameters.append(f"ln_gamma_{ii}")
-    for ii in range(params.n_kF):
+    for ii in range(params.fid_igm["n_kF"]):
         free_parameters.append(f"ln_kF_{ii}")
+
+    # Metal lines
     for metal_line in params.metal_lines:
-        for ii in range(params.n_metals["n_x_" + metal_line]):
+        for ii in range(params.fid_cont["n_x_" + metal_line]):
             free_parameters.append(f"ln_x_{metal_line}_{ii}")
-        for ii in range(params.n_metals["n_d_" + metal_line]):
-            free_parameters.append(f"d_{metal_line}_{ii}")
-        for ii in range(params.n_metals["n_l_" + metal_line]):
-            free_parameters.append(f"l_{metal_line}_{ii}")
-        for ii in range(params.n_metals["n_a_" + metal_line]):
-            free_parameters.append(f"a_{metal_line}_{ii}")
-    for ii in range(params.n_d_dla):
-        free_parameters.append(f"ln_A_damp_{ii}")
-    for ii in range(params.n_s_dla):
-        free_parameters.append(f"ln_A_scale_{ii}")
-    for ii in range(params.n_sn):
+        for ii in range(params.fid_cont["n_a_" + metal_line]):
+            free_parameters.append(f"ln_a_{metal_line}_{ii}")
+
+    # DLAs
+    for ii in range(params.fid_cont["n_d_dla1"]):
+        free_parameters.append(f"ln_A_damp1_{ii}")
+    for ii in range(params.fid_cont["n_s_dla1"]):
+        free_parameters.append(f"ln_A_scale1_{ii}")
+
+    for ii in range(params.fid_cont["n_d_dla2"]):
+        free_parameters.append(f"ln_A_damp2_{ii}")
+    for ii in range(params.fid_cont["n_s_dla2"]):
+        free_parameters.append(f"ln_A_scale2_{ii}")
+
+    for ii in range(params.fid_cont["n_c_dla"]):
+        free_parameters.append(f"ln_A_const_{ii}")
+
+    # SN
+    for ii in range(params.fid_cont["n_sn"]):
         free_parameters.append(f"ln_SN_{ii}")
-    for ii in range(params.n_agn):
+
+    # AGN
+    for ii in range(params.fid_cont["n_agn"]):
         free_parameters.append(f"ln_AGN_{ii}")
-    for ii in range(params.n_res):
+
+    # Resolution
+    for ii in range(params.fid_syst["n_res"]):
         free_parameters.append(f"R_coeff_{ii}")
 
     return free_parameters
