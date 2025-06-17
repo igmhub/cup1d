@@ -1,11 +1,12 @@
 import numpy as np
 
 from cup1d.nuisance import (
+    metal_model_class,
     metal_model,
     metal_metal_model,
     hcd_model_McDonald2005,
     hcd_model_Rogers2017,
-    hcd_model_new,
+    hcd_model_class,
     SN_model,
     AGN_model,
 )
@@ -43,16 +44,18 @@ class Contaminants(object):
                     ] = metal_metal_model.MetalModel(
                         metal_label=metal_line,
                         free_param_names=free_param_names,
-                        X_fid_value=self.args.fid_cont[metal_line + "_X"],
-                        A_fid_value=self.args.fid_cont[metal_line + "_A"],
+                        X_fid_value=self.args.fid_cont["f_" + metal_line],
+                        A_fid_value=self.args.fid_cont["s_" + metal_line],
                         Gauss_priors=self.args.Gauss_priors,
                     )
                 else:
-                    self.metal_models[metal_line] = metal_model.MetalModel(
+                    self.metal_models[
+                        metal_line
+                    ] = metal_model_class.MetalModel(
                         metal_label=metal_line,
                         free_param_names=free_param_names,
-                        X_fid_value=self.args.fid_cont[metal_line + "_X"],
-                        A_fid_value=self.args.fid_cont[metal_line + "_A"],
+                        fid_vals=self.args.fid_cont,
+                        flat_priors=self.args.flat_priors,
                         Gauss_priors=self.args.Gauss_priors,
                     )
 
@@ -72,16 +75,15 @@ class Contaminants(object):
                     fid_A_damp=self.args.fid_cont["A_damp1"],
                 )
             elif self.args.fid_cont["hcd_model_type"] == "new":
-                self.hcd_model = hcd_model_new.HCD_Model_new(
+                self.hcd_model = hcd_model_class.HCD_Model(
                     free_param_names=free_param_names,
-                    fid_A_damp=self.args.fid_cont["A_damp1"],
-                    fid_A_scale=self.args.fid_cont["A_scale1"],
-                    fid_A_const=self.args.fid_cont["A_const"],
+                    fid_vals=self.args.fid_cont,
+                    flat_priors=self.args.flat_priors,
                     Gauss_priors=self.args.Gauss_priors,
                 )
             else:
                 raise ValueError(
-                    "hcd_model_type must be one of 'Rogers2017', 'McDonald2005', or 'new'"
+                    "hcd_model_type must be one of 'Rogers2017', 'McDonald2005', 'new', or 'new2'"
                 )
 
         # setup SN model

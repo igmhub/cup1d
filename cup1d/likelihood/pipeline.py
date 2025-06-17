@@ -57,24 +57,32 @@ def set_free_like_parameters(params, emulator_label):
 
     # Metal lines
     for metal_line in params.metal_lines:
-        for ii in range(params.fid_cont["n_x_" + metal_line]):
-            free_parameters.append(f"ln_x_{metal_line}_{ii}")
-        for ii in range(params.fid_cont["n_a_" + metal_line]):
-            free_parameters.append(f"ln_a_{metal_line}_{ii}")
+        for ii in range(params.fid_cont["n_f_" + metal_line]):
+            free_parameters.append(f"f_{metal_line}_{ii}")
+        for ii in range(params.fid_cont["n_s_" + metal_line]):
+            free_parameters.append(f"s_{metal_line}_{ii}")
+        if "n_p_" + metal_line in params.fid_cont:
+            for ii in range(params.fid_cont["n_p_" + metal_line]):
+                free_parameters.append(f"p_{metal_line}_{ii}")
 
     # DLAs
     for ii in range(params.fid_cont["n_d_dla1"]):
-        free_parameters.append(f"ln_A_damp1_{ii}")
+        free_parameters.append(f"HCD_damp1_{ii}")
     for ii in range(params.fid_cont["n_s_dla1"]):
-        free_parameters.append(f"ln_A_scale1_{ii}")
+        free_parameters.append(f"HCD_scale1_{ii}")
 
     for ii in range(params.fid_cont["n_d_dla2"]):
-        free_parameters.append(f"ln_A_damp2_{ii}")
+        free_parameters.append(f"HCD_damp2_{ii}")
     for ii in range(params.fid_cont["n_s_dla2"]):
-        free_parameters.append(f"ln_A_scale2_{ii}")
+        free_parameters.append(f"HCD_scale2_{ii}")
+
+    for ii in range(params.fid_cont["n_d_dla3"]):
+        free_parameters.append(f"HCD_damp3_{ii}")
+    for ii in range(params.fid_cont["n_s_dla3"]):
+        free_parameters.append(f"HCD_scale3_{ii}")
 
     for ii in range(params.fid_cont["n_c_dla"]):
-        free_parameters.append(f"ln_A_const_{ii}")
+        free_parameters.append(f"HCD_const_{ii}")
 
     # SN
     for ii in range(params.fid_cont["n_sn"]):

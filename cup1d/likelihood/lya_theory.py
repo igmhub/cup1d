@@ -779,20 +779,13 @@ class Theory(object):
         # get parameters from metal contamination models
         for model_name in self.model_cont.metal_models:
             metal = self.model_cont.metal_models[model_name]
-            for par in metal.get_X_parameters():
-                params.append(par)
-            for par in metal.get_A_parameters():
-                params.append(par)
+            print("model_name", model_name)
+            for key in metal.params:
+                params.append(metal.params[key])
 
         # get parameters from HCD contamination model
-        for par in self.model_cont.hcd_model.get_A_damp_parameters():
-            params.append(par)
-
-        for par in self.model_cont.hcd_model.get_A_scale_parameters():
-            params.append(par)
-
-        for par in self.model_cont.hcd_model.get_A_const_parameters():
-            params.append(par)
+        for key in self.model_cont.hcd_model.params:
+            params.append(self.model_cont.hcd_model.params[key])
 
         # get parameters from SN contamination model
         for par in self.model_cont.sn_model.get_parameters():

@@ -130,7 +130,7 @@ class MetalModel(object):
                 if i == 0:
                     # ln of overall amplitude at z_X
                     xmin = -11  # no contamination
-                    xmax = -1.5
+                    xmax = -1
                 else:
                     xmin = -2
                     xmax = 2
@@ -334,10 +334,15 @@ class MetalModel(object):
             damping_growth = np.zeros_like(mF) + damping_growth
 
         a = f / (1 - mF)
+        phase = 1.005
 
         if len(z) == 1:
-            damping = 1 - 1 / (1 + np.exp(-damping_growth * k_kms[0]))
-            cont = 1 + a**2 + 2 * a * np.cos(self.dv * k_kms[0]) * damping
+            damping = 1 - 1 / (1 + np.exp(-1 * (damping_growth * k_kms[0])))
+            cont = (
+                1
+                + a**2
+                + 2 * a * np.cos((self.dv * k_kms[0]) * phase) * damping
+            )
         else:
             cont = []
             for iz in range(len(z)):
