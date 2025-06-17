@@ -779,7 +779,6 @@ class Theory(object):
         # get parameters from metal contamination models
         for model_name in self.model_cont.metal_models:
             metal = self.model_cont.metal_models[model_name]
-            print("model_name", model_name)
             for key in metal.params:
                 params.append(metal.params[key])
 

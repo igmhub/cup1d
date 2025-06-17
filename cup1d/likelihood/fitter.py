@@ -970,19 +970,22 @@ metal_lines_latex = {
 }
 for metal_line in metal_lines:
     for ii in range(12):
-        param_dict["ln_x_" + metal_line + "_" + str(ii)] = (
+        param_dict["f_" + metal_line + "_" + str(ii)] = (
             "$\mathrm{ln}\,f("
             + metal_lines_latex[metal_line]
             + "_"
             + str(ii)
             + ")$"
         )
-        param_dict["ln_a_" + metal_line + "_" + str(ii)] = (
-            "$\mathrm{ln}\,a("
+        param_dict["s_" + metal_line + "_" + str(ii)] = (
+            "$\mathrm{ln}\,s("
             + metal_lines_latex[metal_line]
             + "_"
             + str(ii)
             + ")$"
+        )
+        param_dict["p_" + metal_line + "_" + str(ii)] = (
+            "$p(" + metal_lines_latex[metal_line] + "_" + str(ii) + ")$"
         )
 
 param_dict_rev = {v: k for k, v in param_dict.items()}

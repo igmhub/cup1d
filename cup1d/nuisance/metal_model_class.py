@@ -96,10 +96,11 @@ class MetalModel(Contaminant):
             )
 
         a = vals["f_" + self.metal_label] / (1 - mF)
+        min_damping = 0.025
 
         metal_corr = []
         for iz in range(len(z)):
-            damping = 1 - 1 / (
+            damping = 1 + (min_damping - 1) / (
                 1 + np.exp(-vals["s_" + self.metal_label][iz] * k_kms[iz])
             )
             metal_corr.append(

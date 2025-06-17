@@ -1473,22 +1473,13 @@ class Plotter(object):
         # all_contaminants = np.array(lines_use + ["DLA", "res", "none"])
         all_contaminants = np.array(lines_use + ["DLA", "none"])
 
-        # cont2label = {
-        #     "Lya_SiIII": "+ Lya-SiIII(1206)",
-        #     "DLA": "+ HCDs",
-        #     "Lya_SiII": "+ Lya-SiII(1193)",
-        #     "res": "+ resolution",
-        #     "SiII_SiII": "+ SiII(1190)-SiII(1193)",
-        #     "SiIIa_SiIII": "+ SiII(1190)-SiIII(1206)",
-        #     "SiIIb_SiIII": "+ SiII(1193)-SiIII(1206)",
-        # }
         cont2label = {
             "Lya_SiIII": r"Ly$\alpha$-SiIII",
             "DLA": "HCDs",
             "Lya_SiIIa": r"Ly$\alpha$-SiII(1190)",
             "Lya_SiIIb": r"Ly$\alpha$-SiII(1193)",
             "Lya_SiIIc": r"Ly$\alpha$-SiII(1260)",
-            # "res": "resolution",
+            "res": "resolution",
             "SiIIa_SiIIb": "SiII(1190)-SiII(1193)",
             "SiIIa_SiIII": "SiII(1190)-SiIII",
             "SiIIb_SiIII": "SiII(1193)-SiIII",
@@ -1540,19 +1531,22 @@ class Plotter(object):
                     _values[ind] = 1
                 except:
                     pass
-            # if "res" not in conts:
-            #     ind = np.argwhere(
-            #         np.array(self.fitter.like.free_param_names) == "R_coeff_0"
-            #     )[0, 0]
-            #     _values[ind] = 0.5
+
+            if "res" in all_contaminants:
+                if "res" not in conts:
+                    ind = np.argwhere(
+                        np.array(self.fitter.like.free_param_names)
+                        == "R_coeff_0"
+                    )[0, 0]
+                    _values[ind] = 0.5
 
             for line in self.fitter.like.args["metal_lines"]:
                 if (line not in conts) & (
-                    "ln_x_" + line + "_0" in self.fitter.like.free_param_names
+                    "f_" + line + "_0" in self.fitter.like.free_param_names
                 ):
                     ind = np.argwhere(
                         np.array(self.fitter.like.free_param_names)
-                        == "ln_x_" + line + "_0"
+                        == "f_" + line + "_0"
                     )[0, 0]
                     _values[ind] = 0.0
 
@@ -1614,11 +1608,11 @@ class Plotter(object):
 
             for line in self.fitter.like.args["metal_lines"]:
                 if (line in conts) & (
-                    "ln_x_" + line + "_0" in self.fitter.like.free_param_names
+                    "f_" + line + "_0" in self.fitter.like.free_param_names
                 ):
                     ind = np.argwhere(
                         np.array(self.fitter.like.free_param_names)
-                        == "ln_x_" + line + "_0"
+                        == "f_" + line + "_0"
                     )[0, 0]
                     _values[ind] = 0.0
 
