@@ -6,6 +6,7 @@ from cup1d.nuisance import (
     hcd_model_McDonald2005,
     hcd_model_Rogers2017,
     hcd_model_class,
+    hcd_model_rogers_class,
     SN_model,
     AGN_model,
 )
@@ -75,6 +76,13 @@ class Contaminants(object):
                 )
             elif self.args.fid_cont["hcd_model_type"] == "new":
                 self.hcd_model = hcd_model_class.HCD_Model(
+                    free_param_names=free_param_names,
+                    fid_vals=self.args.fid_cont,
+                    flat_priors=self.args.flat_priors,
+                    Gauss_priors=self.args.Gauss_priors,
+                )
+            elif self.args.fid_cont["hcd_model_type"] == "new_rogers":
+                self.hcd_model = hcd_model_rogers_class.HCD_Model_Rogers(
                     free_param_names=free_param_names,
                     fid_vals=self.args.fid_cont,
                     flat_priors=self.args.flat_priors,
@@ -167,26 +175,28 @@ class Contaminants(object):
         )
 
         # include SN contamination
-        if len(z) != 1:
-            k_Mpc = []
-            for iz in range(len(z)):
-                k_Mpc.append(k_kms[iz] * M_of_z[iz])
-        else:
-            k_Mpc = [k_kms[0] * M_of_z[0]]
-        cont_SN = self.sn_model.get_contamination(
-            z=z,
-            k_Mpc=k_Mpc,
-            like_params=like_params,
-        )
+        # if len(z) != 1:
+        #     k_Mpc = []
+        #     for iz in range(len(z)):
+        #         k_Mpc.append(k_kms[iz] * M_of_z[iz])
+        # else:
+        #     k_Mpc = [k_kms[0] * M_of_z[0]]
+        # cont_SN = self.sn_model.get_contamination(
+        #     z=z,
+        #     k_Mpc=k_Mpc,
+        #     like_params=like_params,
+        # )
+        cont_SN = 1
 
         # include AGN contamination
-        cont_AGN = self.agn_model.get_contamination(
-            z=z,
-            k_kms=k_kms,
-            like_params=like_params,
-        )
-        if np.any(cont_AGN < 0):
-            return None
+        # cont_AGN = self.agn_model.get_contamination(
+        #     z=z,
+        #     k_kms=k_kms,
+        #     like_params=like_params,
+        # )
+        # if np.any(cont_AGN < 0):
+        #     cont_AGN = 1
+        cont_AGN = 1
 
         if self.args.ic_correction:
             IC_corr = ref_nyx_ic_correction(k_kms, z)

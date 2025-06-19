@@ -188,9 +188,15 @@ class MeanFluxModel(object):
                 else:
                     xmin = -0.5
                     xmax = 0.5
-            else:
+            elif i == 2:
                 xmin = -2
                 xmax = 2
+            elif i == 3:
+                xmin = -4
+                xmax = 4
+            elif i == 4:
+                xmin = -30
+                xmax = 30
 
             Gwidth = None
             if self.Gauss_priors is not None:

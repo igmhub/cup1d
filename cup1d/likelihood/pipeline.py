@@ -81,6 +81,11 @@ def set_free_like_parameters(params, emulator_label):
     for ii in range(params.fid_cont["n_s_dla3"]):
         free_parameters.append(f"HCD_scale3_{ii}")
 
+    for ii in range(params.fid_cont["n_d_dla4"]):
+        free_parameters.append(f"HCD_damp4_{ii}")
+    for ii in range(params.fid_cont["n_s_dla4"]):
+        free_parameters.append(f"HCD_scale4_{ii}")
+
     for ii in range(params.fid_cont["n_c_dla"]):
         free_parameters.append(f"HCD_const_{ii}")
 

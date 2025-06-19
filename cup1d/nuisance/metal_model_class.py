@@ -35,6 +35,10 @@ class MetalModel(Contaminant):
         elif metal_label == "SiIIb_SiIII":
             # we should model this somewhere else
             self.lambda_rest = [1193.28, 1206.51]
+        elif metal_label == "SiII_SiIII":
+            # we should model this somewhere else
+            self.lambda_rest = [1190.42, 1206.51]
+            self.lambda_rest2 = [1193.28, 1206.51]
         elif metal_label == "SiIIc_SiIII":
             # we should model this somewhere else
             self.lambda_rest = [1206.51, 1260.42]
@@ -43,6 +47,10 @@ class MetalModel(Contaminant):
 
         c_kms = 299792.458
         self.dv = np.log(self.lambda_rest[1] / self.lambda_rest[0]) * c_kms
+        if metal_label == "SiII_SiIII":
+            self.dv2 = (
+                np.log(self.lambda_rest2[1] / self.lambda_rest2[0]) * c_kms
+            )
 
         list_coeffs = [
             "f_" + metal_label,
@@ -96,23 +104,20 @@ class MetalModel(Contaminant):
             )
 
         a = vals["f_" + self.metal_label] / (1 - mF)
-        min_damping = 0.025
 
         metal_corr = []
         for iz in range(len(z)):
-            damping = 1 + (min_damping - 1) / (
+            damping = 1 - 1 / (
                 1 + np.exp(-vals["s_" + self.metal_label][iz] * k_kms[iz])
             )
-            metal_corr.append(
-                1
-                + a[iz] ** 2
-                + 2
-                * a[iz]
-                * np.cos(
-                    (self.dv * k_kms[iz]) * vals["p_" + self.metal_label][iz]
+            osc = self.dv * k_kms[iz] * vals["p_" + self.metal_label][iz]
+            _metal = 1 + a[iz] ** 2 + 4 * a[iz] * np.cos(osc) * damping
+            if self.metal_label == "SiII_SiIII":
+                osc2 = self.dv2 * k_kms[iz] * vals["p_" + self.metal_label][iz]
+                _metal = _metal * (
+                    1 + a[iz] ** 2 + 4 * a[iz] * np.cos(osc2) * damping
                 )
-                * damping
-            )
+            metal_corr.append(_metal)
 
         if len(z) == 1:
             metal_corr = metal_corr[0]

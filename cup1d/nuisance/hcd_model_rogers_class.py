@@ -2,7 +2,13 @@ import numpy as np
 from cup1d.nuisance.base_contaminants import Contaminant
 
 
-class HCD_Model(Contaminant):
+def fun_damping(k_kms, it):
+    a_0 = np.array([2.2001, 1.5083, 1.1415, 0.8633])
+    b_0 = np.array([36.449, 81.388, 162.95, 429.58])
+    return 1 / (a_0[it] * np.exp(k_kms * b_0[it]) - 1) ** 2
+
+
+class HCD_Model_Rogers(Contaminant):
     """New model for HCD contamination"""
 
     def __init__(
@@ -20,17 +26,14 @@ class HCD_Model(Contaminant):
             "HCD_damp1",
             "HCD_damp2",
             "HCD_damp3",
-            "HCD_scale1",
-            "HCD_scale2",
-            "HCD_scale3",
+            "HCD_damp4",
             "HCD_const",
         ]
 
         # priors for all coefficients
         if flat_priors is None:
             flat_priors = {
-                "HCD_damp": [[-0.5, 0.5], [-10, 5]],
-                "HCD_scale": [[-1, 1], [1, 10]],
+                "HCD_damp": [[-0.5, 0.5], [-4, 1e-6]],
                 "HCD_const": [[-1, 1], [-0.2, 1e-6]],
             }
 
@@ -40,28 +43,22 @@ class HCD_Model(Contaminant):
                 "HCD_damp1_ztype": "pivot",
                 "HCD_damp2_ztype": "pivot",
                 "HCD_damp3_ztype": "pivot",
-                "HCD_scale1_ztype": "pivot",
-                "HCD_scale2_ztype": "pivot",
-                "HCD_scale3_ztype": "pivot",
+                "HCD_damp4_ztype": "pivot",
                 "HCD_const_ztype": "pivot",
                 "HCD_damp1_otype": "exp",
                 "HCD_damp2_otype": "exp",
                 "HCD_damp3_otype": "exp",
-                "HCD_scale1_otype": "exp",
-                "HCD_scale2_otype": "exp",
-                "HCD_scale3_otype": "exp",
+                "HCD_damp4_otype": "exp",
                 "HCD_const_otype": "const",
             }
 
         # fiducial values
         if fid_vals is None:
             fid_vals = {
-                "HCD_damp1": [0, -9.5],
-                "HCD_scale1": [0, 5],
-                "HCD_damp2": [0, -9.5],
-                "HCD_scale2": [0, 5],
-                "HCD_damp3": [0, -9.5],
-                "HCD_scale3": [0, 5],
+                "HCD_damp1": [0, -4],
+                "HCD_damp2": [0, -4],
+                "HCD_damp3": [0, -4],
+                "HCD_damp4": [0, -4],
                 "HCD_const": [0, 0],
             }
 
@@ -86,17 +83,10 @@ class HCD_Model(Contaminant):
 
         dla_corr = []
         for iz in range(len(z)):
-            const = vals["HCD_const"][iz]
-            term1 = vals["HCD_damp1"][iz] * np.exp(
-                (k_kms[iz][0] - k_kms[iz]) * vals["HCD_scale1"][iz]
-            )
-            term2 = vals["HCD_damp2"][iz] * np.exp(
-                (k_kms[iz][0] - k_kms[iz]) * vals["HCD_scale2"][iz]
-            )
-            term3 = vals["HCD_damp3"][iz] * np.exp(
-                (k_kms[iz][0] - k_kms[iz]) * vals["HCD_scale3"][iz]
-            )
-            dla_corr.append(1 + const + term1 + term2 + term3)
+            cont = 1 + vals["HCD_const"][iz] + np.zeros_like(k_kms[iz])
+            for it in range(4):
+                cont += vals[f"HCD_damp{it+1}"][iz] * fun_damping(k_kms[iz], it)
+            dla_corr.append(cont)
 
         if len(z) == 1:
             dla_corr = dla_corr[0]

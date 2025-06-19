@@ -80,7 +80,7 @@ class IGM(object):
                 self.F_model = mean_flux_model_chunks.MeanFluxModelChunks(
                     free_param_names=free_param_names,
                     fid_igm=fid_igm,
-                    Gauss_priors=Gauss_priors,
+                    # Gauss_priors=Gauss_priors,
                 )
             else:
                 raise ValueError("mF_model_type must be 'scaling' or 'chunks'")

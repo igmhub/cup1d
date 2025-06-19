@@ -56,7 +56,7 @@ class MetalModel(Contaminant):
         if fid_vals is None:
             fid_vals = {
                 "f_" + metal_label: [0, -10.5],
-                "s_" + metal_label: [0, 0],
+                "s_" + metal_label: [0, -9.5],
             }
 
         super().__init__(

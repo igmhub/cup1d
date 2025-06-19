@@ -290,13 +290,16 @@ class ThermalModel(object):
                 else:
                     xmin = -0.25
                     xmax = 0.25
-            else:
+            elif i == 1:
                 if self.priors is not None:
                     xmin = self.priors[pname][-2][0]
                     xmax = self.priors[pname][-2][1]
                 else:
                     xmin = -1.0
                     xmax = 1.0
+            else:
+                xmin = -2.0
+                xmax = 2.0
 
             Gwidth = None
             if self.Gauss_priors is not None:

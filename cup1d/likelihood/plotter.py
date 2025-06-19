@@ -1483,6 +1483,7 @@ class Plotter(object):
             "SiIIa_SiIIb": "SiII(1190)-SiII(1193)",
             "SiIIa_SiIII": "SiII(1190)-SiIII",
             "SiIIb_SiIII": "SiII(1193)-SiIII",
+            "SiII_SiIII": "SiIIab-SiIII",
             "SiIIc_SiIII": "SiII(1260)-SiIII",
             "CIVa_CIVb": "CIV(1548)-CIV(1550)",
             "MgIIa_MgIIb": "MgII(2796)-MgII(2803)",
@@ -1515,14 +1516,13 @@ class Plotter(object):
         for icont, conts in enumerate(all_contaminants):
             _values = values.copy()
             if "DLA" not in conts:
-                ind = np.argwhere(
-                    np.array(self.fitter.like.free_param_names) == "HCD_damp1_0"
-                )[0, 0]
-                _values[ind] = 0
-                ind = np.argwhere(
-                    np.array(self.fitter.like.free_param_names) == "HCD_damp2_0"
-                )[0, 0]
-                _values[ind] = 0
+                for ii in range(4):
+                    key = "HCD_damp" + str(ii) + "_0"
+                    if key in self.fitter.like.free_param_names:
+                        ind = np.argwhere(
+                            np.array(self.fitter.like.free_param_names) == key
+                        )[0, 0]
+                        _values[ind] = 0
                 try:
                     ind = np.argwhere(
                         np.array(self.fitter.like.free_param_names)
@@ -1584,14 +1584,13 @@ class Plotter(object):
         for conts in remove_contaminants:
             _values = values.copy()
             if "DLA" in conts:
-                ind = np.argwhere(
-                    np.array(self.fitter.like.free_param_names) == "HCD_damp1_0"
-                )[0, 0]
-                _values[ind] = 0
-                ind = np.argwhere(
-                    np.array(self.fitter.like.free_param_names) == "HCD_damp2_0"
-                )[0, 0]
-                _values[ind] = 0
+                for ii in range(4):
+                    key = "HCD_damp" + str(ii) + "_0"
+                    if key in self.fitter.like.free_param_names:
+                        ind = np.argwhere(
+                            np.array(self.fitter.like.free_param_names) == key
+                        )[0, 0]
+                        _values[ind] = 0
                 try:
                     ind = np.argwhere(
                         np.array(self.fitter.like.free_param_names)
