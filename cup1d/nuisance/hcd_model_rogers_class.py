@@ -2,10 +2,8 @@ import numpy as np
 from cup1d.nuisance.base_contaminants import Contaminant
 
 
-def fun_damping(k_kms, it):
-    a_0 = np.array([2.2001, 1.5083, 1.1415, 0.8633])
-    b_0 = np.array([36.449, 81.388, 162.95, 429.58])
-    return 1 / (a_0[it] * np.exp(k_kms * b_0[it]) - 1) ** 2
+def fun_damping(k_kms, a, b):
+    return 1 / (a * np.exp(k_kms * b) - 1) ** 2
 
 
 class HCD_Model_Rogers(Contaminant):
@@ -62,6 +60,12 @@ class HCD_Model_Rogers(Contaminant):
                 "HCD_const": [0, 0],
             }
 
+        self.a_0 = np.array([2.2001, 1.5083, 1.1415, 0.8633])
+        self.a_1 = np.array([0.0134, 0.0994, 0.0937, 0.2943])
+        self.b_0 = np.array([36.449, 81.388, 162.95, 429.58])
+        self.b_1 = np.array([-0.0674, -0.2287, 0.0126, -0.4964])
+        self.z_0 = 2
+
         super().__init__(
             coeffs=coeffs,
             list_coeffs=list_coeffs,
@@ -85,7 +89,18 @@ class HCD_Model_Rogers(Contaminant):
         for iz in range(len(z)):
             cont = 1 + vals["HCD_const"][iz] + np.zeros_like(k_kms[iz])
             for it in range(4):
-                cont += vals[f"HCD_damp{it+1}"][iz] * fun_damping(k_kms[iz], it)
+                # compute the z-dependent correction terms
+                a_z = (
+                    self.a_0[it]
+                    * ((1 + z[iz]) / (1 + self.z_0)) ** self.a_1[it]
+                )
+                b_z = (
+                    self.b_0[it]
+                    * ((1 + z[iz]) / (1 + self.z_0)) ** self.b_1[it]
+                )
+                cont += vals[f"HCD_damp{it+1}"][iz] * fun_damping(
+                    k_kms[iz], a_z, b_z
+                )
             dla_corr.append(cont)
 
         if len(z) == 1:

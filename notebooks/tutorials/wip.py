@@ -1315,7 +1315,7 @@ def chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit="basic"):
     out["chi2"] = []
     out["ndeg"] = []
     
-    for prop in basic_props:
+    for iq, prop in enumerate(basic_props):
         list_props = []
         
         # setting to zero all props
@@ -1357,7 +1357,7 @@ def chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit="basic"):
             else:
                 args.fid_cont["s_" + metal_label] = [0, 4.5]
 
-            if metal_label in add_lines:
+            if metal_label not in add_lines:
                 args.fid_cont["p_" + metal_label] = [0, 1]
 
         for ii in range(4):
@@ -1372,6 +1372,17 @@ def chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit="basic"):
             args,
             data_hires=data["extra_P1Ds"],
         )
+
+        if iq > 0:
+            for par in out["mle"][0]:
+                try:
+                    par2 = fitter.param_dict_rev[par]
+                except:
+                    continue
+                for p in like.free_params:
+                    if par2 == p.name:
+                        p.value = out["mle"][0][par]
+                        break
 
         print()
         f_space_len = 14
@@ -1414,11 +1425,8 @@ def chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit="basic"):
             restart=True, 
             nsamples=6
         )
-        out_mle.append(fitter.mle)
-        out_mle_cube.append(fitter.mle_cube)
-        out_chi2.append(fitter.mle_chi2)
         
-        print(list_props, fitter.mle_chi2)
+        print(fitter.mle_chi2)
 
         out["param_names"].append(list_props)
         out["mle"].append(fitter.mle)
@@ -1429,6 +1437,8 @@ def chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit="basic"):
     np.save("qmle3_lpo/grow_"+label_fit+".npy", out)
 
 
+
+# %%
 
 # %%
 # res = np.load("qmle3_lpo/grow_basic.npy", allow_pickle=True).item()
@@ -1453,36 +1463,40 @@ len(basic_props)
 
 
 # %%
-
-for iz in range(2, len(like.data.z)):
-# for iz in range(2):
+select_props = []
+# for iz in range(len(like.data.z)):
+for iz in range(3):
+    print(like.data.z[iz])
     keep = True
     chi2_im = []
     prob_im = []
 
     fix_props = [
         "n_tau",
+        "n_sigT",
+        "n_f_Lya_SiIII",
+        "n_d_dla1",
+        "n_d_dla4",
     ]
     
     basic_props = [
         None,
         "n_gamma",
-        "n_sigT",
         "n_kF",
-        "n_f_Lya_SiIII",
         "n_f_Lya_SiIIb",
         "n_f_SiII_SiIII",
         "n_f_SiIIa_SiIIb",
-        "n_d_dla1",
         "n_d_dla2",
         "n_d_dla3",
-        "n_d_dla4",
     ]
     it = 0
     while keep:
         label_fit = "iz_" + str(iz) + "_it_" + str(it)
 
-        if it < 12:
+        if ("n_f_Lya_SiIIb" in fix_props) and ("n_p_Lya_SiIIb" not in basic_props):
+            basic_props.append("n_p_Lya_SiIIb")
+
+        if it < 10:
             pass
         else:
             chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit=label_fit)
@@ -1492,11 +1506,13 @@ for iz in range(2, len(like.data.z)):
         
         for ii in range(1, len(res["chi2"])):
             Dchi2[ii] = res["chi2"][0] - res["chi2"][ii]
-            # print(Dchi2[ii])
+            print(res["param_names"][ii][-1], Dchi2[ii])
         ind = np.argmax(Dchi2)
         prob1 = chi2_scipy.sf(res["chi2"][0], res["ndeg"][0])
         prob2 = chi2_scipy.sf(res["chi2"][ind], res["ndeg"][ind])
         best_prop = res["param_names"][ind][-1]
+        print(res["mle_cube"][ind])
+        print(res["mle"][ind])
 
         if Dchi2[ind] == 0:
             break
@@ -1507,6 +1523,8 @@ for iz in range(2, len(like.data.z)):
             chi2_im.append(Dchi2[ind])
             prob_im.append(prob2)
 
+        print()
+        print()
         
         if prob2 > prob1:
             print(best_prop, "\t", np.round(Dchi2[ind], 2), prob1, prob2)
@@ -1515,8 +1533,28 @@ for iz in range(2, len(like.data.z)):
             it += 1
         else:
             keep = False
-            
-    print(iz, fix_props)
+
+        print(fix_props)
+        print()
+
+    print()
+    print()
+    print()
+    select_props.append(fix_props)
+
+# %%
+
+# %%
+
+# %%
+for ii in range(len(select_props)):
+    print(ii, np.sort(select_props[ii]))
+
+# %%
+
+# %%
+
+# %%
 
 # %%
 len(like.data.z)
@@ -1911,22 +1949,14 @@ args.Gauss_priors = {}
 args.set_baseline()
 
 # %%
-# like = set_like(
-#     data["P1Ds"],
-#     emulator,
-#     args,
-#     data_hires=data["extra_P1Ds"],
-# )
 
-# %%
+
 like = set_like(
     data["P1Ds"],
     emulator,
     args,
     data_hires=data["extra_P1Ds"],
 )
-
-print()
 
 f_space_len = 14
 s_space_len = 5
@@ -1951,6 +1981,73 @@ fitter = Fitter(
     fix_cosmology=args.fix_cosmo,
 )
 
+# %%
+
+
+out_mle = []
+out_mle_cube = []
+out_chi2 = []
+# for ii in range(len(like.data.z)): 
+for ii in range(1,2): 
+# for ii in range(4, 5): 
+# for ii in range(2,3): 
+# for ii in range(9, 10): 
+# for ii in range(2, 3): 
+    zmask = np.array([like.data.z[ii]])
+    
+    print()
+    print(ii, like.data.z[ii])
+    p0 = np.array(list(like.fid["fit_cube"].values()))
+    # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
+    fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=6)
+    # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
+    out_mle.append(fitter.mle)
+    out_mle_cube.append(fitter.mle_cube)
+    out_chi2.append(fitter.mle_chi2)
+    # plotter = Plotter(fitter, zmask=zmask, save_directory="mpg_baseline/"+str(ii))
+    # plotter.plots_minimizer()
+
+# %%
+fitter.mle
+
+# %%
+[31.379971104286177,
+ 40.61488316791544,
+ 50.74034454576578,
+ 51.91832172394409,
+ 71.8579350982242,
+ 54.385526177708684,
+ 50.66748062772579,
+ 88.65920850550457,
+ 64.0564831797789,
+ 82.47214215383654,
+ 67.25270656494571]
+
+# %%
+out_chi2
+
+# %%
+
+# %%
+diru = None
+plotter = Plotter(fitter, save_directory=diru, zmask=zmask)
+
+# %%
+
+# %%
+# plotter.plot_p1d(residuals=True, zmask=zmask)
+
+# %%
+
+# plotter.plot_illustrate_contaminants(out_mle_cube[0].copy(), [2.2], lines_use=lines_use)
+# plotter.plot_illustrate_contaminants(out_mle_cube[0].copy(), [2.4], lines_use=lines_use)
+# plotter.plot_illustrate_contaminants_each(out_mle_cube[0].copy(), np.array([2.2]))
+# plotter.plot_illustrate_contaminants(test, [2.4], lines_use=lines_use)
+
+# %%
+
+plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), np.array([2.4]))
+
 # %% [markdown]
 # ### results (tets z at a time first 4 bins)
 #
@@ -1969,18 +2066,54 @@ fitter = Fitter(
 # p0_arr = out_mle_cube.copy()
 
 # %%
-p0 = np.array(list(like.fid["fit_cube"].values()))
+
 out_mle = []
 out_mle_cube = []
 out_chi2 = []
-# for ii in range(len(like.data.z)): 
-for ii in range(1): 
+for ii in range(len(like.data.z)): 
+# for ii in range(1,2): 
 # for ii in range(4, 5): 
 # for ii in range(2,3): 
 # for ii in range(9, 10): 
 # for ii in range(2, 3): 
     zmask = np.array([like.data.z[ii]])
+
+    args.set_baseline(ztar=like.data.z[ii])
+
+    like = set_like(
+        data["P1Ds"],
+        emulator,
+        args,
+        data_hires=data["extra_P1Ds"],
+    )
+    
+    print()
+    
+    f_space_len = 14
+    s_space_len = 5
+    for p in like.free_params:
+        print(
+            p.name, (f_space_len-len(p.name)) * " ", "\t", 
+            np.round(p.value, 3), (s_space_len-len(str(np.round(p.value, 3)))) * " ", '\t', 
+            np.round(p.min_value, 3), (s_space_len-len(str(np.round(p.min_value, 3)))) * " ", '\t', 
+            np.round(p.max_value, 3), (s_space_len-len(str(np.round(p.max_value, 3)))) * " ", '\t', 
+            p.Gauss_priors_width
+        )
+    
+    print()
+    
+    fitter = Fitter(
+        like=like,
+        rootdir=output_dir,
+        nburnin=args.n_burn_in,
+        nsteps=args.n_steps,
+        parallel=args.parallel,
+        explore=args.explore,
+        fix_cosmology=args.fix_cosmo,
+    )
+    
     print(ii, like.data.z[ii])
+    p0 = np.array(list(like.fid["fit_cube"].values()))
     # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
     fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=4)
     # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
@@ -2054,10 +2187,29 @@ nk - 11 * len(like.data.k_kms)
 # diru = "fft_fid_mpg_z_at_time_fulllines"
 
 # diru = "qmle_snr3_mpg_z_at_time_baseline"
-# diru = "qmle_snr3_mpg_z_at_time_baseline5_p"
+diru = "qmle_snr3_mpg_z_at_time_baseline6"
 # diru = "qmle_snr3_mpg_z_at_time_fid_weakp"
 # diru = "qmle_fid_mpg_z_at_time_fulllines"
-diru = None
+# diru = None
+
+args.set_baseline(ztar=like.data.z[ii])
+
+like = set_like(
+    data["P1Ds"],
+    emulator,
+    args,
+    data_hires=data["extra_P1Ds"],
+)
+
+fitter = Fitter(
+    like=like,
+    rootdir=output_dir,
+    nburnin=args.n_burn_in,
+    nsteps=args.n_steps,
+    parallel=args.parallel,
+    explore=args.explore,
+    fix_cosmology=args.fix_cosmo,
+)
 
 plotter = Plotter(fitter, save_directory=diru, zmask=zmask)
 
@@ -2104,6 +2256,16 @@ for metal_label in metals:
     print(metal_label, np.round(dv, 2), np.round(2 * np.pi/dv, 4))
 
 # %%
+ndeg_all = 0
+chi2_all = 0
+for ii in range(len(out_chi2)):
+    ndeg = len(like.data.k_kms[ii]) - len(out_mle_cube[ii])
+    prob = chi2_scipy.sf(out_chi2[ii], ndeg)
+    print(like.data.z[ii], np.round(out_chi2[ii], 2), ndeg, np.round(prob*100, 2))
+    ndeg_all += ndeg
+    chi2_all += out_chi2[ii]
+prob = chi2_scipy.sf(chi2_all, ndeg_all)
+print("All", np.round(chi2_all, 2), ndeg_all, np.round(prob*100, 2))
 
 # %%
 
@@ -2118,8 +2280,34 @@ lines_use = [
     "SiIIa_SiIIb",
 ]
 
-for ii in range(len(fitter.like.data.z)):
-    plotter.plot_illustrate_contaminants(out_mle_cube[ii].copy(), [fitter.like.data.z[ii]], lines_use=lines_use)
+for ii in range(len(like.data.z)):
+    diru = "qmle_snr3_mpg_z_at_time_baseline6"
+    # diru = "qmle_snr3_mpg_z_at_time_fid_weakp"
+    # diru = "qmle_fid_mpg_z_at_time_fulllines"
+    # diru = None
+    
+    args.set_baseline(ztar=like.data.z[ii])
+    
+    like = set_like(
+        data["P1Ds"],
+        emulator,
+        args,
+        data_hires=data["extra_P1Ds"],
+    )
+    
+    fitter = Fitter(
+        like=like,
+        rootdir=output_dir,
+        nburnin=args.n_burn_in,
+        nsteps=args.n_steps,
+        parallel=args.parallel,
+        explore=args.explore,
+        fix_cosmology=args.fix_cosmo,
+    )
+    fitter.mle_cube = out_mle_cube[ii]
+    zmask = [like.data.z[ii]]
+    plotter = Plotter(fitter, save_directory=diru, zmask=zmask)
+    plotter.plot_illustrate_contaminants(out_mle_cube[ii].copy(), zmask, lines_use=lines_use)
 
 # %%
 like.free_param_names

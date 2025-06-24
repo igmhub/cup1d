@@ -612,6 +612,7 @@ class Likelihood(object):
         return_blob=False,
         return_emu_params=False,
         apply_hull=True,
+        remove=None,
     ):
         """Compute theoretical prediction for 1D P(k)"""
 
@@ -644,6 +645,7 @@ class Likelihood(object):
             return_blob=return_blob,
             return_emu_params=return_emu_params,
             apply_hull=apply_hull,
+            remove=remove,
         )
 
         if results is None:

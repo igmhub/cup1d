@@ -637,6 +637,7 @@ class Theory(object):
         return_emu_params=False,
         apply_hull=True,
         hires=False,
+        remove=None,
     ):
         """Emulate P1D in velocity units, for all redshift bins,
         as a function of input likelihood parameters.
@@ -736,6 +737,7 @@ class Theory(object):
             emu_call["mF_fid"],
             M_of_z,
             like_params=like_params,
+            remove=remove,
         )
 
         for iz, z in enumerate(zs):

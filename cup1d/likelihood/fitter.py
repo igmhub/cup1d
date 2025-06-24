@@ -949,6 +949,7 @@ param_dict = {
 
 metal_lines = [
     "Lya_SiIII",
+    "Lya_SiII",
     "Lya_SiIIa",
     "Lya_SiIIb",
     "SiIIa_SiIIb",
@@ -962,6 +963,7 @@ metal_lines = [
 ]
 metal_lines_latex = {
     "Lya_SiIII": "$\mathrm{Ly}\alpha-\mathrm{SiIII}$",
+    "Lya_SiII": "$\mathrm{Ly}\alpha-\mathrm{SiII}$",
     "Lya_SiIIa": "$\mathrm{Ly}\alpha-\mathrm{SiIIa}$",
     "Lya_SiIIb": "$\mathrm{Ly}\alpha-\mathrm{SiIIb}$",
     "Lya_SiIIc": "$\mathrm{Ly}\alpha-\mathrm{SiIIc}$",
