@@ -117,6 +117,10 @@ class SiAdd(Contaminant):
         """Multiplicative contamination at a given z and k (in s/km).
         The mean flux (mF) is used scale it (see McDonald et al. 2006)"""
 
+        # z = np.atleast_1d(z)
+        # k_kms = np.atleast_2d(k_kms)
+        # mF = np.atleast_1d(mF)
+
         vals = {}
         for key in self.list_coeffs:
             vals[key] = np.atleast_1d(
@@ -129,7 +133,9 @@ class SiAdd(Contaminant):
 
         if remove is not None:
             for key in remove:
-                self.off[key] = remove[key]
+                if key in self.off:
+                    self.off[key] = remove[key]
+        # print(self.off)
 
         metal_corr = []
 
@@ -188,6 +194,6 @@ class SiAdd(Contaminant):
                 + self.off["SiIIbcab"] * Cbcba2
             )
 
-            metal_corr.append(aSiII * ktot * G_SiII_SiII)
+            metal_corr.append(aSiII**2 * ktot * G_SiII_SiII)
 
         return metal_corr

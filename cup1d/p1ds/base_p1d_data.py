@@ -1,6 +1,5 @@
 import os, sys
 import numpy as np
-import matplotlib.pyplot as plt
 from warnings import warn
 
 from cup1d.utils.utils import get_path_repo
@@ -182,9 +181,22 @@ class BaseDataP1D(object):
             self.icov_Pk_kms[iz] = self.icov_Pk_kms[iz][sli, sli]
 
     def plot_p1d(
-        self, use_dimensionless=True, xlog=False, ylog=True, fname=None
+        self,
+        use_dimensionless=True,
+        xlog=False,
+        ylog=True,
+        fname=None,
+        ftsize=18,
     ):
         """Plot P1D mesurement. If use_dimensionless, plot k*P(k)/pi."""
+
+        import matplotlib.pyplot as plt
+        from matplotlib import rcParams
+
+        rcParams["mathtext.fontset"] = "stix"
+        rcParams["font.family"] = "STIXGeneral"
+
+        fig, ax = plt.subplots(figsize=(8, 6))
 
         N = len(self.z)
         for i in range(N):
@@ -195,25 +207,29 @@ class BaseDataP1D(object):
                 fact = k_kms / np.pi
             else:
                 fact = 1.0
-            plt.errorbar(
+            ax.errorbar(
                 k_kms,
                 fact * Pk_kms,
                 yerr=fact * err_Pk_kms,
-                label="z = {}".format(np.round(self.z[i], 3)),
+                label=r"$z = {}$".format(np.round(self.z[i], 3)),
             )
 
-        plt.legend(ncol=4)
+        ax.legend(ncol=4, fontsize=ftsize - 4)
         if ylog:
             plt.yscale("log", nonpositive="clip")
         if xlog:
             plt.xscale("log")
-        plt.xlabel("k [s/km]")
+        plt.xlabel(r"$k [\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
         if use_dimensionless:
-            plt.ylabel(r"$k P(k)/ \pi$")
+            plt.ylabel(r"$k\,P(k)/ \pi$", fontsize=ftsize)
         else:
-            plt.ylabel("P(k) [km/s]")
+            plt.ylabel(r"$P(k) [km/s]$", fontsize=ftsize)
+
+        ax.tick_params(axis="both", which="major", labelsize=ftsize - 2)
+        plt.tight_layout()
 
         if fname is not None:
-            plt.savefig(fname)
+            plt.savefig(fname + ".pdf")
+            plt.savefig(fname + ".png")
         else:
             plt.show()

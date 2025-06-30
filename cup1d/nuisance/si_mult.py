@@ -146,6 +146,10 @@ class SiMult(Contaminant):
         """Multiplicative contamination at a given z and k (in s/km).
         The mean flux (mF) is used scale it (see McDonald et al. 2006)"""
 
+        # z = np.atleast_1d(z)
+        # k_kms = np.atleast_2d(k_kms)
+        # mF = np.atleast_1d(mF)
+
         vals = {}
         for key in self.list_coeffs:
             vals[key] = np.atleast_1d(
@@ -159,7 +163,13 @@ class SiMult(Contaminant):
 
         if remove is not None:
             for key in remove:
-                self.off[key] = remove[key]
+                if key in self.off:
+                    self.off[key] = remove[key]
+
+        # SiII-SiII only additive
+        self.off["SiIIb_SiIIa"] = 0
+        self.off["SiIIc_SiIIa"] = 0
+        self.off["SiIIc_SiIIb"] = 0
 
         metal_corr = []
 
@@ -192,7 +202,7 @@ class SiMult(Contaminant):
                 G_SiII_SiII *= vals["f_SiIIa_SiIIb"][iz]
 
             C0 = aSiIII**2 * self.off["SiIII_Lya"] + aSiII**2 * (
-                ra3**2 * self.off["SiIIa_Lya"]
+                ra3**2 * f_SiIIa_SiIII**2 * self.off["SiIIa_Lya"]
                 + rb3**2 * self.off["SiIIb_Lya"]
                 + rc3**2 * self.off["SiIIc_Lya"]
             )
@@ -212,6 +222,7 @@ class SiMult(Contaminant):
                 * (
                     self.off["SiIIa_Lya"]
                     * ra3
+                    * f_SiIIa_SiIII
                     * np.cos(self.dv["SiIIa_Lya"] * k_kms[iz])
                     + self.off["SiIIb_Lya"]
                     * rb3

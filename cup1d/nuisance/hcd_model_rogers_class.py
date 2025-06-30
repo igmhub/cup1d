@@ -53,10 +53,10 @@ class HCD_Model_Rogers(Contaminant):
         # fiducial values
         if fid_vals is None:
             fid_vals = {
-                "HCD_damp1": [0, -4],
-                "HCD_damp2": [0, -4],
-                "HCD_damp3": [0, -4],
-                "HCD_damp4": [0, -4],
+                "HCD_damp1": [0, -11.5],
+                "HCD_damp2": [0, -11.5],
+                "HCD_damp3": [0, -11.5],
+                "HCD_damp4": [0, -11.5],
                 "HCD_const": [0, 0],
             }
 
@@ -79,6 +79,10 @@ class HCD_Model_Rogers(Contaminant):
 
     def get_contamination(self, z, k_kms, like_params=[]):
         """Multiplicative contamination caused by HCDs"""
+
+        # z = np.atleast_1d(z)
+        # k_kms = np.atleast_2d(k_kms)
+
         vals = {}
         for key in self.list_coeffs:
             vals[key] = np.atleast_1d(

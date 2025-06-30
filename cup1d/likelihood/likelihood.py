@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
 import os
 import math
 from scipy.stats.distributions import chi2 as chi2_scipy
@@ -9,6 +10,10 @@ from scipy.linalg import block_diag
 import lace
 from lace.cosmo import camb_cosmo
 from cup1d.utils.utils import is_number_string
+
+
+rcParams["mathtext.fontset"] = "stix"
+rcParams["font.family"] = "STIXGeneral"
 
 
 def get_bin_coverage(xmin_o, xmax_o, xmin_n, xmax_n):
@@ -1003,6 +1008,7 @@ class Likelihood(object):
         else:
             emu_p1d = []
             chi2_all = []
+            ndeg_all = []
             for iz in range(len(_data_z)):
                 _res = self.get_p1d_kms(
                     _data_z[iz],
@@ -1010,6 +1016,8 @@ class Likelihood(object):
                     values[iz],
                     return_covar=return_covar,
                 )
+                _ = np.argwhere(values[iz] != 0)[:, 0]
+                ndeg_all.append(len(_data_k_kms[iz]) - len(_))
                 # print(iz, _data_z[iz], _res)
                 if _res is None:
                     return print("Prior out of range for z = ", _data_z[iz])
@@ -1095,27 +1103,28 @@ class Likelihood(object):
         ymax = -1e10
 
         # print chi2
-        n_free_p = len(self.free_params)
-        ndeg = 0
-        for iz in range(len(self.data.k_kms)):
-            ndeg += np.sum(self.data.Pk_kms[iz] != 0)
-        if self.extra_data is not None:
-            for iz in range(len(self.extra_data.k_kms)):
-                ndeg += np.sum(self.extra_data.Pk_kms[iz] != 0)
-        prob = chi2_scipy.sf(chi2, ndeg - n_free_p)
-
-        if plot_panels == False:
-            label = (
-                r"$\chi^2=$"
-                + str(np.round(chi2, 6))
-                + " (ndeg="
-                + str(ndeg - n_free_p)
-                + ", prob="
-                + str(np.round(prob * 100, 6))
-                + "%)"
-            )
+        if z_at_time is False:
+            n_free_p = len(self.free_params)
+            ndeg = 0
+            for iz in range(len(self.data.k_kms)):
+                ndeg += np.sum(self.data.Pk_kms[iz] != 0)
+            if self.extra_data is not None:
+                for iz in range(len(self.extra_data.k_kms)):
+                    ndeg += np.sum(self.extra_data.Pk_kms[iz] != 0)
+            _ndeg = ndeg - n_free_p
         else:
-            label = r"$\chi_\mathrm{all}^2=$" + str(np.round(chi2, 2))
+            _ndeg = np.sum(ndeg_all)
+        prob = chi2_scipy.sf(chi2, _ndeg)
+
+        label = (
+            r"$\chi^2=$"
+            + str(np.round(chi2, 2))
+            + " (ndeg="
+            + str(_ndeg)
+            + ", prob="
+            + str(np.round(prob * 100, 2))
+            + "%)"
+        )
 
         if print_chi2:
             fig.suptitle(label, fontsize=fontsize)
@@ -1241,12 +1250,16 @@ class Likelihood(object):
                     # print chi2
                     xpos = k_kms[0]
                     ndeg = np.sum(p1d_data != 0)
-                    prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg - n_free_p)
+                    if z_at_time:
+                        _ndeg = ndeg_all[iz]
+                    else:
+                        _ndeg = ndeg - n_free_p
+                    prob = chi2_scipy.sf(chi2_all[ii, iz], _ndeg)
                     label = (
                         r"$\chi^2=$"
                         + str(np.round(chi2_all[ii, iz], 2))
                         + " (ndeg="
-                        + str(ndeg - n_free_p)
+                        + str(_ndeg)
                         + ", prob="
                         + str(np.round(prob * 100, 2))
                         + "%)"
@@ -1816,7 +1829,9 @@ class Likelihood(object):
         else:
             plt.show()
 
-    def plot_cov_to_pk(self, use_pk_smooth=True, save_directory=None):
+    def plot_cov_to_pk(
+        self, use_pk_smooth=True, save_directory=None, ftsize=16
+    ):
         npanels = int(np.round(np.sqrt(len(self.cov_Pk_kms))))
 
         fig, ax = plt.subplots(
@@ -1846,18 +1861,20 @@ class Likelihood(object):
             )
             ax[ii].text(
                 0.2,
-                0.97,
+                0.95,
                 "z=" + str(self.data.z[ii]),
                 ha="right",
                 va="top",
                 transform=ax[ii].transAxes,
+                fontsize=ftsize,
             )
+            ax[ii].tick_params(axis="both", which="major", labelsize=ftsize - 2)
         if len(ax) > len(self.cov_Pk_kms):
             for ii in range(len(self.cov_Pk_kms), len(ax)):
                 ax[ii].axis("off")
-        ax[0].legend(ncols=2)
-        fig.supxlabel(r"$k\,[\mathrm{km}^{-1}\mathrm{s}]$")
-        fig.supylabel(r"$\sigma_x/P_\mathrm{1D}$")
+        ax[0].legend(ncols=1, fontsize=ftsize - 4)
+        fig.supxlabel(r"$k\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize)
+        fig.supylabel(r"$\sigma_x/P_\mathrm{1D}$", fontsize=ftsize)
         plt.tight_layout()
 
         if save_directory is not None:

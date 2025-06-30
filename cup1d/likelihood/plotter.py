@@ -1480,11 +1480,9 @@ class Plotter(object):
                 _data_k_kms.append(self.fitter.like.data.k_kms[iz])
                 _data_Pk_kms.append(self.fitter.like.data.Pk_kms[iz])
                 _data_ePk_kms.append(
-                    np.sqrt(np.diag(self.fitter.like.data.cov_Pk_kms[iz]))
+                    np.sqrt(np.diag(self.fitter.like.cov_Pk_kms[iz]))
                 )
-                _data_icov_kms.append(
-                    np.linalg.inv(self.fitter.like.data.cov_Pk_kms[iz])
-                )
+                _data_icov_kms.append(self.fitter.like.icov_Pk_kms[iz])
         _data_z = np.array(_data_z)
 
         each_contaminants = [

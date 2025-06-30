@@ -474,21 +474,30 @@ class Args:
                 "emulator_label " + self.emulator_label + " not implemented"
             )
 
-    def set_baseline(self, fix_cosmo=True, fit_type="at_a_time", ztar=3):
-        fid_vals_metals = {
-            "f_Lya_SiIII": -3.5,
-            "f_Lya_SiII": -4.0,
-            "f_Lya_SiIIb": -4.0,
-            "f_SiIIa_SiIIb": -2.0,
-            "f_SiII_SiIII": -6.0,
-            "f_SiIIa_SiIII": -6.0,
-            "f_SiIIb_SiIII": -6.0,
-        }
-        add_lines = [
-            # "SiIIa_SiIIb",
-            "CIVa_CIVb",
-            "MgIIa_MgIIb",
+    def set_baseline(self, fix_cosmo=True, fit_type="at_a_time", ztar=0):
+        # set all prop to zero
+        cont_props = [
+            "n_d_dla1",
+            "n_d_dla2",
+            "n_d_dla3",
+            "n_d_dla4",
+            "n_c_dla",
+            "n_f_Lya_SiIII",
+            "n_s_Lya_SiIII",
+            "n_f_Lya_SiII",
+            "n_s_Lya_SiII",
+            "n_f_SiIIa_SiIIb",
+            "n_s_SiIIa_SiIIb",
+            "n_f_SiIIa_SiIII",
+            "n_f_SiIIb_SiIII",
         ]
+        for prop in cont_props:
+            self.fid_cont[prop] = 0
+
+        igm_props = ["n_tau", "n_sigT", "n_gamma", "n_kF"]
+        for prop in igm_props:
+            self.fid_igm[prop] = 0
+
         self.Gauss_priors = {}
         self.flat_priors = {}
         self.null_vals = {}
@@ -520,60 +529,79 @@ class Args:
                 "n_tau",
                 "n_sigT",
                 "n_f_Lya_SiIII",
-                "n_f_Lya_SiII",
                 "n_s_Lya_SiIII",
+                "n_f_Lya_SiII",
                 "n_s_Lya_SiII",
-                "s_SiII_SiIII",
+                "n_f_SiIIa_SiIIb",
+                "n_s_SiIIa_SiIIb",
+                "n_f_SiIIa_SiIII",
+                "n_f_SiIIb_SiIII",
                 "n_d_dla1",
                 "n_d_dla4",
             ]
-            # if ztar > 3.5:
-            #     baseline_prop.remove("n_f_Lya_SiIIb")
-            #     baseline_prop.remove("n_f_SiII_SiIII")
-            # if ztar > 3.7:
-            #     baseline_prop.remove("n_f_SiIIa_SiIIb")
+
+            if ztar > 3.3:
+                baseline_prop.remove("n_f_SiIIa_SiIIb")
+                baseline_prop.remove("n_s_SiIIa_SiIIb")
+            if ztar > 3.5:
+                baseline_prop.remove("n_f_Lya_SiII")
+                baseline_prop.remove("n_s_Lya_SiII")
+                baseline_prop.remove("n_f_SiIIa_SiIII")
+                baseline_prop.remove("n_f_SiIIb_SiIII")
+            if ztar > 4.0:
+                baseline_prop.remove("n_d_dla4")
+
+            print("baseline_prop", baseline_prop)
 
             self.fid_igm["mF_model_type"] = "pivot"
             self.fid_syst["res_model_type"] = "pivot"
             self.fid_syst["n_res"] = 0
             self.fid_syst["R_coeff"] = [0, 0]
 
-            self.fid_igm["n_tau"] = 1
-            self.fid_igm["n_sigT"] = 1
-            self.fid_igm["n_gamma"] = 1
-            self.fid_igm["n_kF"] = 0
+            if ztar != 0:
+                for prop in baseline_prop:
+                    if prop in igm_props:
+                        self.fid_igm[prop] = 1
+                    else:
+                        self.fid_cont[prop] = 1
 
-            # model like lya-metal
-            self.fid_cont["n_f_Lya_SiIII"] = 1
-            self.fid_cont["n_s_Lya_SiIII"] = 1
+            else:
+                self.fid_igm["n_tau"] = 1
+                self.fid_igm["n_sigT"] = 1
+                self.fid_igm["n_gamma"] = 1
+                self.fid_igm["n_kF"] = 0
 
-            self.fid_cont["n_f_Lya_SiII"] = 1
-            self.fid_cont["n_s_Lya_SiII"] = 1
+                # model like lya-metal
+                self.fid_cont["n_f_Lya_SiIII"] = 1
+                self.fid_cont["n_s_Lya_SiIII"] = 1
 
-            self.fid_cont["n_f_SiIIa_SiIIb"] = 1
-            self.fid_cont["n_s_SiIIa_SiIIb"] = 1
+                self.fid_cont["n_f_Lya_SiII"] = 1
+                self.fid_cont["n_s_Lya_SiII"] = 1
 
-            self.fid_cont["n_f_SiIIa_SiIII"] = 1
-            self.fid_cont["n_f_SiIIb_SiIII"] = 1
+                self.fid_cont["n_f_SiIIa_SiIIb"] = 1
+                self.fid_cont["n_s_SiIIa_SiIIb"] = 1
 
-            self.fid_cont["n_f_CIVa_CIVb"] = 0
-            self.fid_cont["n_s_CIVa_CIVb"] = 0
+                self.fid_cont["n_f_SiIIa_SiIII"] = 1
+                self.fid_cont["n_f_SiIIb_SiIII"] = 1
 
-            self.fid_cont["n_f_MgIIa_MgIIb"] = 0
-            self.fid_cont["n_s_MgIIa_MgIIb"] = 0
+                self.fid_cont["n_f_CIVa_CIVb"] = 0
+                self.fid_cont["n_s_CIVa_CIVb"] = 0
 
-            self.fid_cont["n_d_dla1"] = 1
-            self.fid_cont["n_d_dla2"] = 1
-            self.fid_cont["n_d_dla3"] = 0
-            self.fid_cont["n_d_dla4"] = 1
+                self.fid_cont["n_f_MgIIa_MgIIb"] = 0
+                self.fid_cont["n_s_MgIIa_MgIIb"] = 0
 
-            self.fid_cont["n_s_dla1"] = 0
-            self.fid_cont["n_s_dla2"] = 0
-            self.fid_cont["n_s_dla3"] = 0
-            self.fid_cont["n_s_dla4"] = 0
+                self.fid_cont["n_d_dla1"] = 1
+                self.fid_cont["n_d_dla2"] = 1
+                self.fid_cont["n_d_dla3"] = 0
+                self.fid_cont["n_d_dla4"] = 1
 
-            self.fid_cont["n_c_dla"] = 0
-            self.fid_cont["HCD_const"] = [0, 0]
+                self.fid_cont["n_s_dla1"] = 0
+                self.fid_cont["n_s_dla2"] = 0
+                self.fid_cont["n_s_dla3"] = 0
+                self.fid_cont["n_s_dla4"] = 0
+
+                self.fid_cont["n_c_dla"] = 0
+                self.fid_cont["HCD_const"] = [0, 0]
         else:
             self.fid_syst["res_model_type"] = "pivot"
             self.fid_syst["n_res"] = 0
@@ -653,6 +681,19 @@ class Args:
             self.flat_priors["HCD_scale"] = [[-5, 5], [2, 9]]
             self.flat_priors["HCD_const"] = [[-2, 2], [-0.3, 1e-6]]
 
+        fid_vals_metals = {
+            "f_Lya_SiIII": -4.0,
+            "f_Lya_SiII": -3.5,
+            "f_SiIIa_SiIIb": -1.0,
+            "f_SiIIa_SiIII": 1,
+            "f_SiIIb_SiIII": 1,
+        }
+        add_lines = [
+            "SiIIa_SiIIb",
+            "CIVa_CIVb",
+            "MgIIa_MgIIb",
+        ]
+
         for metal_label in self.metal_lines:
             if self.fid_cont["n_f_" + metal_label] == 0:
                 self.fid_cont["f_" + metal_label] = [0, -10.5]
@@ -667,42 +708,54 @@ class Args:
             else:
                 self.fid_cont["s_" + metal_label] = [0, 4.5]
 
-            if metal_label not in add_lines:
-                self.fid_cont["p_" + metal_label] = [0, 1]
-
             # priors
             if metal_label not in add_lines:
-                self.flat_priors["f_" + metal_label] = [
-                    [-2.5, 2.5],
-                    [-11, 5],
-                ]
                 self.flat_priors["s_" + metal_label] = [[-2, 2], [-11, 8]]
-                self.flat_priors["p_" + metal_label] = [[-1, 1], [0.98, 1.02]]
-            else:
-                self.flat_priors["f_" + metal_label] = [[-3, 3], [-11, 2]]
-                self.flat_priors["s_" + metal_label] = [[-2, 2], [-11, 6]]
+
+            self.flat_priors["f_Lya_SiIII"] = [
+                [-1, 1],
+                [-11, -2],
+            ]
+            self.flat_priors["s_Lya_SiIII"] = [
+                [-1, 1],
+                [2, 6],
+            ]
+
+            self.flat_priors["f_Lya_SiII"] = [
+                [-1, 1],
+                [-11, -2.5],
+            ]
+            self.flat_priors["s_Lya_SiII"] = [
+                [-1, 1],
+                [2, 7],
+            ]
+
+            self.flat_priors["f_SiIIa_SiIIb"] = [
+                [-1, 4],
+                [-11, 1],
+            ]
+            self.flat_priors["s_SiIIa_SiIIb"] = [
+                [-1, 4],
+                [2, 6],
+            ]
+
+            self.flat_priors["f_SiIIa_SiIII"] = [
+                [-1, 2],
+                [-11, 2.5],
+            ]
+            self.flat_priors["f_SiIIb_SiIII"] = [
+                [-1, 1],
+                [-11, 3],
+            ]
 
         for ii in range(4):
             if self.fid_cont["n_d_dla" + str(ii + 1)] == 0:
-                self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -9.5]
+                self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -11.5]
             else:
-                self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -4]
-
-        self.fid_cont["f_Lya_SiIII"] = [0, -4.0]
-        self.fid_cont["f_Lya_SiII"] = [0, -4.0]
-        self.fid_cont["f_SiIIa_SiIII"] = [0, 0]
-        self.fid_cont["f_SiIIb_SiIII"] = [0, 0]
-        self.fid_cont["s_Lya_SiIII"] = [0, 4.5]
-        self.fid_cont["s_Lya_SiII"] = [0, 4]
-
-        self.fid_cont["f_SiIIa_SiIIb"] = [0, 0]
-        self.fid_cont["s_SiIIa_SiIIb"] = [0, 4]
-
-        self.fid_cont["HCD_damp1"] = [0, -1.4]
-        self.fid_cont["HCD_damp4"] = [0, -4]
+                self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -(ii + 1)]
 
         # priors
-        self.flat_priors["HCD_damp"] = [[-0.5, 0.5], [-9.5, -0.25]]
+        self.flat_priors["HCD_damp"] = [[-0.5, 0.5], [-10.5, -0.25]]
         self.flat_priors["HCD_const"] = [[-1, 1], [-0.2, 1e-6]]
 
     def set_baseline2(self, fix_cosmo=True, fit_type="at_a_time", ztar=3):
