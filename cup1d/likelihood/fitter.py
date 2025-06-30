@@ -783,39 +783,39 @@ class Fitter(object):
 
         # NUISANCE
         dict_out["nuisance"] = {}
-        dict_out["nuisance"]["z"] = zs
-        # HCD
-        hcd_model = self.like.args["hcd_model_type"]
-        dict_out["nuisance"]["HCD"] = {}
-        dict_out["nuisance"]["HCD"]["hcd_model_type"] = hcd_model
-        dict_out["nuisance"]["HCD"][
-            "A_damp"
-        ] = self.like.theory.model_cont.hcd_model.get_A_damp(
-            zs, like_params=like_params
-        )
-        if hcd_model == "new":
-            dict_out["nuisance"]["HCD"][
-                "A_scale"
-            ] = self.like.theory.model_cont.hcd_model.get_A_scale(
-                zs, like_params=like_params
-            )
-        # AGN
-        dict_out["nuisance"][
-            "AGN"
-        ] = self.like.theory.model_cont.agn_model.get_AGN_damp(
-            zs, like_params=like_params
-        )
-        # Metals
-        metal_models = self.like.theory.model_cont.metal_models
-        for model_name in metal_models:
-            X_model = metal_models[model_name]
-            f = X_model.get_amplitude(zs, like_params=like_params)
-            adamp = X_model.get_damping(zs, like_params=like_params)
-            alpha = X_model.get_exp_damping(zs, like_params=like_params)
-            dict_out["nuisance"][X_model.metal_label] = {}
-            dict_out["nuisance"][X_model.metal_label]["f"] = f
-            dict_out["nuisance"][X_model.metal_label]["d"] = adamp
-            dict_out["nuisance"][X_model.metal_label]["a"] = alpha
+        # dict_out["nuisance"]["z"] = zs
+        # # HCD
+        # hcd_model = self.like.args["hcd_model_type"]
+        # dict_out["nuisance"]["HCD"] = {}
+        # dict_out["nuisance"]["HCD"]["hcd_model_type"] = hcd_model
+        # dict_out["nuisance"]["HCD"][
+        #     "A_damp"
+        # ] = self.like.theory.model_cont.hcd_model.get_A_damp(
+        #     zs, like_params=like_params
+        # )
+        # if hcd_model == "new":
+        #     dict_out["nuisance"]["HCD"][
+        #         "A_scale"
+        #     ] = self.like.theory.model_cont.hcd_model.get_A_scale(
+        #         zs, like_params=like_params
+        #     )
+        # # AGN
+        # dict_out["nuisance"][
+        #     "AGN"
+        # ] = self.like.theory.model_cont.agn_model.get_AGN_damp(
+        #     zs, like_params=like_params
+        # )
+        # # Metals
+        # metal_models = self.like.theory.model_cont.metal_models
+        # for model_name in metal_models:
+        #     X_model = metal_models[model_name]
+        #     f = X_model.get_amplitude(zs, like_params=like_params)
+        #     adamp = X_model.get_damping(zs, like_params=like_params)
+        #     alpha = X_model.get_exp_damping(zs, like_params=like_params)
+        #     dict_out["nuisance"][X_model.metal_label] = {}
+        #     dict_out["nuisance"][X_model.metal_label]["f"] = f
+        #     dict_out["nuisance"][X_model.metal_label]["d"] = adamp
+        #     dict_out["nuisance"][X_model.metal_label]["a"] = alpha
 
         # FITTER
         dict_out["fitter"] = {}
