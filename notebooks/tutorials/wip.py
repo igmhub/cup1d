@@ -1142,7 +1142,7 @@ for ii in range(len(like.data.z)):
 # %%
 
 # %% [markdown]
-# Normal units
+# ## Read results from chains
 
 # %%
 folder_data = "/home/jchaves/Proyectos/projects/lya/data/obs/QMLE3/CH24_mpgcen_gpr/fid/chain_5/2.2/"
@@ -1151,34 +1151,24 @@ file = "fitter_results.npy"
 # sampler_data = np.load(folder + file, allow_pickle=True).item()
 
 # %%
-# sampler_data.keys()
-
-# %%
 plotter = Plotter(fname_chain=folder_data + file, fname_priors=folder_priors + file)
 # plotter.fitter.like.plot_p1d(residuals=True)
 
 # %% [markdown]
-# prior out of range?!!
+# ### Normal corner
 
 # %%
 # plotter.fitter.like.plot_p1d()
-
-# %%
-plotter.save_directory = folder_data
-
-# %%
-plotter.save_directory = None
+# plotter.save_directory = folder_data
+# plotter.save_directory = None
+# plotter.plot_corner()
 
 # %% [markdown]
-# #### priors: 1 and 2 sigma?
-
-# %%
-plotter.plot_corner()
+# ### Corner natural units
 
 # %%
 plotter.save_directory = folder_data
 
-# %%
 only_plot = [
     '$\\mathrm{ln}\\,\\tau_0$',
     '$\\mathrm{ln}\\,\\sigma^T_0$',
@@ -1187,7 +1177,5 @@ only_plot = [
     '$\\mathrm{R}_0$'
 ]
 plotter.plot_corner_1z_natural(2.2, only_plot=only_plot)
-
-# %%
 
 # %%
