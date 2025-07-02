@@ -63,6 +63,19 @@ plt.legend()
 # plt.xscale("log")
 # plt.yscale("log")
 # plt.ylim(-0.05, 0.05)
-# -
+# +
+# from cup1d.nuisance.metal_correction import SB1_power
 
+# folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/fft_measurement/"
+# file_metal = folder + "param_fit_side_band_1_kms.pickle"
+# Pk_cont = SB1_power(data["P1Ds"].z, data["P1Ds"].k_kms, file_metal)
+# for iz in range(0, 10):
+#     # fun = a * data["P1Ds"].k_kms[iz] ** (-b)
+#     # fun2 = B1 * np.exp(-b1 * data["P1Ds"].k_kms[iz])
+#     # fun3 = C1 * np.exp(-c1 * data["P1Ds"].k_kms[iz])
+#     plt.plot(data["P1Ds"].k_kms[iz], Pk_cont[iz])
+#     # plt.plot(data["P1Ds"].k_kms[iz], fun+fun2+fun3)
+#     y = v1 * data["P1Ds"].k_kms[iz] ** -v2
+#     plt.plot(data["P1Ds"].k_kms[iz], y, "k")
+# # plt.plot(data["P1Ds"].k_kms[iz], fun, lw=3, color="k")
 

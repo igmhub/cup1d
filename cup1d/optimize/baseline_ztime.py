@@ -4,199 +4,6 @@ from cup1d.likelihood.fitter import Fitter
 from scipy.stats.distributions import chi2 as chi2_scipy
 
 
-# list_props = like.free_param_names.copy()
-# def chi2_param_at_time(args, list_props):
-#     """Add parameter at a time, old"""
-#     args.emu_cov_factor = 1
-#     args.emu_cov_type = "block"
-#     args.rebin_k = 8
-#     args.cov_factor = 1
-#     args.fix_cosmo = True
-#     args.vary_alphas = False
-#     args.fid_cosmo_label = "Planck18"
-#     sim_fid = "mpg_central"
-#     args.fid_label_mF = sim_fid
-#     args.fid_label_T = sim_fid
-#     args.fid_label_kF = sim_fid
-
-#     lines_use = [
-#         "Lya_SiIII",
-#         "Lya_SiII",
-#         "SiIIa_SiIII",
-#         "SiIIb_SiIII",
-#         "SiIIa_SiIIb",
-#     ]
-#     args.hcd_model_type = "new"
-#     args.resolution_model_type = "pivot"
-#     args.fid_A_scale = [0, 5]
-
-#     # at a time
-#     f_prior = {
-#         "Lya_SiIII": -4.2,
-#         "Lya_SiIIa": -4.6,
-#         "Lya_SiIIb": -4.6,
-#         "SiIIa_SiIIb": -5.5,
-#         "SiIIa_SiIII": -6.2,
-#         "SiIIb_SiIII": -6.6,
-#     }
-
-#     # at a time
-#     d_prior = {
-#         "Lya_SiIII": 0.4,
-#         "Lya_SiIIa": -0.9,
-#         "Lya_SiIIb": -0.9,
-#         "SiIIa_SiIIb": 0.8,
-#         "SiIIa_SiIII": 1.6,
-#         "SiIIb_SiIII": 2.7,
-#     }
-
-#     # at a time
-#     a_prior = {
-#         "Lya_SiIII": 1.5,
-#         "Lya_SiIIa": 4.0,
-#         "Lya_SiIIb": 4.0,
-#         "SiIIa_SiIIb": 4.0,
-#         "SiIIa_SiIII": 0.5,
-#         "SiIIb_SiIII": 2.5,
-#     }
-
-#     for prop in list_props:
-#         if "ln_tau" in prop:
-#             args.n_tau = 0
-#         else:
-#             args.n_tau = 1
-
-#         if "ln_sigT" in prop:
-#             args.n_sigT = 0
-#         else:
-#             args.n_sigT = 1
-
-#         if "ln_gamma" in prop:
-#             args.n_gamma = 0
-#         else:
-#             args.n_gamma = 1
-
-#         if "ln_kF" in prop:
-#             args.n_kF = 0
-#         else:
-#             args.n_kF = 1
-
-#         for metal_line in lines_use:
-#             args.fid_metals[metal_line + "_L"] = [0, 0]
-#             args.n_metals["n_l_" + metal_line] = 0
-
-#             if "ln_x_" + metal_line in prop:
-#                 args.n_metals["n_x_" + metal_line] = 0
-#                 args.fid_metals[metal_line + "_X"] = [0, -10.5]
-#             else:
-#                 args.n_metals["n_x_" + metal_line] = 1
-#                 args.fid_metals[metal_line + "_X"] = [0, f_prior[metal_line]]
-
-#             if "d_" + metal_line in prop:
-#                 args.n_metals["n_d_" + metal_line] = 0
-#                 args.fid_metals[metal_line + "_D"] = [0, 0]
-#             else:
-#                 args.n_metals["n_d_" + metal_line] = 1
-#                 args.fid_metals[metal_line + "_D"] = [0, d_prior[metal_line]]
-
-#             if "a_" + metal_line in prop:
-#                 args.n_metals["n_a_" + metal_line] = 0
-#                 args.fid_metals[metal_line + "_A"] = [0, 2]
-#             else:
-#                 args.n_metals["n_a_" + metal_line] = 1
-#                 args.fid_metals[metal_line + "_A"] = [0, a_prior[metal_line]]
-
-#         if "R_coeff" in prop:
-#             args.n_res = 0
-#         else:
-#             args.n_res = 1
-
-#         if "ln_A_damp" in prop:
-#             args.n_d_dla = 0
-#             args.fid_A_damp = [0, -9.5]
-#         else:
-#             args.n_d_dla = 1
-#             args.fid_A_damp = [0, -1.5]
-
-#         if "ln_A_scale" in prop:
-#             args.n_s_dla = 0
-#             args.fid_A_scale = [0, 5]
-#         else:
-#             args.n_s_dla = 1
-#             args.fid_A_scale = [0, 5.6]
-
-#         args.fid_AGN = [0, -5.5]
-
-#         like = set_like(
-#             data["P1Ds"],
-#             emulator,
-#             args,
-#             data_hires=data["extra_P1Ds"],
-#         )
-
-#         # print()
-#         # f_space_len = 14
-#         # s_space_len = 5
-#         # for p in like.free_params:
-#         #     print(
-#         #         p.name,
-#         #         (f_space_len - len(p.name)) * " ",
-#         #         "\t",
-#         #         np.round(p.value, 3),
-#         #         (s_space_len - len(str(np.round(p.value, 3)))) * " ",
-#         #         "\t",
-#         #         np.round(p.min_value, 3),
-#         #         (s_space_len - len(str(np.round(p.min_value, 3)))) * " ",
-#         #         "\t",
-#         #         np.round(p.max_value, 3),
-#         #         (s_space_len - len(str(np.round(p.max_value, 3)))) * " ",
-#         #         "\t",
-#         #         p.Gauss_priors_width,
-#         #     )
-#         # print()
-
-#         fitter = Fitter(
-#             like=like,
-#             rootdir=output_dir,
-#             nburnin=args.n_burn_in,
-#             nsteps=args.n_steps,
-#             parallel=args.parallel,
-#             explore=args.explore,
-#             fix_cosmology=args.fix_cosmo,
-#         )
-
-#         p0 = np.array(list(like.fid["fit_cube"].values()))
-#         out_mle = []
-#         out_mle_cube = []
-#         out_chi2 = []
-#         for ii in range(len(like.data.z)):
-#             # for ii in range(2,3):
-#             print(prop, like.data.z[ii])
-#             zmask = np.array([like.data.z[ii]])
-#             # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
-#             # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask, restart=True)
-#             fitter.run_minimizer(
-#                 log_func_minimize=fitter.like.minus_log_prob,
-#                 p0=p0,
-#                 zmask=zmask,
-#                 restart=True,
-#                 nsamples=8,
-#             )
-#             # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
-#             out_mle.append(fitter.mle)
-#             out_mle_cube.append(fitter.mle_cube)
-#             out_chi2.append(fitter.mle_chi2)
-
-#         out = {}
-#         out["param_names"] = list_props
-#         out["zs"] = like.data.z
-#         out["mle"] = out_mle
-#         out["mle_cube"] = out_mle_cube
-#         out["chi2"] = out_chi2
-
-#         np.save("qmle3_lpo/" + prop + ".npy", out)
-
-
 def chi2_grow_model_atz(
     folder, args, iz, fix_props, basic_props, label_fit="basic"
 ):
@@ -475,3 +282,276 @@ def run_grow_model_atz(folder, zs, verbose=True):
         select_props[labz]["prob"] = np.array(prob_im)[: len(chi2_im)]
 
     return select_props
+
+
+def chi2_adding_one_param_at_time(args):
+    """Add parameter at a time, no iterative, old"""
+
+    list_props = [
+        "ln_tau_0",
+        "ln_sigT_kms_0",
+        "ln_gamma_0",
+        "ln_kF_0",
+        "ln_x_Lya_SiIII_0",
+        "d_Lya_SiIII_0",
+        "a_Lya_SiIII_0",
+        "ln_x_Lya_SiIIa_0",
+        "d_Lya_SiIIa_0",
+        "a_Lya_SiIIa_0",
+        "ln_x_Lya_SiIIb_0",
+        "d_Lya_SiIIb_0",
+        "a_Lya_SiIIb_0",
+        "ln_x_SiIIa_SiIIb_0",
+        "d_SiIIa_SiIIb_0",
+        "a_SiIIa_SiIIb_0",
+        "ln_x_SiIIa_SiIII_0",
+        "d_SiIIa_SiIII_0",
+        "a_SiIIa_SiIII_0",
+        "ln_x_SiIIb_SiIII_0",
+        "d_SiIIb_SiIII_0",
+        "a_SiIIb_SiIII_0",
+        "ln_A_damp_0",
+        "ln_A_scale_0",
+        "R_coeff_0",
+    ]
+
+    list_props = ["all"]
+
+    args.emu_cov_factor = 1
+    args.emu_cov_type = "block"
+    args.rebin_k = 8
+    args.cov_factor = 1
+    args.fix_cosmo = True
+    args.vary_alphas = False
+    args.fid_cosmo_label = "Planck18"
+    sim_fid = "mpg_central"
+    args.fid_label_mF = sim_fid
+    args.fid_label_T = sim_fid
+    args.fid_label_kF = sim_fid
+
+    lines_use = [
+        "Lya_SiIII",
+        "Lya_SiII",
+        "SiIIa_SiIII",
+        "SiIIb_SiIII",
+        "SiIIa_SiIIb",
+    ]
+    args.hcd_model_type = "new"
+    args.resolution_model_type = "pivot"
+    args.fid_A_scale = [0, 5]
+
+    # at a time
+    f_prior = {
+        "Lya_SiIII": -4.2,
+        "Lya_SiIIa": -4.6,
+        "Lya_SiIIb": -4.6,
+        "SiIIa_SiIIb": -5.5,
+        "SiIIa_SiIII": -6.2,
+        "SiIIb_SiIII": -6.6,
+    }
+
+    # at a time
+    d_prior = {
+        "Lya_SiIII": 0.4,
+        "Lya_SiIIa": -0.9,
+        "Lya_SiIIb": -0.9,
+        "SiIIa_SiIIb": 0.8,
+        "SiIIa_SiIII": 1.6,
+        "SiIIb_SiIII": 2.7,
+    }
+
+    # at a time
+    a_prior = {
+        "Lya_SiIII": 1.5,
+        "Lya_SiIIa": 4.0,
+        "Lya_SiIIb": 4.0,
+        "SiIIa_SiIIb": 4.0,
+        "SiIIa_SiIII": 0.5,
+        "SiIIb_SiIII": 2.5,
+    }
+
+    for prop in list_props:
+        if "ln_tau" in prop:
+            args.n_tau = 0
+        else:
+            args.n_tau = 1
+
+        if "ln_sigT" in prop:
+            args.n_sigT = 0
+        else:
+            args.n_sigT = 1
+
+        if "ln_gamma" in prop:
+            args.n_gamma = 0
+        else:
+            args.n_gamma = 1
+
+        if "ln_kF" in prop:
+            args.n_kF = 0
+        else:
+            args.n_kF = 1
+
+        for metal_line in lines_use:
+            args.fid_metals[metal_line + "_L"] = [0, 0]
+            args.n_metals["n_l_" + metal_line] = 0
+
+            if "ln_x_" + metal_line in prop:
+                args.n_metals["n_x_" + metal_line] = 0
+                args.fid_metals[metal_line + "_X"] = [0, -10.5]
+            else:
+                args.n_metals["n_x_" + metal_line] = 1
+                args.fid_metals[metal_line + "_X"] = [0, f_prior[metal_line]]
+
+            if "d_" + metal_line in prop:
+                args.n_metals["n_d_" + metal_line] = 0
+                args.fid_metals[metal_line + "_D"] = [0, 0]
+            else:
+                args.n_metals["n_d_" + metal_line] = 1
+                args.fid_metals[metal_line + "_D"] = [0, d_prior[metal_line]]
+
+            if "a_" + metal_line in prop:
+                args.n_metals["n_a_" + metal_line] = 0
+                args.fid_metals[metal_line + "_A"] = [0, 2]
+            else:
+                args.n_metals["n_a_" + metal_line] = 1
+                args.fid_metals[metal_line + "_A"] = [0, a_prior[metal_line]]
+
+        if "R_coeff" in prop:
+            args.n_res = 0
+        else:
+            args.n_res = 1
+
+        if "ln_A_damp" in prop:
+            args.n_d_dla = 0
+            args.fid_A_damp = [0, -9.5]
+        else:
+            args.n_d_dla = 1
+            args.fid_A_damp = [0, -1.5]
+
+        if "ln_A_scale" in prop:
+            args.n_s_dla = 0
+            args.fid_A_scale = [0, 5]
+        else:
+            args.n_s_dla = 1
+            args.fid_A_scale = [0, 5.6]
+
+        args.fid_AGN = [0, -5.5]
+
+        like = set_like(
+            data["P1Ds"],
+            emulator,
+            args,
+            data_hires=data["extra_P1Ds"],
+        )
+
+        # print()
+        # f_space_len = 14
+        # s_space_len = 5
+        # for p in like.free_params:
+        #     print(
+        #         p.name,
+        #         (f_space_len - len(p.name)) * " ",
+        #         "\t",
+        #         np.round(p.value, 3),
+        #         (s_space_len - len(str(np.round(p.value, 3)))) * " ",
+        #         "\t",
+        #         np.round(p.min_value, 3),
+        #         (s_space_len - len(str(np.round(p.min_value, 3)))) * " ",
+        #         "\t",
+        #         np.round(p.max_value, 3),
+        #         (s_space_len - len(str(np.round(p.max_value, 3)))) * " ",
+        #         "\t",
+        #         p.Gauss_priors_width,
+        #     )
+        # print()
+
+        fitter = Fitter(
+            like=like,
+            rootdir=output_dir,
+            nburnin=args.n_burn_in,
+            nsteps=args.n_steps,
+            parallel=args.parallel,
+            explore=args.explore,
+            fix_cosmology=args.fix_cosmo,
+        )
+
+        p0 = np.array(list(like.fid["fit_cube"].values()))
+        out_mle = []
+        out_mle_cube = []
+        out_chi2 = []
+        for ii in range(len(like.data.z)):
+            # for ii in range(2,3):
+            print(prop, like.data.z[ii])
+            zmask = np.array([like.data.z[ii]])
+            # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
+            # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask, restart=True)
+            fitter.run_minimizer(
+                log_func_minimize=fitter.like.minus_log_prob,
+                p0=p0,
+                zmask=zmask,
+                restart=True,
+                nsamples=8,
+            )
+            # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
+            out_mle.append(fitter.mle)
+            out_mle_cube.append(fitter.mle_cube)
+            out_chi2.append(fitter.mle_chi2)
+
+        out = {}
+        out["param_names"] = list_props
+        out["zs"] = like.data.z
+        out["mle"] = out_mle
+        out["mle_cube"] = out_mle_cube
+        out["chi2"] = out_chi2
+
+        np.save("qmle3_lpo/" + prop + ".npy", out)
+
+    # read and plot
+    # chi2_prop = {}
+    # for prop in list_props:
+    #     chi2_prop[prop] = np.array(np.load("qmle3_lpo/"+prop+".npy", allow_pickle=True).item()["chi2"])
+
+    # delta_chi2 = np.zeros((len(chi2_prop), len(chi2_total)))
+    # for iprop, prop in enumerate(list_props):
+    #     delta_chi2[iprop] = chi2_prop[prop] - chi2_total
+
+    # fig, ax = plt.subplots(2, 2, figsize=(10, 8))
+    # ax = ax.reshape(-1)
+    # nn = delta_chi2.shape[0]
+    # for jj in range(nn):
+    #     if jj / nn < 0.25:
+    #         ii = 0
+    #     elif (jj / nn >= 0.25) & (jj / nn < 0.5):
+    #         ii = 1
+    #     elif (jj / nn >= 0.5) & (jj / nn < 0.75):
+    #         ii = 2
+    #     if jj / nn >= 0.75:
+    #         ii = 3
+    #     ax[ii].plot(zs, delta_chi2[jj], ".-", label=list_props[jj])
+    #     ax[ii].axhline(2, color="k")
+
+    # for ii in range(4):
+    #     ax[ii].legend()
+    #     ax[ii].set_yscale("log")
+    # # plt.savefig("lpO_chi2z.png")
+
+    # fig, ax = plt.subplots(2, 2, figsize=(10, 8))
+    # ax = ax.reshape(-1)
+    # nn = delta_chi2.shape[0]
+
+    # for jj in range(nn):
+    #     if jj / nn < 0.25:
+    #         ii = 0
+    #     elif (jj / nn >= 0.25) & (jj / nn < 0.5):
+    #         ii = 1
+    #     elif (jj / nn >= 0.5) & (jj / nn < 0.75):
+    #         ii = 2
+    #     if jj / nn >= 0.75:
+    #         ii = 3
+    #     ax[ii].scatter(jj, np.sum(delta_chi2[jj]), label=list_props[jj])
+    #     ax[ii].axhline(2, color="k")
+
+    # for ii in range(4):
+    #     ax[ii].legend()
+    #     ax[ii].set_yscale("log")
+    # # plt.savefig("lpO_chi2.png")

@@ -36,6 +36,47 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
+# %% [markdown]
+# ### dv all metals
+
+# %%
+c_kms = 299792.458
+metals = ["SiIIa_SiIIb", "Lya_SiIII", "SiIIb_SiIII",  
+          "SiIIa_SiIII", "Lya_SiIIb", "Lya_SiIIa", 
+          "CIVa_CIVb", "MgIIa-MgIIb", "Lya_SiIIc", "SiIIc_SiIII"
+         ]
+
+for metal_label in metals:
+
+    if metal_label == "Lya_SiIII":
+        lambda_rest = [1206.52, 1215.67]
+    elif metal_label == "Lya_SiIIb":
+        lambda_rest = [1193.28, 1215.67]
+    elif metal_label == "Lya_SiIIa":
+        lambda_rest = [1190.42, 1215.67]
+    elif metal_label == "SiIIa_SiIIb":
+        lambda_rest = [1190.42, 1193.28]  # SiIIa-SiIIb
+    elif metal_label == "SiIIa_SiIII":
+        lambda_rest = [1190.42, 1206.52]  # SiIIa-SiIII
+    elif metal_label == "SiIIb_SiIII":
+        lambda_rest = [1193.28, 1206.52]  # SiIIb-SiIII
+    elif metal_label == "CIVa_CIVb":
+        lambda_rest = [1548.20, 1550.78]  # CIV-CIV
+    elif metal_label == "MgIIa-MgIIb":
+        lambda_rest = [2795.53, 2802.70]  # MgII-MgII
+    elif metal_label == "SiIIc_SiIII":
+        lambda_rest = [1206.51, 1260.42]
+    elif metal_label == "Lya_SiIIc":
+        lambda_rest = [1215.67, 1260.42]
+    else:
+        print("NO", metal_label)
+
+    dv = np.log(lambda_rest[1]/lambda_rest[0]) * c_kms
+    # z=3
+    # dk = 1 / dv * c_kms / np.mean(lambda_rest) / (1+z)
+    # dk = 1/lambda_rest[0] / (np.exp(dv/c_kms)-1)
+    print(metal_label, np.round(dv, 2), np.round(2 * np.pi/dv, 4))
+
 # %%
 # # dv1 = 6292.397594858781 
 # # dv2 = 5573.0060260298

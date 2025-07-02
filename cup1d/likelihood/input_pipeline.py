@@ -1015,3 +1015,51 @@ class Args:
         # priors
         self.flat_priors["HCD_damp"] = [[-0.5, 0.5], [-9.5, -0.25]]
         self.flat_priors["HCD_const"] = [[-1, 1], [-0.2, 1e-6]]
+
+
+# Set Gaussian priors
+# # args.prior_Gauss_rms = 0.1
+# args.prior_Gauss_rms = None
+
+# args.Gauss_priors = {}
+# args.Gauss_priors["ln_tau_0"] = [10]
+# # args.Gauss_priors["ln_sigT_kms_0"] = [0.02]
+# # args.Gauss_priors["ln_gamma_0"] = [0.08]
+# # args.Gauss_priors["ln_kF_0"] = [0.003]
+
+# f_Gprior = {
+#     "Lya_SiIII": 1,
+#     "Lya_SiIIa": 1,
+#     "Lya_SiIIb": 1,
+#     "SiIIa_SiIIb": 3,
+#     "SiIIa_SiIII": 4,
+#     "SiIIb_SiIII": 3,
+# }
+
+# d_Gprior = {
+#     "Lya_SiIII": 1.5,
+#     "Lya_SiIIa": 0.05,
+#     "Lya_SiIIb": 0.05,
+#     "SiIIa_SiIIb": 1,
+#     "SiIIa_SiIII": 0.03,
+#     "SiIIb_SiIII": 1,
+# }
+
+# a_Gprior = {
+#     "Lya_SiIII": 10,
+#     "Lya_SiIIa": 10,
+#     "Lya_SiIIb": 10,
+#     "SiIIa_SiIIb": 2,
+#     "SiIIa_SiIII": 0.05,
+#     "SiIIb_SiIII": 0.01,
+# }
+
+# for metal_line in lines_use:
+#     args.Gauss_priors["ln_x_"+metal_line+"_0"] = [f_Gprior[metal_line]]
+#     args.Gauss_priors["d_"+metal_line+"_0"] = [d_Gprior[metal_line]]
+#     args.Gauss_priors["a_"+metal_line+"_0"] = [a_Gprior[metal_line]]
+# args.Gauss_priors["ln_A_damp_0"] = [0.3]
+# args.Gauss_priors["ln_A_scale_0"] = [1]
+# args.Gauss_priors["R_coeff_0"] = [2]
+
+# args.Gauss_priors = {}
