@@ -1,6 +1,11 @@
 cup1d.egg-info/
+data/
 chain_*/
 .ipynb_checkpoints
 *.ipynb
 __pycache__
 *.png
+*.pdf
+*.txt
+*.paramnames
+*.ranges
