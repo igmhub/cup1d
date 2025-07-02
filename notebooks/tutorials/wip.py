@@ -55,7 +55,6 @@ from astropy.io import fits
 from cup1d.likelihood.input_pipeline import Args
 
 from corner import corner
-from cup1d.likelihood import CAMB_model
 
 from cup1d.utils.utils import get_path_repo
 
@@ -263,24 +262,16 @@ elif choose_desiy1:
     # args.cov_syst_type = "xred"
     # args.cov_syst_type = "fid"
     args.cov_syst_type = "red"
+    folder = "/home/jchaves/Proyectos/projects/lya/data/DESI-DR1/"
     # in NERSC
     # /global/cfs/cdirs/desicollab/science/lya/y1-p1d/iron-baseline/qmle_measurement/DataProducts/
     # QMLE /global/cfs/cdirs/desicollab/users/naimgk/my-reductions/data/iron-v3/DataProducts/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits
     # FFT /global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/plots/baseline/notebook/measurement/p1d_fft_y1_measurement_kms.fits
-    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits"
-    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_resocorr_v2.fits"
-    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v2.fits"
     
-    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
-    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_resocorr_v3.fits"
-    args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/DESI-DR1/qmle_measurement/DataProducts/v3/desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
-    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_xe_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
+    # args.p1d_fname=folder + "/qmle_measurement/DataProducts/v3/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
+    args.p1d_fname= folder + "/qmle_measurement/DataProducts/v3/desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
     
-    # args.p1d_fname="/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
-    # folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/fft_measurement/"
-    # args.p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7_no_metal_corr.fits"
-    # args.p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7.fits"
-    # args.p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits"
+    # args.p1d_fname = folder + "/fft_measurement/p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits"
     
     args.z_min = 2.1
     args.z_max = 4.3
@@ -306,101 +297,6 @@ if args.data_label_hires is not None:
     )
 
 # %%
-# Plot covariance
-
-
-# from cup1d.likelihood.plotter import plot_cov
-
-# folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/fft_measurement/"
-# p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7.fits"
-
-# folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/"
-# p1d_fname = folder + "desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
-# p1d_fname = folder + "desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
-
-
-# plot_cov(p1d_fname, save_directory='.', lab = "fid")
-
-
-
-# %%
-# different contributions to QMLE P1D
-# p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/v3/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
-# hdu = fits.open(p1d_fname)
-# _ = (hdu[1].data["Z"] == 2.2) & (hdu[1].data["K"] < 0.04)
-# plt.plot(hdu[1].data["K"][_], hdu[1].data["PLYA"][_])
-# plt.plot(hdu[1].data["K"][_], hdu[1].data["PRAW"][_])
-# plt.plot(hdu[1].data["K"][_], hdu[1].data["PNOISE"][_])
-# plt.plot(hdu[1].data["K"][_], hdu[1].data["ThetaP"][_])
-# # plt.plot(hdu[1].data["K"][_], hdu[1].data["PRAW"][_] - hdu[1].data["PNOISE"][_])
-# plt.plot(hdu[1].data["K"][_], hdu[1].data["PFID"][_])
-
-# %% [markdown]
-# Metal subtraction
-
-# %%
-# # different contributions to FFT P1D
-
-# folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/fft_measurement/"
-# # p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
-# # hdu[1].header
-
-
-# p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7.fits"
-# hdu = fits.open(p1d_fname)
-
-# p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7_no_metal_corr.fits"
-# hdu_nometal = fits.open(p1d_fname)
-
-# p1d_fname = folder + "p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits"
-# hdu_direct = fits.open(p1d_fname)
-# zuse = np.unique(hdu[1].data["Z"])
-
-# # for iz in range(len(zuse)):
-# for iz in range(1,2):
-
-#     _ = (hdu[1].data["Z"] == zuse[iz]) & (hdu[1].data["K"] < 0.03)
-#     p1d_no = hdu_nometal[1].data["PLYA"][_]
-#     p1d_fid = hdu[1].data["PLYA"][_]
-#     p1d_dir = hdu_direct[1].data["PLYA"][_]
-    
-#     plt.plot(hdu[1].data["K"][_], p1d_fid/p1d_dir-1)
-#     # plt.plot(hdu[1].data["K"][_], p1d_no, label="no_metal_corr")
-#     # plt.plot(hdu[1].data["K"][_], p1d_dir/p1d_no-1, label="direct_metal_subtraction")
-#     # plt.plot(hdu[1].data["K"][_], (p1d_no - p1d_dir)/p1d_fid)
-#     # plt.plot(hdu[1].data["K"][_], p1d_no/p1d_fid)
-#     # plt.plot(hdu[1].data["K"][_], p1d_dir/p1d_fid)
-#     # y = p1d_no - p1d_yes
-#     # y = hdu[1].data["K"][_] * (p1d_no - p1d_yes)/np.pi
-#     # plt.plot(hdu[1].data["K"][_], y, label=str(z))
-# # plt.plot(hdu[1].data["K"][_], hdu[1].data["PRAW"][_])
-# # plt.plot(hdu[1].data["K"][_], hdu[1].data["PNOISE"][_])
-# plt.legend()
-# # plt.xscale("log")
-# # plt.yscale("log")
-# # plt.ylim(-0.05, 0.05)
-
-# %%
-
-# %%
-# hdu = fits.open(args.p1d_fname)
-# hdu[1].header
-# plt.imshow(data["P1Ds"].full_cov_kms)
-
-# rat = np.diag(hdu[5].data)/np.diag(hdu[4].data)
-# zu = np.unique(hdu[1].data["Z"])
-# for zz in zu:
-#     _ = (hdu[1].data["Z"] == zz)
-#     plt.plot(hdu[1].data["K"][_], rat[_], label=str(zz))
-# plt.legend(ncol=3)
-# plt.xscale("log")
-# plt.yscale("log")
-
-# %%
-# ntos = 100 * np.sqrt(np.diag(data["P1Ds"].cov_Pk_kms[0]))/data["P1Ds"].Pk_kms[0]
-# plt.plot(data["P1Ds"].k_kms[0], ntos)
-
-# %%
 print(data["P1Ds"].apply_blinding)
 if data["P1Ds"].apply_blinding:
     print(data["P1Ds"].blinding)
@@ -410,9 +306,12 @@ if data["P1Ds"].apply_blinding:
 # data["P1Ds"].blinding = False
 
 # %%
-data["P1Ds"].plot_p1d()
+fname = None
+fname = "p1d_qmle"
+data["P1Ds"].plot_p1d(fname=fname)
 if args.data_label_hires is not None:
     data["extra_P1Ds"].plot_p1d()
+
 
 # %%
 try:
@@ -424,23 +323,6 @@ except:
 
 # %% [markdown]
 # #### Set fiducial/initial options for the fit
-
-# %%
-# # std
-# p2 = np.array([-0.00109798,  0.00691753])
-# # bias + std
-# p2 = np.array([-0.0058123,  0.0237336])
-
-# %%
-
-# args.fid_cosmo_label="Planck18_low"
-# fid_cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
-
-# blob = CAMB_model.CAMBModel(zs=[3], cosmo=fid_cosmo).get_linP_params()
-# blob
-
-
-# %%
 
 # %%
 # cosmology
@@ -732,61 +614,42 @@ len(like.free_param_names)
 for p in like.free_params:
     print(p.name, '\t', p.value, '\t', np.round(p.min_value, 3), '\t', np.round(p.max_value, 3), '\t', p.Gauss_priors_width)
 
-# %%
-# Gaussian_priors
+# %% [markdown]
+# #### Plot cov to pk
 
 # %%
+plot = False
+
+if plot:
+    like.plot_cov_to_pk(save_directory=".")
+    # like.plot_correlation_matrix()
+
+# %% [markdown]
+# #### Plot corr matrix
 
 # %%
-# from scipy.interpolate import interp1d
+plot = False
+
+if plot:
+    like.plot_correlation_matrix()
+
+# %% [markdown]
+# #### Plot hull
 
 # %%
-# # priors_tau = np.array([1.42945563, 1.29749214, 1.18380211, 1.08838556, 1.01124247,
-# #        0.95237286, 0.91177671, 0.88945402, 0.88540481, 0.89962906,
-# #        0.93212679])
+plot = False
 
-# priors_tau = np.exp(np.array([ 0.30973341,  0.23064586,  0.14973022,  0.06698649, 0.01817552,
-#         0.00985069,  0.00152586, -0.00679897, -0.0151238 , -0.02344864,
-#        -0.03177347]))
+if plot:
+    like.plot_hull_fid()
 
-# plt.plot(like.theory.model_igm.F_model.fid_z[:11], like.theory.model_igm.F_model.fid_tau_interp(like.theory.model_igm.F_model.fid_z[:11]) * priors_tau)
-# plt.plot(like.theory.model_igm.F_model.fid_z[:11], like.theory.model_igm.F_model.fid_tau_interp(like.theory.model_igm.F_model.fid_z[:11]))
-
-
-# like.theory.model_igm.F_model.fid_tau_interp = interp1d(like.theory.model_igm.F_model.fid_z[:11], like.theory.model_igm.F_model.fid_tau_interp(like.theory.model_igm.F_model.fid_z[:11]) * priors_tau, kind="cubic")
+# %% [markdown]
+# #### Plot IGM
 
 # %%
-# priors_gamma = np.exp(np.array([ 0.21143884,  0.2070271 ,  0.19430682,  0.173278  ,  0.14394062,
-#         0.10629471,  0.06034025,  0.00607725, -0.0564943 , -0.12737439,
-#        -0.20656303]))
-# plt.plot(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_gamma_interp(like.theory.model_igm.T_model.fid_z[:11]) * priors_gamma)
-# plt.plot(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_gamma_interp(like.theory.model_igm.T_model.fid_z[:11]))
-# like.theory.model_igm.T_model.fid_gamma_interp = interp1d(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_gamma_interp(like.theory.model_igm.T_model.fid_z[:11]) * priors_gamma, kind="cubic")
+plot = False
 
-# %%
-# priors_sigT_kms = np.exp(0.15)
-# plt.plot(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_sigT_kms_interp(like.theory.model_igm.T_model.fid_z[:11]) * priors_sigT_kms)
-# plt.plot(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_sigT_kms_interp(like.theory.model_igm.T_model.fid_z[:11]))
-# like.theory.model_igm.T_model.fid_sigT_kms_interp = interp1d(like.theory.model_igm.T_model.fid_z[:11], like.theory.model_igm.T_model.fid_sigT_kms_interp(like.theory.model_igm.T_model.fid_z[:11]) * priors_sigT_kms, kind="cubic")
-
-# %%
-# like.plot_cov_to_pk()
-# like.plot_correlation_matrix()
-
-# %%
-# like.plot_hull_fid()
-
-# %%
-# like.plot_igm(cloud=True)
-
-# %%
-# z = like.data.z
-# k_kms = like.data.k_kms
-# like.theory.model_cont.agn_model.plot_contamination(z, k_kms)
-
-# z = like.data.z
-# k_kms = like.data.k_kms
-# like.theory.model_cont.hcd_model.plot_contamination(z, k_kms);
+if plot:
+    like.plot_igm(cloud=True)
 
 # %%
 
@@ -799,12 +662,6 @@ like.plot_p1d(residuals=False)
 # like.plot_p1d(residuals=True)
 
 # %%
-
-# %%
-# baseline 1354
-# snr3 1088
-# xe 2373
-# fft 3358
 
 # %% [markdown]
 # ### Set fitter
@@ -863,44 +720,8 @@ fitter.mle
 
 # %%
 
-# %%
-# tau chuncks from fit
-
-res = np.array([1.04476564e+00,  1.02108923e+00,  1.01683558e+00,  9.87310936e-01,
-  9.77622019e-01,  9.75382284e-01,  9.69040461e-01,  9.73455144e-01,
-  9.73710999e-01,  9.28686659e-01,  9.16028012e-01])
-tau_hist = like.theory.model_igm.F_model.fid_tau_interp(like.data.z)
-# plt.plot(like.data.z, like.theory.model_igm.F_model.fid_tau_interp(like.data.z))
-# plt.plot(like.data.z, like.theory.model_igm.F_model.fid_tau_interp(like.data.z)*res)
-pfit = np.polyfit(like.data.z, res, 3)
-plt.plot(like.data.z, res)
-plt.plot(like.data.z, np.poly1d(pfit)(like.data.z))
-
-z0 = 3
-xz = np.log((1 + like.data.z) / (1 + z0))
-pfit = np.polyfit(xz, np.log(res), 4)
-print(pfit)
-plt.plot(like.data.z, np.exp(np.poly1d(pfit)(xz)))
-
 # %% [markdown]
 # #### Latest
-
-# %% [markdown]
-# snr3 mpg fixcosmo chunk_tau 825
-#
-# snr3 mpg fixcosmo 3 tau 855
-#
-# snr3 mpg fixcosmo 3222 854
-#
-# snr3 mpg 3211 859?! No clear improvement when leaving cosmo free
-#
-# NEW baseline
-#
-# snr3 mpg fixcosmo 2222 872
-# snr3 mpg fixcosmo 3022 851
-# snr3 mpg fixcosmo 11,0,2,2 823 (delta chi2 of 30 between 3 and 11 params)
-# snr3 mpg fixcosmo 5,0,3,0 tau 831 (Dchi2 8 with chunks)
-# snr3 mpg fixcosmo 5,0,2,0 tau 833 (Dchi2 8 with chunks)
 
 # %%
 
@@ -914,132 +735,19 @@ plotter = Plotter(fitter, save_directory=diru)
 # plotter.plots_minimizer()
 
 # %%
-plotter.plot_igm()
-
-# %%
-plotter.plot_p1d(plot_panels=True, residuals=True)
-
-# %%
-plotter.plot_p1d_errors()
-
-# %%
-plotter.plot_p1d(residuals=True)
-
-# %%
-
-# %%
-res
-
-# %%
-## mpg (cosmo estable between tau3 and tau11)
-# cosmo, tau3 1346
-# [ 2.86243181e-09  9.22639007e-01]
-# Delta2_star 0.42953
-# n_star -2.34356
-
-# cosmo, tau11, 1289
-# [ 2.88678243e-09  9.17074644e-01]
-# Delta2_star 0.4269
-# n_star -2.34912
-
-## nyx full_emu_cov (Delta2_star not estable between tau3 and tau11)
-# cosmo, tau11, 1108, varies a lot!
-# [ 2.67372327e-09  9.45267892e-01]
-# Delta2_star 0.42575
-# n_star -2.32093
-
-# cosmo, tau3, 1144
-# [ 2.28964445e-09  9.39897597e-01]
-# Delta2_star 0.35949
-# n_star -2.3263
-
-# cosmo, tau3, 1144 (no IC correction, cosmo estable)
-# [ 2.31703526e-09  9.31103034e-01]
-# Delta2_star 0.35549
-# n_star -2.3351
-
-# cosmo, tau3, 1040 (CIV)
-# 2.33627483e-09  9.35807556e-01
-# Delta2_star 0.36289
-# n_star -2.33039
-
-# full baseline nyx 1021
-# 2.38475206e-09  9.36796097e-01
-# Delta2_star 0.37139
-# n_star -2.3294
-
-# %%
+# plotter.plot_igm()
+# plotter.plot_p1d(plot_panels=True, residuals=True)
+# plotter.plot_p1d_errors()
+# plotter.plot_p1d(residuals=True)
 # plotter.plot_p1d(residuals=True, plot_panels=True)
-
-# %%
-# plotter = Plotter(fitter, save_directory="mpg_baseline_chunk")
-# plotter = Plotter(fitter, save_directory="mpg_baseline_pivot")
-# plotter.plots_minimizer()
 # plotter.plot_metal_cont(plot_data=True)
 
-# %%
-# plotter.plot_igm()
-
-# %%
-# plotter.plot_mle_cosmo()
-
-# %%
-
-# %%
-# plotter = Plotter(fitter, save_directory=None)
 # if args.fix_cosmo == False:
     # plotter.plot_mle_cosmo()
 # plotter.plots_minimizer()
 
-# %%
-# help(plotter.plot_hcd_cont)
-
-# %%
-
 # plotter.plot_metal_cont(plot_data=True)
-
-# %%
-
 # plotter.plot_hcd_cont(plot_data=True)
-
-# %%
-# QMLE v3
-# baseline 1309, 986.21
-# w/ rescorr 1346, 983
-# snr 1111, 845 (no z dependence!)
-# xe (up to z=3.8) 2299, 1972
-# fft 1399, 1179
-
-# baseline
-# Fit params no cube: [ 2.57392369e-09  9.38081163e-01 -2.32907115e-02 -5.63143248e-02
-#   1.25715055e-01  1.50849502e-02 -6.43016274e-03 -4.25355260e+00
-#   5.07771208e+00  1.07178963e+00 -5.17128039e+00  6.36987725e+00
-#   1.17152887e+00 -8.55561903e-01  7.11276860e+00 -2.03653868e+00]
-# $\mathrm{ln}\,\tau_0$ -0.05327614106312262
-# $\mathrm{ln}\,\sigma^T_0$ -0.21475119400021098
-# $\mathrm{ln}\,\gamma_0$ 0.007708478413611053
-# $\mathrm{ln}\,k^F_0$ 0.0082702143141003
-# $\mathrm{ln}\,f^{SiIII}_0$ -4.184385480417157
-# $\mathrm{ln}\,d^{SiIII}_0$ 5.22986622701272
-# $a^{SiIII}_0$ 0.9835026303734834
-# $\mathrm{ln}\,f^{SiII}_0$ -5.77632130037337
-# $\mathrm{ln}\,d^{SiII}_0$ 6.004611334746445
-# $a^{SiII}_0$ 1.4272487413191837
-# $\mathrm{ln}\,f^\mathrm{HCD}_0$ -0.20194201272522783
-# $\mathrm{ln}\,s^\mathrm{HCD}_0$ 7.233054495813131
-# Delta2_star 0.6144759530287037
-# n_star -2.261580861937121
-# $A_s$ 3.301904862136354e-09
-# $n_s$ 1.0046175332038638
-# $\mathrm{ln}\,\mathrm{AGN}_0$ -1.7825685481689622
-
-# fft
-# Fit params no cube: [ 2.70795062e-09  9.59887430e-01 
-# -5.89238167e-02 -6.57261002e-02 2.03845630e-01  5.88594448e-02  2.46042037e-01 -1.72288393e-02
-#  -4.75898427e+00  5.04208770e+00  1.06470466e+00 
-# -5.57316079e+00 6.45162450e+00  7.45457315e-01 
-# -1.95259166e+00  6.83429638e+00
-#  -1.82567876e+00]
 
 # %% [markdown]
 # ### Run one z at a time
@@ -1057,7 +765,7 @@ def chi2_param_at_time(args, list_props):
     
     args.emu_cov_factor = 1
     args.emu_cov_type = "block"
-    args.rebin_k = 6
+    args.rebin_k = 8
     args.cov_factor = 1
     args.fix_cosmo=True
     args.vary_alphas=False
@@ -1069,26 +777,15 @@ def chi2_param_at_time(args, list_props):
 
     lines_use = [
         "Lya_SiIII",
-        "Lya_SiIIa",
-        "Lya_SiIIb",
-        "SiIIa_SiIIb",
+        "Lya_SiII",
         "SiIIa_SiIII",
         "SiIIb_SiIII",
+        "SiIIa_SiIIb",
     ]
     args.hcd_model_type = "new"
     args.resolution_model_type = "pivot"
     args.fid_A_scale = [0, 5]
 
-    lines_not_use = [
-        # "CIV_CIV",
-    ]
-
-    for metal_line in lines_not_use:
-        args.fid_metals[metal_line + "_X"] = [0, -10.5]
-        args.n_metals["n_x_" + metal_line] = 0
-        args.n_metals["n_d_" + metal_line] = 0
-        args.n_metals["n_l_" + metal_line] = 0
-        args.n_metals["n_a_" + metal_line] = 0
 
     # at a time
     f_prior = {
@@ -1253,6 +950,9 @@ def chi2_param_at_time(args, list_props):
 
 
 # %%
+fitter.mle
+
+# %%
 
 from scipy.stats.distributions import chi2 as chi2_scipy
 
@@ -1260,9 +960,10 @@ def chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit="basic"):
 
     fid_vals_metals = {
         "f_Lya_SiIII": -4.0,
-        "f_Lya_SiIIb": -4.0,
-        "f_SiIIa_SiIIb": -2.0,
-        "f_SiII_SiIII": -6.0,
+        "f_Lya_SiII": -4.0,
+        "f_SiIIa_SiIII": 1.0,
+        "f_SiIIb_SiIII": 1.0,
+        "f_SiIIa_SiIIb": -0.5,
     }
 
     igm_params = [
@@ -1270,12 +971,6 @@ def chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit="basic"):
         "n_gamma",
         "n_sigT",
         "n_kF",
-    ]
-
-    add_lines = [
-        "SiIIa_SiIIb",
-        "CIVa_CIVb",
-        "MgIIa_MgIIb",
     ]
     
     list_all_props = [
@@ -1285,21 +980,21 @@ def chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit="basic"):
         "n_kF",
         "n_f_Lya_SiIII",
         "n_s_Lya_SiIII",
-        "n_f_Lya_SiIIb",
-        "n_s_Lya_SiIIb",
-        "n_p_Lya_SiIIb",
-        "n_f_SiII_SiIII",
+        "n_f_Lya_SiII",
+        "n_s_Lya_SiII",
+        "n_f_SiIIa_SiIII",
+        "n_f_SiIIb_SiIII",
         "n_f_SiIIa_SiIIb",
         "n_s_SiIIa_SiIIb",
         "n_d_dla1",
         "n_d_dla2",
         "n_d_dla3",
         "n_d_dla4",
-        "n_c_dla",
     ]
         
     
     args.set_baseline()
+    
     like = set_like(
         data["P1Ds"],
         emulator,
@@ -1342,6 +1037,7 @@ def chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit="basic"):
             list_props.append(prop)
 
         for metal_label in args.metal_lines:
+            # set f
             if args.fid_cont["n_f_" + metal_label] == 0:
                 args.fid_cont["f_" + metal_label] = [0, -10.5]
             else:
@@ -1349,16 +1045,15 @@ def chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit="basic"):
                     0,
                     fid_vals_metals["f_" + metal_label],
                 ]
-                if metal_label in ["Lya_SiIII", "Lya_SiIIb", "SiIIa_SiIIb"]:
+                if metal_label in ["SiIIa_SiIIb", "Lya_SiII", "Lya_SiIII"]:
                     args.fid_cont["n_s_" + metal_label] = 1
+                    
 
             if args.fid_cont["n_s_" + metal_label] == 0:
                 args.fid_cont["s_" + metal_label] = [0, -10.5]
             else:
                 args.fid_cont["s_" + metal_label] = [0, 4.5]
 
-            if metal_label not in add_lines:
-                args.fid_cont["p_" + metal_label] = [0, 1]
 
         for ii in range(4):
             if args.fid_cont["n_d_dla" + str(ii + 1)] == 0:
@@ -1444,28 +1139,13 @@ def chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit="basic"):
 # res = np.load("qmle3_lpo/grow_basic.npy", allow_pickle=True).item()
 
 # %%
-basic_props = [
-    None,
-    "n_gamma",
-    "n_sigT",
-    "n_kF",
-    "n_f_Lya_SiIII",
-    "n_f_Lya_SiIIb",
-    "n_f_SiII_SiIII",
-    "n_f_SiIIa_SiIIb",
-    "n_d_dla1",
-    "n_d_dla2",
-    "n_d_dla3",
-    "n_d_dla4",
-]
-
-len(basic_props)
-
+for iz in range(len(like.data.z)):
+    print(iz, like.data.z[iz])
 
 # %%
 select_props = []
 # for iz in range(len(like.data.z)):
-for iz in range(3):
+for iz in range(10, len(like.data.z)):
     print(like.data.z[iz])
     keep = True
     chi2_im = []
@@ -1475,28 +1155,27 @@ for iz in range(3):
         "n_tau",
         "n_sigT",
         "n_f_Lya_SiIII",
+        "n_s_Lya_SiIII",
         "n_d_dla1",
-        "n_d_dla4",
     ]
     
     basic_props = [
         None,
         "n_gamma",
         "n_kF",
-        "n_f_Lya_SiIIb",
-        "n_f_SiII_SiIII",
+        "n_f_Lya_SiII",
+        "n_f_SiIIa_SiIII",
+        "n_f_SiIIb_SiIII",
         "n_f_SiIIa_SiIIb",
         "n_d_dla2",
         "n_d_dla3",
+        "n_d_dla4",
     ]
     it = 0
     while keep:
         label_fit = "iz_" + str(iz) + "_it_" + str(it)
 
-        if ("n_f_Lya_SiIIb" in fix_props) and ("n_p_Lya_SiIIb" not in basic_props):
-            basic_props.append("n_p_Lya_SiIIb")
-
-        if it < 10:
+        if it < 0:
             pass
         else:
             chi2_grow_model_atz(args, iz, fix_props, basic_props, label_fit=label_fit)
@@ -1511,7 +1190,7 @@ for iz in range(3):
         prob1 = chi2_scipy.sf(res["chi2"][0], res["ndeg"][0])
         prob2 = chi2_scipy.sf(res["chi2"][ind], res["ndeg"][ind])
         best_prop = res["param_names"][ind][-1]
-        print(res["mle_cube"][ind])
+        # print(res["mle_cube"][ind])
         print(res["mle"][ind])
 
         if Dchi2[ind] == 0:
@@ -1522,8 +1201,7 @@ for iz in range(3):
         else:
             chi2_im.append(Dchi2[ind])
             prob_im.append(prob2)
-
-        print()
+            
         print()
         
         if prob2 > prob1:
@@ -1946,7 +1624,7 @@ args.Gauss_priors = {}
 
 # %%
 # args.set_baseline(fit_type="full")
-args.set_baseline()
+args.set_baseline(z)
 
 # %%
 
@@ -1988,7 +1666,7 @@ out_mle = []
 out_mle_cube = []
 out_chi2 = []
 # for ii in range(len(like.data.z)): 
-for ii in range(1,2): 
+for ii in range(1): 
 # for ii in range(4, 5): 
 # for ii in range(2,3): 
 # for ii in range(9, 10): 
@@ -2071,7 +1749,7 @@ out_mle = []
 out_mle_cube = []
 out_chi2 = []
 for ii in range(len(like.data.z)): 
-# for ii in range(1,2): 
+# for ii in range(1): 
 # for ii in range(4, 5): 
 # for ii in range(2,3): 
 # for ii in range(9, 10): 
@@ -2124,6 +1802,174 @@ for ii in range(len(like.data.z)):
     # plotter.plots_minimizer()
 
 # %%
+# baseline QMLE3
+
+ndeg_all = 0
+props = []
+chi2_all = 0
+for ii in range(len(out_chi2)):
+    ndeg = len(like.data.k_kms[ii]) - len(out_mle_cube[ii])
+    prob = chi2_scipy.sf(out_chi2[ii], ndeg)
+    print(like.data.z[ii], np.round(out_chi2[ii], 2), ndeg, np.round(prob*100, 2))
+    ndeg_all += ndeg
+    chi2_all += out_chi2[ii]
+    props.append(prob)
+prob = chi2_scipy.sf(chi2_all, ndeg_all)
+print()
+print("All", np.round(chi2_all, 2), ndeg_all, np.round(prob*100, 2))
+
+# %%
+# baseline QMLE
+
+ndeg_all = 0
+props = []
+chi2_all = 0
+for ii in range(len(out_chi2)):
+    ndeg = len(like.data.k_kms[ii]) - len(out_mle_cube[ii])
+    prob = chi2_scipy.sf(out_chi2[ii], ndeg)
+    print(like.data.z[ii], np.round(out_chi2[ii], 2), ndeg, np.round(prob*100, 2))
+    ndeg_all += ndeg
+    chi2_all += out_chi2[ii]
+    props.append(prob)
+prob = chi2_scipy.sf(chi2_all, ndeg_all)
+print()
+print("All", np.round(chi2_all, 2), ndeg_all, np.round(prob*100, 2))
+
+# %%
+# diru = None
+
+# # diru = "qmle_snr3_mpg_z_at_time_baseline7p"
+# diru = "save_tests/qmle_snr_mpg_z_at_time_baseline7"
+#     # diru = "qmle_snr3_mpg_z_at_time_fid_weakp"
+#     # diru = "qmle_fid_mpg_z_at_time_fulllines"
+#     # diru = None
+    
+# args.set_baseline(ztar=like.data.z[ii])
+
+# like = set_like(
+#     data["P1Ds"],
+#     emulator,
+#     args,
+#     data_hires=data["extra_P1Ds"],
+# )
+
+# fitter = Fitter(
+#     like=like,
+#     rootdir=output_dir,
+#     nburnin=args.n_burn_in,
+#     nsteps=args.n_steps,
+#     parallel=args.parallel,
+#     explore=args.explore,
+#     fix_cosmology=args.fix_cosmo,
+# )
+# fitter.mle_cube = out_mle_cube[ii]
+# zmask = [like.data.z[ii]]
+# plotter = Plotter(fitter, save_directory=diru, zmask=zmask)
+# plotter.plot_illustrate_contaminants_cum(out_mle_cube[ii].copy(), zmask)
+
+# %%
+
+# diru = "qmle_snr3_mpg_z_at_time_baseline7p"
+diru = "save_tests/qmle_snr_mpg_z_at_time_baseline7"
+
+args.set_baseline(ztar=like.data.z[0])
+
+like = set_like(
+    data["P1Ds"],
+    emulator,
+    args,
+    data_hires=data["extra_P1Ds"],
+)
+
+fitter = Fitter(
+    like=like,
+    rootdir=output_dir,
+    nburnin=args.n_burn_in,
+    nsteps=args.n_steps,
+    parallel=args.parallel,
+    explore=args.explore,
+    fix_cosmology=args.fix_cosmo,
+)
+fitter.mle_cube = out_mle_cube[0].copy()
+
+plotter = Plotter(fitter, save_directory=diru, zmask=[2.2])
+
+# %%
+all_props = [
+    "ln_tau",
+    "ln_sigT_kms",
+    "f_Lya_SiIII",
+    "s_Lya_SiIII",
+    "f_Lya_SiII",
+    "s_Lya_SiII",
+    "f_SiIIa_SiIIb",
+    "s_SiIIa_SiIIb",
+    "f_SiIIa_SiIII",
+    "f_SiIIb_SiIII",
+    "HCD_damp1",
+    "HCD_damp4",
+]
+
+out_mle_cube_reformat = []
+
+for ii in range(len(like.data.z)):
+# for ii in range(1):
+# for ii in range(9, 10):
+
+    _cube = []
+
+    jj = 0
+    for prop in all_props:
+        if fitter.param_dict[prop + "_0"] in out_mle[ii]:
+            _cube.append(out_mle_cube[ii][jj])
+            jj += 1
+        else:
+            _cube.append(0)
+
+    out_mle_cube_reformat.append(np.array(_cube))
+
+# %%
+plotter.plot_p1d(values=out_mle_cube_reformat, plot_panels=True, residuals=True, z_at_time=True)
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+for ii in range(len(like.data.z)):
+# for ii in range(5,6):
+    # diru = "qmle_snr3_mpg_z_at_time_baseline7p"
+    diru = "qmle_snr_mpg_z_at_time_baseline7"
+    # diru = "qmle_snr3_mpg_z_at_time_fid_weakp"
+    # diru = "qmle_fid_mpg_z_at_time_fulllines"
+    # diru = None
+    
+    args.set_baseline(ztar=like.data.z[ii])
+    
+    like = set_like(
+        data["P1Ds"],
+        emulator,
+        args,
+        data_hires=data["extra_P1Ds"],
+    )
+    
+    fitter = Fitter(
+        like=like,
+        rootdir=output_dir,
+        nburnin=args.n_burn_in,
+        nsteps=args.n_steps,
+        parallel=args.parallel,
+        explore=args.explore,
+        fix_cosmology=args.fix_cosmo,
+    )
+    fitter.mle_cube = out_mle_cube[ii]
+    zmask = [like.data.z[ii]]
+    plotter = Plotter(fitter, save_directory=diru, zmask=zmask)
+    plotter.plot_illustrate_contaminants_cum(out_mle_cube[ii].copy(), zmask)
+
+# %%
 # args.rebin_k = 8
 # like = set_like(
 #     data["P1Ds"],
@@ -2132,9 +1978,6 @@ for ii in range(len(like.data.z)):
 #     data_hires=data["extra_P1Ds"],
 # )
 # like.plot_p1d(fitter.mle_cube, zmask=[2.2])
-
-# %%
-fitter.mle
 
 # %%
 # fitter.like.theory.model_cont.metal_models["SiIIa_SiIIb"].plot_contamination(2.4, fitter.like.data.k_kms[1])
@@ -2156,6 +1999,8 @@ out_chi2
 
 plt.plot(fitter.like.data.z, out_chi2, "o-", label="FFT SB1 direct")
 
+plt.plot(fitter.like.data.z, np.array(props)*100, "o-", label="FFT SB1 direct")
+
 # %%
 # # out_chi2_dir = out_chi2.copy()
 # # out_chi2_ind = out_chi2.copy()
@@ -2171,13 +2016,8 @@ plt.plot(fitter.like.data.z, out_chi2, "o-", label="FFT SB1 direct")
 # # plt.savefig("chi2_all.png")
 
 # %%
-nk = 0
-for ii in range(len(like.data.k_kms)):
-    nk += len(like.data.k_kms[ii])
-nk
 
 # %%
-nk - 11 * len(like.data.k_kms)
 
 # %%
 # plotter.plot_p1d(zmask=zmask)
@@ -2187,7 +2027,7 @@ nk - 11 * len(like.data.k_kms)
 # diru = "fft_fid_mpg_z_at_time_fulllines"
 
 # diru = "qmle_snr3_mpg_z_at_time_baseline"
-diru = "qmle_snr3_mpg_z_at_time_baseline6"
+diru = "qmle_snr3_mpg_z_at_time_baseline7"
 # diru = "qmle_snr3_mpg_z_at_time_fid_weakp"
 # diru = "qmle_fid_mpg_z_at_time_fulllines"
 # diru = None
@@ -2281,7 +2121,7 @@ lines_use = [
 ]
 
 for ii in range(len(like.data.z)):
-    diru = "qmle_snr3_mpg_z_at_time_baseline6"
+    diru = "qmle_snr3_mpg_z_at_time_baseline7"
     # diru = "qmle_snr3_mpg_z_at_time_fid_weakp"
     # diru = "qmle_fid_mpg_z_at_time_fulllines"
     # diru = None
@@ -2508,8 +2348,23 @@ plt.plot(fitter.like.data.z, tau_full)
 # %%
 def plot_z_at_time_params(fitter, attime_fit, save_fig=None):
 
+    paramstrings = [
+        '$\\mathrm{ln}\\,\\tau_0$',
+        '$\\mathrm{ln}\\,\\sigma^T_0$',
+        '$\\mathrm{ln}\\,f($\\mathrm{Ly}\x07lpha-\\mathrm{SiIII}$_0)$',
+        '$\\mathrm{ln}\\,s($\\mathrm{Ly}\x07lpha-\\mathrm{SiIII}$_0)$',
+        '$\\mathrm{ln}\\,f($\\mathrm{Ly}\x07lpha-\\mathrm{SiII}$_0)$',
+        '$\\mathrm{ln}\\,s($\\mathrm{Ly}\x07lpha-\\mathrm{SiII}$_0)$',
+        '$\\mathrm{ln}\\,f($\\mathrm{SiIIa}_\\mathrm{SiIIb}$_0)$',
+        '$\\mathrm{ln}\\,s($\\mathrm{SiIIa}_\\mathrm{SiIIb}$_0)$',
+        '$\\mathrm{ln}\\,f($\\mathrm{SiIIa}_\\mathrm{SiIII}$_0)$',
+        '$\\mathrm{ln}\\,f($\\mathrm{SiIIb}_\\mathrm{SiIII}$_0)$',
+        '$\\mathrm{ln}\\,f^\\mathrm{HCD1}_0$',
+        '$\\mathrm{ln}\\,f^\\mathrm{HCD4}_0$'
+    ]
+
     ofit = {}
-    for par in fitter.paramstrings:
+    for par in paramstrings:
         ofit[fitter.param_dict_rev[par]] = 1
 
     weak_priors = {}
@@ -2519,28 +2374,30 @@ def plot_z_at_time_params(fitter, attime_fit, save_fig=None):
     
     dict_out = {}
     jj = 0
-    for ii, key in enumerate(fitter.paramstrings):
+    for ii, key in enumerate(paramstrings):
         if key not in out_mle[0]:
             continue
         dict_out[key] = np.zeros(len(out_mle))
         for iz in range(len(out_mle)):
-            ax[jj].scatter(fitter.like.data.z[iz], out_mle[iz][key])
-            dict_out[key][iz] = out_mle[iz][key]
+            if key in out_mle[iz]:
+                ax[jj].scatter(fitter.like.data.z[iz], out_mle[iz][key])
+                dict_out[key][iz] = out_mle[iz][key]
         ax[jj].set_ylabel(key)
         ax[jj].set_xlabel(r"$z$")
         jj += 1
     
     jj = 0
-    for ii, key in enumerate(fitter.paramstrings):
+    for ii, key in enumerate(paramstrings):
         if key not in dict_out:
             continue
         print(key, np.round(np.median(dict_out[key]), 4), np.round(np.std(dict_out[key]), 4))
-        ax[jj].plot(fitter.like.data.z, fitter.like.data.z[:]*0 + np.median(dict_out[key]))
+        ind = np.argwhere(dict_out[key] != 0)[:, 0]
+        ax[jj].plot(fitter.like.data.z[ind], fitter.like.data.z[ind]*0 + np.median(dict_out[key][ind]))
     
         # ind = np.argwhere(fitter.param_dict_rev[key] == list_props)[0,0]
         # w = np.abs(delta_chi2[ind])
-        x = fitter.like.data.z.copy()[:5]
-        y = dict_out[key].copy()[:5]
+        x = fitter.like.data.z.copy()[ind]
+        y = dict_out[key].copy()[ind]
         w = np.ones_like(x)    
         fit = np.polyfit(x, y, ofit[fitter.param_dict_rev[key]], w=w)
         for kk in range(3):
@@ -2555,8 +2412,9 @@ def plot_z_at_time_params(fitter, attime_fit, save_fig=None):
             w = w[_]
             fit = np.polyfit(x, y, ofit[fitter.param_dict_rev[key]], w=w)
         # ax[jj].plot(like.data.z, mod)
-        mod = np.poly1d(fit)(fitter.like.data.z)    
-        ax[jj].errorbar(fitter.like.data.z, mod, std_mod * 2)
+        mod = np.poly1d(fit)(fitter.like.data.z[ind])
+        ax[jj].errorbar(fitter.like.data.z[ind], mod, std_mod * 2)
+        print(np.round(np.min(mod- std_mod), 2), np.round(np.max(mod + std_mod), 2), fit)
         weak_priors[fitter.param_dict_rev[key] + "_cen"] = mod
         weak_priors[fitter.param_dict_rev[key] + "_std"] = std_mod
         jj += 1

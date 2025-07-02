@@ -84,7 +84,7 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red"):
                 # "E_PSF",
                 # "E_RESOLUTION",
                 # "E_SIDE_BAND",
-                # "E_LINES",
+                "E_LINES",
                 "E_DLA",
                 "E_BAL",
                 "E_CONTINUUM",
