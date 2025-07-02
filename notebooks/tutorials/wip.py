@@ -61,6 +61,38 @@ from cup1d.utils.utils import get_path_repo
 from lace.archive.nyx_archive import NyxArchive
 
 # %%
+from cup1d.nuisance.mean_flux_class import MeanFlux
+
+# %%
+free_param_names = ["tau_eff_0"]
+fid_igm = None
+fid_vals = {}
+fid_vals["tau_eff"] = [0,0]
+z_pivot= 3
+priors = None
+Gauss_priors = None
+F_model = MeanFlux(
+    free_param_names=free_param_names,
+    fid_igm=fid_igm,
+    fid_vals=fid_vals,
+    z_0=z_pivot,
+    flat_priors=priors,
+    Gauss_priors=Gauss_priors,
+)
+
+# %%
+z = np.arange(2.2, 4.4, 0.2)
+plt.plot(z, F_model.get_tau_eff(z))
+plt.plot(z, F_model.get_mean_flux(z))
+plt.yscale("log")
+# plt.plot(
+
+# %%
+F_model.fid_vals
+
+# %%
+
+# %%
 
 # %% [markdown]
 # ### Set arguments
