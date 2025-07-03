@@ -29,20 +29,6 @@ class Pressure(IGM_model):
                 prop_coeffs[coeff + "_ztype"] = "pivot"
                 prop_coeffs[coeff + "_otype"] = "const"
 
-        if fid_igm is None:
-            repo = os.path.dirname(lace.__path__[0]) + "/"
-            fname = repo + "data/sim_suites/Australia20/IGM_histories.npy"
-            try:
-                igm_hist = np.load(fname, allow_pickle=True).item()
-            except:
-                raise ValueError(
-                    fname
-                    + " not found. You can produce it using the LaCE"
-                    + r" script save_mpg_IGM.py"
-                )
-            else:
-                fid_igm = igm_hist["mpg_central"]
-
         if fid_vals is None:
             fid_vals = {}
             for coeff in list_coeffs:

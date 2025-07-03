@@ -84,22 +84,43 @@ F_model = MeanFlux(
 
 # %%
 z = np.arange(2.2, 4.4, 0.2)
-# plt.plot(z, igm.models["F_model"].get_tau_eff(z))
+plt.plot(z, igm.models["F_model"].get_tau_eff(z))
+# plt.plot(z, igm.models["F_model"].get_mean_flux(z))
 # plt.plot(z, igm.models["T_model"].get_gamma(z))
 # plt.plot(z, igm.models["T_model"].get_sigT_kms(z))
-plt.plot(z, igm.models["P_model"].get_kF_kms(z))
+# plt.plot(z, igm.models["P_model"].get_kF_kms(z))
 # plt.plot(z, F_model.get_mean_flux(z))
-# plt.yscale("log")
+plt.yscale("log")
 # plt.plot(
+
+# %% [markdown]
+# # make sure that we have same number of coeff as nodes
+#
 
 # %%
 from cup1d.likelihood.model_igm import IGM
 
 # %%
-free_param_names = ["tau_eff_0", "gamma_0", "sigT_kms_0", "kF_kms_0"]
 
 
-igm = IGM(free_param_names=free_param_names)
+# free_param_names = ["tau_eff_0", "gamma_0", "sigT_kms_0", "kF_kms_0"]
+free_param_names = []
+for ii in range(6):
+    free_param_names.append("tau_eff_"+str(ii))
+
+prop_coeffs = {
+    "tau_eff_otype": "exp",
+    "gamma_otype": "const",
+    "sigT_kms_otype": "const",
+    "kF_kms_otype": "const",
+    "tau_eff_ztype": "interp_lin",
+    "tau_eff_znodes": np.array([2.2, 2.6, 3, 3.4, 3.8, 4.2]),
+    "gamma_ztype": "pivot",
+    "sigT_kms_ztype": "pivot",
+    "kF_kms_ztype": "pivot",
+}
+
+igm = IGM(free_param_names=free_param_names, prop_coeffs = prop_coeffs)
 
 # %%
 

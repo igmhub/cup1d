@@ -43,7 +43,9 @@ class IGM_model(object):
 
             if prop_coeffs[key + "_ztype"].startswith("interp"):
                 try:
-                    self.prop_coeffs[key + "_zs"] = prop_coeffs[key + "_zs"]
+                    self.prop_coeffs[key + "_znodes"] = prop_coeffs[
+                        key + "_znodes"
+                    ]
                 except KeyError:
                     raise ValueError("must specify zs in prop_coeffs for:", key)
 
@@ -82,8 +84,7 @@ class IGM_model(object):
 
         # post-process fiducial IGM
         for key in self.list_coeffs:
-            if self.prop_coeffs[key + "_ztype"] == "pivot":
-                self.process_igm(fid_igm, key)
+            self.process_igm(fid_igm, key)
 
         self.set_params()
 
@@ -158,8 +159,12 @@ class IGM_model(object):
                 set_prior = False
                 for key2 in self.flat_priors:
                     if key2 in name:
-                        xmin = self.flat_priors[key2][-(ii + 1)][0]
-                        xmax = self.flat_priors[key2][-(ii + 1)][1]
+                        if self.prop_coeffs[key + "_ztype"] == "pivot":
+                            xmin = self.flat_priors[key2][-(ii + 1)][0]
+                            xmax = self.flat_priors[key2][-(ii + 1)][1]
+                        else:
+                            xmin = self.flat_priors[key2][-1][0]
+                            xmax = self.flat_priors[key2][-1][1]
                         set_prior = True
                         break
 
@@ -200,15 +205,15 @@ class IGM_model(object):
             ln_out = ln_poly(xz)
         elif self.prop_coeffs[name + "_ztype"].startswith("interp"):
             if self.prop_coeffs[name + "_ztype"].endswith("_lin"):
-                ln_out = np.interp(z, self.prop_coeffs[name + "_zs"], coeff)
+                ln_out = np.interp(z, self.prop_coeffs[name + "_znodes"], coeff)
             elif self.prop_coeffs[name + "_ztype"].endswith("_spl"):
                 f_out = make_interp_spline(
-                    self.prop_coeffs[name + "_zs"], coeff
+                    self.prop_coeffs[name + "_znodes"], coeff
                 )
                 ln_out = f_out(z)
             elif self.prop_coeffs[name + "_ztype"].endswith("_smspl"):
                 f_out = make_smoothing_spline(
-                    self.prop_coeffs[name + "_zs"], coeff
+                    self.prop_coeffs[name + "_znodes"], coeff
                 )
                 ln_out = f_out(z)
         else:
