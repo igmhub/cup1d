@@ -3,8 +3,10 @@ import os
 import lace
 from cup1d.nuisance.base_igm import IGM_model
 
+from lace.cosmo import thermal_broadening
 
-class MeanFlux(IGM_model):
+
+class Thermal(IGM_model):
     def __init__(
         self,
         coeffs=None,
@@ -16,18 +18,18 @@ class MeanFlux(IGM_model):
         flat_priors=None,
         Gauss_priors=None,
     ):
-        list_coeffs = ["tau_eff"]
+        list_coeffs = ["sigT_kms", "gamma"]
 
         if flat_priors is None:
             flat_priors = {}
             for coeff in list_coeffs:
-                flat_priors[coeff] = [[-0.5, 0.5], [-0.2, 0.2]]
+                flat_priors[coeff] = [[-1, 1], [-1.25, 1.25]]
 
         if prop_coeffs is None:
             prop_coeffs = {}
             for coeff in list_coeffs:
                 prop_coeffs[coeff + "_ztype"] = "pivot"
-                prop_coeffs[coeff + "_otype"] = "exp"
+                prop_coeffs[coeff + "_otype"] = "const"
 
         if fid_igm is None:
             repo = os.path.dirname(lace.__path__[0]) + "/"
@@ -46,7 +48,7 @@ class MeanFlux(IGM_model):
         if fid_vals is None:
             fid_vals = {}
             for coeff in list_coeffs:
-                fid_vals[coeff] = [0, 0]
+                fid_vals[coeff] = [0, 1]
 
         super().__init__(
             coeffs=coeffs,
@@ -60,15 +62,27 @@ class MeanFlux(IGM_model):
             fid_igm=fid_igm,
         )
 
-    def get_tau_eff(self, z, like_params=[], name_par="tau_eff"):
-        """Effective optical depth at the input redshift"""
+    def get_sigT_kms(self, z, like_params=[], name_par="sigT_kms"):
+        """sigT_kms at the input redshift"""
 
-        tau_eff = self.get_value(name_par, z, like_params=like_params)
+        sigT_kms = self.get_value(name_par, z, like_params=like_params)
         if self.prop_coeffs[name_par + "_ztype"] == "pivot":
-            tau_eff *= self.fid_interp[name_par](z)
-        return tau_eff
+            sigT_kms *= self.fid_interp[name_par](z)
+        return sigT_kms
 
-    def get_mean_flux(self, z, like_params=[]):
-        """Mean transmitted flux fraction at the input redshift"""
-        tau = self.get_tau_eff(z, like_params=like_params)
-        return np.exp(-tau)
+    def get_T0(self, z, like_params=[], name_par="sigT_kms"):
+        """T_0 at the input redshift"""
+
+        sigT_kms = self.get_sigT_kms(
+            z, like_params=like_params, name_par=name_par
+        )
+        T0 = thermal_broadening.T0_from_broadening_kms(sigT_kms)
+        return T0
+
+    def get_gamma(self, z, like_params=[], name_par="gamma"):
+        """gamma at the input redshift"""
+
+        gamma = self.get_value(name_par, z, like_params=like_params)
+        if self.prop_coeffs[name_par + "_ztype"] == "pivot":
+            gamma *= self.fid_interp[name_par](z)
+        return gamma

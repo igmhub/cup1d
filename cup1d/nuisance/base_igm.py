@@ -27,6 +27,7 @@ class IGM_model(object):
         self.fid_vals = fid_vals
         self.Gauss_priors = Gauss_priors
         self.flat_priors = flat_priors
+        self.fid_interp = {}
 
         # set prop_coeffs (only for interp, not pivot)
         self.prop_coeffs = {}
@@ -89,8 +90,8 @@ class IGM_model(object):
     def process_igm(self, fid_igm, name_coeff, order_extra=2, smoothing=True):
         """Post-process IGM from simulation"""
 
-        mask = (fid_igm["z"] != 0) & (fid_igm[name_coeff] != 0)
-        mask_znonzero = fid_igm["z"] != 0
+        mask = (fid_igm[name_coeff + "_z"] != 0) & (fid_igm[name_coeff] != 0)
+        mask_znonzero = fid_igm[name_coeff + "_z"] != 0
         if np.sum(mask) == 0:
             raise ValueError("No non-zero value for fiducial IGM", name_coeff)
         elif np.sum(mask) != fid_igm[name_coeff].shape[0]:
@@ -98,37 +99,52 @@ class IGM_model(object):
                 "The fiducial value of",
                 name_coeff,
                 " is zero for z: ",
-                fid_igm["z"][mask == False],
+                fid_igm[name_coeff + "_z"][mask == False],
             )
 
-        # fit power law to fiducial data to reduce noise
+        # fit to fiducial data to reduce noise
+        y = fid_igm[name_coeff][mask]
         if self.prop_coeffs[name_coeff + "_otype"] == "exp":
-            y = np.log(fid_igm[name_coeff][mask])
-        else:
-            y = fid_igm[name_coeff][mask]
-        pfit = np.polyfit(fid_igm["z"][mask], y, order_extra)
+            y = np.log(y)
+
+        pfit = np.polyfit(fid_igm[name_coeff + "_z"][mask], y, order_extra)
         p = np.poly1d(pfit)
 
         # extrapolate to z=2 (if needed)
-        if np.min(fid_igm["z"]) > 2.0:
-            z_to_inter = np.concatenate([[2.0], fid_igm["z"][mask_znonzero]])
+        if np.min(fid_igm[name_coeff + "_z"]) > 2.0:
+            z_to_inter = np.concatenate(
+                [[2.0], fid_igm[name_coeff + "_z"][mask_znonzero]]
+            )
         else:
-            z_to_inter = fid_igm["z"][mask_znonzero]
+            z_to_inter = fid_igm[name_coeff + "_z"][mask_znonzero]
 
         if smoothing:
-            fid_vals = np.exp(p(z_to_inter))
+            fid_vals = p(z_to_inter)
+            if self.prop_coeffs[name_coeff + "_otype"] == "exp":
+                fid_vals = np.exp(fid_vals)
         else:
-            vlow = np.exp(p(2.0))
+            vlow = p(2.0)
+            if self.prop_coeffs[name_coeff + "_otype"] == "exp":
+                vlow = np.exp(vlow)
+
+            vhigh = p(5.0)
+            if self.prop_coeffs[name_coeff + "_otype"] == "exp":
+                vhigh = np.exp(vhigh)
+
             fid_vals = np.concatenate(
-                [[vlow], fid_igm[name_coeff][mask_znonzero]]
+                [[vlow], fid_igm[name_coeff][mask_znonzero], [vhigh]]
             )
             mask_coeff0 = fid_vals == 0
             # use poly fit to interpolate when data is missing (needed for Nyx)
-            fid_vals[mask_coeff0] = np.exp(p(z_to_inter[mask_coeff0]))
+            fid_vals[mask_coeff0] = p(z_to_inter[mask_coeff0])
+            if self.prop_coeffs[name_coeff + "_otype"] == "exp":
+                fid_vals[mask_coeff0] = np.exp(fid_vals[mask_coeff0])
 
         # create interpolator
         ind = np.argsort(z_to_inter)
-        self.fid_interp = interp1d(z_to_inter[ind], fid_vals[ind], kind="cubic")
+        self.fid_interp[name_coeff] = interp1d(
+            z_to_inter[ind], fid_vals[ind], kind="cubic"
+        )
 
     def set_params(self):
         """Setup likelihood parameters in the HCD model"""

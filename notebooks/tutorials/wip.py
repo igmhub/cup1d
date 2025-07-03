@@ -62,6 +62,8 @@ from lace.archive.nyx_archive import NyxArchive
 
 # %%
 from cup1d.nuisance.mean_flux_class import MeanFlux
+from cup1d.nuisance.pressure_class import Pressure
+from cup1d.nuisance.thermal_class import Thermal
 
 # %%
 free_param_names = ["tau_eff_0"]
@@ -82,13 +84,22 @@ F_model = MeanFlux(
 
 # %%
 z = np.arange(2.2, 4.4, 0.2)
-plt.plot(z, F_model.get_tau_eff(z))
-plt.plot(z, F_model.get_mean_flux(z))
-plt.yscale("log")
+# plt.plot(z, igm.models["F_model"].get_tau_eff(z))
+# plt.plot(z, igm.models["T_model"].get_gamma(z))
+# plt.plot(z, igm.models["T_model"].get_sigT_kms(z))
+plt.plot(z, igm.models["P_model"].get_kF_kms(z))
+# plt.plot(z, F_model.get_mean_flux(z))
+# plt.yscale("log")
 # plt.plot(
 
 # %%
-F_model.fid_vals
+from cup1d.likelihood.model_igm import IGM
+
+# %%
+free_param_names = ["tau_eff_0", "gamma_0", "sigT_kms_0", "kF_kms_0"]
+
+
+igm = IGM(free_param_names=free_param_names)
 
 # %%
 

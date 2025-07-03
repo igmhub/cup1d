@@ -4,7 +4,7 @@ import lace
 from cup1d.nuisance.base_igm import IGM_model
 
 
-class MeanFlux(IGM_model):
+class Pressure(IGM_model):
     def __init__(
         self,
         coeffs=None,
@@ -16,18 +16,18 @@ class MeanFlux(IGM_model):
         flat_priors=None,
         Gauss_priors=None,
     ):
-        list_coeffs = ["tau_eff"]
+        list_coeffs = ["kF_kms"]
 
         if flat_priors is None:
             flat_priors = {}
             for coeff in list_coeffs:
-                flat_priors[coeff] = [[-0.5, 0.5], [-0.2, 0.2]]
+                flat_priors[coeff] = [[-1, 1], [-1.2, 1.2]]
 
         if prop_coeffs is None:
             prop_coeffs = {}
             for coeff in list_coeffs:
                 prop_coeffs[coeff + "_ztype"] = "pivot"
-                prop_coeffs[coeff + "_otype"] = "exp"
+                prop_coeffs[coeff + "_otype"] = "const"
 
         if fid_igm is None:
             repo = os.path.dirname(lace.__path__[0]) + "/"
@@ -46,7 +46,7 @@ class MeanFlux(IGM_model):
         if fid_vals is None:
             fid_vals = {}
             for coeff in list_coeffs:
-                fid_vals[coeff] = [0, 0]
+                fid_vals[coeff] = [0, 1]
 
         super().__init__(
             coeffs=coeffs,
@@ -60,15 +60,10 @@ class MeanFlux(IGM_model):
             fid_igm=fid_igm,
         )
 
-    def get_tau_eff(self, z, like_params=[], name_par="tau_eff"):
+    def get_kF_kms(self, z, like_params=[], name_par="kF_kms"):
         """Effective optical depth at the input redshift"""
 
-        tau_eff = self.get_value(name_par, z, like_params=like_params)
+        kF_kms = self.get_value(name_par, z, like_params=like_params)
         if self.prop_coeffs[name_par + "_ztype"] == "pivot":
-            tau_eff *= self.fid_interp[name_par](z)
-        return tau_eff
-
-    def get_mean_flux(self, z, like_params=[]):
-        """Mean transmitted flux fraction at the input redshift"""
-        tau = self.get_tau_eff(z, like_params=like_params)
-        return np.exp(-tau)
+            kF_kms *= self.fid_interp[name_par](z)
+        return kF_kms
