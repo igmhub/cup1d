@@ -47,13 +47,13 @@ def set_free_like_parameters(params, emulator_label):
 
     # IGM
     for ii in range(params.fid_igm["n_tau"]):
-        free_parameters.append(f"ln_tau_{ii}")
+        free_parameters.append(f"tau_eff_{ii}")
     for ii in range(params.fid_igm["n_sigT"]):
-        free_parameters.append(f"ln_sigT_kms_{ii}")
+        free_parameters.append(f"sigT_kms_{ii}")
     for ii in range(params.fid_igm["n_gamma"]):
-        free_parameters.append(f"ln_gamma_{ii}")
+        free_parameters.append(f"gamma_{ii}")
     for ii in range(params.fid_igm["n_kF"]):
-        free_parameters.append(f"ln_kF_{ii}")
+        free_parameters.append(f"kF_kms_{ii}")
 
     # Metal lines
     for metal_line in params.metal_lines:

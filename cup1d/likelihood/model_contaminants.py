@@ -25,98 +25,105 @@ class Contaminants(object):
         hcd_model=None,
         sn_model=None,
         agn_model=None,
-        args=None,
+        pars_cont=None,
+        ic_correction=None,
     ):
-        self.args = args
+        self.pars_cont = pars_cont
+        self.ic_correction = ic_correction
         # setup metal models
         self.metal_models = {}
-
-        # same ion
-        joint_model = True
-
-        if joint_model:
-            self.metal_add = ["CIVa_CIVb", "MgIIa_MgIIb", "Si_add"]
-            self.metal_models["Si_mult"] = si_mult.SiMult(
-                free_param_names=free_param_names,
-                fid_vals=self.args.fid_cont,
-                flat_priors=self.args.flat_priors,
-                Gauss_priors=self.args.Gauss_priors,
-            )
-            self.metal_models["Si_add"] = si_add.SiAdd(
-                free_param_names=free_param_names,
-                fid_vals=self.args.fid_cont,
-                flat_priors=self.args.flat_priors,
-                Gauss_priors=self.args.Gauss_priors,
-            )
-            # for metal_line in self.args.metal_lines:
-            #     if metal_line in self.metal_add:
-            #         self.metal_models[
-            #             metal_line
-            #         ] = metal_metal_model_class.MetalModel(
-            #             metal_label=metal_line,
-            #             free_param_names=free_param_names,
-            #             fid_vals=self.args.fid_cont,
-            #             flat_priors=self.args.flat_priors,
-            #             Gauss_priors=self.args.Gauss_priors,
-            #         )
+        if "flat_priors" in pars_cont:
+            flat_priors = pars_cont["flat_priors"]
         else:
-            self.metal_add = ["SiIIa_SiIIb", "CIVa_CIVb", "MgIIa_MgIIb"]
-            for metal_line in self.args.metal_lines:
-                create_model = True
-                if metal_models is not None:
-                    if metal_line in metal_models:
-                        self.metal_models[metal_line] = metal_models[metal_line]
-                        create_model = False
-                if create_model:
-                    if metal_line in self.metal_add:
-                        self.metal_models[
-                            metal_line
-                        ] = metal_metal_model_class.MetalModel(
-                            metal_label=metal_line,
-                            free_param_names=free_param_names,
-                            fid_vals=self.args.fid_cont,
-                            flat_priors=self.args.flat_priors,
-                            Gauss_priors=self.args.Gauss_priors,
-                        )
-                    else:
-                        self.metal_models[
-                            metal_line
-                        ] = metal_model_class.MetalModel(
-                            metal_label=metal_line,
-                            free_param_names=free_param_names,
-                            fid_vals=self.args.fid_cont,
-                            flat_priors=self.args.flat_priors,
-                            Gauss_priors=self.args.Gauss_priors,
-                        )
+            flat_priors = None
+        if "Gauss_priors" in pars_cont:
+            Gauss_priors = pars_cont["Gauss_priors"]
+        else:
+            Gauss_priors = None
+
+        # if joint_model:
+        self.metal_add = ["CIVa_CIVb", "MgIIa_MgIIb", "Si_add"]
+        self.metal_models["Si_mult"] = si_mult.SiMult(
+            free_param_names=free_param_names,
+            fid_vals=pars_cont,
+            flat_priors=flat_priors,
+            Gauss_priors=Gauss_priors,
+        )
+        self.metal_models["Si_add"] = si_add.SiAdd(
+            free_param_names=free_param_names,
+            fid_vals=pars_cont,
+            flat_priors=flat_priors,
+            Gauss_priors=Gauss_priors,
+        )
+        # for metal_line in self.args.metal_lines:
+        #     if metal_line in self.metal_add:
+        #         self.metal_models[
+        #             metal_line
+        #         ] = metal_metal_model_class.MetalModel(
+        #             metal_label=metal_line,
+        #             free_param_names=free_param_names,
+        #             fid_vals=self.args.fid_cont,
+        #             flat_priors=self.args.flat_priors,
+        #             Gauss_priors=self.args.Gauss_priors,
+        #         )
+        # else:
+        #     self.metal_add = ["SiIIa_SiIIb", "CIVa_CIVb", "MgIIa_MgIIb"]
+        #     for metal_line in self.args.metal_lines:
+        #         create_model = True
+        #         if metal_models is not None:
+        #             if metal_line in metal_models:
+        #                 self.metal_models[metal_line] = metal_models[metal_line]
+        #                 create_model = False
+        #         if create_model:
+        #             if metal_line in self.metal_add:
+        #                 self.metal_models[
+        #                     metal_line
+        #                 ] = metal_metal_model_class.MetalModel(
+        #                     metal_label=metal_line,
+        #                     free_param_names=free_param_names,
+        #                     fid_vals=self.args.fid_cont,
+        #                     flat_priors=self.args.flat_priors,
+        #                     Gauss_priors=self.args.Gauss_priors,
+        #                 )
+        #             else:
+        #                 self.metal_models[
+        #                     metal_line
+        #                 ] = metal_model_class.MetalModel(
+        #                     metal_label=metal_line,
+        #                     free_param_names=free_param_names,
+        #                     fid_vals=self.args.fid_cont,
+        #                     flat_priors=self.args.flat_priors,
+        #                     Gauss_priors=self.args.Gauss_priors,
+        #                 )
 
         # setup HCD model
         if hcd_model:
             self.hcd_model = hcd_model
         else:
-            if self.args.fid_cont["hcd_model_type"] == "Rogers2017":
+            if pars_cont["hcd_model_type"] == "Rogers2017":
                 self.hcd_model = hcd_model_Rogers2017.HCD_Model_Rogers2017(
                     free_param_names=free_param_names,
-                    fid_A_damp=self.args.fid_cont["A_damp1"],
-                    fid_A_scale=self.args.fid_cont["A_scale1"],
+                    fid_A_damp=pars_cont["A_damp1"],
+                    fid_A_scale=pars_cont["A_scale1"],
                 )
-            elif self.args.fid_cont["hcd_model_type"] == "McDonald2005":
+            elif pars_cont["hcd_model_type"] == "McDonald2005":
                 self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
                     free_param_names=free_param_names,
-                    fid_A_damp=self.args.fid_cont["A_damp1"],
+                    fid_A_damp=pars_cont["A_damp1"],
                 )
-            elif self.args.fid_cont["hcd_model_type"] == "new":
+            elif pars_cont["hcd_model_type"] == "new":
                 self.hcd_model = hcd_model_class.HCD_Model(
                     free_param_names=free_param_names,
-                    fid_vals=self.args.fid_cont,
-                    flat_priors=self.args.flat_priors,
-                    Gauss_priors=self.args.Gauss_priors,
+                    fid_vals=pars_cont,
+                    flat_priors=flat_priors,
+                    Gauss_priors=Gauss_priors,
                 )
-            elif self.args.fid_cont["hcd_model_type"] == "new_rogers":
+            elif pars_cont["hcd_model_type"] == "new_rogers":
                 self.hcd_model = hcd_model_rogers_class.HCD_Model_Rogers(
                     free_param_names=free_param_names,
-                    fid_vals=self.args.fid_cont,
-                    flat_priors=self.args.flat_priors,
-                    Gauss_priors=self.args.Gauss_priors,
+                    fid_vals=pars_cont,
+                    flat_priors=flat_priors,
+                    Gauss_priors=Gauss_priors,
                 )
             else:
                 raise ValueError(
@@ -129,7 +136,7 @@ class Contaminants(object):
         else:
             self.sn_model = SN_model.SN_Model(
                 free_param_names=free_param_names,
-                fid_value=self.args.fid_cont["SN"],
+                fid_value=pars_cont["SN"],
             )
 
         # setup AGN model
@@ -138,26 +145,26 @@ class Contaminants(object):
         else:
             self.agn_model = AGN_model.AGN_Model(
                 free_param_names=free_param_names,
-                fid_value=self.args.fid_cont["AGN"],
+                fid_value=pars_cont["AGN"],
             )
 
-    def get_dict_cont(self):
-        dict_out = {}
+    # def get_dict_cont(self):
+    #     dict_out = {}
 
-        # maximum number of parameters
-        for ii in range(2):
-            for metal_line in self.args.metal_lines:
-                flag = "f_" + metal_line + "_" + str(ii)
-                dict_out[flag] = self.fid_metals[flag][-1 - ii]
-                flag = "s_" + metal_line + "_" + str(ii)
-                dict_out[flag] = self.fid_metals[flag][-1 - ii]
-            dict_out["ln_A_damp_" + str(ii)] = self.fid_A_damp[-1 - ii]
-            dict_out["ln_A_scale_" + str(ii)] = self.fid_A_scale[-1 - ii]
-            dict_out["ln_SN_" + str(ii)] = self.fid_SN[-1 - ii]
-            dict_out["ln_AGN_" + str(ii)] = self.fid_AGN[-1 - ii]
-        dict_out["ic_correction"] = self.args.ic_correction
+    #     # maximum number of parameters
+    #     for ii in range(2):
+    #         for metal_line in self.args.metal_lines:
+    #             flag = "f_" + metal_line + "_" + str(ii)
+    #             dict_out[flag] = self.fid_metals[flag][-1 - ii]
+    #             flag = "s_" + metal_line + "_" + str(ii)
+    #             dict_out[flag] = self.fid_metals[flag][-1 - ii]
+    #         dict_out["ln_A_damp_" + str(ii)] = self.fid_A_damp[-1 - ii]
+    #         dict_out["ln_A_scale_" + str(ii)] = self.fid_A_scale[-1 - ii]
+    #         dict_out["ln_SN_" + str(ii)] = self.fid_SN[-1 - ii]
+    #         dict_out["ln_AGN_" + str(ii)] = self.fid_AGN[-1 - ii]
+    #     dict_out["ic_correction"] = self.args.ic_correction
 
-        return dict_out
+    #     return dict_out
 
     def get_contamination(
         self, z, k_kms, mF, M_of_z, like_params=[], remove=None
@@ -231,7 +238,7 @@ class Contaminants(object):
         #     cont_AGN = 1
         cont_AGN = 1
 
-        if self.args.ic_correction:
+        if self.ic_correction:
             IC_corr = ref_nyx_ic_correction(k_kms, z)
         else:
             IC_corr = 1

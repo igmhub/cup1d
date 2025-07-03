@@ -20,21 +20,25 @@ class Thermal(IGM_model):
     ):
         list_coeffs = ["sigT_kms", "gamma"]
 
+        if prop_coeffs is None:
+            prop_coeffs = {}
+            for coeff in list_coeffs:
+                prop_coeffs[coeff + "_ztype"] = "interp_spl"
+                prop_coeffs[coeff + "_otype"] = "const"
+
         if flat_priors is None:
             flat_priors = {}
             for coeff in list_coeffs:
                 flat_priors[coeff] = [[-1, 1], [-1.25, 1.25]]
 
-        if prop_coeffs is None:
-            prop_coeffs = {}
-            for coeff in list_coeffs:
-                prop_coeffs[coeff + "_ztype"] = "pivot"
-                prop_coeffs[coeff + "_otype"] = "const"
-
-        if fid_vals is None:
-            fid_vals = {}
-            for coeff in list_coeffs:
-                fid_vals[coeff] = [0, 1]
+        for coeff in list_coeffs:
+            if coeff not in fid_vals:
+                if prop_coeffs[coeff + "_ztype"] == "pivot":
+                    fid_vals[coeff] = [0, 1]
+                else:
+                    fid_vals[coeff] = np.ones(
+                        len(prop_coeffs[coeff + "_znodes"])
+                    )
 
         super().__init__(
             coeffs=coeffs,
@@ -52,8 +56,7 @@ class Thermal(IGM_model):
         """sigT_kms at the input redshift"""
 
         sigT_kms = self.get_value(name_par, z, like_params=like_params)
-        if self.prop_coeffs[name_par + "_ztype"] == "pivot":
-            sigT_kms *= self.fid_interp[name_par](z)
+        sigT_kms *= self.fid_interp[name_par](z)
         return sigT_kms
 
     def get_T0(self, z, like_params=[], name_par="sigT_kms"):
@@ -69,6 +72,5 @@ class Thermal(IGM_model):
         """gamma at the input redshift"""
 
         gamma = self.get_value(name_par, z, like_params=like_params)
-        if self.prop_coeffs[name_par + "_ztype"] == "pivot":
-            gamma *= self.fid_interp[name_par](z)
+        gamma *= self.fid_interp[name_par](z)
         return gamma

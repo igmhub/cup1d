@@ -47,7 +47,9 @@ class IGM_model(object):
                         key + "_znodes"
                     ]
                 except KeyError:
-                    raise ValueError("must specify zs in prop_coeffs for:", key)
+                    raise ValueError(
+                        "must specify znodes in prop_coeffs for:", key
+                    )
 
         self.coeffs = {}
         if coeffs is not None:
@@ -80,7 +82,12 @@ class IGM_model(object):
                 self.coeffs[key] = [0.0] * npar
 
                 for ii in range(npar):
-                    self.coeffs[key][-(ii + 1)] = self.fid_vals[key][-(ii + 1)]
+                    if self.prop_coeffs[key + "_ztype"] == "pivot":
+                        self.coeffs[key][-(ii + 1)] = self.fid_vals[key][
+                            -(ii + 1)
+                        ]
+                    else:
+                        self.coeffs[key][ii] = self.fid_vals[key][ii]
 
         # post-process fiducial IGM
         for key in self.list_coeffs:
@@ -175,7 +182,10 @@ class IGM_model(object):
                 Gwidth = None
                 if self.Gauss_priors is not None:
                     if name in self.Gauss_priors:
-                        Gwidth = self.Gauss_priors[name][-(ii + 1)]
+                        if self.prop_coeffs[key + "_ztype"] == "pivot":
+                            Gwidth = self.Gauss_priors[name][-(ii + 1)]
+                        else:
+                            Gwidth = self.Gauss_priors[name][ii]
 
                 par = likelihood_parameter.LikelihoodParameter(
                     name=name,
@@ -226,8 +236,12 @@ class IGM_model(object):
         else:
             raise ValueError("prop_coeffs must be const or exp for", name)
 
-    def get_param(self, name):
+    def get_parameter(self, name):
         return self.params[name]
+
+    def get_parameters(self):
+        """Return likelihood parameters"""
+        return self.params
 
     def get_coeff(self, name, like_params=[]):
         if like_params:

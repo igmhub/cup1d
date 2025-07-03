@@ -13,40 +13,51 @@ class IGM(object):
     def __init__(
         self,
         free_param_names=None,
-        z_pivot=3,
+        pars_igm=None,
         F_model=None,
         T_model=None,
         P_model=None,
-        fid_sim_igm_mF="mpg_central",
-        fid_sim_igm_T="mpg_central",
-        fid_sim_igm_kF="mpg_central",
-        fid_vals=None,
-        prop_coeffs=None,
-        type_priors="hc",
-        Gauss_priors=None,
     ):
-        # load fiducial IGM history (used for fitting)
-        self.fid_sim_igm_mF = fid_sim_igm_mF
-        self.fid_sim_igm_T = fid_sim_igm_T
-        self.fid_sim_igm_kF = fid_sim_igm_kF
-        self.z_pivot = z_pivot
+        # set simulation from which we get fiducial IGM history
+        for key in ["mF", "T", "kF"]:
+            lab = "label_" + key
+            if lab in pars_igm:
+                setattr(self, "fid_sim_igm_" + key, pars_igm[lab])
+            else:
+                setattr(self, "fid_sim_igm_" + key, "mpg_central")
 
-        if prop_coeffs is None:
-            prop_coeffs = {
-                "tau_eff_otype": "exp",
-                "gamma_otype": "const",
-                "sigT_kms_otype": "const",
-                "kF_kms_otype": "const",
-                "tau_eff_ztype": "pivot",
-                "gamma_ztype": "pivot",
-                "sigT_kms_ztype": "pivot",
-                "kF_kms_ztype": "pivot",
-            }
+        if "Gauss_priors" in pars_igm:
+            Gauss_priors = pars_igm["Gauss_priors"]
+        else:
+            Gauss_priors = None
+
+        prop_coeffs = {}
+        fid_vals = {}
+        for key in ["tau_eff", "gamma", "sigT_kms", "kF_kms"]:
+            if key in pars_igm:
+                fid_vals[key] = pars_igm[key]
+            for key2 in ["otype", "ztype", "znodes"]:
+                key3 = key + "_" + key2
+                if key3 in pars_igm:
+                    prop_coeffs[key3] = pars_igm[key3]
+                else:
+                    if key3 == "tau_eff_otype":
+                        prop_coeffs[key3] = "exp"
+                    else:
+                        if key3.endswith("otype"):
+                            prop_coeffs[key3] = "const"
+                        elif key3.endswith("ztype"):
+                            prop_coeffs[key3] = "pivot"
+
+        if "priors" in pars_igm:
+            type_priors = pars_igm["priors"]
+        else:
+            type_priors = "hc"
 
         fid_igm = self.get_igm(
-            sim_igm_mF=fid_sim_igm_mF,
-            sim_igm_T=fid_sim_igm_T,
-            sim_igm_kF=fid_sim_igm_kF,
+            sim_igm_mF=self.fid_sim_igm_mF,
+            sim_igm_T=self.fid_sim_igm_T,
+            sim_igm_kF=self.fid_sim_igm_kF,
         )
 
         self.set_priors(fid_igm, prop_coeffs, type_priors=type_priors)
@@ -71,7 +82,6 @@ class IGM(object):
                     fid_igm=fid_igm,
                     fid_vals=fid_vals,
                     prop_coeffs=prop_coeffs,
-                    z_0=z_pivot,
                     flat_priors=self.priors,
                     Gauss_priors=Gauss_priors,
                 )
@@ -169,7 +179,7 @@ class IGM(object):
 
         return igms_return
 
-    def set_priors(self, fid_igm, prop_coeffs, type_priors="hc"):
+    def set_priors(self, fid_igm, prop_coeffs, type_priors="hc", z_pivot=3):
         """Set priors for all IGM models
 
         This is only important for giving the minimizer and the sampler a uniform
@@ -274,9 +284,9 @@ class IGM(object):
 
             y0_cen = 0.5 * (y0_max + y0_min)
             if otype == "exp":
-                y1 = y0_cen / np.log((1 + z.max()) / (1 + self.z_pivot))
+                y1 = y0_cen / np.log((1 + z.max()) / (1 + z_pivot))
             elif otype == "const":
-                y1 = y0_cen / ((1 + z.max()) / (1 + self.z_pivot))
+                y1 = y0_cen / ((1 + z.max()) / (1 + z_pivot))
 
             self.priors[par] = [
                 [-y1 * 2, y1 * 2],

@@ -32,26 +32,19 @@ def set_theory(
         raise ValueError("fid_or_true must be 'fid' or 'true'")
 
     # set igm model
-    model_igm = IGM(
-        free_param_names=free_parameters,
-        fid_sim_igm_mF=pars_igm["label_mF"],
-        fid_sim_igm_T=pars_igm["label_T"],
-        fid_sim_igm_kF=pars_igm["label_kF"],
-        fid_val_par_mF=pars_igm["mF"],
-        fid_val_par_sigT=pars_igm["sigT"],
-        fid_val_par_gamma=pars_igm["gamma"],
-        fid_val_par_kF=pars_igm["kF"],
-        mF_model_type=pars_igm["mF_model_type"],
-        emu_suite=emulator.list_sim_cube[0][:3],
-        type_priors=pars_igm["priors"],
-        Gauss_priors=args.Gauss_priors,
-    )
+    model_igm = IGM(free_param_names=free_parameters, pars_igm=pars_igm)
 
     # set contaminants
-    model_cont = Contaminants(free_param_names=free_parameters, args=args)
+    model_cont = Contaminants(
+        free_param_names=free_parameters,
+        pars_cont=pars_cont,
+        ic_correction=args.ic_correction,
+    )
 
     # set systematics
-    model_syst = Systematics(free_param_names=free_parameters, args=args)
+    model_syst = Systematics(
+        free_param_names=free_parameters, pars_syst=pars_syst
+    )
 
     # set theory
     theory = Theory(
@@ -769,14 +762,9 @@ class Theory(object):
         )
 
         # get parameters from nuisance IGM models
-        for par in self.model_igm.F_model.get_parameters():
-            params.append(par)
-        for par in self.model_igm.T_model.get_sigT_kms_parameters():
-            params.append(par)
-        for par in self.model_igm.T_model.get_gamma_parameters():
-            params.append(par)
-        for par in self.model_igm.P_model.get_parameters():
-            params.append(par)
+        for model in self.model_igm.models:
+            for par in self.model_igm.models[model].get_parameters():
+                params.append(self.model_igm.models[model].get_parameter(par))
 
         # get parameters from metal contamination models
         for model_name in self.model_cont.metal_models:

@@ -18,21 +18,25 @@ class Pressure(IGM_model):
     ):
         list_coeffs = ["kF_kms"]
 
+        if prop_coeffs is None:
+            prop_coeffs = {}
+            for coeff in list_coeffs:
+                prop_coeffs[coeff + "_ztype"] = "interp_spl"
+                prop_coeffs[coeff + "_otype"] = "const"
+
         if flat_priors is None:
             flat_priors = {}
             for coeff in list_coeffs:
                 flat_priors[coeff] = [[-1, 1], [-1.2, 1.2]]
 
-        if prop_coeffs is None:
-            prop_coeffs = {}
-            for coeff in list_coeffs:
-                prop_coeffs[coeff + "_ztype"] = "pivot"
-                prop_coeffs[coeff + "_otype"] = "const"
-
-        if fid_vals is None:
-            fid_vals = {}
-            for coeff in list_coeffs:
-                fid_vals[coeff] = [0, 1]
+        for coeff in list_coeffs:
+            if coeff not in fid_vals:
+                if prop_coeffs[coeff + "_ztype"] == "pivot":
+                    fid_vals[coeff] = [0, 1]
+                else:
+                    fid_vals[coeff] = np.ones(
+                        len(prop_coeffs[coeff + "_znodes"])
+                    )
 
         super().__init__(
             coeffs=coeffs,
@@ -50,6 +54,5 @@ class Pressure(IGM_model):
         """Effective optical depth at the input redshift"""
 
         kF_kms = self.get_value(name_par, z, like_params=like_params)
-        if self.prop_coeffs[name_par + "_ztype"] == "pivot":
-            kF_kms *= self.fid_interp[name_par](z)
+        kF_kms *= self.fid_interp[name_par](z)
         return kF_kms

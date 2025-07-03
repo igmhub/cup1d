@@ -21,20 +21,16 @@ class MeanFlux(IGM_model):
         if prop_coeffs is None:
             prop_coeffs = {}
             for coeff in list_coeffs:
-                prop_coeffs[coeff + "_ztype"] = "pivot"
+                prop_coeffs[coeff + "_ztype"] = "interp_spl"
                 prop_coeffs[coeff + "_otype"] = "exp"
 
         if flat_priors is None:
             flat_priors = {}
             for coeff in list_coeffs:
-                if prop_coeffs[coeff + "_ztype"] == "pivot":
-                    flat_priors[coeff] = [[-0.5, 0.5], [-0.2, 0.2]]
-                else:
-                    flat_priors[coeff] = [-0.2, 0.2]
+                flat_priors[coeff] = [[-0.5, 0.5], [-0.2, 0.2]]
 
-        if fid_vals is None:
-            fid_vals = {}
-            for coeff in list_coeffs:
+        for coeff in list_coeffs:
+            if coeff not in fid_vals:
                 if prop_coeffs[coeff + "_ztype"] == "pivot":
                     fid_vals[coeff] = [0, 0]
                 else:

@@ -83,8 +83,10 @@ F_model = MeanFlux(
 )
 
 # %%
-z = np.arange(2.2, 4.4, 0.2)
+z = np.arange(2.2, 4.4, 0.1)
+# z2 = prop_coeffs["tau_eff_znodes"]
 plt.plot(z, igm.models["F_model"].get_tau_eff(z))
+# plt.plot(z2, igm.models["F_model"].get_tau_eff(z2), "o")
 # plt.plot(z, igm.models["F_model"].get_mean_flux(z))
 # plt.plot(z, igm.models["T_model"].get_gamma(z))
 # plt.plot(z, igm.models["T_model"].get_sigT_kms(z))
@@ -105,29 +107,41 @@ from cup1d.likelihood.model_igm import IGM
 
 # free_param_names = ["tau_eff_0", "gamma_0", "sigT_kms_0", "kF_kms_0"]
 free_param_names = []
-for ii in range(6):
+for ii in range(4):
     free_param_names.append("tau_eff_"+str(ii))
+    free_param_names.append("sigT_kms_"+str(ii))
+    free_param_names.append("kF_kms_"+str(ii))
+for ii in range(5):
+    free_param_names.append("gamma_"+str(ii))
 
 prop_coeffs = {
     "tau_eff_otype": "exp",
     "gamma_otype": "const",
     "sigT_kms_otype": "const",
     "kF_kms_otype": "const",
-    "tau_eff_ztype": "interp_lin",
-    "tau_eff_znodes": np.array([2.2, 2.6, 3, 3.4, 3.8, 4.2]),
-    "gamma_ztype": "pivot",
-    "sigT_kms_ztype": "pivot",
-    "kF_kms_ztype": "pivot",
+    "tau_eff_ztype": "interp_spl",
+    "tau_eff_znodes": np.array([2.6, 3, 3.4, 3.8]),
+    "gamma_ztype": "interp_spl",
+    "gamma_znodes": np.array([2.2, 2.6, 3, 3.4, 3.8]),
+    "sigT_kms_ztype": "interp_spl",
+    "sigT_kms_znodes": np.array([2.6, 3, 3.4, 3.8]),
+    "kF_kms_ztype": "interp_spl",
+    "kF_kms_znodes": np.array([2.6, 3, 3.4, 3.8]),
 }
 
-igm = IGM(free_param_names=free_param_names, prop_coeffs = prop_coeffs)
+# for spl minimum 4 values, if no, lin interp
+
+igm = IGM(free_param_names=free_param_names, pars_igm=prop_coeffs)
 
 # %%
+I
 
 # %%
 
 # %% [markdown]
 # ### Set arguments
+
+# %%
 
 # %%
 
@@ -361,6 +375,15 @@ if args.data_label_hires is not None:
     )
 
 # %%
+args.set_baseline()
+like = set_like(
+    data["P1Ds"],
+    emulator,
+    args,
+    data_hires=data["extra_P1Ds"],
+)
+
+# %%
 print(data["P1Ds"].apply_blinding)
 if data["P1Ds"].apply_blinding:
     print(data["P1Ds"].blinding)
@@ -382,6 +405,10 @@ try:
     data["P1Ds"].plot_igm()
 except:
     print("Real data, no true IGM history")
+
+# %%
+
+# %%
 
 # %%
 
