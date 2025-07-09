@@ -7,7 +7,6 @@ from cup1d.nuisance import (
     hcd_model_Rogers2017,
     hcd_model_class,
     hcd_model_rogers_class,
-    sii_class,
     si_mult,
     si_add,
     SN_model,
@@ -41,60 +40,65 @@ class Contaminants(object):
         else:
             Gauss_priors = None
 
+        prop_coeffs = {}
+        fid_vals = {}
+        for key in pars_cont:
+            fid_vals[key] = pars_cont[key]
+            for key2 in ["otype", "ztype", "znodes"]:
+                key3 = key + "_" + key2
+                if key3 in pars_cont:
+                    prop_coeffs[key3] = pars_cont[key3]
+                else:
+                    if key3.endswith("otype"):
+                        prop_coeffs[key3] = "exp"
+                    elif key3.endswith("ztype"):
+                        prop_coeffs[key3] = "pivot"
+
         # if joint_model:
         self.metal_add = ["CIVa_CIVb", "MgIIa_MgIIb", "Si_add"]
-        self.metal_models["Si_mult"] = si_mult.SiMult(
-            free_param_names=free_param_names,
-            fid_vals=pars_cont,
-            flat_priors=flat_priors,
-            Gauss_priors=Gauss_priors,
-        )
-        self.metal_models["Si_add"] = si_add.SiAdd(
-            free_param_names=free_param_names,
-            fid_vals=pars_cont,
-            flat_priors=flat_priors,
-            Gauss_priors=Gauss_priors,
-        )
-        # for metal_line in self.args.metal_lines:
-        #     if metal_line in self.metal_add:
-        #         self.metal_models[
-        #             metal_line
-        #         ] = metal_metal_model_class.MetalModel(
-        #             metal_label=metal_line,
-        #             free_param_names=free_param_names,
-        #             fid_vals=self.args.fid_cont,
-        #             flat_priors=self.args.flat_priors,
-        #             Gauss_priors=self.args.Gauss_priors,
-        #         )
-        # else:
-        #     self.metal_add = ["SiIIa_SiIIb", "CIVa_CIVb", "MgIIa_MgIIb"]
-        #     for metal_line in self.args.metal_lines:
-        #         create_model = True
-        #         if metal_models is not None:
-        #             if metal_line in metal_models:
-        #                 self.metal_models[metal_line] = metal_models[metal_line]
-        #                 create_model = False
-        #         if create_model:
-        #             if metal_line in self.metal_add:
-        #                 self.metal_models[
-        #                     metal_line
-        #                 ] = metal_metal_model_class.MetalModel(
-        #                     metal_label=metal_line,
-        #                     free_param_names=free_param_names,
-        #                     fid_vals=self.args.fid_cont,
-        #                     flat_priors=self.args.flat_priors,
-        #                     Gauss_priors=self.args.Gauss_priors,
-        #                 )
-        #             else:
-        #                 self.metal_models[
-        #                     metal_line
-        #                 ] = metal_model_class.MetalModel(
-        #                     metal_label=metal_line,
-        #                     free_param_names=free_param_names,
-        #                     fid_vals=self.args.fid_cont,
-        #                     flat_priors=self.args.flat_priors,
-        #                     Gauss_priors=self.args.Gauss_priors,
-        #                 )
+
+        # setup metal models
+        key = "Si_mult"
+        try:
+            self.metal_models[key] = metal_models[key]
+        except:
+            self.metal_models[key] = si_mult.SiMult(
+                free_param_names=free_param_names,
+                fid_vals=fid_vals,
+                prop_coeffs=prop_coeffs,
+                flat_priors=flat_priors,
+                Gauss_priors=Gauss_priors,
+            )
+
+        key = "Si_add"
+        try:
+            self.metal_models[key] = metal_models[key]
+        except:
+            self.metal_models[key] = si_add.SiAdd(
+                free_param_names=free_param_names,
+                fid_vals=fid_vals,
+                prop_coeffs=prop_coeffs,
+                flat_priors=flat_priors,
+                Gauss_priors=Gauss_priors,
+            )
+
+        for metal_line in self.metal_add:
+            if metal_line == "Si_add":
+                continue
+            create_model = True
+            try:
+                self.metal_models[metal_line] = metal_models[metal_line]
+            except:
+                self.metal_models[
+                    metal_line
+                ] = metal_metal_model_class.MetalModel(
+                    metal_label=metal_line,
+                    free_param_names=free_param_names,
+                    fid_vals=fid_vals,
+                    prop_coeffs=prop_coeffs,
+                    flat_priors=flat_priors,
+                    Gauss_priors=Gauss_priors,
+                )
 
         # setup HCD model
         if hcd_model:
@@ -121,7 +125,8 @@ class Contaminants(object):
             elif pars_cont["hcd_model_type"] == "new_rogers":
                 self.hcd_model = hcd_model_rogers_class.HCD_Model_Rogers(
                     free_param_names=free_param_names,
-                    fid_vals=pars_cont,
+                    fid_vals=fid_vals,
+                    prop_coeffs=prop_coeffs,
                     flat_priors=flat_priors,
                     Gauss_priors=Gauss_priors,
                 )

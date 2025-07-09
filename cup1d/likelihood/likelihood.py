@@ -401,9 +401,6 @@ class Likelihood(object):
     def set_free_parameters(self, free_param_names, free_param_limits):
         """Setup likelihood parameters that we want to vary"""
 
-        # setup list of likelihood free parameters
-        self.free_params = []
-
         if free_param_limits is not None:
             assert len(free_param_limits) == len(
                 free_param_names
@@ -414,19 +411,26 @@ class Likelihood(object):
 
         ## select free parameters, make sure ordering
         ## in self.free_params is same as in free_param_names
-        for par_name in free_param_names:
-            for par in params:
-                if par.name == par_name:
-                    if free_param_limits is not None:
-                        ## Set min and max of each parameter if
-                        ## a list is given. otherwise leave as default
-                        par.min_value = free_param_limits[
-                            free_param_names.index(par.name)
-                        ][0]
-                        par.max_value = free_param_limits[
-                            free_param_names.index(par.name)
-                        ][1]
-                    self.free_params.append(par)
+        # for par in params:
+        #     if par.name not in free_param_names:
+        #         print(par.name)
+
+        # setup list of likelihood free parameters
+        self.free_params = []
+        # iterate over free parameters
+        for par in params:
+            if par.name in free_param_names:
+                if free_param_limits is not None:
+                    ## Set min and max of each parameter if
+                    ## a list is given. otherwise leave as default
+                    ind = free_param_names.index(par.name)
+                    par.min_value = free_param_limits[ind][0]
+                    par.max_value = free_param_limits[ind][1]
+                self.free_params.append(par)
+        #     else:
+        #         print(par.name)
+
+        # print(free_param_names)
 
         Nfree = len(self.free_params)
         Nin = len(free_param_names)
@@ -437,6 +441,15 @@ class Likelihood(object):
             print("likelihood setup with {} free parameters".format(Nfree))
 
         return
+
+    def sampling_point_from_parameters(self):
+        """Translate likelihood parameters to array of values (in cube)"""
+
+        values = np.zeros(len(self.free_params))
+        for ii, par in enumerate(self.free_params):
+            values[ii] = par.value_in_cube()
+
+        return values
 
     def parameters_from_sampling_point(self, values):
         """Translate input array of values (in cube) to likelihood parameters"""
@@ -1687,32 +1700,41 @@ class Likelihood(object):
             pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
             pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
 
+        zs = np.linspace(self.data.z.min(), self.data.z.max(), 100)
         pars_fid = {}
-        pars_fid["z"] = self.fid["igm"]["z"]
-        pars_fid["tau_eff"] = self.fid["igm"]["tau_eff"]
-        pars_fid["gamma"] = self.fid["igm"]["gamma"]
-        pars_fid["sigT_kms"] = self.fid["igm"]["sigT_kms"]
-        pars_fid["kF_kms"] = self.fid["igm"]["kF_kms"]
+        pars_fid["z"] = zs
+        pars_fid["tau_eff"] = self.theory.model_igm.models[
+            "F_model"
+        ].get_tau_eff(zs)
+        pars_fid["gamma"] = self.theory.model_igm.models["T_model"].get_gamma(
+            zs
+        )
+        pars_fid["sigT_kms"] = self.theory.model_igm.models[
+            "T_model"
+        ].get_sigT_kms(zs)
+        pars_fid["kF_kms"] = self.theory.model_igm.models["P_model"].get_kF_kms(
+            zs
+        )
 
         if free_params is not None:
             if zmask is not None:
                 zs = zmask
             else:
-                zs = self.fid["igm"]["z"]
+                zs = self.data.z
             pars_test = {}
             pars_test["z"] = zs
-            pars_test["tau_eff"] = self.theory.model_igm.F_model.get_tau_eff(
-                zs, like_params=free_params
-            )
-            pars_test["gamma"] = self.theory.model_igm.T_model.get_gamma(
-                zs, like_params=free_params
-            )
-            pars_test["sigT_kms"] = self.theory.model_igm.T_model.get_sigT_kms(
-                zs, like_params=free_params
-            )
-            pars_test["kF_kms"] = self.theory.model_igm.P_model.get_kF_kms(
-                zs, like_params=free_params
-            )
+            pars_test["tau_eff"] = self.theory.model_igm.models[
+                "F_model"
+            ].get_tau_eff(zs, like_params=free_params)
+            pars_test["gamma"] = self.theory.model_igm.models[
+                "T_model"
+            ].get_gamma(zs, like_params=free_params)
+            pars_test["sigT_kms"] = self.theory.model_igm.models[
+                "T_model"
+            ].get_sigT_kms(zs, like_params=free_params)
+            pars_test["kF_kms"] = self.theory.model_igm.models[
+                "P_model"
+            ].get_kF_kms(zs, like_params=free_params)
 
         fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
         ax = ax.reshape(-1)
@@ -1721,8 +1743,8 @@ class Likelihood(object):
         latex_labs = [
             r"$\tau_\mathrm{eff}$",
             r"$\gamma$",
-            r"$\sigma_T$",
-            r"$k_F$",
+            r"$\sigma_T$ [km/s]",
+            r"$k_F$ [km/s]",
         ]
 
         for ii in range(len(arr_labs)):
@@ -1740,7 +1762,7 @@ class Likelihood(object):
             ax[ii].plot(
                 pars_fid["z"][_],
                 pars_fid[arr_labs[ii]][_],
-                "C1s--",
+                "C1--",
                 label="fiducial",
                 alpha=0.75,
                 lw=3,

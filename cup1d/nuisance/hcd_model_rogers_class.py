@@ -17,6 +17,7 @@ class HCD_Model_Rogers(Contaminant):
         z_0=3.0,
         fid_vals=None,
         flat_priors=None,
+        null_vals=None,
         Gauss_priors=None,
     ):
         # list of all coefficients
@@ -60,6 +61,15 @@ class HCD_Model_Rogers(Contaminant):
                 "HCD_const": [0, 0],
             }
 
+        # null values
+        if null_vals is None:
+            null_vals = {
+                "HCD_damp1": np.exp(-11.5),
+                "HCD_damp2": np.exp(-11.5),
+                "HCD_damp3": np.exp(-11.5),
+                "HCD_damp4": np.exp(-11.5),
+            }
+
         self.a_0 = np.array([2.2001, 1.5083, 1.1415, 0.8633])
         self.a_1 = np.array([0.0134, 0.0994, 0.0937, 0.2943])
         self.b_0 = np.array([36.449, 81.388, 162.95, 429.58])
@@ -73,6 +83,7 @@ class HCD_Model_Rogers(Contaminant):
             free_param_names=free_param_names,
             z_0=z_0,
             fid_vals=fid_vals,
+            null_vals=null_vals,
             flat_priors=flat_priors,
             Gauss_priors=Gauss_priors,
         )
@@ -88,6 +99,9 @@ class HCD_Model_Rogers(Contaminant):
             vals[key] = np.atleast_1d(
                 self.get_value(key, z, like_params=like_params)
             )
+            if key in self.null_vals:
+                _ = vals[key] <= self.null_vals[key]
+                vals[key][_] = 0
 
         dla_corr = []
         for iz in range(len(z)):

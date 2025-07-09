@@ -15,6 +15,7 @@ class Contaminant(object):
         free_param_names=None,
         z_0=3.0,
         fid_vals=None,
+        null_vals=None,
         flat_priors=None,
         Gauss_priors=None,
     ):
@@ -22,6 +23,7 @@ class Contaminant(object):
         self.list_coeffs = list_coeffs
         self.z_0 = z_0
         self.fid_vals = fid_vals
+        self.null_vals = null_vals
         self.Gauss_priors = Gauss_priors
         self.flat_priors = flat_priors
 
@@ -39,7 +41,9 @@ class Contaminant(object):
 
             if prop_coeffs[key + "_ztype"].startswith("interp"):
                 try:
-                    self.prop_coeffs[key + "_zs"] = prop_coeffs[key + "_zs"]
+                    self.prop_coeffs[key + "_znodes"] = prop_coeffs[
+                        key + "_znodes"
+                    ]
                 except KeyError:
                     raise ValueError("must specify zs in prop_coeffs for:", key)
 
@@ -74,7 +78,16 @@ class Contaminant(object):
                 self.coeffs[key] = [0.0] * npar
 
                 for ii in range(npar):
-                    self.coeffs[key][-(ii + 1)] = self.fid_vals[key][-(ii + 1)]
+                    if self.prop_coeffs[key + "_ztype"] == "pivot":
+                        # self.coeffs[key][-(ii + 1)] = self.fid_vals[key][
+                        #     -(ii + 1)
+                        # ]
+                        if ii == 0:
+                            self.coeffs[key][-1] = self.fid_vals[key][-1]
+                        else:
+                            self.coeffs[key][-(ii + 1)] = self.fid_vals[key][0]
+                    else:
+                        self.coeffs[key][ii] = self.fid_vals[key][-1]
 
         self.set_params()
 
@@ -90,8 +103,18 @@ class Contaminant(object):
                 set_prior = False
                 for key2 in self.flat_priors:
                     if key2 in name:
-                        xmin = self.flat_priors[key2][-(ii + 1)][0]
-                        xmax = self.flat_priors[key2][-(ii + 1)][1]
+                        if self.prop_coeffs[key + "_ztype"] == "pivot":
+                            # xmin = self.flat_priors[key2][-(ii + 1)][0]
+                            # xmax = self.flat_priors[key2][-(ii + 1)][1]
+                            if ii == 0:
+                                xmin = self.flat_priors[key2][-1][0]
+                                xmax = self.flat_priors[key2][-1][1]
+                            else:
+                                xmin = self.flat_priors[key2][0][0]
+                                xmax = self.flat_priors[key2][0][1]
+                        else:
+                            xmin = self.flat_priors[key2][-1][0]
+                            xmax = self.flat_priors[key2][-1][1]
                         set_prior = True
                         break
 
@@ -102,11 +125,19 @@ class Contaminant(object):
                 Gwidth = None
                 if self.Gauss_priors is not None:
                     if name in self.Gauss_priors:
-                        Gwidth = self.Gauss_priors[name][-(ii + 1)]
+                        if self.prop_coeffs[key + "_ztype"] == "pivot":
+                            Gwidth = self.Gauss_priors[name][-(ii + 1)]
+                        else:
+                            Gwidth = self.Gauss_priors[name][ii]
+
+                if self.prop_coeffs[key + "_ztype"] == "pivot":
+                    _value = values[-(ii + 1)]
+                else:
+                    _value = values[ii]
 
                 par = likelihood_parameter.LikelihoodParameter(
                     name=name,
-                    value=values[-(ii + 1)],
+                    value=_value,
                     min_value=xmin,
                     max_value=xmax,
                     Gauss_priors_width=Gwidth,
@@ -132,17 +163,24 @@ class Contaminant(object):
             ln_out = ln_poly(xz)
         elif self.prop_coeffs[name + "_ztype"].startswith("interp"):
             if self.prop_coeffs[name + "_ztype"].endswith("_lin"):
-                ln_out = np.interp(z, self.prop_coeffs[name + "_zs"], coeff)
+                ln_out = np.interp(z, self.prop_coeffs[name + "_znodes"], coeff)
             elif self.prop_coeffs[name + "_ztype"].endswith("_spl"):
                 f_out = make_interp_spline(
-                    self.prop_coeffs[name + "_zs"], coeff
+                    self.prop_coeffs[name + "_znodes"],
+                    coeff,
+                    k=1,
                 )
                 ln_out = f_out(z)
             elif self.prop_coeffs[name + "_ztype"].endswith("_smspl"):
                 f_out = make_smoothing_spline(
-                    self.prop_coeffs[name + "_zs"], coeff
+                    self.prop_coeffs[name + "_znodes"], coeff
                 )
                 ln_out = f_out(z)
+            else:
+                raise ValueError(
+                    "prop_coeffs must be interp_lin, interp_spl, or interp_smspl for",
+                    name,
+                )
         else:
             raise ValueError("prop_coeffs must be interp or pivot for", name)
 
@@ -153,8 +191,12 @@ class Contaminant(object):
         else:
             raise ValueError("prop_coeffs must be const or exp for", name)
 
-    def get_param(self, name):
+    def get_parameter(self, name):
         return self.params[name]
+
+    def get_parameters(self):
+        """Return likelihood parameters"""
+        return self.params
 
     def get_coeff(self, name, like_params=[]):
         if like_params:
@@ -179,11 +221,72 @@ class Contaminant(object):
 
             for ii in range(Npar):
                 ind_arr = np.argwhere(name + "_" + str(ii) == array_names)[0, 0]
-                coeff[-(ii + 1)] = array_values[ind_arr]
+                if self.prop_coeffs[name + "_ztype"] == "pivot":
+                    coeff[-(ii + 1)] = array_values[ind_arr]
+                else:
+                    coeff[ii] = array_values[ind_arr]
         else:
             coeff = self.coeffs[name]
 
         return coeff
+
+    def plot_parameters(self, z, like_params, folder=None):
+        """Plot likelihood parameters"""
+
+        from matplotlib import pyplot as plt
+
+        fig, ax = plt.subplots(
+            len(self.coeffs), 1, sharex=True, figsize=(8, 3 * len(self.coeffs))
+        )
+        if len(self.coeffs) == 1:
+            ax = [ax]
+
+        try:
+            len_p = len(like_params[0])
+        except:
+            z_at_time = False
+        else:
+            z_at_time = True
+
+        vals_out = {}
+
+        for ii, key in enumerate(self.coeffs.keys()):
+            if z_at_time == False:
+                vals = self.get_value(key, z, like_params=like_params)
+            else:
+                vals = []
+                for jj in range(len(z)):
+                    vals.append(
+                        self.get_value(key, z[jj], like_params=like_params[jj])
+                    )
+                vals = np.array(vals)
+
+            if key in self.null_vals:
+                if np.all(vals == self.null_vals[key]):
+                    continue
+            elif key == "HCD_const":
+                if np.all(vals == 0):
+                    continue
+
+            if self.prop_coeffs[key + "_otype"] == "exp":
+                vals = np.log(vals)
+
+            vals_out[key] = vals
+
+            ax[ii].plot(z, vals, "o-", label="data")
+            res = np.polyfit(z, vals, 1)
+            ax[ii].plot(z, res[0] * z + res[1], "--", label="fit")
+            ax[ii].set_ylabel(key)
+        ax[0].legend()
+        ax[-1].set_xlabel("z")
+
+        plt.tight_layout()
+        plt.show()
+        if folder is not None:
+            fig.savefig(folder + ".png")
+            fig.savefig(folder + ".pdf")
+
+        return vals_out
 
     # def plot_contamination(
     #     self,

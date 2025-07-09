@@ -865,78 +865,6 @@ param_dict = {
     "alpha_star": "$\\alpha_\star$",
     "g_star": "$g_\star$",
     "f_star": "$f_\star$",
-    "ln_tau_0": "$\mathrm{ln}\,\\tau_0$",
-    "ln_tau_1": "$\mathrm{ln}\,\\tau_1$",
-    "ln_tau_2": "$\mathrm{ln}\,\\tau_2$",
-    "ln_tau_3": "$\mathrm{ln}\,\\tau_3$",
-    "ln_tau_4": "$\mathrm{ln}\,\\tau_4$",
-    "ln_tau_5": "$\mathrm{ln}\,\\tau_5$",
-    "ln_tau_6": "$\mathrm{ln}\,\\tau_6$",
-    "ln_tau_7": "$\mathrm{ln}\,\\tau_7$",
-    "ln_tau_8": "$\mathrm{ln}\,\\tau_8$",
-    "ln_tau_9": "$\mathrm{ln}\,\\tau_9$",
-    "ln_tau_10": "$\mathrm{ln}\,\\tau_{10}$",
-    "ln_tau_11": "$\mathrm{ln}\,\\tau_{11}$",
-    "ln_tau_12": "$\mathrm{ln}\,\\tau_{12}$",
-    "ln_sigT_kms_0": "$\mathrm{ln}\,\sigma^T_0$",
-    "ln_sigT_kms_1": "$\mathrm{ln}\,\sigma^T_1$",
-    "ln_sigT_kms_2": "$\mathrm{ln}\,\sigma^T_2$",
-    "ln_sigT_kms_3": "$\mathrm{ln}\,\sigma^T_3$",
-    "ln_sigT_kms_4": "$\mathrm{ln}\,\sigma^T_4$",
-    "ln_gamma_0": "$\mathrm{ln}\,\gamma_0$",
-    "ln_gamma_1": "$\mathrm{ln}\,\gamma_1$",
-    "ln_gamma_2": "$\mathrm{ln}\,\gamma_2$",
-    "ln_gamma_3": "$\mathrm{ln}\,\gamma_3$",
-    "ln_gamma_4": "$\mathrm{ln}\,\gamma_4$",
-    # it might be better to specify kF_kms here as well
-    "ln_kF_0": "$\mathrm{ln}\,k^F_0$",
-    "ln_kF_1": "$\mathrm{ln}\,k^F_1$",
-    "ln_kF_2": "$\mathrm{ln}\,k^F_2$",
-    "ln_kF_3": "$\mathrm{ln}\,k^F_3$",
-    "ln_kF_4": "$\mathrm{ln}\,k^F_4$",
-    # each metal contamination should have its own parameters here
-    # each HCD contamination should have its own parameters here
-    "HCD_damp1_0": "$\mathrm{ln}\,f^\mathrm{HCD1}_0$",
-    "HCD_damp1_1": "$\mathrm{ln}\,f^\mathrm{HCD1}_1$",
-    "HCD_damp1_2": "$\mathrm{ln}\,f^\mathrm{HCD1}_2$",
-    "HCD_scale1_0": "$\mathrm{ln}\,s^\mathrm{HCD1}_0$",
-    "HCD_scale1_1": "$\mathrm{ln}\,s^\mathrm{HCD1}_1$",
-    "HCD_scale1_2": "$\mathrm{ln}\,s^\mathrm{HCD1}_2$",
-    "HCD_damp2_0": "$\mathrm{ln}\,f^\mathrm{HCD2}_0$",
-    "HCD_damp2_1": "$\mathrm{ln}\,f^\mathrm{HCD2}_1$",
-    "HCD_damp2_2": "$\mathrm{ln}\,f^\mathrm{HCD2}_2$",
-    "HCD_scale2_0": "$\mathrm{ln}\,s^\mathrm{HCD2}_0$",
-    "HCD_scale2_1": "$\mathrm{ln}\,s^\mathrm{HCD2}_1$",
-    "HCD_scale2_2": "$\mathrm{ln}\,s^\mathrm{HCD2}_2$",
-    "HCD_damp3_0": "$\mathrm{ln}\,f^\mathrm{HCD3}_0$",
-    "HCD_damp3_1": "$\mathrm{ln}\,f^\mathrm{HCD3}_1$",
-    "HCD_damp3_2": "$\mathrm{ln}\,f^\mathrm{HCD3}_2$",
-    "HCD_damp4_0": "$\mathrm{ln}\,f^\mathrm{HCD4}_0$",
-    "HCD_damp4_1": "$\mathrm{ln}\,f^\mathrm{HCD4}_1$",
-    "HCD_damp4_2": "$\mathrm{ln}\,f^\mathrm{HCD4}_2$",
-    "HCD_scale3_0": "$\mathrm{ln}\,s^\mathrm{HCD3}_0$",
-    "HCD_scale3_1": "$\mathrm{ln}\,s^\mathrm{HCD3}_1$",
-    "HCD_scale3_2": "$\mathrm{ln}\,s^\mathrm{HCD3}_2$",
-    "HCD_const_0": "$\mathrm{ln}\,c^\mathrm{HCD}_0$",
-    "HCD_const_1": "$\mathrm{ln}\,c^\mathrm{HCD}_1$",
-    "HCD_const_2": "$\mathrm{ln}\,c^\mathrm{HCD}_2$",
-    "ln_SN_0": "$\mathrm{ln}\,\mathrm{SN}_0$",
-    "ln_SN_1": "$\mathrm{ln}\,\mathrm{SN}_1$",
-    "ln_AGN_0": "$\mathrm{ln}\,\mathrm{AGN}_0$",
-    "ln_AGN_1": "$\mathrm{ln}\,\mathrm{AGN}_1$",
-    "R_coeff_0": "$\mathrm{R}_0$",
-    "R_coeff_1": "$\mathrm{R}_1$",
-    "R_coeff_2": "$\mathrm{R}_2$",
-    "R_coeff_3": "$\mathrm{R}_3$",
-    "R_coeff_4": "$\mathrm{R}_4$",
-    "R_coeff_5": "$\mathrm{R}_5$",
-    "R_coeff_6": "$\mathrm{R}_6$",
-    "R_coeff_7": "$\mathrm{R}_7$",
-    "R_coeff_8": "$\mathrm{R}_8$",
-    "R_coeff_9": "$\mathrm{R}_9$",
-    "R_coeff_10": "$\mathrm{R}_{10}$",
-    "R_coeff_11": "$\mathrm{R}_{11}$",
-    "R_coeff_12": "$\mathrm{R}_{12}$",
     "H0": "$H_0$",
     "mnu": "$\Sigma m_\\nu$",
     "As": "$A_s$",
@@ -947,19 +875,28 @@ param_dict = {
     "cosmomc_theta": "$\\theta_{MC}$",
 }
 
+for ii in range(11):
+    param_dict["tau_eff_" + str(ii)] = "$\tau_{\rm eff_" + str(ii) + "}$"
+    param_dict["sigT_kms_" + str(ii)] = "$\sigma_{\rm T_" + str(ii) + "}$"
+    param_dict["gamma_" + str(ii)] = "$\gamma_" + str(ii) + "$"
+    param_dict["kF_kms_" + str(ii)] = "$k_F_" + str(ii) + "$"
+    param_dict["R_coeff_" + str(ii)] = "$R_" + str(ii) + "$"
+    param_dict["ln_SN_" + str(ii)] = "$\log \mathrm{SN}_" + str(ii) + "$"
+    param_dict["ln_AGN_" + str(ii)] = "$\log \mathrm{AGN}_" + str(ii) + "$"
+    for jj in range(1, 5):
+        param_dict["HCD_damp" + str(jj) + "_" + str(ii)] = (
+            "$f_{\rm HCD" + str(jj) + "}_" + str(ii) + "$"
+        )
+
+
 metal_lines = [
     "Lya_SiIII",
     "Lya_SiII",
-    "Lya_SiIIa",
-    "Lya_SiIIb",
     "SiIIa_SiIIb",
-    "SiIIb_SiIII",
-    "SiII_SiIII",
     "SiIIa_SiIII",
+    "SiIIb_SiIII",
     "CIVa_CIVb",
     "MgIIa_MgIIb",
-    "Lya_SiIIc",
-    "SiIIc_SiIII",
 ]
 metal_lines_latex = {
     "Lya_SiIII": "$\mathrm{Ly}\alpha-\mathrm{SiIII}$",

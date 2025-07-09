@@ -13,6 +13,7 @@ class MetalModel(Contaminant):
         free_param_names=None,
         z_0=3.0,
         fid_vals=None,
+        null_vals=None,
         flat_priors=None,
         Gauss_priors=None,
     ):
@@ -44,6 +45,11 @@ class MetalModel(Contaminant):
                 "f_" + metal_label: [[-3, 3], [-11, -0.5]],
                 "s_" + metal_label: [[-1, 1], [-10, 10]],
             }
+        else:
+            if "f_" + metal_label not in flat_priors:
+                flat_priors["f_" + metal_label] = [[-3, 3], [-11, -0.5]]
+            if "s_" + metal_label not in flat_priors:
+                flat_priors["s_" + metal_label] = [[-1, 1], [-10, 10]]
 
         if prop_coeffs is None:
             prop_coeffs = {
@@ -52,12 +58,37 @@ class MetalModel(Contaminant):
                 "f_" + metal_label + "_otype": "exp",
                 "s_" + metal_label + "_otype": "exp",
             }
+        else:
+            if "f_" + metal_label + "_ztype" not in prop_coeffs:
+                prop_coeffs["f_" + metal_label + "_ztype"] = "pivot"
+            if "s_" + metal_label + "_ztype" not in prop_coeffs:
+                prop_coeffs["s_" + metal_label + "_ztype"] = "pivot"
+            if "f_" + metal_label + "_otype" not in prop_coeffs:
+                prop_coeffs["f_" + metal_label + "_otype"] = "exp"
+            if "s_" + metal_label + "_otype" not in prop_coeffs:
+                prop_coeffs["s_" + metal_label + "_otype"] = "exp"
 
         if fid_vals is None:
             fid_vals = {
-                "f_" + metal_label: [0, -10.5],
-                "s_" + metal_label: [0, -9.5],
+                "f_" + metal_label: [0, -11.5],
+                "s_" + metal_label: [0, -11.5],
             }
+        else:
+            if "f_" + metal_label not in fid_vals:
+                fid_vals["f_" + metal_label] = [0, -11.5]
+            if "s_" + metal_label not in fid_vals:
+                fid_vals["s_" + metal_label] = [0, -11.5]
+
+        if null_vals is None:
+            null_vals = {
+                "f_" + metal_label: np.exp(-11.5),
+                "s_" + metal_label: np.exp(-11.5),
+            }
+        else:
+            if "f_" + metal_label not in null_vals:
+                null_vals["f_" + metal_label] = np.exp(-11.5)
+            if "s_" + metal_label not in null_vals:
+                null_vals["s_" + metal_label] = np.exp(-11.5)
 
         super().__init__(
             coeffs=coeffs,
@@ -66,18 +97,22 @@ class MetalModel(Contaminant):
             free_param_names=free_param_names,
             z_0=z_0,
             fid_vals=fid_vals,
+            null_vals=null_vals,
             flat_priors=flat_priors,
             Gauss_priors=Gauss_priors,
         )
 
-    def get_contamination(self, z, k_kms, mF, like_params=[]):
-        """Multiplicative contamination at a given z and k (in s/km)."""
+    def get_contamination(self, z, k_kms, mF, like_params=[], remove=None):
+        """Additive contamination at a given z and k (in s/km)."""
 
         vals = {}
         for key in self.list_coeffs:
             vals[key] = np.atleast_1d(
                 self.get_value(key, z, like_params=like_params)
             )
+            if key in self.null_vals:
+                _ = vals[key] <= self.null_vals[key]
+                vals[key][_] = 0
 
         metal_corr = []
         for iz in range(len(z)):

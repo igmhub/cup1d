@@ -46,13 +46,13 @@ def set_free_like_parameters(params, emulator_label):
             free_parameters = ["As", "ns"]
 
     # IGM
-    for ii in range(params.fid_igm["n_tau"]):
+    for ii in range(params.fid_igm["n_tau_eff"]):
         free_parameters.append(f"tau_eff_{ii}")
-    for ii in range(params.fid_igm["n_sigT"]):
+    for ii in range(params.fid_igm["n_sigT_kms"]):
         free_parameters.append(f"sigT_kms_{ii}")
     for ii in range(params.fid_igm["n_gamma"]):
         free_parameters.append(f"gamma_{ii}")
-    for ii in range(params.fid_igm["n_kF"]):
+    for ii in range(params.fid_igm["n_kF_kms"]):
         free_parameters.append(f"kF_kms_{ii}")
 
     # Metal lines
@@ -61,19 +61,19 @@ def set_free_like_parameters(params, emulator_label):
             free_parameters.append(f"f_{metal_line}_{ii}")
         for ii in range(params.fid_cont["n_s_" + metal_line]):
             free_parameters.append(f"s_{metal_line}_{ii}")
-        if "n_p_" + metal_line in params.fid_cont:
-            for ii in range(params.fid_cont["n_p_" + metal_line]):
-                free_parameters.append(f"p_{metal_line}_{ii}")
+        # if "n_p_" + metal_line in params.fid_cont:
+        #     for ii in range(params.fid_cont["n_p_" + metal_line]):
+        #         free_parameters.append(f"p_{metal_line}_{ii}")
 
     # DLAs
     for jj in range(4):
-        for ii in range(params.fid_cont["n_d_dla" + str(jj + 1)]):
+        for ii in range(params.fid_cont[f"n_HCD_damp{jj+1}"]):
             free_parameters.append(f"HCD_damp{jj+1}_{ii}")
-        for ii in range(params.fid_cont["n_s_dla" + str(jj + 1)]):
-            free_parameters.append(f"HCD_scale{jj+1}_{ii}")
+        # for ii in range(params.fid_cont["n_s_dla" + str(jj + 1)]):
+        #     free_parameters.append(f"HCD_scale{jj+1}_{ii}")
 
-    for ii in range(params.fid_cont["n_c_dla"]):
-        free_parameters.append(f"HCD_const_{ii}")
+    # for ii in range(params.fid_cont["n_c_dla"]):
+    #     free_parameters.append(f"HCD_const_{ii}")
 
     # SN
     for ii in range(params.fid_cont["n_sn"]):

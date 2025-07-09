@@ -21,6 +21,7 @@ class SiAdd(Contaminant):
         free_param_names=None,
         z_0=3.0,
         fid_vals=None,
+        null_vals=None,
         flat_priors=None,
         Gauss_priors=None,
     ):
@@ -100,7 +101,12 @@ class SiAdd(Contaminant):
         if fid_vals is None:
             fid_vals = {}
             for coeff in list_coeffs:
-                fid_vals[coeff] = [0, -10.5]
+                fid_vals[coeff] = [0, -11.5]
+
+        if null_vals is None:
+            null_vals = {}
+            for coeff in list_coeffs:
+                null_vals[coeff] = -11.5
 
         super().__init__(
             coeffs=coeffs,
@@ -109,6 +115,7 @@ class SiAdd(Contaminant):
             free_param_names=free_param_names,
             z_0=z_0,
             fid_vals=fid_vals,
+            null_vals=null_vals,
             flat_priors=flat_priors,
             Gauss_priors=Gauss_priors,
         )
@@ -126,6 +133,9 @@ class SiAdd(Contaminant):
             vals[key] = np.atleast_1d(
                 self.get_value(key, z, like_params=like_params)
             )
+            if key in self.null_vals:
+                _ = vals[key] <= self.null_vals[key]
+                vals[key][_] = 0
 
         rac = self.rat["SiIIa_SiIIc"]
         rbc = self.rat["SiIIb_SiIIc"]

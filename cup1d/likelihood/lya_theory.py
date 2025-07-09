@@ -461,31 +461,33 @@ class Theory(object):
                 for ii in range(len(linP_Mpc_params)):
                     emu_call[key][ii] = linP_Mpc_params[ii][key]
             elif key == "mF":
-                emu_call[key] = self.model_igm.F_model.get_mean_flux(
+                emu_call[key] = self.model_igm.models["F_model"].get_mean_flux(
                     zs, like_params=like_params
                 )
-                emu_call["mF_fid"] = self.model_igm.F_model.get_mean_flux(zs)
+                emu_call["mF_fid"] = self.model_igm.models[
+                    "F_model"
+                ].get_mean_flux(zs)
             elif key == "gamma":
-                emu_call[key] = self.model_igm.T_model.get_gamma(
+                emu_call[key] = self.model_igm.models["T_model"].get_gamma(
                     zs, like_params=like_params
                 )
             elif key == "sigT_Mpc":
                 emu_call[key] = (
-                    self.model_igm.T_model.get_sigT_kms(
+                    self.model_igm.models["T_model"].get_sigT_kms(
                         zs, like_params=like_params
                     )
                     / M_of_zs
                 )
             elif key == "kF_Mpc":
                 emu_call[key] = (
-                    self.model_igm.P_model.get_kF_kms(
+                    self.model_igm.models["P_model"].get_kF_kms(
                         zs, like_params=like_params
                     )
                     * M_of_zs
                 )
             elif key == "lambda_P":
                 emu_call[key] = 1000 / (
-                    self.model_igm.P_model.get_kF_kms(
+                    self.model_igm.models["P_model"].get_kF_kms(
                         zs, like_params=like_params
                     )
                     * M_of_zs
@@ -676,6 +678,7 @@ class Theory(object):
             p0 = np.zeros((len(zs), len(hull.params)))
             for jj, key in enumerate(hull.params):
                 p0[:, jj] = emu_call[key]
+                # print(key, emu_call[key])
 
             if hull.in_hulls(p0, zs=zs) == False:
                 return None
