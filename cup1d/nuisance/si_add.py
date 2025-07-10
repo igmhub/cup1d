@@ -23,6 +23,7 @@ class SiAdd(Contaminant):
         fid_vals=None,
         null_vals=None,
         flat_priors=None,
+        z_max=None,
         Gauss_priors=None,
     ):
         """Model the evolution of a metal contamination (SiII or SiIII).
@@ -108,6 +109,11 @@ class SiAdd(Contaminant):
             for coeff in list_coeffs:
                 null_vals[coeff] = -11.5
 
+        if z_max is None:
+            z_max = {}
+            for coeff in list_coeffs:
+                z_max[coeff] = 3.4
+
         super().__init__(
             coeffs=coeffs,
             list_coeffs=list_coeffs,
@@ -116,6 +122,7 @@ class SiAdd(Contaminant):
             z_0=z_0,
             fid_vals=fid_vals,
             null_vals=null_vals,
+            z_max=z_max,
             flat_priors=flat_priors,
             Gauss_priors=Gauss_priors,
         )
@@ -134,7 +141,11 @@ class SiAdd(Contaminant):
                 self.get_value(key, z, like_params=like_params)
             )
             if key in self.null_vals:
-                _ = vals[key] <= self.null_vals[key]
+                if self.prop_coeffs[key + "_otype"] == "const":
+                    null = self.null_vals[key]
+                else:
+                    null = np.exp(self.null_vals[key])
+                _ = vals[key] <= null
                 vals[key][_] = 0
 
         rac = self.rat["SiIIa_SiIIc"]

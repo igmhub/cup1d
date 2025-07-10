@@ -5,7 +5,13 @@ class LikelihoodParameter(object):
     """Base class for likelihood parameter"""
 
     def __init__(
-        self, name, min_value, max_value, value=None, Gauss_priors_width=None
+        self,
+        name,
+        min_value,
+        max_value,
+        value=None,
+        Gauss_priors_width=None,
+        fixed=False,
     ):
         """Base class for parameter used in likelihood"""
         self.name = name
@@ -13,6 +19,7 @@ class LikelihoodParameter(object):
         self.max_value = max_value
         self.value = value
         self.Gauss_priors_width = Gauss_priors_width
+        self.fixed = False
         return
 
     def value_in_cube(self):

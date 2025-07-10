@@ -259,8 +259,8 @@ elif choose_challenge:
     true_cosmo = set_cosmo(cosmo_label=true_sim_label)
     
     args.z_min = 2.1
-    args.z_max = 4.3
-    # args.z_max = 2.5
+    # args.z_max = 4.3
+    args.z_max = 2.7
     # args.z_min = 2.8
     # args.z_max = 3.2
 elif choose_desiy1:
@@ -282,7 +282,9 @@ elif choose_desiy1:
     # args.p1d_fname = folder + "/fft_measurement/p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits"
     
     args.z_min = 2.1
+    # args.z_min = 3.5
     args.z_max = 4.3
+    # args.z_max = 2.7
     # args.z_max = 3.3
     # args.z_max = 2.9
 
@@ -621,21 +623,13 @@ free_parameters
 #
 
 # %%
-vals_modify
-
-# %%
 # args.set_baseline(fit_type="all", fix_cosmo=False)
 # args.set_baseline(fit_type="all", fix_cosmo=True)
-args.set_baseline(fit_type="wip", fix_cosmo=True, zmax=3.2)
+# args.set_baseline(fit_type="wip", fix_cosmo=True, zmax=3.2)
+# args.set_baseline(fit_type="wip", fix_cosmo=True, zmax=4.2)
 # args.set_baseline()
 
 # %%
-like = set_like(
-    data["P1Ds"],
-    emulator,
-    args,
-    data_hires=data["extra_P1Ds"],
-)
 
 # %%
 len(like.free_param_names)
@@ -649,25 +643,95 @@ fid_tau = np.array([-0.07694854367384515, -0.4639306935116183, -1.06274460061606
 fid_sigT = np.array([0.9833049985389459, -0.43913496622924253, 1.0701790380033116])
 
 # %%
-for p in like.free_params:
-    if p.name.startswith("tau_eff"):
-        ii = int(p.name[-1])
-        p.value = fid_tau[ii]
-        # pass
-    elif p.name.startswith("sigT_kms"):
-        ii = int(p.name[-1])
-        p.value = fid_sigT[ii]
-    elif p.name[:-2] in vals_modify:
-        ii = int(p.name[-1])
-        p.value = vals_modify["pfit_" + p.name[:-2]][-(ii + 1)]
+param_attime_all = np.load("fit_baseline_param_attime.npy", allow_pickle=True).item()
+
+# %%
+# param_attime_all
+
+# %%
+import re
+
+def split_string(s):
+    match = re.match(r"^(.*)_(\d+)$", s)
+    if match:
+        return match.group(1), match.group(2)
+    else:
+        return s, None 
+
+
+# %%
+
+args.set_baseline(fit_type="wip", fix_cosmo=True, zmax=4.2)
+like = set_like(
+    data["P1Ds"],
+    emulator,
+    args,
+    data_hires=data["extra_P1Ds"],
+)
+len(like.free_param_names)
+
+# %%
+free_params = like.free_params.copy()
+
+for p in free_params:
+    # if p.name.startswith("tau_eff"):
+    #     ii = int(p.name[-1])
+    #     p.value = fid_tau[ii]
+    #     # pass
+    # elif p.name.startswith("sigT_kms"):
+    #     ii = int(p.name[-1])
+    #     p.value = fid_sigT[ii]
+    #     # pass
+    # elif p.name[:-2] in vals_modify:
+    #     ii = int(p.name[-1])
+    #     p.value = vals_modify["pfit_" + p.name[:-2]][-(ii + 1)]
+    #     if (p.value > p.max_value):
+    #         p.max_value = p.value + 2
+    #     elif (p.value < p.min_value):
+    #         p.min_value = p.value -
+
+    pname, iistr = split_string(p.name)
+    if (pname == "s_Lya_SiIII") | (pname == "f_Lya_SiIII"):
+    # if pname == "a":
+        p.fixed = False
+    else:
+        p.fixed = True
+        ii = int(iistr)
+        # p.value = param_attime_all[p.name[:-2]][-(ii + 1)]
+        p.value = param_attime_all[pname][ii] # note order for splines!!!
         if (p.value > p.max_value):
             p.max_value = p.value + 2
         elif (p.value < p.min_value):
             p.min_value = p.value - 2
-    print(p.name, '\t', p.value, '\t', np.round(p.min_value, 3), '\t', np.round(p.max_value, 3), '\t', p.Gauss_priors_width)
+
+    print(p.name, '\t', np.round(p.value, 3), '\t', np.round(p.min_value, 3), '\t', np.round(p.max_value, 3), '\t', p.Gauss_priors_width, p.fixed)
 
 # %%
-fitter.mle
+
+# %%
+like.theory.model_igm.models["F_model"].reset_coeffs(free_params)
+like.theory.model_igm.models["T_model"].reset_coeffs(free_params)
+like.theory.model_cont.hcd_model.reset_coeffs(free_params)
+like.theory.model_cont.metal_models["Si_mult"].reset_coeffs(free_params)
+like.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)
+
+# %%
+# for p in like.free_params:
+#     print(p.name, '\t', np.round(p.value, 3), '\t', np.round(p.min_value, 3), '\t', np.round(p.max_value, 3), '\t', p.Gauss_priors_width, p.fixed)
+
+# %%
+# param_attime_all
+
+# %%
+for ii in range(len(free_params)):
+    if free_params[ii].fixed:
+        for jj, p in enumerate(like.free_params):
+            if p.name == free_params[ii].name:
+                like.free_params.pop(jj)
+                like.free_param_names.pop(jj)
+                break
+for p in like.free_params:
+    print(p.name)
 
 # %% [markdown]
 # #### Plot cov to pk
@@ -708,20 +772,27 @@ if plot:
 
 # %%
 input_pars = like.sampling_point_from_parameters().copy()
+input_pars
 
 # %%
 input_pars = fitter.mle_cube.copy()
-
-# %%
-349
 
 # %% [markdown]
 # Compare data and fiducial/starting model
 
 # %%
 # # %%time
+# like.plot_p1d(plot_panels=True, residuals=True)
+input_pars = like.sampling_point_from_parameters().copy()
 like.plot_p1d(plot_panels=True, residuals=True, values=input_pars)
+# like.plot_p1d(plot_panels=True, residuals=True)
 # like.plot_p1d(residuals=True)
+
+# %% [markdown]
+# #### 673 best!
+
+# %%
+# like.plot_hull_fid(like_params=like.free_params)
 
 # %%
 
@@ -766,15 +837,38 @@ fitter = Fitter(
 #     p0 = np.array(list(like.truth["like_params_cube"].values()))*1.01
 # p0 = np.array(list(like.fid["fit_cube"].values()))
 p0 = like.sampling_point_from_parameters().copy()
+# p0[0] = 0.5
+# p0[1] = 0.5
+# p0[2] = 0.5
 # p0 = fitter.mle_cube.copy()
 # p0[:] = 0.5
 # fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=1)
 # zmask = np.array([like.data.z[0]])
 # fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=1)
-fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, restart=True, nsamples=2)
+fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, restart=True, nsamples=0)
 # zmask = np.array([2.4])
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
+
+# %%
+2 726
+3 706
+4 708
+
+lya-SiIII
+6 709
+
+# %%
+
+# %% [markdown]
+# 673 basic
+
+# %%
+2.2 31.63 37 71.88
+2.4 43.97 40 30.71
+2.6 55.84 43 9.06
+
+All 131.44 120 22.4
 
 # %% [markdown]
 # #### Latest
@@ -820,6 +914,9 @@ plotter.plot_p1d(plot_panels=True, residuals=True)
 # %%
 plotter.plot_p1d(plot_panels=True, residuals=True)
 
+# %%
+plotter.plot_p1d(plot_panels=True, residuals=True)
+
 # %% [markdown]
 # ## Optimize parameters of pipeline with z at a time fits
 
@@ -846,7 +943,7 @@ for key in select_props:
 # args.set_baseline(fit_type="all", fix_cosmo=False)
 # args.set_baseline(fit_type="full")
 
-args.set_baseline(fit_type="at_a_time2")
+args.set_baseline(fit_type="at_a_time")
 
 like = set_like(
     data["P1Ds"],
@@ -982,8 +1079,8 @@ out_mle = []
 out_mle_cube = []
 out_chi2 = []
 # for ii in range(len(data["P1Ds"].z)): 
-# for ii in range(1): 
-for ii in range(6): 
+for ii in range(1): 
+# for ii in range(6): 
 # for ii in range(2,3): 
 # for ii in range(9, 10): 
 # for ii in range(2, 3): 
@@ -1004,10 +1101,11 @@ for ii in range(6):
     s_space_len = 5
     for p in like.free_params:
         
-        if p.name[:-2] in vals_modify:
-            p.value = vals_modify[p.name[:-2]][ii]
-            p.min_value = p.value - 1e-3
-            p.max_value = p.value + 1e-3
+        # if p.name[:-2] == "HCD_damp4":
+        #     if p.name[:-2] in vals_modify:
+        #         p.value = vals_modify[p.name[:-2]][ii]
+        #         p.min_value = p.value - 1e-3
+        #         p.max_value = p.value + 1e-3
             
         print(
             p.name, (f_space_len-len(p.name)) * " ", "\t", 
@@ -1033,7 +1131,7 @@ for ii in range(6):
     print(ii, like.data.z[ii])
     p0 = np.array(list(like.fid["fit_cube"].values()))
     # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
-    fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=3)
+    fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=2)
     # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
     out_mle.append(fitter.mle)
     out_mle_cube.append(fitter.mle_cube)
@@ -1042,21 +1140,9 @@ for ii in range(6):
     # plotter.plots_minimizer()
 
 # %%
-# baseline QMLE3
 
-ndeg_all = 0
-props = []
-chi2_all = 0
-for ii in range(len(out_chi2)):
-    ndeg = len(like.data.k_kms[ii]) - len(out_mle_cube[ii])
-    prob = chi2_scipy.sf(out_chi2[ii], ndeg)
-    print(like.data.z[ii], np.round(out_chi2[ii], 2), ndeg, np.round(prob*100, 2))
-    ndeg_all += ndeg
-    chi2_all += out_chi2[ii]
-    props.append(prob)
-prob = chi2_scipy.sf(chi2_all, ndeg_all)
-print()
-print("All", np.round(chi2_all, 2), ndeg_all, np.round(prob*100, 2))
+# %%
+# plotter = Plotter(fitter, save_directory=None, zmask=[2.6])
 
 # %%
 # baseline QMLE3
@@ -1128,7 +1214,20 @@ np.save("fit_baseline.npy", out_mle_cube)
 out_mle_cube2 = np.load("fit_baseline.npy")
 
 # %%
+out_mle_cube2 = out_mle_cube.copy()
+
+# %%
+ocTmodel
+
+# %%
+[ 0.55321519 -2.30303467  0.82806494  0.1242885   1.54862337  9.49635786]
+ [ 0.49201673 -2.30303448  0.7945408   0.14181265  1.5383678   9.70704253]
+ [ 0.4402782  -2.30303456  0.75792823  0.15457774  1.52792069  9.95497517]]
+
+# %%
 # like_params = fitter.like.parameters_from_sampling_point(fitter.mle_cube)
+
+mask = np.arange(11)
 
 like_params = []
 for mle_cube in out_mle_cube2:
@@ -1136,15 +1235,33 @@ for mle_cube in out_mle_cube2:
 
 fold0 = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
 folder = fold0 + "ev_baseline1z_params/taueff"
-oFmodel = fitter.like.theory.model_igm.models["F_model"].plot_parameters(data["P1Ds"].z, like_params, folder=folder)
+oFmodel, ocFmodel = fitter.like.theory.model_igm.models["F_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
 folder = fold0 + "ev_baseline1z_params/sigT"
-oTmodel = fitter.like.theory.model_igm.models["T_model"].plot_parameters(data["P1Ds"].z, like_params, folder=folder)
-# folder = fold0 + "ev_baseline1z_params/Simult"
-# oSimult = fitter.like.theory.model_cont.metal_models["Si_mult"].plot_parameters(data["P1Ds"].z, like_params, folder=folder)
-# folder = fold0 + "ev_baseline1z_params/Siadd"
-# oSiadd = fitter.like.theory.model_cont.metal_models["Si_add"].plot_parameters(data["P1Ds"].z, like_params, folder=folder)
-# folder = fold0 + "ev_baseline1z_params/HCD"
-# oHCD = fitter.like.theory.model_cont.hcd_model.plot_parameters(data["P1Ds"].z, like_params, folder=folder)
+oTmodel, ocTmodel = fitter.like.theory.model_igm.models["T_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+folder = fold0 + "ev_baseline1z_params/Simult"
+oSimult = fitter.like.theory.model_cont.metal_models["Si_mult"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+folder = fold0 + "ev_baseline1z_params/Siadd"
+oSiadd = fitter.like.theory.model_cont.metal_models["Si_add"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+folder = fold0 + "ev_baseline1z_params/HCD"
+oHCD = fitter.like.theory.model_cont.hcd_model.plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+
+models = [ocFmodel, ocTmodel, oSimult, oSiadd, oHCD]
+param_attime_all = {}
+for mod in models:
+    for key in mod:
+        param_attime_all[key] = mod[key]
+
+# %%
+np.save("fit_baseline_param_attime.npy", param_attime_all)
+
+# %%
+plt.plot(data["P1Ds"].z[mask], param_attime_all["tau_eff"])
+
+# %%
+plt.plot(data["P1Ds"].z[mask], param_attime_all["sigT_kms"])
+
+# %%
+param_attime_all
 
 # %%
 oSimult.keys()
@@ -1155,23 +1272,34 @@ z = data["P1Ds"].z.copy()
 vals_modify = {}
 
 # %%
+znodes_tau = np.array([2.2, 2.6, 3.2, 3.6, 4.0])
+
+# %%
 odat = oFmodel
 key = "tau_eff"
 
-res = np.polyfit(z[:6], odat[key][:6], 2)
+_ = z < 4.3
+z0 = 3
+xz = np.log((1 + z) / (1 + z0))
+res = np.polyfit(xz[_], odat[key][_], 1)
 plt.plot(z, odat[key])
-plt.plot(z, np.poly1d(res)(z), "--")
-vals_modify[key] = np.poly1d(res)(z)
+plt.plot(z, np.poly1d(res)(xz), "--")
+# plt.plot(z[_], odat[key][_]/(np.poly1d(res)(xz[_])), "--")
+# plt.ylim(0.7, 1.1)
+vals_modify[key] = np.poly1d(res)(xz)
 vals_modify["pfit_" + key] = res
 
 # %%
 odat = oTmodel
 key = "sigT_kms"
 
-res = np.polyfit(z[:6], odat[key][:6], 2)
+_ = z < 5
+z0 = 3
+xz = np.log((1 + z) / (1 + z0))
+res = np.polyfit(xz[_], odat[key][_], 1)
 plt.plot(z, odat[key])
-plt.plot(z, np.poly1d(res)(z), "--")
-vals_modify[key] = np.poly1d(res)(z)
+plt.plot(z, np.poly1d(res)(xz), "--")
+vals_modify[key] = np.poly1d(res)(xz)
 vals_modify["pfit_" + key] = res
 
 # %%
@@ -1185,7 +1313,7 @@ res = np.polyfit(xz[:6], odat[key][:6], 2)
 plt.plot(z, odat[key])
 plt.plot(z, np.poly1d(res)(xz), "--")
 print(res)
-vals_modify[key] = np.poly1d(res)(z)
+vals_modify[key] = np.poly1d(res)(xz)
 vals_modify["pfit_" + key] = res
 
 # %%
@@ -1199,7 +1327,7 @@ res = np.polyfit(xz[:7], odat[key][:7], 1)
 plt.plot(z, odat[key])
 plt.plot(z, np.poly1d(res)(xz), "--")
 print(res)
-vals_modify[key] = np.poly1d(res)(z)
+vals_modify[key] = np.poly1d(res)(xz)
 vals_modify["pfit_" + key] = res
 
 # %%
@@ -1208,12 +1336,12 @@ key = "f_Lya_SiII"
 
 z0 = 3
 xz = np.log((1 + z) / (1 + z0))
-res = np.polyfit(xz[:7], odat[key][:7], 1)
+res = np.polyfit(xz[:7], odat[key][:7], 2)
 
 plt.plot(z, odat[key])
 plt.plot(z, np.poly1d(res)(xz), "--")
 print(res)
-vals_modify[key] = np.poly1d(res)(z)
+vals_modify[key] = np.poly1d(res)(xz)
 vals_modify["pfit_" + key] = res
 
 # %%
@@ -1227,7 +1355,7 @@ res = np.polyfit(xz[:7], odat[key][:7], 1)
 plt.plot(z, odat[key])
 plt.plot(z, np.poly1d(res)(xz), "--")
 print(res)
-vals_modify[key] = np.poly1d(res)(z)
+vals_modify[key] = np.poly1d(res)(xz)
 vals_modify["pfit_" + key] = res
 
 # %%
@@ -1236,12 +1364,12 @@ key = "f_SiIIa_SiIII"
 
 z0 = 3
 xz = np.log((1 + z) / (1 + z0))
-res = np.polyfit(xz[:5], odat[key][:5], 1)
+res = np.polyfit(xz[:], odat[key][:], 1)
 
 plt.plot(z, odat[key])
 plt.plot(z, np.poly1d(res)(xz), "--")
 print(res)
-vals_modify[key] = np.poly1d(res)(z)
+vals_modify[key] = np.poly1d(res)(xz)
 vals_modify["pfit_" + key] = res
 
 # %%
@@ -1255,7 +1383,7 @@ res = np.polyfit(xz[:7], odat[key][:7], 1)
 plt.plot(z, odat[key])
 plt.plot(z, np.poly1d(res)(xz), "--")
 print(res)
-vals_modify[key] = np.poly1d(res)(z)
+vals_modify[key] = np.poly1d(res)(xz)
 vals_modify["pfit_" + key] = res
 
 # %%
@@ -1269,7 +1397,7 @@ res = np.polyfit(xz[:6], odat[key][:6], 1)
 plt.plot(z, odat[key])
 plt.plot(z, np.poly1d(res)(xz), "--")
 print(res)
-vals_modify[key] = np.poly1d(res)(z)
+vals_modify[key] = np.poly1d(res)(xz)
 vals_modify["pfit_" + key] = res
 
 # %%
@@ -1278,12 +1406,12 @@ key = "s_SiIIa_SiIIb"
 
 z0 = 3
 xz = np.log((1 + z) / (1 + z0))
-res = np.polyfit(xz[:6], odat[key][:6], 2)
+res = np.polyfit(xz[:8], odat[key][:8], 2)
 
 plt.plot(z, odat[key])
 plt.plot(z, np.poly1d(res)(xz), "--")
 print(res)
-vals_modify[key] = np.poly1d(res)(z)
+vals_modify[key] = np.poly1d(res)(xz)
 vals_modify["pfit_" + key] = res
 
 # %%
@@ -1298,12 +1426,14 @@ res = np.polyfit(xz[_], odat[key][_], 2)
 plt.plot(z, odat[key])
 plt.plot(z, np.poly1d(res)(xz), "--")
 print(res)
-vals_modify[key] = np.poly1d(res)(z)
+vals_modify[key] = np.poly1d(res)(xz)
 vals_modify["pfit_" + key] = res
 
 # %%
 odat = oHCD
 key = "HCD_damp4"
+znode_HCD4 = np.array([2.2, 2.6, 2.8, 3., 4.2])
+# 3.4, 3.8
 
 _ = (odat[key] > -6) & (z < 3.5)
 z0 = 3
@@ -1313,35 +1443,13 @@ res = np.polyfit(xz[_], odat[key][_], 1)
 plt.plot(z, odat[key])
 plt.plot(z, np.poly1d(res)(xz), "--")
 print(res)
-vals_modify[key] = np.poly1d(res)(z)
+vals_modify[key] = np.poly1d(res)(xz)
 vals_modify["pfit_" + key] = res
 
 # %%
 
 # %%
-vals_modify
-
-# %%
-
-# %%
 # baseline QMLE3
-
-ndeg_all = 0
-props = []
-chi2_all = 0
-for ii in range(len(out_chi2)):
-    ndeg = len(like.data.k_kms[ii]) - len(out_mle_cube[ii])
-    prob = chi2_scipy.sf(out_chi2[ii], ndeg)
-    print(like.data.z[ii], np.round(out_chi2[ii], 2), ndeg, np.round(prob*100, 2))
-    ndeg_all += ndeg
-    chi2_all += out_chi2[ii]
-    props.append(prob)
-prob = chi2_scipy.sf(chi2_all, ndeg_all)
-print()
-print("All", np.round(chi2_all, 2), ndeg_all, np.round(prob*100, 2))
-
-# %%
-# baseline QMLE
 
 ndeg_all = 0
 props = []
@@ -1481,8 +1589,11 @@ plt.plot(fitter.like.data.z, np.array(props)*100, "o-", label="FFT SB1 direct")
 # plotter.plot_metal_cont(smooth_k=False, plot_data=True, zrange=[2.3, 2.5], plot_panels=False)
 # plotter.plot_metal_cont(smooth_k=False, plot_data=True, zrange=[2.9, 3.1], plot_panels=False)
 
-# %% [markdown] jp-MarkdownHeadingCollapsed=true
+# %% [markdown]
 # ### Plot evolution of parameters with z
+
+# %%
+list(out_mle[0].keys()).remove("n_star")
 
 # %%
 from cup1d.optimize.plot_params_ztime import plot_z_at_time_params
@@ -1498,22 +1609,46 @@ weak_priors = weak1_priors.copy()
 # #### Redo 1 z at time fits using weak_priors
 
 # %%
+
+# %%
 p0 = np.array(list(like.fid["fit_cube"].values()))
 out_mle = []
 out_mle_cube = []
 out_chi2 = []
-list_fix = ["ln_tau_0", "ln_sigT_kms_0", "ln_gamma_0", "ln_kF_0"]   
+list_fix = ["tau_eff_0", "sigT_kms_0", "gamma_0", "kF_kms_0"]   
 
-for ii in range(len(like.data.z)): 
-# for ii in range(1): 
+# for ii in range(len(like.data.z)): 
+for ii in range(1):
     print(ii)
-    for par in fitter.like.free_params:
+
+    zmask = np.array([data["P1Ds"].z[ii]])
+
+    args.set_baseline(ztar=data["P1Ds"].z[ii], fit_type="at_a_time")
+
+    like = set_like(
+        data["P1Ds"],
+        emulator,
+        args,
+        data_hires=data["extra_P1Ds"],
+    )    
+    
+    for par in like.free_params:
         if par.name not in list_fix:
             par.value = weak_priors[par.name + "_cen"][ii]
             par.min_value = weak_priors[par.name + "_cen"][ii] - 2 * weak_priors[par.name + "_std"]
             par.max_value = weak_priors[par.name + "_cen"][ii] + 2 * weak_priors[par.name + "_std"]
-            print(par.name, par.value, par.min_value, par.max_value)
-    zmask = np.array([like.data.z[ii]])
+        print(par.name, par.value, par.min_value, par.max_value)
+    
+    fitter = Fitter(
+        like=like,
+        rootdir=output_dir,
+        nburnin=args.n_burn_in,
+        nsteps=args.n_steps,
+        parallel=args.parallel,
+        explore=args.explore,
+        fix_cosmology=args.fix_cosmo,
+    )
+            
     # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
     fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=3)
     # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
@@ -1523,7 +1658,25 @@ for ii in range(len(like.data.z)):
     # plotter = Plotter(fitter, zmask=zmask, save_directory="mpg_baseline/"+str(ii))
     # plotter.plots_minimizer()
 
+# %% [markdown]
+# # terrible fit???????
+
 # %%
+# baseline QMLE3
+
+ndeg_all = 0
+props = []
+chi2_all = 0
+for ii in range(len(out_chi2)):
+    ndeg = len(like.data.k_kms[ii]) - len(out_mle_cube[ii])
+    prob = chi2_scipy.sf(out_chi2[ii], ndeg)
+    print(like.data.z[ii], np.round(out_chi2[ii], 2), ndeg, np.round(prob*100, 2))
+    ndeg_all += ndeg
+    chi2_all += out_chi2[ii]
+    props.append(prob)
+prob = chi2_scipy.sf(chi2_all, ndeg_all)
+print()
+print("All", np.round(chi2_all, 2), ndeg_all, np.round(prob*100, 2))
 
 # %% [markdown]
 # ## Read results from chains

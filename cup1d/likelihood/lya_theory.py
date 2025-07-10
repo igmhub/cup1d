@@ -680,7 +680,7 @@ class Theory(object):
                 p0[:, jj] = emu_call[key]
                 # print(key, emu_call[key])
 
-            if hull.in_hulls(p0, zs=zs) == False:
+            if hull.in_hulls(p0) == False:
                 return None
 
         # compute input k to emulator in Mpc
@@ -730,7 +730,8 @@ class Theory(object):
         mult_cont_total, add_cont_total = self.model_cont.get_contamination(
             zs,
             k_kms,
-            emu_call["mF_fid"],
+            # emu_call["mF_fid"],
+            emu_call["mF"],
             M_of_z,
             like_params=like_params,
             remove=remove,

@@ -154,7 +154,7 @@ class Hull(object):
 
         return hulls
 
-    def in_hulls(self, p, zs=None):
+    def in_hulls(self, p):
         for jj in range(len(self.hulls)):
             res = in_hull(
                 self.hulls[jj], p[:, [self.hulls[jj].dim0, self.hulls[jj].dim1]]

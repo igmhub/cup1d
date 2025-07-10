@@ -64,10 +64,10 @@ class HCD_Model_Rogers(Contaminant):
         # null values
         if null_vals is None:
             null_vals = {
-                "HCD_damp1": np.exp(-11.5),
-                "HCD_damp2": np.exp(-11.5),
-                "HCD_damp3": np.exp(-11.5),
-                "HCD_damp4": np.exp(-11.5),
+                "HCD_damp1": -11.5,
+                "HCD_damp2": -11.5,
+                "HCD_damp3": -11.5,
+                "HCD_damp4": -11.5,
             }
 
         self.a_0 = np.array([2.2001, 1.5083, 1.1415, 0.8633])
@@ -100,7 +100,11 @@ class HCD_Model_Rogers(Contaminant):
                 self.get_value(key, z, like_params=like_params)
             )
             if key in self.null_vals:
-                _ = vals[key] <= self.null_vals[key]
+                if self.prop_coeffs[key + "_otype"] == "const":
+                    null = self.null_vals[key]
+                else:
+                    null = np.exp(self.null_vals[key])
+                _ = vals[key] <= null
                 vals[key][_] = 0
 
         dla_corr = []

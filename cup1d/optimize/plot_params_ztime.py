@@ -4,22 +4,27 @@ import matplotlib.pyplot as plt
 
 def plot_z_at_time_params(fitter, out_mle, save_fig=None):
     """Make the plot and get weak priors"""
-    paramstrings = [
-        "$\\mathrm{ln}\\,\\tau_0$",
-        "$\\mathrm{ln}\\,\\sigma^T_0$",
-        "$\\mathrm{ln}\\,f($\\mathrm{Ly}\x07lpha-\\mathrm{SiIII}$_0)$",
-        "$\\mathrm{ln}\\,s($\\mathrm{Ly}\x07lpha-\\mathrm{SiIII}$_0)$",
-        "$\\mathrm{ln}\\,f($\\mathrm{Ly}\x07lpha-\\mathrm{SiII}$_0)$",
-        "$\\mathrm{ln}\\,s($\\mathrm{Ly}\x07lpha-\\mathrm{SiII}$_0)$",
-        "$\\mathrm{ln}\\,f($\\mathrm{SiIIa}_\\mathrm{SiIIb}$_0)$",
-        "$\\mathrm{ln}\\,s($\\mathrm{SiIIa}_\\mathrm{SiIIb}$_0)$",
-        "$\\mathrm{ln}\\,f($\\mathrm{SiIIa}_\\mathrm{SiIII}$_0)$",
-        "$\\mathrm{ln}\\,f($\\mathrm{SiIIb}_\\mathrm{SiIII}$_0)$",
-        "$\\mathrm{ln}\\,f^\\mathrm{HCD1}_0$",
-        "$\\mathrm{ln}\\,f^\\mathrm{HCD4}_0$",
-    ]
+    # paramstrings = [
+    #     r"$\tau_{\rm eff_0}$",
+    #     r"$\\sigma_{\rm T_0}$",
+    #     r"$\\mathrm{ln}\\,f($\\mathrm{Ly}\x07lpha-\\mathrm{SiIII}$_0)$",
+    #     r"$\\mathrm{ln}\\,s($\\mathrm{Ly}\x07lpha-\\mathrm{SiIII}$_0)$",
+    #     r"$\\mathrm{ln}\\,f($\\mathrm{Ly}\x07lpha-\\mathrm{SiII}$_0)$",
+    #     r"$\\mathrm{ln}\\,s($\\mathrm{Ly}\x07lpha-\\mathrm{SiII}$_0)$",
+    #     r"$\\mathrm{ln}\\,f($\\mathrm{SiIIa}_\\mathrm{SiIIb}$_0)$",
+    #     r"$\\mathrm{ln}\\,s($\\mathrm{SiIIa}_\\mathrm{SiIIb}$_0)$",
+    #     r"$\\mathrm{ln}\\,f($\\mathrm{SiIIa}_\\mathrm{SiIII}$_0)$",
+    #     r"$\\mathrm{ln}\\,f($\\mathrm{SiIIb}_\\mathrm{SiIII}$_0)$",
+    #     r"$f_{\rm HCD1}_0$",
+    #     r"$f_{\rm HCD4}_0$",
+    # ]
+
+    paramstrings = list(out_mle[0].keys())
+    for key in ["Delta2_star", "n_star", "alpha_star"]:
+        paramstrings.remove(key)
 
     ofit = {}
+    # print(fitter.param_dict_rev)
     for par in paramstrings:
         ofit[fitter.param_dict_rev[par]] = 1
 
@@ -38,7 +43,7 @@ def plot_z_at_time_params(fitter, out_mle, save_fig=None):
             if key in out_mle[iz]:
                 ax[jj].scatter(fitter.like.data.z[iz], out_mle[iz][key])
                 dict_out[key][iz] = out_mle[iz][key]
-        ax[jj].set_ylabel(key)
+        ax[jj].set_ylabel(fitter.param_dict_rev[key])
         ax[jj].set_xlabel(r"$z$")
         jj += 1
 
@@ -47,7 +52,7 @@ def plot_z_at_time_params(fitter, out_mle, save_fig=None):
         if key not in dict_out:
             continue
         print(
-            key,
+            fitter.param_dict_rev[key],
             np.round(np.median(dict_out[key]), 4),
             np.round(np.std(dict_out[key]), 4),
         )
@@ -87,6 +92,7 @@ def plot_z_at_time_params(fitter, out_mle, save_fig=None):
         jj += 1
 
     plt.tight_layout()
+    plt.show()
     if save_fig is not None:
         plt.savefig("snr3_fid_weakp.png")
         plt.savefig("snr3_fid_weakp.pdf")

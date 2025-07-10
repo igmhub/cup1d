@@ -16,6 +16,7 @@ class Contaminant(object):
         z_0=3.0,
         fid_vals=None,
         null_vals=None,
+        z_max=None,
         flat_priors=None,
         Gauss_priors=None,
     ):
@@ -26,6 +27,7 @@ class Contaminant(object):
         self.null_vals = null_vals
         self.Gauss_priors = Gauss_priors
         self.flat_priors = flat_priors
+        self.z_max = z_max
 
         # set prop_coeffs (only for interp, not pivot)
         self.prop_coeffs = {}
@@ -184,6 +186,15 @@ class Contaminant(object):
         else:
             raise ValueError("prop_coeffs must be interp or pivot for", name)
 
+        if self.z_max is not None:
+            if len(np.atleast_1d(z)) > 1:
+                _ = z >= self.z_max[name]
+                if np.any(_):
+                    ln_out[_] = self.null_vals[name]
+            else:
+                if z >= self.z_max[name]:
+                    ln_out = self.null_vals[name]
+
         if self.prop_coeffs[name + "_otype"] == "const":
             return ln_out
         elif self.prop_coeffs[name + "_otype"] == "exp":
@@ -230,6 +241,36 @@ class Contaminant(object):
 
         return coeff
 
+    def reset_coeffs(self, like_params):
+        """Reset all coefficients to fiducial values"""
+        for name in self.coeffs:
+            Npar = 0
+            print("orig", name, self.coeffs[name])
+            array_names = []
+            array_values = []
+            for par in like_params:
+                if (name + "_") in par.name:
+                    array_names.append(par.name)
+                    array_values.append(par.value)
+                    Npar += 1
+            array_names = np.array(array_names)
+            array_values = np.array(array_values)
+
+            # return fiducial value
+            if Npar == 0:
+                continue
+            elif Npar != self.n_pars[name]:
+                print(Npar, self.n_pars[name])
+                raise ValueError("number of params mismatch for: " + name)
+
+            for ii in range(Npar):
+                ind_arr = np.argwhere(name + "_" + str(ii) == array_names)[0, 0]
+                if self.prop_coeffs[name + "_ztype"] == "pivot":
+                    self.coeffs[name][-(ii + 1)] = array_values[ind_arr]
+                else:
+                    self.coeffs[name][ii] = array_values[ind_arr]
+            print("new", name, self.coeffs[name])
+
     def plot_parameters(self, z, like_params, folder=None):
         """Plot likelihood parameters"""
 
@@ -274,9 +315,13 @@ class Contaminant(object):
             vals_out[key] = vals
 
             ax[ii].plot(z, vals, "o-", label="data")
-            res = np.polyfit(z, vals, 1)
-            ax[ii].plot(z, res[0] * z + res[1], "--", label="fit")
-            ax[ii].set_ylabel(key)
+            xz = np.log((1 + z) / (1 + self.z_0))
+            _ = vals != self.null_vals[key]
+            if np.any(_):
+                res = np.polyfit(xz[_], vals[_], 1)
+                ax[ii].plot(z[_], res[0] * xz[_] + res[1], "--", label="fit")
+                ax[ii].set_ylabel(key)
+
         ax[0].legend()
         ax[-1].set_xlabel("z")
 

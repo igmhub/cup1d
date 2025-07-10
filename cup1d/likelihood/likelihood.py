@@ -156,6 +156,11 @@ class Likelihood(object):
 
             self.Gauss_priors[ii] = _prior
 
+        if np.any(self.Gauss_priors != 1e4):
+            pass
+        else:
+            self.Gauss_priors = None
+
     def set_icov(self):
         """
         Computes and sets the inverse covariance matrix for the P1 power spectrum data and full power spectrum data.
@@ -877,7 +882,10 @@ class Likelihood(object):
                 return self.min_log_like
 
         # compute log_prior
-        log_prior = self.get_log_prior(values)
+        if self.Gauss_priors is not None:
+            log_prior = self.get_log_prior(values)
+        else:
+            log_prior = 0
 
         # compute log_like (option to ignore emulator covariance)
         if return_blob:
@@ -943,8 +951,11 @@ class Likelihood(object):
         )
         return log_prior
 
-    def minus_log_prob(self, values, zmask=None):
+    def minus_log_prob(self, values, zmask=None, ind_fix=None, pfix=None):
         """Return minus log_prob (needed to maximise posterior)"""
+
+        if ind_fix is not None:
+            values[ind_fix] = pfix
 
         return -1.0 * self.log_prob(values, zmask=zmask)
 
@@ -1091,7 +1102,7 @@ class Likelihood(object):
                 fig, ax = plt.subplots(
                     np.maximum(len(_data_z) // 2 + len(_data_z) % 2, 1),
                     2,
-                    figsize=(12, len(_data_z)),
+                    figsize=(12, len(_data_z) * 2),
                     sharex=True,
                     sharey="row",
                 )
@@ -1927,8 +1938,10 @@ class Likelihood(object):
         else:
             plt.show()
 
-    def plot_hull_fid(self):
-        emu_call, M_of_z = self.theory.get_emulator_calls(self.data.z)
+    def plot_hull_fid(self, like_params=[]):
+        emu_call, M_of_z = self.theory.get_emulator_calls(
+            self.data.z, like_params=like_params
+        )
         p1 = np.zeros(
             (
                 self.theory.hull.nz,

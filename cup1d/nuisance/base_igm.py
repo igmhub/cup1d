@@ -297,6 +297,36 @@ class IGM_model(object):
 
         return coeff
 
+    def reset_coeffs(self, like_params):
+        """Reset all coefficients to fiducial values"""
+        for name in self.coeffs:
+            Npar = 0
+            print("orig", name, self.coeffs[name])
+            array_names = []
+            array_values = []
+            for par in like_params:
+                if (name + "_") in par.name:
+                    array_names.append(par.name)
+                    array_values.append(par.value)
+                    Npar += 1
+            array_names = np.array(array_names)
+            array_values = np.array(array_values)
+
+            # return fiducial value
+            if Npar == 0:
+                continue
+            elif Npar != self.n_pars[name]:
+                print(Npar, self.n_pars[name])
+                raise ValueError("number of params mismatch for: " + name)
+
+            for ii in range(Npar):
+                ind_arr = np.argwhere(name + "_" + str(ii) == array_names)[0, 0]
+                if self.prop_coeffs[name + "_ztype"] == "pivot":
+                    self.coeffs[name][-(ii + 1)] = array_values[ind_arr]
+                else:
+                    self.coeffs[name][ii] = array_values[ind_arr]
+            print("new", name, self.coeffs[name])
+
     def plot_parameters(self, z, like_params, folder=None):
         """Plot likelihood parameters"""
 
@@ -316,6 +346,7 @@ class IGM_model(object):
             z_at_time = True
 
         vals_out = {}
+        coeffs_out = {}
 
         for ii, key in enumerate(self.coeffs.keys()):
             if z_at_time == False:
@@ -331,8 +362,10 @@ class IGM_model(object):
                     raise ValueError(
                         "key must be tau_eff, gamma, sigT_kms, or kF_kms"
                     )
+                coeffs_out[key] = self.get_coeff(key, like_params=like_params)
             else:
                 vals = []
+                coeffs_out[key] = []
                 for jj in range(len(z)):
                     if key == "tau_eff":
                         vals.append(
@@ -356,6 +389,9 @@ class IGM_model(object):
                         raise ValueError(
                             "key must be tau_eff, gamma, sigT_kms, or kF_kms"
                         )
+                    coeffs_out[key].append(
+                        self.get_coeff(key, like_params=like_params[jj])[0]
+                    )
                 vals = np.array(vals)
 
             if key == "tau_eff":
@@ -388,4 +424,4 @@ class IGM_model(object):
             fig.savefig(folder + ".png")
             fig.savefig(folder + ".pdf")
 
-        return vals_out
+        return vals_out, coeffs_out

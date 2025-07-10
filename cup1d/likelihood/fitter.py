@@ -277,19 +277,49 @@ class Fitter(object):
         p0=None,
         nsamples=8,
         zmask=None,
+        mask_pars=None,
         restart=False,
     ):
         """Minimizer"""
+
+        def set_log_func_minimize(pini, zmask=None, mask_pars=None):
+            if mask_pars is None:
+                if zmask is not None:
+                    fun = lambda x: log_func_minimize(x, zmask=zmask)
+                    return fun
+                else:
+                    return log_func_minimize
+            else:
+                ind_fix = []
+                for ii, par in enumerate(self.like.free_params):
+                    if par.fixed:
+                        ind_fix.append(ii)
+                ind_fix = np.array(ind_fix)
+                pfix = pini[ind_fix]
+                if zmask is not None:
+                    fun = lambda x: log_func_minimize(
+                        x, zmask=zmask, ind_fix=ind_fix, pfix=pfix
+                    )
+                    return fun
+                else:
+                    fun = lambda x: log_func_minimize(
+                        x, ind_fix=ind_fix, pfix=pfix
+                    )
+                    return fun
+
+        _log_func_minimize = set_log_func_minimize(
+            p0, zmask=zmask, mask_pars=mask_pars
+        )
 
         if restart:
             self.mle_chi2 = 1e10
 
         npars = len(self.like.free_params)
 
-        if zmask is not None:
-            _log_func_minimize = lambda x: log_func_minimize(x, zmask=zmask)
-        else:
-            _log_func_minimize = log_func_minimize
+        # if zmask is not None:
+        #     _log_func_minimize = lambda x: log_func_minimize(x, zmask=zmask)
+        # else:
+        #     _log_func_minimize = log_func_minimize
 
         if p0 is not None:
             # start at the initial value

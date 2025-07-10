@@ -22,6 +22,7 @@ class SiMult(Contaminant):
         z_0=3.0,
         fid_vals=None,
         null_vals=None,
+        z_max=None,
         flat_priors=None,
         Gauss_priors=None,
     ):
@@ -137,6 +138,13 @@ class SiMult(Contaminant):
             for coeff in list_coeffs:
                 null_vals[coeff] = -11.5
 
+        if z_max is None:
+            z_max = {}
+            for coeff in list_coeffs:
+                z_max[coeff] = 3.6
+            z_max["f_Lya_SiIII"] = 4.3
+            z_max["s_Lya_SiIII"] = 4.3
+
         super().__init__(
             coeffs=coeffs,
             list_coeffs=list_coeffs,
@@ -145,6 +153,7 @@ class SiMult(Contaminant):
             z_0=z_0,
             fid_vals=fid_vals,
             null_vals=null_vals,
+            z_max=z_max,
             flat_priors=flat_priors,
             Gauss_priors=Gauss_priors,
         )
@@ -163,7 +172,11 @@ class SiMult(Contaminant):
                 self.get_value(key, z, like_params=like_params)
             )
             if key in self.null_vals:
-                _ = vals[key] <= self.null_vals[key]
+                if self.prop_coeffs[key + "_otype"] == "const":
+                    null = self.null_vals[key]
+                else:
+                    null = np.exp(self.null_vals[key])
+                _ = vals[key] <= null
                 vals[key][_] = 0
 
         ra3 = self.rat["SiIIa_SiIII"]
