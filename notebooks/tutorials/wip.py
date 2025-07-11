@@ -632,18 +632,26 @@ free_parameters
 # %%
 
 # %%
-len(like.free_param_names)
-
-# %%
 # np.save("int_vals_modify.npy", vals_modify)
 
 # %%
 # fid_tau = np.array([-0.02388212235743159, -0.037639133847819584, -0.03397288381711758, -0.06906946783191442, -0.08050471235281417, -0.1020954274736767, -0.1091780615234634])
-fid_tau = np.array([-0.07694854367384515, -0.4639306935116183, -1.0627446006160628])
-fid_sigT = np.array([0.9833049985389459, -0.43913496622924253, 1.0701790380033116])
+# fid_tau = np.array([-0.07694854367384515, -0.4639306935116183, -1.0627446006160628])
+# fid_sigT = np.array([0.9833049985389459, -0.43913496622924253, 1.0701790380033116])
 
 # %%
 param_attime_all = np.load("fit_baseline_param_attime.npy", allow_pickle=True).item()
+
+# %%
+# param_attime_all
+
+# %%
+out_fits = np.load("res_weak_priors.npy", allow_pickle=True).item()
+out_fits.keys()
+
+# %%
+param_attime_all = out_fits["param_attime_all"]
+param_attime_all
 
 # %%
 # param_attime_all
@@ -658,6 +666,13 @@ def split_string(s):
     else:
         return s, None 
 
+
+# %%
+np.arange(2.2, 3.2001, 0.2)
+# 7
+
+# %% [markdown]
+# # HERE
 
 # %%
 
@@ -691,12 +706,20 @@ for p in free_params:
     #         p.min_value = p.value -
 
     pname, iistr = split_string(p.name)
-    if (pname == "s_Lya_SiIII") | (pname == "f_Lya_SiIII"):
-    # if pname == "a":
+    ii = int(iistr)
+    # if (pname == "f_SiIIa_SiIII") | (pname == "f_SiIIb_SiIII"):
+    if pname in args.opt_props:
         p.fixed = False
+        p.value = param_attime_all[pname][ii] # note order for splines!!!
+    elif pname in new_vals:
+        p.fixed = True
+        p.value = new_vals[pname][ii] # optimized!
+        if (p.value > p.max_value):
+            p.max_value = p.value + 2
+        elif (p.value < p.min_value):
+            p.min_value = p.value - 2
     else:
         p.fixed = True
-        ii = int(iistr)
         # p.value = param_attime_all[p.name[:-2]][-(ii + 1)]
         p.value = param_attime_all[pname][ii] # note order for splines!!!
         if (p.value > p.max_value):
@@ -705,8 +728,6 @@ for p in free_params:
             p.min_value = p.value - 2
 
     print(p.name, '\t', np.round(p.value, 3), '\t', np.round(p.min_value, 3), '\t', np.round(p.max_value, 3), '\t', p.Gauss_priors_width, p.fixed)
-
-# %%
 
 # %%
 like.theory.model_igm.models["F_model"].reset_coeffs(free_params)
@@ -784,12 +805,27 @@ input_pars = fitter.mle_cube.copy()
 # # %%time
 # like.plot_p1d(plot_panels=True, residuals=True)
 input_pars = like.sampling_point_from_parameters().copy()
+# , plot_fname="test_weak"
 like.plot_p1d(plot_panels=True, residuals=True, values=input_pars)
 # like.plot_p1d(plot_panels=True, residuals=True)
 # like.plot_p1d(residuals=True)
 
-# %% [markdown]
-# #### 673 best!
+# %%
+2.2 31.3 37 73.3
+2.4 43.97 40 30.71
+2.6 55.84 43 9.06
+2.8 52.23 46 24.48
+3.0 71.06 49 2.14
+3.2 55.24 51 31.77
+3.4 48.42 55 72.26
+3.6 95.99 61 0.28
+3.8 68.74 63 28.92
+4.0 82.0 64 6.43
+4.2 73.14 66 25.53
+
+All 677.92 575 0.19
+
+# %%
 
 # %%
 # like.plot_hull_fid(like_params=like.free_params)
@@ -845,30 +881,66 @@ p0 = like.sampling_point_from_parameters().copy()
 # fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=1)
 # zmask = np.array([like.data.z[0]])
 # fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=1)
-fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, restart=True, nsamples=0)
+fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, restart=True, nsamples=1)
 # zmask = np.array([2.4])
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
 
-# %%
-2 726
-3 706
-4 708
-
-lya-SiIII
-6 709
-
-# %%
-
 # %% [markdown]
-# 673 basic
+# 691 base 1-z at a time with weak priors. Without priors, 673
 
 # %%
-2.2 31.63 37 71.88
-2.4 43.97 40 30.71
-2.6 55.84 43 9.06
+705
 
-All 131.44 120 22.4
+3 706
+5 702
+
+# opt_props = ["f_Lya_SiIII", "s_Lya_SiIII"]
+# xxx with 10
+# 725 with 8
+# 729 with 6
+
+# %%
+np.linspace(2.2, 4.2, 3)
+
+# %%
+new_vals = {}
+
+# %%
+
+like_params = fitter.like.parameters_from_sampling_point(fitter.mle_cube)
+
+# fold0 = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
+# folder = fold0 + "ev_baseline1z_params/taueff"
+folder = None
+# oFmodel, ocFmodel = fitter.like.theory.model_igm.models["F_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+# folder = fold0 + "ev_baseline1z_params/sigT"
+# oTmodel, ocTmodel = fitter.like.theory.model_igm.models["T_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+# folder = fold0 + "ev_baseline1z_params/Simult"
+oSimult, ocSimult = fitter.like.theory.model_cont.metal_models["Si_mult"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+# folder = fold0 + "ev_baseline1z_params/Siadd"
+# oSiadd, ocSiadd = fitter.like.theory.model_cont.metal_models["Si_add"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+# folder = fold0 + "ev_baseline1z_params/HCD"
+# oHCD = fitter.like.theory.model_cont.hcd_model.plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+
+mod = ocSimult
+
+for key in mod:
+    if key in args.opt_props:
+        new_vals[key] = mod[key]
+        print(mod[key])
+
+# models = [ocFmodel, ocTmodel, oSimult, oSiadd, oHCD]
+# param_attime_all = {}
+# for mod in models:
+#     for key in mod:
+#         param_attime_all[key] = mod[key]
+
+# %%
+new_vals
+
+# %%
+np.save("opt_vals.npy", new_vals)
 
 # %% [markdown]
 # #### Latest
@@ -884,6 +956,24 @@ All 131.44 120 22.4
 diru = None
 plotter = Plotter(fitter, save_directory=diru)
 # plotter.plots_minimizer()
+
+# %%
+2.2 31.3 37 73.3
+2.4 43.97 40 30.71
+2.6 55.84 43 9.06
+2.8 52.23 46 24.48
+3.0 71.06 49 2.14
+3.2 55.24 51 31.77
+3.4 48.42 55 72.26
+3.6 95.99 61 0.28
+3.8 68.74 63 28.92
+4.0 82.0 64 6.43
+4.2 73.14 66 25.53
+
+All 677.92 575 0.19
+
+# %%
+plotter.plot_p1d(plot_panels=True, residuals=True)
 
 # %%
 like_params = fitter.like.parameters_from_sampling_point(fitter.mle_cube)
@@ -1079,7 +1169,7 @@ out_mle = []
 out_mle_cube = []
 out_chi2 = []
 # for ii in range(len(data["P1Ds"].z)): 
-for ii in range(1): 
+for ii in range(10, 11): 
 # for ii in range(6): 
 # for ii in range(2,3): 
 # for ii in range(9, 10): 
@@ -1140,6 +1230,12 @@ for ii in range(1):
     # plotter.plots_minimizer()
 
 # %%
+
+plotter = Plotter(fitter, save_directory=None, zmask=zmask)
+plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask)
+
+# %%
+66.2095631521242
 
 # %%
 # plotter = Plotter(fitter, save_directory=None, zmask=[2.6])
@@ -1617,8 +1713,8 @@ out_mle_cube = []
 out_chi2 = []
 list_fix = ["tau_eff_0", "sigT_kms_0", "gamma_0", "kF_kms_0"]   
 
-# for ii in range(len(like.data.z)): 
-for ii in range(1):
+for ii in range(len(like.data.z)): 
+# for ii in range(1):
     print(ii)
 
     zmask = np.array([data["P1Ds"].z[ii]])
@@ -1648,9 +1744,11 @@ for ii in range(1):
         explore=args.explore,
         fix_cosmology=args.fix_cosmo,
     )
+
+    p0 = like.sampling_point_from_parameters().copy()
             
     # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
-    fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=3)
+    fitter.run_minimizer(log_func_minimize=fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=5)
     # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
     out_mle.append(fitter.mle)
     out_mle_cube.append(fitter.mle_cube)
@@ -1658,8 +1756,135 @@ for ii in range(1):
     # plotter = Plotter(fitter, zmask=zmask, save_directory="mpg_baseline/"+str(ii))
     # plotter.plots_minimizer()
 
-# %% [markdown]
-# # terrible fit???????
+# %%
+out_fits = np.load("res_weak_priors.npy", allow_pickle=True).item()
+out_mle = out_fits["out_mle"]
+out_mle_cube = out_fits["out_mle_cube"]
+out_chi2 = out_fits["out_chi2"]
+weak_priors = out_fits["weak_priors"]
+
+# %%
+ii = 0
+zmask = np.array([data["P1Ds"].z[ii]])
+
+args.set_baseline(ztar=data["P1Ds"].z[ii], fit_type="at_a_time")
+
+like = set_like(
+    data["P1Ds"],
+    emulator,
+    args,
+    data_hires=data["extra_P1Ds"],
+)
+
+fitter = Fitter(
+    like=like,
+    rootdir=output_dir,
+    nburnin=args.n_burn_in,
+    nsteps=args.n_steps,
+    parallel=args.parallel,
+    explore=args.explore,
+    fix_cosmology=args.fix_cosmo,
+)
+
+# %%
+all_props = [
+    "tau_eff",
+    "sigT_kms",
+    "f_Lya_SiIII",
+    "s_Lya_SiIII",
+    "f_Lya_SiII",
+    "s_Lya_SiII",
+    "f_SiIIa_SiIIb",
+    "s_SiIIa_SiIIb",
+    "f_SiIIa_SiIII",
+    "f_SiIIb_SiIII",
+    "HCD_damp1",
+    "HCD_damp4",
+]
+
+out_mle_cube_reformat = []
+
+for ii in range(len(like.data.z)):
+    _cube = []
+
+    jj = 0
+    for prop in all_props:
+        if fitter.param_dict[prop + "_0"] in out_mle[ii]:
+            _cube.append(out_mle_cube[ii][jj])
+            jj += 1
+        else:
+            _cube.append(0)
+
+    out_mle_cube_reformat.append(np.array(_cube))
+
+# %%
+# like_params = fitter.like.parameters_from_sampling_point(fitter.mle_cube)
+list_fix = ["tau_eff_0", "sigT_kms_0", "gamma_0", "kF_kms_0"]
+
+
+args.set_baseline(ztar=data["P1Ds"].z[0], fit_type="at_a_time")
+
+fitter = Fitter(
+    like=like,
+    rootdir=output_dir,
+    nburnin=args.n_burn_in,
+    nsteps=args.n_steps,
+    parallel=args.parallel,
+    explore=args.explore,
+    fix_cosmology=args.fix_cosmo,
+)
+
+mask = np.arange(11)
+
+like_params = []
+for ii, mle_cube in enumerate(out_mle_cube_reformat):
+
+    like = set_like(
+        data["P1Ds"],
+        emulator,
+        args,
+        data_hires=data["extra_P1Ds"],
+    )
+    for par in like.free_params:
+        if par.name not in list_fix:
+            par.value = weak_priors[par.name + "_cen"][ii]
+            par.min_value = weak_priors[par.name + "_cen"][ii] - 2 * weak_priors[par.name + "_std"]
+            par.max_value = weak_priors[par.name + "_cen"][ii] + 2 * weak_priors[par.name + "_std"]
+        print(par.name, par.value, par.min_value, par.max_value)
+    
+    like_params.append(like.parameters_from_sampling_point(mle_cube))
+
+fold0 = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
+folder = fold0 + "ev_baseline1z_params/taueff"
+oFmodel, ocFmodel = fitter.like.theory.model_igm.models["F_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+folder = fold0 + "ev_baseline1z_params/sigT"
+oTmodel, ocTmodel = fitter.like.theory.model_igm.models["T_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+folder = fold0 + "ev_baseline1z_params/Simult"
+oSimult = fitter.like.theory.model_cont.metal_models["Si_mult"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+folder = fold0 + "ev_baseline1z_params/Siadd"
+oSiadd = fitter.like.theory.model_cont.metal_models["Si_add"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+folder = fold0 + "ev_baseline1z_params/HCD"
+oHCD = fitter.like.theory.model_cont.hcd_model.plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+
+models = [ocFmodel, ocTmodel, oSimult, oSiadd, oHCD]
+param_attime_all = {}
+for mod in models:
+    for key in mod:
+        param_attime_all[key] = mod[key]
+
+# %%
+param_attime_all
+
+# %%
+out_fits = {
+    "out_mle":out_mle,
+    "out_mle_cube":out_mle_cube,
+    "out_chi2":out_chi2,
+    "weak_priors":weak_priors,
+    "param_attime_all":param_attime_all,
+    "out_mle_cube_reformat":out_mle_cube_reformat,
+}
+np.save("res_weak_priors.npy", out_fits)
 
 # %%
 # baseline QMLE3
@@ -1677,6 +1902,25 @@ for ii in range(len(out_chi2)):
 prob = chi2_scipy.sf(chi2_all, ndeg_all)
 print()
 print("All", np.round(chi2_all, 2), ndeg_all, np.round(prob*100, 2))
+
+# %%
+2.2 31.63 37 71.88
+2.4 43.97 40 30.71
+2.6 55.84 43 9.06
+2.8 51.64 46 26.28
+3.0 71.06 49 2.14
+3.2 53.42 51 38.14
+3.4 48.42 53 65.3
+3.6 88.01 55 0.31
+3.8 66.21 57 18.9
+4.0 81.82 58 2.14
+4.2 71.98 60 13.82
+
+All 663.99 549 0.05
+
+# %%
+
+weak2_priors = plot_z_at_time_params(fitter, out_mle)
 
 # %% [markdown]
 # ## Read results from chains

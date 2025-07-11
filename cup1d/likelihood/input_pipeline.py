@@ -538,19 +538,19 @@ class Args:
                 "f_SiIIa_SiIII",
                 "f_SiIIb_SiIII",
                 "HCD_damp1",
+                "HCD_damp2",
+                "HCD_damp3",
                 "HCD_damp4",
             ]
 
-            # if ztar > 3.3:
-            #     baseline_prop.remove("f_SiIIa_SiIIb")
-            #     baseline_prop.remove("s_SiIIa_SiIIb")
-            # if ztar > 3.5:
-            #     baseline_prop.remove("f_Lya_SiII")
-            #     baseline_prop.remove("s_Lya_SiII")
-            #     baseline_prop.remove("f_SiIIa_SiIII")
-            #     baseline_prop.remove("f_SiIIb_SiIII")
-            # if ztar > 4.0:
-            #     baseline_prop.remove("HCD_damp4")
+            if ztar > 3.3:
+                baseline_prop.remove("f_SiIIa_SiIIb")
+                baseline_prop.remove("s_SiIIa_SiIIb")
+            if ztar > 3.5:
+                baseline_prop.remove("f_Lya_SiII")
+                baseline_prop.remove("s_Lya_SiII")
+                baseline_prop.remove("f_SiIIa_SiIII")
+                baseline_prop.remove("f_SiIIb_SiIII")
 
             print("baseline_prop", baseline_prop)
 
@@ -569,6 +569,8 @@ class Args:
                 "f_SiIIa_SiIII",
                 "f_SiIIb_SiIII",
                 "HCD_damp1",
+                # "HCD_damp2",
+                # "HCD_damp3",
                 "HCD_damp4",
             ]
             # self.fid_igm["tau_eff_znodes"] = []
@@ -623,7 +625,26 @@ class Args:
                 "HCD_damp4",
             ]
 
-            opt_props = ["f_SiIIa_SiIII", "f_SiIIb_SiIII"]
+            # 3.2
+            props_1 = ["f_SiIIa_SiIIb", "s_SiIIa_SiIIb"]
+            # 3.4
+            props_2 = [
+                "f_Lya_SiII",
+                "s_Lya_SiII",
+                "f_SiIIa_SiIII",
+                "f_SiIIb_SiIII",
+            ]
+
+            # self.opt_props = ["f_SiIIa_SiIII", "f_SiIIb_SiIII"]
+            # self.opt_props = ["f_Lya_SiII", "s_Lya_SiII"]
+            # self.opt_props = ["f_SiIIa_SiIIb", "s_SiIIa_SiIIb"]
+            # self.opt_props = [""]
+            # self.opt_props = ["HCD_damp4"]
+            # self.opt_props = ["f_SiIIa_SiIII", "f_SiIIb_SiIII"]
+            self.opt_props = ["f_Lya_SiIII", "s_Lya_SiIII"]
+            znodes2 = np.linspace(2.2, 4.2, 3)
+            # znodes2 = np.array([2.2, 3.6, 4.2])
+            # znodes2 = np.linspace(2.2, 4.2, 10)
 
             # if ztar > 3.3:
             #     props_cont.remove("f_SiIIa_SiIIb")
@@ -643,7 +664,6 @@ class Args:
             # print("znodes", znodes)
             znodes = np.arange(2.2, zmax + 1e-2, 0.2)
             print("znodes", znodes)
-            znodes2 = np.linspace(2.2, zmax, 6)
             # znodes2 = znodes.copy()
             # print("znodes", znodes)
             self.fid_igm["tau_eff_znodes"] = znodes
@@ -666,10 +686,37 @@ class Args:
             # znodes = [0, 1]
 
             for prop in props_cont:
-                if prop in opt_props:
-                    _znodes = znodes2
+                if prop in props_1:
+                    _znodes = np.arange(2.2, 3.2 + 1e-2, 0.2)
+                elif prop in props_2:
+                    _znodes = np.arange(2.2, 3.4 + 1e-2, 0.2)
                 else:
                     _znodes = znodes
+
+                if prop in self.opt_props:
+                    _znodes = znodes2
+
+                if prop in ["f_SiIIa_SiIII", "f_SiIIb_SiIII"]:
+                    _znodes = np.linspace(2.2, 3.4, 2)
+
+                if prop in ["f_Lya_SiII", "s_Lya_SiII"]:
+                    _znodes = np.linspace(2.2, 3.4, 3)
+
+                if prop in ["s_Lya_SiII"]:
+                    _znodes = np.linspace(2.2, 3.4, 5)
+
+                if prop in ["f_SiIIa_SiIIb", "s_SiIIa_SiIIb"]:
+                    _znodes = np.linspace(2.2, 3.2, 6)
+
+                if prop in ["f_Lya_SiIII", "s_Lya_SiIII"]:
+                    _znodes = np.linspace(2.2, 4.2, 3)
+
+                # if prop in ["HCD_damp1", "HCD_damp4"]:
+                #     pass
+
+                # if prop in ["f_Lya_SiIII", "s_Lya_SiIII"]:
+                #     pass
+
                 self.fid_cont[prop + "_znodes"] = _znodes
                 self.fid_cont["n_" + prop] = len(
                     self.fid_cont[prop + "_znodes"]
@@ -682,16 +729,6 @@ class Args:
                         self.fid_cont[prop] = [0, 0]
                 else:
                     self.fid_cont[prop + "_ztype"] = "interp_spl"
-
-            # if ztar < 3.5:
-            #     self.fid_cont["n_f_Lya_SiIII"] = 3
-            #     self.fid_cont["n_f_Lya_SiII"] = 3
-            #     self.fid_cont["f_SiIIa_SiIII"] = 3
-            #     self.fid_cont["f_SiIIb_SiIII"] = 3
-            #     self.fid_cont["n_s_SiIIa_SiIIb"] = 3
-            #     self.fid_cont["n_HCD_damp1"] = 3
-            #     self.fid_cont["n_HCD_damp4"] = 2
-            # self.fid_cont["n_f_Lya_SiIII"] = 2
 
             for ii in range(4):
                 if self.fid_cont["n_HCD_damp" + str(ii + 1)] == 0:

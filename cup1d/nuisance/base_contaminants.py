@@ -290,15 +290,21 @@ class Contaminant(object):
             z_at_time = True
 
         vals_out = {}
+        coeffs_out = {}
 
         for ii, key in enumerate(self.coeffs.keys()):
             if z_at_time == False:
                 vals = self.get_value(key, z, like_params=like_params)
+                coeffs_out[key] = self.get_coeff(key, like_params=like_params)
             else:
                 vals = []
+                coeffs_out[key] = []
                 for jj in range(len(z)):
                     vals.append(
                         self.get_value(key, z[jj], like_params=like_params[jj])
+                    )
+                    coeffs_out[key].append(
+                        self.get_coeff(key, like_params=like_params[jj])[0]
                     )
                 vals = np.array(vals)
 
@@ -331,7 +337,7 @@ class Contaminant(object):
             fig.savefig(folder + ".png")
             fig.savefig(folder + ".pdf")
 
-        return vals_out
+        return vals_out, coeffs_out
 
     # def plot_contamination(
     #     self,
