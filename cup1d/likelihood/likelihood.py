@@ -423,24 +423,23 @@ class Likelihood(object):
         # setup list of likelihood free parameters
         self.free_params = []
         # iterate over free parameters
-        for par in params:
-            if par.name in free_param_names:
-                if free_param_limits is not None:
-                    ## Set min and max of each parameter if
-                    ## a list is given. otherwise leave as default
-                    ind = free_param_names.index(par.name)
-                    par.min_value = free_param_limits[ind][0]
-                    par.max_value = free_param_limits[ind][1]
-                self.free_params.append(par)
-        #     else:
-        #         print(par.name)
-
-        # print(free_param_names)
-
-        Nfree = len(self.free_params)
-        Nin = len(free_param_names)
-
-        assert Nfree == Nin, "could not setup free parameters"
+        for par in free_param_names:
+            found = False
+            for p in params:
+                if p.name == par:
+                    if free_param_limits is not None:
+                        ## Set min and max of each parameter if
+                        ## a list is given. otherwise leave as default
+                        ind = free_param_names.index(par.name)
+                        par.min_value = free_param_limits[ind][0]
+                        par.max_value = free_param_limits[ind][1]
+                    self.free_params.append(p)
+                    found = True
+                    break
+            if found == False:
+                raise ValueError(
+                    "Could not find free parameter {} in theory".format(par)
+                )
 
         if self.verbose:
             print("likelihood setup with {} free parameters".format(Nfree))
@@ -1041,8 +1040,8 @@ class Likelihood(object):
                     return_covar=return_covar,
                 )
                 _ = np.argwhere(values[iz] != 0)[:, 0]
+                # print(iz, len(_data_k_kms[iz]), len(_))
                 ndeg_all.append(len(_data_k_kms[iz]) - len(_))
-                # print(iz, _data_z[iz], _res)
                 if _res is None:
                     return print("Prior out of range for z = ", _data_z[iz])
                 if return_covar:
@@ -1138,6 +1137,7 @@ class Likelihood(object):
             _ndeg = ndeg - n_free_p
         else:
             _ndeg = np.sum(ndeg_all)
+        print(chi2, np.sum(chi2_all))
         prob = chi2_scipy.sf(chi2, _ndeg)
 
         label = (

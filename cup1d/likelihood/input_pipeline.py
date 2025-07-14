@@ -524,6 +524,22 @@ class Args:
 
         self.fid_cont["hcd_model_type"] = "new_rogers"
 
+        props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
+        props_cont = [
+            "f_Lya_SiIII",
+            "s_Lya_SiIII",
+            "f_Lya_SiII",
+            "s_Lya_SiII",
+            "f_SiIIa_SiIIb",
+            "s_SiIIa_SiIIb",
+            "f_SiIIa_SiIII",
+            "f_SiIIb_SiIII",
+            "HCD_damp1",
+            "HCD_damp2",
+            "HCD_damp3",
+            "HCD_damp4",
+        ]
+
         # z at a time
         if fit_type == "at_a_time":
             baseline_prop = [
@@ -601,15 +617,46 @@ class Args:
                 else:
                     self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -(ii + 1)]
 
-        elif fit_type == "at_a_time2":
-            self.fid_igm["tau_eff_ztype"] = "pivot"
-            self.fid_igm["sigT_kms_ztype"] = "pivot"
-            self.fid_igm["gamma_ztype"] = "pivot"
-            self.fid_igm["kF_kms_ztype"] = "pivot"
-            self.fid_igm["n_tau"] = 1
-            self.fid_igm["n_sigT"] = 1
-            self.fid_igm["n_gamma"] = 1
-            self.fid_igm["n_kF"] = 1
+        elif fit_type == "at_a_time_igm":
+            for prop in props_igm:
+                self.fid_igm["n_" + prop] = 1
+                self.fid_igm[prop + "_ztype"] = "pivot"
+
+            for prop in props_cont:
+                self.fid_cont["n_" + prop] = 0
+                self.fid_cont[prop + "_ztype"] = "pivot"
+                if prop != "HCD_const":
+                    self.fid_cont[prop] = [0, -11.5]
+                else:
+                    self.fid_cont[prop] = [0, 0]
+
+            self.fid_syst["res_model_type"] = "pivot"
+            self.fid_syst["n_res"] = 0
+            self.fid_syst["R_coeff"] = [0, 0]
+
+        elif fit_type == "at_a_time_orig":
+            for prop in props_igm:
+                self.fid_igm["n_" + prop] = 1
+                self.fid_igm[prop + "_ztype"] = "pivot"
+
+            for prop in props_cont:
+                self.fid_cont["n_" + prop] = 1
+                self.fid_cont[prop + "_ztype"] = "pivot"
+                if prop != "HCD_const":
+                    self.fid_cont[prop] = [0, -11.5]
+                else:
+                    self.fid_cont[prop] = [0, 0]
+
+            for ii in range(4):
+                if self.fid_cont["n_HCD_damp" + str(ii + 1)] == 0:
+                    self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -11.5]
+                else:
+                    self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -(ii + 1)]
+
+            self.fid_syst["res_model_type"] = "pivot"
+            self.fid_syst["n_res"] = 1
+            self.fid_syst["R_coeff"] = [0, 0]
+
         elif fit_type == "wip":
             props_igm = ["tau_eff", "sigT_kms"]
             props_cont = [
@@ -839,7 +886,7 @@ class Args:
             ]
 
         # priors
-        self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-11.5, -0.25]]
+        self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-11.5, -0.05]]
         self.fid_cont["flat_priors"]["HCD_const"] = [[-1, 1], [-0.2, 1e-6]]
 
 
