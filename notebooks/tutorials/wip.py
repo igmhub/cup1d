@@ -710,22 +710,31 @@ for p in free_params:
     # if (pname == "f_SiIIa_SiIII") | (pname == "f_SiIIb_SiIII"):
     if pname in args.opt_props:
         p.fixed = False
-        p.value = param_attime_all[pname][ii] # note order for splines!!!
-    elif pname in new_vals:
-        p.fixed = True
+        # p.value = param_attime_all[pname][ii] # note order for splines!!!
         p.value = new_vals[pname][ii] # optimized!
-        if (p.value > p.max_value):
-            p.max_value = p.value + 2
-        elif (p.value < p.min_value):
-            p.min_value = p.value - 2
-    else:
-        p.fixed = True
-        # p.value = param_attime_all[p.name[:-2]][-(ii + 1)]
-        p.value = param_attime_all[pname][ii] # note order for splines!!!
-        if (p.value > p.max_value):
-            p.max_value = p.value + 2
-        elif (p.value < p.min_value):
-            p.min_value = p.value - 2
+
+    if pname == "sigT_kms":
+        p.value = 1
+        
+    if pname == "HCD_damp1":
+        p.value = -1.2
+
+    
+    # elif pname in new_vals:
+    #     p.fixed = True
+    #     p.value = new_vals[pname][ii] # optimized!
+    #     if (p.value > p.max_value):
+    #         p.max_value = p.value + 2
+    #     elif (p.value < p.min_value):
+    #         p.min_value = p.value - 2
+    # else:
+    #     p.fixed = True
+    #     # p.value = param_attime_all[p.name[:-2]][-(ii + 1)]
+    #     p.value = param_attime_all[pname][ii] # note order for splines!!!
+    #     if (p.value > p.max_value):
+    #         p.max_value = p.value + 2
+    #     elif (p.value < p.min_value):
+    #         p.min_value = p.value - 2
 
     print(p.name, '\t', np.round(p.value, 3), '\t', np.round(p.min_value, 3), '\t', np.round(p.max_value, 3), '\t', p.Gauss_priors_width, p.fixed)
 
@@ -813,13 +822,13 @@ like.plot_p1d(plot_panels=True, residuals=True, values=input_pars)
 # %%
 2.2 31.3 37 73.3
 2.4 43.97 40 30.71
-2.6 55.84 43 9.06
-2.8 52.23 46 24.48
-3.0 71.06 49 2.14
-3.2 55.24 51 31.77
-3.4 48.42 55 72.26
-3.6 95.99 61 0.28
-3.8 68.74 63 28.92
+2.6 55.84 43 9.06 - 5
+2.8 52.23 46 24.48 - 4
+3.0 71.06 49 2.14 - 4
+3.2 55.24 51 31.77 - 4
+3.4 48.42 55 72.26 - 7
+3.6 95.99 61 0.28 - 4
+3.8 68.74 63 28.92 - 6
 4.0 82.0 64 6.43
 4.2 73.14 66 25.53
 
@@ -830,7 +839,8 @@ All 677.92 575 0.19
 # %%
 # like.plot_hull_fid(like_params=like.free_params)
 
-# %%
+# %% [markdown]
+# 705 chi2 614 deg 67 params prob 0.63%
 
 # %% [markdown]
 # ### Set fitter
@@ -864,6 +874,9 @@ fitter = Fitter(
 # %% [markdown]
 # ### Run minimizer
 
+# %% [markdown]
+# 5 min to run baseline with nsamples=1
+
 # %%
 # %%time
 # if like.truth is None:
@@ -887,21 +900,18 @@ fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, restart=True, nsamples=1
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
 
 # %% [markdown]
+# 705 chi2 614 deg 67 params prob 0.63%
+# 719 after removing 2 sigT, 3 HCD1
+
+# %%
+# su = 0
+# for ii in range(len(data["P1Ds"].k_kms)):
+#     print(len(data["P1Ds"].k_kms[ii]))
+#     su += len(data["P1Ds"].k_kms[ii])
+# su
+
+# %% [markdown]
 # 691 base 1-z at a time with weak priors. Without priors, 673
-
-# %%
-705
-
-3 706
-5 702
-
-# opt_props = ["f_Lya_SiIII", "s_Lya_SiIII"]
-# xxx with 10
-# 725 with 8
-# 729 with 6
-
-# %%
-np.linspace(2.2, 4.2, 3)
 
 # %%
 new_vals = {}
@@ -910,34 +920,34 @@ new_vals = {}
 
 like_params = fitter.like.parameters_from_sampling_point(fitter.mle_cube)
 
-# fold0 = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
-# folder = fold0 + "ev_baseline1z_params/taueff"
-folder = None
-# oFmodel, ocFmodel = fitter.like.theory.model_igm.models["F_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
-# folder = fold0 + "ev_baseline1z_params/sigT"
-# oTmodel, ocTmodel = fitter.like.theory.model_igm.models["T_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
-# folder = fold0 + "ev_baseline1z_params/Simult"
+fold0 = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/full_"
+folder = fold0 + "ev_baseline1z_params/taueff"
+# folder = None
+oFmodel, ocFmodel = fitter.like.theory.model_igm.models["F_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+folder = fold0 + "ev_baseline1z_params/sigT"
+oTmodel, ocTmodel = fitter.like.theory.model_igm.models["T_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+folder = fold0 + "ev_baseline1z_params/Simult"
 oSimult, ocSimult = fitter.like.theory.model_cont.metal_models["Si_mult"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
-# folder = fold0 + "ev_baseline1z_params/Siadd"
-# oSiadd, ocSiadd = fitter.like.theory.model_cont.metal_models["Si_add"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
-# folder = fold0 + "ev_baseline1z_params/HCD"
-# oHCD = fitter.like.theory.model_cont.hcd_model.plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+folder = fold0 + "ev_baseline1z_params/Siadd"
+oSiadd, ocSiadd = fitter.like.theory.model_cont.metal_models["Si_add"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
+folder = fold0 + "ev_baseline1z_params/HCD"
+oHCD, ocHCD = fitter.like.theory.model_cont.hcd_model.plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
 
-mod = ocSimult
+# mod = ocTmodel
 
-for key in mod:
-    if key in args.opt_props:
-        new_vals[key] = mod[key]
-        print(mod[key])
+# for key in mod:
+#     if key in args.opt_props:
+#         new_vals[key] = mod[key]
+#         print(mod[key])
 
-# models = [ocFmodel, ocTmodel, oSimult, oSiadd, oHCD]
-# param_attime_all = {}
-# for mod in models:
-#     for key in mod:
-#         param_attime_all[key] = mod[key]
+models = [ocFmodel, ocTmodel, ocSimult, ocSiadd, ocHCD]
+for mod in models:
+    for key in mod:
+        if key in args.opt_props:
+            new_vals[key] = mod[key]
 
 # %%
-new_vals
+# new_vals
 
 # %%
 np.save("opt_vals.npy", new_vals)
@@ -951,7 +961,7 @@ np.save("opt_vals.npy", new_vals)
 # diru = "test_snr3_3_3_1_1"
 # diru = "test_snr3_3_2_2_2"
 # diru = "test_snr3_3_2_1_1_cosmo"
-# diru = "allz_snr3_nocosmo_2tau"
+# diru = "allz_snr3_nocosmo_full"
 # diru = "qmle3_all_igmonly"
 diru = None
 plotter = Plotter(fitter, save_directory=diru)
@@ -997,15 +1007,6 @@ fitter.like.theory.model_cont.hcd_model.plot_parameters(data["P1Ds"].z, like_par
 
 # plotter.plot_metal_cont(plot_data=True)
 # plotter.plot_hcd_cont(plot_data=True)
-
-# %%
-plotter.plot_p1d(plot_panels=True, residuals=True)
-
-# %%
-plotter.plot_p1d(plot_panels=True, residuals=True)
-
-# %%
-plotter.plot_p1d(plot_panels=True, residuals=True)
 
 # %% [markdown]
 # ## Optimize parameters of pipeline with z at a time fits

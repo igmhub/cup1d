@@ -320,9 +320,9 @@ class Contaminant(object):
 
             vals_out[key] = vals
 
-            ax[ii].plot(z, vals, "o-", label="data")
-            xz = np.log((1 + z) / (1 + self.z_0))
             _ = vals != self.null_vals[key]
+            ax[ii].plot(z[_], vals[_], "o-", label="data")
+            xz = np.log((1 + z) / (1 + self.z_0))
             if np.any(_):
                 res = np.polyfit(xz[_], vals[_], 1)
                 ax[ii].plot(z[_], res[0] * xz[_] + res[1], "--", label="fit")

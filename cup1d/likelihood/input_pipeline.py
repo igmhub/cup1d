@@ -635,39 +635,10 @@ class Args:
                 "f_SiIIb_SiIII",
             ]
 
-            # self.opt_props = ["f_SiIIa_SiIII", "f_SiIIb_SiIII"]
-            # self.opt_props = ["f_Lya_SiII", "s_Lya_SiII"]
-            # self.opt_props = ["f_SiIIa_SiIIb", "s_SiIIa_SiIIb"]
-            # self.opt_props = [""]
-            # self.opt_props = ["HCD_damp4"]
-            # self.opt_props = ["f_SiIIa_SiIII", "f_SiIIb_SiIII"]
-            self.opt_props = ["f_Lya_SiIII", "s_Lya_SiIII"]
-            znodes2 = np.linspace(2.2, 4.2, 3)
-            # znodes2 = np.array([2.2, 3.6, 4.2])
-            # znodes2 = np.linspace(2.2, 4.2, 10)
+            self.opt_props = props_igm + props_cont
 
-            # if ztar > 3.3:
-            #     props_cont.remove("f_SiIIa_SiIIb")
-            #     props_cont.remove("s_SiIIa_SiIIb")
-            # if ztar > 3.5:
-            #     props_cont.remove("f_Lya_SiII")
-            #     props_cont.remove("s_Lya_SiII")
-            #     props_cont.remove("f_SiIIa_SiIII")
-            #     props_cont.remove("f_SiIIb_SiIII")
-            # if ztar > 4.0:
-            #     props_cont.remove("HCD_damp4")
-            # print("props_cont", props_cont)
-
-            # znodes_tau = np.array([2.2, 2.6, 3.2, 3.6, 4.0])
-            # znodes_tau = []
-            # znodes2 = np.linspace(2.2, zmax, 2)
-            # print("znodes", znodes)
-            znodes = np.arange(2.2, zmax + 1e-2, 0.2)
-            print("znodes", znodes)
-            # znodes2 = znodes.copy()
-            # print("znodes", znodes)
-            self.fid_igm["tau_eff_znodes"] = znodes
-            self.fid_igm["sigT_kms_znodes"] = znodes
+            self.fid_igm["tau_eff_znodes"] = np.linspace(2.2, 4.2, 8)
+            self.fid_igm["sigT_kms_znodes"] = np.linspace(2.2, 4.2, 10)
             self.fid_igm["gamma_znodes"] = []
             self.fid_igm["kF_kms_znodes"] = []
             for prop in props_igm:
@@ -686,20 +657,20 @@ class Args:
             # znodes = [0, 1]
 
             for prop in props_cont:
-                if prop in props_1:
-                    _znodes = np.arange(2.2, 3.2 + 1e-2, 0.2)
-                elif prop in props_2:
-                    _znodes = np.arange(2.2, 3.4 + 1e-2, 0.2)
-                else:
-                    _znodes = znodes
+                # if prop in props_1:
+                #     _znodes = np.arange(2.2, 3.2 + 1e-2, 0.2)
+                # elif prop in props_2:
+                #     _znodes = np.arange(2.2, 3.4 + 1e-2, 0.2)
+                # else:
+                #     _znodes = znodes
 
                 if prop in self.opt_props:
-                    _znodes = znodes2
+                    _znodes = 0
 
                 if prop in ["f_SiIIa_SiIII", "f_SiIIb_SiIII"]:
                     _znodes = np.linspace(2.2, 3.4, 2)
 
-                if prop in ["f_Lya_SiII", "s_Lya_SiII"]:
+                if prop in ["f_Lya_SiII"]:
                     _znodes = np.linspace(2.2, 3.4, 3)
 
                 if prop in ["s_Lya_SiII"]:
@@ -711,11 +682,11 @@ class Args:
                 if prop in ["f_Lya_SiIII", "s_Lya_SiIII"]:
                     _znodes = np.linspace(2.2, 4.2, 3)
 
-                # if prop in ["HCD_damp1", "HCD_damp4"]:
-                #     pass
+                if prop in ["HCD_damp1"]:
+                    _znodes = np.linspace(2.2, 4.2, 11)
 
-                # if prop in ["f_Lya_SiIII", "s_Lya_SiIII"]:
-                #     pass
+                if prop in ["HCD_damp4"]:
+                    _znodes = np.linspace(2.2, 4.2, 8)
 
                 self.fid_cont[prop + "_znodes"] = _znodes
                 self.fid_cont["n_" + prop] = len(
