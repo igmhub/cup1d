@@ -1137,8 +1137,8 @@ class Likelihood(object):
             _ndeg = ndeg - n_free_p
         else:
             _ndeg = np.sum(ndeg_all)
-        print(chi2, np.sum(chi2_all))
         prob = chi2_scipy.sf(chi2, _ndeg)
+        print(prob * 100)
 
         label = (
             r"$\chi^2=$"

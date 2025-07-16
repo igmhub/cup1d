@@ -112,7 +112,7 @@ class SiAdd(Contaminant):
         if z_max is None:
             z_max = {}
             for coeff in list_coeffs:
-                z_max[coeff] = 3.4
+                z_max[coeff] = 3.3
 
         super().__init__(
             coeffs=coeffs,
@@ -161,7 +161,7 @@ class SiAdd(Contaminant):
         metal_corr = []
 
         for iz in range(len(z)):
-            aSiII = vals["f_SiIIa_SiIIb"][iz] / (1 - mF[iz])
+            aSiII = vals["f_SiIIa_SiIIb"][iz].copy()
 
             # G_SiII_SiII = 2 - 2 / (
             #     1 + np.exp(-vals["s_SiIIa_SiIIb"][iz] * k_kms[iz])

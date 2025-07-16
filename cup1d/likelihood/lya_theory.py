@@ -730,8 +730,8 @@ class Theory(object):
         mult_cont_total, add_cont_total = self.model_cont.get_contamination(
             zs,
             k_kms,
-            # emu_call["mF_fid"],
-            emu_call["mF"],
+            emu_call["mF_fid"],
+            # emu_call["mF"],
             M_of_z,
             like_params=like_params,
             remove=remove,

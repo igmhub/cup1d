@@ -141,7 +141,7 @@ class SiMult(Contaminant):
         if z_max is None:
             z_max = {}
             for coeff in list_coeffs:
-                z_max[coeff] = 3.6
+                z_max[coeff] = 3.5
             z_max["f_Lya_SiIII"] = 4.3
             z_max["s_Lya_SiIII"] = 4.3
 

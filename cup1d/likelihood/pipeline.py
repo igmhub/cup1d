@@ -72,8 +72,8 @@ def set_free_like_parameters(params, emulator_label):
         # for ii in range(params.fid_cont["n_s_dla" + str(jj + 1)]):
         #     free_parameters.append(f"HCD_scale{jj+1}_{ii}")
 
-    # for ii in range(params.fid_cont["n_c_dla"]):
-    #     free_parameters.append(f"HCD_const_{ii}")
+    for ii in range(params.fid_cont["n_HCD_const"]):
+        free_parameters.append(f"HCD_const_{ii}")
 
     # SN
     for ii in range(params.fid_cont["n_sn"]):

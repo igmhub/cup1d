@@ -15,6 +15,7 @@ class MetalModel(Contaminant):
         fid_vals=None,
         null_vals=None,
         flat_priors=None,
+        z_max=None,
         Gauss_priors=None,
     ):
         """Model the evolution of a metal contamination (SiII or SiIII).
@@ -90,6 +91,11 @@ class MetalModel(Contaminant):
             if "s_" + metal_label not in null_vals:
                 null_vals["s_" + metal_label] = np.exp(-11.5)
 
+        if z_max is None:
+            z_max = {}
+            for coeff in list_coeffs:
+                z_max[coeff] = 4.3
+
         super().__init__(
             coeffs=coeffs,
             list_coeffs=list_coeffs,
@@ -98,6 +104,7 @@ class MetalModel(Contaminant):
             z_0=z_0,
             fid_vals=fid_vals,
             null_vals=null_vals,
+            z_max=z_max,
             flat_priors=flat_priors,
             Gauss_priors=Gauss_priors,
         )

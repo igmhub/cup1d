@@ -1496,31 +1496,22 @@ class Plotter(object):
                 "DLA",
                 "SiIII_Lya",
                 "SiIIb_SiIIa",
-                # "SiIIc_SiIIb",
-                # "SiIIc_SiIIa",
             ],
             [
                 "DLA",
                 "SiIII_Lya",
                 "SiIIa_Lya",
                 "SiIIb_Lya",
-                # "SiIIc_Lya",
                 "SiIIb_SiIIa",
-                # "SiIIc_SiIIb",
-                # "SiIIc_SiIIa",
             ],
             [
                 "DLA",
                 "SiIII_Lya",
                 "SiIIa_Lya",
                 "SiIIb_Lya",
-                # "SiIIc_Lya",
                 "SiIII_SiIIa",
                 "SiIII_SiIIb",
-                # "SiIII_SiIIc",
                 "SiIIb_SiIIa",
-                # "SiIIc_SiIIb",
-                # "SiIIc_SiIIa",
             ],
         ]
 
@@ -1540,14 +1531,16 @@ class Plotter(object):
 
             if "DLA" not in conts:
                 for ii in range(4):
-                    key = "HCD_damp" + str(ii + 1) + "_0"
-                    try:
-                        ind = np.argwhere(
-                            np.array(self.fitter.like.free_param_names) == key
-                        )[0, 0]
-                        _values[ind] = -10.5
-                    except:
-                        pass
+                    for jj in range(11):
+                        key = "HCD_damp" + str(ii + 1) + "_" + str(jj)
+                        try:
+                            ind = np.argwhere(
+                                np.array(self.fitter.like.free_param_names)
+                                == key
+                            )[0, 0]
+                            _values[ind] = -11.5
+                        except:
+                            pass
 
             remove = {
                 "SiIII_Lya": 0,

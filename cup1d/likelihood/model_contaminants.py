@@ -40,6 +40,11 @@ class Contaminants(object):
         else:
             Gauss_priors = None
 
+        if "z_max" in pars_cont:
+            z_max = pars_cont["z_max"]
+        else:
+            z_max = None
+
         prop_coeffs = {}
         fid_vals = {}
         for key in pars_cont:
@@ -66,6 +71,7 @@ class Contaminants(object):
                 free_param_names=free_param_names,
                 fid_vals=fid_vals,
                 prop_coeffs=prop_coeffs,
+                z_max=z_max,
                 flat_priors=flat_priors,
                 Gauss_priors=Gauss_priors,
             )
@@ -78,27 +84,29 @@ class Contaminants(object):
                 free_param_names=free_param_names,
                 fid_vals=fid_vals,
                 prop_coeffs=prop_coeffs,
+                z_max=z_max,
                 flat_priors=flat_priors,
                 Gauss_priors=Gauss_priors,
             )
 
-        for metal_line in self.metal_add:
-            if metal_line == "Si_add":
-                continue
-            create_model = True
-            try:
-                self.metal_models[metal_line] = metal_models[metal_line]
-            except:
-                self.metal_models[
-                    metal_line
-                ] = metal_metal_model_class.MetalModel(
-                    metal_label=metal_line,
-                    free_param_names=free_param_names,
-                    fid_vals=fid_vals,
-                    prop_coeffs=prop_coeffs,
-                    flat_priors=flat_priors,
-                    Gauss_priors=Gauss_priors,
-                )
+        # for metal_line in self.metal_add:
+        #     if metal_line == "Si_add":
+        #         continue
+        #     create_model = True
+        #     try:
+        #         self.metal_models[metal_line] = metal_models[metal_line]
+        #     except:
+        #         self.metal_models[
+        #             metal_line
+        #         ] = metal_metal_model_class.MetalModel(
+        #             metal_label=metal_line,
+        #             free_param_names=free_param_names,
+        #             fid_vals=fid_vals,
+        #             prop_coeffs=prop_coeffs,
+        #             z_max=z_max,
+        #             flat_priors=flat_priors,
+        #             Gauss_priors=Gauss_priors,
+        #         )
 
         # setup HCD model
         if hcd_model:
