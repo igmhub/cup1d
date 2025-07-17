@@ -544,7 +544,7 @@ class Theory(object):
                 camb_model.cosmo.H0,
             )
 
-    def get_blob_fixed_background(self, like_params, return_derivs=False):
+    def get_blob_fixed_background(self, like_params):
         """Fast computation of blob when running with fixed background"""
 
         # make sure you are not changing the background expansion
@@ -576,7 +576,6 @@ class Theory(object):
         ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
 
         # get blob for fiducial cosmo
-        ### TODO: make this more efficient! Maybe directly storing the params?
         fid_blob = self.get_blob(self.fid_cosmo["cosmo"])
 
         # rescale blobs
@@ -593,34 +592,31 @@ class Theory(object):
 
         linP_Mpc_params = (Delta2_star, n_star, alpha_star) + fid_blob[3:]
 
-        if return_derivs:
-            val_derivs = {}
+        return linP_Mpc_params
 
-            val_derivs["Delta2star"] = Delta2_star
-            val_derivs["nstar"] = n_star
-            val_derivs["alphastar"] = alpha_star
+    def err_star(self, cov_As_ns, like_params):
+        D2star = self.get_blob_fixed_background(like_params)[0]
+        for par in like_params:
+            if par.name == "As":
+                As = par.value
 
-            val_derivs["der_alphastar_nrun"] = 1
-            val_derivs["der_alphastar_ns"] = 0
-            val_derivs["der_alphastar_As"] = 0
+        # pivot scale of primordial power
+        ks_Mpc = self.fid_cosmo["cosmo"].cosmo.InitPower.pivot_scalar
 
-            val_derivs["der_nstar_nrun"] = ln_kp_ks
-            val_derivs["der_nstar_ns"] = 1
-            val_derivs["der_nstar_As"] = 0
+        # likelihood pivot point, in velocity units
+        dkms_dMpc = self.fid_cosmo["cosmo"].dkms_dMpc(self.z_star)
+        kp_Mpc = self.kp_kms * dkms_dMpc
 
-            val_derivs["der_Delta2star_nrun"] = (
-                0.5 * val_derivs["Delta2star"] * ln_kp_ks**2
-            )
-            val_derivs["der_Delta2star_ns"] = (
-                val_derivs["Delta2star"] * ln_kp_ks
-            )
-            val_derivs["der_Delta2star_As"] = val_derivs["Delta2star"] / (
-                ratio_As * fid_As
-            )
+        dD2star_dAs = D2star / As
+        dD2star_dns = D2star * np.log(kp_Mpc / ks_Mpc)
+        err_D2star = np.sqrt(
+            dD2star_dAs**2 * cov_As_ns[0, 0]
+            + dD2star_dns**2 * cov_As_ns[1, 1]
+            + 2 * dD2star_dAs * dD2star_dns * cov_As_ns[1, 0]
+        )
+        err_nstar = np.sqrt(cov_As_ns[1, 1])
 
-            return linP_Mpc_params, val_derivs
-        else:
-            return linP_Mpc_params
+        return err_D2star, err_nstar
 
     def get_p1d_kms(
         self,

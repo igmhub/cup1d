@@ -391,7 +391,8 @@ def split_string(s):
 # args.set_baseline(fit_type="global", fix_cosmo=True, zmax=4.2)
 # args.set_baseline(fit_type="andreu", fix_cosmo=True, zmax=4.2)
 # args.set_baseline(fit_type="andreu2", fix_cosmo=True, zmax=4.2)
-args.set_baseline(fit_type="andreu2", fix_cosmo=False, zmax=4.2)
+args.set_baseline(fit_type="global", fix_cosmo=False, zmax=4.2)
+# args.set_baseline(fit_type="andreu2", fix_cosmo=False, zmax=4.2)
 like = set_like(
     data["P1Ds"],
     emulator,
@@ -399,6 +400,91 @@ like = set_like(
     data_hires=data["extra_P1Ds"],
 )
 len(like.free_param_names)
+
+# %%
+from lace.cosmo import camb_cosmo, fit_linP
+
+def _rescale_cosmo(theory, target_params):
+    # sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
+    dkms_dMpc = theory.fid_cosmo["cosmo"].dkms_dMpc(theory.z_star)
+    kp_Mpc = theory.kp_kms * dkms_dMpc
+    ks_Mpc = theory.fid_cosmo["cosmo"].cosmo.InitPower.pivot_scalar
+    pstar = theory.fid_cosmo["cosmo"].get_linP_params()
+
+    fid_Ap = pstar["Delta2_star"]
+    ratio_Ap = target_params["Delta2_star"] / fid_Ap
+
+    fid_np = pstar["n_star"]
+    delta_np = target_params["n_star"] - fid_np
+
+    # logarithm of ratio of pivot points
+    ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
+
+    # compute scalings
+    delta_ns = delta_np
+    ln_ratio_As = np.log(ratio_Ap) - delta_np * ln_kp_ks
+
+    new_As = np.exp(ln_ratio_As) * theory.fid_cosmo["cosmo"].cosmo.InitPower.As
+    new_ns = delta_ns + theory.fid_cosmo["cosmo"].cosmo.InitPower.ns
+    rescaled_cosmo = camb_cosmo.get_cosmology(
+        H0=theory.fid_cosmo["cosmo"].cosmo.H0,
+        mnu=theory.fid_cosmo["cosmo"].cosmo.pars.omnuh2 * 93.14,
+        omch2=theory.fid_cosmo["cosmo"].cosmo.omch2,
+        ombh2=theory.fid_cosmo["cosmo"].cosmo.ombh2,
+        omk=theory.fid_cosmo["cosmo"].cosmo.omk,
+        As=new_As,
+        ns=new_ns,
+        nrun=theory.fid_cosmo["cosmo"].cosmo.InitPower.nrun,
+        pivot_scalar=ks_Mpc,
+        w=theory.fid_cosmo["cosmo"].cosmo.DarkEnergy.w,
+        wa=theory.fid_cosmo["cosmo"].cosmo.DarkEnergy.wa,
+    )
+
+    return rescaled_cosmo
+
+
+# %%
+cosmo = camb_cosmo.get_cosmology(
+    H0=67.66,
+    mnu=0.3,
+    omch2=0.119,
+    ombh2=0.0224,
+    omk=0.0,
+    As=2.105e-09,
+    ns=0.9665,
+    nrun=0.0,
+    pivot_scalar=0.05,
+    w=cosmo.DarkEnergy.w,
+    wa=cosmo.DarkEnergy.wa,
+)
+
+# %%
+
+# %%
+
+# %%
+like.theory.fid_cosmo["cosmo"].cosmo.H0
+
+# %%
+pstar = like.theory.fid_cosmo["cosmo"].get_linP_params()
+pstar
+
+# %%
+target_params = {
+    'Delta2_star': 0.4,
+     'n_star': -2.311688458372555,
+}
+
+# %%
+_rescale_cosmo(like.theory, target_params)
+
+# %%
+
+# %%
+fitter.mle_cosmo
+
+# %%
+print(like.theory.fid_cosmo["cosmo"].cosmo.InitPower.As, like.theory.fid_cosmo["cosmo"].cosmo.InitPower.ns)
 
 # %% [markdown]
 # #### IC from 1z at a time fit
@@ -468,9 +554,10 @@ for p in free_params:
     else:
         znode = args.fid_cont[pname + "_znodes"][ii]
 
-    # iz = np.argmin(np.abs(like1.data.z - znode))
-    # p.value = get_parameters(pname, znode, like1, out_mle_cube_reformat[iz])
-    p.value = get_parameters(pname, znode, like1, out_mle_cube_reformat)
+    iz = np.argmin(np.abs(like1.data.z - znode))
+    p.value = get_parameters(pname, znode, like1, out_mle_cube_reformat[iz])
+    
+    # p.value = get_parameters(pname, znode, like1, out_mle_cube_reformat)
     
 
 
@@ -599,9 +686,9 @@ if plot:
 # %%
 # # %%time
 # like.plot_p1d(plot_panels=True, residuals=True)
-input_pars = like.sampling_point_from_parameters().copy()
+# input_pars = like.sampling_point_from_parameters().copy()
 
-# input_pars = fitter.mle_cube.copy()
+input_pars = fitter.mle_cube.copy()
 # , plot_fname="test_weak"
 like.plot_p1d(plot_panels=True, residuals=True, values=input_pars)
 # like.plot_p1d(plot_panels=True, residuals=True)
@@ -673,17 +760,77 @@ p0 = like.sampling_point_from_parameters().copy()
 # fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=1)
 # zmask = np.array([like.data.z[0]])
 # fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True, nsamples=1)
-fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, restart=True, nsamples=1)
+fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, restart=True, nsamples=0)
 # zmask = np.array([2.4])
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0, zmask=zmask)
 # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, nsamples=4)
 
 # %%
-'Delta2_star': 0.4315486076928048,
- 'n_star': -2.303017944612121,
+# %%time
+err = fitter.like.get_error(fitter.mle_cube.copy())
+err
 
 # %%
-# fitter.mle
+err
+
+
+# %%
+
+# %%
+
+# %%
+def prof_like(grid, p0):
+    fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, restart=True, nsamples=0)
+
+
+# %%
+fitter.mle_cosmo
+
+# %%
+fitter.like.minus_log_prob(fitter.mle_cube)
+
+# %%
+np.sqrt(0.021**2/0.04**2 + 0.009**2/0.018**2)
+
+# %%
+np.sqrt(1)
+
+# %%
+from scipy.differentiate import hessian
+
+# %%
+hess = derivative(fitter.like.minus_log_prob, fitter.mle_cube)
+
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+def get_points_profile_like(
+
+
+# %%
+Andreu2 809
+
+'Delta2_star': 0.4315486076928048,  'n_star': -2.303017944612121,
+
+Global 719
+
+'Delta2_star': 0.4110166684732482,  'n_star': -2.311688458372555,
+
+# %%
+diff_cosmo(fitter.mle)
+
+
+# %%
+def diff_cosmo(mle):
+    andreu2 = {'Delta2_star': 0.4315486076928048,  'n_star': -2.303017944612121}
+    print(np.round(mle["Delta2_star"] - andreu2["Delta2_star"], 3))
+    print(np.round(mle["n_star"] - andreu2["n_star"], 3))
+
 
 # %% [markdown]
 # 758 wip0
@@ -697,6 +844,8 @@ fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, restart=True, nsamples=1
 #
 # 716 global 0.69%
 #
+# 719 global + cosmo 0.69%
+#
 # 815 andreu2 0.02%
 #
 # 809 andreu2 + cosmo, 0.04%
@@ -706,7 +855,7 @@ mask = np.arange(11)
 
 like_params = fitter.like.parameters_from_sampling_point(fitter.mle_cube)
 
-fold0 = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/allz_snr3_nocosmo_andreu2/"
+fold0 = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/allz_snr3_cosmo_global/"
 folder = fold0 + "taueff"
 oFmodel, ocFmodel = fitter.like.theory.model_igm.models["F_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
 folder = fold0 + "sigT"
@@ -786,7 +935,8 @@ np.save("allz_snr3_nocosmo_andreu2/res.npy", dir_out)
 # diru = "allz_snr3_nocosmo_andreu"
 # diru = "wip0"
 # diru = "allz_snr3_nocosmo_global"
-diru = "allz_snr3_cosmo_andreu2"
+diru = "allz_snr3_cosmo_global"
+# diru = "allz_snr3_cosmo_andreu2"
 plotter = Plotter(fitter, save_directory=diru)
 plotter.plot_p1d(plot_panels=True, residuals=True)
 # plotter.plots_minimizer()

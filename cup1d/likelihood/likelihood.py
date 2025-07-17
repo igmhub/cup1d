@@ -10,6 +10,7 @@ from scipy.linalg import block_diag
 import lace
 from lace.cosmo import camb_cosmo
 from cup1d.utils.utils import is_number_string
+from cup1d.utils.compute_hessian import get_hessian
 
 
 rcParams["mathtext.fontset"] = "stix"
@@ -705,6 +706,28 @@ class Likelihood(object):
         else:
             return -2.0 * log_like
 
+    def get_error(self, p0):
+        # get hessian to compute errors
+        hess = get_hessian(self.minus_log_prob, p0)
+        ihess = np.linalg.inv(hess)
+
+        for par in self.free_params:
+            if par.name == "As":
+                scale_As = par.max_value - par.min_value
+            elif par.name == "ns":
+                scale_ns = par.max_value - par.min_value
+
+        scaled_cov = np.zeros((2, 2))
+        scaled_cov[0, 0] = ihess[0, 0] * scale_As**2
+        scaled_cov[1, 1] = ihess[1, 1] * scale_ns**2
+        scaled_cov[1, 0] = ihess[1, 0] * scale_As * scale_ns
+        scaled_cov[0, 1] = ihess[0, 1] * scale_As * scale_ns
+
+        like_params = self.parameters_from_sampling_point(p0)
+        err = self.theory.err_star(scaled_cov, like_params)
+
+        return {"err_Delta2star": err[0], "err_nstar": err[1]}
+
     def get_log_like(
         self,
         values=None,
@@ -873,7 +896,7 @@ class Likelihood(object):
         - if return_blob==True, it will return also extra information"""
 
         # Always force parameter to be within range (for now)
-        if (max(values) > 1.0) or (min(values) < 0.0):
+        if (np.max(values) > 1.0) or (np.min(values) < 0.0):
             if return_blob:
                 dummy_blob = self.theory.get_blob()
                 return self.min_log_like, dummy_blob
