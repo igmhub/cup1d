@@ -849,6 +849,7 @@ class Likelihood(object):
                 # compute chi2 for this redshift bin
                 diff = data.Pk_kms[iz] - np.array(emu_p1d_use[iz]).reshape(-1)
                 chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
+                # print(iz, chi2_z)
                 # check whether to add determinant of covariance as well
                 if ignore_log_det_cov:
                     log_like_all[ii, iz] = -0.5 * chi2_z

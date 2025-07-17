@@ -388,10 +388,10 @@ def split_string(s):
 
 # %%
 
-# args.set_baseline(fit_type="global", fix_cosmo=True, zmax=4.2)
+args.set_baseline(fit_type="global", fix_cosmo=True, zmax=4.2)
 # args.set_baseline(fit_type="andreu", fix_cosmo=True, zmax=4.2)
 # args.set_baseline(fit_type="andreu2", fix_cosmo=True, zmax=4.2)
-args.set_baseline(fit_type="global", fix_cosmo=False, zmax=4.2)
+# args.set_baseline(fit_type="global", fix_cosmo=False, zmax=4.2)
 # args.set_baseline(fit_type="andreu2", fix_cosmo=False, zmax=4.2)
 like = set_like(
     data["P1Ds"],
@@ -400,91 +400,6 @@ like = set_like(
     data_hires=data["extra_P1Ds"],
 )
 len(like.free_param_names)
-
-# %%
-from lace.cosmo import camb_cosmo, fit_linP
-
-def _rescale_cosmo(theory, target_params):
-    # sim_cosmo = camb_cosmo.get_cosmology(**cosmo)
-    dkms_dMpc = theory.fid_cosmo["cosmo"].dkms_dMpc(theory.z_star)
-    kp_Mpc = theory.kp_kms * dkms_dMpc
-    ks_Mpc = theory.fid_cosmo["cosmo"].cosmo.InitPower.pivot_scalar
-    pstar = theory.fid_cosmo["cosmo"].get_linP_params()
-
-    fid_Ap = pstar["Delta2_star"]
-    ratio_Ap = target_params["Delta2_star"] / fid_Ap
-
-    fid_np = pstar["n_star"]
-    delta_np = target_params["n_star"] - fid_np
-
-    # logarithm of ratio of pivot points
-    ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
-
-    # compute scalings
-    delta_ns = delta_np
-    ln_ratio_As = np.log(ratio_Ap) - delta_np * ln_kp_ks
-
-    new_As = np.exp(ln_ratio_As) * theory.fid_cosmo["cosmo"].cosmo.InitPower.As
-    new_ns = delta_ns + theory.fid_cosmo["cosmo"].cosmo.InitPower.ns
-    rescaled_cosmo = camb_cosmo.get_cosmology(
-        H0=theory.fid_cosmo["cosmo"].cosmo.H0,
-        mnu=theory.fid_cosmo["cosmo"].cosmo.pars.omnuh2 * 93.14,
-        omch2=theory.fid_cosmo["cosmo"].cosmo.omch2,
-        ombh2=theory.fid_cosmo["cosmo"].cosmo.ombh2,
-        omk=theory.fid_cosmo["cosmo"].cosmo.omk,
-        As=new_As,
-        ns=new_ns,
-        nrun=theory.fid_cosmo["cosmo"].cosmo.InitPower.nrun,
-        pivot_scalar=ks_Mpc,
-        w=theory.fid_cosmo["cosmo"].cosmo.DarkEnergy.w,
-        wa=theory.fid_cosmo["cosmo"].cosmo.DarkEnergy.wa,
-    )
-
-    return rescaled_cosmo
-
-
-# %%
-cosmo = camb_cosmo.get_cosmology(
-    H0=67.66,
-    mnu=0.3,
-    omch2=0.119,
-    ombh2=0.0224,
-    omk=0.0,
-    As=2.105e-09,
-    ns=0.9665,
-    nrun=0.0,
-    pivot_scalar=0.05,
-    w=cosmo.DarkEnergy.w,
-    wa=cosmo.DarkEnergy.wa,
-)
-
-# %%
-
-# %%
-
-# %%
-like.theory.fid_cosmo["cosmo"].cosmo.H0
-
-# %%
-pstar = like.theory.fid_cosmo["cosmo"].get_linP_params()
-pstar
-
-# %%
-target_params = {
-    'Delta2_star': 0.4,
-     'n_star': -2.311688458372555,
-}
-
-# %%
-_rescale_cosmo(like.theory, target_params)
-
-# %%
-
-# %%
-fitter.mle_cosmo
-
-# %%
-print(like.theory.fid_cosmo["cosmo"].cosmo.InitPower.As, like.theory.fid_cosmo["cosmo"].cosmo.InitPower.ns)
 
 # %% [markdown]
 # #### IC from 1z at a time fit
@@ -516,15 +431,17 @@ like1 = set_like(
 #     "chi2":fitter.mle_chi2,
 #     "param_attime_all":param_attime_all,
 # }
-dir_out = np.load("allz_snr3_nocosmo_andreu2/res.npy", allow_pickle=True).item()
-out_mle_cube_reformat = dir_out["mle_cube"]
-args.set_baseline(fit_type="andreu2", fix_cosmo=True, zmax=4.2)
+dir_out = np.load("allz_snr3_nocosmo_global/res.npy", allow_pickle=True).item()
+args.set_baseline(fit_type="global", fix_cosmo=False, zmax=4.2)
+# dir_out = np.load("allz_snr3_nocosmo_andreu2/res.npy", allow_pickle=True).item()
+# args.set_baseline(fit_type="andreu2", fix_cosmo=True, zmax=4.2)
 like1 = set_like(
     data["P1Ds"],
     emulator,
     args,
     data_hires=data["extra_P1Ds"],
 )
+out_mle_cube_reformat = dir_out["mle_cube"]
 
 # %%
 
@@ -540,11 +457,9 @@ like1 = set_like(
 #         print(par.name, out_pars[jj], par.get_value_in_cube(out_pars[jj]))
 
 # %%
-
-# %%
 free_params = like.free_params.copy()
 
-for p in free_params:
+for jj, p in enumerate(free_params):
     if p.name in ["As", "ns"]:
         continue
     pname, iistr = split_string(p.name)
@@ -554,60 +469,11 @@ for p in free_params:
     else:
         znode = args.fid_cont[pname + "_znodes"][ii]
 
-    iz = np.argmin(np.abs(like1.data.z - znode))
-    p.value = get_parameters(pname, znode, like1, out_mle_cube_reformat[iz])
+    # iz = np.argmin(np.abs(like1.data.z - znode))
+    # p.value = get_parameters(pname, znode, like1, out_mle_cube_reformat[iz])
     
-    # p.value = get_parameters(pname, znode, like1, out_mle_cube_reformat)
-    
-
-
-    
-    # if p.name.startswith("tau_eff"):
-    #     ii = int(p.name[-1])
-    #     p.value = fid_tau[ii]
-    #     # pass
-    # elif p.name.startswith("sigT_kms"):
-    #     ii = int(p.name[-1])
-    #     p.value = fid_sigT[ii]
-    #     # pass
-    # elif p.name[:-2] in vals_modify:
-    #     ii = int(p.name[-1])
-    #     p.value = vals_modify["pfit_" + p.name[:-2]][-(ii + 1)]
-    #     if (p.value > p.max_value):
-    #         p.max_value = p.value + 2
-    #     elif (p.value < p.min_value):
-    #         p.min_value = p.value -
-
-    # pname, iistr = split_string(p.name)
-    # ii = int(iistr)
-    # # if (pname == "f_SiIIa_SiIII") | (pname == "f_SiIIb_SiIII"):
-    # if pname in args.opt_props:
-    #     p.fixed = False
-    #     # p.value = param_attime_all[pname][ii] # note order for splines!!!
-    #     # p.value = new_vals[pname][ii] # optimized!
-
-    # if pname == "sigT_kms":
-    #     p.value = 1
-        
-    # if pname == "HCD_damp1":
-    #     p.value = -1.2
-
-    
-    # elif pname in new_vals:
-    #     p.fixed = True
-    #     p.value = new_vals[pname][ii] # optimized!
-    #     if (p.value > p.max_value):
-    #         p.max_value = p.value + 2
-    #     elif (p.value < p.min_value):
-    #         p.min_value = p.value - 2
-    # else:
-    #     p.fixed = True
-    #     # p.value = param_attime_all[p.name[:-2]][-(ii + 1)]
-    #     p.value = param_attime_all[pname][ii] # note order for splines!!!
-    #     if (p.value > p.max_value):
-    #         p.max_value = p.value + 2
-    #     elif (p.value < p.min_value):
-    #         p.min_value = p.value - 2
+    ind = np.argwhere(p.name == np.array(like1.free_param_names))[0,0]
+    p.value = like1.free_params[ind].value_from_cube(out_mle_cube_reformat[ind])
 
     print(p.name, '\t', np.round(p.value, 3), '\t', np.round(p.min_value, 3), '\t', np.round(p.max_value, 3), '\t', p.Gauss_priors_width, p.fixed)
 
@@ -626,15 +492,15 @@ like.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)
 # param_attime_all
 
 # %%
-for ii in range(len(free_params)):
-    if free_params[ii].fixed:
-        for jj, p in enumerate(like.free_params):
-            if p.name == free_params[ii].name:
-                like.free_params.pop(jj)
-                like.free_param_names.pop(jj)
-                break
-for p in like.free_params:
-    print(p.name)
+# for ii in range(len(free_params)):
+#     if free_params[ii].fixed:
+#         for jj, p in enumerate(like.free_params):
+#             if p.name == free_params[ii].name:
+#                 like.free_params.pop(jj)
+#                 like.free_param_names.pop(jj)
+#                 break
+# for p in like.free_params:
+#     print(p.name)
 
 # %% [markdown]
 # #### Plot cov to pk
@@ -684,11 +550,14 @@ if plot:
 # Compare data and fiducial/starting model
 
 # %%
+input_pars - fitter.mle_cube[2:]
+
+# %%
 # # %%time
 # like.plot_p1d(plot_panels=True, residuals=True)
-# input_pars = like.sampling_point_from_parameters().copy()
+input_pars = like.sampling_point_from_parameters().copy()
 
-input_pars = fitter.mle_cube.copy()
+# input_pars = fitter.mle_cube.copy()
 # , plot_fname="test_weak"
 like.plot_p1d(plot_panels=True, residuals=True, values=input_pars)
 # like.plot_p1d(plot_panels=True, residuals=True)
@@ -724,7 +593,7 @@ args.n_burn_in=1
 args.parallel=False
 args.explore=True
 
-fitter = Fitter(
+fitter2 = Fitter(
     like=like,
     rootdir=output_dir,
     nburnin=args.n_burn_in,
@@ -733,6 +602,41 @@ fitter = Fitter(
     explore=args.explore,
     fix_cosmology=args.fix_cosmo,
 )
+
+# %%
+fitter.like.get_chi2(fitter.mle_cube)
+
+# %%
+fitter2.like.get_chi2(fitter.mle_cube[2:])
+
+# %%
+like_params = fitter.like.parameters_from_sampling_point(fitter.mle_cube)
+
+# %%
+fitter.like.theory.model_igm.models["F_model"].get_mean_flux(2.2, like_params=like_params)
+
+# %%
+fitter2.like.theory.model_igm.models["F_model"].get_mean_flux(2.2, like_params=like_params)
+
+# %%
+for key in fitter.like.args:
+    if fitter.like.args[key] != fitter2.like.args[key]:
+        print(key, fitter.like.args[key], fitter2.like.args[key])
+
+# %%
+
+# %%
+# tar = {'Delta2_star': 0.42000000000000204,
+ # 'n_star': -2.3300000000000023}
+# tar = fitter.mle_cosmo
+tar = fitter.apply_unblinding(fitter.mle_cosmo)
+fitter2.like.theory.rescale_fid_cosmo(tar)
+
+# %%
+fitter2.like.theory.fid_cosmo["linP_params"]
+
+# %%
+tar
 
 # %% [markdown]
 # ### Run minimizer
@@ -773,8 +677,20 @@ err
 # %%
 err
 
-
 # %%
+pstar = fitter.like.theory.fid_cosmo["cosmo"].get_linP_params()
+print(pstar['Delta2_star'], pstar['n_star'])
+
+target_params = {
+    'Delta2_star': 0.42,
+     'n_star': -2.33,
+}
+
+fitter.like.theory.rescale_fid_cosmo(target_params)
+
+pstar = fitter.like.theory.fid_cosmo["cosmo"].get_linP_params()
+print(pstar['Delta2_star'], pstar['n_star'])
+
 
 # %%
 
@@ -788,6 +704,8 @@ fitter.mle_cosmo
 
 # %%
 fitter.like.minus_log_prob(fitter.mle_cube)
+
+# %%
 
 # %%
 np.sqrt(0.021**2/0.04**2 + 0.009**2/0.018**2)
@@ -880,8 +798,8 @@ dir_out = {
     "chi2":fitter.mle_chi2,
     "param_attime_all":param_attime_all,
 }
-# np.save("allz_snr3_nocosmo_global/res.npy", dir_out)
-np.save("allz_snr3_nocosmo_andreu2/res.npy", dir_out)
+np.save("allz_snr3_nocosmo_global/res.npy", dir_out)
+# np.save("allz_snr3_nocosmo_andreu2/res.npy", dir_out)
 
 # %%
 

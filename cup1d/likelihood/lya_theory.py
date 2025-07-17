@@ -187,6 +187,47 @@ class Theory(object):
         # when using a fiducial cosmology, easy to change in other cases (TODO)
         self.set_cosmo_priors()
 
+    def rescale_fid_cosmo(self, target_params):
+        dkms_dMpc = self.fid_cosmo["cosmo"].dkms_dMpc(self.z_star)
+        kp_Mpc = self.kp_kms * dkms_dMpc
+        ks_Mpc = self.fid_cosmo["cosmo"].cosmo.InitPower.pivot_scalar
+        pstar = self.fid_cosmo["cosmo"].get_linP_params()
+
+        fid_Ap = pstar["Delta2_star"]
+        ratio_Ap = target_params["Delta2_star"] / fid_Ap
+
+        fid_np = pstar["n_star"]
+        delta_np = target_params["n_star"] - fid_np
+
+        # logarithm of ratio of pivot points
+        ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
+
+        # compute scalings
+        delta_ns = delta_np
+        ln_ratio_As = np.log(ratio_Ap) - delta_np * ln_kp_ks
+
+        new_As = (
+            np.exp(ln_ratio_As) * self.fid_cosmo["cosmo"].cosmo.InitPower.As
+        )
+        new_ns = delta_ns + self.fid_cosmo["cosmo"].cosmo.InitPower.ns
+        rescaled_cosmo = camb_cosmo.get_cosmology(
+            H0=self.fid_cosmo["cosmo"].cosmo.H0,
+            mnu=self.fid_cosmo["cosmo"].cosmo.omnuh2 * 93.14,
+            omch2=self.fid_cosmo["cosmo"].cosmo.omch2,
+            ombh2=self.fid_cosmo["cosmo"].cosmo.ombh2,
+            omk=self.fid_cosmo["cosmo"].cosmo.omk,
+            As=new_As,
+            ns=new_ns,
+            nrun=self.fid_cosmo["cosmo"].cosmo.InitPower.nrun,
+            pivot_scalar=ks_Mpc,
+            w=self.fid_cosmo["cosmo"].cosmo.DarkEnergy.w,
+            wa=self.fid_cosmo["cosmo"].cosmo.DarkEnergy.wa,
+        )
+
+        self.set_fid_cosmo(
+            self.zs, zs_hires=self.zs_hires, input_cosmo=rescaled_cosmo
+        )
+
     def set_cosmo_priors(self, extra_factor=1.25):
         """Set priors for cosmological parameters
 
@@ -645,7 +686,6 @@ class Theory(object):
             return_blob=True,
         )
 
-        # print(emu_call)
         # np.save("emu_call_fiducial.npy", emu_call)
 
         # also apply priors on compressed parameters
@@ -726,8 +766,8 @@ class Theory(object):
         mult_cont_total, add_cont_total = self.model_cont.get_contamination(
             zs,
             k_kms,
-            emu_call["mF_fid"],
-            # emu_call["mF"],
+            # emu_call["mF_fid"],
+            emu_call["mF"],
             M_of_z,
             like_params=like_params,
             remove=remove,
