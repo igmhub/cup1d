@@ -352,7 +352,7 @@ class Fitter(object):
                 bounds=((0.0, 1.0),) * npars,
             )
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
-            print(ii, res.x)
+            # print(ii, res.x)
 
             # if chi2 does not get significantly better after a few it, stop
             if chi2 - _chi2 < 0.5:

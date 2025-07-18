@@ -143,6 +143,19 @@ class IGM(object):
                 igms_return["kF_kms" + "_z"] = zz
                 igms_return["kF_kms"] = np.poly1d(res_fit)(zz)
                 continue
+            elif sim_igm == "Turner24":
+                import cup1d
+
+                repo = os.path.dirname(cup1d.__path__[0])
+                fname = os.path.join(
+                    repo, "data", "nuisance", "Turner24_tau_eff.npy"
+                )
+                igm_hist = np.load(fname, allow_pickle=True).item()
+                igms_return["tau_eff_z"] = igm_hist["z"]
+                igms_return["tau_eff"] = igm_hist["tau_eff"]
+                igms_return["mF"] = igm_hist["mF"]
+                igms_return["F_suite"] = "mpg"
+                continue
             else:
                 ValueError("sim_igm must be 'mpg' or 'nyx'")
 

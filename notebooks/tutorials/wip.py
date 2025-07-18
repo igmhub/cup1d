@@ -373,15 +373,6 @@ param_attime_all = out_fits["param_attime_all"]
 # param_attime_all
 
 # %%
-import re
-
-def split_string(s):
-    match = re.match(r"^(.*)_(\d+)$", s)
-    if match:
-        return match.group(1), match.group(2)
-    else:
-        return s, None 
-
 
 # %% [markdown]
 # # HERE
@@ -401,95 +392,67 @@ like = set_like(
 )
 len(like.free_param_names)
 
+# %%
+# for sampler, no real fit, just test
+# args.n_steps=1000
+# args.n_burn_in=1500
+# args.parallel=False
+# args.explore=False
+# args.n_steps=500
+# args.n_burn_in=500
+# args.parallel=False
+# args.explore=True
+
+args.n_steps=5
+args.n_burn_in=1
+args.parallel=False
+args.explore=True
+
+fitter = Fitter(
+    like=like,
+    rootdir=output_dir,
+    nburnin=args.n_burn_in,
+    nsteps=args.n_steps,
+    parallel=args.parallel,
+    explore=args.explore,
+    fix_cosmology=args.fix_cosmo,
+)
+
+# %%
+from cup1d.optimize.set_ic import set_ic_from_fullfit, set_ic_from_z_at_time
+
 # %% [markdown]
 # #### IC from 1z at a time fit
 
 # %%
-from cup1d.optimize.show_results import get_parameters
+fname = "first_1z_snr3_nocosmo/res.npy"
+fitter = set_ic_from_z_at_time(args, like, data, emulator, fname, verbose=True)
 
-dir_out = np.load("first_1z_snr3_nocosmo/res.npy", allow_pickle=True).item()
-out_mle_cube_reformat = dir_out["mle_cube_reformat"]
+# %%
+# for key in igm_hist_mpg.keys():
+#     plt.plot(igm_hist_mpg[key]["z"], igm_hist_mpg[key]["tau_eff"], "k", alpha=0.2)
+    
+# plt.errorbar(igm["z"], igm["tau_eff"], igm["err_tau_eff"])
+# z = fitter.like.data.z
+# best_tau = fitter.like.theory.model_igm.models["F_model"].get_tau_eff(z, like_params=like_params)
+# plt.plot(z, best_tau)
+# plt.xlabel("z")
+# plt.ylabel("tau_eff")
 
-iz = 0
-args.set_baseline(ztar=data["P1Ds"].z[iz], fit_type="at_a_time")
-like1 = set_like(
-    data["P1Ds"],
-    emulator,
-    args,
-    data_hires=data["extra_P1Ds"],
-)
 
-
+# %%
 
 # %% [markdown]
 # #### IC from full fit
 
 # %%
-# dir_out = {
-#     "mle_cube":fitter.mle_cube,
-#     "mle":fitter.mle,
-#     "chi2":fitter.mle_chi2,
-#     "param_attime_all":param_attime_all,
-# }
-dir_out = np.load("allz_snr3_nocosmo_global/res.npy", allow_pickle=True).item()
-args.set_baseline(fit_type="global", fix_cosmo=False, zmax=4.2)
-# dir_out = np.load("allz_snr3_nocosmo_andreu2/res.npy", allow_pickle=True).item()
-# args.set_baseline(fit_type="andreu2", fix_cosmo=True, zmax=4.2)
-like1 = set_like(
-    data["P1Ds"],
-    emulator,
-    args,
-    data_hires=data["extra_P1Ds"],
-)
-out_mle_cube_reformat = dir_out["mle_cube"]
+fname = "allz_snr3_nocosmo_global/res.npy"
+fitter = set_ic_from_fullfit(like, data, emulator, fname, type_fit="global", verbose=True)
 
-# %%
-
-# %%
-
-# for iz in range(10, 11):
-#     out_pars = []
-#     for par in like.free_param_names:
-#         val = get_parameters(par[:-2], data["P1Ds"].z[iz], like1, out_mle_cube_reformat[iz])
-#         out_pars.append(val)
-
-#     for jj, par in enumerate(like1.free_params):
-#         print(par.name, out_pars[jj], par.get_value_in_cube(out_pars[jj]))
-
-# %%
-free_params = like.free_params.copy()
-
-for jj, p in enumerate(free_params):
-    if p.name in ["As", "ns"]:
-        continue
-    pname, iistr = split_string(p.name)
-    ii = int(iistr)
-    if (pname+ "_znodes") in args.fid_igm:
-        znode = args.fid_igm[pname + "_znodes"][ii]
-    else:
-        znode = args.fid_cont[pname + "_znodes"][ii]
-
-    # iz = np.argmin(np.abs(like1.data.z - znode))
-    # p.value = get_parameters(pname, znode, like1, out_mle_cube_reformat[iz])
-    
-    ind = np.argwhere(p.name == np.array(like1.free_param_names))[0,0]
-    p.value = like1.free_params[ind].value_from_cube(out_mle_cube_reformat[ind])
-
-    print(p.name, '\t', np.round(p.value, 3), '\t', np.round(p.min_value, 3), '\t', np.round(p.max_value, 3), '\t', p.Gauss_priors_width, p.fixed)
-
-# %%
-like.theory.model_igm.models["F_model"].reset_coeffs(free_params)
-like.theory.model_igm.models["T_model"].reset_coeffs(free_params)
-like.theory.model_cont.hcd_model.reset_coeffs(free_params)
-like.theory.model_cont.metal_models["Si_mult"].reset_coeffs(free_params)
-like.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)
 
 # %%
 # for p in like.free_params:
 #     print(p.name, '\t', np.round(p.value, 3), '\t', np.round(p.min_value, 3), '\t', np.round(p.max_value, 3), '\t', p.Gauss_priors_width, p.fixed)
-
-# %%
-# param_attime_all
 
 # %%
 # for ii in range(len(free_params)):
@@ -539,27 +502,17 @@ plot = False
 if plot:
     like.plot_igm(cloud=True)
 
-# %%
-
-# fitter.like.plot_p1d(plot_panels=True, residuals=True, values=fitter.mle_cube)
-
-# %%
-# input_pars
-
 # %% [markdown]
 # Compare data and fiducial/starting model
 
 # %%
-input_pars - fitter.mle_cube[2:]
-
-# %%
 # # %%time
 # like.plot_p1d(plot_panels=True, residuals=True)
-input_pars = like.sampling_point_from_parameters().copy()
-
+input_pars = fitter.like.sampling_point_from_parameters().copy()
+# input_pars = fitter.mle_cube[2:]
 # input_pars = fitter.mle_cube.copy()
 # , plot_fname="test_weak"
-like.plot_p1d(plot_panels=True, residuals=True, values=input_pars)
+fitter.like.plot_p1d(plot_panels=True, residuals=True, values=input_pars)
 # like.plot_p1d(plot_panels=True, residuals=True)
 # like.plot_p1d(residuals=True)
 
@@ -578,65 +531,69 @@ like.plot_p1d(plot_panels=True, residuals=True, values=input_pars)
 # ### Set fitter
 
 # %%
-# for sampler, no real fit, just test
-# args.n_steps=1000
-# args.n_burn_in=1500
-# args.parallel=False
-# args.explore=False
-# args.n_steps=500
-# args.n_burn_in=500
-# args.parallel=False
-# args.explore=True
-
-args.n_steps=5
-args.n_burn_in=1
-args.parallel=False
-args.explore=True
-
-fitter2 = Fitter(
-    like=like,
-    rootdir=output_dir,
-    nburnin=args.n_burn_in,
-    nsteps=args.n_steps,
-    parallel=args.parallel,
-    explore=args.explore,
-    fix_cosmology=args.fix_cosmo,
-)
+input_pars = fitter.like.sampling_point_from_parameters().copy()
+fitter.like.get_chi2(input_pars)
 
 # %%
-fitter.like.get_chi2(fitter.mle_cube)
+fitter.run_minimizer(fitter.like.minus_log_prob, p0=input_pars, restart=True, nsamples=0)
 
 # %%
-fitter2.like.get_chi2(fitter.mle_cube[2:])
+chi2_cen = fitter.mle_chi2.copy()
+mle_cosmo_cen = fitter.mle_cosmo.copy()
 
 # %%
-like_params = fitter.like.parameters_from_sampling_point(fitter.mle_cube)
-
-# %%
-fitter.like.theory.model_igm.models["F_model"].get_mean_flux(2.2, like_params=like_params)
-
-# %%
-fitter2.like.theory.model_igm.models["F_model"].get_mean_flux(2.2, like_params=like_params)
-
-# %%
-for key in fitter.like.args:
-    if fitter.like.args[key] != fitter2.like.args[key]:
-        print(key, fitter.like.args[key], fitter2.like.args[key])
+from cup1d.optimize.profile_like import run_profile
 
 # %%
 
 # %%
-# tar = {'Delta2_star': 0.42000000000000204,
- # 'n_star': -2.3300000000000023}
-# tar = fitter.mle_cosmo
-tar = fitter.apply_unblinding(fitter.mle_cosmo)
-fitter2.like.theory.rescale_fid_cosmo(tar)
+file_out = "test.npy"
+run_profile(fitter, file_out, mle_cosmo_cen, input_pars, nelem=10)
 
 # %%
-fitter2.like.theory.fid_cosmo["linP_params"]
+mle_cosmo_cen
 
 # %%
-tar
+fitter.like.theory.fid_cosmo['linP_params']
+
+# %%
+mle_cosmo_cen
+
+# %%
+from scipy.stats import chi2 as scipy_chi2
+
+# %%
+0.04
+
+# %%
+
+plt.scatter(xgrid, ygrid)
+
+# %%
+xx = np.concatenate([sig_diff, [0]])
+yy = np.concatenate([chi2_arr, [chi2_cen]])
+ind = np.argsort(xx)
+xx = xx[ind]
+yy = yy[ind]
+
+plt.plot(xx, yy - chi2_cen, "o:")
+# rfit = np.polyfit(xx, yy, 2)
+# x = np.linspace(-2, 2, 100)
+# plt.plot(x, np.poly1d(rfit)(x) - chi2_cen)
+plt.axhline(scipy_chi2.ppf(0.68, 2))
+plt.axhline(scipy_chi2.ppf(0.95, 2))
+plt.axvline(1)
+plt.axvline(2)
+plt.axvline(-1)
+plt.axvline(-2)
+# plt.plot(sig_diff, scipy_chi2(sig_diff))
+plt.xlabel(r"$\sigma$ around best")
+plt.ylabel(r"$\Delta\chi^2$")
+
+# %%
+
+# %%
+fitter.apply_unblinding(fitter.mle_cosmo)
 
 # %% [markdown]
 # ### Run minimizer

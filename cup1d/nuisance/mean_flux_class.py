@@ -54,7 +54,6 @@ class MeanFlux(IGM_model):
         """Effective optical depth at the input redshift"""
 
         tau_eff = self.get_value(name_par, z, like_params=like_params)
-        # if self.prop_coeffs[name_par + "_ztype"] == "pivot":
         tau_eff *= self.fid_interp[name_par](z)
         return tau_eff
 

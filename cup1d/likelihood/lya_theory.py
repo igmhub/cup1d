@@ -717,6 +717,7 @@ class Theory(object):
                 # print(key, emu_call[key])
 
             if hull.in_hulls(p0) == False:
+                # print("Not in hull")
                 return None
 
         # compute input k to emulator in Mpc
