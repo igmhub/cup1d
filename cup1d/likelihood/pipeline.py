@@ -131,10 +131,10 @@ def set_ic_from_fullfit(
     """Set the initial conditions for the likelihood from a fit"""
 
     args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
-    args.set_baseline(fit_type=type_fit, fix_cosmo=False, zmax=4.2)
-
+    args.set_baseline(
+        fit_type=type_fit, fix_cosmo=False, zmax=4.2, P1D_type="DESIY1_QMLE3"
+    )
     dir_out = np.load(fname, allow_pickle=True).item()
-
     like1 = set_like(
         data["P1Ds"],
         emulator,
@@ -162,9 +162,15 @@ def set_ic_from_fullfit(
             znode = args.fid_cont[pname + "_znodes"][ii]
 
         ind = np.argwhere(p.name == np.array(like1.free_param_names))[0, 0]
-        p.value = like1.free_params[ind].value_from_cube(
-            out_mle_cube_reformat[ind]
-        )
+        # run at fixed cosmo
+        if len(out_mle_cube_reformat) == len(like1.free_params) - 2:
+            p.value = like1.free_params[ind].value_from_cube(
+                out_mle_cube_reformat[ind - 2]
+            )
+        else:
+            p.value = like1.free_params[ind].value_from_cube(
+                out_mle_cube_reformat[ind]
+            )
 
         if verbose:
             print(
