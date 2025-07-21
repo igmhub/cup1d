@@ -405,7 +405,10 @@ class Fitter(object):
             "blind_cosmo": blind_cosmo,
         }
 
-        file_out = self.save_directory + "/profile_" + str(irank) + ".npy"
+        file_out = os.path.join(
+            os.path.dirname(self.save_directory),
+            "profile_" + str(irank) + ".npy",
+        )
         np.save(file_out, out_dict)
 
     def set_mle(self, mle_cube, mle_chi2):
