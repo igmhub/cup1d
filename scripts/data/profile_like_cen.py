@@ -1,7 +1,7 @@
 import os
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
-# os.environ["OMP_NUM_THREADS"] = "10"  # export OMP_NUM_THREADS=4
+os.environ["OMP_NUM_THREADS"] = "10"  # export OMP_NUM_THREADS=4
 import numpy as np
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
@@ -9,9 +9,11 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
+    # fit_type = "global"
+    fit_type = "andreu2"
     args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
     args.set_baseline(
-        fit_type="global", fix_cosmo=False, P1D_type="DESIY1_QMLE3"
+        fit_type=fit_type, fix_cosmo=False, P1D_type="DESIY1_QMLE3"
     )
     path_out = os.path.join(
         os.path.dirname(get_path_repo("cup1d")),
