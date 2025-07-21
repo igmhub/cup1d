@@ -433,7 +433,12 @@ class Pipeline(object):
             # running on mocks
             if args.data_label[:3] in ["mpg", "nyx"]:
                 read_archive = True
-            elif args.emulator_label not in ["CH24_mpg_gp", "CH24_nyx_gp"]:
+            elif args.emulator_label not in [
+                "CH24_mpg_gp",
+                "CH24_nyx_gp",
+                "CH24_mpgcen_gpr",
+                "CH24_nyxcen_gpr",
+            ]:
                 read_archive = True
             else:
                 read_archive = False
@@ -471,13 +476,6 @@ class Pipeline(object):
                     archive=archive,
                     drop_sim=_drop_sim,
                 )
-
-                # if "Nyx" in emulator.emulator_label:
-                #     emulator.list_sim_cube = archive.list_sim_cube
-                #     if "nyx_14" in emulator.list_sim_cube:
-                #         emulator.list_sim_cube.remove("nyx_14")
-                # else:
-                #     emulator.list_sim_cube = archive.list_sim_cube
             else:
                 emulator = args.emulator
 
@@ -513,6 +511,7 @@ class Pipeline(object):
                 archive=archive,
                 true_cosmo=true_cosmo,
                 emulator=emulator,
+                cull_data=False,
             )
             fprint(
                 "Set " + str(len(data["P1Ds"].z)) + " P1Ds at z = ",
@@ -526,6 +525,7 @@ class Pipeline(object):
                     archive=archive,
                     true_cosmo=true_cosmo,
                     emulator=emulator,
+                    cull_data=False,
                 )
                 fprint(
                     "Set " + str(len(data["extra_P1Ds"].z)) + " P1Ds at z = ",
@@ -607,15 +607,25 @@ class Pipeline(object):
 
         ## set fitter
 
-        self.fitter = Fitter(
-            like=like,
-            rootdir=self.out_folder,
-            nburnin=args.n_burn_in,
-            nsteps=args.n_steps,
-            parallel=args.parallel,
-            explore=args.explore,
-            fix_cosmology=args.fix_cosmo,
-        )
+        if args.ic_from_file is None:
+            self.fitter = Fitter(
+                like=like,
+                rootdir=self.out_folder,
+                nburnin=args.n_burn_in,
+                nsteps=args.n_steps,
+                parallel=args.parallel,
+                explore=args.explore,
+                fix_cosmology=args.fix_cosmo,
+            )
+        else:
+            self.fitter = set_ic_from_fullfit(
+                like,
+                data,
+                emulator,
+                args.ic_from_file,
+                type_fit=args.like_conf,
+                verbose=True,
+            )
 
         #######################
 
@@ -753,3 +763,67 @@ class Pipeline(object):
                     zmask=zmask,
                 )
                 self.plotter.plots_sampler()
+
+    def run_profile(self, input_pars, nelem=10):
+        """
+        Run profile likelihood
+
+        First minimize with varying cosmology, then optimize while fixing the
+        cosmology for different fiducial values
+        """
+
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        # mpg, np -2.35, -2.25
+        # mpg, delta2p 0.1, 0.8
+        sigma_cosmo = {"Delta2_star": 0.04, "n_star": 0.018}
+        ind_ranks = np.array_split(np.arange(nelem), size)
+        x = np.linspace(-2, 2, nelem)
+        xgrid, ygrid = np.meshgrid(x, x)
+        xgrid = xgrid.reshape(-1) * sigma_cosmo["Delta2_star"]
+        ygrid = ygrid.reshape(-1) * sigma_cosmo["n_star"]
+
+        if rank == 0:
+            start = time.time()
+            self.fprint("----------")
+            self.fprint("Running like profile")
+
+            self.fitter.run_minimizer(
+                log_func_minimize=self.fitter.like.minus_log_prob,
+                p0=input_pars,
+                restart=True,
+                nsamples=0,
+            )
+
+            # everything but cosmo
+            pini = self.fitter.mle_cube[2:]
+            best_chi2 = self.fitter.mle_chi2.copy()
+            # cosmo
+            mle_cosmo_cen = self.fitter.mle_cosmo.copy()
+
+            # distribute emulator to all ranks
+            for irank in range(1, size):
+                comm.send(pini, dest=irank, tag=(irank + 1) * 3)
+                comm.send(mle_cosmo_cen, dest=irank, tag=(irank + 1) * 5)
+        else:
+            # receive emulator from ranks 0
+            pini = comm.recv(source=0, tag=(rank + 1) * 3)
+            mle_cosmo_cen = comm.recv(source=0, tag=(rank + 1) * 5)
+
+        for irank in ind_ranks[rank]:
+            if rank == 0:
+                self.fprint(irank, max(ind_ranks[rank]))
+            shift_cosmo = {
+                "Delta2_star": xgrid[irank],
+                "n_star": ygrid[irank],
+            }
+
+            self.fitter.run_profile(irank, mle_cosmo_cen, shift_cosmo, pini)
+
+        if rank == 0:
+            end = time.time()
+            multi_time = str(np.round(end - start, 2))
+            self.fprint("Profile run in " + multi_time + " s")
+            self.fprint("----------")

@@ -372,6 +372,41 @@ class Fitter(object):
 
         self.set_mle(mle_cube, chi2)
 
+    def run_profile(self, irank, mle_cosmo_cen, shift_cosmo, input_pars):
+        """Profile likelihood"""
+
+        blind_cosmo = {
+            "Delta2_star": mle_cosmo_cen["Delta2_star"]
+            + shift_cosmo["Delta2_star"],
+            "n_star": mle_cosmo_cen["n_star"] + shift_cosmo["n_star"],
+        }
+        # unblind internally to apply shift consistently
+        target = self.apply_unblinding(mle_cosmo_cen)
+        target["Delta2_star"] += shift_cosmo["Delta2_star"]
+        target["n_star"] += shift_cosmo["n_star"]
+
+        self.like.theory.rescale_fid_cosmo(target)
+
+        # check whether new fiducial cosmology is within priors
+        if np.isfinite(self.like.get_chi2(input_pars)) == False:
+            print("skipping", irank, blind_cosmo)
+            return
+
+        self.run_minimizer(
+            self.like.minus_log_prob,
+            p0=input_pars,
+            restart=True,
+            nsamples=0,
+        )
+
+        out_dict = {
+            "chi2": self.mle_chi2,
+            "blind_cosmo": blind_cosmo,
+        }
+
+        file_out = self.save_directory + "/profile_" + str(irank) + ".npy"
+        np.save(file_out, out_dict)
+
     def set_mle(self, mle_cube, mle_chi2):
         """Set the maximum likelihood solution"""
 

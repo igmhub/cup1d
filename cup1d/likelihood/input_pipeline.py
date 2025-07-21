@@ -3,7 +3,11 @@ import numpy as np
 from dataclasses import dataclass, field
 from typing import Optional
 
-from cup1d.utils.utils import create_print_function, mpi_hello_world
+from cup1d.utils.utils import (
+    create_print_function,
+    mpi_hello_world,
+    get_path_repo,
+)
 
 
 def parse_args():
@@ -265,14 +269,14 @@ def parse_args():
     args = parser.parse_args()
     mpi_hello_world()
 
-    fprint = create_print_function(verbose=args.verbose)
+    fprint = create_print_function(verbose=self.verbose)
     fprint("--- print options from parser ---")
     fprint(args)
     fprint("----------")
     fprint(parser.format_values())
     fprint("----------")
 
-    args.archive = None
+    self.archive = None
     dict_training_set = {
         "Pedersen21": "Pedersen21",
         "Pedersen21_ext": "Cabayol23",
@@ -306,17 +310,17 @@ def parse_args():
         "Nyx_alphap": True,
     }
 
-    args.training_set = dict_training_set[args.emulator_label]
-    if args.apply_smoothing is None:
-        args.apply_smoothing = dict_apply_smoothing[args.emulator_label]
+    self.training_set = dict_training_set[self.emulator_label]
+    if self.apply_smoothing is None:
+        self.apply_smoothing = dict_apply_smoothing[self.emulator_label]
     else:
-        if args.apply_smoothing == "True":
-            args.apply_smoothing = True
+        if self.apply_smoothing == "True":
+            self.apply_smoothing = True
         else:
-            args.apply_smoothing = False
+            self.apply_smoothing = False
 
-    if args.test:
-        args.explore = True
+    if self.test:
+        self.explore = True
 
     return args
 
@@ -469,8 +473,83 @@ class Args:
             )
 
     def set_baseline(
-        self, fix_cosmo=True, fit_type="at_a_time", ztar=0, zmax=4.2
+        self,
+        fix_cosmo=True,
+        fit_type="at_a_time",
+        ztar=0,
+        zmax=4.2,
+        P1D_type="DESIY1_QMLE3",
     ):
+        """
+        Set baseline parameters
+        """
+        self.ic_from_file = None
+        if fit_type not in [
+            "andreu2",
+            "global",
+            "at_a_time",
+            "at_at_time_igm",
+            "at_a_time_orig",
+            "wip",
+            "andreu",
+        ]:
+            raise ValueError("fit_type " + fit_type + " not implemented")
+        if P1D_type.startswith("DESIY1"):
+            self.true_igm_label = None
+            self.data_label = "DESIY1"
+            self.cov_syst_type = "red"
+            self.z_min = 2.1
+            self.z_max = 4.3
+            self.true_cosmo_label = None
+
+            path_in_challenge = os.path.join(
+                os.path.dirname(get_path_repo("cup1d")), "data", "in_DESI-DR1"
+            )
+            path_out_challenge = os.path.join(
+                os.path.dirname(get_path_repo("cup1d")),
+                "data",
+                "out_DESI_DR1",
+            )
+            if P1D_type.endswith("QMLE3"):
+                self.p1d_fname = os.path.join(
+                    path_in_challenge,
+                    "qmle_measurement",
+                    "DataProducts",
+                    "v3",
+                    "desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits",
+                )
+            elif P1D_type.endswith("QMLE"):
+                self.p1d_fname = os.path.join(
+                    path_in_challenge,
+                    "qmle_measurement",
+                    "DataProducts",
+                    "v3",
+                    "desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits",
+                )
+            elif P1D_type.endswith("FFT_dir"):
+                self.p1d_fname = os.path.join(
+                    path_in_challenge,
+                    "fft_measurement",
+                    "p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits",
+                )
+            elif P1D_type.endswith("FFT"):
+                self.p1d_fname = os.path.join(
+                    path_in_challenge,
+                    "fft_measurement",
+                    "p1d_fft_y1_measurement_kms_v7.fits",
+                )
+            else:
+                raise ValueError(
+                    "P1D_type " + P1D_type + " not implemented for DESI-DR1"
+                )
+
+            self.ic_from_file = os.path.join(
+                path_out_challenge,
+                "ic",
+                "allz_snr3_nocosmo_" + fit_type,
+                "res.npy",
+            )
+
         # set all cont to zero
         cont_props = [
             "n_HCD_damp1",
@@ -1222,14 +1301,14 @@ class Args:
 
 
 # Set Gaussian priors
-# # args.prior_Gauss_rms = 0.1
-# args.prior_Gauss_rms = None
+# # self.prior_Gauss_rms = 0.1
+# self.prior_Gauss_rms = None
 
-# args.Gauss_priors = {}
-# args.Gauss_priors["ln_tau_0"] = [10]
-# # args.Gauss_priors["ln_sigT_kms_0"] = [0.02]
-# # args.Gauss_priors["ln_gamma_0"] = [0.08]
-# # args.Gauss_priors["ln_kF_0"] = [0.003]
+# self.Gauss_priors = {}
+# self.Gauss_priors["ln_tau_0"] = [10]
+# # self.Gauss_priors["ln_sigT_kms_0"] = [0.02]
+# # self.Gauss_priors["ln_gamma_0"] = [0.08]
+# # self.Gauss_priors["ln_kF_0"] = [0.003]
 
 # f_Gprior = {
 #     "Lya_SiIII": 1,
@@ -1259,11 +1338,11 @@ class Args:
 # }
 
 # for metal_line in lines_use:
-#     args.Gauss_priors["ln_x_"+metal_line+"_0"] = [f_Gprior[metal_line]]
-#     args.Gauss_priors["d_"+metal_line+"_0"] = [d_Gprior[metal_line]]
-#     args.Gauss_priors["a_"+metal_line+"_0"] = [a_Gprior[metal_line]]
-# args.Gauss_priors["ln_A_damp_0"] = [0.3]
-# args.Gauss_priors["ln_A_scale_0"] = [1]
-# args.Gauss_priors["R_coeff_0"] = [2]
+#     self.Gauss_priors["ln_x_"+metal_line+"_0"] = [f_Gprior[metal_line]]
+#     self.Gauss_priors["d_"+metal_line+"_0"] = [d_Gprior[metal_line]]
+#     self.Gauss_priors["a_"+metal_line+"_0"] = [a_Gprior[metal_line]]
+# self.Gauss_priors["ln_A_damp_0"] = [0.3]
+# self.Gauss_priors["ln_A_scale_0"] = [1]
+# self.Gauss_priors["R_coeff_0"] = [2]
 
-# args.Gauss_priors = {}
+# self.Gauss_priors = {}

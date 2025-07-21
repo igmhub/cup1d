@@ -72,6 +72,14 @@ from cup1d.nuisance.thermal_class import Thermal
 
 # %%
 
+args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
+args.set_baseline(fit_type="global", fix_cosmo=True, P1D_type="DESIY1_QMLE3")
+
+# %%
+pip = Pipeline(args)
+
+# %%
+
 # %%
 
 # args = Args(emulator_label="CH24_nyxcen_gpr", training_set="models_Nyx_Mar2025_with_CGAN_val_3axes")
@@ -442,6 +450,8 @@ fitter = set_ic_from_z_at_time(args, like, data, emulator, fname, verbose=True)
 
 # %%
 
+# %%
+
 # %% [markdown]
 # #### IC from full fit
 
@@ -531,69 +541,25 @@ fitter.like.plot_p1d(plot_panels=True, residuals=True, values=input_pars)
 # ### Set fitter
 
 # %%
-input_pars = fitter.like.sampling_point_from_parameters().copy()
-fitter.like.get_chi2(input_pars)
+# xx = np.concatenate([sig_diff, [0]])
+# yy = np.concatenate([chi2_arr, [chi2_cen]])
+# ind = np.argsort(xx)
+# xx = xx[ind]
+# yy = yy[ind]
 
-# %%
-fitter.run_minimizer(fitter.like.minus_log_prob, p0=input_pars, restart=True, nsamples=0)
-
-# %%
-chi2_cen = fitter.mle_chi2.copy()
-mle_cosmo_cen = fitter.mle_cosmo.copy()
-
-# %%
-from cup1d.optimize.profile_like import run_profile
-
-# %%
-
-# %%
-file_out = "test.npy"
-run_profile(fitter, file_out, mle_cosmo_cen, input_pars, nelem=10)
-
-# %%
-mle_cosmo_cen
-
-# %%
-fitter.like.theory.fid_cosmo['linP_params']
-
-# %%
-mle_cosmo_cen
-
-# %%
-from scipy.stats import chi2 as scipy_chi2
-
-# %%
-0.04
-
-# %%
-
-plt.scatter(xgrid, ygrid)
-
-# %%
-xx = np.concatenate([sig_diff, [0]])
-yy = np.concatenate([chi2_arr, [chi2_cen]])
-ind = np.argsort(xx)
-xx = xx[ind]
-yy = yy[ind]
-
-plt.plot(xx, yy - chi2_cen, "o:")
-# rfit = np.polyfit(xx, yy, 2)
-# x = np.linspace(-2, 2, 100)
-# plt.plot(x, np.poly1d(rfit)(x) - chi2_cen)
-plt.axhline(scipy_chi2.ppf(0.68, 2))
-plt.axhline(scipy_chi2.ppf(0.95, 2))
-plt.axvline(1)
-plt.axvline(2)
-plt.axvline(-1)
-plt.axvline(-2)
-# plt.plot(sig_diff, scipy_chi2(sig_diff))
-plt.xlabel(r"$\sigma$ around best")
-plt.ylabel(r"$\Delta\chi^2$")
-
-# %%
-
-# %%
-fitter.apply_unblinding(fitter.mle_cosmo)
+# plt.plot(xx, yy - chi2_cen, "o:")
+# # rfit = np.polyfit(xx, yy, 2)
+# # x = np.linspace(-2, 2, 100)
+# # plt.plot(x, np.poly1d(rfit)(x) - chi2_cen)
+# plt.axhline(scipy_chi2.ppf(0.68, 2))
+# plt.axhline(scipy_chi2.ppf(0.95, 2))
+# plt.axvline(1)
+# plt.axvline(2)
+# plt.axvline(-1)
+# plt.axvline(-2)
+# # plt.plot(sig_diff, scipy_chi2(sig_diff))
+# plt.xlabel(r"$\sigma$ around best")
+# plt.ylabel(r"$\Delta\chi^2$")
 
 # %% [markdown]
 # ### Run minimizer
