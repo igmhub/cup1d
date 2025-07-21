@@ -1,6 +1,6 @@
 from cup1d.utils.utils import create_print_function
 
-import os, sys, time
+import os, sys, time, re
 import numpy as np
 from mpi4py import MPI
 
@@ -29,6 +29,8 @@ from cup1d.likelihood.model_igm import IGM
 
 from cup1d.likelihood.fitter import Fitter
 from cup1d.likelihood.plotter import Plotter
+from cup1d.likelihood.input_pipeline import Args
+from cup1d.optimize.show_results import get_parameters
 
 
 def set_free_like_parameters(params, emulator_label):
@@ -90,6 +92,14 @@ def set_free_like_parameters(params, emulator_label):
     return free_parameters
 
 
+def split_string(s):
+    match = re.match(r"^(.*)_(\d+)$", s)
+    if match:
+        return match.group(1), match.group(2)
+    else:
+        return s, None
+
+
 def set_archive(training_set):
     """Set archive
 
@@ -107,6 +117,175 @@ def set_archive(training_set):
     else:
         archive = gadget_archive.GadgetArchive(postproc=training_set)
     return archive
+
+
+def set_ic_from_fullfit(
+    like,
+    data,
+    emulator,
+    fname,
+    type_fit="global",
+    output_dir=".",
+    verbose=True,
+):
+    """Set the initial conditions for the likelihood from a fit"""
+
+    args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
+    args.set_baseline(fit_type=type_fit, fix_cosmo=False, zmax=4.2)
+
+    dir_out = np.load(fname, allow_pickle=True).item()
+
+    like1 = set_like(
+        data["P1Ds"],
+        emulator,
+        args,
+        data_hires=data["extra_P1Ds"],
+    )
+    out_mle_cube_reformat = dir_out["mle_cube"]
+
+    # best-fitting star params of full fit (blinded). for profiling, move around them
+    mle_cosmo = {}
+    for key in ["Delta2_star", "n_star", "alpha_star"]:
+        mle_cosmo[key] = dir_out["mle"][key]
+
+    # make a copy of free params, and set their values to the best-fit
+    free_params = like.free_params.copy()
+    for jj, p in enumerate(free_params):
+        if p.name in ["As", "ns"]:
+            continue
+        pname, iistr = split_string(p.name)
+        ii = int(iistr)
+
+        if (pname + "_znodes") in args.fid_igm:
+            znode = args.fid_igm[pname + "_znodes"][ii]
+        else:
+            znode = args.fid_cont[pname + "_znodes"][ii]
+
+        ind = np.argwhere(p.name == np.array(like1.free_param_names))[0, 0]
+        p.value = like1.free_params[ind].value_from_cube(
+            out_mle_cube_reformat[ind]
+        )
+
+        if verbose:
+            print(
+                p.name,
+                "\t",
+                np.round(p.value, 3),
+                "\t",
+                np.round(p.min_value, 3),
+                "\t",
+                np.round(p.max_value, 3),
+                "\t",
+                p.Gauss_priors_width,
+                p.fixed,
+            )
+
+    # reset the coefficients of the models
+    like.theory.model_igm.models["F_model"].reset_coeffs(free_params)
+    like.theory.model_igm.models["T_model"].reset_coeffs(free_params)
+    like.theory.model_cont.hcd_model.reset_coeffs(free_params)
+    like.theory.model_cont.metal_models["Si_mult"].reset_coeffs(free_params)
+    like.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)
+
+    args.n_steps = 5
+    args.n_burn_in = 1
+    args.parallel = False
+    args.explore = True
+
+    fitter = Fitter(
+        like=like,
+        rootdir=output_dir,
+        nburnin=args.n_burn_in,
+        nsteps=args.n_steps,
+        parallel=args.parallel,
+        explore=args.explore,
+        fix_cosmology=args.fix_cosmo,
+    )
+
+    # rescale the fiducial cosmology
+    tar = fitter.apply_unblinding(mle_cosmo)
+    fitter.like.theory.rescale_fid_cosmo(tar)
+
+    return fitter
+
+
+def set_ic_from_z_at_time(
+    args,
+    like,
+    data,
+    emulator,
+    fname,
+    output_dir=".",
+    verbose=True,
+):
+    """Set the initial conditions for the likelihood from a fit"""
+
+    args2 = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
+    args2.set_baseline(ztar=data["P1Ds"].z[0], fit_type="at_a_time")
+
+    dir_out = np.load(fname, allow_pickle=True).item()
+
+    like1 = set_like(
+        data["P1Ds"],
+        emulator,
+        args2,
+        data_hires=data["extra_P1Ds"],
+    )
+    out_mle_cube_reformat = dir_out["mle_cube_reformat"]
+
+    # make a copy of free params, and set their values to the best-fit
+    free_params = like.free_params.copy()
+    for jj, p in enumerate(free_params):
+        if p.name in ["As", "ns"]:
+            continue
+        pname, iistr = split_string(p.name)
+        ii = int(iistr)
+
+        if (pname + "_znodes") in args.fid_igm:
+            znode = args.fid_igm[pname + "_znodes"][ii]
+        else:
+            znode = args.fid_cont[pname + "_znodes"][ii]
+
+        iz = np.argmin(np.abs(like1.data.z - znode))
+        p.value = get_parameters(pname, znode, like1, out_mle_cube_reformat[iz])
+
+        if verbose:
+            print(
+                p.name,
+                "\t",
+                np.round(p.value, 3),
+                "\t",
+                np.round(p.min_value, 3),
+                "\t",
+                np.round(p.max_value, 3),
+                "\t",
+                p.Gauss_priors_width,
+                p.fixed,
+            )
+
+    # reset the coefficients of the models
+    like.theory.model_igm.models["F_model"].reset_coeffs(free_params)
+    like.theory.model_igm.models["T_model"].reset_coeffs(free_params)
+    like.theory.model_cont.hcd_model.reset_coeffs(free_params)
+    like.theory.model_cont.metal_models["Si_mult"].reset_coeffs(free_params)
+    like.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)
+
+    args.n_steps = 5
+    args.n_burn_in = 1
+    args.parallel = False
+    args.explore = True
+
+    fitter = Fitter(
+        like=like,
+        rootdir=output_dir,
+        nburnin=args.n_burn_in,
+        nsteps=args.n_steps,
+        parallel=args.parallel,
+        explore=args.explore,
+        fix_cosmology=args.fix_cosmo,
+    )
+
+    return fitter
 
 
 def set_P1D(
@@ -414,6 +593,15 @@ class Pipeline(object):
         fprint = create_print_function(verbose=args.verbose)
         self.fprint = fprint
         self.explore = args.explore
+        self.fitter = self.set_fitter(args, make_plots=make_plots)
+
+        #######################
+
+    def set_fitter(self, args, make_plots=False):
+        ## MPI stuff
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
 
         # when reusing archive and emulator, these must be None for
         # rank != 0 to prevent a very large memory footprint
@@ -445,8 +633,8 @@ class Pipeline(object):
 
             if read_archive:
                 start = time.time()
-                fprint("----------")
-                fprint("Setting training set " + args.training_set)
+                self.fprint("----------")
+                self.fprint("Setting training set " + args.training_set)
 
                 # only when reusing archive
                 if args.archive is None:
@@ -455,15 +643,15 @@ class Pipeline(object):
                     archive = args.archive
                 end = time.time()
                 multi_time = str(np.round(end - start, 2))
-                fprint("Training set loaded in " + multi_time + " s")
+                self.fprint("Training set loaded in " + multi_time + " s")
             else:
                 archive = None
         #######################
 
         ## set emulator
         if rank == 0:
-            fprint("----------")
-            fprint("Setting emulator")
+            self.fprint("----------")
+            self.fprint("Setting emulator")
             start = time.time()
 
             if args.emulator is None:
@@ -480,7 +668,7 @@ class Pipeline(object):
                 emulator = args.emulator
 
             multi_time = str(np.round(time.time() - start, 2))
-            fprint("Emulator set in " + multi_time + " s")
+            self.fprint("Emulator set in " + multi_time + " s")
 
             # distribute emulator to all ranks
             for irank in range(1, size):
@@ -493,8 +681,8 @@ class Pipeline(object):
 
         ## set P1D
         if rank == 0:
-            fprint("----------")
-            fprint("Setting P1D")
+            self.fprint("----------")
+            self.fprint("Setting P1D")
             start = time.time()
 
             # set fiducial cosmology
@@ -513,7 +701,7 @@ class Pipeline(object):
                 emulator=emulator,
                 cull_data=False,
             )
-            fprint(
+            self.fprint(
                 "Set " + str(len(data["P1Ds"].z)) + " P1Ds at z = ",
                 data["P1Ds"].z,
             )
@@ -527,7 +715,7 @@ class Pipeline(object):
                     emulator=emulator,
                     cull_data=False,
                 )
-                fprint(
+                self.fprint(
                     "Set " + str(len(data["extra_P1Ds"].z)) + " P1Ds at z = ",
                     data["extra_P1Ds"].z,
                 )
@@ -540,17 +728,17 @@ class Pipeline(object):
 
         if rank == 0:
             multi_time = str(np.round(time.time() - start, 2))
-            fprint("P1D set in " + multi_time + " s")
+            self.fprint("P1D set in " + multi_time + " s")
 
         #######################
 
         ## Validating data
 
         # check if data is blinded
-        fprint("----------")
-        fprint("Is the data blinded: ", data["P1Ds"].apply_blinding)
+        self.fprint("----------")
+        self.fprint("Is the data blinded: ", data["P1Ds"].apply_blinding)
         if data["P1Ds"].apply_blinding:
-            fprint("Type of blinding: ", data["P1Ds"].blinding)
+            self.fprint("Type of blinding: ", data["P1Ds"].blinding)
 
         if rank == 0:
             # TBD save to file!
@@ -567,8 +755,8 @@ class Pipeline(object):
         #######################
 
         ## set likelihood
-        fprint("----------")
-        fprint("Setting likelihood")
+        self.fprint("----------")
+        self.fprint("Setting likelihood")
 
         like = set_like(
             data["P1Ds"],
@@ -592,7 +780,7 @@ class Pipeline(object):
 
         # print parameters
         for p in like.free_params:
-            fprint(p.name, p.value, p.min_value, p.max_value)
+            self.fprint(p.name, p.value, p.min_value, p.max_value)
 
         #######################
 
@@ -608,7 +796,7 @@ class Pipeline(object):
         ## set fitter
 
         if args.ic_from_file is None:
-            self.fitter = Fitter(
+            fitter = Fitter(
                 like=like,
                 rootdir=self.out_folder,
                 nburnin=args.n_burn_in,
@@ -618,20 +806,20 @@ class Pipeline(object):
                 fix_cosmology=args.fix_cosmo,
             )
         else:
-            self.fitter = set_ic_from_fullfit(
+            fitter = set_ic_from_fullfit(
                 like,
                 data,
                 emulator,
                 args.ic_from_file,
-                type_fit=args.like_conf,
+                type_fit=args.fit_type,
                 verbose=True,
+                output_dir=self.out_folder,
             )
-
-        #######################
-
         if rank == 0:
             multi_time = str(np.round(time.time() - start_all, 2))
-            fprint("Setting the sampler took " + multi_time + " s \n\n")
+            self.fprint("Setting the sampler took " + multi_time + " s \n\n")
+
+        return fitter
 
     def set_emcee_options(
         self,
@@ -764,7 +952,7 @@ class Pipeline(object):
                 )
                 self.plotter.plots_sampler()
 
-    def run_profile(self, input_pars, nelem=10):
+    def run_profile(self, args, nelem=10):
         """
         Run profile likelihood
 
@@ -779,29 +967,23 @@ class Pipeline(object):
         # mpg, np -2.35, -2.25
         # mpg, delta2p 0.1, 0.8
         sigma_cosmo = {"Delta2_star": 0.04, "n_star": 0.018}
-        ind_ranks = np.array_split(np.arange(nelem), size)
         x = np.linspace(-2, 2, nelem)
         xgrid, ygrid = np.meshgrid(x, x)
         xgrid = xgrid.reshape(-1) * sigma_cosmo["Delta2_star"]
         ygrid = ygrid.reshape(-1) * sigma_cosmo["n_star"]
 
+        ind_ranks = np.array_split(np.arange(len(xgrid)), size)
         if rank == 0:
-            start = time.time()
-            self.fprint("----------")
-            self.fprint("Running like profile")
+            print("IDs to each rank:", ind_ranks)
 
-            self.fitter.run_minimizer(
-                log_func_minimize=self.fitter.like.minus_log_prob,
-                p0=input_pars,
-                restart=True,
-                nsamples=0,
+        if rank == 0:
+            # read ini data and redistribute (from scripts/data/profile_like_cen.py)
+            file_out = os.path.join(
+                os.path.dirname(self.fitter.save_directory), "best_dircosmo.npy"
             )
-
-            # everything but cosmo
-            pini = self.fitter.mle_cube[2:]
-            best_chi2 = self.fitter.mle_chi2.copy()
-            # cosmo
-            mle_cosmo_cen = self.fitter.mle_cosmo.copy()
+            out_dict = np.load(file_out, allow_pickle=True).item()
+            pini = out_dict["mle_cube"][2:]
+            mle_cosmo_cen = out_dict["mle_cosmo_cen"]
 
             # distribute emulator to all ranks
             for irank in range(1, size):
@@ -812,14 +994,19 @@ class Pipeline(object):
             pini = comm.recv(source=0, tag=(rank + 1) * 3)
             mle_cosmo_cen = comm.recv(source=0, tag=(rank + 1) * 5)
 
+        if rank == 0:
+            start = time.time()
+            self.fprint("----------")
+            self.fprint("Running like profile")
+
         for irank in ind_ranks[rank]:
+            print("ranks", irank, rank)
             if rank == 0:
                 self.fprint(irank, max(ind_ranks[rank]))
             shift_cosmo = {
                 "Delta2_star": xgrid[irank],
                 "n_star": ygrid[irank],
             }
-
             self.fitter.run_profile(irank, mle_cosmo_cen, shift_cosmo, pini)
 
         if rank == 0:

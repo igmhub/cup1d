@@ -385,6 +385,7 @@ class Fitter(object):
         target["Delta2_star"] += shift_cosmo["Delta2_star"]
         target["n_star"] += shift_cosmo["n_star"]
 
+        print("COSMOLOGIES", blind_cosmo, target)
         self.like.theory.rescale_fid_cosmo(target)
 
         # check whether new fiducial cosmology is within priors

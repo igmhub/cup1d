@@ -79,6 +79,21 @@ args.set_baseline(fit_type="global", fix_cosmo=True, P1D_type="DESIY1_QMLE3")
 pip = Pipeline(args)
 
 # %%
+# # %%time
+# Hessian
+# err = fitter.like.get_error(fitter.mle_cube.copy())
+# err
+
+# %%
+p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+pip.fitter.like.get_chi2(p0)
+pip.fitter.like.plot_p1d(plot_panels=True, residuals=True, values=p0)
+
+# %%
+
+# %%
+
+# %%
 
 # %%
 
@@ -613,31 +628,6 @@ fitter.like.theory.rescale_fid_cosmo(target_params)
 
 pstar = fitter.like.theory.fid_cosmo["cosmo"].get_linP_params()
 print(pstar['Delta2_star'], pstar['n_star'])
-
-
-# %%
-
-# %%
-def prof_like(grid, p0):
-    fitter.run_minimizer(fitter.like.minus_log_prob, p0=p0, restart=True, nsamples=0)
-
-
-# %%
-fitter.mle_cosmo
-
-# %%
-fitter.like.minus_log_prob(fitter.mle_cube)
-
-# %%
-
-# %%
-np.sqrt(0.021**2/0.04**2 + 0.009**2/0.018**2)
-
-# %%
-np.sqrt(1)
-
-# %%
-from scipy.differentiate import hessian
 
 # %%
 hess = derivative(fitter.like.minus_log_prob, fitter.mle_cube)

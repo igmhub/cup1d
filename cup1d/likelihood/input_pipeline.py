@@ -484,6 +484,7 @@ class Args:
         Set baseline parameters
         """
         self.ic_from_file = None
+        self.fit_type = fit_type
         if fit_type not in [
             "andreu2",
             "global",
@@ -495,6 +496,7 @@ class Args:
         ]:
             raise ValueError("fit_type " + fit_type + " not implemented")
         if P1D_type.startswith("DESIY1"):
+            self.P1D_type = P1D_type
             self.true_igm_label = None
             self.data_label = "DESIY1"
             self.cov_syst_type = "red"
@@ -503,7 +505,7 @@ class Args:
             self.true_cosmo_label = None
 
             path_in_challenge = os.path.join(
-                os.path.dirname(get_path_repo("cup1d")), "data", "in_DESI-DR1"
+                os.path.dirname(get_path_repo("cup1d")), "data", "in_DESI_DR1"
             )
             path_out_challenge = os.path.join(
                 os.path.dirname(get_path_repo("cup1d")),
@@ -540,7 +542,7 @@ class Args:
                 )
             else:
                 raise ValueError(
-                    "P1D_type " + P1D_type + " not implemented for DESI-DR1"
+                    "P1D_type " + P1D_type + " not implemented for DESI_DR1"
                 )
 
             self.ic_from_file = os.path.join(
