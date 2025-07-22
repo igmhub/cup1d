@@ -45,7 +45,8 @@ def main():
 
     # file_out = os.path.join(path_out, "best_dircosmo.npy")
     # file_out = os.path.join(path_out, "best_dircosmo_NM.npy")
-    file_out = os.path.join(path_out, "best_dircosmo_DA.npy")
+    # file_out = os.path.join(path_out, "best_dircosmo_DA.npy")
+    file_out = os.path.join(path_out, "best_dircosmo_DE.npy")
     np.save(file_out, out_dict)
 
 

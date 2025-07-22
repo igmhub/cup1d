@@ -346,16 +346,16 @@ class Fitter(object):
             pini[pini <= 0] = 0.05
             pini[pini >= 1] = 0.95
 
-            res = scipy.optimize.dual_annealing(
-                _log_func_minimize,
-                x0=pini,
-                bounds=((0.0, 1.0),) * npars,
-            )
-            # res = scipy.optimize.differential_evolution(
+            # res = scipy.optimize.dual_annealing(
             #     _log_func_minimize,
             #     x0=pini,
             #     bounds=((0.0, 1.0),) * npars,
             # )
+            res = scipy.optimize.differential_evolution(
+                _log_func_minimize,
+                x0=pini,
+                bounds=((0.0, 1.0),) * npars,
+            )
             # res = scipy.optimize.minimize(
             #     _log_func_minimize,
             #     pini,
