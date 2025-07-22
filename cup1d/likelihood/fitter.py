@@ -338,8 +338,10 @@ class Fitter(object):
 
         rep = 0
         for ii in range(nsamples + 1):
-            pini = mle_cube.copy()
-            if ii != 0:
+            if ii == 0:
+                pini = mle_cube.copy()
+            else:
+                pini = self.mle_cube.copy()
                 pini += arr_p0[ii] * sig
 
             pini[pini <= 0] = 0.05
@@ -364,7 +366,7 @@ class Fitter(object):
                 chi2 = _chi2.copy()
                 mle_cube = res.x.copy()
                 # reduce sigma
-                sig *= 0.9
+                sig *= 0.5
 
             print("Minimization improved:", chi2_ini, chi2, flush=True)
             if rep > 3:
@@ -372,7 +374,9 @@ class Fitter(object):
 
         self.set_mle(mle_cube, chi2)
 
-    def run_profile(self, irank, mle_cosmo_cen, shift_cosmo, input_pars):
+    def run_profile(
+        self, irank, mle_cosmo_cen, shift_cosmo, input_pars, nsamples=1
+    ):
         """Profile likelihood"""
 
         blind_cosmo = {
@@ -396,13 +400,14 @@ class Fitter(object):
             self.like.minus_log_prob,
             p0=input_pars,
             restart=True,
-            nsamples=0,
+            nsamples=nsamples,
         )
 
         out_dict = {
             "chi2": self.mle_chi2,
             "blind_cosmo": blind_cosmo,
             "mle_cube": self.mle_cube,
+            "mle": self.mle,
         }
 
         file_out = os.path.join(

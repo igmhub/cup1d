@@ -958,7 +958,7 @@ class Pipeline(object):
                 )
                 self.plotter.plots_sampler()
 
-    def run_profile(self, args, sigma_cosmo, nelem=10):
+    def run_profile(self, args, sigma_cosmo, nelem=10, nsamples=1):
         """
         Run profile likelihood
 
@@ -1010,7 +1010,9 @@ class Pipeline(object):
                 "Delta2_star": xgrid[irank],
                 "n_star": ygrid[irank],
             }
-            self.fitter.run_profile(irank, mle_cosmo_cen, shift_cosmo, pini)
+            self.fitter.run_profile(
+                irank, mle_cosmo_cen, shift_cosmo, pini, nsamples=nsamples
+            )
 
         if rank == 0:
             end = time.time()
