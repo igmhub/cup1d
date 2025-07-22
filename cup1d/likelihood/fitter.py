@@ -337,6 +337,7 @@ class Fitter(object):
         sig = 0.1
 
         rep = 0
+        start = time.time()
         for ii in range(nsamples + 1):
             pini = mle_cube.copy()
             if ii != 0:
@@ -345,17 +346,17 @@ class Fitter(object):
             pini[pini <= 0] = 0.05
             pini[pini >= 1] = 0.95
 
-            res = scipy.optimize.differential_evolution(
-                _log_func_minimize,
-                x0=pini,
-                bounds=((0.0, 1.0),) * npars,
-            )
-            # res = scipy.optimize.minimize(
+            # res = scipy.optimize.differential_evolution(
             #     _log_func_minimize,
-            #     pini,
-            #     method="Nelder-Mead",
+            #     x0=pini,
             #     bounds=((0.0, 1.0),) * npars,
             # )
+            res = scipy.optimize.minimize(
+                _log_func_minimize,
+                pini,
+                method="Nelder-Mead",
+                bounds=((0.0, 1.0),) * npars,
+            )
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
             # print(ii, res.x)
 
@@ -368,6 +369,7 @@ class Fitter(object):
             else:
                 rep += 1
 
+            print("Step took:", np.round(start - time.time(), 2), flush=True)
             print("Minimization improved:", chi2_ini, chi2, flush=True)
             # if chi2 does not get better after a few it, stop
             if rep > 3:

@@ -1140,7 +1140,7 @@ class Args:
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
                 ]:
-                    _znodes = np.linspace(zmin, zmax, 3)
+                    _znodes = np.array([zmin, 2.9, zmax])
 
                 if prop in ["f_SiIIa_SiIII", "f_SiIIb_SiIII"]:
                     _znodes = np.array([zmin, zmax])
