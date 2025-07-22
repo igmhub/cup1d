@@ -30,11 +30,7 @@ def main():
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 
     print("starting minimization")
-    pip.fitter.run_minimizer(
-        pip.fitter.like.minus_log_prob,
-        p0=input_pars,
-        type_minimizer="DA",
-    )
+    pip.fitter.run_minimizer_da(pip.fitter.like.minus_log_prob, p0=input_pars)
 
     out_dict = {
         "best_chi2": pip.fitter.mle_chi2,

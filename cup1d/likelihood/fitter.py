@@ -331,6 +331,7 @@ class Fitter(object):
         # sigma to search around mle_cube
         sig = 0.1
 
+        print("Starting NM minimization", flush=True)
         rep = 0
         start = time.time()
         for ii in range(nsamples + 1):
@@ -419,6 +420,8 @@ class Fitter(object):
 
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
         chi2_ini = chi2 * 1
+
+        print("Starting DA minimization", flush=True)
 
         start = time.time()
         res = scipy.optimize.dual_annealing(

@@ -969,7 +969,9 @@ class Pipeline(object):
                 )
                 self.plotter.plots_sampler()
 
-    def run_profile(self, args, sigma_cosmo, nelem=10, nsamples=1):
+    def run_profile(
+        self, args, sigma_cosmo, nelem=10, nsamples=1, type_minimizer="NM"
+    ):
         """
         Run profile likelihood
 
@@ -1022,7 +1024,12 @@ class Pipeline(object):
                 "n_star": ygrid[irank],
             }
             self.fitter.run_profile(
-                irank, mle_cosmo_cen, shift_cosmo, pini, nsamples=nsamples
+                irank,
+                mle_cosmo_cen,
+                shift_cosmo,
+                pini,
+                nsamples=nsamples,
+                type_minimizer=type_minimizer,
             )
 
         if rank == 0:
