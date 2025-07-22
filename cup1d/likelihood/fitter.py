@@ -357,7 +357,7 @@ class Fitter(object):
             #     bounds=((0.0, 1.0),) * npars,
             # )
             res = scipy.optimize.direct(
-                _log_func_minimize, bounds=((0.0, 1.0),) * npars
+                _log_func_minimize, bounds=((0.0, 1.0),) * npars, vol_tol=1e-32
             )
             print(res)
 
