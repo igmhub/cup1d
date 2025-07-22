@@ -79,6 +79,185 @@ args.set_baseline(fit_type="global", fix_cosmo=True, P1D_type="DESIY1_QMLE3")
 pip = Pipeline(args)
 
 # %%
+from scipy.interpolate import griddata
+import matplotlib.patches as mpatches
+
+# %%
+prob_levels = np.array([0, 0.6827, 0.9545])
+chi2_levels = np.array([0,  2.29578, 6.17969])
+
+fig, ax = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10, 6))
+ftsize = 16
+trans = {
+    "global":"Jonastein", 
+    "andreu2": "Baseline"
+}
+
+for jj, fit_type in enumerate(["andreu2", "global"]):
+
+    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+fit_type+"/CH24_mpgcen_gpr/"
+    nelem = 100
+    chi2 = np.zeros(nelem)
+    params = np.zeros((nelem, 2))
+    for ii in range(nelem):
+        try:
+            data = np.load(folder + "profile_"+str(ii)+ ".npy", allow_pickle=True).item()
+        except:
+            continue
+        chi2[ii] = data["chi2"]
+        params[ii, 0] = data["blind_cosmo"]["Delta2_star"]
+        params[ii, 1] = data["blind_cosmo"]["n_star"]
+    
+    data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
+    
+    # plt.scatter(params[ind, 0], params[ind, 1], c=chi2[ind] - min_chi2, cmap="tab10", vmin=vmin, vmax=vmax)
+    
+    ind = chi2 != 0
+    grid = np.meshgrid(
+        np.linspace(params[ind,0].min(), params[ind,0].max(), nelem), 
+        np.linspace(params[ind,1].min(), params[ind,1].max(), nelem)
+    )
+    xi = np.zeros((nelem*nelem, 2))
+    xi[:,0] = grid[0].reshape(-1)
+    xi[:,1] = grid[1].reshape(-1)
+    interp = griddata(params[ind], chi2[ind], xi, method="cubic")
+    
+    min_chi2 = np.min([chi2[ind].min(), data_cen['best_chi2'], interp.min()])
+    # vmin = 0
+    # vmax = np.max([chi2[ind].max(), data_cen['best_chi2'], interp.max()]) - min_chi2
+    # plt.scatter(xi[:, 0], xi[:, 1], c=interp - min_chi2, cmap="tab20", vmin=vmin, vmax=vmax, marker=".", alpha=0.5)
+    
+    # plt.scatter(
+    #     data_cen['mle_cosmo_cen']['Delta2_star'],
+    #     data_cen['mle_cosmo_cen']['n_star'],
+    #     c = data_cen['best_chi2'] - min_chi2,
+    #     marker = "X", cmap="tab10", vmin=vmin, vmax=vmax
+    # )
+    
+    CS = ax[jj].contourf(
+        xi[:, 0].reshape(nelem, nelem), 
+        xi[:, 1].reshape(nelem, nelem), 
+        interp.reshape(nelem, nelem) - min_chi2, 
+        chi2_levels,
+        colors=["C0", "C1"],
+    )
+
+    patch1 = mpatches.Patch(color='C0', label=r"1 $\sigma$")
+    patch2 = mpatches.Patch(color='C1', label=r"2 $\sigma$")
+
+    ax[jj].text(0.05, 0.93, r"$\chi^2_\mathrm{min}$="+str(np.round(min_chi2, 1)), 
+                transform=ax[jj].transAxes, fontsize=ftsize)
+
+    ax[jj].set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
+    if jj == 0:
+        ax[jj].set_ylabel(r"$n_\star$", fontsize=ftsize)
+        ax[jj].legend(handles=[patch1, patch2], fontsize=ftsize)
+
+    ax[jj].set_title(trans[fit_type], fontsize=ftsize)
+    ax[jj].tick_params(
+        axis="both", which="major", labelsize=ftsize - 2
+    )
+
+plt.tight_layout()
+
+
+plt.savefig("compare_variations.pdf")
+
+# %%
+prob_levels = np.array([0, 0.6827, 0.9545])
+chi2_levels = np.array([0,  2.29578, 6.17969])
+
+fig, ax = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10, 6))
+ftsize = 16
+trans = {
+    "global":"Jonastein", 
+    "andreu2": "Baseline"
+}
+
+for jj, fit_type in enumerate(["andreu2", "global"]):
+
+    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+fit_type+"/CH24_mpgcen_gpr/"
+    nelem = 100
+    chi2 = np.zeros(nelem)
+    params = np.zeros((nelem, 2))
+    for ii in range(nelem):
+        try:
+            data = np.load(folder + "profile_"+str(ii)+ ".npy", allow_pickle=True).item()
+        except:
+            continue
+        chi2[ii] = data["chi2"]
+        params[ii, 0] = data["blind_cosmo"]["Delta2_star"]
+        params[ii, 1] = data["blind_cosmo"]["n_star"]
+    
+    data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
+    
+    
+    ind = chi2 != 0
+    grid = np.meshgrid(
+        np.linspace(params[ind,0].min(), params[ind,0].max(), nelem), 
+        np.linspace(params[ind,1].min(), params[ind,1].max(), nelem)
+    )
+    xi = np.zeros((nelem*nelem, 2))
+    xi[:,0] = grid[0].reshape(-1)
+    xi[:,1] = grid[1].reshape(-1)
+    interp = griddata(params[ind], chi2[ind], xi, method="cubic")
+    
+    # min_chi2 = np.min([chi2[ind].min(), data_cen['best_chi2'], interp.min()])
+    min_chi2 = np.min([chi2[ind].min(), data_cen['best_chi2']])
+    vmin = 0
+    vmax = np.max([chi2[ind].max(), data_cen['best_chi2'], interp.max()]) - min_chi2
+    vmax = 14
+    # plt.scatter(xi[:, 0], xi[:, 1], c=interp - min_chi2, cmap="tab20", vmin=vmin, vmax=vmax, marker=".", alpha=0.5)
+    
+    # ax[jj].scatter(
+    #     data_cen['mle_cosmo_cen']['Delta2_star'],
+    #     data_cen['mle_cosmo_cen']['n_star'],
+    #     c = data_cen['best_chi2'] - min_chi2,
+    #     marker = "X", cmap="tab10", vmin=vmin, vmax=vmax
+    # )
+    CS = ax[jj].scatter(params[ind, 0], params[ind, 1], c=chi2[ind] - min_chi2, cmap="tab10", vmin=vmin, vmax=vmax)
+    
+    # CS = ax[jj].contourf(
+    #     xi[:, 0].reshape(nelem, nelem), 
+    #     xi[:, 1].reshape(nelem, nelem), 
+    #     interp.reshape(nelem, nelem) - min_chi2, 
+    #     chi2_levels,
+    #     colors=["C0", "C1"],
+    # )
+
+    # patch1 = mpatches.Patch(color='C0', label=r"1 $\sigma$")
+    # patch2 = mpatches.Patch(color='C1', label=r"2 $\sigma$")
+
+    ax[jj].text(0.05, 0.93, r"$\chi^2_\mathrm{min}$="+str(np.round(min_chi2, 1)), 
+                transform=ax[jj].transAxes, fontsize=ftsize)
+    # plt.colorbar()
+    # sc = plt.scatter(x, y, c=c, cmap='viridis')
+    plt.colorbar(CS, label='Color scale')
+
+    ax[jj].set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
+    if jj == 0:
+        ax[jj].set_ylabel(r"$n_\star$", fontsize=ftsize)
+        # ax[jj].legend(handles=[patch1, patch2], fontsize=ftsize)
+
+    ax[jj].set_title(trans[fit_type], fontsize=ftsize)
+    ax[jj].tick_params(
+        axis="both", which="major", labelsize=ftsize - 2
+    )
+
+plt.tight_layout()
+
+
+plt.savefig("compare_variations2.pdf")
+
+# %%
+0.04, 0.018
+
+# %%
+-2.29 - 0.018
+
+# %%
+
+# %%
 # # %%time
 # Hessian
 # err = fitter.like.get_error(fitter.mle_cube.copy())

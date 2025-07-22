@@ -958,7 +958,7 @@ class Pipeline(object):
                 )
                 self.plotter.plots_sampler()
 
-    def run_profile(self, args, nelem=10):
+    def run_profile(self, args, sigma_cosmo, nelem=10):
         """
         Run profile likelihood
 
@@ -970,9 +970,6 @@ class Pipeline(object):
         rank = comm.Get_rank()
         size = comm.Get_size()
 
-        # mpg, np -2.35, -2.25
-        # mpg, delta2p 0.1, 0.8
-        sigma_cosmo = {"Delta2_star": 0.04, "n_star": 0.018}
         x = np.linspace(-2, 2, nelem)
         xgrid, ygrid = np.meshgrid(x, x)
         xgrid = xgrid.reshape(-1) * sigma_cosmo["Delta2_star"]
