@@ -316,11 +316,6 @@ class Fitter(object):
 
         npars = len(self.like.free_params)
 
-        # if zmask is not None:
-        #     _log_func_minimize = lambda x: log_func_minimize(x, zmask=zmask)
-        # else:
-        #     _log_func_minimize = log_func_minimize
-
         if p0 is not None:
             # start at the initial value
             mle_cube = p0.copy()
@@ -346,27 +341,12 @@ class Fitter(object):
             pini[pini <= 0] = 0.05
             pini[pini >= 1] = 0.95
 
-            # res = scipy.optimize.dual_annealing(
-            #     _log_func_minimize,
-            #     x0=pini,
-            #     bounds=((0.0, 1.0),) * npars,
-            # )
-            # res = scipy.optimize.differential_evolution(
-            #     _log_func_minimize,
-            #     x0=pini,
-            #     bounds=((0.0, 1.0),) * npars,
-            # )
-            res = scipy.optimize.direct(
-                _log_func_minimize, bounds=((0.0, 1.0),) * npars, vol_tol=1e-32
+            res = scipy.optimize.minimize(
+                _log_func_minimize,
+                pini,
+                method="Nelder-Mead",
+                bounds=((0.0, 1.0),) * npars,
             )
-            print(res)
-
-            # res = scipy.optimize.minimize(
-            #     _log_func_minimize,
-            #     pini,
-            #     method="Nelder-Mead",
-            #     bounds=((0.0, 1.0),) * npars,
-            # )
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
             # print(ii, res.x)
 
@@ -393,8 +373,85 @@ class Fitter(object):
 
         self.set_mle(mle_cube, chi2)
 
+    def run_minimizer_da(
+        self, log_func_minimize=None, p0=None, zmask=None, mask_pars=None
+    ):
+        """Minimizer using dual annealing"""
+
+        def set_log_func_minimize(pini, zmask=None, mask_pars=None):
+            if mask_pars is None:
+                if zmask is not None:
+                    fun = lambda x: log_func_minimize(x, zmask=zmask)
+                    return fun
+                else:
+                    return log_func_minimize
+            else:
+                ind_fix = []
+                for ii, par in enumerate(self.like.free_params):
+                    if par.fixed:
+                        ind_fix.append(ii)
+                ind_fix = np.array(ind_fix)
+                pfix = pini[ind_fix]
+                if zmask is not None:
+                    fun = lambda x: log_func_minimize(
+                        x, zmask=zmask, ind_fix=ind_fix, pfix=pfix
+                    )
+                    return fun
+                else:
+                    fun = lambda x: log_func_minimize(
+                        x, ind_fix=ind_fix, pfix=pfix
+                    )
+                    return fun
+
+        _log_func_minimize = set_log_func_minimize(
+            p0, zmask=zmask, mask_pars=mask_pars
+        )
+
+        if p0 is not None:
+            # start at the initial value
+            mle_cube = p0.copy()
+        else:
+            # star at the center of the parameter space
+            mle_cube = np.ones(npars) * 0.5
+
+        mle_cube[mle_cube <= 0] = 0.05
+        mle_cube[mle_cube >= 1] = 0.95
+
+        chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
+        chi2_ini = chi2 * 1
+
+        start = time.time()
+        res = scipy.optimize.dual_annealing(
+            _log_func_minimize,
+            x0=pini,
+            bounds=((0.0, 1.0),) * npars,
+        )
+
+        _chi2 = self.like.get_chi2(res.x, zmask=zmask)
+
+        if _chi2 < chi2:
+            chi2 = _chi2.copy()
+            mle_cube = res.x.copy()
+
+        print("Step took:", np.round(time.time() - start, 2), flush=True)
+        print(
+            "Minimization improved:",
+            np.round(chi2_ini, 4),
+            np.round(chi2, 4),
+            np.round(chi2_ini - chi2, 4),
+            flush=True,
+        )
+
+        self.set_mle(mle_cube, chi2)
+
     def run_profile(
-        self, irank, mle_cosmo_cen, shift_cosmo, input_pars, nsamples=1
+        self,
+        irank,
+        mle_cosmo_cen,
+        shift_cosmo,
+        input_pars,
+        nsamples=1,
+        type_minimizer="NM",
     ):
         """Profile likelihood"""
 
@@ -415,12 +472,17 @@ class Fitter(object):
             print("skipping", irank, blind_cosmo)
             return
 
-        self.run_minimizer(
-            self.like.minus_log_prob,
-            p0=input_pars,
-            restart=True,
-            nsamples=nsamples,
-        )
+        if type_minimizer == "NM":
+            self.run_minimizer(
+                self.like.minus_log_prob,
+                p0=input_pars,
+                restart=False,
+                nsamples=nsamples,
+            )
+        elif type_minimizer == "DA":
+            self.run_minimizer_da(self.like.minus_log_prob, p0=input_pars)
+        else:
+            raise ValueError("type_minimizer must be 'NM' or 'DA'")
 
         out_dict = {
             "chi2": self.mle_chi2,

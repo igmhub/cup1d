@@ -873,6 +873,7 @@ class Pipeline(object):
         zmask=None,
         nsamples=4,
         restart=False,
+        type_minimizer="NM",
     ):
         """
         Run the minimizer (only rank 0)
@@ -887,13 +888,23 @@ class Pipeline(object):
             self.fprint("----------")
             self.fprint("Running minimizer")
             # start fit from initial values
-            self.fitter.run_minimizer(
-                log_func_minimize=self.fitter.like.minus_log_prob,
-                p0=p0,
-                zmask=zmask,
-                nsamples=nsamples,
-                restart=restart,
-            )
+
+            if type_minimizer == "NM":
+                self.fitter.run_minimizer(
+                    log_func_minimize=self.fitter.like.minus_log_prob,
+                    p0=p0,
+                    zmask=zmask,
+                    nsamples=nsamples,
+                    restart=restart,
+                )
+            elif type_minimizer == "DA":
+                self.fitter.run_minimizer_da(
+                    log_func_minimize=self.fitter.like.minus_log_prob,
+                    p0=p0,
+                    zmask=zmask,
+                )
+            else:
+                raise ValueError("type_minimizer must be 'NM' or 'DA'")
 
             # save fit
             self.fitter.save_fitter(save_chains=save_chains)

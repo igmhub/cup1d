@@ -33,8 +33,7 @@ def main():
     pip.fitter.run_minimizer(
         pip.fitter.like.minus_log_prob,
         p0=input_pars,
-        restart=True,
-        nsamples=0,
+        type_minimizer="DA",
     )
 
     out_dict = {
@@ -43,11 +42,11 @@ def main():
         "mle_cube": pip.fitter.mle_cube,
     }
 
-    # file_out = os.path.join(path_out, "best_dircosmo.npy")
+    file_out = os.path.join(path_out, "best_dircosmo.npy")
     # file_out = os.path.join(path_out, "best_dircosmo_NM.npy")
     # file_out = os.path.join(path_out, "best_dircosmo_DA.npy")
     # file_out = os.path.join(path_out, "best_dircosmo_DE.npy")
-    file_out = os.path.join(path_out, "best_dircosmo_DI.npy")
+    # file_out = os.path.join(path_out, "best_dircosmo_DI.npy")
     np.save(file_out, out_dict)
 
 

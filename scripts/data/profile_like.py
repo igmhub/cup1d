@@ -22,18 +22,19 @@ def main():
         args.P1D_type,
         args.fit_type,
         args.emulator_label,
+        "DA",
     )
 
     if fit_type == "global":
         sigma_cosmo = {"Delta2_star": 0.04, "n_star": 0.018}
     elif fit_type == "andreu2":
-        sigma_cosmo = {"Delta2_star": 0.02, "n_star": 0.009}
+        sigma_cosmo = {"Delta2_star": 0.02, "n_star": 0.01}
     else:
         raise ValueError("fit_type must be 'global' or 'andreu2'")
 
     pip = Pipeline(args, out_folder=path_out)
     p0 = pip.fitter.like.sampling_point_from_parameters().copy()
-    pip.run_profile(args, sigma_cosmo, nelem=20)
+    pip.run_profile(args, sigma_cosmo, nelem=10, type_minimizer="DA")
 
 
 if __name__ == "__main__":
