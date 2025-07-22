@@ -426,7 +426,7 @@ class Fitter(object):
         start = time.time()
         res = scipy.optimize.dual_annealing(
             _log_func_minimize,
-            x0=pini,
+            x0=mle_cube,
             bounds=((0.0, 1.0),) * npars,
         )
 
