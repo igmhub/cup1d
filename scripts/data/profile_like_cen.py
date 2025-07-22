@@ -34,7 +34,7 @@ def main():
         pip.fitter.like.minus_log_prob,
         p0=input_pars,
         restart=True,
-        nsamples=10,
+        nsamples=0,
     )
 
     out_dict = {

@@ -334,7 +334,7 @@ class Fitter(object):
         # perturbations around starting point
         arr_p0 = lhs(npars, samples=nsamples + 1) - 0.5
         # sigma to search around mle_cube
-        sig = 0.2
+        sig = 0.1
 
         rep = 0
         for ii in range(nsamples + 1):
@@ -345,28 +345,31 @@ class Fitter(object):
             pini[pini <= 0] = 0.05
             pini[pini >= 1] = 0.95
 
-            res = scipy.optimize.minimize(
+            res = scipy.optimize.differential_evolution(
                 _log_func_minimize,
-                pini,
-                method="Nelder-Mead",
+                x0=pini,
                 bounds=((0.0, 1.0),) * npars,
             )
+            # res = scipy.optimize.minimize(
+            #     _log_func_minimize,
+            #     pini,
+            #     method="Nelder-Mead",
+            #     bounds=((0.0, 1.0),) * npars,
+            # )
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
             # print(ii, res.x)
-
-            # if chi2 does not get significantly better after a few it, stop
-            if np.abs(_chi2 - chi2) < 0.5:
-                rep += 1
-            else:
-                rep = 0
 
             if _chi2 < chi2:
                 chi2 = _chi2.copy()
                 mle_cube = res.x.copy()
                 # reduce sigma
                 sig *= 0.9
+                rep = 0
+            else:
+                rep += 1
 
             print("Minimization improved:", chi2_ini, chi2, flush=True)
+            # if chi2 does not get better after a few it, stop
             if rep > 3:
                 break
 
