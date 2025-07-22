@@ -43,7 +43,9 @@ def main():
         "mle_cube": pip.fitter.mle_cube,
     }
 
-    file_out = os.path.join(path_out, "best_dircosmo_NM.npy")
+    # file_out = os.path.join(path_out, "best_dircosmo.npy")
+    # file_out = os.path.join(path_out, "best_dircosmo_NM.npy")
+    file_out = os.path.join(path_out, "best_dircosmo_DA.npy")
     np.save(file_out, out_dict)
 
 

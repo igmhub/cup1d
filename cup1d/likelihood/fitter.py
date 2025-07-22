@@ -346,17 +346,22 @@ class Fitter(object):
             pini[pini <= 0] = 0.05
             pini[pini >= 1] = 0.95
 
+            res = scipy.optimize.dual_annealing(
+                _log_func_minimize,
+                x0=pini,
+                bounds=((0.0, 1.0),) * npars,
+            )
             # res = scipy.optimize.differential_evolution(
             #     _log_func_minimize,
             #     x0=pini,
             #     bounds=((0.0, 1.0),) * npars,
             # )
-            res = scipy.optimize.minimize(
-                _log_func_minimize,
-                pini,
-                method="Nelder-Mead",
-                bounds=((0.0, 1.0),) * npars,
-            )
+            # res = scipy.optimize.minimize(
+            #     _log_func_minimize,
+            #     pini,
+            #     method="Nelder-Mead",
+            #     bounds=((0.0, 1.0),) * npars,
+            # )
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
             # print(ii, res.x)
 
@@ -369,8 +374,14 @@ class Fitter(object):
             else:
                 rep += 1
 
-            print("Step took:", np.round(start - time.time(), 2), flush=True)
-            print("Minimization improved:", chi2_ini, chi2, flush=True)
+            print("Step took:", np.round(time.time() - start, 2), flush=True)
+            print(
+                "Minimization improved:",
+                np.round(chi2_ini, 4),
+                np.round(chi2, 4),
+                np.round(chi2_ini - chi2, 4),
+                flush=True,
+            )
             # if chi2 does not get better after a few it, stop
             if rep > 3:
                 break
