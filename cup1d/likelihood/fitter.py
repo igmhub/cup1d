@@ -334,14 +334,12 @@ class Fitter(object):
         # perturbations around starting point
         arr_p0 = lhs(npars, samples=nsamples + 1) - 0.5
         # sigma to search around mle_cube
-        sig = 0.1
+        sig = 0.2
 
         rep = 0
         for ii in range(nsamples + 1):
-            if ii == 0:
-                pini = mle_cube.copy()
-            else:
-                pini = self.mle_cube.copy()
+            pini = mle_cube.copy()
+            if ii != 0:
                 pini += arr_p0[ii] * sig
 
             pini[pini <= 0] = 0.05
@@ -357,7 +355,7 @@ class Fitter(object):
             # print(ii, res.x)
 
             # if chi2 does not get significantly better after a few it, stop
-            if chi2 - _chi2 < 0.5:
+            if np.abs(_chi2 - chi2) < 0.5:
                 rep += 1
             else:
                 rep = 0
