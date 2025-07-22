@@ -477,6 +477,7 @@ class Args:
         fix_cosmo=True,
         fit_type="at_a_time",
         ztar=0,
+        zmin=2.2,
         zmax=4.2,
         P1D_type="DESIY1_QMLE3",
     ):
@@ -1091,12 +1092,12 @@ class Args:
                 "HCD_damp4",
             ]
 
-            z_max_props = [
-                "f_SiIIa_SiIII",
-                "f_SiIIb_SiIII",
-                "f_Lya_SiII",
-                "s_Lya_SiII",
-            ]
+            # z_max_props = [
+            #     "f_SiIIa_SiIII",
+            #     "f_SiIIb_SiIII",
+            #     "f_Lya_SiII",
+            #     "s_Lya_SiII",
+            # ]
             # for prop in z_max_props:
             #     self.fid_cont["z_max"][prop] = 3.5
             # z_max_props = ["f_SiIIa_SiIIb", "s_SiIIa_SiIIb"]
@@ -1108,9 +1109,9 @@ class Args:
 
             self.opt_props = props_igm + props_cont
 
-            self.fid_igm["tau_eff_znodes"] = np.linspace(2.2, 4.2, 6)
-            self.fid_igm["sigT_kms_znodes"] = np.array([2.2, 3.0, 4.2])
-            self.fid_igm["gamma_znodes"] = np.array([2.2, 3.0, 4.2])
+            self.fid_igm["tau_eff_znodes"] = np.linspace(zmin, zmax, 6)
+            self.fid_igm["sigT_kms_znodes"] = np.array([zmin, 3.0, zmax])
+            self.fid_igm["gamma_znodes"] = np.array([zmin, 3.0, zmax])
             self.fid_igm["kF_kms_znodes"] = []
             for prop in props_igm:
                 self.fid_igm["n_" + prop] = len(self.fid_igm[prop + "_znodes"])
@@ -1139,13 +1140,13 @@ class Args:
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
                 ]:
-                    _znodes = np.linspace(2.2, 3.6, 3)
+                    _znodes = np.linspace(zmin, zmax, 3)
 
                 if prop in ["f_SiIIa_SiIII", "f_SiIIb_SiIII"]:
-                    _znodes = np.array([2.2, 3.6])
+                    _znodes = np.array([zmin, zmax])
 
                 if prop in ["HCD_damp1", "HCD_damp4"]:
-                    _znodes = np.linspace(2.2, 4.2, 4)
+                    _znodes = np.linspace(zmin, zmax, 4)
 
                 self.fid_cont[prop + "_znodes"] = _znodes
                 self.fid_cont["n_" + prop] = len(
@@ -1285,7 +1286,7 @@ class Args:
             ]
             self.fid_cont["flat_priors"]["s_SiIIa_SiIIb"] = [
                 [-1, 4],
-                [2, 6],
+                [1, 6],
             ]
 
             self.fid_cont["flat_priors"]["f_SiIIa_SiIII"] = [

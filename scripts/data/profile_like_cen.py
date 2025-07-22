@@ -1,7 +1,7 @@
 import os
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
-os.environ["OMP_NUM_THREADS"] = "20"  # export OMP_NUM_THREADS=4
+os.environ["OMP_NUM_THREADS"] = "25"  # export OMP_NUM_THREADS=4
 import numpy as np
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
@@ -34,7 +34,7 @@ def main():
         pip.fitter.like.minus_log_prob,
         p0=input_pars,
         restart=True,
-        nsamples=4,
+        nsamples=10,
     )
 
     out_dict = {

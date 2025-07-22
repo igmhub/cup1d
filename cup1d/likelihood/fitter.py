@@ -364,7 +364,7 @@ class Fitter(object):
                 chi2 = _chi2.copy()
                 mle_cube = res.x.copy()
                 # reduce sigma
-                sig *= 0.5
+                sig *= 0.9
 
             print("Minimization improved:", chi2_ini, chi2, flush=True)
             if rep > 3:
