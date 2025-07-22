@@ -408,6 +408,8 @@ class Fitter(object):
             p0, zmask=zmask, mask_pars=mask_pars
         )
 
+        npars = len(self.like.free_params)
+
         if p0 is not None:
             # start at the initial value
             mle_cube = p0.copy()
