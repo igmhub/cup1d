@@ -347,6 +347,7 @@ class Fitter(object):
                 pini,
                 method="Nelder-Mead",
                 bounds=((0.0, 1.0),) * npars,
+                options={"fatol": 0.1, "xatol": 0},
             )
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
             # print(ii, res.x)
