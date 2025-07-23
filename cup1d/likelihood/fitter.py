@@ -437,8 +437,14 @@ class Fitter(object):
         start = time.time()
         res = scipy.optimize.dual_annealing(
             _log_func_minimize,
+            maxiter=10000,
             x0=mle_cube,
             bounds=((0.0, 1.0),) * npars,
+            minimizer_kwargs={
+                "method": "Nelder-Mead",
+                "bounds": ((0.0, 1.0),) * npars,
+                "options": {"fatol": 0.1, "xatol": 0},
+            },
         )
 
         _chi2 = self.like.get_chi2(res.x, zmask=zmask)
