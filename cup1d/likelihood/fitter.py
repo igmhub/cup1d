@@ -375,7 +375,12 @@ class Fitter(object):
         self.set_mle(mle_cube, chi2)
 
     def run_minimizer_da(
-        self, log_func_minimize=None, p0=None, zmask=None, mask_pars=None
+        self,
+        log_func_minimize=None,
+        p0=None,
+        zmask=None,
+        mask_pars=None,
+        restart=True,
     ):
         """Minimizer using dual annealing"""
 
@@ -403,6 +408,9 @@ class Fitter(object):
                         x, ind_fix=ind_fix, pfix=pfix
                     )
                     return fun
+
+        if restart:
+            self.mle_chi2 = 1e10
 
         _log_func_minimize = set_log_func_minimize(
             p0, zmask=zmask, mask_pars=mask_pars
@@ -481,11 +489,13 @@ class Fitter(object):
             self.run_minimizer(
                 self.like.minus_log_prob,
                 p0=input_pars,
-                restart=False,
+                restart=True,
                 nsamples=nsamples,
             )
         elif type_minimizer == "DA":
-            self.run_minimizer_da(self.like.minus_log_prob, p0=input_pars)
+            self.run_minimizer_da(
+                self.like.minus_log_prob, p0=input_pars, restart=True
+            )
         else:
             raise ValueError("type_minimizer must be 'NM' or 'DA'")
 

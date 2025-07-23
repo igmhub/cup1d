@@ -11,6 +11,7 @@ from cup1d.utils.utils import get_path_repo
 def main():
     # fit_type = "global"
     fit_type = "andreu2"
+    type_minimizer = "NM"
     args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
     args.set_baseline(
         fit_type=fit_type, fix_cosmo=False, P1D_type="DESIY1_QMLE3"
@@ -22,6 +23,7 @@ def main():
         args.P1D_type,
         args.fit_type,
         args.emulator_label,
+        type_minimizer,
     )
     os.makedirs(path_out, exist_ok=True)
 
@@ -30,7 +32,17 @@ def main():
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 
     print("starting minimization")
-    pip.fitter.run_minimizer_da(pip.fitter.like.minus_log_prob, p0=input_pars)
+    if type_minimizer == "NM":
+        pip.fitter.run_minimizer(
+            pip.fitter.like.minus_log_prob,
+            p0=input_pars,
+            restart=True,
+            nsamples=4,
+        )
+    else:
+        pip.fitter.run_minimizer_da(
+            pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
+        )
 
     out_dict = {
         "best_chi2": pip.fitter.mle_chi2,

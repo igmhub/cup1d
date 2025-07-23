@@ -902,6 +902,7 @@ class Pipeline(object):
                     log_func_minimize=self.fitter.like.minus_log_prob,
                     p0=p0,
                     zmask=zmask,
+                    restart=restart,
                 )
             else:
                 raise ValueError("type_minimizer must be 'NM' or 'DA'")
@@ -1016,7 +1017,6 @@ class Pipeline(object):
             self.fprint("Running like profile")
 
         for irank in ind_ranks[rank]:
-            print("ranks", irank, rank)
             if rank == 0:
                 self.fprint(irank, max(ind_ranks[rank]))
             shift_cosmo = {

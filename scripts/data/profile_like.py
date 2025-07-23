@@ -12,6 +12,7 @@ def main():
     args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
     # fit_type = "global"
     fit_type = "andreu2"
+    type_minimizer = "NM"
     args.set_baseline(
         fit_type=fit_type, fix_cosmo=True, P1D_type="DESIY1_QMLE3"
     )
@@ -22,7 +23,7 @@ def main():
         args.P1D_type,
         args.fit_type,
         args.emulator_label,
-        "DA",
+        type_minimizer,
     )
 
     if fit_type == "global":
@@ -33,8 +34,8 @@ def main():
         raise ValueError("fit_type must be 'global' or 'andreu2'")
 
     pip = Pipeline(args, out_folder=path_out)
-    p0 = pip.fitter.like.sampling_point_from_parameters().copy()
-    pip.run_profile(args, sigma_cosmo, nelem=10, type_minimizer="DA")
+    # p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+    pip.run_profile(args, sigma_cosmo, nelem=10, type_minimizer=type_minimizer)
 
 
 if __name__ == "__main__":
