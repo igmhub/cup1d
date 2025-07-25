@@ -344,7 +344,8 @@ class Fitter(object):
         rep = 0
         start = time.time()
         for ii in range(nsamples + 1):
-            neval = 1000 * (ii + 1)
+            start1 = time.time()
+            neval = 1000 + 100 * ii
             pini = mle_cube.copy()
             if ii != 0:
                 pini += arr_p0[ii] * sig
@@ -358,7 +359,7 @@ class Fitter(object):
                 method="Nelder-Mead",
                 bounds=((0.0, 1.0),) * npars,
                 options={
-                    "fatol": 1,
+                    "fatol": 0.5,
                     "xatol": 1e-6,
                     "maxiter": neval,
                     "maxfev": neval,
@@ -367,6 +368,21 @@ class Fitter(object):
             print(res, flush=True)
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
             # print(ii, res.x)
+
+            print(
+                "Step and total",
+                np.round(time.time() - start1, 2),
+                np.round(time.time() - start, 2),
+                flush=True,
+            )
+            print(
+                "Minimization improved:",
+                np.round(chi2_ini, 4),
+                np.round(chi2, 4),
+                np.round(_chi2, 4),
+                np.round(chi2 - _chi2, 4),
+                flush=True,
+            )
 
             if _chi2 < chi2:
                 chi2 = _chi2.copy()
@@ -377,14 +393,6 @@ class Fitter(object):
             else:
                 rep += 1
 
-            print("Step took:", np.round(time.time() - start, 2), flush=True)
-            print(
-                "Minimization improved:",
-                np.round(chi2_ini, 4),
-                np.round(chi2, 4),
-                np.round(chi2_ini - chi2, 4),
-                flush=True,
-            )
             # if chi2 does not get better after a few it, stop
             if rep > 3:
                 break
