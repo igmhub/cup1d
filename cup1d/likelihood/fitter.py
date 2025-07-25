@@ -389,7 +389,7 @@ class Fitter(object):
                 break
 
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
-        print("Passed out:" chi2)
+        print("Passed out:", chi2)
         self.set_mle(mle_cube, chi2)
 
     def run_minimizer_da(
