@@ -2052,6 +2052,8 @@ class Likelihood(object):
         """Set the initial conditions for the likelihood from a fit"""
 
         fit_results = np.load(fname, allow_pickle=True).item()
+        print("IC input cube", fit_results["mle_cube"])
+        print("IC input cosmo", fit_results["mle_cosmo_cen"])
         fix_cosmo = self.args.fix_cosmo
         self.args.fix_cosmo = False
         like1 = Likelihood(
