@@ -964,7 +964,7 @@ class Args:
         ]
         self.fid_cont["flat_priors"]["f_SiIIb_SiIII"] = [
             [-1, 1],
-            [-1, 4],
+            [-1, 10],
         ]
 
         # priors

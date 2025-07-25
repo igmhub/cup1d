@@ -2067,7 +2067,14 @@ class Likelihood(object):
             start_from_min=False,
         )
         self.args.fix_cosmo = fix_cosmo
-        out_mle_cube_reformat = fit_results["mle_cube"]
+        ic_mle_cube = fit_results["mle_cube"]
+
+        _ = (ic_mle_cube > 0.95) | (ic_mle_cube < 0.05)
+        print(
+            "Almost out of bounds:",
+            np.array(like1.free_param_names)[_],
+            ic_mle_cube[_],
+        )
 
         # best-fitting star params of full fit (blinded). for profiling, move around them
         mle_cosmo = {}
@@ -2089,14 +2096,12 @@ class Likelihood(object):
             ind = np.argwhere(p.name == np.array(like1.free_param_names))[0, 0]
             # run at fixed cosmo
 
-            if (len(out_mle_cube_reformat) - 2) == len(like1.free_params):
+            if (len(ic_mle_cube) - 2) == len(like1.free_params):
                 val = like1.free_params[ind].value_from_cube(
-                    out_mle_cube_reformat[2:][ind]
+                    ic_mle_cube[2:][ind]
                 )
             else:
-                val = like1.free_params[ind].value_from_cube(
-                    out_mle_cube_reformat[ind]
-                )
+                val = like1.free_params[ind].value_from_cube(ic_mle_cube[ind])
 
             if val <= -11.5:
                 val = -10.5
@@ -2149,7 +2154,7 @@ class Likelihood(object):
             args,
             data_hires=data["extra_P1Ds"],
         )
-        out_mle_cube_reformat = dir_out["mle_cube_reformat"]
+        ic_mle_cube = dir_out["mle_cube_reformat"]
 
         # make a copy of free params, and set their values to the best-fit
         free_params = self.free_params.copy()
@@ -2165,9 +2170,7 @@ class Likelihood(object):
                 znode = args.fid_cont[pname + "_znodes"][ii]
 
             iz = np.argmin(np.abs(like1.data.z - znode))
-            p.value = get_parameters(
-                pname, znode, like1, out_mle_cube_reformat[iz]
-            )
+            p.value = get_parameters(pname, znode, like1, ic_mle_cube[iz])
 
             if verbose:
                 print(

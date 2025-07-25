@@ -344,12 +344,13 @@ class Fitter(object):
         rep = 0
         start = time.time()
         for ii in range(nsamples + 1):
+            neval = 1000 * (ii + 1)
             pini = mle_cube.copy()
             if ii != 0:
                 pini += arr_p0[ii] * sig
 
-            pini[pini <= 0] = 0.05
-            pini[pini >= 1] = 0.95
+            pini[pini <= 0] = 0.025
+            pini[pini >= 1] = 0.975
 
             res = scipy.optimize.minimize(
                 _log_func_minimize,
@@ -359,8 +360,8 @@ class Fitter(object):
                 options={
                     "fatol": 1,
                     "xatol": 1e-6,
-                    "maxiter": 2000,
-                    "maxfev": 2000,
+                    "maxiter": neval,
+                    "maxfev": neval,
                 },
             )
             print(res, flush=True)
@@ -390,6 +391,10 @@ class Fitter(object):
 
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
         print("Passed out:", chi2)
+        _ = (mle_cube > 0.95) | (mle_cube < 0.05)
+        print(
+            "Almost out of bounds:", self.like.free_param_names[_], mle_cube[_]
+        )
         self.set_mle(mle_cube, chi2)
 
     def run_minimizer_da(
