@@ -933,42 +933,43 @@ class Args:
 
         self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
             [-1, 1],
-            [-11, -2.5],
+            [-5, -2.5],
         ]
         self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
             [-1, 1],
-            [2, 9],
+            [3.5, 7],
         ]
 
         self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
             [-1, 1],
-            [-11, -2.5],
+            [-5, -2.5],
         ]
         self.fid_cont["flat_priors"]["s_Lya_SiII"] = [
             [-1, 1],
-            [2, 18],
+            [3.5, 7],
         ]
 
         self.fid_cont["flat_priors"]["f_SiIIa_SiIIb"] = [
             [-1, 4],
-            [-11, 3],
+            [-1, 2],
         ]
         self.fid_cont["flat_priors"]["s_SiIIa_SiIIb"] = [
-            [-1, 4],
-            [0, 6],
+            [-1, 3],
+            [3, 6],
         ]
 
         self.fid_cont["flat_priors"]["f_SiIIa_SiIII"] = [
             [-1, 2],
-            [-1, 4],
+            [0, 3],
         ]
         self.fid_cont["flat_priors"]["f_SiIIb_SiIII"] = [
             [-1, 1],
-            [-1, 10],
+            [0, 3],
         ]
 
         # priors
-        self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-20.0, -0.01]]
+        # -0.03, 75% of all fluctuations
+        self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-12.0, -0.03]]
         self.fid_cont["flat_priors"]["HCD_const"] = [[-1, 1], [-0.2, 1e-6]]
 
 

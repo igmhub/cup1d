@@ -365,21 +365,8 @@ class Fitter(object):
                     "maxfev": neval,
                 },
             )
-            print("normal", res, flush=True)
-            if res.success == False:
-                res = scipy.optimize.minimize(
-                    _log_func_minimize,
-                    res.x,
-                    method="Nelder-Mead",
-                    bounds=((0.0, 1.0),) * npars,
-                    options={
-                        "fatol": 0.5,
-                        "xatol": 1e-6,
-                        "maxiter": neval,
-                        "maxfev": neval,
-                    },
-                )
-                print("inter", res, flush=True)
+            print(res, flush=True)
+
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
             # print(ii, res.x)
 
@@ -411,15 +398,41 @@ class Fitter(object):
             if rep > 3:
                 break
 
+        res.x = mle_chi2.copy()
+        keep = True
+        while keep:
+            chi2_1 = self.like.get_chi2(res.x, zmask=zmask)
+            res = scipy.optimize.minimize(
+                _log_func_minimize,
+                res.x,
+                method="Nelder-Mead",
+                bounds=((0.0, 1.0),) * npars,
+                options={
+                    "fatol": 0.5,
+                    "xatol": 1e-6,
+                    "maxiter": neval,
+                    "maxfev": neval,
+                },
+            )
+            chi2_2 = self.like.get_chi2(res.x, zmask=zmask)
+            print("inter", res, flush=True)
+            print("diff chi2", chi2_1 - chi2_2, flush=True)
+            if res.success == True:
+                keep = False
+            elif (chi2_1 - chi2_2) < 0.5:
+                keep = False
+            else:
+                keep = True
+
+        mle_cube = res.x
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
         print("Passed out:", chi2)
         _ = (mle_cube > 0.95) | (mle_cube < 0.05)
         if np.sum(_) > 0:
             print(
-                "Almost out of bounds:",
-                np.array(self.like.free_param_names)[_],
-                mle_cube[_],
+                "Almost out of bounds:", np.array(self.like.free_param_names)[_]
             )
+            print(mle_cube[_])
         self.set_mle(mle_cube, chi2)
 
     def run_minimizer_da(

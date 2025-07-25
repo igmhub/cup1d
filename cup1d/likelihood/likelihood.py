@@ -2084,14 +2084,16 @@ class Likelihood(object):
         # make a copy of free params, and set their values to the best-fit
         free_params = self.free_params.copy()
         for jj, p in enumerate(free_params):
-            # if p.name not in ["As", "ns"]:
-            #     pname, iistr = split_string(p.name)
-            #     ii = int(iistr)
+            if p.name not in ["As", "ns"]:
+                pname, iistr = split_string(p.name)
+                ii = int(iistr)
 
-            # if (pname + "_znodes") in self.args.fid_igm:
-            #     znode = self.args.fid_igm[pname + "_znodes"][ii]
-            # else:
-            #     znode = self.args.fid_cont[pname + "_znodes"][ii]
+                if (pname + "_znodes") in self.args.fid_igm:
+                    znode = self.args.fid_igm[pname + "_znodes"][ii]
+                else:
+                    znode = self.args.fid_cont[pname + "_znodes"][ii]
+
+                print(p.name, znode)
 
             ind = np.argwhere(p.name == np.array(like1.free_param_names))[0, 0]
             # run at fixed cosmo
