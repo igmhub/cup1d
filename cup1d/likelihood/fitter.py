@@ -398,7 +398,7 @@ class Fitter(object):
             if rep > 3:
                 break
 
-        res.x = mle_chi2.copy()
+        res.x = mle_cube.copy()
         keep = True
         while keep:
             chi2_1 = self.like.get_chi2(res.x, zmask=zmask)
