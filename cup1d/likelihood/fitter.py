@@ -338,9 +338,9 @@ class Fitter(object):
         # perturbations around starting point
         arr_p0 = lhs(npars, samples=nsamples + 1) - 0.5
         # sigma to search around mle_cube
-        sig = 0.1
+        sig = 0.05
 
-        print("Starting NM minimization", flush=True)
+        print("Starting NM minimization, chi2=", chi2, flush=True)
         rep = 0
         start = time.time()
         for ii in range(nsamples + 1):
@@ -357,10 +357,10 @@ class Fitter(object):
                 method="Nelder-Mead",
                 bounds=((0.0, 1.0),) * npars,
                 options={
-                    "fatol": 0.1,
-                    "xatol": 0,
-                    "maxiter": 200000,
-                    "maxfev": 200000,
+                    "fatol": 1,
+                    "xatol": 1e-6,
+                    "maxiter": 2000,
+                    "maxfev": 2000,
                 },
             )
             print(res, flush=True)
