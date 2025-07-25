@@ -55,6 +55,8 @@ def main():
     # file_out = os.path.join(path_out, "best_dircosmo_DA.npy")
     # file_out = os.path.join(path_out, "best_dircosmo_DE.npy")
     # file_out = os.path.join(path_out, "best_dircosmo_DI.npy")
+
+    print("saving IC to:", file_out)
     np.save(file_out, out_dict)
 
     pip.fitter.save_fitter()

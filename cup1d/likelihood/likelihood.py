@@ -141,6 +141,7 @@ class Likelihood(object):
                 "best_dircosmo.npy",
             )
             if os.path.isfile(fname):
+                print("Loading ICs from", fname)
                 self.set_ic_from_fullfit(fname)
             else:
                 print("No best fit found to set ICs:", fname)
