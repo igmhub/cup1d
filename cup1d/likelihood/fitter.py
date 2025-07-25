@@ -419,7 +419,7 @@ class Fitter(object):
             print("diff chi2", chi2_1 - chi2_2, flush=True)
             if res.success == True:
                 keep = False
-            elif (chi2_1 - chi2_2) < 0.25:
+            elif (chi2_1 - chi2_2) < 0.15:
                 keep = False
             else:
                 keep = True
@@ -939,7 +939,7 @@ class Fitter(object):
         # dict_out["like"]["cosmo_fid_label"] = self.like.fid
         dict_out["like"]["emu_cov_factor"] = self.like.emu_cov_factor
         dict_out["like"]["free_param_names"] = self.like.free_param_names
-        dict_out["like"]["free_params"] = self.like.free_params
+        dict_out["like"]["free_params"] = {}
         for par in self.like.free_params:
             dict_out["like"]["free_params"][par.name] = {}
             dict_out["like"]["free_params"][par.name]["value"] = par.value
