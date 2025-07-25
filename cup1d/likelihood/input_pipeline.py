@@ -937,7 +937,7 @@ class Args:
         ]
         self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
             [-1, 1],
-            [2, 5.75],
+            [2, 9],
         ]
 
         self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
@@ -968,7 +968,7 @@ class Args:
         ]
 
         # priors
-        self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-20.0, -0.05]]
+        self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-20.0, -0.01]]
         self.fid_cont["flat_priors"]["HCD_const"] = [[-1, 1], [-0.2, 1e-6]]
 
 

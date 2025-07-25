@@ -365,7 +365,21 @@ class Fitter(object):
                     "maxfev": neval,
                 },
             )
-            print(res, flush=True)
+            print("normal", res, flush=True)
+            if res.success == False:
+                res = scipy.optimize.minimize(
+                    _log_func_minimize,
+                    res.x,
+                    method="Nelder-Mead",
+                    bounds=((0.0, 1.0),) * npars,
+                    options={
+                        "fatol": 0.5,
+                        "xatol": 1e-6,
+                        "maxiter": neval,
+                        "maxfev": neval,
+                    },
+                )
+                print("inter", res, flush=True)
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
             # print(ii, res.x)
 
