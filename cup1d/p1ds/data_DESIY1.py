@@ -4,6 +4,49 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
+from cup1d.utils.utils import get_path_repo
+
+
+def set_p1d_filename(data_label="QMLE3"):
+    """Set path to DESI DR1 P1D file"""
+
+    path_in_challenge = os.path.join(
+        os.path.dirname(get_path_repo("cup1d")), "data", "in_DESI_DR1"
+    )
+
+    if data_label.endswith("QMLE3"):
+        p1d_fname = os.path.join(
+            path_in_challenge,
+            "qmle_measurement",
+            "DataProducts",
+            "v3",
+            "desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits",
+        )
+    elif data_label.endswith("QMLE"):
+        p1d_fname = os.path.join(
+            path_in_challenge,
+            "qmle_measurement",
+            "DataProducts",
+            "v3",
+            "desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits",
+        )
+    elif data_label.endswith("FFT_dir"):
+        p1d_fname = os.path.join(
+            path_in_challenge,
+            "fft_measurement",
+            "p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits",
+        )
+    elif data_label.endswith("FFT"):
+        p1d_fname = os.path.join(
+            path_in_challenge,
+            "fft_measurement",
+            "p1d_fft_y1_measurement_kms_v7.fits",
+        )
+    else:
+        raise ValueError(
+            "data_label " + data_label + " not implemented for DESI_DR1"
+        )
+    return p1d_fname
 
 
 def compute_cov(syst, type_measurement="QMLE", type_analysis="red"):
@@ -122,15 +165,17 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red"):
 class P1D_DESIY1(BaseDataP1D):
     def __init__(
         self,
-        p1d_fname=None,
-        z_min=0,
-        z_max=10,
+        data_label=None,
+        z_min=0.0,
+        z_max=10.0,
         cov_syst_type="red",
     ):
         """Read measured P1D from file.
         - full_cov: for now, no covariance between redshift bins
         - z_min: z=2.0 bin is not recommended by Karacayli2024
         - z_max: maximum redshift to include"""
+
+        p1d_fname = set_p1d_filename(data_label=data_label)
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         res = read_from_file(p1d_fname=p1d_fname, cov_syst_type=cov_syst_type)

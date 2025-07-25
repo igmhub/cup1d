@@ -13,6 +13,16 @@ import cup1d, lace
 from lace.cosmo import camb_cosmo
 from cup1d.utils.utils import create_print_function, purge_chains
 
+from cup1d.utils.various_dicts import (
+    param_dict,
+    metal_lines_latex,
+    param_dict_rev,
+    cosmo_params,
+    blob_strings,
+    blob_strings_orig,
+    conv_strings,
+)
+
 
 class Fitter(object):
     """Wrapper around an emcee sampler for Lyman alpha likelihood"""
@@ -125,9 +135,6 @@ class Fitter(object):
         # Figure out what extra information will be provided as blobs
         self.blobs_dtype = self.like.theory.get_blobs_dtype()
         self.mle = None
-
-        # set blinding
-        self.set_blinding()
 
     def set_truth(self):
         """Set up dictionary with true values of cosmological
@@ -267,7 +274,9 @@ class Fitter(object):
                 self.set_mle(map_chain, map_chi2)
 
                 # apply masking (only to star parameters)
-                self.blobs = self.apply_blinding(self.blobs, sample="chains")
+                self.blobs = self.like.apply_blinding(
+                    self.blobs, sample="chains"
+                )
 
         return sampler
 
@@ -347,8 +356,14 @@ class Fitter(object):
                 pini,
                 method="Nelder-Mead",
                 bounds=((0.0, 1.0),) * npars,
-                options={"fatol": 0.1, "xatol": 0},
+                options={
+                    "fatol": 0.1,
+                    "xatol": 0,
+                    "maxiter": 200000,
+                    "maxfev": 200000,
+                },
             )
+            print(res, flush=True)
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
             # print(ii, res.x)
 
@@ -446,6 +461,7 @@ class Fitter(object):
                 "options": {"fatol": 0.1, "xatol": 0},
             },
         )
+        print(res, flush=True)
 
         _chi2 = self.like.get_chi2(res.x, zmask=zmask)
 
@@ -481,7 +497,7 @@ class Fitter(object):
             "n_star": mle_cosmo_cen["n_star"] + shift_cosmo["n_star"],
         }
         # unblind internally to apply shift consistently
-        target = self.apply_unblinding(mle_cosmo_cen)
+        target = self.like.apply_unblinding(mle_cosmo_cen)
         target["Delta2_star"] += shift_cosmo["Delta2_star"]
         target["n_star"] += shift_cosmo["n_star"]
 
@@ -550,7 +566,7 @@ class Fitter(object):
         # self.mle_cosmo = self.get_cosmo_err(log_func_minimize)
 
         # apply blinding
-        self.mle_cosmo = self.apply_blinding(self.mle_cosmo, sample="mle")
+        self.mle_cosmo = self.like.apply_blinding(self.mle_cosmo, sample="mle")
 
         self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(self.mle_cube)
 
@@ -562,10 +578,10 @@ class Fitter(object):
 
         if "A_s" not in self.paramstrings[0]:
             return
-        self.mle = self.apply_blinding(self.mle, conv=True)
+        self.mle = self.like.apply_blinding(self.mle, conv=True)
 
-        for key in self.blind:
-            if self.blind[key] != 0:
+        for key in self.like.blind:
+            if self.like.blind[key] != 0:
                 print("Results are blinded")
             else:
                 print("Results are not blinded")
@@ -823,52 +839,6 @@ class Fitter(object):
 
         return
 
-    def set_blinding(self):
-        """Set the blinding parameters"""
-        blind_prior = {"Delta2_star": 0.05, "n_star": 0.01, "alpha_star": 0.005}
-        if self.like.data.apply_blinding:
-            seed = int.from_bytes(
-                self.like.data.blinding.encode("utf-8"), byteorder="big"
-            )
-            rng = np.random.default_rng(seed)
-        self.blind = {}
-        for key in blind_prior:
-            if self.like.data.apply_blinding:
-                self.blind[key] = rng.normal(0, blind_prior[key])
-            else:
-                self.blind[key] = 0
-
-    def apply_blinding(self, dict_cosmo, conv=False, sample=None):
-        """Apply blinding to the dict_cosmo"""
-
-        if self.like.data.apply_blinding:
-            if sample is not None:
-                print("Blinding " + sample)
-            for key in self.blind:
-                if conv:
-                    key2 = conv_strings[key]
-                else:
-                    key2 = key
-
-                try:
-                    dict_cosmo[key2] += self.blind[key]
-                except:
-                    pass
-
-        return dict_cosmo
-
-    def apply_unblinding(self, dict_cosmo, conv=False):
-        """Apply unblinding to the dict_cosmo"""
-        out_dict = copy.deepcopy(dict_cosmo)
-        for key in self.blind:
-            if conv:
-                key2 = conv_strings[key]
-            else:
-                key2 = key
-            if key2 in dict_cosmo:
-                out_dict[key2] = dict_cosmo[key2] - self.blind[key]
-        return out_dict
-
     def get_best_fit(self, delta_lnprob_cut=None, stat_best_fit="mean"):
         """Return an array of best fit values (mean) from the MCMC chain,
         in unit likelihood space.
@@ -897,9 +867,9 @@ class Fitter(object):
         dict_out = {}
 
         # ARGS
-        dict_out["args"] = {}
-        for key in self.like.args:
-            dict_out["args"][key] = self.like.args[key]
+        # dict_out["args"] = {}
+        # for key in self.like.args:
+        #     dict_out["args"][key] = self.like.args[key]
 
         # DATA
         dict_out["data"] = {}
@@ -921,7 +891,7 @@ class Fitter(object):
 
         # LIKELIHOOD
         dict_out["like"] = {}
-        dict_out["like"]["cosmo_fid_label"] = self.like.fid
+        # dict_out["like"]["cosmo_fid_label"] = self.like.fid
         dict_out["like"]["emu_cov_factor"] = self.like.emu_cov_factor
         dict_out["like"]["free_params"] = self.like.free_param_names
 
@@ -940,24 +910,18 @@ class Fitter(object):
         dict_out["IGM"] = {}
         zs = dict_out["data"]["zs"]
         dict_out["IGM"]["z"] = zs
-        dict_out["IGM"][
-            "tau_eff"
-        ] = self.like.theory.model_igm.F_model.get_tau_eff(
-            zs, like_params=like_params
-        )
-        dict_out["IGM"]["gamma"] = self.like.theory.model_igm.T_model.get_gamma(
-            zs, like_params=like_params
-        )
-        dict_out["IGM"][
-            "sigT_kms"
-        ] = self.like.theory.model_igm.T_model.get_sigT_kms(
-            zs, like_params=like_params
-        )
-        dict_out["IGM"][
-            "kF_kms"
-        ] = self.like.theory.model_igm.P_model.get_kF_kms(
-            zs, like_params=like_params
-        )
+        dict_out["IGM"]["tau_eff"] = self.like.theory.model_igm.models[
+            "F_model"
+        ].get_tau_eff(zs, like_params=like_params)
+        dict_out["IGM"]["gamma"] = self.like.theory.model_igm.models[
+            "T_model"
+        ].get_gamma(zs, like_params=like_params)
+        dict_out["IGM"]["sigT_kms"] = self.like.theory.model_igm.models[
+            "T_model"
+        ].get_sigT_kms(zs, like_params=like_params)
+        dict_out["IGM"]["kF_kms"] = self.like.theory.model_igm.models[
+            "P_model"
+        ].get_kF_kms(zs, like_params=like_params)
 
         # NUISANCE
         dict_out["nuisance"] = {}
@@ -1028,130 +992,3 @@ class Fitter(object):
         out_file = self.save_directory + "/fitter_results.npy"
         print("Saving chain to " + out_file)
         np.save(out_file, dict_out)
-
-
-## Dictionary to convert likelihood parameters into latex strings
-param_dict = {
-    "Delta2_p": "$\Delta^2_p$",
-    "mF": "$F$",
-    "gamma": "$\gamma$",
-    "sigT_Mpc": "$\sigma_T$",
-    "kF_Mpc": "$k_F$",
-    "n_p": "$n_p$",
-    "Delta2_star": "$\Delta^2_\star$",
-    "n_star": "$n_\star$",
-    "alpha_star": "$\\alpha_\star$",
-    "g_star": "$g_\star$",
-    "f_star": "$f_\star$",
-    "H0": "$H_0$",
-    "mnu": "$\Sigma m_\\nu$",
-    "As": "$A_s$",
-    "ns": "$n_s$",
-    "nrun": "$n_\mathrm{run}$",
-    "ombh2": "$\omega_b$",
-    "omch2": "$\omega_c$",
-    "cosmomc_theta": "$\\theta_{MC}$",
-}
-
-for ii in range(11):
-    param_dict["tau_eff_" + str(ii)] = "$\tau_{\rm eff_" + str(ii) + "}$"
-    param_dict["sigT_kms_" + str(ii)] = "$\sigma_{\rm T_" + str(ii) + "}$"
-    param_dict["gamma_" + str(ii)] = "$\gamma_" + str(ii) + "$"
-    param_dict["kF_kms_" + str(ii)] = "$k_F_" + str(ii) + "$"
-    param_dict["R_coeff_" + str(ii)] = "$R_" + str(ii) + "$"
-    param_dict["ln_SN_" + str(ii)] = "$\log \mathrm{SN}_" + str(ii) + "$"
-    param_dict["ln_AGN_" + str(ii)] = "$\log \mathrm{AGN}_" + str(ii) + "$"
-    for jj in range(1, 5):
-        param_dict["HCD_damp" + str(jj) + "_" + str(ii)] = (
-            "$f_{\rm HCD" + str(jj) + "}_" + str(ii) + "$"
-        )
-    param_dict["HCD_const_" + str(ii)] = "$c_{\rm HCD}_" + str(ii) + "$"
-
-
-metal_lines = [
-    "Lya_SiIII",
-    "Lya_SiII",
-    "SiIIa_SiIIb",
-    "SiIIa_SiIII",
-    "SiIIb_SiIII",
-    "CIVa_CIVb",
-    "MgIIa_MgIIb",
-]
-metal_lines_latex = {
-    "Lya_SiIII": "$\mathrm{Ly}\alpha-\mathrm{SiIII}$",
-    "Lya_SiII": "$\mathrm{Ly}\alpha-\mathrm{SiII}$",
-    "Lya_SiIIa": "$\mathrm{Ly}\alpha-\mathrm{SiIIa}$",
-    "Lya_SiIIb": "$\mathrm{Ly}\alpha-\mathrm{SiIIb}$",
-    "Lya_SiIIc": "$\mathrm{Ly}\alpha-\mathrm{SiIIc}$",
-    "SiIIa_SiIIb": "$\mathrm{SiIIa}_\mathrm{SiIIb}$",
-    "SiIIa_SiIII": "$\mathrm{SiIIa}_\mathrm{SiIII}$",
-    "SiIIb_SiIII": "$\mathrm{SiIIb}_\mathrm{SiIII}$",
-    "SiII_SiIII": "$\mathrm{SiII}_\mathrm{SiIII}$",
-    "SiIIc_SiIII": "$\mathrm{SiIIc}_\mathrm{SiIII}$",
-    "CIVa_CIVb": "$\mathrm{CIVa}_\mathrm{CIVb}$",
-    "MgIIa_MgIIb": "$\mathrm{MgIIa}_\mathrm{MgIIb}$",
-}
-for metal_line in metal_lines:
-    for ii in range(12):
-        param_dict["f_" + metal_line + "_" + str(ii)] = (
-            "$\mathrm{ln}\,f("
-            + metal_lines_latex[metal_line]
-            + "_"
-            + str(ii)
-            + ")$"
-        )
-        param_dict["s_" + metal_line + "_" + str(ii)] = (
-            "$\mathrm{ln}\,s("
-            + metal_lines_latex[metal_line]
-            + "_"
-            + str(ii)
-            + ")$"
-        )
-        param_dict["p_" + metal_line + "_" + str(ii)] = (
-            "$p(" + metal_lines_latex[metal_line] + "_" + str(ii) + ")$"
-        )
-
-param_dict_rev = {v: k for k, v in param_dict.items()}
-
-
-## List of all possibly free cosmology params for the truth array
-## for chainconsumer plots
-cosmo_params = [
-    "Delta2_star",
-    "n_star",
-    "alpha_star",
-    "f_star",
-    "g_star",
-    "cosmomc_theta",
-    "H0",
-    "mnu",
-    "As",
-    "ns",
-    "nrun",
-    "ombh2",
-    "omch2",
-]
-
-## list of strings for blobs
-blob_strings = [
-    "$\Delta^2_\star$",
-    "$n_\star$",
-    "$\\alpha_\star$",
-    "$f_\star$",
-    "$g_\star$",
-    "$H_0$",
-]
-blob_strings_orig = [
-    "Delta2_star",
-    "n_star",
-    "alpha_star",
-    "f_star",
-    "g_star",
-    "H0",
-]
-
-conv_strings = {
-    "Delta2_star": "$\Delta^2_\star$",
-    "n_star": "$n_\star$",
-    "alpha_star": "$\\alpha_\star$",
-}

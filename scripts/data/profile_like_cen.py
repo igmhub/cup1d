@@ -11,12 +11,10 @@ from cup1d.utils.utils import get_path_repo
 def main():
     # fit_type = "global"
     fit_type = "andreu2"
-    # type_minimizer = "NM"
-    type_minimizer = "DA"
-    args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
-    args.set_baseline(
-        fit_type=fit_type, fix_cosmo=False, P1D_type="DESIY1_QMLE3"
-    )
+    type_minimizer = "NM"
+    # type_minimizer = "DA"
+    args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
+    args.set_baseline(fit_type=fit_type, fix_cosmo=False)
     path_out = os.path.join(
         os.path.dirname(get_path_repo("cup1d")),
         "data",
@@ -38,7 +36,7 @@ def main():
             pip.fitter.like.minus_log_prob,
             p0=input_pars,
             restart=True,
-            nsamples=4,
+            nsamples=0,
         )
     else:
         pip.fitter.run_minimizer_da(
@@ -49,6 +47,7 @@ def main():
         "best_chi2": pip.fitter.mle_chi2,
         "mle_cosmo_cen": pip.fitter.mle_cosmo,
         "mle_cube": pip.fitter.mle_cube,
+        "mle": pip.fitter.mle,
     }
 
     file_out = os.path.join(path_out, "best_dircosmo.npy")
@@ -57,6 +56,8 @@ def main():
     # file_out = os.path.join(path_out, "best_dircosmo_DE.npy")
     # file_out = os.path.join(path_out, "best_dircosmo_DI.npy")
     np.save(file_out, out_dict)
+
+    pip.fitter.save_fitter()
 
 
 if __name__ == "__main__":

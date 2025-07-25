@@ -1,4 +1,5 @@
 import os
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
@@ -46,6 +47,14 @@ def is_number_string(value):
         return True
     except ValueError:
         return False
+
+
+def split_string(s):
+    match = re.match(r"^(.*)_(\d+)$", s)
+    if match:
+        return match.group(1), match.group(2)
+    else:
+        return s, None
 
 
 # Function to generate n discrete colors from any continuous colormap

@@ -1,328 +1,10 @@
-import sys, os, configargparse
+import sys
+import os
 import numpy as np
 from dataclasses import dataclass, field
 from typing import Optional
 
-from cup1d.utils.utils import (
-    create_print_function,
-    mpi_hello_world,
-    get_path_repo,
-)
-
-
-def parse_args():
-    """
-    Parse input arguments
-
-    Returns
-    -------
-    args : Namespace
-        Namespace of input arguments
-    """
-    parser = configargparse.ArgumentParser(
-        description="Passing options to sampler"
-    )
-
-    # emulator
-    parser.add_argument(
-        "--emulator_label",
-        default=None,
-        choices=[
-            "Pedersen21",
-            "Pedersen21_ext",
-            "Pedersen21_ext8",
-            "Pedersen23",
-            "Pedersen23_ext",
-            "Pedersen23_ext8",
-            "CH24",
-            "Cabayol23",
-            "Cabayol23_extended",
-            "Cabayol23+",  # recommended for mpg
-            "Cabayol23+_extended",  # recommended for mpg small scales
-            "Nyx_v0",
-            # "Nyx_v0_extended",
-            "Nyx_alphap",  # recommended for nyx
-        ],
-        required=True,
-        help="Type of emulator to be used",
-    )
-    parser.add_argument(
-        "--data_label",
-        default=None,
-        type=str,
-        required=True,
-        help="Input simulation to create mock P1Ds",
-    )
-    parser.add_argument(
-        "--data_label_hires",
-        default=None,
-        type=str,
-        help="Input simulation to create mock P1Ds",
-    )
-    parser.add_argument(
-        "--z_min",
-        type=float,
-        default=2,
-        help="Minimum redshift of P1D measurements to be analyzed",
-    )
-    parser.add_argument(
-        "--z_max",
-        type=float,
-        default=4.5,
-        help="Maximum redshift of P1D measurements to be analyzed",
-    )
-    parser.add_argument(
-        "--fid_igm_label",
-        default=None,
-        type=str,
-        required=True,
-        help="Input simulation to set fiducial IGM model",
-    )
-    parser.add_argument(
-        "--true_igm_label",
-        default=None,
-        type=str,
-        required=True,
-        help="Input simulation to set IGM model to create mock",
-    )
-    parser.add_argument(
-        "--n_igm",
-        type=int,
-        default=2,
-        help="Number of free parameters for IGM model",
-    )
-    parser.add_argument(
-        "--n_metals",
-        type=int,
-        default=0,
-        help="Number of free parameters for SiIII metal contamination",
-    )
-    parser.add_argument(
-        "--true_SiIII",
-        type=float,
-        default=-10,
-        help="Metal contamination to create mock",
-    )
-    parser.add_argument(
-        "--fid_SiIII",
-        type=float,
-        default=-10,
-        help="Metal contamination to set fiducial",
-    )
-    parser.add_argument(
-        "--true_SiII",
-        type=float,
-        default=-10,
-        help="Metal contamination to create mock",
-    )
-    parser.add_argument(
-        "--fid_SiII",
-        type=float,
-        default=-10,
-        help="Metal contamination to set fiducial",
-    )
-    parser.add_argument(
-        "--true_HCD",
-        type=float,
-        default=-10,
-        help="HCD contamination to create mock",
-    )
-    parser.add_argument(
-        "--fid_HCD",
-        type=float,
-        default=-6,
-        help="HCD contamination to set fiducial",
-    )
-
-    parser.add_argument(
-        "--n_dla",
-        type=int,
-        default=0,
-        help="Number of free parameters for DLA contamination",
-    )
-
-    parser.add_argument(
-        "--fid_cosmo_label",
-        default=None,
-        type=str,
-        required=True,
-        help="Input simulation to set fiducial cosmology",
-    )
-    parser.add_argument(
-        "--true_cosmo_label",
-        default=None,
-        type=str,
-        required=True,
-        help="Input simulation to set true cosmology for mock",
-    )
-
-    parser.add_argument(
-        "--drop_sim",
-        action="store_true",
-        help="Drop data_label simulation from the training set",
-    )
-
-    # P1D
-    parser.add_argument(
-        "--apply_smoothing",
-        default=None,
-        required=False,
-        help="Apply smoothing to data, None for whatever is best for selected emulator",
-    )
-
-    # likelihood
-    parser.add_argument(
-        "--cov_label",
-        type=str,
-        default="Chabanier2019",
-        choices=["Chabanier2019", "QMLE_Ohio"],
-        required=False,
-        help="Data covariance",
-    )
-    parser.add_argument(
-        "--cov_label_hires",
-        type=str,
-        default="Karacayli2022",
-        choices=["Karacayli2022"],
-        required=False,
-        help="Data covariance for high-res data",
-    )
-    parser.add_argument(
-        "--add_noise",
-        action="store_true",
-        help="Add noise to P1D mock according to covariance matrix",
-    )
-    parser.add_argument(
-        "--seed_noise",
-        type=int,
-        default=0,
-        help="Seed for noise",
-    )
-    parser.add_argument(
-        "--fix_cosmo",
-        action="store_true",
-        help="Fix cosmological parameters while sampling",
-    )
-    parser.add_argument(
-        "--vary_alphas",
-        action="store_true",
-        help="Fit running power spectrum",
-    )
-
-    parser.add_argument(
-        "--version",
-        default="v3",
-        help="Version of the pipeline",
-    )
-
-    parser.add_argument(
-        "--prior_Gauss_rms",
-        default=None,
-        help="Width of Gaussian prior",
-    )
-    parser.add_argument(
-        "--emu_cov_factor",
-        type=float,
-        default=0,
-        help="scale contribution of emulator covariance",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="print information",
-    )
-
-    parser.add_argument(
-        "--test",
-        action="store_true",
-        help="Run test job",
-    )
-
-    parser.add_argument(
-        "--explore",
-        action="store_true",
-        help="Save all chains",
-    )
-
-    parser.add_argument(
-        "--parallel",
-        action="store_true",
-        help="Parallelize",
-    )
-
-    parser.add_argument(
-        "--n_burn_in",
-        type=int,
-        default=0,
-        help="For emcee, n_burn_in",
-    )
-    parser.add_argument(
-        "--n_steps",
-        type=int,
-        default=0,
-        help="For emcee, n_steps",
-    )
-
-    #######################
-    # print args
-
-    args = parser.parse_args()
-    mpi_hello_world()
-
-    fprint = create_print_function(verbose=self.verbose)
-    fprint("--- print options from parser ---")
-    fprint(args)
-    fprint("----------")
-    fprint(parser.format_values())
-    fprint("----------")
-
-    self.archive = None
-    dict_training_set = {
-        "Pedersen21": "Pedersen21",
-        "Pedersen21_ext": "Cabayol23",
-        "Pedersen21_ext8": "Cabayol23",
-        "Pedersen23": "Pedersen21",
-        "Pedersen23_ext": "Cabayol23",
-        "Pedersen23_ext8": "Cabayol23",
-        "CH24": "Cabayol23",
-        "Cabayol23": "Cabayol23",
-        "Cabayol23_extended": "Cabayol23",
-        "Cabayol23+": "Cabayol23",
-        "Cabayol23+_extended": "Cabayol23",
-        "Nyx_v0": "Nyx23_Oct2023",
-        # "Nyx_v0_extended": "Nyx23_Oct2023",
-        "Nyx_alphap": "Nyx23_Oct2023",
-    }
-    dict_apply_smoothing = {
-        "Pedersen21": False,
-        "Pedersen21_ext": False,
-        "Pedersen21_ext8": False,
-        "Pedersen23": True,
-        "Pedersen23_ext": True,
-        "Pedersen23_ext8": True,
-        "CH24": True,
-        "Cabayol23": True,
-        "Cabayol23_extended": True,
-        "Cabayol23+": True,
-        "Cabayol23+_extended": True,
-        "Nyx_v0": True,
-        # "Nyx_v0_extended": True,
-        "Nyx_alphap": True,
-    }
-
-    self.training_set = dict_training_set[self.emulator_label]
-    if self.apply_smoothing is None:
-        self.apply_smoothing = dict_apply_smoothing[self.emulator_label]
-    else:
-        if self.apply_smoothing == "True":
-            self.apply_smoothing = True
-        else:
-            self.apply_smoothing = False
-
-    if self.test:
-        self.explore = True
-
-    return args
+from cup1d.utils.utils import get_path_repo
 
 
 @dataclass
@@ -331,120 +13,133 @@ class Args:
     Class to store input arguments
     """
 
-    archive: str | None = None
-    emulator: str | None = None
-    training_set: str = "Pedersen21"
-    nyx_training_set: str = "models_Nyx_Mar2025_with_CGAN_val_3axes"
-    emulator_label: str = "CH24_nyxcen_gpr"
-    data_label: str = "mpg_central"
-    p1d_fname: str | None = None
-    cov_syst_type: str = "red"
+    data_label: str = "DESIY1_QMLE3"
     data_label_hires: str | None = None
     z_min: float = 0
     z_max: float = 10
-    ic_correction: bool = False
-    fid_cosmo_label: str = "mpg_central"
-    true_cosmo_label: str | None = None
-    fix_cosmo: bool = False
-    drop_sim: bool = False
+    emulator_label: str = "CH24_mpgcen_gpr"
+    drop_sim: str | None = None
+    true_cosmo_label: str | None = "Planck18"
+    igm_params: list[str] = field(
+        default_factory=lambda: [
+            "tau_eff",
+            "sigT_kms",
+            "gamma",
+            "kF_kms",
+        ]
+    )
+    true_igm: dict = field(
+        default_factory=lambda: {
+            "priors": "hc",
+            "label_mF": "mpg_central",
+            "label_T": "mpg_central",
+            "label_kF": "mpg_central",
+            "n_tau_eff": 0,
+            "n_sigT_kms": 0,
+            "n_gamma": 0,
+            "n_kF_kms": 0,
+        }
+    )
+    fid_igm: dict = field(
+        default_factory=lambda: {
+            "priors": "hc",
+            "label_mF": "mpg_central",
+            "label_T": "mpg_central",
+            "label_kF": "mpg_central",
+            "n_tau_eff": 0,
+            "n_sigT_kms": 0,
+            "n_gamma": 0,
+            "n_kF_kms": 0,
+        }
+    )
+    cont_params: dict = field(
+        default_factory=lambda: {
+            "f_Lya_SiIII": [0, -11.5],
+            "s_Lya_SiIII": [0, 2],
+            "f_Lya_SiII": [0, -11.5],
+            "s_Lya_SiII": [0, 2],
+            "f_SiIIa_SiIIb": [0, -11.5],
+            "s_SiIIa_SiIIb": [0, 2],
+            "f_SiIIa_SiIII": [0, 0],
+            "f_SiIIb_SiIII": [0, 0],
+        }
+    )
+    true_cont: dict = field(
+        default_factory=lambda: {"hcd_model_type": "new_rogers"}
+    )
+    fid_cont: dict = field(
+        default_factory=lambda: {"hcd_model_type": "new_rogers"}
+    )
+    syst_params: dict = field(
+        default_factory=lambda: {
+            "res": 0,
+        }
+    )
+    true_syst: dict = field(
+        default_factory=lambda: {
+            "res_model_type": "pivot",
+            "R_coeff": [0, 0],
+            "n_res": 0,
+        }
+    )
+    fid_syst: dict = field(
+        default_factory=lambda: {
+            "res_model_type": "pivot",
+            "R_coeff": [0, 0],
+            "n_res": 0,
+        }
+    )
     apply_smoothing: bool = False
     cov_label: str = "Chabanier2019"
     cov_label_hires: str = "Karacayli2022"
+    cov_syst_type: str = "red"
+    z_star: float = 3
+    kp_kms: float = 0.009
     use_star_priors: Optional[dict] = None
     add_noise: bool = False
     seed_noise: int = 0
+    verbose: bool = True
+    ic_correction: bool = False
+    fid_cosmo_label: str = "mpg_central"
+    fix_cosmo: bool = False
     vary_alphas: bool = False
     prior_Gauss_rms: float | None = None
     emu_cov_factor: int | None = 1
     cov_factor: int = 1
-    emu_cov_type: str = "full"
-    verbose: bool = True
+    emu_cov_type: str = "block"
     test: bool = False
     explore: bool = False
     parallel: bool = True
     n_burn_in: int = 0
     n_steps: int = 0
-    z_star: float = 3
-    kp_kms: float = 0.009
-    fid_igm: dict = field(default_factory=lambda: {})
-    true_igm: dict = field(default_factory=lambda: {})
-    fid_cont: dict = field(default_factory=lambda: {})
-    true_cont: dict = field(default_factory=lambda: {})
-    fid_syst: dict = field(default_factory=lambda: {})
-    true_syst: dict = field(default_factory=lambda: {})
+    out_folder: str | None = "."
     Gauss_priors: dict | None = None
-    metal_lines: list[str] = field(
-        default_factory=lambda: [
-            "Lya_SiIII",
-            "Lya_SiII",
-            # "Lya_SiIIa",
-            # "Lya_SiIIb",
-            # "Lya_SiIIc",
-            "SiIIa_SiIIb",
-            "SiIIa_SiIII",
-            "SiIIb_SiIII",
-            # "SiII_SiIII",
-            # "SiIIc_SiIII",
-            # "CIVa_CIVb",
-            # "MgIIa_MgIIb",
-        ]
-    )
 
     def __post_init__(self):
-        # Setting up fiducial and true values of IGM parameters
-        igms = [self.fid_igm, self.true_igm]
-        for ii in range(2):
-            igms[ii]["priors"] = "hc"
-            igms[ii]["label_mF"] = "mpg_central"
-            igms[ii]["label_T"] = "mpg_central"
-            igms[ii]["label_kF"] = "mpg_central"
-            igms[ii]["n_tau"] = 1
-            igms[ii]["n_sigT"] = 1
-            igms[ii]["n_gamma"] = 1
-            igms[ii]["n_kF"] = 1
+        """Initialize some parameters"""
+        self.check_emulator_label()
+        if "nyx" in self.emulator_label:
+            self.training_set = "models_Nyx_Mar2025_with_CGAN_val_3axes"
+        elif "mpg" in self.emulator_label:
+            self.training_set = "Cabayol23"
+        else:
+            self.training_set = "Pedersen21"
 
-        # Setting up fiducial and true values of nuisance parameters
-        conts = [self.fid_cont, self.true_cont]
-        for ii in range(2):
-            # each metal line
-            for metal_line in self.metal_lines:
-                conts[ii]["f_" + metal_line] = [0, -11.5]
-                conts[ii]["s_" + metal_line] = [0, -9]
-                conts[ii]["p_" + metal_line] = [0, 1]
-                conts[ii]["n_f_" + metal_line] = 0
-                conts[ii]["n_s_" + metal_line] = 0
-                conts[ii]["n_p_" + metal_line] = 0
+        if self.true_cont["hcd_model_type"] == "new_rogers":
+            for jj in range(1, 5):
+                self.cont_params["HCD_damp" + str(jj)] = [0, -11.5]
+            self.cont_params["HCD_const"] = [0, 0]
+        ##
+        for key in self.cont_params.keys():
+            self.true_cont[key] = self.cont_params[key]
+            self.true_cont["n_" + key] = self.cont_params[key]
 
-            # same for dlas
-            conts[ii]["hcd_model_type"] = "new"
-            conts[ii]["n_d_dla1"] = 0
-            conts[ii]["HCD_damp1"] = [0, 0]
+        # # and others
+        # self.true_cont["n_sn"] = 0
+        # self.true_cont["SN"] = [0, -4]
 
-            conts[ii]["n_s_dla1"] = 0
-            conts[ii]["HCD_scale1"] = [0, 0]
-
-            conts[ii]["n_d_dla2"] = 0
-            conts[ii]["HCD_damp2"] = [0, 0]
-
-            conts[ii]["n_s_dla2"] = 0
-            conts[ii]["HCD_scale2"] = [0, 0]
-
-            conts[ii]["n_c_dla"] = 0
-            conts[ii]["HCD_const"] = [0, 0]
-
-            # and others
-            conts[ii]["n_sn"] = 0
-            conts[ii]["SN"] = [0, -4]
-
-            conts[ii]["n_agn"] = 0
-            conts[ii]["AGN"] = [0, -5.5]
-
-        # Setting up fiducial and true values of systematic parameters
-        systs = [self.fid_syst, self.true_syst]
-        for ii in range(2):
-            systs[ii]["res_model_type"] = "pivot"
-            systs[ii]["n_res"] = 0
-            systs[ii]["R_coeff"] = [0, 0]
+        # self.true_cont["n_agn"] = 0
+        # self.true_cont["AGN"] = [0, -5.5]
 
     def check_emulator_label(self):
         avail_emulator_label = [
@@ -486,6 +181,8 @@ class Args:
         """
         self.ic_from_file = None
         self.fit_type = fit_type
+        self.fid_syst["n_res"] = 0
+
         if fit_type not in [
             "andreu2",
             "global",
@@ -496,14 +193,12 @@ class Args:
             "andreu",
         ]:
             raise ValueError("fit_type " + fit_type + " not implemented")
+
         if P1D_type.startswith("DESIY1"):
             self.P1D_type = P1D_type
-            self.true_igm_label = None
-            self.data_label = "DESIY1"
             self.cov_syst_type = "red"
             self.z_min = 2.1
             self.z_max = 4.3
-            self.true_cosmo_label = None
 
             path_in_challenge = os.path.join(
                 os.path.dirname(get_path_repo("cup1d")), "data", "in_DESI_DR1"
@@ -513,44 +208,21 @@ class Args:
                 "data",
                 "out_DESI_DR1",
             )
-            if P1D_type.endswith("QMLE3"):
-                self.p1d_fname = os.path.join(
-                    path_in_challenge,
-                    "qmle_measurement",
-                    "DataProducts",
-                    "v3",
-                    "desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits",
-                )
-            elif P1D_type.endswith("QMLE"):
-                self.p1d_fname = os.path.join(
-                    path_in_challenge,
-                    "qmle_measurement",
-                    "DataProducts",
-                    "v3",
-                    "desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits",
-                )
-            elif P1D_type.endswith("FFT_dir"):
-                self.p1d_fname = os.path.join(
-                    path_in_challenge,
-                    "fft_measurement",
-                    "p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits",
-                )
-            elif P1D_type.endswith("FFT"):
-                self.p1d_fname = os.path.join(
-                    path_in_challenge,
-                    "fft_measurement",
-                    "p1d_fft_y1_measurement_kms_v7.fits",
-                )
-            else:
-                raise ValueError(
-                    "P1D_type " + P1D_type + " not implemented for DESI_DR1"
-                )
 
             self.ic_from_file = os.path.join(
                 path_out_challenge,
                 "ic",
                 "allz_snr3_nocosmo_" + fit_type,
                 "res.npy",
+            )
+
+            self.out_folder = os.path.join(
+                os.path.dirname(get_path_repo("cup1d")),
+                "data",
+                "out_DESI_DR1",
+                self.P1D_type,
+                self.fit_type,
+                self.emulator_label,
             )
 
         # set all cont to zero
@@ -574,7 +246,7 @@ class Args:
             self.fid_cont[prop] = 0
 
         # set igm stuff
-        igm_props = ["n_tau", "n_sigT", "n_gamma", "n_kF"]
+        igm_props = ["n_tau_eff", "n_sigT", "n_gamma", "n_kF_kms"]
 
         self.fid_igm["tau_eff_otype"] = "exp"
         self.fid_igm["gamma_otype"] = "const"
@@ -1177,9 +849,9 @@ class Args:
             # self.fid_igm["gamma_znodes"] = np.linspace(2.2, 4.2, 4)
             # self.fid_igm["kF_kms_znodes"] = np.linspace(2.2, 4.2, 4)
             if self.fid_igm["tau_eff_ztype"].startswith("interp"):
-                self.fid_igm["n_tau"] = len(self.fid_igm["tau_eff_znodes"])
+                self.fid_igm["n_tau_eff"] = len(self.fid_igm["tau_eff_znodes"])
             else:
-                self.fid_igm["n_tau"] = 1
+                self.fid_igm["n_tau_eff"] = 1
 
             if self.fid_igm["sigT_kms_ztype"].startswith("interp"):
                 self.fid_igm["n_sigT"] = len(self.fid_igm["sigT_kms_znodes"])
@@ -1192,11 +864,11 @@ class Args:
                 self.fid_igm["n_gamma"] = 1
 
             if self.fid_igm["kF_kms_ztype"].startswith("interp"):
-                self.fid_igm["n_kF"] = len(self.fid_igm["kF_kms_znodes"])
+                self.fid_igm["n_kF_kms"] = len(self.fid_igm["kF_kms_znodes"])
             else:
-                self.fid_igm["n_kF"] = 1
+                self.fid_igm["n_kF_kms"] = 1
             self.fid_igm["n_gamma"] = 0
-            self.fid_igm["n_kF"] = 0
+            self.fid_igm["n_kF_kms"] = 0
 
             self.fid_syst["res_model_type"] = "pivot"
             self.fid_syst["n_res"] = 0
@@ -1227,12 +899,20 @@ class Args:
             self.fid_cont["n_d_dla4"] = 0
             self.fid_cont["n_c_dla"] = 0
 
-        fid_vals_metals = {
+        fid_vals_conts = {
             "f_Lya_SiIII": -4.25,
+            "s_Lya_SiIII": 4.75,
             "f_Lya_SiII": -4.5,
+            "s_Lya_SiII": 4.75,
             "f_SiIIa_SiIIb": -0.5,
+            "s_SiIIa_SiIIb": 4.75,
             "f_SiIIa_SiIII": 1,
             "f_SiIIb_SiIII": 1,
+            "HCD_const": 0,
+            "HCD_damp1": -1,
+            "HCD_damp2": -1.5,
+            "HCD_damp3": -2,
+            "HCD_damp4": -2.5,
         }
         add_lines = [
             "SiIIa_SiIIb",
@@ -1240,66 +920,55 @@ class Args:
             "MgIIa_MgIIb",
         ]
 
-        for metal_label in self.metal_lines:
-            if self.fid_cont["n_f_" + metal_label] == 0:
-                self.fid_cont["f_" + metal_label] = [0, -11.5]
+        for key in self.cont_params.keys():
+            if self.fid_cont["n_" + key] == 0:
+                self.fid_cont[key] = self.cont_params[key]
             else:
-                self.fid_cont["f_" + metal_label] = [
+                self.fid_cont[key] = [
                     0,
-                    fid_vals_metals["f_" + metal_label],
+                    fid_vals_conts[key],
                 ]
 
-            if self.fid_cont["n_s_" + metal_label] == 0:
-                self.fid_cont["s_" + metal_label] = [0, -11.5]
-            else:
-                self.fid_cont["s_" + metal_label] = [0, 4.75]
+        self.fid_cont["flat_priors"] = {}
 
-            # priors
-            self.fid_cont["flat_priors"] = {}
-            if metal_label not in add_lines:
-                self.fid_cont["flat_priors"]["s_" + metal_label] = [
-                    [-2, 2],
-                    [-11, 8],
-                ]
+        self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
+            [-1, 1],
+            [-11, -2.5],
+        ]
+        self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
+            [-1, 1],
+            [2, 5.75],
+        ]
 
-            self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
-                [-1, 1],
-                [-11, -2.5],
-            ]
-            self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
-                [-1, 1],
-                [2, 5.75],
-            ]
+        self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
+            [-1, 1],
+            [-11, -2.5],
+        ]
+        self.fid_cont["flat_priors"]["s_Lya_SiII"] = [
+            [-1, 1],
+            [2, 18],
+        ]
 
-            self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
-                [-1, 1],
-                [-11, -3],
-            ]
-            self.fid_cont["flat_priors"]["s_Lya_SiII"] = [
-                [-1, 1],
-                [2, 6.25],
-            ]
+        self.fid_cont["flat_priors"]["f_SiIIa_SiIIb"] = [
+            [-1, 4],
+            [-11, 3],
+        ]
+        self.fid_cont["flat_priors"]["s_SiIIa_SiIIb"] = [
+            [-1, 4],
+            [1, 6],
+        ]
 
-            self.fid_cont["flat_priors"]["f_SiIIa_SiIIb"] = [
-                [-1, 4],
-                [-11, 3],
-            ]
-            self.fid_cont["flat_priors"]["s_SiIIa_SiIIb"] = [
-                [-1, 4],
-                [1, 6],
-            ]
-
-            self.fid_cont["flat_priors"]["f_SiIIa_SiIII"] = [
-                [-1, 2],
-                [-1, 4],
-            ]
-            self.fid_cont["flat_priors"]["f_SiIIb_SiIII"] = [
-                [-1, 1],
-                [-1, 3],
-            ]
+        self.fid_cont["flat_priors"]["f_SiIIa_SiIII"] = [
+            [-1, 2],
+            [-1, 4],
+        ]
+        self.fid_cont["flat_priors"]["f_SiIIb_SiIII"] = [
+            [-1, 1],
+            [-1, 4],
+        ]
 
         # priors
-        self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-11.5, -0.05]]
+        self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-15.0, -0.05]]
         self.fid_cont["flat_priors"]["HCD_const"] = [[-1, 1], [-0.2, 1e-6]]
 
 

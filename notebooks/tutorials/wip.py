@@ -42,17 +42,16 @@ from cup1d.likelihood.fitter import Fitter
 from cup1d.likelihood.plotter import Plotter
 
 from cup1d.likelihood.pipeline import (
-    set_archive,
-    set_P1D,
-    set_cosmo,
-    set_free_like_parameters,
-    set_like,
+    # set_archive,
+    # set_P1D,
+    # set_cosmo,
+    # set_free_like_parameters,
+    # set_like,
     Pipeline,
 )
 from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
 from astropy.io import fits
 
-from cup1d.likelihood.input_pipeline import Args
 
 from corner import corner
 
@@ -60,7 +59,54 @@ from cup1d.utils.utils import get_path_repo
 
 from scipy.stats import chi2 as chi2_scipy
 
-from lace.archive.nyx_archive import NyxArchive
+
+# %%
+# %load_ext autoreload
+# %autoreload 2
+
+
+from cup1d.likelihood.input_pipeline import Args
+from cup1d.likelihood.pipeline import Pipeline
+
+# %%
+
+args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
+args.set_baseline(fit_type="andreu2", fix_cosmo=True)
+
+# %%
+pip = Pipeline(args)
+
+# %%
+pip.fitter.like.theory.fid_cosmo['linP_params']
+
+# %%
+p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+pip.fitter.like.get_chi2(p0)
+
+# %%
+pip.fitter.like.plot_p1d(p0)
+
+# %% [markdown]
+# minimize again!
+
+# %%
+p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+pip.fitter.like.plot_p1d(plot_panels=True, residuals=True, values=p0)
+pip.fitter.like.get_chi2(p0)
+
+# %%
+zz = pip.fitter.like.data.z
+
+plt.plot(zz, pip.fitter.like.theory.model_igm.models["F_model"].get_mean_flux(zz), "o--")
+
+# %%
+args.fid_igm
+
+# %%
+
+# %%
+
+# %%
 
 # %%
 from cup1d.nuisance.mean_flux_class import MeanFlux
@@ -161,7 +207,25 @@ for jj, fit_type in enumerate(["andreu2", "global"]):
 plt.tight_layout()
 
 
-plt.savefig("compare_variations.pdf")
+# plt.savefig("compare_variations.pdf")
+
+# %%
+ind = np.argwhere(data_cen["mle_cube"] > 0.95)[:,0]
+print(name_pars[ind], data_cen["mle_cube"][ind])
+
+ind = np.argwhere(data_cen["mle_cube"] < 0.05)[:,0]
+print(name_pars[ind], data_cen["mle_cube"][ind])
+
+# %%
+
+# %%
+len(name_pars)
+
+# %%
+name_pars = np.array(["As", "ns", 'tau_eff_0', 'tau_eff_1', 'tau_eff_2', 'tau_eff_3', 'tau_eff_4', 'tau_eff_5', 'sigT_kms_0', 'sigT_kms_1', 'sigT_kms_2', 'gamma_0', 'gamma_1', 'gamma_2', 'f_Lya_SiIII_0', 'f_Lya_SiIII_1', 'f_Lya_SiIII_2', 's_Lya_SiIII_0', 's_Lya_SiIII_1', 's_Lya_SiIII_2', 'f_Lya_SiII_0', 'f_Lya_SiII_1', 'f_Lya_SiII_2', 's_Lya_SiII_0', 's_Lya_SiII_1', 's_Lya_SiII_2', 'f_SiIIa_SiIIb_0', 'f_SiIIa_SiIIb_1', 'f_SiIIa_SiIIb_2', 's_SiIIa_SiIIb_0', 's_SiIIa_SiIIb_1', 's_SiIIa_SiIIb_2', 'f_SiIIa_SiIII_0', 'f_SiIIa_SiIII_1', 'f_SiIIb_SiIII_0', 'f_SiIIb_SiIII_1', 'HCD_damp1_0', 'HCD_damp1_1', 'HCD_damp1_2', 'HCD_damp1_3', 'HCD_damp4_0', 'HCD_damp4_1', 'HCD_damp4_2', 'HCD_damp4_3'])
+
+# %%
+data_cosmo["mpg_0"]
 
 # %%
 prob_levels = np.array([0, 0.6827, 0.9545])
@@ -173,13 +237,20 @@ trans = {
     "global":"Jonastein", 
     "andreu2": "Baseline"
 }
+npars = {
+    "global":42, 
+    "andreu2": 42
+}
 
-for jj, fit_type in enumerate(["andreu2", "global"]):
+# for jj, fit_type in enumerate(["andreu2", "global"]):
+for jj, fit_type in enumerate(["andreu2"]):
 
-    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+fit_type+"/CH24_mpgcen_gpr/"
+    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+fit_type+"/CH24_mpgcen_gpr/DA/"
+    
     nelem = 100
     chi2 = np.zeros(nelem)
     params = np.zeros((nelem, 2))
+    mle_cube = np.zeros((nelem, npars[fit_type]))
     for ii in range(nelem):
         try:
             data = np.load(folder + "profile_"+str(ii)+ ".npy", allow_pickle=True).item()
@@ -188,34 +259,41 @@ for jj, fit_type in enumerate(["andreu2", "global"]):
         chi2[ii] = data["chi2"]
         params[ii, 0] = data["blind_cosmo"]["Delta2_star"]
         params[ii, 1] = data["blind_cosmo"]["n_star"]
+        if "mle_cube" in data:
+            mle_cube[ii] = data["mle_cube"]
     
     data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
     
     
     ind = chi2 != 0
-    grid = np.meshgrid(
-        np.linspace(params[ind,0].min(), params[ind,0].max(), nelem), 
-        np.linspace(params[ind,1].min(), params[ind,1].max(), nelem)
-    )
-    xi = np.zeros((nelem*nelem, 2))
-    xi[:,0] = grid[0].reshape(-1)
-    xi[:,1] = grid[1].reshape(-1)
-    interp = griddata(params[ind], chi2[ind], xi, method="cubic")
+    # # grid = np.meshgrid(
+    # #     np.linspace(params[ind,0].min(), params[ind,0].max(), nelem), 
+    # #     np.linspace(params[ind,1].min(), params[ind,1].max(), nelem)
+    # # )
+    # xi = np.zeros((nelem*nelem, 2))
+    # xi[:,0] = grid[0].reshape(-1)
+    # xi[:,1] = grid[1].reshape(-1)
+    # interp = griddata(params[ind], chi2[ind], xi, method="cubic")
     
     # min_chi2 = np.min([chi2[ind].min(), data_cen['best_chi2'], interp.min()])
     min_chi2 = np.min([chi2[ind].min(), data_cen['best_chi2']])
     vmin = 0
-    vmax = np.max([chi2[ind].max(), data_cen['best_chi2'], interp.max()]) - min_chi2
-    vmax = 14
+    vmax = np.max([chi2[ind].max(), data_cen['best_chi2']]) - min_chi2
+    # vmax = np.max([res2chi2[ind].max(), data_cen['best_chi2']]) - min_chi2
+    vmax = 20
     # plt.scatter(xi[:, 0], xi[:, 1], c=interp - min_chi2, cmap="tab20", vmin=vmin, vmax=vmax, marker=".", alpha=0.5)
     
-    # ax[jj].scatter(
-    #     data_cen['mle_cosmo_cen']['Delta2_star'],
-    #     data_cen['mle_cosmo_cen']['n_star'],
-    #     c = data_cen['best_chi2'] - min_chi2,
-    #     marker = "X", cmap="tab10", vmin=vmin, vmax=vmax
-    # )
+    ax[jj].scatter(
+        data_cen['mle_cosmo_cen']['Delta2_star'],
+        data_cen['mle_cosmo_cen']['n_star'],
+        c = data_cen['best_chi2'] - min_chi2,
+        marker = "X", cmap="tab10", vmin=vmin, vmax=vmax
+    )
     CS = ax[jj].scatter(params[ind, 0], params[ind, 1], c=chi2[ind] - min_chi2, cmap="tab10", vmin=vmin, vmax=vmax)
+    # CS = ax[jj].scatter(params[ind, 0], params[ind, 1], c=res2chi2[ind] - min_chi2, cmap="tab10", vmin=vmin, vmax=vmax)
+
+
+    
     
     # CS = ax[jj].contourf(
     #     xi[:, 0].reshape(nelem, nelem), 
@@ -244,10 +322,155 @@ for jj, fit_type in enumerate(["andreu2", "global"]):
         axis="both", which="major", labelsize=ftsize - 2
     )
 
+    break
+
 plt.tight_layout()
 
 
-plt.savefig("compare_variations2.pdf")
+# plt.savefig("compare_variations2.pdf")
+
+# %%
+args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
+fit_type = "andreu2"
+args.set_baseline(
+    fit_type=fit_type, fix_cosmo=True, P1D_type="DESIY1_QMLE3"
+)
+pip = Pipeline(args, out_folder=None)
+
+# %%
+sigma_cosmo = {"Delta2_star": 0.02, "n_star": 0.01}
+
+# %%
+nelem = 10
+x = np.linspace(-2, 2, nelem)
+xgrid, ygrid = np.meshgrid(x, x)
+xgrid = xgrid.reshape(-1) * sigma_cosmo["Delta2_star"]
+ygrid = ygrid.reshape(-1) * sigma_cosmo["n_star"]
+
+# %%
+np.arange(100)[ind][ind2][:4]
+
+# %%
+data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
+pini = data_cen["mle_cube"][2:]
+mle_cosmo_cen = data_cen["mle_cosmo_cen"]
+
+# %%
+irank = 59
+
+# %%
+
+# %%
+blind_cosmo = {
+    "Delta2_star": mle_cosmo_cen["Delta2_star"]
+    + shift_cosmo["Delta2_star"],
+    "n_star": mle_cosmo_cen["n_star"] + shift_cosmo["n_star"],
+}
+
+# %%
+params[irank, 0]
+
+# %%
+params[irank, 1]
+
+# %%
+
+# %%
+res2chi2 = np.zeros(100)
+
+for irank in range(100):
+
+    shift_cosmo = {
+        "Delta2_star": xgrid[irank],
+        "n_star": ygrid[irank],
+    }
+    
+    target = pip.fitter.apply_unblinding(mle_cosmo_cen)
+    target["Delta2_star"] += shift_cosmo["Delta2_star"]
+    target["n_star"] += shift_cosmo["n_star"]
+    pip.fitter.like.theory.rescale_fid_cosmo(target)
+    
+    res2chi2[irank] = pip.fitter.like.get_chi2(mle_cube[irank])
+    print(res2chi2[irank], chi2[irank])
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+# %% [markdown]
+# #### check same parameters and chi2, different cosmologies!!!
+
+# %%
+np.linspace(2.2, 3.6, 3)
+
+# %%
+2000/60
+
+# %%
+795.23 NM, 105.8 s (2 min)
+Delta2_star 0.431
+n_star -2.29364
+
+788.09 DE, 2024.35 s (30 min)
+Delta2_star 0.4041
+n_star -2.28453
+
+773.3142 DA, 1087.89 s (15 min)
+Delta2_star 0.39796
+n_star -2.31815
+
+
+
+# %%
+ind = chi2 != 0
+ii = np.argmin(chi2[ind])
+
+# %%
+(mle_cube[ind] - mle_cube[ind][arr][0]).shape
+
+# %%
+chi2[ind][ii]
+
+# %%
+for jj in range(npars["andreu2"]):
+# for jj in range(1):
+    _ = mle_cube[ind][:, jj] != 0
+    fig, ax = plt.subplots(1, 3, figsize=(10, 4))
+    x = (mle_cube[ind] - mle_cube[ind][ii])[_, jj]
+    y0 = (params[ind, 0] - params[ind, 0][ii])[_]
+    y1 = (params[ind, 1] - params[ind, 1][ii])[_]
+    c = chi2[ind][_] - chi2[ind][ii]
+    ax[0].scatter(x, y0, c=c, marker='.', cmap="tab20")
+    ax[1].scatter(x, y1, c=c, marker='.', cmap="tab20")
+    CS = ax[2].scatter(y0, y1, c=c, marker='.', cmap="tab20")
+    ax[0].set_xlabel(r"$\Delta p$")
+    ax[1].set_xlabel(r"$\Delta p$")
+    ax[2].set_xlabel(r"$\Delta (\Delta^2_\star)$")
+    ax[0].set_ylabel(r"$\Delta (\Delta^2_\star)$")
+    ax[1].set_ylabel(r"$\Delta n_\star$")
+    ax[2].set_ylabel(r"$\Delta n_\star$")
+    plt.colorbar(CS)
+    plt.tight_layout()
+    plt.savefig("pars/"+str(jj)+".png")
+
+# %%
+
+# %%
+
+# %%
+arr = np.argsort(chi2[ind])[:10]
+
+# %%
+chi2[ind][arr]
+
+# %%
+chi2[ii]
 
 # %%
 0.04, 0.018

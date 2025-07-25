@@ -143,23 +143,23 @@ class Contaminants(object):
                     "hcd_model_type must be one of 'Rogers2017', 'McDonald2005', 'new', or 'new2'"
                 )
 
-        # setup SN model
-        if sn_model:
-            self.sn_model = sn_model
-        else:
-            self.sn_model = SN_model.SN_Model(
-                free_param_names=free_param_names,
-                fid_value=pars_cont["SN"],
-            )
+        # # setup SN model
+        # if sn_model:
+        #     self.sn_model = sn_model
+        # else:
+        #     self.sn_model = SN_model.SN_Model(
+        #         free_param_names=free_param_names,
+        #         fid_value=pars_cont["SN"],
+        #     )
 
-        # setup AGN model
-        if agn_model:
-            self.agn_model = sn_model
-        else:
-            self.agn_model = AGN_model.AGN_Model(
-                free_param_names=free_param_names,
-                fid_value=pars_cont["AGN"],
-            )
+        # # setup AGN model
+        # if agn_model:
+        #     self.agn_model = sn_model
+        # else:
+        #     self.agn_model = AGN_model.AGN_Model(
+        #         free_param_names=free_param_names,
+        #         fid_value=pars_cont["AGN"],
+        #     )
 
     # def get_dict_cont(self):
     #     dict_out = {}

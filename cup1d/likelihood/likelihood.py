@@ -3,14 +3,19 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 import os
 import math
+import copy
 from scipy.stats.distributions import chi2 as chi2_scipy
 from scipy.optimize import minimize
 from scipy.linalg import block_diag
 
-import lace
 from lace.cosmo import camb_cosmo
 from cup1d.utils.utils import is_number_string
 from cup1d.utils.compute_hessian import get_hessian
+
+from cup1d.utils.utils import split_string
+from cup1d.utils.utils import get_path_repo
+
+from cup1d.utils.various_dicts import conv_strings
 
 
 rcParams["mathtext.fontset"] = "stix"
@@ -47,6 +52,7 @@ class Likelihood(object):
         extra_data=None,
         min_log_like=-1e100,
         args=None,
+        start_from_min=True,
     ):
         """Setup likelihood from theory and data. Options:
         - data (required) is the data to model
@@ -70,21 +76,18 @@ class Likelihood(object):
         self.data = data
         self.extra_data = extra_data
         # we only do this for latter save all relevant after fitting the model
-        self.args = {}
-        for attr, value in args.__dict__.items():
-            if attr not in ["archive", "emulator"]:
-                self.args[attr] = value
+        self.args = args
+        # for attr, value in args.__dict__.items():
+        #     if attr not in ["archive", "emulator"]:
+        #         self.args[attr] = value
 
-        if "rebin_k" not in self.args:
-            self.args["rebin_k"] = 1
-
-        if self.args["rebin_k"] != 1:
+        if self.args.rebin_k != 1:
             self.rebin = {}
             self.rebin["k_kms"] = []  # new k_kms
             self.rebin["cover"] = []  # to accelerate rebinning
             self.rebin["sum_cover"] = []  # to accelerate rebinning
             for iz in range(len(self.data.z)):
-                nelem = len(self.data.k_kms[iz]) * self.args["rebin_k"]
+                nelem = len(self.data.k_kms[iz]) * self.args.rebin_k
                 _kms_reb = np.linspace(
                     self.data.k_kms_min[iz][0] * 0.95,
                     self.data.k_kms_max[iz][-1] * 1.05,
@@ -120,6 +123,27 @@ class Likelihood(object):
 
         # store also fiducial model
         self.set_fid()
+
+        # set blinding
+        self.set_blinding()
+
+        # set like to good starting point
+
+        if start_from_min:
+            fname = os.path.join(
+                os.path.dirname(get_path_repo("cup1d")),
+                "data",
+                "out_DESI_DR1",
+                self.args.P1D_type,
+                self.args.fit_type,
+                self.args.emulator_label,
+                "NM",
+                "best_dircosmo.npy",
+            )
+            if os.path.isfile(fname):
+                self.set_ic_from_fullfit(fname)
+            else:
+                print("No best fit found to set ICs:", fname)
 
     def rebinning(self, zs, Pk_kms_finek):
         """For rebinning Pk predictions"""
@@ -161,6 +185,52 @@ class Likelihood(object):
             pass
         else:
             self.Gauss_priors = None
+
+    def set_blinding(self):
+        """Set the blinding parameters"""
+        blind_prior = {"Delta2_star": 0.05, "n_star": 0.01, "alpha_star": 0.005}
+        if self.data.apply_blinding:
+            seed = int.from_bytes(
+                self.data.blinding.encode("utf-8"), byteorder="big"
+            )
+            rng = np.random.default_rng(seed)
+        self.blind = {}
+        for key in blind_prior:
+            if self.data.apply_blinding:
+                self.blind[key] = rng.normal(0, blind_prior[key])
+            else:
+                self.blind[key] = 0
+
+    def apply_blinding(self, dict_cosmo, conv=False, sample=None):
+        """Apply blinding to the dict_cosmo"""
+
+        if self.data.apply_blinding:
+            if sample is not None:
+                print("Blinding " + sample)
+            for key in self.blind:
+                if conv:
+                    key2 = conv_strings[key]
+                else:
+                    key2 = key
+
+                try:
+                    dict_cosmo[key2] += self.blind[key]
+                except:
+                    pass
+
+        return dict_cosmo
+
+    def apply_unblinding(self, dict_cosmo, conv=False):
+        """Apply unblinding to the dict_cosmo"""
+        out_dict = copy.deepcopy(dict_cosmo)
+        for key in self.blind:
+            if conv:
+                key2 = conv_strings[key]
+            else:
+                key2 = key
+            if key2 in dict_cosmo:
+                out_dict[key2] = dict_cosmo[key2] - self.blind[key]
+        return out_dict
 
     def set_icov(self):
         """
@@ -207,7 +277,7 @@ class Likelihood(object):
         # get emulator error
         filename = "cov_" + self.theory.emulator.emulator_label + ".npy"
         full_path = os.path.join(
-            os.path.dirname(lace.__path__[0]), "data", "covariance", filename
+            get_path_repo("lace"), "data", "covariance", filename
         )
         dict_save = np.load(full_path, allow_pickle=True).item()
         emu_cov = dict_save["cov"]
@@ -555,7 +625,7 @@ class Likelihood(object):
             ):
                 if equal_IGM:
                     if ("tau" in par.name) and (
-                        self.args["mF_model_type"] == "chunks"
+                        self.args.mF_model_type == "chunks"
                     ):
                         self.truth["like_params"][par.name] = 1
                         self.truth["like_params_cube"][
@@ -647,7 +717,7 @@ class Likelihood(object):
         if zs is None:
             zs = self.data.z
 
-        if self.args["rebin_k"] != 1:
+        if self.args.rebin_k != 1:
             k_kms = []
             zs = np.atleast_1d(zs)
             for iz in range(len(zs)):
@@ -680,7 +750,7 @@ class Likelihood(object):
         else:
             p1ds = results
 
-        if self.args["rebin_k"] == 1:
+        if self.args.rebin_k == 1:
             out.append(p1ds)
         else:
             out.append(self.rebinning(zs, p1ds))
@@ -1976,3 +2046,143 @@ class Likelihood(object):
             p1[:, jj] = emu_call[key]
 
         self.theory.hull.plot_hulls(p1)
+
+    def set_ic_from_fullfit(self, fname, verbose=True):
+        """Set the initial conditions for the likelihood from a fit"""
+
+        fit_results = np.load(fname, allow_pickle=True).item()
+        fix_cosmo = self.args.fix_cosmo
+        self.args.fix_cosmo = False
+        like1 = Likelihood(
+            self.data,
+            self.theory,
+            free_param_names=self.free_param_names,
+            cov_factor=self.args.cov_factor,
+            emu_cov_factor=self.args.emu_cov_factor,
+            emu_cov_type=self.args.emu_cov_type,
+            args=self.args,
+            start_from_min=False,
+        )
+        self.args.fix_cosmo = fix_cosmo
+        out_mle_cube_reformat = fit_results["mle_cube"]
+
+        # best-fitting star params of full fit (blinded). for profiling, move around them
+        mle_cosmo = {}
+        for key in ["Delta2_star", "n_star", "alpha_star"]:
+            mle_cosmo[key] = fit_results["mle_cosmo_cen"][key]
+
+        # make a copy of free params, and set their values to the best-fit
+        free_params = self.free_params.copy()
+        for jj, p in enumerate(free_params):
+            # if p.name not in ["As", "ns"]:
+            #     pname, iistr = split_string(p.name)
+            #     ii = int(iistr)
+
+            # if (pname + "_znodes") in self.args.fid_igm:
+            #     znode = self.args.fid_igm[pname + "_znodes"][ii]
+            # else:
+            #     znode = self.args.fid_cont[pname + "_znodes"][ii]
+
+            ind = np.argwhere(p.name == np.array(like1.free_param_names))[0, 0]
+            # run at fixed cosmo
+
+            if (len(out_mle_cube_reformat) - 2) == len(like1.free_params):
+                val = like1.free_params[ind].value_from_cube(
+                    out_mle_cube_reformat[2:][ind]
+                )
+            else:
+                val = like1.free_params[ind].value_from_cube(
+                    out_mle_cube_reformat[ind]
+                )
+
+            if val <= -11.5:
+                val = -10.5
+            p.value = val
+
+            if verbose:
+                print(
+                    p.name,
+                    "\t",
+                    np.round(p.value, 3),
+                    "\t",
+                    np.round(p.min_value, 3),
+                    "\t",
+                    np.round(p.max_value, 3),
+                    "\t",
+                    p.Gauss_priors_width,
+                    p.fixed,
+                )
+
+        # reset the coefficients of the models
+        self.theory.model_igm.models["F_model"].reset_coeffs(free_params)
+        self.theory.model_igm.models["T_model"].reset_coeffs(free_params)
+        self.theory.model_cont.hcd_model.reset_coeffs(free_params)
+        self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(free_params)
+        self.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)
+
+        # rescale the fiducial cosmology if it is fixed
+        if self.args.fix_cosmo:
+            tar = self.apply_unblinding(mle_cosmo)
+            self.theory.rescale_fid_cosmo(tar)
+
+    def set_ic_from_z_at_time(
+        self,
+        data,
+        emulator,
+        fname,
+        output_dir=".",
+        verbose=True,
+    ):
+        """Set the initial conditions for the likelihood from a fit"""
+
+        args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
+        args.set_baseline(ztar=data["P1Ds"].z[0], fit_type="at_a_time")
+
+        dir_out = np.load(fname, allow_pickle=True).item()
+
+        like1 = set_like(
+            data["P1Ds"],
+            emulator,
+            args,
+            data_hires=data["extra_P1Ds"],
+        )
+        out_mle_cube_reformat = dir_out["mle_cube_reformat"]
+
+        # make a copy of free params, and set their values to the best-fit
+        free_params = self.free_params.copy()
+        for jj, p in enumerate(free_params):
+            if p.name in ["As", "ns"]:
+                continue
+            pname, iistr = split_string(p.name)
+            ii = int(iistr)
+
+            if (pname + "_znodes") in args.fid_igm:
+                znode = args.fid_igm[pname + "_znodes"][ii]
+            else:
+                znode = args.fid_cont[pname + "_znodes"][ii]
+
+            iz = np.argmin(np.abs(like1.data.z - znode))
+            p.value = get_parameters(
+                pname, znode, like1, out_mle_cube_reformat[iz]
+            )
+
+            if verbose:
+                print(
+                    p.name,
+                    "\t",
+                    np.round(p.value, 3),
+                    "\t",
+                    np.round(p.min_value, 3),
+                    "\t",
+                    np.round(p.max_value, 3),
+                    "\t",
+                    p.Gauss_priors_width,
+                    p.fixed,
+                )
+
+        # reset the coefficients of the models
+        self.theory.model_igm.models["F_model"].reset_coeffs(free_params)
+        self.theory.model_igm.models["T_model"].reset_coeffs(free_params)
+        self.theory.model_cont.hcd_model.reset_coeffs(free_params)
+        self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(free_params)
+        self.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)

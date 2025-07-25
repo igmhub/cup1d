@@ -15,52 +15,6 @@ from cup1d.utils.hull import Hull
 from cup1d.utils.utils import is_number_string
 
 
-def set_theory(
-    args, emulator, free_parameters=None, use_hull=True, fid_or_true="fid"
-):
-    """Set theory"""
-
-    if fid_or_true == "fid":
-        pars_igm = args.fid_igm
-        pars_cont = args.fid_cont
-        pars_syst = args.fid_syst
-    elif fid_or_true == "true":
-        pars_igm = args.true_igm
-        pars_cont = args.true_cont
-        pars_syst = args.true_syst
-    else:
-        raise ValueError("fid_or_true must be 'fid' or 'true'")
-
-    # set igm model
-    model_igm = IGM(free_param_names=free_parameters, pars_igm=pars_igm)
-
-    # set contaminants
-    model_cont = Contaminants(
-        free_param_names=free_parameters,
-        pars_cont=pars_cont,
-        ic_correction=args.ic_correction,
-    )
-
-    # set systematics
-    model_syst = Systematics(
-        free_param_names=free_parameters, pars_syst=pars_syst
-    )
-
-    # set theory
-    theory = Theory(
-        emulator=emulator,
-        model_igm=model_igm,
-        model_cont=model_cont,
-        model_syst=model_syst,
-        use_hull=use_hull,
-        use_star_priors=args.use_star_priors,
-        z_star=args.z_star,
-        kp_kms=args.kp_kms,
-    )
-
-    return theory
-
-
 class Theory(object):
     """Translator between the likelihood object and the emulator. This object
     will map from a set of CAMB parameters directly to emulator calls, without
@@ -807,6 +761,8 @@ class Theory(object):
             for par in self.model_igm.models[model].get_parameters():
                 params.append(self.model_igm.models[model].get_parameter(par))
 
+        # TODO: get parameters from all contaminants together
+
         # get parameters from metal contamination models
         for model_name in self.model_cont.metal_models:
             metal = self.model_cont.metal_models[model_name]
@@ -817,13 +773,13 @@ class Theory(object):
         for key in self.model_cont.hcd_model.params:
             params.append(self.model_cont.hcd_model.params[key])
 
-        # get parameters from SN contamination model
-        for par in self.model_cont.sn_model.get_parameters():
-            params.append(par)
+        # # get parameters from SN contamination model
+        # for par in self.model_cont.sn_model.get_parameters():
+        #     params.append(par)
 
-        # get parameters from AGN contamination model
-        for par in self.model_cont.agn_model.get_parameters():
-            params.append(par)
+        # # get parameters from AGN contamination model
+        # for par in self.model_cont.agn_model.get_parameters():
+        #     params.append(par)
 
         # get parameters from systematic model
         for par in self.model_syst.resolution_model.get_parameters():
