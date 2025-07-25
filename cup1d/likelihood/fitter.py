@@ -392,9 +392,12 @@ class Fitter(object):
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
         print("Passed out:", chi2)
         _ = (mle_cube > 0.95) | (mle_cube < 0.05)
-        print(
-            "Almost out of bounds:", self.like.free_param_names[_], mle_cube[_]
-        )
+        if np.sum(_) > 0:
+            print(
+                "Almost out of bounds:",
+                np.array(self.like.free_param_names)[_],
+                mle_cube[_],
+            )
         self.set_mle(mle_cube, chi2)
 
     def run_minimizer_da(
