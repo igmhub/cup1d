@@ -341,7 +341,7 @@ class Fitter(object):
         # sig = 0.05
         # sig_dec = 0.9
         neval = 1000
-        chi2_tol = 0.5
+        chi2_tol = 0.25
 
         print("Starting NM minimization, chi2=", chi2, flush=True)
         keep = True
@@ -363,7 +363,7 @@ class Fitter(object):
                 bounds=((0.0, 1.0),) * npars,
                 options={
                     "fatol": chi2_tol,
-                    "xatol": 1e-6,
+                    "xatol": 0.1,
                     "maxiter": neval,
                     "maxfev": neval,
                 },
