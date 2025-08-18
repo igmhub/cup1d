@@ -43,10 +43,6 @@ def main():
         type_minimizer,
     )
 
-    print("")
-    print("FOLDER1", path_out)
-    print("")
-
     if fit_type == "global":
         sigma_cosmo = {"Delta2_star": 0.02, "n_star": 0.01}
     elif fit_type == "andreu2":
@@ -57,11 +53,8 @@ def main():
     sigma_cosmo = {"Delta2_star": 0.02}
 
     pip = Pipeline(args, out_folder=path_out)
-    print("")
-    print("FOLDER2", pip.fitter.save_directory)
-    print("")
     # p0 = pip.fitter.like.sampling_point_from_parameters().copy()
-    # pip.run_profile(args, sigma_cosmo, nelem=2, type_minimizer=type_minimizer)
+    pip.run_profile(args, sigma_cosmo, nelem=10, type_minimizer=type_minimizer)
 
 
 if __name__ == "__main__":
