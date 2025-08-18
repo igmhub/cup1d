@@ -336,22 +336,22 @@ class Fitter(object):
         chi2_ini = chi2 * 1
 
         # perturbations around starting point
-        arr_p0 = lhs(npars, samples=nsamples + 1) - 0.5
+        # arr_p0 = lhs(npars, samples=nsamples + 1) - 0.5
         # sigma to search around mle_cube
-        sig = 0.05
-        sig_dec = 0.9
+        # sig = 0.05
+        # sig_dec = 0.9
         neval = 1000
         chi2_tol = 0.5
 
         print("Starting NM minimization, chi2=", chi2, flush=True)
-        rep = 0
+        keep = True
         ii = 0
         start = time.time()
-        while rep < 4:
+        while keep:
             start1 = time.time()
             pini = mle_cube.copy()
-            if rep != 0:
-                pini += arr_p0[ii] * sig * sig_dec ** (ii + 1)
+            # if rep != 0:
+            #     pini += arr_p0[ii] * sig * sig_dec ** (ii + 1)
 
             pini[pini <= 0] = 0.025
             pini[pini >= 1] = 0.975
@@ -376,7 +376,6 @@ class Fitter(object):
             print(
                 "Step, rep, time",
                 ii,
-                rep,
                 np.round(time.time() - start1, 2),
                 np.round(time.time() - start, 2),
                 flush=True,
@@ -391,16 +390,13 @@ class Fitter(object):
             )
 
             if res.success:
-                rep = 10
+                keep = False
             else:
-                if -diff_chi > 0.5 * chi2_tol:
+                if diff_chi < 0:
                     chi2 = _chi2.copy()
                     mle_cube = res.x.copy()
-                    rep = 0
                 else:
-                    rep += 1
-
-            ii += 1
+                    keep = False
 
         mle_cube = res.x
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
@@ -412,12 +408,11 @@ class Fitter(object):
             )
             _ = np.argwhere((mle_cube > 0.95) | (mle_cube < 0.05))[:, 0]
             for ii in range(len(_)):
+                ind = _[ii]
                 print(
-                    self.like.free_params[_[ii, 0]].name,
-                    mle_cube[_[ii, 0]],
-                    self.like.free_params[_[ii, 0]].value_from_cube(
-                        mle_cube[_[ii, 0]]
-                    ),
+                    self.like.free_params[ind].name,
+                    mle_cube[ind],
+                    self.like.free_params[ind].value_from_cube(mle_cube[ind]),
                 )
         self.set_mle(mle_cube, chi2)
 
