@@ -397,6 +397,7 @@ class Fitter(object):
                 if -diff_chi > chi2_tol:
                     chi2 = _chi2.copy()
                     mle_cube = res.x.copy()
+                    ii += 1
                 else:
                     # stop the minimization if convergence reached
                     keep = False

@@ -946,7 +946,7 @@ class Args:
         ]
         self.fid_cont["flat_priors"]["s_Lya_SiII"] = [
             [-1, 1],
-            [3.5, 7],
+            [2.5, 7],
         ]
 
         self.fid_cont["flat_priors"]["f_SiIIa_SiIIb"] = [
@@ -955,16 +955,16 @@ class Args:
         ]
         self.fid_cont["flat_priors"]["s_SiIIa_SiIIb"] = [
             [-1, 3],
-            [3, 6],
+            [2, 6],
         ]
 
         self.fid_cont["flat_priors"]["f_SiIIa_SiIII"] = [
             [-1, 2],
-            [0, 3],
+            [0, 5],
         ]
         self.fid_cont["flat_priors"]["f_SiIIb_SiIII"] = [
             [-1, 1],
-            [0, 3],
+            [0, 5],
         ]
 
         # priors
