@@ -5,7 +5,6 @@ os.environ["OMP_NUM_THREADS"] = "4"  # export OMP_NUM_THREADS=4
 import numpy as np
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
-from cup1d.utils.utils import get_path_repo
 
 
 def main():
@@ -33,15 +32,6 @@ def main():
     # args = Args(data_label="DESIY1_FFT_dir", emulator_label="CH24_nyxcen_gpr")
 
     args.set_baseline(fit_type=fit_type, fix_cosmo=True)
-    path_out = os.path.join(
-        os.path.dirname(get_path_repo("cup1d")),
-        "data",
-        "out_DESI_DR1",
-        args.P1D_type,
-        args.fit_type,
-        args.emulator_label,
-        type_minimizer,
-    )
 
     if fit_type == "global":
         sigma_cosmo = {"Delta2_star": 0.02, "n_star": 0.01}
@@ -52,7 +42,7 @@ def main():
 
     sigma_cosmo = {"Delta2_star": 0.02}
 
-    pip = Pipeline(args, out_folder=path_out)
+    pip = Pipeline(args, out_folder=args.out_folder)
     # p0 = pip.fitter.like.sampling_point_from_parameters().copy()
     pip.run_profile(args, sigma_cosmo, nelem=10, type_minimizer=type_minimizer)
 

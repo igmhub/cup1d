@@ -13,8 +13,8 @@ def main():
     # type_minimizer = "DA"
 
     # baseline
-    # fit_type = "andreu2"
-    # args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_nyxcen_gpr")
+    fit_type = "andreu2"
+    args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_nyxcen_gpr")
 
     # nuisance
     # fit_type = "global"
@@ -29,32 +29,18 @@ def main():
     # args = Args(data_label="DESIY1_QMLE", emulator_label="CH24_nyxcen_gpr")
 
     # FFT
-    fit_type = "andreu2"
-    args = Args(data_label="DESIY1_FFT_dir", emulator_label="CH24_nyxcen_gpr")
+    # fit_type = "andreu2"
+    # args = Args(data_label="DESIY1_FFT_dir", emulator_label="CH24_nyxcen_gpr")
 
     args.set_baseline(fit_type=fit_type, fix_cosmo=False)
-    path_out = os.path.join(
-        os.path.dirname(get_path_repo("cup1d")),
-        "data",
-        "out_DESI_DR1",
-        args.P1D_type,
-        args.fit_type,
-        args.emulator_label,
-        type_minimizer,
-    )
-    os.makedirs(path_out, exist_ok=True)
-
-    pip = Pipeline(args, out_folder=path_out)
+    pip = Pipeline(args, out_folder=args.out_folder)
 
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 
     print("starting minimization")
     if type_minimizer == "NM":
         pip.fitter.run_minimizer(
-            pip.fitter.like.minus_log_prob,
-            p0=input_pars,
-            restart=True,
-            nsamples=10,
+            pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
         )
     else:
         pip.fitter.run_minimizer_da(
@@ -68,11 +54,7 @@ def main():
         "mle": pip.fitter.mle,
     }
 
-    file_out = os.path.join(path_out, "best_dircosmo.npy")
-    # file_out = os.path.join(path_out, "best_dircosmo_NM.npy")
-    # file_out = os.path.join(path_out, "best_dircosmo_DA.npy")
-    # file_out = os.path.join(path_out, "best_dircosmo_DE.npy")
-    # file_out = os.path.join(path_out, "best_dircosmo_DI.npy")
+    file_out = os.path.join(args.out_folder, "best_dircosmo.npy")
 
     print("saving IC to:", file_out)
     np.save(file_out, out_dict)

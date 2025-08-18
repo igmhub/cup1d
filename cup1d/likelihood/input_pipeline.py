@@ -175,6 +175,7 @@ class Args:
         zmin=2.2,
         zmax=4.2,
         P1D_type="DESIY1_QMLE3",
+        name_variation=None,
     ):
         """
         Set baseline parameters
@@ -216,14 +217,22 @@ class Args:
                 "res.npy",
             )
 
-            self.out_folder = os.path.join(
-                os.path.dirname(get_path_repo("cup1d")),
-                "data",
-                "out_DESI_DR1",
-                self.P1D_type,
-                self.fit_type,
-                self.emulator_label,
-            )
+            if name_variation is None:
+                self.out_folder = os.path.join(
+                    os.path.dirname(get_path_repo("cup1d")),
+                    "data",
+                    "out_DESI_DR1",
+                    self.P1D_type,
+                    self.fit_type,
+                    self.emulator_label,
+                )
+            else:
+                self.out_folder = os.path.join(
+                    os.path.dirname(get_path_repo("cup1d")),
+                    "data",
+                    "out_DESI_DR1",
+                    name_variation,
+                )
 
         # set all cont to zero
         cont_props = [
