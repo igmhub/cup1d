@@ -342,11 +342,12 @@ class Fitter(object):
 
         # the convergence of the scipy routine is very tricky, so I do it by hand
         neval = 1000
-        chi2_tol = 0.25
+        chi2_tol = 0.1
 
         print("Starting NM minimization, chi2=", chi2, flush=True)
         keep = True
         ii = 0
+        rep = 0
         start = time.time()
         while keep:
             start1 = time.time()
@@ -377,6 +378,7 @@ class Fitter(object):
             print(
                 "Step, rep, time",
                 ii,
+                rep,
                 np.round(time.time() - start1, 2),
                 np.round(time.time() - start, 2),
                 flush=True,
@@ -397,9 +399,14 @@ class Fitter(object):
                     chi2 = _chi2.copy()
                     mle_cube = res.x.copy()
                     ii += 1
+                    rep = 0
                 else:
                     # stop the minimization if convergence reached
-                    keep = False
+                    rep += 1
+
+            if rep >= 2:
+                # multiple times to ensure that it is real
+                keep = False
 
         mle_cube = res.x
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
