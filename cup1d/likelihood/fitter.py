@@ -374,8 +374,9 @@ class Fitter(object):
             diff_chi = _chi2 - chi2
 
             print(
-                "Step and total",
+                "Step, rep, time",
                 ii,
+                rep,
                 np.round(time.time() - start1, 2),
                 np.round(time.time() - start, 2),
                 flush=True,
@@ -404,12 +405,19 @@ class Fitter(object):
         mle_cube = res.x
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
         print("Passed out:", chi2)
-        _ = (mle_cube > 0.95) | (mle_cube < 0.05)
-        if np.sum(_) > 0:
+        _ = np.argwhere((mle_cube > 0.95) | (mle_cube < 0.05))
+        if len(_) > 0:
             print(
-                "Almost out of bounds:", np.array(self.like.free_param_names)[_]
+                "Almost out of bounds:",
             )
-            print(mle_cube[_])
+            for ii in len(_):
+                print(
+                    self.like.free_params[_[ii, 0]].name,
+                    mle_cube[_[ii, 0]],
+                    self.like.free_params[_[ii, 0]].value_from_cube(
+                        mle_cube[_[ii, 0]]
+                    ),
+                )
         self.set_mle(mle_cube, chi2)
 
     def run_minimizer_da(
