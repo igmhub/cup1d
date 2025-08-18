@@ -49,6 +49,8 @@ def main():
         out_dict = np.load(file_in, allow_pickle=True).item()
         input_pars = out_dict["mle_cube"]
 
+    input_pars = input_pars[:] * 0 + 0.5
+
     print("starting minimization")
     if type_minimizer == "NM":
         pip.fitter.run_minimizer(
