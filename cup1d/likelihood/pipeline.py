@@ -134,7 +134,7 @@ class Pipeline(object):
 
         self.fitter = Fitter(
             like=like,
-            rootdir=args.out_folder,
+            rootdir=self.out_folder,
             nburnin=args.n_burn_in,
             nsteps=args.n_steps,
             parallel=args.parallel,

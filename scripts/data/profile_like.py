@@ -53,7 +53,9 @@ def main():
     sigma_cosmo = {"Delta2_star": 0.02}
 
     pip = Pipeline(args, out_folder=path_out)
-    print(pip.fitter.save_directory)
+    print("")
+    print("FOLDER", pip.fitter.save_directory)
+    print("")
     # p0 = pip.fitter.like.sampling_point_from_parameters().copy()
     # pip.run_profile(args, sigma_cosmo, nelem=2, type_minimizer=type_minimizer)
 
