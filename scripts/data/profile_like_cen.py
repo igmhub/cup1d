@@ -36,6 +36,16 @@ def main():
     pip = Pipeline(args, out_folder=args.out_folder)
 
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
+    print("INPUT1", input_pars)
+    file_in = os.path.join(
+        os.path.dirname(pip.fitter.save_directory),
+        "best_dircosmo.npy",
+    )
+    print("Loading IC from", file_in)
+    print("")
+    out_dict = np.load(file_in, allow_pickle=True).item()
+    input_pars = out_dict["mle_cube"]
+    print("INPUT2", input_pars)
 
     print("starting minimization")
     if type_minimizer == "NM":
