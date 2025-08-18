@@ -329,7 +329,8 @@ class Pipeline(object):
         if rank == 0:
             # read ini data and redistribute (from scripts/data/profile_like_cen.py)
             file_out = os.path.join(
-                os.path.dirname(self.fitter.save_directory), "best_dircosmo.npy"
+                os.path.dirname(self.fitter.save_directory),
+                "NM/best_dircosmo.npy",
             )
             out_dict = np.load(file_out, allow_pickle=True).item()
             pini = out_dict["mle_cube"][2:]
