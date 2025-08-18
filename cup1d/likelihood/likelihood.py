@@ -2069,12 +2069,13 @@ class Likelihood(object):
         self.args.fix_cosmo = fix_cosmo
         ic_mle_cube = fit_results["mle_cube"]
 
-        _ = (ic_mle_cube > 0.95) | (ic_mle_cube < 0.05)
-        print(
-            "Almost out of bounds:",
-            np.array(like1.free_param_names)[_],
-            ic_mle_cube[_],
-        )
+        if len(ic_mle_cube) == len(like1.free_param_names):
+            _ = (ic_mle_cube > 0.95) | (ic_mle_cube < 0.05)
+            print(
+                "Almost out of bounds:",
+                np.array(like1.free_param_names)[_],
+                ic_mle_cube[_],
+            )
 
         # best-fitting star params of full fit (blinded). for profiling, move around them
         mle_cosmo = {}
