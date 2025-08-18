@@ -405,12 +405,13 @@ class Fitter(object):
         mle_cube = res.x
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
         print("Passed out:", chi2)
-        _ = np.argwhere((mle_cube > 0.95) | (mle_cube < 0.05))
-        if len(_) > 0:
+        _ = (mle_cube > 0.95) | (mle_cube < 0.05)
+        if np.sum(_) > 0:
             print(
                 "Almost out of bounds:",
             )
-            for ii in len(_):
+            _ = ((mle_cube > 0.95) | (mle_cube < 0.05))[:, 0]
+            for ii in range(len(_)):
                 print(
                     self.like.free_params[_[ii, 0]].name,
                     mle_cube[_[ii, 0]],
