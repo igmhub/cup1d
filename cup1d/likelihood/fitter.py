@@ -340,6 +340,8 @@ class Fitter(object):
         # sigma to search around mle_cube
         # sig = 0.05
         # sig_dec = 0.9
+
+        # the convergence of the scipy routine is very tricky, so I do it by hand
         neval = 1000
         chi2_tol = 0.25
 
@@ -362,8 +364,8 @@ class Fitter(object):
                 method="Nelder-Mead",
                 bounds=((0.0, 1.0),) * npars,
                 options={
-                    "fatol": chi2_tol,
-                    "xatol": 1e-6,
+                    "fatol": chi2_tol,  # fatol and xatol are both evaluated
+                    "xatol": 1e-6,  # needed to reach the good convergence
                     "maxiter": neval,
                     "maxfev": neval,
                 },
@@ -396,6 +398,7 @@ class Fitter(object):
                     chi2 = _chi2.copy()
                     mle_cube = res.x.copy()
                 else:
+                    # stop the minimization if convergence reached
                     keep = False
 
         mle_cube = res.x
