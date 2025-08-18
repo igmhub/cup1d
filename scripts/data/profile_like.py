@@ -40,9 +40,15 @@ def main():
     else:
         raise ValueError("fit_type must be 'global' or 'andreu2'")
 
-    sigma_cosmo = {"Delta2_star": 0.02}
+    # sigma_cosmo = {"Delta2_star": 0.02}
+    # out_folder = os.path.join(args.out_folder, "prof_dstar")
 
-    pip = Pipeline(args, out_folder=args.out_folder)
+    # sigma_cosmo = {"n_star": 0.01}
+    # out_folder = os.path.join(args.out_folder, "prof_nstar")
+
+    out_folder = os.path.join(args.out_folder, "prof_2d")
+
+    pip = Pipeline(args, out_folder=out_folder)
     # p0 = pip.fitter.like.sampling_point_from_parameters().copy()
     pip.run_profile(args, sigma_cosmo, nelem=10, type_minimizer=type_minimizer)
 
