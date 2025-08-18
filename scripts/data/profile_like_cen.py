@@ -25,8 +25,12 @@ def main():
     # args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
 
     # QMLE
+    # fit_type = "andreu2"
+    # args = Args(data_label="DESIY1_QMLE", emulator_label="CH24_nyxcen_gpr")
+
+    # FFT
     fit_type = "andreu2"
-    args = Args(data_label="DESIY1_QMLE", emulator_label="CH24_nyxcen_gpr")
+    args = Args(data_label="DESIY1_FFT_dir", emulator_label="CH24_nyxcen_gpr")
 
     args.set_baseline(fit_type=fit_type, fix_cosmo=False)
     path_out = os.path.join(
