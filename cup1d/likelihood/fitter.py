@@ -363,7 +363,7 @@ class Fitter(object):
                 bounds=((0.0, 1.0),) * npars,
                 options={
                     "fatol": chi2_tol,
-                    "xatol": 0.1,
+                    "xatol": 1e-6,
                     "maxiter": neval,
                     "maxfev": neval,
                 },
@@ -392,7 +392,7 @@ class Fitter(object):
             if res.success:
                 keep = False
             else:
-                if diff_chi < 0:
+                if -diff_chi > chi2_tol:
                     chi2 = _chi2.copy()
                     mle_cube = res.x.copy()
                 else:
