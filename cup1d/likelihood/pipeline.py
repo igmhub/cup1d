@@ -330,7 +330,7 @@ class Pipeline(object):
             # read ini data and redistribute (from scripts/data/profile_like_cen.py)
             file_out = os.path.join(
                 os.path.dirname(self.fitter.save_directory),
-                "NM/best_dircosmo.npy",
+                "best_dircosmo.npy",
             )
             print("Loading IC from", file_out)
             print("")
