@@ -32,7 +32,7 @@ def main():
     # fit_type = "andreu2"
     # args = Args(data_label="DESIY1_FFT_dir", emulator_label="CH24_nyxcen_gpr")
 
-    args.set_baseline(fit_type=fit_type, fix_cosmo=False)
+    args.set_baseline(fit_type=fit_type, fix_cosmo=True)
     path_out = os.path.join(
         os.path.dirname(get_path_repo("cup1d")),
         "data",
