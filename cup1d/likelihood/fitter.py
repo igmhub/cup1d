@@ -339,16 +339,19 @@ class Fitter(object):
         arr_p0 = lhs(npars, samples=nsamples + 1) - 0.5
         # sigma to search around mle_cube
         sig = 0.05
+        sig_dec = 0.9
+        neval = 1000
+        chi2_tol = 0.5
 
         print("Starting NM minimization, chi2=", chi2, flush=True)
         rep = 0
+        ii = 0
         start = time.time()
-        for ii in range(nsamples + 1):
+        while rep < 4:
             start1 = time.time()
-            neval = 1000 + 100 * ii
             pini = mle_cube.copy()
-            if ii != 0:
-                pini += arr_p0[ii] * sig
+            if rep != 0:
+                pini += arr_p0[ii] * sig * sig_dec ** (ii + 1)
 
             pini[pini <= 0] = 0.025
             pini[pini >= 1] = 0.975
@@ -359,7 +362,7 @@ class Fitter(object):
                 method="Nelder-Mead",
                 bounds=((0.0, 1.0),) * npars,
                 options={
-                    "fatol": 0.5,
+                    "fatol": chi2_tol,
                     "xatol": 1e-6,
                     "maxiter": neval,
                     "maxfev": neval,
@@ -368,61 +371,35 @@ class Fitter(object):
             print(res, flush=True)
 
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
-            # print(ii, res.x)
+            diff_chi = _chi2 - chi2
 
             print(
                 "Step and total",
+                ii,
                 np.round(time.time() - start1, 2),
                 np.round(time.time() - start, 2),
                 flush=True,
             )
             print(
-                "Minimization improved:",
+                "Minimization improved (ini, last, now, diff):",
                 np.round(chi2_ini, 4),
                 np.round(chi2, 4),
                 np.round(_chi2, 4),
-                np.round(chi2 - _chi2, 4),
+                np.round(diff_chi, 4),
                 flush=True,
             )
 
-            if _chi2 < chi2:
-                chi2 = _chi2.copy()
-                mle_cube = res.x.copy()
-                # reduce sigma
-                sig *= 0.9
-                rep = 0
+            if res.success:
+                rep = 10
             else:
-                rep += 1
+                if -diff_chi > 0.5 * chi2_tol:
+                    chi2 = _chi2.copy()
+                    mle_cube = res.x.copy()
+                    rep = 0
+                else:
+                    rep += 1
 
-            # if chi2 does not get better after a few it, stop
-            if rep > 3:
-                break
-
-        res.x = mle_cube.copy()
-        keep = True
-        while keep:
-            chi2_1 = self.like.get_chi2(res.x, zmask=zmask)
-            res = scipy.optimize.minimize(
-                _log_func_minimize,
-                res.x,
-                method="Nelder-Mead",
-                bounds=((0.0, 1.0),) * npars,
-                options={
-                    "fatol": 0.5,
-                    "xatol": 1e-6,
-                    "maxiter": neval,
-                    "maxfev": neval,
-                },
-            )
-            chi2_2 = self.like.get_chi2(res.x, zmask=zmask)
-            print("inter", res, flush=True)
-            print("diff chi2", chi2_1 - chi2_2, flush=True)
-            if res.success == True:
-                keep = False
-            elif (chi2_1 - chi2_2) < 0.15:
-                keep = False
-            else:
-                keep = True
+            ii += 1
 
         mle_cube = res.x
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
