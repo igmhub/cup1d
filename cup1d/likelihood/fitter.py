@@ -74,14 +74,11 @@ class Fitter(object):
 
             # number of walkers
             if nwalkers is not None:
-                if nwalkers > 2 * self.ndim:
-                    self.nwalkers = nwalkers
-                else:
+                if nwalkers < 2 * self.ndim:
                     self.print(
                         "nwalkers={} ; ndim={}".format(nwalkers, self.ndim)
                     )
                     raise ValueError("specified number of walkers too small")
-                self.nsteps = nsteps
             else:
                 max_walkers = 40 * self.ndim
                 min_walkers = 2 * self.ndim
@@ -95,13 +92,15 @@ class Fitter(object):
                         - self.burnin_nsteps
                     )
 
-                for irank in range(1, self.size):
-                    self.comm.send(nsteps, dest=irank, tag=irank * 11)
-                    self.comm.send(nwalkers, dest=irank, tag=irank * 13)
+            for irank in range(1, self.size):
+                self.comm.send(nsteps, dest=irank, tag=irank * 11)
+                self.comm.send(nwalkers, dest=irank, tag=irank * 13)
+                self.comm.send(self.save_directory, dest=irank, tag=irank * 15)
 
         else:
             nsteps = self.comm.recv(source=0, tag=self.rank * 11)
             nwalkers = self.comm.recv(source=0, tag=self.rank * 13)
+            self.save_directory = self.comm.recv(source=0, tag=self.rank * 15)
 
         self.nwalkers = nwalkers
         self.nsteps = nsteps
