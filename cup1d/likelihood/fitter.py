@@ -410,7 +410,7 @@ class Fitter(object):
             print(
                 "Almost out of bounds:",
             )
-            _ = ((mle_cube > 0.95) | (mle_cube < 0.05))[:, 0]
+            _ = np.argwhere((mle_cube > 0.95) | (mle_cube < 0.05))[:, 0]
             for ii in range(len(_)):
                 print(
                     self.like.free_params[_[ii, 0]].name,
