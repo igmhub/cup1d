@@ -332,6 +332,8 @@ class Pipeline(object):
                 os.path.dirname(self.fitter.save_directory),
                 "NM/best_dircosmo.npy",
             )
+            print("Loading IC from", file_out)
+            print("")
             out_dict = np.load(file_out, allow_pickle=True).item()
             pini = out_dict["mle_cube"][2:]
             mle_cosmo_cen = out_dict["mle_cosmo_cen"]
