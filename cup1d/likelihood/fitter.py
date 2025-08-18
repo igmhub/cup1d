@@ -395,10 +395,10 @@ class Fitter(object):
             if res.success:
                 keep = False
             else:
+                chi2 = _chi2.copy()
+                mle_cube = res.x.copy()
+                ii += 1
                 if -diff_chi > chi2_tol:
-                    chi2 = _chi2.copy()
-                    mle_cube = res.x.copy()
-                    ii += 1
                     rep = 0
                 else:
                     # stop the minimization if convergence reached
