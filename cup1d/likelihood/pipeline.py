@@ -37,7 +37,6 @@ def get_grid_large(nelem):
         pars[ii, 0] = data_cosmo[key]["star_params"]["Delta2_star"]
         pars[ii, 1] = data_cosmo[key]["star_params"]["n_star"]
 
-    nelem = 10
     x = np.linspace(pars[:, 0].min(), pars[:, 0].max(), nelem)
     y = np.linspace(pars[:, 1].min(), pars[:, 1].max(), nelem)
     xgrid, ygrid = np.meshgrid(x, y)
@@ -289,13 +288,7 @@ class Pipeline(object):
                 self.plotter.plots_sampler()
 
     def run_profile(
-        self,
-        args,
-        sigma_cosmo,
-        nelem=10,
-        nsamples=1,
-        type_minimizer="NM",
-        grid_type="large",
+        self, args, sigma_cosmo, nelem=10, nsamples=1, type_minimizer="NM"
     ):
         """
         Run profile likelihood
@@ -304,17 +297,30 @@ class Pipeline(object):
         cosmology for different fiducial values
         """
 
+        # if grid_type == "large":
+        # xran, yran = get_grid_large(nelem)
+
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
         size = comm.Get_size()
 
-        if grid_type == "large":
-            xgrid, ygrid = get_grid_large(nelem)
-        else:
-            x = np.linspace(-2, 2, nelem)
+        dim = len(sigma_cosmo)
+        x = np.linspace(-3, 3, nelem)
+        if dim == 1:
+            if "Delta2_star" in sigma_cosmo:
+                xgrid = sigma_cosmo["Delta2_star"] * x
+            else:
+                xgrid = x[:] * 0
+            if "n_star" in sigma_cosmo:
+                ygrid = sigma_cosmo["n_star"] * x
+            else:
+                ygrid = x[:] * 0
+        elif dim == 2:
             xgrid, ygrid = np.meshgrid(x, x)
             xgrid = xgrid.reshape(-1) * sigma_cosmo["Delta2_star"]
             ygrid = ygrid.reshape(-1) * sigma_cosmo["n_star"]
+        else:
+            raise ValueError("dim must be 1 or 2")
 
         ind_ranks = np.array_split(np.arange(len(xgrid)), size)
         if rank == 0:
