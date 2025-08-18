@@ -337,11 +337,10 @@ class Fitter(object):
         # perturbations around starting point
         # arr_p0 = lhs(npars, samples=nsamples + 1) - 0.5
         # sigma to search around mle_cube
-        # sig = 0.05
+        sig = 0.05
         # sig_dec = 0.9
 
         # the convergence of the scipy routine is very tricky, so I do it by hand
-        neval = 1000
         chi2_tol = 0.1
 
         print("Starting NM minimization, chi2=", chi2, flush=True)
@@ -352,8 +351,11 @@ class Fitter(object):
         while keep:
             start1 = time.time()
             pini = mle_cube.copy()
-            # if rep != 0:
-            #     pini += arr_p0[ii] * sig * sig_dec ** (ii + 1)
+            if rep != 0:
+                pini += arr_p0[ii] * sig
+                neval = 2000
+            else:
+                neval = 1000
 
             pini[pini <= 0] = 0.025
             pini[pini >= 1] = 0.975
@@ -395,10 +397,10 @@ class Fitter(object):
             if res.success:
                 keep = False
             else:
-                chi2 = _chi2.copy()
-                mle_cube = res.x.copy()
-                ii += 1
                 if -diff_chi > chi2_tol:
+                    chi2 = _chi2.copy()
+                    mle_cube = res.x.copy()
+                    ii += 1
                     rep = 0
                 else:
                     # stop the minimization if convergence reached
