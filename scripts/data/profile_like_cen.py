@@ -9,12 +9,25 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
-    fit_type = "global"
-    # fit_type = "andreu2"
     type_minimizer = "NM"
     # type_minimizer = "DA"
-    args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
+
+    # baseline
+    # fit_type = "andreu2"
     # args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_nyxcen_gpr")
+
+    # nuisance
+    # fit_type = "global"
+    # args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_nyxcen_gpr")
+
+    # emulator
+    # fit_type = "andreu2"
+    # args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
+
+    # QMLE
+    fit_type = "andreu2"
+    args = Args(data_label="DESIY1_QMLE", emulator_label="CH24_nyxcen_gpr")
+
     args.set_baseline(fit_type=fit_type, fix_cosmo=False)
     path_out = os.path.join(
         os.path.dirname(get_path_repo("cup1d")),
