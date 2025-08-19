@@ -283,7 +283,7 @@ class Fitter(object):
         self,
         log_func_minimize=None,
         p0=None,
-        nsamples=8,
+        burn_in=False,
         zmask=None,
         mask_pars=None,
         restart=False,
@@ -315,6 +315,10 @@ class Fitter(object):
                     )
                     return fun
 
+        # the convergence of the scipy routine is very tricky, so I do it by hand
+        neval = 1000
+        chi2_tol = 0.1
+
         _log_func_minimize = set_log_func_minimize(
             p0, zmask=zmask, mask_pars=mask_pars
         )
@@ -331,17 +335,45 @@ class Fitter(object):
             # star at the center of the parameter space
             mle_cube = np.ones(npars) * 0.5
 
+        if burn_in:
+            # random starting points
+            _chi2 = 1e10
+            nsamples = 4
+            sig = 0.25
+            niter = 3
+            arr_p0 = lhs(npars, samples=nsamples)
+
+            # star with first minimization, keep best
+            for it in range(niter):
+                for ii in range(nsamples):
+                    if it == 0:
+                        pini = arr_p0[ii, :]
+                    else:
+                        pini = pnext + (arr_p0[ii, :] - 0.5) * sig**it
+                        pini[pini <= 0] = 0.05
+                        pini[pini >= 1] = 0.95
+
+                    res = scipy.optimize.minimize(
+                        _log_func_minimize,
+                        pini,
+                        method="Nelder-Mead",
+                        bounds=((0.0, 1.0),) * npars,
+                        options={
+                            "fatol": chi2_tol,  # fatol and xatol are both evaluated
+                            "xatol": 1e-6,  # needed to reach the good convergence
+                            "maxiter": neval,
+                            "maxfev": neval,
+                        },
+                    )
+                    print("ITER", it, ii, flush=True)
+                    print(res.success, res.fun, flush=True)
+                    if res.fun < _chi2:
+                        _chi2 = res.fun
+                        pnext = res.x
+            mle_cube = pnext
+
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
         chi2_ini = chi2 * 1
-
-        # perturbations around starting point
-        # arr_p0 = lhs(npars, samples=nsamples + 1) - 0.5
-        # sigma to search around mle_cube
-        sig = 0.05
-        # sig_dec = 0.9
-
-        # the convergence of the scipy routine is very tricky, so I do it by hand
-        chi2_tol = 0.1
 
         print("Starting NM minimization, chi2=", chi2, flush=True)
         keep = True
@@ -351,14 +383,6 @@ class Fitter(object):
         while keep:
             start1 = time.time()
             pini = mle_cube.copy()
-            if rep != 0:
-                pini += arr_p0[ii] * sig
-                neval = 2000
-            else:
-                neval = 1000
-
-            pini[pini <= 0] = 0.025
-            pini[pini >= 1] = 0.975
 
             res = scipy.optimize.minimize(
                 _log_func_minimize,
@@ -400,15 +424,19 @@ class Fitter(object):
                 if -diff_chi > chi2_tol:
                     chi2 = _chi2.copy()
                     mle_cube = res.x.copy()
-                    ii += 1
                     rep = 0
+                elif diff_chi < 0:
+                    chi2 = _chi2.copy()
+                    mle_cube = res.x.copy()
+                    rep += 1
                 else:
-                    # stop the minimization if convergence reached
                     rep += 1
 
             if rep >= 2:
                 # multiple times to ensure that it is real
                 keep = False
+
+            ii += 1
 
         mle_cube = res.x
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
