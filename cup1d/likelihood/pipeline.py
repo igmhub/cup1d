@@ -364,7 +364,6 @@ class Pipeline(object):
                 mle_cosmo_cen,
                 shift_cosmo,
                 pini,
-                nsamples=nsamples,
                 type_minimizer=type_minimizer,
             )
 
