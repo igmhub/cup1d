@@ -50,7 +50,7 @@ def main():
 
     pip = Pipeline(args, out_folder=out_folder)
     # p0 = pip.fitter.like.sampling_point_from_parameters().copy()
-    pip.run_profile(args, sigma_cosmo, nelem=10, type_minimizer=type_minimizer)
+    pip.run_profile(args, sigma_cosmo, nelem=20, type_minimizer=type_minimizer)
 
 
 if __name__ == "__main__":

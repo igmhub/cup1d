@@ -288,7 +288,7 @@ class Pipeline(object):
                 self.plotter.plots_sampler()
 
     def run_profile(
-        self, args, sigma_cosmo, nelem=10, nsamples=1, type_minimizer="NM"
+        self, args, sigma_cosmo, nelem=10, nsig=6, type_minimizer="NM"
     ):
         """
         Run profile likelihood
@@ -305,7 +305,7 @@ class Pipeline(object):
         size = comm.Get_size()
 
         dim = len(sigma_cosmo)
-        x = np.linspace(-3, 3, nelem)
+        x = np.linspace(-nsig, nsig, nelem)
         if dim == 1:
             if "Delta2_star" in sigma_cosmo:
                 xgrid = sigma_cosmo["Delta2_star"] * x
