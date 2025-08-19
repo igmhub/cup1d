@@ -338,9 +338,9 @@ class Fitter(object):
         if burn_in:
             # random starting points
             _chi2 = 1e10
-            nsamples = 4
-            sig = 0.3
-            niter = 3
+            nsamples = 50
+            sig = 0.1
+            niter = 1
             arr_p0 = lhs(npars, samples=nsamples)
 
             # star minimization at different points, keep best
@@ -366,7 +366,9 @@ class Fitter(object):
                             "maxfev": neval * 4,
                         },
                     )
-                    print("ITER", it, ii, res.fun, res.x[:2], flush=True)
+                    print(
+                        "ITER", it, ii, res.fun, pini[:2], res.x[:2], flush=True
+                    )
                     if res.fun < _chi2:
                         _chi2 = res.fun
                         pnext = res.x

@@ -57,7 +57,7 @@ def main():
             pip.fitter.like.minus_log_prob,
             p0=input_pars,
             restart=True,
-            burn_in=False,
+            burn_in=True,
         )
     else:
         pip.fitter.run_minimizer_da(
