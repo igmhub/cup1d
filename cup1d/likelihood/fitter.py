@@ -339,19 +339,20 @@ class Fitter(object):
             # random starting points
             _chi2 = 1e10
             nsamples = 4
-            sig = 0.25
+            sig = 0.3
             niter = 3
             arr_p0 = lhs(npars, samples=nsamples)
 
-            # star with first minimization, keep best
+            # star minimization at different points, keep best
+            # we hope it is easier to get to the local minima
             for it in range(niter):
                 for ii in range(nsamples):
                     if it == 0:
-                        pini = arr_p0[ii, :]
-                    else:
-                        pini = pnext + (arr_p0[ii, :] - 0.5) * sig**it
-                        pini[pini <= 0] = 0.05
-                        pini[pini >= 1] = 0.95
+                        pnext0 = mle_cube.copy()
+
+                    pini = pnext0 + (arr_p0[ii, :] - 0.5) * sig / (ii + 1)
+                    pini[pini <= 0] = 0.05
+                    pini[pini >= 1] = 0.95
 
                     res = scipy.optimize.minimize(
                         _log_func_minimize,
@@ -361,16 +362,17 @@ class Fitter(object):
                         options={
                             "fatol": chi2_tol,  # fatol and xatol are both evaluated
                             "xatol": 1e-6,  # needed to reach the good convergence
-                            "maxiter": neval,
-                            "maxfev": neval,
+                            "maxiter": neval / 2,
+                            "maxfev": neval / 2,
                         },
                     )
                     print("ITER", it, ii, flush=True)
-                    print(res.success, res.fun, flush=True)
+                    print(res.success, res.fun, res.x[:2], flush=True)
                     if res.fun < _chi2:
                         _chi2 = res.fun
                         pnext = res.x
-            mle_cube = pnext
+                pnext0 = pnext.copy()
+            mle_cube = pnext0
 
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
         chi2_ini = chi2 * 1
