@@ -346,10 +346,10 @@ class Fitter(object):
             # star minimization at different points, keep best
             # we hope it is easier to get to the local minima
             for it in range(niter):
+                if it == 0:
+                    pnext0 = mle_cube.copy()
+                print("it, pnext0", it, pnext0[:2], flush=True)
                 for ii in range(nsamples):
-                    if it == 0:
-                        pnext0 = mle_cube.copy()
-
                     pini = pnext0 + (arr_p0[ii, :] - 0.5) * sig / (ii + 1)
                     pini[pini <= 0] = 0.05
                     pini[pini >= 1] = 0.95
@@ -362,12 +362,11 @@ class Fitter(object):
                         options={
                             "fatol": chi2_tol,  # fatol and xatol are both evaluated
                             "xatol": 1e-6,  # needed to reach the good convergence
-                            "maxiter": neval / 2,
-                            "maxfev": neval / 2,
+                            "maxiter": neval * 4,
+                            "maxfev": neval * 4,
                         },
                     )
-                    print("ITER", it, ii, flush=True)
-                    print(res.success, res.fun, res.x[:2], flush=True)
+                    print("ITER", it, ii, res.fun, res.x[:2], flush=True)
                     if res.fun < _chi2:
                         _chi2 = res.fun
                         pnext = res.x
