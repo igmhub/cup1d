@@ -555,7 +555,6 @@ class Fitter(object):
         mle_cosmo_cen,
         shift_cosmo,
         input_pars,
-        nsamples=1,
         type_minimizer="NM",
     ):
         """Profile likelihood"""
@@ -582,7 +581,6 @@ class Fitter(object):
                 self.like.minus_log_prob,
                 p0=input_pars,
                 restart=True,
-                nsamples=nsamples,
             )
         elif type_minimizer == "DA":
             self.run_minimizer_da(
