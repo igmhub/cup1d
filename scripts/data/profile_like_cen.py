@@ -1,7 +1,7 @@
 import os
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
-os.environ["OMP_NUM_THREADS"] = "25"  # export OMP_NUM_THREADS=4
+os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
@@ -49,7 +49,7 @@ def main():
         out_dict = np.load(file_in, allow_pickle=True).item()
         input_pars = out_dict["mle_cube"]
 
-    input_pars[:] = 0.5
+    # input_pars[:] = 0.5
 
     print("starting minimization")
     if type_minimizer == "NM":
@@ -57,7 +57,7 @@ def main():
             pip.fitter.like.minus_log_prob,
             p0=input_pars,
             restart=True,
-            burn_in=True,
+            burn_in=False,
         )
     else:
         pip.fitter.run_minimizer_da(
