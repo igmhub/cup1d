@@ -338,7 +338,7 @@ class Fitter(object):
         if burn_in:
             # random starting points
             _chi2 = 1e10
-            nsamples = 5
+            nsamples = 25
             sig = 0.25
             niter = 1
             arr_p0 = lhs(npars, samples=nsamples)
