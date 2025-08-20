@@ -40,10 +40,10 @@ def main():
     pip = Pipeline(args, out_folder=args.out_folder)
 
     fname = emu + "_ic_global_red.npy"
-    folder = os.path.join(
+    fullpath = os.path.join(
         os.path.dirname(get_path_repo("cup1d")), "data", "ic", fname
     )
-    pip.fitter.like.set_ic_global(fname, verbose=True)
+    pip.fitter.like.set_ic_global(fullpath, verbose=True)
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 
     # try:
