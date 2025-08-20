@@ -5,6 +5,7 @@ os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
+from cup1d.utils.utils import get_path_repo
 
 
 def main():
