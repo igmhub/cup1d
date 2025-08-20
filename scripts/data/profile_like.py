@@ -49,7 +49,7 @@ def main():
     )
     pip.fitter.like.set_ic_global(fullpath, verbose=True)
 
-    sigma_cosmo = {"Delta2_star": 0.02, "n_star": 0.01}
+    sigma_cosmo = {"Delta2_star": 0.025, "n_star": 0.02}
 
     # sigma_cosmo = {"Delta2_star": 0.02}
     # out_folder = os.path.join(args.out_folder, "prof_dstar")
@@ -61,7 +61,7 @@ def main():
 
     pip = Pipeline(args, out_folder=out_folder)
     # p0 = pip.fitter.like.sampling_point_from_parameters().copy()
-    pip.run_profile(args, sigma_cosmo, nelem=4, type_minimizer=type_minimizer)
+    pip.run_profile(args, sigma_cosmo, nelem=20, type_minimizer=type_minimizer)
 
 
 if __name__ == "__main__":
