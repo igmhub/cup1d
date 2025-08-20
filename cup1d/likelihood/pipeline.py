@@ -289,7 +289,7 @@ class Pipeline(object):
                 self.plotter.plots_sampler()
 
     def run_profile(
-        self, args, sigma_cosmo, nelem=10, nsig=6, type_minimizer="NM"
+        self, args, sigma_cosmo, nelem=10, nsig=4, type_minimizer="NM"
     ):
         """
         Run profile likelihood
@@ -336,17 +336,19 @@ class Pipeline(object):
             print("Loading IC from", file_out)
             print("")
             out_dict = np.load(file_out, allow_pickle=True).item()
-            pini = out_dict["mle_cube"][2:]
+            # pini = out_dict["mle_cube"][2:]
             mle_cosmo_cen = out_dict["mle_cosmo_cen"]
 
             # distribute emulator to all ranks
             for irank in range(1, size):
-                comm.send(pini, dest=irank, tag=(irank + 1) * 3)
+                # comm.send(pini, dest=irank, tag=(irank + 1) * 3)
                 comm.send(mle_cosmo_cen, dest=irank, tag=(irank + 1) * 5)
         else:
             # receive emulator from ranks 0
-            pini = comm.recv(source=0, tag=(rank + 1) * 3)
+            # pini = comm.recv(source=0, tag=(rank + 1) * 3)
             mle_cosmo_cen = comm.recv(source=0, tag=(rank + 1) * 5)
+
+        pini = self.fitter.like.sampling_point_from_parameters().copy()
 
         if rank == 0:
             start = time.time()
