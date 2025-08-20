@@ -41,7 +41,7 @@ def main():
 
     fname = emu + "_ic_global_red.npy"
     fullpath = os.path.join(
-        os.path.dirname(get_path_repo("cup1d")), "data", "ic", fname
+        os.path.dirname(get_path_repo("cup1d")), "data", "ics", fname
     )
     pip.fitter.like.set_ic_global(fullpath, verbose=True)
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
