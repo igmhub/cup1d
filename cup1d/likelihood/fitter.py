@@ -285,13 +285,13 @@ class Fitter(object):
         p0=None,
         burn_in=False,
         zmask=None,
-        mask_pars=None,
+        mask_pars=False,
         restart=False,
     ):
         """Minimizer"""
 
-        def set_log_func_minimize(pini, zmask=None, mask_pars=None):
-            if mask_pars is None:
+        def set_log_func_minimize(pini, zmask=None, mask_pars=False):
+            if mask_pars == False:
                 if zmask is not None:
                     fun = lambda x: log_func_minimize(x, zmask=zmask)
                     return fun
@@ -399,7 +399,7 @@ class Fitter(object):
                     "maxfev": neval,
                 },
             )
-            print(res, flush=True)
+            # print(res, flush=True)
 
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
             diff_chi = _chi2 - chi2

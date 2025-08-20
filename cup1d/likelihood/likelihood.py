@@ -2136,28 +2136,10 @@ class Likelihood(object):
             tar = self.apply_unblinding(mle_cosmo)
             self.theory.rescale_fid_cosmo(tar)
 
-    def set_ic_from_z_at_time(
-        self,
-        data,
-        emulator,
-        fname,
-        output_dir=".",
-        verbose=True,
-    ):
+    def set_ic_from_z_at_time(self, fname, verbose=True):
         """Set the initial conditions for the likelihood from a fit"""
 
-        args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
-        args.set_baseline(ztar=data["P1Ds"].z[0], fit_type="at_a_time")
-
         dir_out = np.load(fname, allow_pickle=True).item()
-
-        like1 = set_like(
-            data["P1Ds"],
-            emulator,
-            args,
-            data_hires=data["extra_P1Ds"],
-        )
-        ic_mle_cube = dir_out["mle_cube_reformat"]
 
         # make a copy of free params, and set their values to the best-fit
         free_params = self.free_params.copy()
@@ -2167,13 +2149,66 @@ class Likelihood(object):
             pname, iistr = split_string(p.name)
             ii = int(iistr)
 
-            if (pname + "_znodes") in args.fid_igm:
-                znode = args.fid_igm[pname + "_znodes"][ii]
-            else:
-                znode = args.fid_cont[pname + "_znodes"][ii]
+            try:
+                znode = self.args.fid_igm[pname + "_znodes"][ii]
+            except:
+                znode = self.args.fid_cont[pname + "_znodes"][ii]
 
-            iz = np.argmin(np.abs(like1.data.z - znode))
-            p.value = get_parameters(pname, znode, like1, ic_mle_cube[iz])
+            iz = np.argmin(np.abs(dir_out["z"] - znode))
+            # print(iz, znode, dir_out["z"][iz])
+            # print(dir_out["pnames"][iz], pname + "_0")
+            iname = np.argwhere(
+                np.array(dir_out["pnames"][iz]) == (pname + "_0")
+            )[0, 0]
+            p.value = list(dir_out["mle"][iz].values())[iname]
+
+            if verbose:
+                print(
+                    p.name,
+                    "\t",
+                    np.round(p.value, 3),
+                    "\t",
+                    np.round(p.min_value, 3),
+                    "\t",
+                    np.round(p.max_value, 3),
+                    "\t",
+                    p.Gauss_priors_width,
+                    p.fixed,
+                )
+
+        # reset the coefficients of the models
+        self.theory.model_igm.models["F_model"].reset_coeffs(free_params)
+        self.theory.model_igm.models["T_model"].reset_coeffs(free_params)
+        self.theory.model_cont.hcd_model.reset_coeffs(free_params)
+        self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(free_params)
+        self.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)
+
+    def set_ic_global(self, fname, verbose=True):
+        """Set the initial conditions for the likelihood from a fit"""
+        dir_out = np.load(fname, allow_pickle=True).item()
+
+        # make a copy of free params, and set their values to the best-fit
+        free_params = self.free_params.copy()
+        for jj, p in enumerate(free_params):
+            if p.name in ["As", "ns"]:
+                continue
+            pname, iistr = split_string(p.name)
+            ii = int(iistr)
+
+            try:
+                znode = self.args.fid_igm[pname + "_znodes"][ii]
+            except:
+                znode = self.args.fid_cont[pname + "_znodes"][ii]
+
+            _z = dir_out[pname]["z"]
+            _val = dir_out[pname]["val"]
+            p.value = np.interp(znode, _z, _val)
+
+            try:
+                isfixed = self.args.fid_igm[pname + "_fixed"]
+            except:
+                isfixed = self.args.fid_cont[pname + "_fixed"]
+            p.fixed = isfixed
 
             if verbose:
                 print(

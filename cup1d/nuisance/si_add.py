@@ -147,6 +147,7 @@ class SiAdd(Contaminant):
                     null = np.exp(self.null_vals[key])
                 _ = vals[key] <= null
                 vals[key][_] = 0
+        # print(vals)
 
         rac = self.rat["SiIIa_SiIIc"]
         rbc = self.rat["SiIIb_SiIIc"]

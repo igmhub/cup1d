@@ -11,10 +11,14 @@ from cup1d.utils.utils import get_path_repo
 def main():
     type_minimizer = "NM"
     # type_minimizer = "DA"
+    emu = "mpg"
+    # emu = "nyx"
 
     # baseline
-    fit_type = "andreu2"
-    args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_nyxcen_gpr")
+    fit_type = "global_opt"
+    args = Args(
+        data_label="DESIY1_QMLE3", emulator_label="CH24_" + emu + "cen_gpr"
+    )
 
     # nuisance
     # fit_type = "global"
@@ -35,21 +39,26 @@ def main():
     args.set_baseline(fit_type=fit_type, fix_cosmo=False)
     pip = Pipeline(args, out_folder=args.out_folder)
 
+    fname = emu + "_ic_global_red.npy"
+    folder = os.path.join(
+        os.path.dirname(get_path_repo("cup1d")), "data", "ic", fname
+    )
+    pip.fitter.like.set_ic_global(fname, verbose=True)
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 
-    try:
-        file_in = os.path.join(
-            os.path.dirname(pip.fitter.save_directory),
-            "best_dircosmo.npy",
-        )
-    except:
-        input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
-    else:
-        print("loading IC from:", file_in)
-        out_dict = np.load(file_in, allow_pickle=True).item()
-        input_pars = out_dict["mle_cube"]
+    # try:
+    #     file_in = os.path.join(
+    #         os.path.dirname(pip.fitter.save_directory),
+    #         "best_dircosmo.npy",
+    #     )
+    # except:
+    #     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
+    # else:
+    #     print("loading IC from:", file_in)
+    #     out_dict = np.load(file_in, allow_pickle=True).item()
+    #     input_pars = out_dict["mle_cube"]
 
-    input_pars[:] = 0.5
+    # input_pars[:] = 0.5
 
     print("starting minimization")
     if type_minimizer == "NM":
@@ -73,7 +82,7 @@ def main():
 
     file_out = os.path.join(args.out_folder, "best_dircosmo.npy")
 
-    print("saving IC to:", file_out)
+    print("saving output to:", file_out)
     np.save(file_out, out_dict)
 
     pip.fitter.save_fitter()

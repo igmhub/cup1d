@@ -13,6 +13,7 @@ from cup1d.likelihood.fitter import Fitter
 from cup1d.likelihood.plotter import Plotter
 from cup1d.utils.utils import get_path_repo
 from cup1d.utils.utils import create_print_function
+from cup1d.utils.utils import split_string
 
 
 def get_grid_large(nelem):
@@ -186,9 +187,9 @@ class Pipeline(object):
         self,
         p0,
         make_plots=True,
+        mask_pars=False,
         save_chains=False,
         zmask=None,
-        nsamples=4,
         restart=False,
         type_minimizer="NM",
     ):
@@ -211,7 +212,7 @@ class Pipeline(object):
                     log_func_minimize=self.fitter.like.minus_log_prob,
                     p0=p0,
                     zmask=zmask,
-                    nsamples=nsamples,
+                    mask_pars=mask_pars,
                     restart=restart,
                 )
             elif type_minimizer == "DA":
@@ -372,3 +373,30 @@ class Pipeline(object):
             multi_time = str(np.round(end - start, 2))
             self.fprint("Profile run in " + multi_time + " s")
             self.fprint("----------")
+
+    def save_global_ic(self, fname):
+        out_dict = {}
+        vals = np.array(list(self.fitter.mle.values()))
+        for jj, p in enumerate(self.fitter.like.free_params):
+            pname, iistr = split_string(p.name)
+            ii = int(iistr)
+            try:
+                znode = self.fitter.like.args.fid_igm[pname + "_znodes"][ii]
+            except:
+                znode = self.fitter.like.args.fid_cont[pname + "_znodes"][ii]
+            # print(pname, znode, vals[jj])
+
+            if pname not in out_dict:
+                out_dict[pname] = {"z": [], "val": []}
+            out_dict[pname]["z"].append(znode)
+            out_dict[pname]["val"].append(vals[jj])
+
+        for key in out_dict:
+            out_dict[key]["z"] = np.array(out_dict[key]["z"])
+            ind = np.argsort(out_dict[key]["z"])
+            out_dict[key]["z"] = out_dict[key]["z"][ind]
+            out_dict[key]["val"] = np.array(out_dict[key]["val"])[ind]
+
+            print(key, out_dict[key]["val"])
+
+        np.save(fname, out_dict)

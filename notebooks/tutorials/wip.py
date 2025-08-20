@@ -41,14 +41,9 @@ from cup1d.likelihood import lya_theory, likelihood
 from cup1d.likelihood.fitter import Fitter
 from cup1d.likelihood.plotter import Plotter
 
-from cup1d.likelihood.pipeline import (
-    # set_archive,
-    # set_P1D,
-    # set_cosmo,
-    # set_free_like_parameters,
-    # set_like,
-    Pipeline,
-)
+from cup1d.likelihood.input_pipeline import Args
+from cup1d.likelihood.pipeline import Pipeline
+
 from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
 from astropy.io import fits
 
@@ -61,76 +56,257 @@ from scipy.stats import chi2 as chi2_scipy
 
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+# chi2_scipy.sf(750.9, nparams[0]) * 100 # baseline
+# chi2_scipy.sf(709.2, nparams[1]) * 100 # nuisance
+# chi2_scipy.sf(755.2, nparams[0]) * 100 # emulator
+# chi2_scipy.sf(804.75, nparams[0]) * 100 # qmle
+# chi2_scipy.sf(1106.6, nparams[0]) * 100 # fft
+
+# nparams = [681-44, 681-57]
+# fid = [0.395, -2.289, 0.119] 
+# nuisance = [0.399, -2.288, 0.994]
+# emulator = [0.54, -2.3, 0.083]
+# qmle = [0.369, -2.282, 0.00065]
+# fft = [0.362, -2.280, 7.9e-26]
+
+# vari = fft
+
+# for ii in range(2):
+#     print(np.round(vari[ii] - fid[ii], 3))
+# print(vari[-1])
 
 
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
 
 # %%
+
+# args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_nyxcen_gpr")
+# args = Args(data_label="DESIY1_FFT_dir", emulator_label="CH24_nyxcen_gpr")
 
 args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
-args.set_baseline(fit_type="andreu2", fix_cosmo=True)
+# args.set_baseline(fit_type="andreu2", fix_cosmo=True)
+args.set_baseline(fit_type="global_all", fix_cosmo=True)
+
+# %%
 
 # %%
 pip = Pipeline(args)
 
 # %%
-pip.fitter.like.theory.fid_cosmo['linP_params']
+fname = "ics/at_a_time_andreu2.npy"
+pip.fitter.like.set_ic_from_z_at_time(fname)
 
 # %%
-p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+p0 = pip.fitter.like.sampling_point_from_parameters()
+
+# %%
+
+# %%
 pip.fitter.like.get_chi2(p0)
 
 # %%
-pip.fitter.like.plot_p1d(p0)
-
-# %% [markdown]
-# minimize again!
+pip.fitter.like.plot_p1d(residuals=True, plot_panels=True)
 
 # %%
-p0 = pip.fitter.like.sampling_point_from_parameters().copy()
-pip.fitter.like.plot_p1d(plot_panels=True, residuals=True, values=p0)
-pip.fitter.like.get_chi2(p0)
+pip.run_minimizer(p0, restart=True)
 
 # %%
-zz = pip.fitter.like.data.z
-
-plt.plot(zz, pip.fitter.like.theory.model_igm.models["F_model"].get_mean_flux(zz), "o--")
+p0 = pip.fitter.mle_cube
 
 # %%
-args.fid_igm
+
+from cup1d.utils.utils import split_string
+
+# %%
+fname = "mpg_ic_global_orig.npy"
+pip.save_global_ic(fname)
 
 # %%
 
 # %%
-
-# %%
-
-# %%
-from cup1d.nuisance.mean_flux_class import MeanFlux
-from cup1d.nuisance.pressure_class import Pressure
-from cup1d.nuisance.thermal_class import Thermal
-
-# %% [markdown]
-# ### Set arguments
-
-# %%
-
-args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
-args.set_baseline(fit_type="global", fix_cosmo=True, P1D_type="DESIY1_QMLE3")
-
-# %%
+args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
+args.set_baseline(fit_type="global_all", fix_cosmo=True)
 pip = Pipeline(args)
+p0 = pip.fitter.like.sampling_point_from_parameters()
+pip.fitter.like.get_chi2(p0)
+
+# %%
+fname = "mpg_ic_global_orig.npy"
+pip.fitter.like.set_ic_global(fname, verbose=False)
+
+# %%
+p0 = pip.fitter.like.sampling_point_from_parameters()
+pip.fitter.like.get_chi2(p0)
+# pip.fitter.like.plot_p1d(residuals=True, plot_panels=True)
+
+# %%
+args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
+# args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_nyxcen_gpr")
+args.set_baseline(fit_type="global_opt", fix_cosmo=True)
+pip = Pipeline(args)
+
+# fname = "mpg_ic_global_orig.npy"
+# fname = "mpg_ic_global_test.npy"
+# fname = "mpg_ic_global_test2.npy"
+# fname = "mpg_ic_global_test3.npy"
+# fname = "mpg_ic_global_test4.npy"
+# fname = "mpg_ic_global_opt.npy"
+fname = "mpg_ic_global_red.npy"
+# fname = "nyx_ic_global_opt.npy"
+# fname = "nyx_ic_global_red.npy"
+pip.fitter.like.set_ic_global(fname, verbose=True)
+
+
+p0 = pip.fitter.like.sampling_point_from_parameters()
+pip.fitter.like.get_chi2(p0)
+
+# %%
+len(pip.fitter.like.free_param_names)
+
+# %%
+pip.fitter.like.plot_igm()
+
+# %%
+# xjulia
+pip.fitter.like.plot_p1d(residuals=True, plot_panels=True)
+
+# %%
+$z$ & $\chi^2$ & ndeg & prob\ \hline
+2.2 & 29.91 & 36 & 75.25 \\
+2.4 & 43.87 & 39 & 27.26 \\
+2.6 & 55.84 & 42 & 7.48 \\
+2.8 & 55.52 & 45 & 13.54 \\
+3.0 & 70.98 & 48 & 1.72 \\
+3.2 & 53.91 & 50 & 32.73 \\
+3.4 & 47.42 & 52 & 65.44 \\
+3.6 & 82.84 & 54 & 0.7 \\
+3.8 & 62.59 & 56 & 25.4 \\
+4.0 & 81.36 & 57 & 1.88 \\
+4.2 & 65.27 & 59 & 26.81 \\
+
+# %%
+pip.run_minimizer(p0, restart=True)
+
+# %%
+# fname = "mpg_ic_global_opt.npy"
+# fname = "mpg_ic_global_red.npy"
+# fname = "nyx_ic_global_opt.npy"
+fname = "nyx_ic_global_red.npy"
+pip.save_global_ic(fname)
+
+# %%
+pip.run_minimizer(p0, restart=True, mask_pars)
+
+# %%
+657
+
+# %%
+pip.fitter.like.get_chi2(p0)
+
+# %%
+
+# %%
+prob_levels = np.array([0, 0.6827, 0.9545])
+chi2_levels = np.array([0,  2.29578, 6.17969])
+
+ftsize = 16
+trans = {
+    "global":"Jonastein", 
+    "andreu2": "Baseline"
+}
+
+for jj, fit_type in enumerate(["andreu2"]):
+
+    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+fit_type+"/CH24_nyxcen_gpr/"
+    nelem = 200
+    chi2 = np.zeros(nelem)
+    params = np.zeros((nelem, 2))
+    for ii in range(nelem):
+        try:
+            data = np.load(folder + "prof_2d/profile_"+str(ii)+ ".npy", allow_pickle=True).item()
+        except:
+            continue
+        chi2[ii] = data["chi2"]
+        params[ii, 0] = data["blind_cosmo"]["Delta2_star"]
+        params[ii, 1] = data["blind_cosmo"]["n_star"]
+# data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
+
+fig, ax = plt.subplots(1, 2, figsize=(10, 8))
+
+for ii in range(2):
+    for par in np.unique(params[:, ii]):
+        ind = params[:, ii] == par
+        ax[ii].scatter(par, np.min(chi2[ind])-np.min(chi2), color="C0")
+        ax[ii].axhline(1, color="C1")
+        ax[ii].axhline(4, color="C2")
+        ax[ii].set_ylim(-0.25)
+
+# %%
+
+fig, ax = plt.subplots(1, 1, sharex=True, sharey=True, figsize=(10, 6))
+# plt.scatter(params[ind, 0], params[ind, 1], c=chi2[ind] - min_chi2, cmap="tab10", vmin=vmin, vmax=vmax)
+
+ind = chi2 != 0
+grid = np.meshgrid(
+    np.linspace(params[ind,0].min(), params[ind,0].max(), nelem), 
+    np.linspace(params[ind,1].min(), params[ind,1].max(), nelem)
+)
+xi = np.zeros((nelem*nelem, 2))
+xi[:,0] = grid[0].reshape(-1)
+xi[:,1] = grid[1].reshape(-1)
+interp = griddata(params[ind], chi2[ind], xi, method="cubic")
+
+min_chi2 = np.min([chi2[ind].min(), data_cen['best_chi2'], interp.min()])
+# vmin = 0
+# vmax = np.max([chi2[ind].max(), data_cen['best_chi2'], interp.max()]) - min_chi2
+# plt.scatter(xi[:, 0], xi[:, 1], c=interp - min_chi2, cmap="tab20", vmin=vmin, vmax=vmax, marker=".", alpha=0.5)
+
+# plt.scatter(
+#     data_cen['mle_cosmo_cen']['Delta2_star'],
+#     data_cen['mle_cosmo_cen']['n_star'],
+#     c = data_cen['best_chi2'] - min_chi2,
+#     marker = "X", cmap="tab10", vmin=vmin, vmax=vmax
+# )
+
+CS = ax[jj].contourf(
+    xi[:, 0].reshape(nelem, nelem), 
+    xi[:, 1].reshape(nelem, nelem), 
+    interp.reshape(nelem, nelem) - min_chi2, 
+    chi2_levels,
+    colors=["C0", "C1"],
+)
+
+patch1 = mpatches.Patch(color='C0', label=r"1 $\sigma$")
+patch2 = mpatches.Patch(color='C1', label=r"2 $\sigma$")
+
+ax[jj].text(0.05, 0.93, r"$\chi^2_\mathrm{min}$="+str(np.round(min_chi2, 1)), 
+            transform=ax[jj].transAxes, fontsize=ftsize)
+
+ax[jj].set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
+if jj == 0:
+    ax[jj].set_ylabel(r"$n_\star$", fontsize=ftsize)
+    ax[jj].legend(handles=[patch1, patch2], fontsize=ftsize)
+
+ax[jj].set_title(trans[fit_type], fontsize=ftsize)
+ax[jj].tick_params(
+    axis="both", which="major", labelsize=ftsize - 2
+)
+
+plt.tight_layout()
+
+
+# plt.savefig("compare_variations.pdf")
 
 # %%
 from scipy.interpolate import griddata
 import matplotlib.patches as mpatches
 
-# %%
-prob_levels = np.array([0, 0.6827, 0.9545])
-chi2_levels = np.array([0,  2.29578, 6.17969])
+cont = np.array([0.5, 1, 2, 3])
+for ii in range(len(cont)):
+    prob = chi2_scipy.cdf(cont[ii]**2, 1)
+    print(cont[ii], cont[ii]**2, chi2_scipy.ppf(prob, 2), prob)
+
+prob_levels = np.array([0, 0.3829249225480261, 0.6826894921370859, 0.9544997361036415, 0.9973002039367398])
+chi2_levels = np.array([0, 0.9655291620673466,  2.295748928898636, 6.180074306244168, 11.829158081900795])
 
 fig, ax = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10, 6))
 ftsize = 16
@@ -139,26 +315,31 @@ trans = {
     "andreu2": "Baseline"
 }
 
-for jj, fit_type in enumerate(["andreu2", "global"]):
+# for jj, fit_type in enumerate(["andreu2", "global"]):
+for jj, fit_type in enumerate(["andreu2"]):
 
-    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+fit_type+"/CH24_mpgcen_gpr/"
-    nelem = 100
+    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+fit_type+"/CH24_nyxcen_gpr/"
+    nelem = 200
     chi2 = np.zeros(nelem)
     params = np.zeros((nelem, 2))
     for ii in range(nelem):
         try:
-            data = np.load(folder + "profile_"+str(ii)+ ".npy", allow_pickle=True).item()
+            data = np.load(folder + "prof_2d/profile_"+str(ii)+ ".npy", allow_pickle=True).item()
         except:
             continue
         chi2[ii] = data["chi2"]
         params[ii, 0] = data["blind_cosmo"]["Delta2_star"]
         params[ii, 1] = data["blind_cosmo"]["n_star"]
+
+    print(chi2)
+    print(chi2.min())
     
     data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
     
-    # plt.scatter(params[ind, 0], params[ind, 1], c=chi2[ind] - min_chi2, cmap="tab10", vmin=vmin, vmax=vmax)
+    # plt.scatter(params[ind, 0], params[ind, 1], c=chi2[ind] - min_chi2, cmap="tab10")
     
     ind = chi2 != 0
+    nelem = 40
     grid = np.meshgrid(
         np.linspace(params[ind,0].min(), params[ind,0].max(), nelem), 
         np.linspace(params[ind,1].min(), params[ind,1].max(), nelem)
@@ -166,26 +347,36 @@ for jj, fit_type in enumerate(["andreu2", "global"]):
     xi = np.zeros((nelem*nelem, 2))
     xi[:,0] = grid[0].reshape(-1)
     xi[:,1] = grid[1].reshape(-1)
-    interp = griddata(params[ind], chi2[ind], xi, method="cubic")
+    interp = griddata(params[ind], chi2[ind], xi, method="linear")
     
-    min_chi2 = np.min([chi2[ind].min(), data_cen['best_chi2'], interp.min()])
-    # vmin = 0
-    # vmax = np.max([chi2[ind].max(), data_cen['best_chi2'], interp.max()]) - min_chi2
-    # plt.scatter(xi[:, 0], xi[:, 1], c=interp - min_chi2, cmap="tab20", vmin=vmin, vmax=vmax, marker=".", alpha=0.5)
+    # min_chi2 = np.min([chi2[ind].min(), data_cen['best_chi2'], interp.min()])
+    min_chi2 = np.min([chi2[ind].min(), interp.min()])
+    vmin = 0
+    vmax = np.max([chi2[ind].max(), interp.max()]) - min_chi2
+    vmax = 10
+    plt.scatter(params[:, 0], params[:, 1], c=chi2 - min_chi2, cmap="tab20", vmin=vmin, vmax=vmax, marker="o", alpha=1)
     
-    # plt.scatter(
-    #     data_cen['mle_cosmo_cen']['Delta2_star'],
-    #     data_cen['mle_cosmo_cen']['n_star'],
-    #     c = data_cen['best_chi2'] - min_chi2,
-    #     marker = "X", cmap="tab10", vmin=vmin, vmax=vmax
-    # )
+    plt.scatter(
+        data_cen['mle_cosmo_cen']['Delta2_star'],
+        data_cen['mle_cosmo_cen']['n_star'],
+        c = "k",
+        marker = "X"
+    )
     
     CS = ax[jj].contourf(
         xi[:, 0].reshape(nelem, nelem), 
         xi[:, 1].reshape(nelem, nelem), 
         interp.reshape(nelem, nelem) - min_chi2, 
         chi2_levels,
-        colors=["C0", "C1"],
+        colors=["C0", "C1", "C2", "C3"],
+    )
+
+    
+    ax[0].scatter(
+        data_cen['mle_cosmo_cen']['Delta2_star'],
+        data_cen['mle_cosmo_cen']['n_star'],
+        c = "k",
+        marker = "X"
     )
 
     patch1 = mpatches.Patch(color='C0', label=r"1 $\sigma$")
@@ -210,22 +401,72 @@ plt.tight_layout()
 # plt.savefig("compare_variations.pdf")
 
 # %%
-ind = np.argwhere(data_cen["mle_cube"] > 0.95)[:,0]
-print(name_pars[ind], data_cen["mle_cube"][ind])
+def fit_ellipse(x, y, npts=200):
+    """
+    Fit an ellipse to scattered (x, y) points, ignoring NaNs.
+    Returns parametric fit (xfit, yfit).
+    """
+    # remove NaNs
+    mask = ~(np.isnan(x) | np.isnan(y))
+    x, y = x[mask], y[mask]
 
-ind = np.argwhere(data_cen["mle_cube"] < 0.05)[:,0]
-print(name_pars[ind], data_cen["mle_cube"][ind])
+    # design matrix for conic fit
+    D = np.vstack([x**2, x*y, y**2, x, y, np.ones_like(x)]).T
+    S = np.dot(D.T, D)
+
+    # constraint matrix
+    C = np.zeros((6, 6))
+    C[0, 2] = C[2, 0] = 2
+    C[1, 1] = -1
+
+    # solve generalized eigenvalue problem
+    eigvals, eigvecs = np.linalg.eig(np.linalg.inv(S).dot(C))
+    a = eigvecs[:, np.argmax(eigvals.real)]
+    
+    # ellipse parameters
+    A, B, Cc, Dd, Ee, Ff = a
+    # center
+    num = B**2 - 4*A*Cc
+    x0 = (2*Cc*Dd - B*Ee) / num
+    y0 = (2*A*Ee - B*Dd) / num
+
+    # orientation
+    theta = 0.5 * np.arctan2(B, A - Cc)
+
+    # axes lengths
+    up = 2*(A*x0**2 + B*x0*y0 + Cc*y0**2 + Dd*x0 + Ee*y0 + Ff)
+    down1 = (A+Cc) + np.sqrt((A-Cc)**2 + B**2)
+    down2 = (A+Cc) - np.sqrt((A-Cc)**2 + B**2)
+    a_len = np.sqrt(abs(up/down1))
+    b_len = np.sqrt(abs(up/down2))
+
+    # parametric fit
+    t = np.linspace(0, 2*np.pi, npts)
+    xfit = x0 + a_len*np.cos(t)*np.cos(theta) - b_len*np.sin(t)*np.sin(theta)
+    yfit = y0 + a_len*np.cos(t)*np.sin(theta) + b_len*np.sin(t)*np.cos(theta)
+
+    return xfit, yfit
+
 
 # %%
+CS = plt.contour(
+        xi[:, 0].reshape(nelem, nelem), 
+        xi[:, 1].reshape(nelem, nelem), 
+        interp.reshape(nelem, nelem) - min_chi2, 
+        chi2_levels,
+        colors=["C0", "C1", "C2", "C3"],
+    )
+
+p = CS.collections[2].get_paths()[0]
+v = p.vertices
+x = v[:,0]
+y = v[:,1]
+
+xfit, yfit = fit_ellipse(x, y)
+plt.plot(x, y)
+plt.plot(xfit, yfit)
 
 # %%
-len(name_pars)
-
-# %%
-name_pars = np.array(["As", "ns", 'tau_eff_0', 'tau_eff_1', 'tau_eff_2', 'tau_eff_3', 'tau_eff_4', 'tau_eff_5', 'sigT_kms_0', 'sigT_kms_1', 'sigT_kms_2', 'gamma_0', 'gamma_1', 'gamma_2', 'f_Lya_SiIII_0', 'f_Lya_SiIII_1', 'f_Lya_SiIII_2', 's_Lya_SiIII_0', 's_Lya_SiIII_1', 's_Lya_SiIII_2', 'f_Lya_SiII_0', 'f_Lya_SiII_1', 'f_Lya_SiII_2', 's_Lya_SiII_0', 's_Lya_SiII_1', 's_Lya_SiII_2', 'f_SiIIa_SiIIb_0', 'f_SiIIa_SiIIb_1', 'f_SiIIa_SiIIb_2', 's_SiIIa_SiIIb_0', 's_SiIIa_SiIIb_1', 's_SiIIa_SiIIb_2', 'f_SiIIa_SiIII_0', 'f_SiIIa_SiIII_1', 'f_SiIIb_SiIII_0', 'f_SiIIb_SiIII_1', 'HCD_damp1_0', 'HCD_damp1_1', 'HCD_damp1_2', 'HCD_damp1_3', 'HCD_damp4_0', 'HCD_damp4_1', 'HCD_damp4_2', 'HCD_damp4_3'])
-
-# %%
-data_cosmo["mpg_0"]
 
 # %%
 prob_levels = np.array([0, 0.6827, 0.9545])
@@ -330,155 +571,76 @@ plt.tight_layout()
 # plt.savefig("compare_variations2.pdf")
 
 # %%
+
+# %%
+pip.fitter.like.theory.fid_cosmo['linP_params']
+
+# %%
+p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+chi2 = pip.fitter.like.get_chi2(p0)
+pip.fitter.set_mle(p0, chi2)
+
+# %%
+pip.fitter.like.plot_p1d(p0)
+
+# %% [markdown]
+# minimize again!
+
+# %%
+p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+pip.fitter.like.plot_p1d(plot_panels=True, residuals=True, values=p0)
+pip.fitter.like.get_chi2(p0)
+
+# %%
+diru = "global_nyx"
+p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+pip.fitter.mle_cube = p0
+plotter = Plotter(pip.fitter, save_directory=diru)
+for zz in pip.fitter.like.data.z:
+    plotter.plot_illustrate_contaminants_cum(p0, np.array([zz]))
+plotter.plot_mle_cosmo()
+
+# %%
+pip.fitter.like.apply_unblinding(pip.fitter.mle_cosmo)
+
+# %%
+zz = pip.fitter.like.data.z
+
+plt.plot(zz, pip.fitter.like.theory.model_igm.models["F_model"].get_mean_flux(zz), "o--")
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+from cup1d.nuisance.mean_flux_class import MeanFlux
+from cup1d.nuisance.pressure_class import Pressure
+from cup1d.nuisance.thermal_class import Thermal
+
+# %% [markdown]
+# ### Set arguments
+
+# %%
+
+args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
+args.set_baseline(fit_type="global", fix_cosmo=True, P1D_type="DESIY1_QMLE3")
+
+# %%
+pip = Pipeline(args)
+
+# %%
+
+# %%
+
+# %%
 args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
 fit_type = "andreu2"
 args.set_baseline(
     fit_type=fit_type, fix_cosmo=True, P1D_type="DESIY1_QMLE3"
 )
 pip = Pipeline(args, out_folder=None)
-
-# %%
-sigma_cosmo = {"Delta2_star": 0.02, "n_star": 0.01}
-
-# %%
-nelem = 10
-x = np.linspace(-2, 2, nelem)
-xgrid, ygrid = np.meshgrid(x, x)
-xgrid = xgrid.reshape(-1) * sigma_cosmo["Delta2_star"]
-ygrid = ygrid.reshape(-1) * sigma_cosmo["n_star"]
-
-# %%
-np.arange(100)[ind][ind2][:4]
-
-# %%
-data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
-pini = data_cen["mle_cube"][2:]
-mle_cosmo_cen = data_cen["mle_cosmo_cen"]
-
-# %%
-irank = 59
-
-# %%
-
-# %%
-blind_cosmo = {
-    "Delta2_star": mle_cosmo_cen["Delta2_star"]
-    + shift_cosmo["Delta2_star"],
-    "n_star": mle_cosmo_cen["n_star"] + shift_cosmo["n_star"],
-}
-
-# %%
-params[irank, 0]
-
-# %%
-params[irank, 1]
-
-# %%
-
-# %%
-res2chi2 = np.zeros(100)
-
-for irank in range(100):
-
-    shift_cosmo = {
-        "Delta2_star": xgrid[irank],
-        "n_star": ygrid[irank],
-    }
-    
-    target = pip.fitter.apply_unblinding(mle_cosmo_cen)
-    target["Delta2_star"] += shift_cosmo["Delta2_star"]
-    target["n_star"] += shift_cosmo["n_star"]
-    pip.fitter.like.theory.rescale_fid_cosmo(target)
-    
-    res2chi2[irank] = pip.fitter.like.get_chi2(mle_cube[irank])
-    print(res2chi2[irank], chi2[irank])
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
-# %% [markdown]
-# #### check same parameters and chi2, different cosmologies!!!
-
-# %%
-np.linspace(2.2, 3.6, 3)
-
-# %%
-2000/60
-
-# %%
-795.23 NM, 105.8 s (2 min)
-Delta2_star 0.431
-n_star -2.29364
-
-788.09 DE, 2024.35 s (30 min)
-Delta2_star 0.4041
-n_star -2.28453
-
-773.3142 DA, 1087.89 s (15 min)
-Delta2_star 0.39796
-n_star -2.31815
-
-
-
-# %%
-ind = chi2 != 0
-ii = np.argmin(chi2[ind])
-
-# %%
-(mle_cube[ind] - mle_cube[ind][arr][0]).shape
-
-# %%
-chi2[ind][ii]
-
-# %%
-for jj in range(npars["andreu2"]):
-# for jj in range(1):
-    _ = mle_cube[ind][:, jj] != 0
-    fig, ax = plt.subplots(1, 3, figsize=(10, 4))
-    x = (mle_cube[ind] - mle_cube[ind][ii])[_, jj]
-    y0 = (params[ind, 0] - params[ind, 0][ii])[_]
-    y1 = (params[ind, 1] - params[ind, 1][ii])[_]
-    c = chi2[ind][_] - chi2[ind][ii]
-    ax[0].scatter(x, y0, c=c, marker='.', cmap="tab20")
-    ax[1].scatter(x, y1, c=c, marker='.', cmap="tab20")
-    CS = ax[2].scatter(y0, y1, c=c, marker='.', cmap="tab20")
-    ax[0].set_xlabel(r"$\Delta p$")
-    ax[1].set_xlabel(r"$\Delta p$")
-    ax[2].set_xlabel(r"$\Delta (\Delta^2_\star)$")
-    ax[0].set_ylabel(r"$\Delta (\Delta^2_\star)$")
-    ax[1].set_ylabel(r"$\Delta n_\star$")
-    ax[2].set_ylabel(r"$\Delta n_\star$")
-    plt.colorbar(CS)
-    plt.tight_layout()
-    plt.savefig("pars/"+str(jj)+".png")
-
-# %%
-
-# %%
-
-# %%
-arr = np.argsort(chi2[ind])[:10]
-
-# %%
-chi2[ind][arr]
-
-# %%
-chi2[ii]
-
-# %%
-0.04, 0.018
-
-# %%
--2.29 - 0.018
-
-# %%
 
 # %%
 # # %%time
@@ -1034,54 +1196,11 @@ print(pstar['Delta2_star'], pstar['n_star'])
 # %%
 hess = derivative(fitter.like.minus_log_prob, fitter.mle_cube)
 
-
 # %%
 
 # %%
 
 # %%
-
-# %%
-def get_points_profile_like(
-
-
-# %%
-Andreu2 809
-
-'Delta2_star': 0.4315486076928048,  'n_star': -2.303017944612121,
-
-Global 719
-
-'Delta2_star': 0.4110166684732482,  'n_star': -2.311688458372555,
-
-# %%
-diff_cosmo(fitter.mle)
-
-
-# %%
-def diff_cosmo(mle):
-    andreu2 = {'Delta2_star': 0.4315486076928048,  'n_star': -2.303017944612121}
-    print(np.round(mle["Delta2_star"] - andreu2["Delta2_star"], 3))
-    print(np.round(mle["n_star"] - andreu2["n_star"], 3))
-
-
-# %% [markdown]
-# 758 wip0
-#
-# 777 Andreu
-#
-# 763 wip1 (wip2) 0.5%!
-# to 759 when tau for each redshift, 0.046%, not better
-#
-# 741 wip2 0.1%
-#
-# 716 global 0.69%
-#
-# 719 global + cosmo 0.69%
-#
-# 815 andreu2 0.02%
-#
-# 809 andreu2 + cosmo, 0.04%
 
 # %%
 mask = np.arange(11)
@@ -1175,6 +1294,7 @@ plotter.plot_p1d(plot_panels=True, residuals=True)
 # plotter.plots_minimizer()
 
 # %%
+
 for zz in like.data.z:
     plotter.plot_illustrate_contaminants_cum(fitter.mle_cube.copy(), np.array([zz]))
 
@@ -1441,6 +1561,134 @@ print_results(like, out_chi2, out_mle_cube)
 
 # %%
 print_results(like, out_chi2, out_mle_cube)
+
+# %%
+# xjulia
+args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
+args.set_baseline(fit_type="at_a_time_global", fix_cosmo=True)
+pip = Pipeline(args, out_folder=None)
+
+# %%
+
+args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
+args.set_baseline(fit_type="at_a_time_global", fix_cosmo=True)
+
+# %%
+
+out_mle = []
+out_mle_cube = []
+out_chi2 = []
+out_pnames = []
+for ii in range(len(pip.fitter.like.data.z)): 
+# for ii in range(1): 
+# for ii in range(10, 11): 
+# for ii in range(1): 
+# for ii in range(3, 4): 
+# for ii in range(7, 8): 
+# for ii in range(2, 3): 
+    zmask = np.array([pip.fitter.like.data.z[ii]])
+
+    pip = Pipeline(args, out_folder=None)
+    
+    print()
+    
+    f_space_len = 14
+    s_space_len = 5
+    for p in pip.fitter.like.free_params:
+        
+        # if p.name[:-2] == "HCD_damp4":
+        #     if p.name[:-2] in vals_modify:
+        #         p.value = vals_modify[p.name[:-2]][ii]
+        #         p.min_value = p.value - 1e-3
+        #         p.max_value = p.value + 1e-3
+            
+        print(
+            p.name, (f_space_len-len(p.name)) * " ", "\t", 
+            np.round(p.value, 3), (s_space_len-len(str(np.round(p.value, 3)))) * " ", '\t', 
+            np.round(p.min_value, 3), (s_space_len-len(str(np.round(p.min_value, 3)))) * " ", '\t', 
+            np.round(p.max_value, 3), (s_space_len-len(str(np.round(p.max_value, 3)))) * " ", '\t', 
+            p.Gauss_priors_width
+        )
+
+    
+    print()
+    
+    print(ii, zmask)
+    p0 = np.array(list(pip.fitter.like.fid["fit_cube"].values()))
+    # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, p0=p0_arr[ii], zmask=zmask, restart=True)
+    pip.fitter.run_minimizer(log_func_minimize=pip.fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True)
+    # fitter.run_minimizer(log_func_minimize=fitter.like.get_chi2, zmask=zmask, restart=True)
+    out_pnames.append(pip.fitter.like.free_param_names)
+    out_mle.append(pip.fitter.mle)
+    out_mle_cube.append(pip.fitter.mle_cube)
+    out_chi2.append(pip.fitter.mle_chi2)
+    # plotter = Plotter(fitter, zmask=zmask, save_directory="mpg_baseline/"+str(ii))
+    # plotter.plots_minimizer()
+
+# %%
+
+# %%
+dir_out = {
+    "z":pip.fitter.like.data.z,
+    "pnames":out_pnames,
+    "mle_cube":out_mle_cube,
+    "mle":out_mle,
+    "chi2":out_chi2,
+}
+np.save("ics/at_a_time_andreu2.npy", dir_out)
+
+# np.array(list(pip.fitter.mle.values()))[:-3]
+
+# %%
+out_pnames
+
+# %%
+
+# %%
+mF= pip.fitter.like.theory.model_igm.models["F_model"].get_mean_flux(2.8)
+kms = pip.fitter.like.data.k_kms[-1]
+
+# pip.fitter.mle_cube[-4] = 2.16368962e-01 
+# pip.fitter.mle_cube[-3] = 2.93090546e-01
+# params = pip.fitter.like.parameters_from_sampling_point(pip.fitter.mle_cube)
+# res = pip.fitter.like.theory.model_cont.metal_models["Si_mult"].get_contamination(np.array([2.8]), [kms], [mF], like_params=params)
+# plt.plot(kms, res[0])
+
+# pip.fitter.mle_cube[-4] = 0.8
+# pip.fitter.mle_cube[-3] = 0.8
+# params = pip.fitter.like.parameters_from_sampling_point(pip.fitter.mle_cube)
+# res = pip.fitter.like.theory.model_cont.metal_models["Si_mult"].get_contamination(np.array([2.8]), [kms], [mF], like_params=params)
+# plt.plot(kms, res[0])
+
+
+pip.fitter.mle_cube[-2] = 9.31404223e-01
+pip.fitter.mle_cube[-1] = 7.50958585e-01
+# pip.fitter.mle_cube[-1] = 0.5
+params = pip.fitter.like.parameters_from_sampling_point(pip.fitter.mle_cube)
+res1 = pip.fitter.like.theory.model_cont.hcd_model.get_contamination(np.array([2.8]), [kms], like_params=params)
+plt.plot(kms, res1)
+
+pip.fitter.mle_cube[-2] = 1
+# pip.fitter.mle_cube[-1] = 1
+params = pip.fitter.like.parameters_from_sampling_point(pip.fitter.mle_cube)
+res2 = pip.fitter.like.theory.model_cont.hcd_model.get_contamination(np.array([2.8]), [kms], like_params=params)
+plt.plot(kms, res2)
+
+
+# %%
+res2 = res.copy()
+
+# %%
+np.log(0.00051312)
+# np.exp(2.5)
+
+# %%
+from cup1d.optimize.show_results import print_results
+print_results(pip.fitter.like, out_chi2, out_mle_cube)
+
+# %%
+from cup1d.optimize.show_results import print_results
+print_results(pip.fitter.like, out_chi2, out_mle_cube)
 
 # %%
 from cup1d.optimize.show_results import reformat_cube
@@ -1901,6 +2149,7 @@ for ii in range(len(like.data.z)):
 from cup1d.optimize.show_results import print_results
 
 # %%
+from cup1d.optimize.show_results import print_results
 print_results(like, out_chi2, out_mle_cube)
 
 # %%

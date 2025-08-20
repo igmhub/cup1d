@@ -178,6 +178,7 @@ class SiMult(Contaminant):
                     null = np.exp(self.null_vals[key])
                 _ = vals[key] <= null
                 vals[key][_] = 0
+        # print(vals)
 
         ra3 = self.rat["SiIIa_SiIII"]
         rb3 = self.rat["SiIIb_SiIII"]
