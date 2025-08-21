@@ -333,7 +333,7 @@ class Pipeline(object):
         if rank == 0:
             print("IDs to each rank:", ind_ranks)
 
-        mle_cosmo_cen is None:
+        if mle_cosmo_cen is None:
             if rank == 0:
                 # read ini data and redistribute (from scripts/data/profile_like_cen.py)
                 if folder_ic is None:
