@@ -52,7 +52,7 @@ def main():
     # sigma_cosmo = {"n_star": 0.01}
     # out_folder = os.path.join(args.out_folder, "prof_nstar")
 
-    pip.run_profile(sigma_cosmo, nelem=3, type_minimizer=type_minimizer)
+    pip.run_profile(sigma_cosmo, nelem=10, type_minimizer=type_minimizer)
 
 
 if __name__ == "__main__":
