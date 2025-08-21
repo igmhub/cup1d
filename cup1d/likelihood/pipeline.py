@@ -289,7 +289,12 @@ class Pipeline(object):
                 self.plotter.plots_sampler()
 
     def run_profile(
-        self, sigma_cosmo, nelem=10, nsig=4, type_minimizer="NM", folder_ic=None
+        self,
+        sigma_cosmo,
+        nelem=10,
+        nsig=10,
+        type_minimizer="NM",
+        folder_ic=None,
     ):
         """
         Run profile likelihood
