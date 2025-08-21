@@ -102,20 +102,34 @@ CS = plt.contour(
         colors=["C0", "C1", "C2", "C3"],
     )
 
-p = CS.collections[1].get_paths()
-x = []
-y = []
-for ii in range(len(p)):
-    v = p[ii].vertices
-    x.append(v[:,0])
-    y.append(v[:,1])
-x = np.concatenate(x)
-y = np.concatenate(y)
 
-xfit, yfit = fit_ellipse(x, y)
+ind_min = np.argmin(chi2[ind])
+out_dict = {
+    "xbest":params[ind, :][ind_min][0],
+    "ybest":params[ind, :][ind_min][1],
+    "chi2":chi2[ind][ind_min]
+}
 
-# plt.plot(x, y, "k")
-plt.plot(xfit, yfit, "k--")
+for jj in range(2, 0, -1):
+    p = CS.collections[jj].get_paths()
+    x = []
+    y = []
+    for ii in range(len(p)):
+        v = p[ii].vertices
+        x.append(v[:,0])
+        y.append(v[:,1])
+    x = np.concatenate(x)
+    y = np.concatenate(y)
+    
+    xfit, yfit = fit_ellipse(x, y)
+    plt.plot(xfit, yfit, "C"+str(jj)+"--")
+
+    out_dict["xell" + str(jj)] = xfit
+    out_dict["yell" + str(jj)] = yfit
+
+file = "out_pl/" + emu + "_" + fit_type + ".npy"
+np.save(file, out_dict)
+
 
 # +
 fig, ax = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10, 6))
@@ -192,10 +206,41 @@ print(chi2[ind][ind_min],
 
 plt.tight_layout()
 
-ind = np.argsort(chi2)
-print(params[ind[:3]].mean(axis=0))
+ind3 = np.argsort(chi2)
+print(params[ind3[:3]].mean(axis=0))
 
 # plt.savefig("compare_variations.pdf")
+# +
+fig, ax = plt.subplots(figsize=(10, 8))
+ftsize = 18
+ls = ["-", "--"]
+
+fit_type = "global_opt"
+for ii, emu in enumerate(["mpg", "nyx"]):
+    file = "out_pl/" + emu + "_" + fit_type + ".npy"
+    out_dict = np.load(file, allow_pickle=True).item()
+
+    col = "C"+str(ii)
+    ax.scatter(out_dict["xbest"], out_dict["ybest"], color=col, marker="x")
+
+    for jj in range(1, 3):
+        if jj == 1:
+            lab = emu
+        else:
+            lab= None
+        ax.plot(out_dict["xell"+str(jj)], out_dict["yell"+str(jj)], col+ls[jj-1], label=lab)
+
+ax.scatter(0.4, -2.28, color="k", marker="x", label="Planck")
+
+ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
+ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
+ax.tick_params(
+    axis="both", which="major", labelsize=ftsize - 2
+)
+
+plt.legend(fontsize=ftsize)
+plt.tight_layout()
 # -
+
 
 

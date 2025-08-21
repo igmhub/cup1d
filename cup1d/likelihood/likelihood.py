@@ -129,7 +129,7 @@ class Likelihood(object):
 
         # set like to good starting point
 
-        if start_from_min:
+        if start_from_min and (args.file_ic is not None):
             if os.path.isfile(args.file_ic):
                 print("Loading ICs from", args.file_ic)
                 if "ic_global" in args.file_ic:
