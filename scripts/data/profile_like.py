@@ -43,16 +43,16 @@ def main():
     # nsig = 10
     # nelem = 10
 
-    prof_type = "prof_2d_deep"
+    prof_type = "prof_2d_deep2"
     mle_cosmo_cen = {"Delta2_star": 0.30836784, "n_star": -2.27185649}
     nsig = 5
-    nelem = 10
+    nelem = 30
 
     args.set_baseline(fit_type=fit_type, fix_cosmo=True)
     out_folder = os.path.join(args.out_folder, prof_type)
     pip = Pipeline(args, out_folder=out_folder)
 
-    sigma_cosmo = {"Delta2_star": 0.025, "n_star": 0.02}
+    sigma_cosmo = {"Delta2_star": 0.025, "n_star": 0.017}
 
     # sigma_cosmo = {"Delta2_star": 0.02}
     # out_folder = os.path.join(args.out_folder, "prof_dstar")
