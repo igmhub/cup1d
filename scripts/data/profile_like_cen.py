@@ -11,8 +11,8 @@ from cup1d.utils.utils import get_path_repo
 def main():
     type_minimizer = "NM"
     # type_minimizer = "DA"
-    # emu = "mpg"
-    emu = "nyx"
+    emu = "mpg"
+    # emu = "nyx"
 
     # baseline
     fit_type = "global_opt"
