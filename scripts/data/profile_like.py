@@ -9,10 +9,8 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
-    type_minimizer = "NM"
-    # type_minimizer = "DA"
-    emu = "mpg"
-    # emu = "nyx"
+    # emu = "mpg"
+    emu = "nyx"
 
     # baseline
     fit_type = "global_opt"
@@ -52,7 +50,7 @@ def main():
     # sigma_cosmo = {"n_star": 0.01}
     # out_folder = os.path.join(args.out_folder, "prof_nstar")
 
-    pip.run_profile(sigma_cosmo, nelem=10, type_minimizer=type_minimizer)
+    pip.run_profile(sigma_cosmo, nelem=10, type_minimizer="NM")
 
 
 if __name__ == "__main__":
