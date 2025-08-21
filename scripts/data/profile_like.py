@@ -9,17 +9,17 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
-    emu = "mpg"
-    # emu = "nyx"
+    # emu = "mpg"
+    emu = "nyx"
 
     # prof_type = "prof_2d"
     # mle_cosmo_cen = None
     # nsig = 10
     # nelem = 10
 
-    prof_type = "prof_2d_deep2"
-    # mle_cosmo_cen = {"Delta2_star": 0.30836784, "n_star": -2.27185649} # nyx
-    mle_cosmo_cen = {"Delta2_star": 0.44, "n_star": -2.26}  # mpg
+    # prof_type = "prof_2d_deep2"
+    # mle_cosmo_cen = {"Delta2_star": 0.30836784, "n_star": -2.27185649} # nyx qmle3
+    # mle_cosmo_cen = {"Delta2_star": 0.44, "n_star": -2.26}  # mpg
     nsig = 5
     nelem = 30
 
@@ -49,7 +49,7 @@ def main():
     # fit_type = "andreu2"
     # args = Args(data_label="DESIY1_FFT_dir", emulator_label="CH24_nyxcen_gpr")
 
-    args.set_baseline(fit_type=fit_type, fix_cosmo=True)
+    args.set_baseline(fit_type=fit_type, fix_cosmo=True, P1D_type=data_label)
     out_folder = os.path.join(args.out_folder, prof_type)
     pip = Pipeline(args, out_folder=out_folder)
 
