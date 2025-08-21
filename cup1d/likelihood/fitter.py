@@ -581,10 +581,10 @@ class Fitter(object):
             print("skipping", irank, blind_cosmo)
             return
 
-        test = True
-        if test:
-            print(blind_cosmo)
-            return
+        # test = True
+        # if test:
+        #     print(blind_cosmo)
+        #     return
 
         if type_minimizer == "NM":
             self.run_minimizer(
