@@ -12,15 +12,16 @@ def main():
     emu = "mpg"
     # emu = "nyx"
 
-    prof_type = "prof_2d"
-    mle_cosmo_cen = None
-    nsig = 10
-    nelem = 10
+    # prof_type = "prof_2d"
+    # mle_cosmo_cen = None
+    # nsig = 10
+    # nelem = 10
 
-    # prof_type = "prof_2d_deep2"
-    # mle_cosmo_cen = {"Delta2_star": 0.30836784, "n_star": -2.27185649}
-    # nsig = 5
-    # nelem = 30
+    prof_type = "prof_2d_deep2"
+    # mle_cosmo_cen = {"Delta2_star": 0.30836784, "n_star": -2.27185649} # nyx
+    mle_cosmo_cen = {"Delta2_star": 0.44, "n_star": -2.26}  # mpg
+    nsig = 5
+    nelem = 30
 
     # baseline
     fit_type = "global_opt"
