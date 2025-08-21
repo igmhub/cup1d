@@ -291,6 +291,7 @@ class Pipeline(object):
     def run_profile(
         self,
         sigma_cosmo,
+        mle_cosmo_cen=None,
         nelem=10,
         nsig=10,
         type_minimizer="NM",
@@ -332,27 +333,28 @@ class Pipeline(object):
         if rank == 0:
             print("IDs to each rank:", ind_ranks)
 
-        if rank == 0:
-            # read ini data and redistribute (from scripts/data/profile_like_cen.py)
-            if folder_ic is None:
-                folder_ic = os.path.dirname(
-                    os.path.dirname(self.fitter.save_directory)
-                )
-            file_out = os.path.join(folder_ic, "best_dircosmo.npy")
-            print("Loading IC from", file_out)
-            print("")
-            out_dict = np.load(file_out, allow_pickle=True).item()
-            # pini = out_dict["mle_cube"][2:]
-            mle_cosmo_cen = out_dict["mle_cosmo_cen"]
+        mle_cosmo_cen is None:
+            if rank == 0:
+                # read ini data and redistribute (from scripts/data/profile_like_cen.py)
+                if folder_ic is None:
+                    folder_ic = os.path.dirname(
+                        os.path.dirname(self.fitter.save_directory)
+                    )
+                file_out = os.path.join(folder_ic, "best_dircosmo.npy")
+                print("Loading IC from", file_out)
+                print("")
+                out_dict = np.load(file_out, allow_pickle=True).item()
+                # pini = out_dict["mle_cube"][2:]
+                mle_cosmo_cen = out_dict["mle_cosmo_cen"]
 
-            # distribute emulator to all ranks
-            for irank in range(1, size):
-                # comm.send(pini, dest=irank, tag=(irank + 1) * 3)
-                comm.send(mle_cosmo_cen, dest=irank, tag=(irank + 1) * 5)
-        else:
-            # receive emulator from ranks 0
-            # pini = comm.recv(source=0, tag=(rank + 1) * 3)
-            mle_cosmo_cen = comm.recv(source=0, tag=(rank + 1) * 5)
+                # distribute emulator to all ranks
+                for irank in range(1, size):
+                    # comm.send(pini, dest=irank, tag=(irank + 1) * 3)
+                    comm.send(mle_cosmo_cen, dest=irank, tag=(irank + 1) * 5)
+            else:
+                # receive emulator from ranks 0
+                # pini = comm.recv(source=0, tag=(rank + 1) * 3)
+                mle_cosmo_cen = comm.recv(source=0, tag=(rank + 1) * 5)
 
         pini = self.fitter.like.sampling_point_from_parameters().copy()
 

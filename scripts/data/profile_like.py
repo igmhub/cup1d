@@ -50,7 +50,17 @@ def main():
     # sigma_cosmo = {"n_star": 0.01}
     # out_folder = os.path.join(args.out_folder, "prof_nstar")
 
-    pip.run_profile(sigma_cosmo, nelem=10, type_minimizer="NM")
+    # mle_cosmo_cen = None
+    # nsig = 10
+    # nelem = 10
+
+    mle_cosmo_cen = {"Delta2_star": 0.30836784, "n_star": -2.27185649}
+    nsig = 5
+    nelem = 10
+
+    pip.run_profile(
+        sigma_cosmo, nelem=nelem, nsig=nsig, mle_cosmo_cen=mle_cosmo_cen
+    )
 
 
 if __name__ == "__main__":
