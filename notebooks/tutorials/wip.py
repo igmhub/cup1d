@@ -138,6 +138,17 @@ p0 = pip.fitter.like.sampling_point_from_parameters()
 pip.fitter.like.get_chi2(p0)
 # pip.fitter.like.plot_p1d(residuals=True, plot_panels=True)
 
+# %% [markdown]
+# ## HERE
+
+# %%
+args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
+# args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_nyxcen_gpr")
+args.set_baseline(fit_type="global_opt", fix_cosmo=True)
+pip = Pipeline(args)
+p0 = pip.fitter.like.sampling_point_from_parameters()
+pip.fitter.like.get_chi2(p0)
+
 # %%
 args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
 # args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_nyxcen_gpr")
@@ -209,15 +220,15 @@ prob_levels = np.array([0, 0.6827, 0.9545])
 chi2_levels = np.array([0,  2.29578, 6.17969])
 
 ftsize = 16
-trans = {
-    "global":"Jonastein", 
-    "andreu2": "Baseline"
-}
+# trans = {
+#     "global":"Jonastein", 
+#     "andreu2": "Baseline"
+# }
 
-for jj, fit_type in enumerate(["andreu2"]):
+for jj, fit_type in enumerate(["global_opt"]):
 
-    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+fit_type+"/CH24_nyxcen_gpr/"
-    nelem = 200
+    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+fit_type+"/CH24_mpgcen_gpr/"
+    nelem = 16
     chi2 = np.zeros(nelem)
     params = np.zeros((nelem, 2))
     for ii in range(nelem):
@@ -312,13 +323,14 @@ fig, ax = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10, 6))
 ftsize = 16
 trans = {
     "global":"Jonastein", 
-    "andreu2": "Baseline"
+    "andreu2": "Baseline",
+    "global_opt": "Baseline",
 }
 
 # for jj, fit_type in enumerate(["andreu2", "global"]):
-for jj, fit_type in enumerate(["andreu2"]):
+for jj, fit_type in enumerate(["global_opt"]):
 
-    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+fit_type+"/CH24_nyxcen_gpr/"
+    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+fit_type+"/CH24_mpgcen_gpr/"
     nelem = 200
     chi2 = np.zeros(nelem)
     params = np.zeros((nelem, 2))
@@ -331,15 +343,13 @@ for jj, fit_type in enumerate(["andreu2"]):
         params[ii, 0] = data["blind_cosmo"]["Delta2_star"]
         params[ii, 1] = data["blind_cosmo"]["n_star"]
 
-    print(chi2)
-    print(chi2.min())
     
     data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
     
     # plt.scatter(params[ind, 0], params[ind, 1], c=chi2[ind] - min_chi2, cmap="tab10")
     
     ind = chi2 != 0
-    nelem = 40
+    nelem = 20
     grid = np.meshgrid(
         np.linspace(params[ind,0].min(), params[ind,0].max(), nelem), 
         np.linspace(params[ind,1].min(), params[ind,1].max(), nelem)
@@ -349,8 +359,10 @@ for jj, fit_type in enumerate(["andreu2"]):
     xi[:,1] = grid[1].reshape(-1)
     interp = griddata(params[ind], chi2[ind], xi, method="linear")
     
-    # min_chi2 = np.min([chi2[ind].min(), data_cen['best_chi2'], interp.min()])
-    min_chi2 = np.min([chi2[ind].min(), interp.min()])
+    min_chi2 = np.min([chi2[ind].min(), data_cen['best_chi2'], interp.min()])
+    print(chi2)
+    print(chi2.min(), min_chi2)
+    # min_chi2 = np.min([chi2[ind].min(), interp.min()])
     vmin = 0
     vmax = np.max([chi2[ind].max(), interp.max()]) - min_chi2
     vmax = 10
@@ -379,8 +391,10 @@ for jj, fit_type in enumerate(["andreu2"]):
         marker = "X"
     )
 
-    patch1 = mpatches.Patch(color='C0', label=r"1 $\sigma$")
-    patch2 = mpatches.Patch(color='C1', label=r"2 $\sigma$")
+    patch1 = mpatches.Patch(color='C0', label=r"0.5 $\sigma$")
+    patch2 = mpatches.Patch(color='C1', label=r"1 $\sigma$")
+    patch3 = mpatches.Patch(color='C2', label=r"2 $\sigma$")
+    patch4 = mpatches.Patch(color='C3', label=r"3 $\sigma$")
 
     ax[jj].text(0.05, 0.93, r"$\chi^2_\mathrm{min}$="+str(np.round(min_chi2, 1)), 
                 transform=ax[jj].transAxes, fontsize=ftsize)
@@ -388,7 +402,7 @@ for jj, fit_type in enumerate(["andreu2"]):
     ax[jj].set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
     if jj == 0:
         ax[jj].set_ylabel(r"$n_\star$", fontsize=ftsize)
-        ax[jj].legend(handles=[patch1, patch2], fontsize=ftsize)
+        ax[jj].legend(handles=[patch1, patch2, patch3, patch4], fontsize=ftsize)
 
     ax[jj].set_title(trans[fit_type], fontsize=ftsize)
     ax[jj].tick_params(
@@ -399,6 +413,142 @@ plt.tight_layout()
 
 
 # plt.savefig("compare_variations.pdf")
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/"
+pip.run_profile(sigma_cosmo, nelem=3, folder_ic=folder)
+
+# %%
+0 8
+{'Delta2_star': 0.3138816585261105, 'n_star': -2.3597479847355673}
+1 8
+{'Delta2_star': 0.41388165852611053, 'n_star': -2.3597479847355673}
+2 8
+{'Delta2_star': 0.5138816585261106, 'n_star': -2.3597479847355673}
+3 8
+{'Delta2_star': 0.3138816585261105, 'n_star': -2.2797479847355673}
+4 8
+{'Delta2_star': 0.41388165852611053, 'n_star': -2.2797479847355673}
+5 8
+{'Delta2_star': 0.5138816585261106, 'n_star': -2.2797479847355673}
+6 8
+{'Delta2_star': 0.3138816585261105, 'n_star': -2.199747984735567}
+7 8
+{'Delta2_star': 0.41388165852611053, 'n_star': -2.199747984735567}
+8 8
+{'Delta2_star': 0.5138816585261106, 'n_star': -2.199747984735567}
+
+# %%
+nsig = 4
+sigma_cosmo = {"Delta2_star": 0.025, "n_star": 0.02}
+
+dim = len(sigma_cosmo)
+x = np.linspace(-nsig, nsig, nelem)
+if dim == 1:
+    if "Delta2_star" in sigma_cosmo:
+        xgrid = sigma_cosmo["Delta2_star"] * x
+    else:
+        xgrid = x[:] * 0
+    if "n_star" in sigma_cosmo:
+        ygrid = sigma_cosmo["n_star"] * x
+    else:
+        ygrid = x[:] * 0
+elif dim == 2:
+    xgrid, ygrid = np.meshgrid(x, x)
+    xgrid = xgrid.reshape(-1) * sigma_cosmo["Delta2_star"]
+    ygrid = ygrid.reshape(-1) * sigma_cosmo["n_star"]
+else:
+    raise ValueError("dim must be 1 or 2")
+
+# %%
+mle_cosmo_cen = data_cen["mle_cosmo_cen"]
+
+# %%
+xnew = np.zeros_like(xgrid)
+ynew = np.zeros_like(ygrid)
+
+for irank in range(xgrid.shape[0]):
+    shift_cosmo = {
+        "Delta2_star": xgrid[irank],
+        "n_star": ygrid[irank],
+    }
+
+    blind_cosmo = {
+        "Delta2_star": mle_cosmo_cen["Delta2_star"]
+        + shift_cosmo["Delta2_star"],
+        "n_star": mle_cosmo_cen["n_star"] + shift_cosmo["n_star"],
+    }
+
+    xnew[irank] = blind_cosmo["Delta2_star"]
+    ynew[irank] = blind_cosmo["n_star"]
+
+# %%
+plt.scatter(xnew, ynew)
+plt.scatter(mle_cosmo_cen["Delta2_star"], mle_cosmo_cen["n_star"])
+
+# %%
+
+target = pip.fitter.like.apply_unblinding(mle_cosmo_cen)
+
+# %%
+mle_cosmo_cen
+
+# %%
+target
+
+# %%
+pip.fitter.like.apply_blinding(target)
+
+# %%
+blind_cosmo = {
+    "Delta2_star": mle_cosmo_cen["Delta2_star"]
+    + shift_cosmo["Delta2_star"],
+    "n_star": mle_cosmo_cen["n_star"] + shift_cosmo["n_star"],
+}
+# unblind internally to apply shift consistently
+target = self.like.apply_unblinding(mle_cosmo_cen)
+target["Delta2_star"] += shift_cosmo["Delta2_star"]
+target["n_star"] += shift_cosmo["n_star"]
+
+self.like.theory.rescale_fid_cosmo(target)
+
+# %%
+mle_cosmo_cen = data_cen["mle_cosmo_cen"]
+
+# %%
+shift_cosmo = {
+    "Delta2_star":0,
+    "n_star":0
+}
+
+# %%
+blind_cosmo = {
+    "Delta2_star": mle_cosmo_cen["Delta2_star"]
+    + shift_cosmo["Delta2_star"],
+    "n_star": mle_cosmo_cen["n_star"] + shift_cosmo["n_star"],
+}
+
+# %%
+target = self.like.apply_unblinding(mle_cosmo_cen)
+
+# %%
+
+# %%
+
+# %%
+out_dict = {
+            "chi2": self.mle_chi2,
+            "blind_cosmo": blind_cosmo,
+            "mle_cube": self.mle_cube,
+            "mle": self.mle,
+        }
+
+# %%
+data
+
+# %%
+chi2 - min_chi2
+
 
 # %%
 def fit_ellipse(x, y, npts=200):

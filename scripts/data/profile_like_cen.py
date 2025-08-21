@@ -38,27 +38,7 @@ def main():
 
     args.set_baseline(fit_type=fit_type, fix_cosmo=False)
     pip = Pipeline(args, out_folder=args.out_folder)
-
-    fname = emu + "_ic_global_red.npy"
-    fullpath = os.path.join(
-        os.path.dirname(get_path_repo("cup1d")), "data", "ics", fname
-    )
-    pip.fitter.like.set_ic_global(fullpath, verbose=True)
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
-
-    # try:
-    #     file_in = os.path.join(
-    #         os.path.dirname(pip.fitter.save_directory),
-    #         "best_dircosmo.npy",
-    #     )
-    # except:
-    #     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
-    # else:
-    #     print("loading IC from:", file_in)
-    #     out_dict = np.load(file_in, allow_pickle=True).item()
-    #     input_pars = out_dict["mle_cube"]
-
-    # input_pars[:] = 0.5
 
     print("starting minimization")
     if type_minimizer == "NM":

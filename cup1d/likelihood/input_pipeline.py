@@ -107,6 +107,7 @@ class Args:
     emu_cov_factor: int | None = 1
     cov_factor: int = 1
     emu_cov_type: str = "block"
+    file_ic: str | None = None
     test: bool = False
     explore: bool = False
     parallel: bool = True
@@ -789,6 +790,15 @@ class Args:
 
         #############
         elif fit_type == "global_opt":
+            if "mpg" in self.emulator_label:
+                fname = "mpg_ic_global_red.npy"
+            else:
+                fname = "nyx_ic_global_red.npy"
+
+            self.file_ic = os.path.join(
+                os.path.dirname(get_path_repo("cup1d")), "data", "ics", fname
+            )
+
             for prop in props_cont:
                 self.fid_cont["z_max"][prop] = 5
             props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]

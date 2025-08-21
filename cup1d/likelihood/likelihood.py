@@ -130,19 +130,14 @@ class Likelihood(object):
         # set like to good starting point
 
         if start_from_min:
-            fname = os.path.join(
-                os.path.dirname(get_path_repo("cup1d")),
-                "data",
-                "out_DESI_DR1",
-                self.args.P1D_type,
-                self.args.fit_type,
-                self.args.emulator_label,
-                "NM",
-                "best_dircosmo.npy",
-            )
-            if os.path.isfile(fname):
-                print("Loading ICs from", fname)
-                self.set_ic_from_fullfit(fname)
+            if os.path.isfile(args.file_ic):
+                print("Loading ICs from", args.file_ic)
+                if "ic_global" in args.file_ic:
+                    print("Setting ICs from global fit")
+                    self.set_ic_global(args.file_ic, verbose=True)
+                else:
+                    print("Setting ICs from at a time fit")
+                    self.set_ic_from_z_at_time(args.file_ic, verbose=True)
             else:
                 print("No best fit found to set ICs:", fname)
 

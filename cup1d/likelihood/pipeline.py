@@ -289,7 +289,7 @@ class Pipeline(object):
                 self.plotter.plots_sampler()
 
     def run_profile(
-        self, args, sigma_cosmo, nelem=10, nsig=4, type_minimizer="NM"
+        self, sigma_cosmo, nelem=10, nsig=4, type_minimizer="NM", folder_ic=None
     ):
         """
         Run profile likelihood
@@ -329,10 +329,11 @@ class Pipeline(object):
 
         if rank == 0:
             # read ini data and redistribute (from scripts/data/profile_like_cen.py)
-            file_out = os.path.join(
-                os.path.dirname(os.path.dirname(self.fitter.save_directory)),
-                "best_dircosmo.npy",
-            )
+            if folder_ic is None:
+                folder_ic = os.path.dirname(
+                    os.path.dirname(self.fitter.save_directory)
+                )
+            file_out = os.path.join(folder_ic, "best_dircosmo.npy")
             print("Loading IC from", file_out)
             print("")
             out_dict = np.load(file_out, allow_pickle=True).item()
