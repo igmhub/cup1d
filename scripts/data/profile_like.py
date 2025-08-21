@@ -38,8 +38,18 @@ def main():
     # fit_type = "andreu2"
     # args = Args(data_label="DESIY1_FFT_dir", emulator_label="CH24_nyxcen_gpr")
 
+    # prof_type = "prof_2d"
+    # mle_cosmo_cen = None
+    # nsig = 10
+    # nelem = 10
+
+    prof_type = "prof_2d_deep"
+    mle_cosmo_cen = {"Delta2_star": 0.30836784, "n_star": -2.27185649}
+    nsig = 5
+    nelem = 10
+
     args.set_baseline(fit_type=fit_type, fix_cosmo=True)
-    out_folder = os.path.join(args.out_folder, "prof_2d")
+    out_folder = os.path.join(args.out_folder, prof_type)
     pip = Pipeline(args, out_folder=out_folder)
 
     sigma_cosmo = {"Delta2_star": 0.025, "n_star": 0.02}
@@ -49,14 +59,6 @@ def main():
 
     # sigma_cosmo = {"n_star": 0.01}
     # out_folder = os.path.join(args.out_folder, "prof_nstar")
-
-    # mle_cosmo_cen = None
-    # nsig = 10
-    # nelem = 10
-
-    mle_cosmo_cen = {"Delta2_star": 0.30836784, "n_star": -2.27185649}
-    nsig = 5
-    nelem = 10
 
     pip.run_profile(
         sigma_cosmo, nelem=nelem, nsig=nsig, mle_cosmo_cen=mle_cosmo_cen
