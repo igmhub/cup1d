@@ -9,38 +9,23 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
-    type_minimizer = "NM"
-    # type_minimizer = "DA"
-    emu = "mpg"
-    # emu = "nyx"
+    # emu = "mpg"
+    emu = "nyx"
 
     # baseline
     fit_type = "global_opt"
-    args = Args(
-        data_label="DESIY1_QMLE3", emulator_label="CH24_" + emu + "cen_gpr"
-    )
+    # data_label = "DESIY1_QMLE3"
+    data_label = "DESIY1_QMLE"
+    # data_label = "DESIY1_FFT_dir"
+    # data_label = "DESIY1_FFT"
 
-    # nuisance
-    # fit_type = "global"
-    # args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_nyxcen_gpr")
-
-    # emulator
-    # fit_type = "andreu2"
-    # args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
-
-    # QMLE
-    # fit_type = "andreu2"
-    # args = Args(data_label="DESIY1_QMLE", emulator_label="CH24_nyxcen_gpr")
-
-    # FFT
-    # fit_type = "andreu2"
-    # args = Args(data_label="DESIY1_FFT_dir", emulator_label="CH24_nyxcen_gpr")
-
+    args = Args(data_label=data_label, emulator_label="CH24_" + emu + "cen_gpr")
     args.set_baseline(fit_type=fit_type, fix_cosmo=False)
     pip = Pipeline(args, out_folder=args.out_folder)
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 
     print("starting minimization")
+    type_minimizer = "NM"
     if type_minimizer == "NM":
         pip.fitter.run_minimizer(
             pip.fitter.like.minus_log_prob,
