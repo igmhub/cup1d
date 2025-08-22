@@ -219,13 +219,13 @@ class BaseDataP1D(object):
             plt.yscale("log", nonpositive="clip")
         if xlog:
             plt.xscale("log")
-        plt.xlabel(r"$k [\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
+        plt.xlabel(r"$k\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
         if use_dimensionless:
             plt.ylabel(r"$k\,P(k)/ \pi$", fontsize=ftsize)
         else:
             plt.ylabel(r"$P(k) [km/s]$", fontsize=ftsize)
 
-        ax.tick_params(axis="both", which="major", labelsize=ftsize - 2)
+        ax.tick_params(axis="both", which="major", labelsize=ftsize)
         plt.tight_layout()
 
         if fname is not None:

@@ -1,6 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import rcParams
 import os
 import math
 import copy
@@ -17,6 +15,9 @@ from cup1d.utils.utils import get_path_repo
 
 from cup1d.utils.various_dicts import conv_strings
 
+
+import matplotlib.pyplot as plt
+from matplotlib import rcParams
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -1953,7 +1954,11 @@ class Likelihood(object):
             plt.show()
 
     def plot_cov_to_pk(
-        self, use_pk_smooth=True, save_directory=None, ftsize=16
+        self,
+        use_pk_smooth=True,
+        save_directory=None,
+        fname="cov_to_pk.pdf",
+        ftsize=16,
     ):
         npanels = int(np.round(np.sqrt(len(self.cov_Pk_kms))))
 
@@ -1983,7 +1988,7 @@ class Likelihood(object):
                 self.data.k_kms[ii], np.sqrt(cov_tot) / pk, label=r"$x$ = Total"
             )
             ax[ii].text(
-                0.2,
+                0.25,
                 0.95,
                 "z=" + str(self.data.z[ii]),
                 ha="right",
@@ -2001,7 +2006,7 @@ class Likelihood(object):
         plt.tight_layout()
 
         if save_directory is not None:
-            name = os.path.join(save_directory, "cov_to_pk")
+            name = os.path.join(save_directory, fname)
             plt.savefig(name + ".pdf")
             plt.savefig(name + ".png")
         else:
@@ -2043,93 +2048,93 @@ class Likelihood(object):
 
         self.theory.hull.plot_hulls(p1)
 
-    def set_ic_from_fullfit(self, fname, verbose=True):
-        """Set the initial conditions for the likelihood from a fit"""
+    # def set_ic_from_fullfit(self, fname, verbose=True):
+    #     """Set the initial conditions for the likelihood from a fit"""
 
-        fit_results = np.load(fname, allow_pickle=True).item()
-        print("IC input cube", fit_results["mle_cube"])
-        print("IC input cosmo", fit_results["mle_cosmo_cen"])
-        fix_cosmo = self.args.fix_cosmo
-        self.args.fix_cosmo = False
-        like1 = Likelihood(
-            self.data,
-            self.theory,
-            free_param_names=self.free_param_names,
-            cov_factor=self.args.cov_factor,
-            emu_cov_factor=self.args.emu_cov_factor,
-            emu_cov_type=self.args.emu_cov_type,
-            args=self.args,
-            start_from_min=False,
-        )
-        self.args.fix_cosmo = fix_cosmo
-        ic_mle_cube = fit_results["mle_cube"]
+    #     fit_results = np.load(fname, allow_pickle=True).item()
+    #     print("IC input cube", fit_results["mle_cube"])
+    #     print("IC input cosmo", fit_results["mle_cosmo_cen"])
+    #     fix_cosmo = self.args.fix_cosmo
+    #     self.args.fix_cosmo = False
+    #     like1 = Likelihood(
+    #         self.data,
+    #         self.theory,
+    #         free_param_names=self.free_param_names,
+    #         cov_factor=self.args.cov_factor,
+    #         emu_cov_factor=self.args.emu_cov_factor,
+    #         emu_cov_type=self.args.emu_cov_type,
+    #         args=self.args,
+    #         start_from_min=False,
+    #     )
+    #     self.args.fix_cosmo = fix_cosmo
+    #     ic_mle_cube = fit_results["mle_cube"]
 
-        if len(ic_mle_cube) == len(like1.free_param_names):
-            _ = (ic_mle_cube > 0.95) | (ic_mle_cube < 0.05)
-            print(
-                "Almost out of bounds:",
-                np.array(like1.free_param_names)[_],
-                ic_mle_cube[_],
-            )
+    #     if len(ic_mle_cube) == len(like1.free_param_names):
+    #         _ = (ic_mle_cube > 0.95) | (ic_mle_cube < 0.05)
+    #         print(
+    #             "Almost out of bounds:",
+    #             np.array(like1.free_param_names)[_],
+    #             ic_mle_cube[_],
+    #         )
 
-        # best-fitting star params of full fit (blinded). for profiling, move around them
-        mle_cosmo = {}
-        for key in ["Delta2_star", "n_star", "alpha_star"]:
-            mle_cosmo[key] = fit_results["mle_cosmo_cen"][key]
+    #     # best-fitting star params of full fit (blinded). for profiling, move around them
+    #     mle_cosmo = {}
+    #     for key in ["Delta2_star", "n_star", "alpha_star"]:
+    #         mle_cosmo[key] = fit_results["mle_cosmo_cen"][key]
 
-        # make a copy of free params, and set their values to the best-fit
-        free_params = self.free_params.copy()
-        for jj, p in enumerate(free_params):
-            if p.name not in ["As", "ns"]:
-                pname, iistr = split_string(p.name)
-                ii = int(iistr)
+    #     # make a copy of free params, and set their values to the best-fit
+    #     free_params = self.free_params.copy()
+    #     for jj, p in enumerate(free_params):
+    #         if p.name not in ["As", "ns"]:
+    #             pname, iistr = split_string(p.name)
+    #             ii = int(iistr)
 
-                if (pname + "_znodes") in self.args.fid_igm:
-                    znode = self.args.fid_igm[pname + "_znodes"][ii]
-                else:
-                    znode = self.args.fid_cont[pname + "_znodes"][ii]
+    #             if (pname + "_znodes") in self.args.fid_igm:
+    #                 znode = self.args.fid_igm[pname + "_znodes"][ii]
+    #             else:
+    #                 znode = self.args.fid_cont[pname + "_znodes"][ii]
 
-                print(p.name, znode)
+    #             print(p.name, znode)
 
-            ind = np.argwhere(p.name == np.array(like1.free_param_names))[0, 0]
-            # run at fixed cosmo
+    #         ind = np.argwhere(p.name == np.array(like1.free_param_names))[0, 0]
+    #         # run at fixed cosmo
 
-            if (len(ic_mle_cube) - 2) == len(like1.free_params):
-                val = like1.free_params[ind].value_from_cube(
-                    ic_mle_cube[2:][ind]
-                )
-            else:
-                val = like1.free_params[ind].value_from_cube(ic_mle_cube[ind])
+    #         if (len(ic_mle_cube) - 2) == len(like1.free_params):
+    #             val = like1.free_params[ind].value_from_cube(
+    #                 ic_mle_cube[2:][ind]
+    #             )
+    #         else:
+    #             val = like1.free_params[ind].value_from_cube(ic_mle_cube[ind])
 
-            if val <= -11.5:
-                val = -10.5
-            p.value = val
+    #         if val <= -11.5:
+    #             val = -10.5
+    #         p.value = val
 
-            if verbose:
-                print(
-                    p.name,
-                    "\t",
-                    np.round(p.value, 3),
-                    "\t",
-                    np.round(p.min_value, 3),
-                    "\t",
-                    np.round(p.max_value, 3),
-                    "\t",
-                    p.Gauss_priors_width,
-                    p.fixed,
-                )
+    #         if verbose:
+    #             print(
+    #                 p.name,
+    #                 "\t",
+    #                 np.round(p.value, 3),
+    #                 "\t",
+    #                 np.round(p.min_value, 3),
+    #                 "\t",
+    #                 np.round(p.max_value, 3),
+    #                 "\t",
+    #                 p.Gauss_priors_width,
+    #                 p.fixed,
+    #             )
 
-        # reset the coefficients of the models
-        self.theory.model_igm.models["F_model"].reset_coeffs(free_params)
-        self.theory.model_igm.models["T_model"].reset_coeffs(free_params)
-        self.theory.model_cont.hcd_model.reset_coeffs(free_params)
-        self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(free_params)
-        self.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)
+    #     # reset the coefficients of the models
+    #     self.theory.model_igm.models["F_model"].reset_coeffs(free_params)
+    #     self.theory.model_igm.models["T_model"].reset_coeffs(free_params)
+    #     self.theory.model_cont.hcd_model.reset_coeffs(free_params)
+    #     self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(free_params)
+    #     self.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)
 
-        # rescale the fiducial cosmology if it is fixed
-        if self.args.fix_cosmo:
-            tar = self.apply_unblinding(mle_cosmo)
-            self.theory.rescale_fid_cosmo(tar)
+    #     # rescale the fiducial cosmology if it is fixed
+    #     if self.args.fix_cosmo:
+    #         tar = self.apply_unblinding(mle_cosmo)
+    #         self.theory.rescale_fid_cosmo(tar)
 
     def set_ic_from_z_at_time(self, fname, verbose=True):
         """Set the initial conditions for the likelihood from a fit"""

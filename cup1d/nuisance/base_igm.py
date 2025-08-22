@@ -83,9 +83,6 @@ class IGM_model(object):
 
                 for ii in range(npar):
                     if self.prop_coeffs[key + "_ztype"] == "pivot":
-                        # self.coeffs[key][-(ii + 1)] = self.fid_vals[key][
-                        #     -(ii + 1)
-                        # ]
                         if ii == 0:
                             self.coeffs[key][-1] = self.fid_vals[key][-1]
                         else:
@@ -102,17 +99,22 @@ class IGM_model(object):
     def process_igm(self, fid_igm, name_coeff, order_extra=2, smoothing=True):
         """Post-process IGM from simulation"""
 
-        mask = (fid_igm[name_coeff + "_z"] != 0) & (fid_igm[name_coeff] != 0)
+        mask = (
+            (fid_igm[name_coeff + "_z"] != 0)
+            & (fid_igm[name_coeff] != 0)
+            & np.isfinite(fid_igm[name_coeff])
+        )
         mask_znonzero = fid_igm[name_coeff + "_z"] != 0
         if np.sum(mask) == 0:
             raise ValueError("No non-zero value for fiducial IGM", name_coeff)
         elif np.sum(mask) != fid_igm[name_coeff].shape[0]:
-            warnings.warn(
+            print(
                 "The fiducial value of",
                 name_coeff,
                 " is zero for z: ",
                 fid_igm[name_coeff + "_z"][mask == False],
             )
+        # print(name_coeff, fid_igm[name_coeff], fid_igm[name_coeff][mask])
 
         # fit to fiducial data to reduce noise
         y = fid_igm[name_coeff][mask]
@@ -171,8 +173,6 @@ class IGM_model(object):
                 for key2 in self.flat_priors:
                     if key2 in name:
                         if self.prop_coeffs[key + "_ztype"] == "pivot":
-                            # xmin = self.flat_priors[key2][-(ii + 1)][0]
-                            # xmax = self.flat_priors[key2][-(ii + 1)][1]
                             if ii == 0:
                                 xmin = self.flat_priors[key2][-1][0]
                                 xmax = self.flat_priors[key2][-1][1]

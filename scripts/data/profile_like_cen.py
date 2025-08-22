@@ -14,9 +14,9 @@ def main():
 
     # baseline
     fit_type = "global_opt"
-    # data_label = "DESIY1_QMLE3"
+    data_label = "DESIY1_QMLE3"
     # data_label = "DESIY1_QMLE"
-    data_label = "DESIY1_FFT_dir"
+    # data_label = "DESIY1_FFT_dir"
     # data_label = "DESIY1_FFT"
 
     args = Args(data_label=data_label, emulator_label="CH24_" + emu + "cen_gpr")

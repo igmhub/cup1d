@@ -47,17 +47,17 @@ print(chi2_levels)
 
 # +
 fit_type = "global_opt"
-# data_lab = "DESIY1_QMLE3"
+data_lab = "DESIY1_QMLE3"
 # data_lab = "DESIY1_QMLE"
-data_lab = "DESIY1_FFT_dir"
+# data_lab = "DESIY1_FFT_dir"
 # emu = "mpg"
 emu = "nyx"
 
-type_prof = "prof_2d"
-nelem = 100
+# type_prof = "prof_2d"
+# nelem = 100
 
-# type_prof = "prof_2d_deep2"
-# nelem = 900
+type_prof = "prof_2d_deep2"
+nelem = 900
 
 
 folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
@@ -73,9 +73,14 @@ for ii in range(nelem):
     params[ii, 1] = data["blind_cosmo"]["n_star"]
 
 data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
-
 np.sum(chi2 == 0)
 # -
+
+data_cen['mle_cosmo_cen']
+
+data_cen['best_chi2']
+
+data_cen['mle']
 
 # ### Interpolate data to get better fit
 
@@ -226,15 +231,15 @@ fig, ax = plt.subplots(figsize=(10, 8))
 ftsize = 18
 ls = ["-", "--"]
 
-variations = ["DESIY1_QMLE3_mpg","DESIY1_QMLE_mpg", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx"]
+variations = ["DESIY1_QMLE3_mpg","DESIY1_QMLE_mpg", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx", "DESIY1_FFT_dir_nyx"]
 # variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx"]
-var_deg = [657, 657, 657, 657]
+var_deg = 657
 
 fit_type = "global_opt"
 for ii, var in enumerate(variations):
     file = "out_pl/"+ var + "_" + fit_type + ".npy"
     out_dict = np.load(file, allow_pickle=True).item()
-    prob = chi2_scipy.sf(out_dict['chi2'], var_deg[ii]) * 100
+    prob = chi2_scipy.sf(out_dict['chi2'], var_deg) * 100
     print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
     for key in ["x", "y"]:
         err1 = np.round(0.5 * (out_dict[key+"ell1"].max()-out_dict[key+"ell1"].min()), 2)
@@ -263,6 +268,8 @@ plt.legend(fontsize=ftsize)
 plt.tight_layout()
 # plt.savefig("variations_2d.pdf")
 # -
+
+
 
 
 

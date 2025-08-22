@@ -30,10 +30,13 @@ from cup1d.utils.utils import get_path_repo
 
 
 # +
-emu = "nyx"
+# emu = "nyx"
+emu = "mpg"
 
-args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_"+emu+"cen_gpr")
-args.set_baseline(fit_type="global_all", fix_cosmo=True)
+data_label = "DESIY1_QMLE3"
+
+args = Args(data_label=data_label, emulator_label="CH24_"+emu+"cen_gpr")
+args.set_baseline(fit_type="global_all", fix_cosmo=True, P1D_type=data_label)
 pip = Pipeline(args, out_folder=None)
 # -
 
@@ -44,7 +47,62 @@ pip.fitter.like.plot_p1d(residuals=True, plot_panels=True)
 
 pip.run_minimizer(p0, restart=True)
 
-fname = emu + "_ic_global_orig.npy"
+fname = os.path.join(
+    os.path.dirname(get_path_repo("cup1d")), "data", "ics", emu + "_ic_global_orig.npy"
+)
 pip.save_global_ic(fname)
+
+
+
+# ### For reduced
+
+# +
+emu = "nyx"
+# emu = "mpg"
+
+data_label = "DESIY1_QMLE3"
+
+args = Args(data_label=data_label, emulator_label="CH24_"+emu+"cen_gpr")
+args.set_baseline(fit_type="global_opt", fix_cosmo=True, P1D_type=data_label)
+args.file_ic = os.path.join(
+    os.path.dirname(get_path_repo("cup1d")), "data", "ics", emu + "_ic_global_orig.npy"
+)
+pip = Pipeline(args, out_folder=None)
+# -
+
+p0 = pip.fitter.like.sampling_point_from_parameters()
+pip.fitter.like.get_chi2(p0)
+
+pip.run_minimizer(p0, restart=True)
+
+fname = os.path.join(
+    os.path.dirname(get_path_repo("cup1d")), "data", "ics", emu + "_ic_global_red.npy"
+)
+pip.save_global_ic(fname)
+
+
+
+# ### Check all good
+
+# +
+# emu = "nyx"
+emu = "mpg"
+
+data_label = "DESIY1_QMLE3"
+
+args = Args(data_label=data_label, emulator_label="CH24_"+emu+"cen_gpr")
+args.set_baseline(fit_type="global_opt", fix_cosmo=True, P1D_type=data_label)
+pip = Pipeline(args, out_folder=None)
+p0 = pip.fitter.like.sampling_point_from_parameters()
+pip.fitter.like.get_chi2(p0)
+# -
+
+pip.fitter.like.plot_p1d(residuals=True, plot_panels=True)
+
+pip.fitter.like.plot_igm(cloud=True)
+
+# +
+# pip.run_minimizer(p0, restart=True)
+# -
 
 

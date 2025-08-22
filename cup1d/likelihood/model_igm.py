@@ -222,7 +222,9 @@ class IGM(object):
                 otype = prop_coeffs["kF_kms_otype"]
                 emu_suite = fid_igm["P_suite"]
             elif par == "gamma":
-                z = fid_igm["sigT_kms_z"]
+                z = fid_igm["gamma_z"]
+                otype = prop_coeffs["gamma_otype"]
+                emu_suite = fid_igm["T_suite"]
             elif (par == "sigT_Mpc") | (par == "sigT_kms"):
                 z = fid_igm["sigT_kms_z"]
                 otype = prop_coeffs["sigT_kms_otype"]
@@ -298,13 +300,16 @@ class IGM(object):
             y0_cen = 0.5 * (y0_max + y0_min)
             if otype == "exp":
                 y1 = y0_cen / np.log((1 + z.max()) / (1 + z_pivot))
+                self.priors[par] = [
+                    [-y1 * 2, y1 * 2],
+                    [-y0_min * 1.05, y0_max * 1.05],
+                ]
             elif otype == "const":
                 y1 = y0_cen / ((1 + z.max()) / (1 + z_pivot))
-
-            self.priors[par] = [
-                [-y1 * 2, y1 * 2],
-                [-y0_min * 1.05, y0_max * 1.05],
-            ]
+                self.priors[par] = [
+                    [-y1 * 2, y1 * 2],
+                    [y0_min * 0.95, y0_max * 1.05],
+                ]
 
     # def set_metric(self, emu_igm_params, tol_factor=95):
     #     # get all individual points separately
