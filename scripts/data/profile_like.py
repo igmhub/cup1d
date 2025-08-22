@@ -25,9 +25,11 @@ def main():
     nsig = 5
     nelem = 30
     # mle_cosmo_cen = {"Delta2_star": 0.36, "n_star": -2.26}  # nyx qmle3
+    mle_cosmo_cen = {"Delta2_star": 0.42, "n_star": -2.28}  # mpg qmle3
+
+    # old
     # mle_cosmo_cen = {"Delta2_star": 0.26, "n_star": -2.26}  # nyx qmle
     # mle_cosmo_cen = {"Delta2_star": 0.33, "n_star": -2.255}  # nyx fft_dir
-    mle_cosmo_cen = {"Delta2_star": 0.42, "n_star": -2.28}  # mpg qmle3
     # mle_cosmo_cen = {"Delta2_star": 0.42, "n_star": -2.28}  # mpg qmle
 
     # baseline
