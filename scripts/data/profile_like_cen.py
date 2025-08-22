@@ -9,14 +9,14 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
-    emu = "mpg"
-    # emu = "nyx"
+    # emu = "mpg"
+    emu = "nyx"
 
     # baseline
     fit_type = "global_opt"
     # data_label = "DESIY1_QMLE3"
-    data_label = "DESIY1_QMLE"
-    # data_label = "DESIY1_FFT_dir"
+    # data_label = "DESIY1_QMLE"
+    data_label = "DESIY1_FFT_dir"
     # data_label = "DESIY1_FFT"
 
     args = Args(data_label=data_label, emulator_label="CH24_" + emu + "cen_gpr")

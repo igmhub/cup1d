@@ -742,6 +742,14 @@ class Args:
                     self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -(ii + 1)]
 
         elif fit_type == "global_all":
+            if "mpg" in self.emulator_label:
+                fname = "mpg_ic_at_a_time.npy"
+            else:
+                fname = "nyx_ic_at_a_time.npy"
+            self.file_ic = os.path.join(
+                os.path.dirname(get_path_repo("cup1d")), "data", "ics", fname
+            )
+
             for prop in props_cont:
                 self.fid_cont["z_max"][prop] = 5
             props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
@@ -794,7 +802,6 @@ class Args:
                 fname = "mpg_ic_global_red.npy"
             else:
                 fname = "nyx_ic_global_red.npy"
-
             self.file_ic = os.path.join(
                 os.path.dirname(get_path_repo("cup1d")), "data", "ics", fname
             )
