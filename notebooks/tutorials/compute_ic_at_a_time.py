@@ -13,7 +13,7 @@
 #     name: python3
 # ---
 
-# # Compute IC for fits at a time
+# # Compute IC from fits at a time
 
 # +
 # %load_ext autoreload

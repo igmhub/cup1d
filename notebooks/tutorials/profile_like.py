@@ -47,16 +47,17 @@ print(chi2_levels)
 
 # +
 fit_type = "global_opt"
-data_lab = "DESIY1_QMLE3"
+# data_lab = "DESIY1_QMLE3"
 # data_lab = "DESIY1_QMLE"
+data_lab = "DESIY1_FFT_dir"
 # emu = "mpg"
 emu = "nyx"
 
 type_prof = "prof_2d"
 nelem = 100
 
-type_prof = "prof_2d_deep2"
-nelem = 900
+# type_prof = "prof_2d_deep2"
+# nelem = 900
 
 
 folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
@@ -137,8 +138,8 @@ if type_prof == "prof_2d_deep2":
 
 
 ind3 = np.argsort(chi2[ind])
-print((params[ind])[ind3[:3]].mean(axis=0))
-print((params[ind])[ind3[:3]])
+print((params[ind])[ind3[:2]].mean(axis=0))
+print((params[ind])[ind3[:2]])
 
 # +
 fig, ax = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10, 6))
@@ -225,12 +226,20 @@ fig, ax = plt.subplots(figsize=(10, 8))
 ftsize = 18
 ls = ["-", "--"]
 
-variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx"]
+variations = ["DESIY1_QMLE3_mpg","DESIY1_QMLE_mpg", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx"]
+# variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx"]
+var_deg = [657, 657, 657, 657]
 
 fit_type = "global_opt"
 for ii, var in enumerate(variations):
     file = "out_pl/"+ var + "_" + fit_type + ".npy"
     out_dict = np.load(file, allow_pickle=True).item()
+    prob = chi2_scipy.sf(out_dict['chi2'], var_deg[ii]) * 100
+    print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
+    for key in ["x", "y"]:
+        err1 = np.round(0.5 * (out_dict[key+"ell1"].max()-out_dict[key+"ell1"].min()), 2)
+        err2 = np.round(0.5 * (out_dict[key+"ell2"].max()-out_dict[key+"ell2"].min()), 2)
+        print(np.round(out_dict[key+"best"], 2), np.round(err1, 2), np.round(err2, 2))
 
     col = "C"+str(ii)
     ax.scatter(out_dict["xbest"], out_dict["ybest"], color=col, marker="x")
@@ -252,6 +261,7 @@ ax.tick_params(
 
 plt.legend(fontsize=ftsize)
 plt.tight_layout()
+# plt.savefig("variations_2d.pdf")
 # -
 
 
