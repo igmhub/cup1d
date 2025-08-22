@@ -17,13 +17,13 @@ def main():
     # data_label = "DESIY1_QMLE3"
     # data_label = "DESIY1_QMLE"
     # data_label = "DESIY1_FFT_dir"
-    data_label = "DESIY1_FFT"
+    # data_label = "DESIY1_FFT"
 
     # "DESIY1_QMLE3" + mpg, done
     # "DESIY1_QMLE3" + nyx, done
     # "DESIY1_QMLE" + mpg, done
     # "DESIY1_FFT_dir" + mpg, done
-    # "DESIY1_FFT" + mpg, not done
+    # "DESIY1_FFT" + mpg, done
 
     args = Args(data_label=data_label, emulator_label="CH24_" + emu + "cen_gpr")
     args.set_baseline(fit_type=fit_type, fix_cosmo=False, P1D_type=data_label)
