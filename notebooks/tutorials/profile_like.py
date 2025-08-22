@@ -47,17 +47,19 @@ print(chi2_levels)
 
 # +
 fit_type = "global_opt"
-emu = "mpg"
-# emu = "nyx"
+data_lab = "DESIY1_QMLE3"
+# data_lab = "DESIY1_QMLE"
+# emu = "mpg"
+emu = "nyx"
 
-# type_prof = "prof_2d"
-# nelem = 100
+type_prof = "prof_2d"
+nelem = 100
 
 type_prof = "prof_2d_deep2"
 nelem = 900
 
 
-folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+fit_type+"/CH24_"+emu+"cen_gpr/"
+folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
 chi2 = np.zeros(nelem)
 params = np.zeros((nelem, 2))
 for ii in range(nelem):
@@ -70,6 +72,8 @@ for ii in range(nelem):
     params[ii, 1] = data["blind_cosmo"]["n_star"]
 
 data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
+
+np.sum(chi2 == 0)
 # -
 
 # ### Interpolate data to get better fit
@@ -127,9 +131,14 @@ for jj in range(2, 0, -1):
     out_dict["xell" + str(jj)] = xfit
     out_dict["yell" + str(jj)] = yfit
 
-file = "out_pl/" + emu + "_" + fit_type + ".npy"
-np.save(file, out_dict)
+if type_prof == "prof_2d_deep2":
+    file = "out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
+    np.save(file, out_dict)
 
+
+ind3 = np.argsort(chi2[ind])
+print((params[ind])[ind3[:3]].mean(axis=0))
+print((params[ind])[ind3[:3]])
 
 # +
 fig, ax = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10, 6))
@@ -206,18 +215,21 @@ print(chi2[ind][ind_min],
 
 plt.tight_layout()
 
-ind3 = np.argsort(chi2)
-print(params[ind3[:3]].mean(axis=0))
 
 # plt.savefig("compare_variations.pdf")
+# -
+# ## All together
+
 # +
 fig, ax = plt.subplots(figsize=(10, 8))
 ftsize = 18
 ls = ["-", "--"]
 
+variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx"]
+
 fit_type = "global_opt"
-for ii, emu in enumerate(["mpg", "nyx"]):
-    file = "out_pl/" + emu + "_" + fit_type + ".npy"
+for ii, var in enumerate(variations):
+    file = "out_pl/"+ var + "_" + fit_type + ".npy"
     out_dict = np.load(file, allow_pickle=True).item()
 
     col = "C"+str(ii)
@@ -225,7 +237,7 @@ for ii, emu in enumerate(["mpg", "nyx"]):
 
     for jj in range(1, 3):
         if jj == 1:
-            lab = emu
+            lab = var
         else:
             lab= None
         ax.plot(out_dict["xell"+str(jj)], out_dict["yell"+str(jj)], col+ls[jj-1], label=lab)
