@@ -53,10 +53,10 @@ data_lab = "DESIY1_QMLE3"
 # emu = "mpg"
 emu = "nyx"
 
-# type_prof = "prof_2d"
-# nelem = 100
+type_prof = "prof_2d"
+nelem = 100
 
-type_prof = "prof_2d_deep2"
+type_prof = "prof_2d_deep"
 nelem = 900
 
 
@@ -75,12 +75,6 @@ for ii in range(nelem):
 data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
 np.sum(chi2 == 0)
 # -
-
-data_cen['mle_cosmo_cen']
-
-data_cen['best_chi2']
-
-data_cen['mle']
 
 # ### Interpolate data to get better fit
 
@@ -137,14 +131,14 @@ for jj in range(2, 0, -1):
     out_dict["xell" + str(jj)] = xfit
     out_dict["yell" + str(jj)] = yfit
 
-if type_prof == "prof_2d_deep2":
+if type_prof == "prof_2d_deep":
     file = "out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
     np.save(file, out_dict)
 
 
 ind3 = np.argsort(chi2[ind])
-print((params[ind])[ind3[:2]].mean(axis=0))
-print((params[ind])[ind3[:2]])
+print((params[ind])[ind3[:3]].mean(axis=0))
+print((params[ind])[ind3[:3]])
 
 # +
 fig, ax = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10, 6))
@@ -231,8 +225,8 @@ fig, ax = plt.subplots(figsize=(10, 8))
 ftsize = 18
 ls = ["-", "--"]
 
-variations = ["DESIY1_QMLE3_mpg","DESIY1_QMLE_mpg", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx", "DESIY1_FFT_dir_nyx"]
-# variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx"]
+# variations = ["DESIY1_QMLE3_mpg","DESIY1_QMLE_mpg", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx", "DESIY1_FFT_dir_nyx"]
+variations = ["DESIY1_QMLE3_nyx", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx"]
 var_deg = 657
 
 fit_type = "global_opt"
