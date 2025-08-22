@@ -16,18 +16,18 @@ def main():
     # data_label = "DESIY1_FFT_dir"
     # data_label = "DESIY1_FFT"
 
-    prof_type = "prof_2d"
-    nsig = 10
-    nelem = 10
-    mle_cosmo_cen = None
+    # prof_type = "prof_2d"
+    # nsig = 10
+    # nelem = 10
+    # mle_cosmo_cen = None
 
-    # prof_type = "prof_2d_deep"
-    # nsig = 5
-    # nelem = 30
+    prof_type = "prof_2d_deep"
+    nsig = 5
+    nelem = 30
     # mle_cosmo_cen = {"Delta2_star": 0.36, "n_star": -2.26}  # nyx qmle3
     # mle_cosmo_cen = {"Delta2_star": 0.26, "n_star": -2.26}  # nyx qmle
     # mle_cosmo_cen = {"Delta2_star": 0.33, "n_star": -2.255}  # nyx fft_dir
-    # mle_cosmo_cen = {"Delta2_star": 0.44, "n_star": -2.26}  # mpg qmle3
+    mle_cosmo_cen = {"Delta2_star": 0.42, "n_star": -2.28}  # mpg qmle3
     # mle_cosmo_cen = {"Delta2_star": 0.42, "n_star": -2.28}  # mpg qmle
 
     # baseline
