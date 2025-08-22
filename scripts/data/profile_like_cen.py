@@ -16,13 +16,13 @@ def main():
     fit_type = "global_opt"
     # data_label = "DESIY1_QMLE3"
     # data_label = "DESIY1_QMLE"
-    data_label = "DESIY1_FFT_dir"
-    # data_label = "DESIY1_FFT"
+    # data_label = "DESIY1_FFT_dir"
+    data_label = "DESIY1_FFT"
 
     # "DESIY1_QMLE3" + mpg, done
     # "DESIY1_QMLE3" + nyx, done
     # "DESIY1_QMLE" + mpg, done
-    # "DESIY1_FFT_dir" + mpg, not done
+    # "DESIY1_FFT_dir" + mpg, done
     # "DESIY1_FFT" + mpg, not done
 
     args = Args(data_label=data_label, emulator_label="CH24_" + emu + "cen_gpr")
