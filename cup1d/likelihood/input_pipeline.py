@@ -264,7 +264,15 @@ class Args:
             self.fix_cosmo = False
         self.vary_alphas = False
         self.ic_correction = False
-        self.fid_cosmo_label = "Planck18"
+
+        if name_variation is None:
+            self.fid_cosmo_label = "Planck18"
+        elif name_variation == "cosmo":
+            self.fid_cosmo_label = "DESIDR2_ACT"
+        else:
+            raise ValueError(
+                "name_variation " + name_variation + " not implemented"
+            )
 
         if ("mpg" in self.emulator_label) | ("Mpg" in self.emulator_label):
             sim_fid = "mpg_central"
@@ -458,20 +466,7 @@ class Args:
                 self.fid_cont["z_max"][prop] = 5
             props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
 
-            if name_variation == None:
-                props_cont = [
-                    "f_Lya_SiIII",
-                    "s_Lya_SiIII",
-                    "f_Lya_SiII",
-                    "s_Lya_SiII",
-                    "f_SiIIa_SiIIb",
-                    "s_SiIIa_SiIIb",
-                    "f_SiIIa_SiIII",
-                    "f_SiIIb_SiIII",
-                    "HCD_damp1",
-                    "HCD_damp4",
-                ]
-            elif name_variation == "HCD":
+            if name_variation == "HCD":
                 props_cont = [
                     "f_Lya_SiIII",
                     "s_Lya_SiIII",
@@ -537,7 +532,18 @@ class Args:
                     "HCD_damp4",
                 ]
             else:
-                raise ValueError("No valid name_variation: " + name_variation)
+                props_cont = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp4",
+                ]
 
             self.opt_props = props_igm + props_cont
             var_props = self.opt_props
@@ -657,18 +663,32 @@ class Args:
         self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-10.0, -0.15]]
         self.fid_cont["flat_priors"]["HCD_const"] = [[-1, 1], [-0.2, 1e-6]]
 
-        for key in fid_cont:
-            if key in fid_cont["flat_priors"]:
-                if fid_cont["flat_priors"][key][-1][0] < fid_cont[key]:
+        for key in self.fid_cont:
+            if key in self.fid_cont["flat_priors"]:
+                if (
+                    self.fid_cont[key][-1]
+                    < self.fid_cont["flat_priors"][key][-1][0]
+                ):
                     print(
-                        key, fid_cont["flat_priors"][key][-1][0], fid_cont[key]
+                        key,
+                        self.fid_cont["flat_priors"][key][-1][0],
+                        self.fid_cont[key][-1],
                     )
-                    fid_cont["flat_priors"][key][-1][0] = fid_cont[key]
-                if fid_cont["flat_priors"][key][-1][1] > fid_cont[key]:
+                    self.fid_cont["flat_priors"][key][-1][0] = (
+                        self.fid_cont[key][-1] - 0.1
+                    )
+                if (
+                    self.fid_cont[key][-1]
+                    > self.fid_cont["flat_priors"][key][-1][1]
+                ):
                     print(
-                        key, fid_cont["flat_priors"][key][-1][1], fid_cont[key]
+                        key,
+                        self.fid_cont["flat_priors"][key][-1][1],
+                        self.fid_cont[key][-1],
                     )
-                    fid_cont["flat_priors"][key][-1][1] = fid_cont[key]
+                    self.fid_cont["flat_priors"][key][-1][1] = (
+                        self.fid_cont[key][-1] + 0.1
+                    )
 
 
 # Set Gaussian priors

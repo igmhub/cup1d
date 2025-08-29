@@ -87,9 +87,6 @@ print(data_cen['best_chi2'], pip.fitter.like.get_chi2(p0))
 # ### Get some data for Sec results
 
 # %%
-np.exp(-11.5)
-
-# %%
 data_cen["mle"]
 
 
@@ -172,7 +169,88 @@ plt.yscale("log")
 plt.ylim(0.1)
 
 # %% [markdown]
-# ### Stop
+# ### Run variations
+
+# %%
+var_deg = 657
+
+results_var = {
+    "fiducial":   np.array([ 785.471, 0.42385, -2.28224]),
+    "HCD":        np.array([ 844.907, 0.54528, -2.33871]),
+    "metal_trad": np.array([1985.443, 0.47164, -2.29145]),
+    "metal_si2":  np.array([ 884.533, 0.53581, -2.28978]),
+    "metal_deco": np.array([1805.704, 0.36753, -2.28083]),
+    "metal_thin": np.array([ 863.954, 0.41014, -2.28247]),
+    "cosmo":      np.array([ 785.870, 0.42266, -2.28021]),
+    "cov":        np.array([ 649.170, 0.42287, -2.28212]),
+}
+ndeg = {
+    "fiducial": var_deg,
+    "HCD": var_deg+2,
+    "metal_trad": var_deg+6,
+    "metal_si2": var_deg+2,
+    "metal_deco": var_deg+2,
+    "metal_thin": var_deg+2,
+    "cosmo": var_deg,
+    "cov": var_deg,
+}
+
+err = np.array([0.06, 0.02])
+
+
+for key in results_var:
+    print()
+    diffp = results_var[key][1:] - results_var["fiducial"][1:]
+    print(key, np.round(diffp, 2))
+    chi2 = results_var[key][0]
+    prob = chi2_scipy.sf(chi2, ndeg[key]) * 100
+    consist = np.sum(diffp**2/err**2)
+    prob_var = chi2_scipy.sf(consist, 2) * 100
+    print(np.round(prob_var, 1), np.round(chi2, 0), f'{prob:.1e}')
+    
+
+# %%
+fit_type = "global_opt"
+data_lab = "DESIY1_QMLE3"
+emu = "mpg"
+name_variation = None         # chi2  785.471, Delta2_star 0.42385, n_star -2.28224
+# name_variation = "HCD"        # chi2  844.907, Delta2_star 0.54528, n_star -2.33871
+# name_variation = "metal_trad" # chi2 1905.443, Delta2_star 0.47164, n_star -2.29145
+# name_variation = "metal_si2"  # chi2  884.533, Delta2_star 0.53581, n_star -2.28978
+# name_variation = "metal_deco" # chi2 1805.704, Delta2_star 0.36753, n_star -2.28083
+# name_variation = "metal_thin" # chi2  863.954, Delta2_star 0.41014, n_star -2.28247
+# name_variation = "cosmo"      # chi2  649.170, Delta2_star 0.42287, n_star -2.28212
+
+args = Args(data_label=data_lab, emulator_label="CH24_"+emu+"cen_gpr")
+args.set_baseline(fit_type=fit_type, fix_cosmo=False, name_variation=name_variation)
+pip = Pipeline(args)
+
+# name_variation = "cov"        # chi2  785.471, Delta2_star 0.42385, n_star -2.28224
+if name_variation == "cov":
+    pip.fitter.like.full_icov_Pk_kms /= 1.1**2
+
+folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
+data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
+p0 = pip.fitter.like.sampling_point_from_parameters()
+print(data_cen['best_chi2'], pip.fitter.like.get_chi2(p0))
+print(len(p0))
+
+# %%
+# pip.fitter.like.icov_Pk_kms
+
+# %%
+pip.fitter.like.get_chi2(p0)
+
+# %%
+pip.run_minimizer(p0, restart=True)
+
+# %%
+
+# %%
+
+# %%
+
+# %%
 
 # %%
 

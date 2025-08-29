@@ -76,27 +76,33 @@ def set_cosmo(
             pivot_scalar=0.05,
             w=-1,
         )
-    elif cosmo_label == "Planck18_alt":
-        # or maybe the w0wa cosmology?
-        h = 0.6766
-        omch2 = 0.119
-        ombh2 = 0.0224
-        om = (omch2 + ombh2) / h**2
-        hnew = 0.72
-        omch2new = om * hnew**2 - ombh2
-        mnu = 0.06
+    elif cosmo_label == "DESIDR2_ACT":
+        # ACT https://arxiv.org/pdf/2503.14452, Table 5 (P-ACT)
+        # omch2 = 0.1193
+        # hact = 0.6762
+        ombh2 = 0.0225
+        ns = 0.9709
+        As = np.exp(3.056) / 1e10
+
+        # DESI https://arxiv.org/pdf/2504.18464, Table 3 (DESI+P-ACT+DESY5)
+        h = 0.6685
+        om = 0.3175
+        omch2 = om * h**2 - ombh2
+        w0 = -0.764
+        wa = -0.77
 
         cosmo = camb_cosmo.get_cosmology(
-            H0=hnew,
-            mnu=mnu,
-            omch2=omch2new,
-            ombh2=0.0224,
+            H0=h * 100,
+            mnu=0.0,
+            omch2=omch2,
+            ombh2=ombh2,
             omk=0.0,
-            As=2.105e-09,
-            ns=0.9665,
+            As=As,
+            ns=ns,
             nrun=0.0,
             pivot_scalar=0.05,
-            w=-1,
+            w=w0,
+            wa=wa,
         )
     elif cosmo_label == "Planck18_nyx":
         cosmo = camb_cosmo.get_cosmology(

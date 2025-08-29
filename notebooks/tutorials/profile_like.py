@@ -276,7 +276,7 @@ for ii, var in enumerate(variations):
         consist += (out_dict[key+"best"] - dict_diff[key])**2/np.max([dict_diff["e"+key], err1])**2
 
     prob_var = chi2_scipy.sf(consist, 2) * 100
-    print(np.round(prob_var, 0))
+    print(np.round(prob_var, 1))
 
     col = "C"+str(ii)
     ax.scatter(out_dict["xbest"], out_dict["ybest"], color=col, marker="x")
@@ -298,8 +298,8 @@ ax.tick_params(
 
 plt.legend(fontsize=ftsize-2)
 plt.tight_layout()
-plt.savefig("figs/variations_2d.pdf")
-plt.savefig("figs/variations_2d.png")
+# plt.savefig("figs/variations_2d.pdf")
+# plt.savefig("figs/variations_2d.png")
 # -
 
 
