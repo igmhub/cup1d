@@ -43,7 +43,7 @@ pip = Pipeline(args, out_folder=None)
 p0 = pip.fitter.like.sampling_point_from_parameters()
 pip.fitter.like.get_chi2(p0)
 
-pip.fitter.like.plot_p1d(residuals=True, plot_panels=True)
+pip.fitter.like.plot_p1d(residuals=True, plot_panels=True, glob_full=True, fontsize=18, plot_fname="residual_full_global")
 
 pip.run_minimizer(p0, restart=True)
 

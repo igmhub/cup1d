@@ -33,13 +33,14 @@ from cup1d.likelihood.pipeline import Pipeline
 from cup1d.utils.utils import get_path_repo
 
 # +
-# emu = "mpg"
-emu = "nyx"
+emu = "mpg"
+# emu = "nyx"
 data_label = "DESIY1_QMLE3"
 # data_label = "DESIY1_FFT_dir"
+type_fit = "global_opt"
 
 args = Args(data_label=data_label, emulator_label="CH24_"+emu+"cen_gpr")
-args.set_baseline(fit_type="global_opt", fix_cosmo=True, P1D_type=data_label)
+args.set_baseline(fit_type=type_fit, fix_cosmo=True, P1D_type=data_label)
 pip = Pipeline(args, out_folder=None)
 
 ndeg = 0 
@@ -55,14 +56,14 @@ except:
     print("Real data, no true IGM history")
 
 # +
-plot = False
+plot = True
 
 if plot:
     fname = None
     # fname = "p1d_qmle3"
     # fname = "p1d_fftdir"    
     pip.fitter.like.data.plot_p1d(fname=fname)
-    
+
 
 # +
 plot = False

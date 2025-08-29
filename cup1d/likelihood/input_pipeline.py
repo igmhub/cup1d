@@ -55,13 +55,13 @@ class Args:
     cont_params: dict = field(
         default_factory=lambda: {
             "f_Lya_SiIII": [0, -11.5],
-            "s_Lya_SiIII": [0, 2],
+            "s_Lya_SiIII": [0, -11.5],
             "f_Lya_SiII": [0, -11.5],
-            "s_Lya_SiII": [0, 2],
+            "s_Lya_SiII": [0, -11.5],
             "f_SiIIa_SiIIb": [0, -11.5],
-            "s_SiIIa_SiIIb": [0, 2],
-            "f_SiIIa_SiIII": [0, 0],
-            "f_SiIIb_SiIII": [0, 0],
+            "s_SiIIa_SiIIb": [0, -11.5],
+            "f_SiIIa_SiIII": [0, 0],  # these are variations from exp(0)=1
+            "f_SiIIb_SiIII": [0, 0],  # these are variations from exp(0)=1
         }
     )
     true_cont: dict = field(
@@ -457,18 +457,87 @@ class Args:
             for prop in props_cont:
                 self.fid_cont["z_max"][prop] = 5
             props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
-            props_cont = [
-                "f_Lya_SiIII",
-                "s_Lya_SiIII",
-                "f_Lya_SiII",
-                "s_Lya_SiII",
-                "f_SiIIa_SiIIb",
-                "s_SiIIa_SiIIb",
-                "f_SiIIa_SiIII",
-                "f_SiIIb_SiIII",
-                "HCD_damp1",
-                "HCD_damp4",
-            ]
+
+            if name_variation == None:
+                props_cont = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "HCD":
+                props_cont = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    # "HCD_damp1",
+                    # "HCD_damp4",
+                ]
+            elif name_variation == "metal_trad":
+                props_cont = [
+                    "f_Lya_SiIII",
+                    # "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    # "s_Lya_SiII",
+                    # "f_SiIIa_SiIIb",
+                    # "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "metal_si2":
+                props_cont = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    # "f_SiIIa_SiIIb",
+                    # "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "metal_deco":
+                props_cont = [
+                    "f_Lya_SiIII",
+                    # "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    # "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "metal_thin":
+                props_cont = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp4",
+                ]
+            else:
+                raise ValueError("No valid name_variation: " + name_variation)
 
             self.opt_props = props_igm + props_cont
             var_props = self.opt_props
@@ -522,19 +591,19 @@ class Args:
             "s_Lya_SiII": 4.75,
             "f_SiIIa_SiIIb": -0.5,
             "s_SiIIa_SiIIb": 4.75,
-            "f_SiIIa_SiIII": 1,
-            "f_SiIIb_SiIII": 1,
+            "f_SiIIa_SiIII": 0,
+            "f_SiIIb_SiIII": 0,
             "HCD_const": 0,
             "HCD_damp1": -1,
             "HCD_damp2": -11.5,
             "HCD_damp3": -11.5,
             "HCD_damp4": -4,
         }
-        add_lines = [
-            "SiIIa_SiIIb",
-            "CIVa_CIVb",
-            "MgIIa_MgIIb",
-        ]
+        # add_lines = [
+        #     "SiIIa_SiIIb",
+        #     "CIVa_CIVb",
+        #     "MgIIa_MgIIb",
+        # ]
 
         for key in self.cont_params.keys():
             if self.fid_cont["n_" + key] == 0:
@@ -587,6 +656,19 @@ class Args:
         # -0.03, 75% of all fluctuations
         self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-10.0, -0.15]]
         self.fid_cont["flat_priors"]["HCD_const"] = [[-1, 1], [-0.2, 1e-6]]
+
+        for key in fid_cont:
+            if key in fid_cont["flat_priors"]:
+                if fid_cont["flat_priors"][key][-1][0] < fid_cont[key]:
+                    print(
+                        key, fid_cont["flat_priors"][key][-1][0], fid_cont[key]
+                    )
+                    fid_cont["flat_priors"][key][-1][0] = fid_cont[key]
+                if fid_cont["flat_priors"][key][-1][1] > fid_cont[key]:
+                    print(
+                        key, fid_cont["flat_priors"][key][-1][1], fid_cont[key]
+                    )
+                    fid_cont["flat_priors"][key][-1][1] = fid_cont[key]
 
 
 # Set Gaussian priors

@@ -50,19 +50,24 @@ fit_type = "global_opt"
 data_lab = "DESIY1_QMLE3"
 # data_lab = "DESIY1_QMLE"
 # data_lab = "DESIY1_FFT_dir"
-# emu = "mpg"
-emu = "nyx"
+# data_lab = "DESIY1_FFT"
+emu = "mpg"
+# emu = "nyx"
 
-type_prof = "prof_2d"
-nelem = 100
+# type_prof = "prof_2d"
+# nelem = 100
 
 type_prof = "prof_2d_deep"
 nelem = 900
 
 
 folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
+data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
+mle_cube_cen = data_cen["mle_cube"].copy()
+
 chi2 = np.zeros(nelem)
 params = np.zeros((nelem, 2))
+mle_cube = np.zeros((nelem, len(mle_cube_cen)))
 for ii in range(nelem):
     try:
         data = np.load(folder + type_prof + "/profile_"+str(ii)+ ".npy", allow_pickle=True).item()
@@ -71,10 +76,12 @@ for ii in range(nelem):
     chi2[ii] = data["chi2"]
     params[ii, 0] = data["blind_cosmo"]["Delta2_star"]
     params[ii, 1] = data["blind_cosmo"]["n_star"]
+    mle_cube[ii] = data_cen["mle_cube"]
 
-data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
 np.sum(chi2 == 0)
 # -
+
+print(data_cen['best_chi2'], chi2.min(), data_cen['best_chi2']-chi2.min())
 
 # ### Interpolate data to get better fit
 
@@ -92,7 +99,8 @@ interp = griddata(params[ind], chi2[ind], xi, method="linear")
 ind2 = np.isfinite(interp)
 
 min_chi2 = np.min([chi2[ind].min(), data_cen['best_chi2'], interp[ind2].min()])
-print(chi2[ind].min(), data_cen['best_chi2'])
+print("grid", min_chi2, data_cen['best_chi2'])
+print("cen", data_cen["mle_cosmo_cen"])
 # min_chi2 = np.min([chi2[ind].min(), interp.min()])
 vmin = 0
 vmax = np.max([chi2[ind].max(), interp.max()]) - min_chi2
@@ -221,36 +229,66 @@ plt.tight_layout()
 # ## All together
 
 # +
-fig, ax = plt.subplots(figsize=(10, 8))
-ftsize = 18
+
+from matplotlib import rcParams
+
+rcParams["mathtext.fontset"] = "stix"
+rcParams["font.family"] = "STIXGeneral"
+
+# +
+fig, ax = plt.subplots(figsize=(8, 6))
+ftsize = 20
 ls = ["-", "--"]
 
-# variations = ["DESIY1_QMLE3_mpg","DESIY1_QMLE_mpg", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx", "DESIY1_FFT_dir_nyx"]
-variations = ["DESIY1_QMLE3_nyx", "DESIY1_QMLE3_nyx", "DESIY1_QMLE_nyx"]
+variations = ["DESIY1_QMLE3_mpg", "DESIY1_FFT_dir_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT_mpg", "DESIY1_QMLE3_nyx"]
+dict_trans = {
+    "DESIY1_QMLE3_mpg":"QMLE3", 
+    "DESIY1_FFT_dir_mpg":"FFTDM", 
+    "DESIY1_QMLE_mpg":"QMLE", 
+    "DESIY1_FFT_mpg":"FFT", 
+    "DESIY1_QMLE3_nyx":"Emulator"
+}
 var_deg = 657
 
 fit_type = "global_opt"
+x0 = 0
+y0 = 0
 for ii, var in enumerate(variations):
+    print()
     file = "out_pl/"+ var + "_" + fit_type + ".npy"
     out_dict = np.load(file, allow_pickle=True).item()
     prob = chi2_scipy.sf(out_dict['chi2'], var_deg) * 100
     print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
+    if ii == 0:
+        dict_diff = {
+            "x": out_dict["xbest"],
+            "y": out_dict["ybest"]
+        }
+
+    consist = 0
     for key in ["x", "y"]:
-        err1 = np.round(0.5 * (out_dict[key+"ell1"].max()-out_dict[key+"ell1"].min()), 2)
-        err2 = np.round(0.5 * (out_dict[key+"ell2"].max()-out_dict[key+"ell2"].min()), 2)
+        err1 = 0.5 * (out_dict[key+"ell1"].max()-out_dict[key+"ell1"].min())
+        err2 = 0.5 * (out_dict[key+"ell2"].max()-out_dict[key+"ell2"].min())
         print(np.round(out_dict[key+"best"], 2), np.round(err1, 2), np.round(err2, 2))
+        print("diff", np.round(out_dict[key+"best"] - dict_diff[key], 2), np.round(err1, 2))
+        if ii == 0:
+            dict_diff["e"+key] = err1
+        consist += (out_dict[key+"best"] - dict_diff[key])**2/np.max([dict_diff["e"+key], err1])**2
+
+    prob_var = chi2_scipy.sf(consist, 2) * 100
+    print(np.round(prob_var, 0))
 
     col = "C"+str(ii)
     ax.scatter(out_dict["xbest"], out_dict["ybest"], color=col, marker="x")
 
-    for jj in range(1, 3):
+    for jj in range(1, 2):
         if jj == 1:
-            lab = var
+            lab = dict_trans[var]
         else:
             lab= None
         ax.plot(out_dict["xell"+str(jj)], out_dict["yell"+str(jj)], col+ls[jj-1], label=lab)
 
-ax.scatter(0.4, -2.28, color="k", marker="x", label="Planck")
+# ax.scatter(0.4, -2.28, color="k", marker="x", label="Planck")
 
 ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
 ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
@@ -258,9 +296,10 @@ ax.tick_params(
     axis="both", which="major", labelsize=ftsize - 2
 )
 
-plt.legend(fontsize=ftsize)
+plt.legend(fontsize=ftsize-2)
 plt.tight_layout()
-# plt.savefig("variations_2d.pdf")
+plt.savefig("figs/variations_2d.pdf")
+plt.savefig("figs/variations_2d.png")
 # -
 
 

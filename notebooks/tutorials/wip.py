@@ -63,12 +63,118 @@ from scipy.stats import chi2 as chi2_scipy
 
 # args.set_baseline(fit_type="global_all", fix_cosmo=True)
 
-args = Args(data_label="DESIY1_QMLE", emulator_label="CH24_mpgcen_gpr")
+args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
 args.set_baseline(fit_type="global_opt", fix_cosmo=True)
 pip = Pipeline(args)
 
 p0 = pip.fitter.like.sampling_point_from_parameters()
 pip.fitter.like.get_chi2(p0)
+
+# %%
+fit_type = "global_opt"
+data_lab = "DESIY1_QMLE3"
+emu = "mpg"
+folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
+data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
+tar_cosmo = pip.fitter.like.apply_unblinding(data_cen['mle_cosmo_cen'])
+pip.fitter.like.theory.rescale_fid_cosmo(tar_cosmo)
+
+# %%
+p0 = data_cen["mle_cube"][2:]
+print(data_cen['best_chi2'], pip.fitter.like.get_chi2(p0))
+
+# %% [markdown]
+# ### Get some data for Sec results
+
+# %%
+np.exp(-11.5)
+
+# %%
+data_cen["mle"]
+
+
+# %%
+def mle_to_table(mle):
+    rbc = (1193.28 * 0.575)/(1260.42 * 1.22)
+    rb3 = (1193.28 * 0.575)/(1206.51 * 1.67)
+    
+    parslatex = {
+        '$\\mathrm{ln}\\,f($\\mathrm{Ly}\x07lpha-\\mathrm{SiIII}$_0)$': "$\log\,f_{\lyasiii}=", 
+        '$\\mathrm{ln}\\,s($\\mathrm{Ly}\x07lpha-\\mathrm{SiIII}$_0)$': "$k_{\lyasiii}=", 
+        '$\\mathrm{ln}\\,f($\\mathrm{Ly}\x07lpha-\\mathrm{SiII}$_0)$': "$\log\,f_{\lyasii}=", 
+        '$\\mathrm{ln}\\,s($\\mathrm{Ly}\x07lpha-\\mathrm{SiII}$_0)$': "$k_{\lyasii}=", 
+        '$\\mathrm{ln}\\,f($\\mathrm{SiIIa}_\\mathrm{SiIII}$_0)$': "$r_{\siia}=", 
+        '$\\mathrm{ln}\\,f($\\mathrm{SiIIb}_\\mathrm{SiIII}$_0)$': "$r_{\siisiii}=", 
+        '$\\mathrm{ln}\\,f($\\mathrm{SiIIa}_\\mathrm{SiIIb}$_0)$': "$\log\,f_{\siisii}=", 
+        '$\\mathrm{ln}\\,s($\\mathrm{SiIIa}_\\mathrm{SiIIb}$_0)$': "$k_{\siisii}=", 
+        '$f_{\rm HCD1}_0$': "$\log\,f_\mathrm{LLS}^\mathrm{HCD}=", 
+        '$f_{\rm HCD4}_0$': "$\log\,f_\mathrm{large DLA}^\mathrm{HCD}=",
+    }
+
+    res = []
+
+    for par in mle:
+        if par in parslatex:
+            if parslatex[par] == "$\log\,f_{\siisii}=":
+                val = np.log(np.exp(mle[par])**2 * rbc**2)
+            elif parslatex[par] == "$r_{\siia}=":
+                val = np.sqrt(np.exp(mle[par]))
+            elif parslatex[par] == "$r_{\siisiii}=":
+                val = np.exp(mle[par]) * rb3
+            elif parslatex[par] == "$\log\,f_{\lyasii}=":
+                val = np.log(np.exp(mle[par]) * rb3)
+            elif "k_" in parslatex[par]:
+                val = 1/np.exp(mle[par])
+            else:
+                val = mle[par]
+            print(parslatex[par], np.round(val, 3))
+
+            if "k_" in parslatex[par]:
+                spar = str(np.round(val, 3)) + r"\,\mathrm{km}^{-1}\mathrm{s}$"
+            elif "r_" in parslatex[par]:
+                spar = str(np.round(val, 2)) + r"$"
+            else:
+                spar = str(np.round(val, 2)) + r"$"
+            res.append(parslatex[par]+spar)
+    return res
+
+
+# %%
+res = mle_to_table(data_cen["mle"])
+print()
+for ss in res:
+    print(ss + ",")
+
+# %%
+print(np.exp(-1.25)*100, np.exp(-4.1)*100, (1-np.exp(-1.25)-np.exp(-4.1))*100)
+
+# %%
+np.exp(-4.13)/np.exp(-4.94)
+
+# %%
+k = np.geomspace(0.005, 0.04, 100)
+k1 = 0.007
+k2 = 0.004
+k3 = 0.01
+y1 = 2-2/(1+np.exp(-k/k1))
+ind = np.argwhere(y1<0.1)[0,0]
+print(np.round(k[ind], 3))
+y2 = 2-2/(1+np.exp(-k/k2))
+ind = np.argwhere(y2<0.1)[0,0]
+print(np.round(k[ind], 3))
+y3 = np.exp(-k**2/k3**2)
+ind = np.argwhere(y3<0.1)[0,0]
+print(np.round(k[ind], 3))
+plt.plot(k, y1)
+plt.plot(k, y2)
+plt.plot(k, y3)
+plt.yscale("log")
+plt.ylim(0.1)
+
+# %% [markdown]
+# ### Stop
+
+# %%
 
 # %% [markdown]
 # # OLD

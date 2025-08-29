@@ -76,6 +76,28 @@ def set_cosmo(
             pivot_scalar=0.05,
             w=-1,
         )
+    elif cosmo_label == "Planck18_alt":
+        # or maybe the w0wa cosmology?
+        h = 0.6766
+        omch2 = 0.119
+        ombh2 = 0.0224
+        om = (omch2 + ombh2) / h**2
+        hnew = 0.72
+        omch2new = om * hnew**2 - ombh2
+        mnu = 0.06
+
+        cosmo = camb_cosmo.get_cosmology(
+            H0=hnew,
+            mnu=mnu,
+            omch2=omch2new,
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
     elif cosmo_label == "Planck18_nyx":
         cosmo = camb_cosmo.get_cosmology(
             H0=67.66,

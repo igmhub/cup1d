@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt
 # our own modules
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
+from cup1d.likelihood.plotter import Plotter
 from cup1d.utils.utils import get_path_repo
 # -
 
@@ -41,7 +42,8 @@ out_mle = []
 out_mle_cube = []
 out_chi2 = []
 out_pnames = []
-for ii in range(len(pip.fitter.like.data.z)):
+# for ii in range(len(pip.fitter.like.data.z)):
+for ii in range(1):
     zmask = np.array([pip.fitter.like.data.z[ii]])
 
     pip = Pipeline(args, out_folder=None)
@@ -69,6 +71,14 @@ for ii in range(len(pip.fitter.like.data.z)):
     out_mle.append(pip.fitter.mle)
     out_mle_cube.append(pip.fitter.mle_cube)
     out_chi2.append(pip.fitter.mle_chi2)
+
+diru = 'figs'
+plotter = Plotter(pip.fitter, save_directory=diru, zmask=zmask)
+
+# +
+
+plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize=20)
+# -
 
 fname = os.path.join(
     os.path.dirname(get_path_repo("cup1d")), "data", "ics", emu + "_ic_at_a_time.npy"

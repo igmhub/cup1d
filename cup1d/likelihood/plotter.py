@@ -1516,13 +1516,24 @@ class Plotter(object):
         ]
 
         labels = [
-            "IGM",
-            "DLA",
-            "Lya_SiIII",
-            "SiII_SiII",
-            "Lya_SiII",
-            "SiII_SiIII",
-            "",
+            ["Model(IGM)", "HCD"],
+            [
+                "Model(IGM+HCD)",
+                r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$",
+            ],
+            [
+                "Model(...+" + r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$" + ")",
+                r"$\mathrm{SiII}-\mathrm{SiII}$",
+            ],
+            [
+                "Model(...+" + r"$\mathrm{SiII}-\mathrm{SiII}$" + ")",
+                r"$\mathrm{Ly}\alpha-\mathrm{SiII}$",
+            ],
+            [
+                "Model(...+" + r"$\mathrm{Ly}\alpha-\mathrm{SiII}$" + ")",
+                r"$\mathrm{SiII}-\mathrm{SiIII}$",
+            ],
+            ["Full Model", None],
         ]
 
         contaminants = []
@@ -1586,10 +1597,6 @@ class Plotter(object):
         ax = ax.reshape(-1)
 
         for ii in range(len(emu_p1d)):
-            if ii == 0:
-                lab = labels[ii]
-            else:
-                lab = "(... + " + labels[ii] + ")"
             ax[ii].errorbar(
                 _data_k_kms[0],
                 _data_Pk_kms[0] - emu_p1d[ii][0],
@@ -1597,18 +1604,18 @@ class Plotter(object):
                 color="C0",
                 ls=":",
                 marker=".",
-                label="Data - " + lab,
+                label=labels[ii][0],
             )
             if ii != len(emu_p1d) - 1:
                 ax[ii].plot(
                     _data_k_kms[0],
                     emu_p1d[ii + 1][0] - emu_p1d[ii][0],
                     "C1-",
-                    label=labels[ii + 1],
+                    label=labels[ii][1],
                 )
                 ax[ii].text(
                     0.05,
-                    0.1,
+                    0.07,
                     r"$\chi^2=$" + str(np.round(chi2_all[ii], 1)),
                     fontsize=fontsize - 2,
                     transform=ax[ii].transAxes,
@@ -1616,16 +1623,14 @@ class Plotter(object):
             else:
                 ax[ii].text(
                     0.05,
-                    0.1,
+                    0.07,
                     r"$\chi^2=$" + str(np.round(chi2_all[-1], 1)),
                     fontsize=fontsize - 2,
                     transform=ax[ii].transAxes,
                 )
             ax[ii].axhline(0, color="k", ls=":", alpha=0.5)
 
-            ax[ii].tick_params(
-                axis="both", which="major", labelsize=fontsize - 2
-            )
+            ax[ii].tick_params(axis="both", which="major", labelsize=fontsize)
             # _handles, _labels = ax[ii].get_legend_handles_labels()
             # if ii != len(emu_p1d) - 1:
             #     order = [1, 0]
@@ -1637,7 +1642,7 @@ class Plotter(object):
             #     loc="upper right",
             #     fontsize=fontsize - 4,
             # )
-            ax[ii].legend(loc="upper right", fontsize=fontsize - 2)
+            ax[ii].legend(loc="upper right", fontsize=fontsize - 4)
         ax[-2].set_xlabel(r"$k_\parallel$ [s/km]", fontsize=fontsize)
         ax[-1].set_xlabel(r"$k_\parallel$ [s/km]", fontsize=fontsize)
         # fig.suptitle(r"$z=$" + str(zmask[0]), fontsize=fontsize + 2)
@@ -1646,9 +1651,9 @@ class Plotter(object):
 
         fig.supylabel(
             # r"$P_{\rm 1D}/P_{\rm 1D}^{\rm model}-1$",
-            r"Ratio",
+            r"Residual",
             x=0.01,
-            fontsize=fontsize + 2,
+            fontsize=fontsize,
         )
         plt.tight_layout()
 

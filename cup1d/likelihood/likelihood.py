@@ -78,9 +78,6 @@ class Likelihood(object):
         self.extra_data = extra_data
         # we only do this for latter save all relevant after fitting the model
         self.args = args
-        # for attr, value in args.__dict__.items():
-        #     if attr not in ["archive", "emulator"]:
-        #         self.args[attr] = value
 
         if self.args.rebin_k != 1:
             self.rebin = {}
@@ -1079,7 +1076,8 @@ class Likelihood(object):
         n_perturb=0,
         plot_panels=False,
         z_at_time=False,
-        fontsize=16,
+        fontsize=20,
+        glob_full=False,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
@@ -1189,12 +1187,13 @@ class Likelihood(object):
 
         if self.extra_data is None:
             if plot_panels:
+                nrows = len(_data_z) // 3
+                if len(_data_z) % 3 != 0:
+                    nrows += 1
+                if nrows == 0:
+                    nrows = 1
                 fig, ax = plt.subplots(
-                    np.maximum(len(_data_z) // 2 + len(_data_z) % 2, 1),
-                    2,
-                    figsize=(12, len(_data_z) * 2),
-                    sharex=True,
-                    sharey="row",
+                    nrows, 3, figsize=(12, nrows * 2), sharex=True, sharey="row"
                 )
                 if len(_data_z) == 1:
                     ax = [ax]
@@ -1234,11 +1233,11 @@ class Likelihood(object):
         label = (
             r"$\chi^2=$"
             + str(np.round(chi2, 2))
-            + " (ndeg="
+            + r", $n_\mathrm{deg}$="
             + str(_ndeg)
             + ", prob="
             + str(np.round(prob * 100, 2))
-            + "%)"
+            + "%"
         )
 
         if print_chi2:
@@ -1340,7 +1339,7 @@ class Likelihood(object):
                         pass
 
                     axs.tick_params(
-                        axis="both", which="major", labelsize=fontsize - 4
+                        axis="both", which="major", labelsize=fontsize
                     )
                     # shift data in y axis for clarity
                     axs.errorbar(
@@ -1369,21 +1368,25 @@ class Likelihood(object):
                         _ndeg = ndeg_all[iz]
                     else:
                         _ndeg = ndeg - n_free_p
+
+                    if glob_full:
+                        _ndeg = ndeg - 13
                     prob = chi2_scipy.sf(chi2_all[ii, iz], _ndeg)
+
                     label = (
                         r"$\chi^2=$"
                         + str(np.round(chi2_all[ii, iz], 2))
-                        + " (ndeg="
+                        + r", $n_\mathrm{deg}$="
                         + str(_ndeg)
                         + ", prob="
                         + str(np.round(prob * 100, 2))
-                        + "%)"
+                        + "%"
                     )
 
                     if print_chi2:
                         if plot_panels == False:
                             ypos = 0.75 + yshift
-                            axs.text(xpos, ypos, label, fontsize=10)
+                            axs.text(xpos, ypos, label, fontsize=fontsize - 2)
 
                     if print_ratio:
                         print(p1d_data / p1d_theory)
@@ -1425,17 +1428,18 @@ class Likelihood(object):
                     ypos = (p1d_theory * k_kms / np.pi)[-1]
                     ndeg = np.sum(p1d_data != 0)
                     prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg - n_free_p)
+
                     label = (
                         r"$\chi^2=$"
                         + str(np.round(chi2_all[ii, iz], 2))
-                        + " ("
+                        + r", $n_\mathrm{deg}$="
                         + str(ndeg - n_free_p)
-                        + ", "
+                        + ", prob="
                         + str(np.round(prob * 100, 2))
-                        + "%)"
+                        + "%"
                     )
                     if print_chi2:
-                        ax[ii].text(xpos, ypos, label, fontsize=8)
+                        ax[ii].text(xpos, ypos, label, fontsize=fontsize - 2)
 
                     ax[ii].plot(
                         k_kms,
@@ -1455,14 +1459,11 @@ class Likelihood(object):
                     ymax = max(ymax, max(p1d_data * k_kms / np.pi))
 
                 if residuals & plot_panels:
-                    axs.legend(loc="upper right")
+                    axs.legend(loc="upper right", fontsize=fontsize - 4)
                     ymin = 1 - min((p1d_data - p1d_err) / p1d_theory + yshift)
                     ymax = 1 - max((p1d_data + p1d_err) / p1d_theory + yshift)
                     y2plot = 1.05 * np.max([np.abs(ymin), np.abs(ymax)])
                     if iz % 2 == 1:
-                        # y2plot0 = ax[iz - 1].get_ylim()[1] - 1
-                        # print(y2plot, y2plot0)
-                        # y2plot = np.max([y2plot, y2plot0])
                         axs.set_ylim(1 - y2plot, 1 + y2plot)
                     elif iz == len(zs) - 1:
                         axs.set_ylim(1 - y2plot, 1 + y2plot)
@@ -1472,7 +1473,7 @@ class Likelihood(object):
                             0.05,
                             0.05,
                             label,
-                            fontsize=10,
+                            fontsize=fontsize - 4,
                             transform=axs.transAxes,
                         )
 
@@ -1497,7 +1498,7 @@ class Likelihood(object):
             # ax[ii].plot(k_kms[0], 1, linestyle="--", label="Fit", color="k")
             if residuals:
                 if plot_panels == False:
-                    axs.legend()
+                    axs.legend(fontsize=fontsize)
             else:
                 ax[ii].legend(loc="lower right", ncol=4, fontsize=fontsize - 2)
 
@@ -1529,7 +1530,8 @@ class Likelihood(object):
         )
 
         plt.tight_layout()
-        # plt.savefig("test.pdf")
+
+        plt.subplots_adjust(wspace=0.05, hspace=0.1)
         if plot_fname is not None:
             plt.savefig(plot_fname + ".pdf")
             plt.savefig(plot_fname + ".png")

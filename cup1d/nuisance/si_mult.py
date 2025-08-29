@@ -110,8 +110,6 @@ class SiMult(Contaminant):
             "f_SiIIa_SiIII",
             "f_SiIIb_SiIII",
             # "f_SiIIa_SiIIb",
-            # "s_SiII_SiIII",
-            # "s_SiII_SiII",
         ]
 
         if flat_priors is None:
@@ -198,23 +196,28 @@ class SiMult(Contaminant):
 
         for iz in range(len(z)):
             aSiIII = vals["f_Lya_SiIII"][iz] / (1 - mF[iz])
+            aSiII = vals["f_Lya_SiII"][iz] / (1 - mF[iz])
+
+            # k-dependent damping
             G_SiIII_Lya = 2 - 2 / (
                 1 + np.exp(-vals["s_Lya_SiIII"][iz] * k_kms[iz])
             )
-
-            aSiII = vals["f_Lya_SiII"][iz] / (1 - mF[iz])
             G_SiII_Lya = 2 - 2 / (
                 1 + np.exp(-vals["s_Lya_SiII"][iz] * k_kms[iz])
             )
 
-            G_SiII_SiIII = 1
+            # deviations from optically-thin limit
             if "f_SiIIb_SiIII" in vals:
-                G_SiII_SiIII *= vals["f_SiIIb_SiIII"][iz]
+                G_SiII_SiIII = vals["f_SiIIb_SiIII"][iz]
+            else:
+                G_SiII_SiIII = 1
+
             if "f_SiIIa_SiIII" in vals:
                 f_SiIIa_SiIII = vals["f_SiIIa_SiIII"][iz]
             else:
                 f_SiIIa_SiIII = 1
 
+            # not modeled here anymore
             if "s_SiIIa_SiIIb" in vals:
                 G_SiII_SiII = 2 - 2 / (
                     1 + np.exp(-vals["s_SiIIa_SiIIb"][iz] * k_kms[iz])
