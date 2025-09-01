@@ -49,6 +49,9 @@ def main():
     out_folder = os.path.join(args.out_folder, prof_type)
     pip = Pipeline(args, out_folder=out_folder)
 
+    if name_variation == "cov":
+        pip.fitter.like.full_icov_Pk_kms /= 1.1**2
+
     sigma_cosmo = {"Delta2_star": 0.027, "n_star": 0.017}
 
     # sigma_cosmo = {"Delta2_star": 0.02}
