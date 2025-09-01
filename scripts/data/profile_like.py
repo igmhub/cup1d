@@ -11,10 +11,13 @@ from cup1d.utils.utils import get_path_repo
 def main():
     emu = "mpg"
     # emu = "nyx"
-    # data_label = "DESIY1_QMLE3"
+    data_label = "DESIY1_QMLE3"
     # data_label = "DESIY1_QMLE"
-    data_label = "DESIY1_FFT_dir"
+    # data_label = "DESIY1_FFT_dir"
     # data_label = "DESIY1_FFT"
+
+    # name_variation = None
+    name_variation = "cov"
 
     # prof_type = "prof_2d"
     # nsig = 10
@@ -24,11 +27,12 @@ def main():
     prof_type = "prof_2d_deep"
     nsig = 5
     nelem = 30
-    # mle_cosmo_cen = {"Delta2_star": 0.36, "n_star": -2.26}  # nyx qmle3 done
-    # mle_cosmo_cen = {"Delta2_star": 0.42, "n_star": -2.28}  # mpg qmle3 done
+
+    mle_cosmo_cen = {"Delta2_star": 0.42, "n_star": -2.28}  # mpg qmle3 done
     # mle_cosmo_cen = {"Delta2_star": 0.42, "n_star": -2.22}  # mpg qmle done
-    mle_cosmo_cen = {"Delta2_star": 0.45, "n_star": -2.27}  # mpg fft_dir done
+    # mle_cosmo_cen = {"Delta2_star": 0.45, "n_star": -2.27}  # mpg fft_dir done
     # mle_cosmo_cen = {"Delta2_star": 0.45, "n_star": -2.27}  # mpg fft done
+    # mle_cosmo_cen = {"Delta2_star": 0.36, "n_star": -2.26}  # nyx qmle3 done
 
     # old
     # mle_cosmo_cen = {"Delta2_star": 0.26, "n_star": -2.26}  # nyx qmle tbd
@@ -36,7 +40,12 @@ def main():
     # baseline
     fit_type = "global_opt"
     args = Args(data_label=data_label, emulator_label="CH24_" + emu + "cen_gpr")
-    args.set_baseline(fit_type=fit_type, fix_cosmo=True, P1D_type=data_label)
+    args.set_baseline(
+        fit_type=fit_type,
+        fix_cosmo=True,
+        P1D_type=data_label,
+        name_variation=name_variation,
+    )
     out_folder = os.path.join(args.out_folder, prof_type)
     pip = Pipeline(args, out_folder=out_folder)
 

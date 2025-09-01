@@ -270,9 +270,7 @@ class Args:
         elif name_variation == "cosmo":
             self.fid_cosmo_label = "DESIDR2_ACT"
         else:
-            raise ValueError(
-                "name_variation " + name_variation + " not implemented"
-            )
+            self.fid_cosmo_label = "Planck18"
 
         if ("mpg" in self.emulator_label) | ("Mpg" in self.emulator_label):
             sim_fid = "mpg_central"
