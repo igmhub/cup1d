@@ -19,9 +19,21 @@ def main():
     # data_label = "DESIY1_FFT_dir"
     # data_label = "DESIY1_FFT"
 
+    # name_variation = None
+    name_variation = "cov"
+
     args = Args(data_label=data_label, emulator_label="CH24_" + emu + "cen_gpr")
-    args.set_baseline(fit_type=fit_type, fix_cosmo=False, P1D_type=data_label)
+    args.set_baseline(
+        fit_type=fit_type,
+        fix_cosmo=False,
+        P1D_type=data_label,
+        name_variation=name_variation,
+    )
     pip = Pipeline(args, out_folder=args.out_folder)
+
+    if name_variation == "cov":
+        pip.fitter.like.full_icov_Pk_kms /= 1.1**2
+
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 
     print("starting minimization")
