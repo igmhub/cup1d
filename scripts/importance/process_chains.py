@@ -34,8 +34,8 @@ def main():
         )
 
         samples = cmb["samples"]
-        # thinning = 500
-        # samples.thin(thinning)
+        thinning = 5
+        samples.thin(thinning)
         Nsamp, Npar = samples.samples.shape
         print(Nsamp, Npar, flush=True)
         params = []
