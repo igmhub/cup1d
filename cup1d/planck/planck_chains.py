@@ -28,6 +28,8 @@ def planck_chains_dir(release, root_dir):
 def load_samples(file_root):
     """Check that input chain exist, at least in zipped format, and read them."""
 
+    print("loading", file_root)
+
     try:
         samples = loadMCSamples(file_root)
     except IOError:

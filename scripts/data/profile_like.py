@@ -34,9 +34,6 @@ def main():
     # mle_cosmo_cen = {"Delta2_star": 0.45, "n_star": -2.27}  # mpg fft done
     # mle_cosmo_cen = {"Delta2_star": 0.36, "n_star": -2.26}  # nyx qmle3 done
 
-    # old
-    # mle_cosmo_cen = {"Delta2_star": 0.26, "n_star": -2.26}  # nyx qmle tbd
-
     # baseline
     fit_type = "global_opt"
     args = Args(data_label=data_label, emulator_label="CH24_" + emu + "cen_gpr")

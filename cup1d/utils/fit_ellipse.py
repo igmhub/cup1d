@@ -53,4 +53,12 @@ def fit_ellipse(x, y, npts=200):
         + b_len * np.sin(t) * np.cos(theta)
     )
 
-    return xfit, yfit
+    params = {
+        "x0": x0,
+        "y0": y0,
+        "a": a_len,
+        "b": b_len,
+        "theta": theta,
+    }
+
+    return xfit, yfit, params

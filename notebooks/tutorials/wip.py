@@ -210,9 +210,6 @@ for key in results_var:
     
 
 # %%
-1/0.9
-
-# %%
 fit_type = "global_opt"
 data_lab = "DESIY1_QMLE3"
 emu = "mpg"

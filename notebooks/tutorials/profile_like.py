@@ -133,7 +133,7 @@ for jj in range(2, 0, -1):
     x = np.concatenate(x)
     y = np.concatenate(y)
     
-    xfit, yfit = fit_ellipse(x, y)
+    xfit, yfit, fit_params = fit_ellipse(x, y)
     plt.plot(xfit, yfit, "C"+str(jj)+"--")
 
     out_dict["xell" + str(jj)] = xfit
@@ -147,6 +147,11 @@ if type_prof == "prof_2d_deep":
 ind3 = np.argsort(chi2[ind])
 print((params[ind])[ind3[:3]].mean(axis=0))
 print((params[ind])[ind3[:3]])
+# -
+
+0.5 * (x.max() - x.min())
+
+fit_params
 
 # +
 fig, ax = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10, 6))
