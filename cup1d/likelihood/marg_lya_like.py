@@ -57,3 +57,30 @@ def gaussian_chi2_PalanqueDelabrouille2015(neff, DL2):
     # correlation coefficient
     r = 0.55
     return gaussian_chi2(neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r)
+
+
+def gaussian_chi2_Walther2024(neff, DL2, ana_type="priors"):
+    """Compute Gaussian Delta chi^2 for a particular point(s) (neff,DL2),
+    using the measurement from Walther2024 (Table 3).
+    """
+
+    if ana_type == "priors":
+        # DL2 = k^3 P(k) / (2 pi^2) , at z=3
+        DL2_val = 0.388
+        DL2_err = 0.045
+        # neff = effective slope at kp = 0.009 s/km, i.e., d ln P / dln k
+        neff_val = -2.2978
+        neff_err = 0.0067
+        # correlation coefficient
+        r = 0.55
+    else:
+        # DL2 = k^3 P(k) / (2 pi^2), at z=3
+        DL2_val = 0.260
+        DL2_err = 0.024
+        # neff = effective slope at kp = 0.009 s/km, i.e., d ln P / dln k
+        neff_val = -2.2995
+        neff_err = 0.0066
+        # correlation coefficient
+        r = 0.55
+
+    return gaussian_chi2(neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r)
