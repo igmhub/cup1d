@@ -37,7 +37,7 @@ def main():
         # thinning = 500
         # samples.thin(thinning)
         Nsamp, Npar = samples.samples.shape
-        print(Nsamp, Npar)
+        print(Nsamp, Npar, flush=True)
         params = []
         for ii in range(Nsamp):
             params.append(cmb["samples"].getParamSampleDict(ii))
@@ -65,8 +65,8 @@ def main():
         linP_entries[ii, 1] = linP_params["n_star"]
 
         if (rank == 0) and (ii % 10 == 0):
-            print("sample point", ii, "out of", Nsamp)
-            print("linP params", linP_entries[ii])
+            print("sample point", ii, "out of", Nsamp, flush=True)
+            print("linP params", linP_entries[ii], flush=True)
 
     if rank == 0:
         linP_DL2_star = np.zeros(Nsamp)
@@ -95,7 +95,7 @@ def main():
             key_data + "_linP",
             key_model + "_" + key_data + "_linP",
         )
-        print("Saving to", new_root)
+        print("Saving to", new_root, flush=True)
         samples.saveAsText(root=new_root, make_dirs=True)
 
 
