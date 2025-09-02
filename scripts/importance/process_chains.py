@@ -34,8 +34,8 @@ def main():
         )
 
         samples = cmb["samples"]
-        thinning = 500
-        samples.thin(thinning)
+        # thinning = 500
+        # samples.thin(thinning)
         Nsamp, Npar = samples.samples.shape
         print(Nsamp, Npar, flush=True)
         params = []
@@ -65,7 +65,7 @@ def main():
         linP_entries[ii, 1] = linP_params["n_star"]
 
         if (rank == 0) and (ii % 10 == 0):
-            print("sample point", ii, "out of", Nsamp, flush=True)
+            print("sample point", ii, "out of", _Nsamp, flush=True)
             print("linP params", linP_entries[ii], flush=True)
 
     if rank == 0:
