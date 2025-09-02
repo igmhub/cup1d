@@ -18,8 +18,8 @@ def main():
     # key_model = "base"
     # key_model = "base_mnu"
     # key_model = "base_nrun"  # P
-    # key_model = "base_omegak"  # P, P+BAO
-    key_model = "base_w_wa"  # P
+    key_model = "base_omegak"  # P, P+BAO
+    # key_model = "base_w_wa"  # P
 
     # key_data = "plikHM_TTTEEE_lowl_lowE"
     key_data = "plikHM_TTTEEE_lowl_lowE_BAO"
