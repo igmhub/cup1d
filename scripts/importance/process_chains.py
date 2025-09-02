@@ -15,14 +15,14 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    # key_model = "base"
+    # key_model = "base" # Y
     # key_model = "base_mnu"
-    # key_model = "base_nrun"  # P
-    key_model = "base_omegak"  # P, P+BAO
-    # key_model = "base_w_wa"  # P
+    key_model = "base_nrun"  # YP
+    # key_model = "base_omegak"  # P, YP+BAO
+    # key_model = "base_w_wa"  # YP
 
-    # key_data = "plikHM_TTTEEE_lowl_lowE"
-    key_data = "plikHM_TTTEEE_lowl_lowE_BAO"
+    key_data = "plikHM_TTTEEE_lowl_lowE"
+    # key_data = "plikHM_TTTEEE_lowl_lowE_BAO"
 
     root_dir = os.path.join(
         get_path_repo("cup1d"), "data", "planck_linP_chains"
