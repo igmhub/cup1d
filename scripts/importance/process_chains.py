@@ -18,9 +18,9 @@ def main():
     # key_model = "base" # Y
     # key_model = "base_mnu" #OP, OP+BAO
     # key_model = "base_nrun"  # YP
-    # key_model = "base_omegak"  # NP, WP+BAO
+    key_model = "base_omegak"  # YP, WP+BAO
     # key_model = "base_w_wa"  # YP
-    key_model = "base_nrun_nrunrun"  # WP
+    # key_model = "base_nrun_nrunrun"  # YP
     # key_model = "base_nrun_nnu_w_mnu"  # O
 
     key_data = "plikHM_TTTEEE_lowl_lowE"
