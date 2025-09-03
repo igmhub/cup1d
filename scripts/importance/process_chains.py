@@ -16,13 +16,16 @@ def main():
     size = comm.Get_size()
 
     # key_model = "base" # Y
-    # key_model = "base_mnu"
-    key_model = "base_nrun"  # YP
+    # key_model = "base_mnu" #Old P, P+BAO
+    # key_model = "base_nrun"  # YP
     # key_model = "base_omegak"  # P, YP+BAO
     # key_model = "base_w_wa"  # YP
+    key_model = "base_nrun_nrunrun"  # YP
+    # key_model = "base_nrun_nnu_w_mnu"  # O
 
     key_data = "plikHM_TTTEEE_lowl_lowE"
     # key_data = "plikHM_TTTEEE_lowl_lowE_BAO"
+    # key_data = "plikHM_TTTEEE_lowl_lowE_BAO_Riess18_Pantheon18_lensing"
 
     root_dir = os.path.join(
         get_path_repo("cup1d"), "data", "planck_linP_chains"
