@@ -16,11 +16,11 @@ def main():
     size = comm.Get_size()
 
     # key_model = "base" # Y
-    # key_model = "base_mnu" #Old P, P+BAO
+    # key_model = "base_mnu" #OP, OP+BAO
     # key_model = "base_nrun"  # YP
-    # key_model = "base_omegak"  # P, YP+BAO
+    # key_model = "base_omegak"  # NP, WP+BAO
     # key_model = "base_w_wa"  # YP
-    key_model = "base_nrun_nrunrun"  # YP
+    key_model = "base_nrun_nrunrun"  # WP
     # key_model = "base_nrun_nnu_w_mnu"  # O
 
     key_data = "plikHM_TTTEEE_lowl_lowE"

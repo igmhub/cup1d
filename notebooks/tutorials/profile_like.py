@@ -54,20 +54,27 @@ data_lab = "DESIY1_QMLE3"
 emu = "mpg"
 # emu = "nyx"
 
+# variation = None
+variation = "cov"
+
 # type_prof = "prof_2d"
 # nelem = 100
 
 type_prof = "prof_2d_deep"
 nelem = 900
 
-
-folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
+if variation is not None:
+    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+variation+"/"
+else:
+    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
 data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
 mle_cube_cen = data_cen["mle_cube"].copy()
 
+data_cen['best_chi2'] = data_cen['best_chi2']
+
 chi2 = np.zeros(nelem)
 params = np.zeros((nelem, 2))
-mle_cube = np.zeros((nelem, len(mle_cube_cen)))
+mle_cube = np.zeros((nelem, len(mle_cube_cen)-2))
 for ii in range(nelem):
     try:
         data = np.load(folder + type_prof + "/profile_"+str(ii)+ ".npy", allow_pickle=True).item()
@@ -76,7 +83,7 @@ for ii in range(nelem):
     chi2[ii] = data["chi2"]
     params[ii, 0] = data["blind_cosmo"]["Delta2_star"]
     params[ii, 1] = data["blind_cosmo"]["n_star"]
-    mle_cube[ii] = data_cen["mle_cube"]
+    mle_cube[ii] = data["mle_cube"]
 
 np.sum(chi2 == 0)
 # -
@@ -140,7 +147,11 @@ for jj in range(2, 0, -1):
     out_dict["yell" + str(jj)] = yfit
 
 if type_prof == "prof_2d_deep":
-    file = "out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
+    if variation is None:
+        file = "out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
+    else:
+        file = "out_pl/"+ variation + ".npy"
+        
     np.save(file, out_dict)
 
 
@@ -148,8 +159,6 @@ ind3 = np.argsort(chi2[ind])
 print((params[ind])[ind3[:3]].mean(axis=0))
 print((params[ind])[ind3[:3]])
 # -
-
-0.5 * (x.max() - x.min())
 
 fit_params
 
@@ -245,13 +254,14 @@ fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 20
 ls = ["-", "--"]
 
-variations = ["DESIY1_QMLE3_mpg", "DESIY1_FFT_dir_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT_mpg", "DESIY1_QMLE3_nyx"]
+variations = ["DESIY1_QMLE3_mpg", "DESIY1_FFT_dir_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT_mpg", "DESIY1_QMLE3_nyx", "cov"]
 dict_trans = {
     "DESIY1_QMLE3_mpg":"QMLE3", 
     "DESIY1_FFT_dir_mpg":"FFTDM", 
     "DESIY1_QMLE_mpg":"QMLE", 
     "DESIY1_FFT_mpg":"FFT", 
-    "DESIY1_QMLE3_nyx":"Emulator"
+    "DESIY1_QMLE3_nyx":"Emulator",
+    "cov":"cov"
 }
 var_deg = 657
 
@@ -260,7 +270,10 @@ x0 = 0
 y0 = 0
 for ii, var in enumerate(variations):
     print()
-    file = "out_pl/"+ var + "_" + fit_type + ".npy"
+    if var == "cov":
+        file = "out_pl/"+ var + ".npy"
+    else:
+        file = "out_pl/"+ var + "_" + fit_type + ".npy"
     out_dict = np.load(file, allow_pickle=True).item()
     prob = chi2_scipy.sf(out_dict['chi2'], var_deg) * 100
     print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
@@ -275,7 +288,7 @@ for ii, var in enumerate(variations):
         err1 = 0.5 * (out_dict[key+"ell1"].max()-out_dict[key+"ell1"].min())
         err2 = 0.5 * (out_dict[key+"ell2"].max()-out_dict[key+"ell2"].min())
         print(np.round(out_dict[key+"best"], 2), np.round(err1, 2), np.round(err2, 2))
-        print("diff", np.round(out_dict[key+"best"] - dict_diff[key], 2), np.round(err1, 2))
+        print("diff", np.round(out_dict[key+"best"] - dict_diff[key], 3), np.round(err1, 3))
         if ii == 0:
             dict_diff["e"+key] = err1
         consist += (out_dict[key+"best"] - dict_diff[key])**2/np.max([dict_diff["e"+key], err1])**2
