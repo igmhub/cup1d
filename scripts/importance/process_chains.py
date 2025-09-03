@@ -18,14 +18,16 @@ def main():
     # key_model = "base" # Y
     # key_model = "base_mnu" #OP, OP+BAO
     # key_model = "base_nrun"  # YP
-    # key_model = "base_omegak"  # YP, WP+BAO
+    key_model = "base_nnu"  # YP
+    # key_model = "base_nnu_meffsterile"  # TBD P
+    # key_model = "base_omegak"  # YP
     # key_model = "base_w_wa"  # YP
     # key_model = "base_nrun_nrunrun"  # YP
-    key_model = "base_nrun_nnu_w_mnu"  # O
+    # key_model = "base_nrun_nnu_w_mnu"  # YO
 
-    # key_data = "plikHM_TTTEEE_lowl_lowE"
+    key_data = "plikHM_TTTEEE_lowl_lowE"
     # key_data = "plikHM_TTTEEE_lowl_lowE_BAO"
-    key_data = "plikHM_TTTEEE_lowl_lowE_BAO_Riess18_Pantheon18_lensing"
+    # key_data = "plikHM_TTTEEE_lowl_lowE_BAO_Riess18_Pantheon18_lensing"
 
     root_dir = os.path.join(
         get_path_repo("cup1d"), "data", "planck_linP_chains"
