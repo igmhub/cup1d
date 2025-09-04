@@ -18,12 +18,13 @@ def main():
     # key_model = "base" # Y
     # key_model = "base_mnu" #OP, OP+BAO
     # key_model = "base_nrun"  # YP
-    key_model = "base_nnu"  # YP
-    # key_model = "base_nnu_meffsterile"  # TBD P
+    # key_model = "base_nnu"  # YP
+    key_model = "base_r"  # YP
     # key_model = "base_omegak"  # YP
     # key_model = "base_w_wa"  # YP
     # key_model = "base_nrun_nrunrun"  # YP
     # key_model = "base_nrun_nnu_w_mnu"  # YO
+    # key_model = "base_nnu_meffsterile"  # NP, check Planck and prepare lace
 
     key_data = "plikHM_TTTEEE_lowl_lowE"
     # key_data = "plikHM_TTTEEE_lowl_lowE_BAO"

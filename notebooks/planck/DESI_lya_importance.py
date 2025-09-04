@@ -38,18 +38,26 @@ from cup1d.utils.utils import get_path_repo
 # Planck 2018 with free neutrino mass, already provided in cup1d
 
 # %%
-add_BAO=True
-if add_BAO:
-    planck_data='plikHM_TTTEEE_lowl_lowE_BAO'
-    planck_label='Planck 2018 + BAO'
-    plot_label='Planck_BAO_LyaDESI_mnu'
-else:
-    planck_data='plikHM_TTTEEE_lowl_lowE'
-    planck_label='Planck 2018'
-    plot_label='Planck_LyaDESI_mnu'
-# model with massive neutrinos
-model='base_mnu'
-planck2018=planck_chains.get_planck_2018(model=model,data=planck_data)
+# add_BAO=True
+# if add_BAO:
+#     planck_data='plikHM_TTTEEE_lowl_lowE_BAO'
+#     planck_label='Planck 2018 + BAO'
+#     plot_label='Planck_BAO_LyaDESI_mnu'
+# else:
+#     planck_data='plikHM_TTTEEE_lowl_lowE'
+#     planck_label='Planck 2018'
+#     plot_label='Planck_LyaDESI_mnu'
+# # model with massive neutrinos
+# model='base_mnu'
+# planck2018=planck_chains.get_planck_2018(model=model,data=planck_data)
+
+# %%
+cmb_r = planck_chains.get_planck_2018(
+    model='base_r',
+    data='plikHM_TTTEEE_lowl_lowE',
+    root_dir=root_dir,
+    linP_tag=None
+)
 
 # %%
 
@@ -83,9 +91,16 @@ cmb_mnu = planck_chains.get_planck_2018(
     linP_tag=None
 )
 
+cmb_nnu = planck_chains.get_planck_2018(
+    model='base_nnu',
+    data='plikHM_TTTEEE_lowl_lowE_linP',
+    root_dir=root_dir,
+    linP_tag=None
+)
+
 cmb_omega_k = planck_chains.get_planck_2018(
     model='base_omegak',
-    data='plikHM_TTTEEE_lowl_lowE_BAO_linP',
+    data='plikHM_TTTEEE_lowl_lowE_linP',
     root_dir=root_dir,
     linP_tag=None
 )
@@ -98,12 +113,12 @@ cmb_w_wa = planck_chains.get_planck_2018(
 )
 
 
-# cmb_nrun_nnu_w_mnu = planck_chains.get_planck_2018(
-#     model='base_nrun_nnu_w_mnu',
-#     data='plikHM_TTTEEE_lowl_lowE_BAO_Riess18_Pantheon18_lensing',
-#     root_dir=root_dir,
-#     linP_tag=None
-# )
+cmb_nrun_nnu_w_mnu = planck_chains.get_planck_2018(
+    model='base_nrun_nnu_w_mnu',
+    data='plikHM_TTTEEE_lowl_lowE_BAO_Riess18_Pantheon18_lensing_linP',
+    root_dir=root_dir,
+    linP_tag=None
+)
 
 # %%
 {'x0': 0.443151934816415,
@@ -113,9 +128,14 @@ cmb_w_wa = planck_chains.get_planck_2018(
  'theta': -0.13448802462450818}
 
 # %%
+cmb["samples"].getParamSampleDict(0).keys()
+
+# %%
+ftsize = 16
 g = plots.getSinglePlotter(width_inch=6)
-g.plot_2d(cmb['samples'], ['linP_DL2_star', 'linP_n_star'])
+g.plot_2d(cmb['samples'], ['linP_DL2_star', 'linP_n_star'], colors=["C0"])
 #g.plot_2d(planck2018['samples'], ['linP_n_star', 'linP_DL2_star'],lims=[-2.4,-2.25,0.2,0.5])
+ax = g.subplots[0,0]
 
 true_DL2=0.35
 true_neff=-2.3
@@ -129,9 +149,18 @@ neff_grid, DL2_grid = np.mgrid[-2.4:-2.2:200j, 0.2:0.65:200j]
 
 chi2_desi = coeff_mult * marg_lya_like.gaussian_chi2(neff_grid,DL2_grid, true_neff, true_DL2, neff_err, DL2_err, r)
 
-CS = plt.contour(DL2_grid, neff_grid, chi2_desi, levels=thresholds[:2], colors='green')
-plt.xlim(0.25, 0.45)
-plt.ylim(-2.35, -2.25)
+CS = ax.contour(DL2_grid, neff_grid, chi2_desi, levels=thresholds[:2], colors='C1')
+ax.axhline(y=1,color='C0',label="Planck 2018")
+ax.axhline(y=1,color='C1',label="This work")
+
+ax.set_xlim(0.25, 0.45)
+ax.set_ylim(-2.35, -2.25)
+
+plt.legend(fontsize=ftsize)
+
+plt.tight_layout()
+plt.savefig("figs/star_planck_mine.pdf")
+plt.savefig("figs/star_planck_mine.pdf")
 
 
 # %%
@@ -145,15 +174,15 @@ def print_err(ell):
 # %%
 print_err(CS)
 
-# %%
-# plot also neutrino mass (for nuLCDM)
-g = plots.getSubplotPlotter(width_inch=10)
-g.settings.axes_fontsize = 10
-g.settings.legend_fontsize = 14
-g.triangle_plot(planck2018['samples'],
-                ['linP_DL2_star','linP_n_star','linP_alpha_star','linP_f_star','linP_g_star','omegam','mnu'],
-                legend_labels=[planck_label])
 
+# %%
+# # plot also neutrino mass (for nuLCDM)
+# g = plots.getSubplotPlotter(width_inch=10)
+# g.settings.axes_fontsize = 10
+# g.settings.legend_fontsize = 14
+# g.triangle_plot(planck2018['samples'],
+#                 ['linP_DL2_star','linP_n_star','linP_alpha_star','linP_f_star','linP_g_star','omegam','mnu'],
+#                 legend_labels=[planck_label])
 
 # %% [markdown]
 # ### Add mock DESI Lya likelihood
@@ -208,12 +237,6 @@ coeff_mult = 2.3 # should it be 0.5?
 chain_type = cmb
 
 
-# new_samples=cmb_w_wa['samples'].copy()
-# new_samples=cmb_omega_k['samples'].copy()
-# new_samples=cmb_mnu['samples'].copy()
-# new_samples=cmb_nrun['samples'].copy()
-
-
 labels_DESI=[]
 for ii in range(len(true_DL2)):
     new_samples=chain_type['samples'].copy()
@@ -250,12 +273,6 @@ r=-0.134
 coeff_mult = 2.3 # should it be 0.5?
 
 chain_type = cmb_w_wa
-
-
-# new_samples=cmb_w_wa['samples'].copy()
-# new_samples=cmb_omega_k['samples'].copy()
-# new_samples=cmb_mnu['samples'].copy()
-# new_samples=cmb_nrun['samples'].copy()
 
 
 labels_DESI=[]
@@ -295,13 +312,6 @@ coeff_mult = 2.3 # should it be 0.5?
 
 chain_type = cmb_omega_k
 
-
-# new_samples=cmb_w_wa['samples'].copy()
-# new_samples=cmb_omega_k['samples'].copy()
-# new_samples=cmb_mnu['samples'].copy()
-# new_samples=cmb_nrun['samples'].copy()
-
-
 labels_DESI=[]
 for ii in range(len(true_DL2)):
     new_samples=chain_type['samples'].copy()
@@ -324,7 +334,7 @@ g.settings.axes_fontsize = 10
 g.settings.legend_fontsize = 14
 g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
                 ['linP_DL2_star','linP_n_star','omegak'],
-                legend_labels=['Planck 2018 + SDSS',labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+                legend_labels=['Planck 2018',labels_DESI[0],labels_DESI[1],labels_DESI[2]])
 
 # %% [markdown]
 # ### Constraints on mnu
@@ -367,20 +377,34 @@ g = plots.getSubplotPlotter(width_inch=8)
 g.settings.axes_fontsize = 12
 g.settings.legend_fontsize = 14
 g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
-                ['linP_DL2_star','linP_n_star','mnu'],
+                ['linP_DL2_star','linP_n_star', 'sigma8', 'mnu'],
                 legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
-#plt.savefig(plot_label+'.pdf')
-#plt.savefig(plot_label+'.png')
 
-print(chain_type['samples'].getInlineLatex('mnu',limit=1))
-print(samples_DESI[0].getInlineLatex('mnu',limit=1))
-print(samples_DESI[1].getInlineLatex('mnu',limit=1))
-print(samples_DESI[2].getInlineLatex('mnu',limit=1))
-print("")
-print(chain_type['samples'].getInlineLatex('mnu',limit=2))
-print(samples_DESI[0].getInlineLatex('mnu',limit=2))
-print(samples_DESI[1].getInlineLatex('mnu',limit=2))
-print(samples_DESI[2].getInlineLatex('mnu',limit=2))
+
+# g = plots.getSubplotPlotter(width_inch=8)
+# g.settings.axes_fontsize = 12
+# g.settings.legend_fontsize = 14
+# g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+#                 ['linP_DL2_star','linP_n_star','mnu'],
+#                 legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+
+
+# print(chain_type['samples'].getInlineLatex('mnu',limit=1))
+# print(samples_DESI[0].getInlineLatex('mnu',limit=1))
+# print(samples_DESI[1].getInlineLatex('mnu',limit=1))
+# print(samples_DESI[2].getInlineLatex('mnu',limit=1))
+# print("")
+# print(chain_type['samples'].getInlineLatex('mnu',limit=2))
+# print(samples_DESI[0].getInlineLatex('mnu',limit=2))
+# print(samples_DESI[1].getInlineLatex('mnu',limit=2))
+# print(samples_DESI[2].getInlineLatex('mnu',limit=2))
+
+plt.tight_layout()
+# plt.savefig("figs/import_neutrinos.png")
+# plt.savefig("figs/import_neutrinos.pdf")
+
+# %%
+cmb_nrun["samples"].getParamSampleDict(0).keys()
 
 # %% [markdown]
 # #### Constraints on nrun
@@ -419,14 +443,76 @@ for ii in range(len(true_DL2)):
     labels_DESI.append(r'+ DESI Ly$\alpha \, \Delta^2_\ast = ${}'.format(true_DL2[ii]))
 
 
+g = plots.getSubplotPlotter(width_inch=12)
+g.settings.axes_fontsize = 12
+g.settings.legend_fontsize = 14
+g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+                ['linP_DL2_star','linP_n_star', 'omegach2', 'theta', 'tau', 'logA', 'ns', 'nrun'],
+                legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+
+# g = plots.getSubplotPlotter(width_inch=8)
+# g.settings.axes_fontsize = 12
+# g.settings.legend_fontsize = 14
+# g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+#                 ['linP_DL2_star','linP_n_star','nrun'],
+#                 legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+
+plt.tight_layout()
+# plt.savefig("figs/import_nrun.png")
+plt.savefig("figs/import_nrun_2.pdf")
+
+# %% [markdown]
+# #### Constraints on nnu
+
+# %%
+samples_DESI=[]
+true_DL2=[0.33,0.35,0.37]
+DL2_err = 0.056
+neff_err = 0.022
+r=-0.134
+coeff_mult = 2.3 # should it be 0.5?
+
+chain_type = cmb_nnu
+
+
+# new_samples=cmb_w_wa['samples'].copy()
+# new_samples=cmb_omega_k['samples'].copy()
+# new_samples=cmb_mnu['samples'].copy()
+# new_samples=cmb_nrun['samples'].copy()
+
+
+labels_DESI=[]
+for ii in range(len(true_DL2)):
+    new_samples=chain_type['samples'].copy()
+    p=new_samples.getParams()
+    new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
+        p.linP_n_star, 
+        p.linP_DL2_star, 
+        true_DL2=true_DL2[ii],
+        neff_err=neff_err,
+        DL2_err=DL2_err,
+        r=r
+    )
+    new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
+    samples_DESI.append(new_samples)
+    labels_DESI.append(r'+ DESI Ly$\alpha \, \Delta^2_\ast = ${}'.format(true_DL2[ii]))
+
+
 g = plots.getSubplotPlotter(width_inch=8)
 g.settings.axes_fontsize = 12
 g.settings.legend_fontsize = 14
 g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
-                ['linP_DL2_star','linP_n_star','nrun'],
+                ['linP_DL2_star','linP_n_star','nnu'],
                 legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
-#plt.savefig(plot_label+'.pdf')
-#plt.savefig(plot_label+'.png')
+
+
+# g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+#                 ['linP_DL2_star','linP_n_star', 'logA', 'ns', 'nnu'],
+#                 legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+
+plt.tight_layout()
+plt.savefig("figs/import_nnu.png")
+plt.savefig("figs/import_nnu.pdf")
 
 # %% [markdown]
 # #### Constraints on nrun and nrunrun
@@ -467,6 +553,10 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
                 legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
 #plt.savefig(plot_label+'.pdf')
 #plt.savefig(plot_label+'.png')
+
+plt.tight_layout()
+plt.savefig("figs/import_nrun_nrunrun.png")
+plt.savefig("figs/import_nrun_nrunrun.pdf")
 
 # %% [markdown]
 # ### Constraints on nrun_nnu_w_mnu
@@ -509,3 +599,8 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
 #plt.savefig(plot_label+'.pdf')
 #plt.savefig(plot_label+'.png')
 
+plt.tight_layout()
+plt.savefig("figs/import_nrun_nnu_w_mnu.png")
+plt.savefig("figs/import_nrun_nnu_w_mnu.pdf")
+
+# %%

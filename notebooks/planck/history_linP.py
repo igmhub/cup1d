@@ -64,10 +64,10 @@ cmb = planck_chains.get_planck_2018(
 
 
 # %%
-# put everything together to pass to getdist
-analyses=[wmap9,planck2013,planck2015,planck2018]
-samples=[analysis['samples'] for analysis in analyses]
-labels=[analysis['label'] for analysis in analyses]
+# # put everything together to pass to getdist
+# analyses=[wmap9,planck2013,planck2015,planck2018]
+# samples=[analysis['samples'] for analysis in analyses]
+# labels=[analysis['label'] for analysis in analyses]
 
 # %%
 
@@ -146,12 +146,12 @@ def print_err(ell):
 # g.plot_2d(cmb, ['linP_n_star', 'linP_DL2_star'],lims=[-2.4,-2.25, 0.2,0.5])
 
 
-g = plots.getSubplotPlotter(width_inch=8)
-g.settings.axes_fontsize = 10
-g.settings.legend_fontsize = 14
-g.triangle_plot([cmb['samples']],
-                ['linP_n_star', 'linP_DL2_star'],
-                legend_labels=[r'$\Lambda$CDM'])
+# g = plots.getSubplotPlotter(width_inch=8)
+# g.settings.axes_fontsize = 10
+# g.settings.legend_fontsize = 14
+# g.triangle_plot([cmb['samples']],
+#                 ['linP_n_star', 'linP_DL2_star'],
+#                 legend_labels=[r'$\Lambda$CDM'])
 
 # %%
 import scipy.stats as stats
@@ -246,6 +246,9 @@ g.subplots[1, 1].legend(
     fontsize=14
 )
 
+plt.tight_layout()
+plt.savefig("figs/star_literature.png")
+plt.savefig("figs/star_literature.pdf")
 
 # %%
 
