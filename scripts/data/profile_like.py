@@ -11,8 +11,8 @@ from cup1d.utils.utils import get_path_repo
 def main():
     emu = "mpg"
     # emu = "nyx"
-    data_label = "DESIY1_QMLE3"
-    # data_label = "DESIY1_QMLE"
+    # data_label = "DESIY1_QMLE3"
+    data_label = "DESIY1_QMLE"
     # data_label = "DESIY1_FFT_dir"
     # data_label = "DESIY1_FFT"
 
