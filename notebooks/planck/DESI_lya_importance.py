@@ -52,12 +52,6 @@ from cup1d.utils.utils import get_path_repo
 # planck2018=planck_chains.get_planck_2018(model=model,data=planck_data)
 
 # %%
-cmb_r = planck_chains.get_planck_2018(
-    model='base_r',
-    data='plikHM_TTTEEE_lowl_lowE',
-    root_dir=root_dir,
-    linP_tag=None
-)
 
 # %%
 
@@ -93,6 +87,13 @@ cmb_mnu = planck_chains.get_planck_2018(
 
 cmb_nnu = planck_chains.get_planck_2018(
     model='base_nnu',
+    data='plikHM_TTTEEE_lowl_lowE_linP',
+    root_dir=root_dir,
+    linP_tag=None
+)
+
+cmb_r = planck_chains.get_planck_2018(
+    model='base_r',
     data='plikHM_TTTEEE_lowl_lowE_linP',
     root_dir=root_dir,
     linP_tag=None
@@ -229,6 +230,7 @@ chi2_desi = marg_lya_like.gaussian_chi2(neff, DL2, true_neff, true_DL2, neff_err
 # %%
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
+true_neff=[-2.295,-2.30,-2.305]
 DL2_err = 0.056
 neff_err = 0.022
 r=-0.134
@@ -245,13 +247,14 @@ for ii in range(len(true_DL2)):
         p.linP_n_star, 
         p.linP_DL2_star, 
         true_DL2=true_DL2[ii],
+        true_neff=true_neff[ii
         neff_err=neff_err,
         DL2_err=DL2_err,
         r=r
     )
     new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
     samples_DESI.append(new_samples)
-    labels_DESI.append(r'+ DESI Ly$\alpha \, \Delta^2_\ast = ${}'.format(true_DL2[ii]))
+    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
 
 
 g = plots.getSubplotPlotter(width_inch=16)
@@ -267,6 +270,7 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
 # %%
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
+true_neff=[-2.295,-2.30,-2.305]
 DL2_err = 0.056
 neff_err = 0.022
 r=-0.134
@@ -283,13 +287,14 @@ for ii in range(len(true_DL2)):
         p.linP_n_star, 
         p.linP_DL2_star, 
         true_DL2=true_DL2[ii],
+        true_neff=true_neff[ii],
         neff_err=neff_err,
         DL2_err=DL2_err,
         r=r
     )
     new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
     samples_DESI.append(new_samples)
-    labels_DESI.append(r'+ DESI Ly$\alpha \, \Delta^2_\ast = ${}'.format(true_DL2[ii]))
+    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
 
 
 g = plots.getSubplotPlotter(width_inch=16)
@@ -305,6 +310,7 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
 # %%
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
+true_neff=[-2.295,-2.30,-2.305]
 DL2_err = 0.056
 neff_err = 0.022
 r=-0.134
@@ -320,13 +326,14 @@ for ii in range(len(true_DL2)):
         p.linP_n_star, 
         p.linP_DL2_star, 
         true_DL2=true_DL2[ii],
+        true_neff=true_neff[ii],
         neff_err=neff_err,
         DL2_err=DL2_err,
         r=r
     )
     new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
     samples_DESI.append(new_samples)
-    labels_DESI.append(r'+ DESI Ly$\alpha \, \Delta^2_\ast = ${}'.format(true_DL2[ii]))
+    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
 
 
 g = plots.getSubplotPlotter(width_inch=16)
@@ -342,18 +349,13 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
 # %%
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
+true_neff=[-2.295,-2.30,-2.305]
 DL2_err = 0.056
 neff_err = 0.022
 r=-0.134
 coeff_mult = 2.3 # should it be 0.5?
 
 chain_type = cmb_mnu
-
-
-# new_samples=cmb_w_wa['samples'].copy()
-# new_samples=cmb_omega_k['samples'].copy()
-# new_samples=cmb_mnu['samples'].copy()
-# new_samples=cmb_nrun['samples'].copy()
 
 
 labels_DESI=[]
@@ -364,44 +366,45 @@ for ii in range(len(true_DL2)):
         p.linP_n_star, 
         p.linP_DL2_star, 
         true_DL2=true_DL2[ii],
+        true_neff=true_neff[ii],
         neff_err=neff_err,
         DL2_err=DL2_err,
         r=r
     )
     new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
     samples_DESI.append(new_samples)
-    labels_DESI.append(r'+ DESI Ly$\alpha \, \Delta^2_\ast = ${}'.format(true_DL2[ii]))
-
-
-g = plots.getSubplotPlotter(width_inch=8)
-g.settings.axes_fontsize = 12
-g.settings.legend_fontsize = 14
-g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
-                ['linP_DL2_star','linP_n_star', 'sigma8', 'mnu'],
-                legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
 
 
 # g = plots.getSubplotPlotter(width_inch=8)
 # g.settings.axes_fontsize = 12
 # g.settings.legend_fontsize = 14
 # g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
-#                 ['linP_DL2_star','linP_n_star','mnu'],
+#                 ['linP_DL2_star','linP_n_star', 'sigma8', 'mnu'],
 #                 legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
 
 
-# print(chain_type['samples'].getInlineLatex('mnu',limit=1))
+g = plots.getSubplotPlotter(width_inch=8)
+g.settings.axes_fontsize = 12
+g.settings.legend_fontsize = 14
+g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+                ['linP_DL2_star','linP_n_star','mnu'],
+                legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+
+
+print(chain_type['samples'].getInlineLatex('mnu',limit=1))
 # print(samples_DESI[0].getInlineLatex('mnu',limit=1))
-# print(samples_DESI[1].getInlineLatex('mnu',limit=1))
+print(samples_DESI[1].getInlineLatex('mnu',limit=1))
 # print(samples_DESI[2].getInlineLatex('mnu',limit=1))
 # print("")
-# print(chain_type['samples'].getInlineLatex('mnu',limit=2))
+print(chain_type['samples'].getInlineLatex('mnu',limit=2))
 # print(samples_DESI[0].getInlineLatex('mnu',limit=2))
-# print(samples_DESI[1].getInlineLatex('mnu',limit=2))
+print(samples_DESI[1].getInlineLatex('mnu',limit=2))
 # print(samples_DESI[2].getInlineLatex('mnu',limit=2))
 
 plt.tight_layout()
-# plt.savefig("figs/import_neutrinos.png")
-# plt.savefig("figs/import_neutrinos.pdf")
+plt.savefig("figs/import_neutrinos.png")
+plt.savefig("figs/import_neutrinos.pdf")
 
 # %%
 cmb_nrun["samples"].getParamSampleDict(0).keys()
@@ -412,6 +415,7 @@ cmb_nrun["samples"].getParamSampleDict(0).keys()
 # %%
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
+true_neff=[-2.295,-2.30,-2.305]
 DL2_err = 0.056
 neff_err = 0.022
 r=-0.134
@@ -420,12 +424,6 @@ coeff_mult = 2.3 # should it be 0.5?
 chain_type = cmb_nrun
 
 
-# new_samples=cmb_w_wa['samples'].copy()
-# new_samples=cmb_omega_k['samples'].copy()
-# new_samples=cmb_mnu['samples'].copy()
-# new_samples=cmb_nrun['samples'].copy()
-
-
 labels_DESI=[]
 for ii in range(len(true_DL2)):
     new_samples=chain_type['samples'].copy()
@@ -434,32 +432,36 @@ for ii in range(len(true_DL2)):
         p.linP_n_star, 
         p.linP_DL2_star, 
         true_DL2=true_DL2[ii],
+        true_neff=true_neff[ii],
         neff_err=neff_err,
         DL2_err=DL2_err,
         r=r
     )
     new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
     samples_DESI.append(new_samples)
-    labels_DESI.append(r'+ DESI Ly$\alpha \, \Delta^2_\ast = ${}'.format(true_DL2[ii]))
+    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
 
 
-g = plots.getSubplotPlotter(width_inch=12)
-g.settings.axes_fontsize = 12
-g.settings.legend_fontsize = 14
-g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
-                ['linP_DL2_star','linP_n_star', 'omegach2', 'theta', 'tau', 'logA', 'ns', 'nrun'],
-                legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
-
-# g = plots.getSubplotPlotter(width_inch=8)
+# g = plots.getSubplotPlotter(width_inch=12)
 # g.settings.axes_fontsize = 12
 # g.settings.legend_fontsize = 14
 # g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
-#                 ['linP_DL2_star','linP_n_star','nrun'],
+#                 ['linP_DL2_star','linP_n_star', 'omegach2', 'theta', 'tau', 'logA', 'ns', 'nrun'],
 #                 legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
 
+g = plots.getSubplotPlotter(width_inch=8)
+g.settings.axes_fontsize = 12
+g.settings.legend_fontsize = 14
+g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+                ['linP_DL2_star','linP_n_star','nrun'],
+                legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+
+print(chain_type['samples'].getInlineLatex('nrun',limit=1))
+print(samples_DESI[1].getInlineLatex('nrun',limit=1))
+
 plt.tight_layout()
-# plt.savefig("figs/import_nrun.png")
-plt.savefig("figs/import_nrun_2.pdf")
+plt.savefig("figs/import_nrun.png")
+plt.savefig("figs/import_nrun.pdf")
 
 # %% [markdown]
 # #### Constraints on nnu
@@ -467,19 +469,13 @@ plt.savefig("figs/import_nrun_2.pdf")
 # %%
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
+true_neff=[-2.295,-2.30,-2.305]
 DL2_err = 0.056
 neff_err = 0.022
 r=-0.134
 coeff_mult = 2.3 # should it be 0.5?
 
 chain_type = cmb_nnu
-
-
-# new_samples=cmb_w_wa['samples'].copy()
-# new_samples=cmb_omega_k['samples'].copy()
-# new_samples=cmb_mnu['samples'].copy()
-# new_samples=cmb_nrun['samples'].copy()
-
 
 labels_DESI=[]
 for ii in range(len(true_DL2)):
@@ -489,13 +485,14 @@ for ii in range(len(true_DL2)):
         p.linP_n_star, 
         p.linP_DL2_star, 
         true_DL2=true_DL2[ii],
+        true_neff=true_neff[ii],
         neff_err=neff_err,
         DL2_err=DL2_err,
         r=r
     )
     new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
     samples_DESI.append(new_samples)
-    labels_DESI.append(r'+ DESI Ly$\alpha \, \Delta^2_\ast = ${}'.format(true_DL2[ii]))
+    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
 
 
 g = plots.getSubplotPlotter(width_inch=8)
@@ -510,6 +507,10 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
 #                 ['linP_DL2_star','linP_n_star', 'logA', 'ns', 'nnu'],
 #                 legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
 
+
+print(chain_type['samples'].getInlineLatex('nnu',limit=1))
+print(samples_DESI[1].getInlineLatex('nnu',limit=1))
+
 plt.tight_layout()
 plt.savefig("figs/import_nnu.png")
 plt.savefig("figs/import_nnu.pdf")
@@ -520,6 +521,7 @@ plt.savefig("figs/import_nnu.pdf")
 # %%
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
+true_neff=[-2.295,-2.30,-2.305]
 DL2_err = 0.056
 neff_err = 0.022
 r=-0.134
@@ -536,13 +538,14 @@ for ii in range(len(true_DL2)):
         p.linP_n_star, 
         p.linP_DL2_star, 
         true_DL2=true_DL2[ii],
+        true_neff=true_neff[ii],
         neff_err=neff_err,
         DL2_err=DL2_err,
         r=r
     )
     new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
     samples_DESI.append(new_samples)
-    labels_DESI.append(r'+ DESI Ly$\alpha \, \Delta^2_\ast = ${}'.format(true_DL2[ii]))
+    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
 
 
 g = plots.getSubplotPlotter(width_inch=8)
@@ -554,6 +557,11 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
 #plt.savefig(plot_label+'.pdf')
 #plt.savefig(plot_label+'.png')
 
+print(chain_type['samples'].getInlineLatex('nrun',limit=1))
+print(samples_DESI[1].getInlineLatex('nrun',limit=1))
+print(chain_type['samples'].getInlineLatex('nrunrun',limit=1))
+print(samples_DESI[1].getInlineLatex('nrunrun',limit=1))
+
 plt.tight_layout()
 plt.savefig("figs/import_nrun_nrunrun.png")
 plt.savefig("figs/import_nrun_nrunrun.pdf")
@@ -564,6 +572,7 @@ plt.savefig("figs/import_nrun_nrunrun.pdf")
 # %%
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
+true_neff=[-2.295,-2.30,-2.305]
 DL2_err = 0.056
 neff_err = 0.022
 r=-0.134
@@ -580,13 +589,14 @@ for ii in range(len(true_DL2)):
         p.linP_n_star, 
         p.linP_DL2_star, 
         true_DL2=true_DL2[ii],
+        true_neff=true_neff[ii],
         neff_err=neff_err,
         DL2_err=DL2_err,
         r=r
     )
     new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
     samples_DESI.append(new_samples)
-    labels_DESI.append(r'+ DESI Ly$\alpha \, \Delta^2_\ast = ${}'.format(true_DL2[ii]))
+    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
 
 
 # plikHM_TTTEEE_lowl_lowE_BAO_Riess18_Pantheon18_lensing
@@ -602,5 +612,52 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
 plt.tight_layout()
 plt.savefig("figs/import_nrun_nnu_w_mnu.png")
 plt.savefig("figs/import_nrun_nnu_w_mnu.pdf")
+
+# %% [markdown]
+# ### base_r
+
+# %%
+samples_DESI=[]
+true_DL2=[0.33, 0.35, 0.37]
+true_neff=[-2.295,-2.30,-2.305]
+DL2_err = 0.056
+neff_err = 0.022
+r=-0.134
+coeff_mult = 2.3 # should it be 0.5?
+
+chain_type = cmb_r
+
+
+labels_DESI=[]
+for ii in range(len(true_DL2)):
+    new_samples=chain_type['samples'].copy()
+    p=new_samples.getParams()
+    new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
+        p.linP_n_star, 
+        p.linP_DL2_star, 
+        true_DL2=true_DL2[ii],
+        true_neff=true_neff[ii],
+        neff_err=neff_err,
+        DL2_err=DL2_err,
+        r=r
+    )
+    new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
+    samples_DESI.append(new_samples)
+    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
+
+
+# plikHM_TTTEEE_lowl_lowE_BAO_Riess18_Pantheon18_lensing
+g = plots.getSubplotPlotter(width_inch=8)
+g.settings.axes_fontsize = 12
+g.settings.legend_fontsize = 14
+g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+                ['linP_DL2_star','linP_n_star','r'],
+                legend_labels=["Planck 2018 + SDSS + SN",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+#plt.savefig(plot_label+'.pdf')
+#plt.savefig(plot_label+'.png')
+
+plt.tight_layout()
+plt.savefig("figs/import_r.png")
+plt.savefig("figs/import_r.pdf")
 
 # %%

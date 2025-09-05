@@ -22,7 +22,7 @@
 import numpy as np
 import time, os, sys
 import matplotlib.pyplot as plt
-from cup1d.utils.fit_ellipse import fit_ellipse
+from cup1d.utils.fit_ellipse import fit_ellipse, plot_ellipse
 from scipy.interpolate import griddata
 import matplotlib.patches as mpatches
 from scipy.stats import chi2 as chi2_scipy
@@ -47,15 +47,15 @@ print(chi2_levels)
 
 # +
 fit_type = "global_opt"
-data_lab = "DESIY1_QMLE3"
-# data_lab = "DESIY1_QMLE"
+# data_lab = "DESIY1_QMLE3"
+data_lab = "DESIY1_QMLE"
 # data_lab = "DESIY1_FFT_dir"
 # data_lab = "DESIY1_FFT"
-emu = "mpg"
-# emu = "nyx"
+# emu = "mpg"
+emu = "nyx"
 
-# variation = None
-variation = "cov"
+variation = None
+# variation = "cov"
 
 # type_prof = "prof_2d"
 # nelem = 100
@@ -70,11 +70,10 @@ else:
 data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
 mle_cube_cen = data_cen["mle_cube"].copy()
 
-data_cen['best_chi2'] = data_cen['best_chi2']
-
 chi2 = np.zeros(nelem)
 params = np.zeros((nelem, 2))
 mle_cube = np.zeros((nelem, len(mle_cube_cen)-2))
+mle = []
 for ii in range(nelem):
     try:
         data = np.load(folder + type_prof + "/profile_"+str(ii)+ ".npy", allow_pickle=True).item()
@@ -84,13 +83,99 @@ for ii in range(nelem):
     params[ii, 0] = data["blind_cosmo"]["Delta2_star"]
     params[ii, 1] = data["blind_cosmo"]["n_star"]
     mle_cube[ii] = data["mle_cube"]
+    mle.append(data["mle"])
 
 np.sum(chi2 == 0)
 # -
 
-print(data_cen['best_chi2'], chi2.min(), data_cen['best_chi2']-chi2.min())
+data_cen["mle"]
+# data_cen["mle_cube"]
 
-# ### Interpolate data to get better fit
+ind = np.argmin(chi2)
+mle[ind]
+
+np.exp(-1)
+
+min_chi2 = np.min([chi2.min(), data_cen['best_chi2']])
+print(min_chi2, data_cen['best_chi2']-min_chi2, chi2.min()-min_chi2)
+
+# ## Get 1D errors
+
+# +
+out_dict = {}
+
+xparams = params[:,0].reshape(30, 30)
+yparams = params[:,1].reshape(30, 30)
+zchi2 = chi2.reshape(30, 30)
+ind2 = np.argmin(chi2)
+
+if min_chi2 == chi2.min():
+    x_min = params[ind2, 0]
+    y_min = params[ind2, 1]
+else:
+    x_min = data_cen["mle_cosmo_cen"]["Delta2_star"]
+    y_min = data_cen["mle_cosmo_cen"]["n_star"]
+
+xinter = np.linspace(xparams[0,:].min(), xparams[0,:].max(), 1000)
+chi2_inter = np.interp(xinter, xparams[0,:], zchi2.min(axis=0) - min_chi2)
+_ = chi2_inter < 1
+xerr = 0.5 * (xinter[_].max() - xinter[_].min())
+print("Delta2_star", np.round(x_min, 3), np.round(xerr, 3))
+
+yinter = np.linspace(yparams[:,0].min(), yparams[:,0].max(), 1000)
+chi2_inter = np.interp(yinter, yparams[:,0], zchi2.min(axis=1) - min_chi2)
+_ = chi2_inter < 1
+yerr = 0.5 * (yinter[_].max() - yinter[_].min())
+print("n_star", np.round(y_min, 3), np.round(yerr, 3))
+
+out_dict["Delta2_star"] = x_min
+out_dict["err_Delta2_star"] = xerr
+out_dict["n_star"] = y_min
+out_dict["err_n_star"] = yerr
+out_dict["chi2"] = min_chi2
+
+# +
+plot = True
+
+if plot:
+    plt.plot(xparams[0,:], zchi2.min(axis=0) - min_chi2)
+    _ = (zchi2.min(axis=0) - min_chi2) < 1
+    sig_d2s = 0.5 * (xparams[0, _].max() - xparams[0, _].min())
+    print(np.round(sig_d2s, 3))
+    plt.axvline(xparams[0, _].max())
+    plt.axvline(xparams[0, _].min())
+    
+    xinter = np.linspace(xparams[0,:].min(), xparams[0,:].max(), 1000)
+    chi2_inter = np.interp(xinter, xparams[0,:], zchi2.min(axis=0) - min_chi2)
+    _ = chi2_inter < 1
+    print(np.round(0.5 * (xinter[_].max() - xinter[_].min()), 3))
+    plt.axvline(xinter[_].max(), color="C1")
+    plt.axvline(xinter[_].min(), color="C1")
+
+    plt.axhline(1)
+
+# +
+plot = True
+
+if plot:
+    
+    plt.plot(yparams[:,0], zchi2.min(axis=1) - min_chi2)
+    _ = (zchi2.min(axis=1) - min_chi2) < 1
+    print(np.round(0.5 * (yparams[_, 0].max() - yparams[_, 0].min()), 3))
+    plt.axvline(yparams[_, 0].max())
+    plt.axvline(yparams[_, 0].min())
+    
+    yinter = np.linspace(yparams[:,0].min(), yparams[:,0].max(), 1000)
+    chi2_inter = np.interp(yinter, yparams[:,0], zchi2.min(axis=1) - min_chi2)
+    _ = chi2_inter < 1
+    print(np.round(0.5 * (yinter[_].max() - yinter[_].min()), 3))
+    plt.axvline(yinter[_].max(), color="C1")
+    plt.axvline(yinter[_].min(), color="C1")
+    
+    plt.axhline(1)
+# -
+
+# #### Get correlation from 2d-ellipse
 
 # +
 ind = chi2 != 0
@@ -105,7 +190,6 @@ xi[:,1] = grid[1].reshape(-1)
 interp = griddata(params[ind], chi2[ind], xi, method="linear")
 ind2 = np.isfinite(interp)
 
-min_chi2 = np.min([chi2[ind].min(), data_cen['best_chi2'], interp[ind2].min()])
 print("grid", min_chi2, data_cen['best_chi2'])
 print("cen", data_cen["mle_cosmo_cen"])
 # min_chi2 = np.min([chi2[ind].min(), interp.min()])
@@ -121,15 +205,7 @@ CS = plt.contour(
         colors=["C0", "C1", "C2", "C3"],
     )
 
-
-ind_min = np.argmin(chi2[ind])
-out_dict = {
-    "xbest":params[ind, :][ind_min][0],
-    "ybest":params[ind, :][ind_min][1],
-    "chi2":chi2[ind][ind_min]
-}
-
-for jj in range(2, 0, -1):
+for jj in range(1, 0, -1):
     p = CS.collections[jj].get_paths()
     x = []
     y = []
@@ -140,11 +216,14 @@ for jj in range(2, 0, -1):
     x = np.concatenate(x)
     y = np.concatenate(y)
     
-    xfit, yfit, fit_params = fit_ellipse(x, y)
+    xfit, yfit, rho = fit_ellipse(x, y)
     plt.plot(xfit, yfit, "C"+str(jj)+"--")
 
     out_dict["xell" + str(jj)] = xfit
     out_dict["yell" + str(jj)] = yfit
+    out_dict["xcen_2d"] = xfit.mean()
+    out_dict["ycen_2d"] = yfit.mean()
+    out_dict["rho"] = rho
 
 if type_prof == "prof_2d_deep":
     if variation is None:
@@ -160,7 +239,18 @@ print((params[ind])[ind3[:3]].mean(axis=0))
 print((params[ind])[ind3[:3]])
 # -
 
-fit_params
+out_dict["err_Delta2_star"]
+
+# +
+
+plot_ellipse(
+    out_dict["err_Delta2_star"],
+    out_dict["err_n_star"],
+    out_dict["rho"],
+    [out_dict["xcen_2d"], out_dict["ycen_2d"]]
+)
+plt.plot(out_dict["xell1"], out_dict["yell1"], color="C0")
+plt.scatter(out_dict["Delta2_star"], out_dict["n_star"], marker="x", color="k")
 
 # +
 fig, ax = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10, 6))
@@ -230,6 +320,13 @@ print(chi2[ind][ind_min],
       np.round(0.5 * (yfit.max()-yfit.min()), 2)
 )
 
+plot_ellipse(
+    out_dict["err_Delta2_star"],
+    out_dict["err_n_star"],
+    out_dict["rho"],
+    [out_dict["xcen_2d"], out_dict["ycen_2d"]],
+    ax=ax[0]
+)
 
 # ind_min = np.argmin(interp[ind2])
 # print(interp[ind2][ind_min], np.round(xi[ind2, :][ind_min], 2))
@@ -240,6 +337,8 @@ plt.tight_layout()
 
 # plt.savefig("compare_variations.pdf")
 # -
+
+
 # ## All together
 
 # +

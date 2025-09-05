@@ -30,22 +30,32 @@ from cup1d.planck import planck_chains
 from cup1d.planck import add_linP_params
 # because of black magic, getdist needs this strange order of imports
 # %matplotlib inline
+from cup1d.utils.utils import get_path_repo
 
 # %% [markdown]
 # ### Read Planck 2018 chain
 
 # %%
 # this should be the original Planck chain, but instead I'm using a lighter version stored in cup1d
-cmb=planck_chains.get_planck_2018(model='base_mnu')
+# data_type="plikHM_TTTEEE_lowl_lowE"
+# cmb = planck_chains.get_planck_2018(model='base_mnu', data=data_type, linP_tag=None)
+
+root_dir=os.path.join(get_path_repo("cup1d"), "data", "planck_linP_chains")
+cmb = planck_chains.get_planck_2018(
+    model='base_omegak',
+    data='plikHM_TTTEEE_lowl_lowE_BAO',
+    root_dir=root_dir,
+    linP_tag=None
+)
 
 # %%
 g = plots.getSinglePlotter()
-g.plot_2d(cmb['samples'], ['omegam', 'ns'])
+g.plot_2d(cmb['samples'], ['ns', "omegak"])
 
 # %% jupyter={"outputs_hidden": false}
 # dramatically reduce sice of chain, for testing
 samples=cmb['samples'].copy()
-thinning=200
+thinning=1
 samples.thin(thinning)
 Nsamp,Npar=samples.samples.shape
 print('Thinned chains have {} samples and {} parameters'.format(Nsamp,Npar))
@@ -55,7 +65,8 @@ print('Thinned chains have {} samples and {} parameters'.format(Nsamp,Npar))
 
 # %% jupyter={"outputs_hidden": false}
 # specify linear power parameters that we want to add
-linP_params_names=['Delta2_star','n_star','f_star','g_star','alpha_star']
+# linP_params_names=['Delta2_star','n_star','f_star','g_star','alpha_star']
+linP_params_names=['Delta2_star','n_star']
 # this will collect a dictionary for each sample in the chain
 linP_params_entries=[]
 for i in range(Nsamp):
@@ -64,7 +75,7 @@ for i in range(Nsamp):
     # get point from original chain
     params=samples.getParamSampleDict(i)
     # compute linear power parameters (n_star, f_star, etc.)
-    linP_params=add_linP_params.get_linP_params(params,verbose=verbose)
+    linP_params=add_linP_params.get_linP_params(params,verbose=verbose, camb_kmax_Mpc_fast=1.5)
     # add only the relevant ones
     linP_params_entries.append({k: linP_params[k] for k in linP_params_names})
     if verbose: print('linP params',linP_params_entries[-1])
@@ -99,7 +110,15 @@ samples.saveAsText(root=new_root,make_dirs=True)
 # %% jupyter={"outputs_hidden": false}
 # Try reading the new file
 from getdist import loadMCSamples
-new_samples = loadMCSamples(new_root)
+key_model = "base"
+key_data = "plikHM_TTTEEE_lowl_lowE"
+new_root = os.path.join(
+        root_dir,
+        "COM_CosmoParams_fullGrid_R3.01",
+        key_model,
+        key_data + "_linP",
+    )
+new_samples = loadMCSamples(new_root + "/")
 # get basic statistics for the new parameters
 new_param_means=np.mean(new_samples.samples,axis=0)
 new_param_vars=np.var(new_samples.samples,axis=0)

@@ -369,7 +369,7 @@ class Args:
                 if self.fid_cont["n_HCD_damp" + str(ii + 1)] == 0:
                     self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -11.5]
                 else:
-                    self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -(ii + 1)]
+                    self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -(ii + 1.2)]
         #############
 
         elif fit_type == "at_a_time_igm":
@@ -598,7 +598,7 @@ class Args:
             "f_SiIIa_SiIII": 0,
             "f_SiIIb_SiIII": 0,
             "HCD_const": 0,
-            "HCD_damp1": -1,
+            "HCD_damp1": -1.2,
             "HCD_damp2": -11.5,
             "HCD_damp3": -11.5,
             "HCD_damp4": -4,
@@ -658,7 +658,7 @@ class Args:
 
         # priors
         # -0.03, 75% of all fluctuations
-        self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-10.0, -0.15]]
+        self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-10.0, -1.0]]
         self.fid_cont["flat_priors"]["HCD_const"] = [[-1, 1], [-0.2, 1e-6]]
 
         for key in self.fid_cont:

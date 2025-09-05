@@ -8,9 +8,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.16.1
 #   kernelspec:
-#     display_name: cup1d
+#     display_name: Python 3 (ipykernel)
 #     language: python
-#     name: cup1d
+#     name: python3
 # ---
 
 # %% [markdown]
@@ -30,25 +30,31 @@ import matplotlib.pyplot as plt
 from cup1d.planck import planck_chains
 # because of black magic, getdist needs this strange order of imports
 # %matplotlib inline
+from cup1d.utils.utils import get_path_repo
 
 # %% [markdown]
 # ### Start by reading several original Planck chains, and plotting a couple of parameters
 
 # %% jupyter={"outputs_hidden": false}
 # by default the object below would use the chains provided in cup1d, but we want to access original chains here
-root_dir=os.environ['PLANCK_CHAINS']
-planck2018=planck_chains.get_planck_2018(model='base',data='plikHM_TTTEEE_lowl_lowE',
+root_dir=os.path.join(get_path_repo("cup1d"), "data", "planck_linP_chains")
+planck2018=planck_chains.get_planck_2018(model='base',data='plikHM_TTTEEE_lowl_lowE_linP',
                                                 root_dir=root_dir,linP_tag=None)
 planck2018_mnu=planck_chains.get_planck_2018(model='base_mnu',data='plikHM_TTTEEE_lowl_lowE',
                                                 root_dir=root_dir,linP_tag=None)
 planck2018_mnu_BAO=planck_chains.get_planck_2018(model='base_mnu',data='plikHM_TTTEEE_lowl_lowE_BAO',
                                                 root_dir=root_dir,linP_tag=None)
+
+# %%
+
 g = plots.getSubplotPlotter(width_inch=8)
 g.settings.axes_fontsize = 10
 g.settings.legend_fontsize = 14
 g.triangle_plot([planck2018['samples'],planck2018_mnu['samples'],planck2018_mnu_BAO['samples']],
                 ['omegam','logA'],
                 legend_labels=[r'$\Lambda$CDM',r'$\nu\Lambda$CDM',r'+ BAO'])
+
+# %%
 
 # %% [markdown]
 # ### Read original and extended Planck 2018 chains
