@@ -9,15 +9,15 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
-    # emu = "mpg"
-    emu = "nyx"
-    data_label = "DESIY1_QMLE3"
+    emu = "mpg"
+    # emu = "nyx"
+    # data_label = "DESIY1_QMLE3"
     # data_label = "DESIY1_QMLE"
-    # data_label = "DESIY1_FFT_dir"
-    # data_label = "DESIY1_FFT"
+    data_label = "DESIY1_FFT_dir"
+    # data_label = "DESIY1_FFT" # TBD
 
     name_variation = None
-    # name_variation = "cov"
+    # name_variation = "cov" # TBD
 
     # prof_type = "prof_2d"
     # nsig = 8
