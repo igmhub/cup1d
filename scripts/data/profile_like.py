@@ -9,10 +9,10 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
-    emu = "mpg"
-    # emu = "nyx"
-    # data_label = "DESIY1_QMLE3"
-    data_label = "DESIY1_QMLE"
+    # emu = "mpg"
+    emu = "nyx"
+    data_label = "DESIY1_QMLE3"
+    # data_label = "DESIY1_QMLE"
     # data_label = "DESIY1_FFT_dir"
     # data_label = "DESIY1_FFT"
 
@@ -28,11 +28,11 @@ def main():
     nsig = 5
     nelem = 30
 
-    mle_cosmo_cen = {"Delta2_star": 0.44, "n_star": -2.28}  # all mpg
+    # mle_cosmo_cen = {"Delta2_star": 0.44, "n_star": -2.28}  # all mpg
     # mle_cosmo_cen = {"Delta2_star": 0.42, "n_star": -2.22}  # mpg qmle done
     # mle_cosmo_cen = {"Delta2_star": 0.45, "n_star": -2.27}  # mpg fft_dir done
     # mle_cosmo_cen = {"Delta2_star": 0.45, "n_star": -2.27}  # mpg fft done
-    # mle_cosmo_cen = {"Delta2_star": 0.36, "n_star": -2.26}  # nyx qmle3 done
+    mle_cosmo_cen = {"Delta2_star": 0.40, "n_star": -2.26}  # nyx qmle3 done
 
     # baseline
     fit_type = "global_opt"
