@@ -14,7 +14,7 @@ def set_archive(training_set="Pedersen21"):
 
     """
     if "Nyx" in training_set:
-        archive = nyx_archive.NyxArchive(nyx_version=training_set[6:])
+        archive = nyx_archive.NyxArchive(nyx_version=training_set)
     elif training_set in ["Pedersen21", "Cabayol23"]:
         archive = gadget_archive.GadgetArchive(postproc=training_set)
     return archive

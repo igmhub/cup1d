@@ -62,8 +62,8 @@ def set_P1D(args, archive=None, theory=None):
 
         if load_archive:
             if data_label.startswith("mpg"):
-                # archive_mock = set_archive(training_set="Cabayol23")
-                archive_mock = set_archive(training_set="Pedersen21")
+                archive_mock = set_archive(training_set="Cabayol23")
+                # archive_mock = set_archive(training_set="Pedersen21")
             elif data_label.startswith("nyx"):
                 archive_mock = set_archive(training_set=args.nyx_training_set)
 
