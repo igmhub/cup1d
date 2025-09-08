@@ -61,10 +61,10 @@ from scipy.stats import chi2 as chi2_scipy
 # %%
 
 # data_label = "mpg_central"
-# data_label = "nyx_central"
+data_label = "nyx_central"
 # data_label = "nyx_seed"
 # data_label = "accel2"
-data_label = "sherwood"
+# data_label = "sherwood"
 
 if data_label == "mpg_central":
     zmin=2.25
@@ -111,6 +111,12 @@ for par in pip.fitter.like.free_params:
 
 # %%
 pip.fitter.like.plot_p1d()
+
+# %%
+len(pip.fitter.like.free_params)
+
+# %%
+pip.fitter.like.data.full_k_kms.shape
 
 # %%
 from cup1d.likelihood.cosmologies import set_cosmo

@@ -57,6 +57,7 @@ emu = "mpg"
 variation = None
 # variation = "cov"
 variation = "sim_mpg_central"
+variation = "sim_nyx_central"
 
 # type_prof = "prof_2d"
 # nelem = 64
@@ -438,6 +439,8 @@ plt.savefig("figs/variations_2d.png")
 from cup1d.likelihood.cosmologies import set_cosmo
 from cup1d.likelihood import CAMB_model
 
+# 26 params
+
 # +
 fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 20
@@ -447,7 +450,7 @@ variations = ["sim_mpg_central"]
 dict_trans = {
     "sim_mpg_central":"mpg_central", 
 }
-var_deg = [657, ]
+var_deg = [550-26, 681-26, 670-26]
 
 
 
@@ -459,8 +462,8 @@ for ii, var in enumerate(variations):
     file = "out_pl/"+ var + ".npy"
     out_dict = np.load(file, allow_pickle=True).item()
     
-    prob = chi2_scipy.sf(out_dict['chi2'], var_deg) * 100
-    print(var, np.round(out_dict['chi2'], 1), f'{prob[0]:.1e}')
+    prob = chi2_scipy.sf(out_dict['chi2'], var_deg[ii]) * 100
+    print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
 
     cosmo = set_cosmo(cosmo_label=var[4:])
     like_cosmo = CAMB_model.CAMBModel(np.array([3]), cosmo=cosmo)
@@ -505,8 +508,8 @@ ax.tick_params(
 
 plt.legend(fontsize=ftsize-2)
 plt.tight_layout()
-# plt.savefig("figs/variations_2d.pdf")
-# plt.savefig("figs/variations_2d.png")
+plt.savefig("figs/validation_2d.pdf")
+plt.savefig("figs/validation_2d.png")
 # -
 
 prob
