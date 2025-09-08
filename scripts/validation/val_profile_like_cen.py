@@ -9,12 +9,20 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
-    # baseline
-    # data_label = "mpg_central"
-    data_label = "nyx_central"
-
     emu = "mpg"
     # emu = "nyx"
+
+    # baseline
+    data_label = "mpg_central"
+    # data_label = "nyx_central"
+
+    if data_label == "mpg_central":
+        zmin = 2.25
+        zmax = 4.25
+    else:
+        zmin = 2.2
+        zmax = 4.2
+
     fit_type = "global_opt"
     cov_label = "DESIY1_QMLE3"
 
@@ -26,12 +34,15 @@ def main():
         emulator_label="CH24_" + emu + "cen_gpr",
         true_cosmo_label=data_label,
         fid_cosmo_label=data_label,
+        apply_smoothing=True,
     )
 
     args.set_baseline(
         fit_type=fit_type,
         fix_cosmo=False,
         name_variation=name_variation,
+        zmin=zmin,
+        zmax=zmax,
     )
     pip = Pipeline(args, out_folder=args.out_folder)
 

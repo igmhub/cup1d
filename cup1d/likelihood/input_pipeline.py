@@ -247,7 +247,7 @@ class Args:
             self.fid_cont[prop] = 0
 
         # set igm stuff
-        igm_props = ["n_tau_eff", "n_sigT", "n_gamma", "n_kF_kms"]
+        igm_props = ["n_tau_eff", "n_sigT_kms", "n_gamma", "n_kF_kms"]
         self.fid_igm["tau_eff_otype"] = "exp"
         self.fid_igm["gamma_otype"] = "const"
         self.fid_igm["sigT_kms_otype"] = "const"
@@ -278,6 +278,7 @@ class Args:
             pass
         else:
             self.fid_cosmo_label = "Planck18"
+        print("fid cosmo label", self.fid_cosmo_label)
 
         if ("mpg" in self.emulator_label) | ("Mpg" in self.emulator_label):
             sim_fid = "mpg_central"
@@ -554,12 +555,13 @@ class Args:
 
             self.opt_props = props_igm + props_cont
             var_props = self.opt_props
-            # nodes = np.geomspace(2.2, 4.2, 3)
-            nodes = np.geomspace(2.2, 4.2, 1)
 
-            self.fid_igm["tau_eff_znodes"] = np.geomspace(2.2, 4.2, 6)
-            self.fid_igm["sigT_kms_znodes"] = np.geomspace(2.2, 4.2, 4)
-            self.fid_igm["gamma_znodes"] = np.geomspace(2.2, 4.2, 4)
+            # nodes = np.geomspace(2.2, 4.2, 3)
+            nodes = np.geomspace(zmin, zmax, 1)
+
+            self.fid_igm["tau_eff_znodes"] = np.geomspace(zmin, zmax, 6)
+            self.fid_igm["sigT_kms_znodes"] = np.geomspace(zmin, zmax, 4)
+            self.fid_igm["gamma_znodes"] = np.geomspace(zmin, zmax, 4)
             self.fid_igm["kF_kms_znodes"] = []
             for prop in props_igm:
                 self.fid_igm["n_" + prop] = len(self.fid_igm[prop + "_znodes"])
@@ -770,7 +772,10 @@ class Args:
 
         # priors
         # -0.03, 75% of all fluctuations
-        self.fid_cont["flat_priors"]["HCD_damp"] = [[-0.5, 0.5], [-10.0, -1.0]]
+        self.fid_cont["flat_priors"]["HCD_damp1"] = [[-0.5, 0.5], [-10.0, -1.0]]
+        self.fid_cont["flat_priors"]["HCD_damp2"] = [[-0.5, 0.5], [-10.0, -1.0]]
+        self.fid_cont["flat_priors"]["HCD_damp3"] = [[-0.5, 0.5], [-10.0, -1.0]]
+        self.fid_cont["flat_priors"]["HCD_damp4"] = [[-0.5, 0.5], [-10.0, -1.0]]
         self.fid_cont["flat_priors"]["HCD_const"] = [[-1, 1], [-0.2, 1e-6]]
 
         for key in self.fid_cont:

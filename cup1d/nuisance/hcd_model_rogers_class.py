@@ -32,7 +32,10 @@ class HCD_Model_Rogers(Contaminant):
         # priors for all coefficients
         if flat_priors is None:
             flat_priors = {
-                "HCD_damp": [[-0.5, 0.5], [-4, 1e-6]],
+                "HCD_damp1": [[-0.5, 0.5], [-10.0, -1.0]],
+                "HCD_damp2": [[-0.5, 0.5], [-10.0, -1.0]],
+                "HCD_damp3": [[-0.5, 0.5], [-10.0, -1.0]],
+                "HCD_damp4": [[-0.5, 0.5], [-10.0, -1.0]],
                 "HCD_const": [[-1, 1], [-0.2, 1e-6]],
             }
 
