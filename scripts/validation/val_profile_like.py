@@ -9,15 +9,23 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
-    emu = "mpg"
-    # emu = "nyx"
-    data_label = "DESIY1_QMLE3"
-    # data_label = "DESIY1_QMLE"
-    # data_label = "DESIY1_FFT_dir"
-    # data_label = "DESIY1_FFT"
+    # dataset
+    data_label = "mpg_central"
+    # data_label = "nyx_central"
+    # data_label = "sherwood"
 
-    # name_variation = None
-    name_variation = "cov"
+    if data_label == "mpg_central":
+        zmin = 2.25
+        zmax = 4.25
+    else:
+        zmin = 2.2
+        zmax = 4.2
+
+    emu = "mpg"
+    fit_type = "global_opt"
+    cov_label = "DESIY1_QMLE3"
+
+    name_variation = "sim_" + data_label
 
     # prof_type = "prof_2d"
     # nsig = 8
@@ -28,17 +36,33 @@ def main():
     nsig = 5
     nelem = 30
 
-    mle_cosmo_cen = {"Delta2_star": 0.44, "n_star": -2.28}  # all mpg
-    # mle_cosmo_cen = {"Delta2_star": 0.40, "n_star": -2.26}  # nyx qmle3 done
+    # if data_label == "mpg_central":
+    #     mle_cosmo_cen = {"Delta2_star": 0.35, "n_star": -2.30}  # all mpg
+    # elif data_label == "nyx_central":
+    #     mle_cosmo_cen = {"Delta2_star": 0.36, "n_star": -2.31}  # nyx
+    # elif data_label == "sherwood":
+    #     mle_cosmo_cen = {"Delta2_star": 0.34, "n_star": -2.30}  # sherwood
+    # else:
+    #     raise ValueError("Wrong data_label")
+
+    mle_cosmo_cen = {"Delta2_star": 0.35, "n_star": -2.30}
 
     # baseline
     fit_type = "global_opt"
-    args = Args(data_label=data_label, emulator_label="CH24_" + emu + "cen_gpr")
+    args = Args(
+        data_label=data_label,
+        cov_label=cov_label,
+        emulator_label="CH24_" + emu + "cen_gpr",
+        true_cosmo_label=data_label,
+        fid_cosmo_label=data_label,
+        apply_smoothing=True,
+    )
     args.set_baseline(
         fit_type=fit_type,
         fix_cosmo=True,
-        P1D_type=data_label,
         name_variation=name_variation,
+        zmin=zmin,
+        zmax=zmax,
     )
     out_folder = os.path.join(args.out_folder, prof_type)
     pip = Pipeline(args, out_folder=out_folder)
