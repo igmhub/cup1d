@@ -44,7 +44,12 @@ def set_P1D(args, archive=None, theory=None):
 
     data_label = args.data_label
 
-    if data_label.startswith("mpg") | data_label.startswith("nyx"):
+    if (
+        data_label.startswith("mpg")
+        | data_label.startswith("nyx")
+        | (data_label == "accel2")
+        | (data_label == "sherwood")
+    ):
         if theory is None:
             raise ValueError("Must provide theory to set P1D from simulation")
 
@@ -66,6 +71,10 @@ def set_P1D(args, archive=None, theory=None):
                 # archive_mock = set_archive(training_set="Pedersen21")
             elif data_label.startswith("nyx"):
                 archive_mock = set_archive(training_set=args.nyx_training_set)
+            elif (data_label == "accel2") | (data_label == "sherwood"):
+                archive_mock = set_archive(training_set=args.nyx_training_set)
+            else:
+                raise ValueError("data_label", data_label, "not implemented")
 
         if data_label not in archive_mock.list_sim:
             raise ValueError(
@@ -84,8 +93,14 @@ def set_P1D(args, archive=None, theory=None):
         ## set P1Ds in kms
         if data_label.startswith("mpg"):
             set_p1d_from_mock = data_gadget.Gadget_P1D
-        elif data_label.startswith("nyx"):
+        elif (
+            data_label.startswith("nyx")
+            | (data_label == "accel2")
+            | (data_label == "sherwood")
+        ):
             set_p1d_from_mock = data_nyx.Nyx_P1D
+        else:
+            raise ValueError("data_label", data_label, "not implemented")
 
         data = set_p1d_from_mock(
             theory,
