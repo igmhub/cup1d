@@ -59,29 +59,101 @@ from scipy.stats import chi2 as chi2_scipy
 # #### Check if works with sims
 
 # %%
-name_variation= "sim_mpg_central"
-# fit_type = "global_igm"
+
+# data_label = "mpg_central"
+# data_label = "nyx_central"
+# data_label = "nyx_seed"
+# data_label = "accel2"
+data_label = "sherwood"
+
+if data_label == "mpg_central":
+    zmin=2.25
+    zmax=4.25
+elif data_label == "nyx_central":
+    zmin=2.2
+    zmax=4.2
+elif data_label == "accel2":
+    zmin=2.6
+    zmax=4.
+else:
+    zmin=2.2
+    zmax=4.2
+
+true_cosmo_label = data_label
+fid_cosmo_label = data_label
+name_variation= "sim_" + data_label
 fit_type = "global_opt"
 args = Args(
-    data_label="mpg_central", 
+    data_label=data_label, 
     cov_label="DESIY1_QMLE3", 
     emulator_label="CH24_mpgcen_gpr",
-    true_cosmo_label="mpg_central",
-    fid_cosmo_label="mpg_central",
-    apply_smoothing=False
+    true_cosmo_label=true_cosmo_label,
+    fid_cosmo_label=fid_cosmo_label,
+    apply_smoothing=True
 )
-args.set_baseline(fit_type=fit_type, fix_cosmo=False, name_variation=name_variation)
+args.set_baseline(
+    fit_type=fit_type, 
+    fix_cosmo=False, 
+    name_variation=name_variation,
+    zmin=zmin,
+    zmax=zmax
+)
 
 # %%
 
 pip = Pipeline(args)
 
 # %%
-# for par in pip.fitter.like.free_params:
-#     print(par.name, par.value)
+
+# %%
+for par in pip.fitter.like.free_params:
+    print(par.name, par.value, par.min_value, par.max_value)
 
 # %%
 pip.fitter.like.plot_p1d()
+
+# %%
+from cup1d.likelihood.cosmologies import set_cosmo
+
+from cup1d.likelihood import CAMB_model
+
+# %%
+pip.fitter.like.data
+
+# %%
+cosmo = set_cosmo(cosmo_label="mpg_central")
+# cosmo = set_cosmo(cosmo_label="nyx_central")
+# cosmo = set_cosmo(cosmo_label="sherwood")
+# cosmo = set_cosmo(cosmo_label="sherwood")
+like_cosmo = CAMB_model.CAMBModel(np.array([3]), cosmo=cosmo)
+true_cosmo = like_cosmo.get_linP_params()
+true_cosmo
+
+# %%
+
+# %%
+# file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/sim_mpg_central/chain_1/fitter_results.npy" # pedersen
+# file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/sim_mpg_central/chain_2/fitter_results.npy" # cabayol
+file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/sim_mpg_central/chain_3/fitter_results.npy" # cabayol sm
+# file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/sim_nyx_central/chain_1/fitter_results.npy" # nyx
+# file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/sim_nyx_central/chain_2/fitter_results.npy" # nyx sm
+# file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/sim_sherwood/chain_1/fitter_results.npy" # sherwood sm
+dat = np.load(file, allow_pickle=True).item()
+dat["fitter"]
+
+# %%
+
+# %%
+for par in dat["fitter"]["mle_cosmo"]:
+    p1 = dat["fitter"]["mle_cosmo"][par]
+    # p1 = pip.fitter.mle_cosmo[par]
+    p2 = true_cosmo[par]
+    print(par, np.round(p1, 3), np.round(p2, 3), np.round(p1-p2, 3))
+
+# %%
+p0 = dat["fitter"]["mle_cube"]
+
+# %%
 
 # %%
 # pip.fitter.like.plot_igm()
@@ -94,6 +166,19 @@ pip.fitter.like.get_chi2(p0)
 pip.run_minimizer(p0, restart=True)
 
 # %%
+
+# %%
+p0 = pip.fitter.mle_cube.copy()
+
+# %%
+p0[-2] = 0
+
+# %%
+pip.fitter.like.get_chi2(p0)
+
+# %%
+
+# %%
 p0 = pip.fitter.mle_cube.copy()
 pip.fitter.like.get_chi2(p0)
 
@@ -101,7 +186,10 @@ pip.fitter.like.get_chi2(p0)
 pip.fitter.mle
 
 # %%
-pip.fitter.like.plot_p1d(p0)
+p0[-1]=0
+
+# %%
+pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True)
 
 # %%
 

@@ -10,8 +10,8 @@ from cup1d.utils.utils import get_path_repo
 
 def main():
     # dataset
-    data_label = "mpg_central"
-    # data_label = "nyx_central"
+    # data_label = "mpg_central"
+    data_label = "nyx_central"
     # data_label = "sherwood"
 
     if data_label == "mpg_central":

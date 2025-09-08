@@ -56,6 +56,7 @@ emu = "mpg"
 
 variation = None
 # variation = "cov"
+variation = "sim_mpg_central"
 
 # type_prof = "prof_2d"
 # nelem = 64
@@ -238,13 +239,17 @@ if type_prof == "prof_2d_deep":
         file = "out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
     else:
         file = "out_pl/"+ variation + ".npy"
-        
+
+    print(file)
     np.save(file, out_dict)
 
 
 ind3 = np.argsort(chi2[ind])
 print((params[ind])[ind3[:3]].mean(axis=0))
 print((params[ind])[ind3[:3]])
+# -
+
+file
 
 # +
 
@@ -428,6 +433,82 @@ plt.savefig("figs/variations_2d.png")
 # -
 
 
+# ### Validation
 
+from cup1d.likelihood.cosmologies import set_cosmo
+from cup1d.likelihood import CAMB_model
+
+# +
+fig, ax = plt.subplots(figsize=(8, 6))
+ftsize = 20
+ls = ["-", "--"]
+
+variations = ["sim_mpg_central"]
+dict_trans = {
+    "sim_mpg_central":"mpg_central", 
+}
+var_deg = [657, ]
+
+
+
+fit_type = "global_opt"
+x0 = 0
+y0 = 0
+for ii, var in enumerate(variations):
+    print()
+    file = "out_pl/"+ var + ".npy"
+    out_dict = np.load(file, allow_pickle=True).item()
+    
+    prob = chi2_scipy.sf(out_dict['chi2'], var_deg) * 100
+    print(var, np.round(out_dict['chi2'], 1), f'{prob[0]:.1e}')
+
+    cosmo = set_cosmo(cosmo_label=var[4:])
+    like_cosmo = CAMB_model.CAMBModel(np.array([3]), cosmo=cosmo)
+    true_cosmo = like_cosmo.get_linP_params()
+
+    consist = 0
+    for key in ["Delta2_star", "n_star"]:
+        print(np.round(out_dict[key], 3), np.round(out_dict["err_" + key], 3))
+        print("diff", np.round(out_dict[key] - true_cosmo[key], 3), np.round(out_dict["err_" + key], 3))
+        consist += (out_dict[key] - true_cosmo[key])**2/out_dict["err_" + key]**2
+
+    prob_var = chi2_scipy.sf(consist, 2) * 100
+    print(np.round(prob_var, 1))
+
+    col = "C"+str(ii)
+    ax.scatter(
+        out_dict["Delta2_star"] - true_cosmo["Delta2_star"], 
+        out_dict["n_star"] - true_cosmo["n_star"], 
+        color=col, marker="x")
+
+    for jj in range(1, 2):
+        if jj == 1:
+            lab = dict_trans[var]
+        else:
+            lab= None
+        ax.plot(
+            out_dict["xell"+str(jj)]- true_cosmo["Delta2_star"], 
+            out_dict["yell"+str(jj)]- true_cosmo["n_star"], 
+            col+ls[jj-1], lw=3, label=lab)
+
+
+ax.axhline(0, color="k", linestyle="--")
+ax.axvline(0, color="k", linestyle="--")
+
+
+
+ax.set_ylabel(r"$\Delta(n_\star)$", fontsize=ftsize)
+ax.set_xlabel(r"$\Delta(\Delta^2_\star)$", fontsize=ftsize)
+ax.tick_params(
+    axis="both", which="major", labelsize=ftsize - 2
+)
+
+plt.legend(fontsize=ftsize-2)
+plt.tight_layout()
+# plt.savefig("figs/variations_2d.pdf")
+# plt.savefig("figs/variations_2d.png")
+# -
+
+prob
 
 
