@@ -96,7 +96,15 @@ class IGM_model(object):
 
         self.set_params()
 
-    def process_igm(self, fid_igm, name_coeff, order_extra=2, smoothing=True):
+    def process_igm(
+        self,
+        fid_igm,
+        name_coeff,
+        order_extra=2,
+        smoothing=True,
+        zmin=1.9,
+        zmax=5.5,
+    ):
         """Post-process IGM from simulation"""
 
         mask = (
@@ -125,10 +133,16 @@ class IGM_model(object):
         p = np.poly1d(pfit)
 
         # extrapolate to z=2 (if needed)
-        if np.min(fid_igm[name_coeff + "_z"]) > 2.0:
+        if np.min(fid_igm[name_coeff + "_z"]) > zmin:
             z_to_inter = np.concatenate(
-                [[2.0], fid_igm[name_coeff + "_z"][mask_znonzero]]
+                [[zmin], fid_igm[name_coeff + "_z"][mask_znonzero]]
             )
+        else:
+            z_to_inter = fid_igm[name_coeff + "_z"][mask_znonzero]
+
+        # extrapolate to z=5.0 (if needed)
+        if np.max(fid_igm[name_coeff + "_z"]) < zmax:
+            z_to_inter = np.concatenate([z_to_inter, [zmax]])
         else:
             z_to_inter = fid_igm[name_coeff + "_z"][mask_znonzero]
 
@@ -137,17 +151,23 @@ class IGM_model(object):
             if self.prop_coeffs[name_coeff + "_otype"] == "exp":
                 fid_vals = np.exp(fid_vals)
         else:
-            vlow = p(2.0)
+            vlow = p(zmin)
             if self.prop_coeffs[name_coeff + "_otype"] == "exp":
                 vlow = np.exp(vlow)
 
-            vhigh = p(5.0)
+            vhigh = p(zmax)
             if self.prop_coeffs[name_coeff + "_otype"] == "exp":
                 vhigh = np.exp(vhigh)
 
-            fid_vals = np.concatenate(
-                [[vlow], fid_igm[name_coeff][mask_znonzero], [vhigh]]
-            )
+            if np.min(fid_igm[name_coeff + "_z"]) > zmin:
+                fid_vals = np.concatenate(
+                    [vlow, fid_igm[name_coeff][mask_znonzero]]
+                )
+            else:
+                fid_vals = fid_igm[name_coeff][mask_znonzero]
+            if np.max(fid_igm[name_coeff + "_z"]) < zmax:
+                fid_vals = np.concatenate([fid_vals, vhigh])
+
             mask_coeff0 = fid_vals == 0
             # use poly fit to interpolate when data is missing (needed for Nyx)
             fid_vals[mask_coeff0] = p(z_to_inter[mask_coeff0])

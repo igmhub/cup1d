@@ -73,17 +73,26 @@ class Nyx_P1D(BaseMockP1D):
         zs, k_kms, Pk_kms, cov = self._load_p1d(theory)
 
         # set theory (just to save truth)
-        theory.model_igm.set_fid_igm(np.array(zs))
-        theory.set_fid_cosmo(np.array(zs), input_cosmo=true_cosmo)
+        zs = np.array(zs)
+        theory.model_igm.set_fid_igm(zs)
+        theory.set_fid_cosmo(zs)
 
         # apply contaminants
+        syst_total = theory.model_syst.get_contamination(zs, k_kms)
+
+        mF = theory.model_igm.models["F_model"].get_mean_flux(zs)
+        M_of_z = theory.fid_cosmo["M_of_zs"]
+        mult_cont_total, add_cont_total = theory.model_cont.get_contamination(
+            zs, k_kms, mF, M_of_z
+        )
+        # print("sys", syst_total)
+        # print("mult", mult_cont_total)
+        # print("add", add_cont_total)
+
         for iz, z in enumerate(zs):
-            mF = theory.model_igm.F_model.get_mean_flux(z)
-            M_of_z = theory.fid_cosmo["M_of_zs"][iz]
-            cont_total = theory.model_cont.get_contamination(
-                z, k_kms[iz], mF, M_of_z
-            )
-            Pk_kms[iz] *= cont_total
+            Pk_kms[iz] = (
+                Pk_kms[iz] * mult_cont_total[iz] + add_cont_total[iz]
+            ) * syst_total[iz]
 
         # setup base class
         super().__init__(
@@ -147,7 +156,7 @@ class Nyx_P1D(BaseMockP1D):
     #             -1 - ii
     #         ]
 
-    def _load_p1d(self, theory, true_cosmo):
+    def _load_p1d(self, theory):
         # figure out dataset to mimic
         if self.data_cov_label == "Chabanier2019":
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)
@@ -157,11 +166,8 @@ class Nyx_P1D(BaseMockP1D):
             data = data_QMLE_Ohio.P1D_QMLE_Ohio()
         elif self.data_cov_label == "Karacayli2022":
             data = data_Karacayli2022.P1D_Karacayli2022()
-        elif self.data_cov_label == "DESIY1":
-            # data = data_DESIY1.P1D_DESIY1(p1d_fname=self.cov_fname)
-            data = challenge_DESIY1.P1D_challenge_DESIY1(
-                theory, true_cosmo, p1d_fname=self.cov_fname
-            )
+        elif self.data_cov_label.startswith("DESIY1"):
+            data = data_DESIY1.P1D_DESIY1(data_label=self.data_cov_label)
         else:
             raise ValueError("Unknown data_cov_label", self.data_cov_label)
 

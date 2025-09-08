@@ -618,9 +618,7 @@ class Likelihood(object):
                 | ("kF" in par.name)
             ):
                 if equal_IGM:
-                    if ("tau" in par.name) and (
-                        self.args.mF_model_type == "chunks"
-                    ):
+                    if "tau" in par.name:
                         self.truth["like_params"][par.name] = 1
                         self.truth["like_params_cube"][
                             par.name

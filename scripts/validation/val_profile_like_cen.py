@@ -9,12 +9,13 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
+    # baseline
+    # data_label = "mpg_central"
+    data_label = "nyx_central"
+
     emu = "mpg"
     # emu = "nyx"
-
-    # baseline
     fit_type = "global_opt"
-    data_label = "mpg_central"
     cov_label = "DESIY1_QMLE3"
 
     name_variation = "sim_" + data_label
