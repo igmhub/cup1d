@@ -20,6 +20,7 @@ class Args:
     emulator_label: str = "CH24_mpgcen_gpr"
     drop_sim: str | None = None
     true_cosmo_label: str | None = "Planck18"
+    fid_cosmo_label: str = "Planck18"
     igm_params: list[str] = field(
         default_factory=lambda: [
             "tau_eff",
@@ -55,11 +56,11 @@ class Args:
     cont_params: dict = field(
         default_factory=lambda: {
             "f_Lya_SiIII": [0, -11.5],
-            "s_Lya_SiIII": [0, -11.5],
+            "s_Lya_SiIII": [0, 2],
             "f_Lya_SiII": [0, -11.5],
-            "s_Lya_SiII": [0, -11.5],
+            "s_Lya_SiII": [0, 2],
             "f_SiIIa_SiIIb": [0, -11.5],
-            "s_SiIIa_SiIIb": [0, -11.5],
+            "s_SiIIa_SiIIb": [0, 2],
             "f_SiIIa_SiIII": [0, 0],  # these are variations from exp(0)=1
             "f_SiIIb_SiIII": [0, 0],  # these are variations from exp(0)=1
         }
@@ -100,7 +101,6 @@ class Args:
     seed_noise: int = 0
     verbose: bool = True
     ic_correction: bool = False
-    fid_cosmo_label: str = "mpg_central"
     fix_cosmo: bool = False
     vary_alphas: bool = False
     prior_Gauss_rms: float | None = None
@@ -176,6 +176,7 @@ class Args:
         if fit_type not in [
             "global_all",  # all params from at_a_time_global
             "global_opt",  # for opt IC
+            "global_igm",  # for opt IC
             "at_a_time_igm",  # only IGM parameter
             "at_a_time_orig",  # all possible parameters varied
             "at_a_time_global",  # vary same parameters as in global fits
@@ -220,6 +221,9 @@ class Args:
                     "out_DESI_DR1",
                     name_variation,
                 )
+
+        if name_variation.startswith("sim_"):
+            self.ic_from_file = None
 
         # set all cont to zero
         cont_props = [
@@ -269,6 +273,8 @@ class Args:
             self.fid_cosmo_label = "Planck18"
         elif name_variation == "cosmo":
             self.fid_cosmo_label = "DESIDR2_ACT"
+        elif name_variation.startswith("sim_"):
+            pass
         else:
             self.fid_cosmo_label = "Planck18"
 
@@ -459,6 +465,8 @@ class Args:
             self.file_ic = os.path.join(
                 os.path.dirname(get_path_repo("cup1d")), "data", "ics", fname
             )
+            if name_variation.startswith("sim_"):
+                self.file_ic = None
 
             for prop in props_cont:
                 self.fid_cont["z_max"][prop] = 5
@@ -583,26 +591,111 @@ class Args:
                 else:
                     self.fid_cont[prop + "_fixed"] = False
 
+        elif fit_type == "global_igm":
+            if "mpg" in self.emulator_label:
+                fname = "mpg_ic_global_red.npy"
+            else:
+                fname = "nyx_ic_global_red.npy"
+            self.file_ic = os.path.join(
+                os.path.dirname(get_path_repo("cup1d")), "data", "ics", fname
+            )
+            if name_variation.startswith("sim_"):
+                self.file_ic = None
+
+            for prop in props_cont:
+                self.fid_cont["z_max"][prop] = 5
+            props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
+
+            props_cont = [
+                # "f_Lya_SiIII",
+                # "s_Lya_SiIII",
+                # "f_Lya_SiII",
+                # "s_Lya_SiII",
+                # "f_SiIIa_SiIIb",
+                # "s_SiIIa_SiIIb",
+                # "f_SiIIa_SiIII",
+                # "f_SiIIb_SiIII",
+                # "HCD_damp1",
+                # "HCD_damp4",
+            ]
+
+            self.opt_props = props_igm + props_cont
+            var_props = self.opt_props
+            # nodes = np.geomspace(2.2, 4.2, 3)
+            nodes = np.geomspace(2.2, 4.2, 1)
+
+            self.fid_igm["tau_eff_znodes"] = np.linspace(2.25, 4.25, 9)
+            self.fid_igm["sigT_kms_znodes"] = []
+            self.fid_igm["gamma_znodes"] = []
+            self.fid_igm["kF_kms_znodes"] = []
+            for prop in props_igm:
+                self.fid_igm["n_" + prop] = len(self.fid_igm[prop + "_znodes"])
+                if self.fid_igm["n_" + prop] <= 1:
+                    self.fid_igm[prop + "_ztype"] = "pivot"
+                else:
+                    self.fid_igm[prop + "_ztype"] = "interp_lin"
+
+                if prop not in var_props:
+                    self.fid_igm[prop + "_fixed"] = True
+                else:
+                    self.fid_igm[prop + "_fixed"] = False
+
+            for prop in props_cont:
+                self.fid_cont[prop + "_znodes"] = nodes
+                self.fid_cont["n_" + prop] = len(
+                    self.fid_cont[prop + "_znodes"]
+                )
+                if self.fid_cont["n_" + prop] <= 1:
+                    self.fid_cont[prop + "_ztype"] = "pivot"
+                    if prop != "HCD_const":
+                        self.fid_cont[prop] = [0, -11.5]
+                    else:
+                        self.fid_cont[prop] = [0, 0]
+                else:
+                    self.fid_cont[prop + "_ztype"] = "interp_lin"
+
+                if prop not in var_props:
+                    self.fid_cont[prop + "_fixed"] = True
+                else:
+                    self.fid_cont[prop + "_fixed"] = False
+
         #############
 
         else:
             raise ValueError("Fit type not recognized")
 
-        fid_vals_conts = {
-            "f_Lya_SiIII": -4.25,
-            "s_Lya_SiIII": 4.75,
-            "f_Lya_SiII": -4.5,
-            "s_Lya_SiII": 4.75,
-            "f_SiIIa_SiIIb": -0.5,
-            "s_SiIIa_SiIIb": 4.75,
-            "f_SiIIa_SiIII": 0,
-            "f_SiIIb_SiIII": 0,
-            "HCD_const": 0,
-            "HCD_damp1": -1.2,
-            "HCD_damp2": -11.5,
-            "HCD_damp3": -11.5,
-            "HCD_damp4": -4,
-        }
+        if name_variation.startswith("sim_"):
+            fid_vals_conts = {
+                "f_Lya_SiIII": -11.5,
+                "s_Lya_SiIII": 2.1,
+                "f_Lya_SiII": -11.5,
+                "s_Lya_SiII": 2.1,
+                "f_SiIIa_SiIIb": -11.5,
+                "s_SiIIa_SiIIb": 0.1,
+                "f_SiIIa_SiIII": 0,
+                "f_SiIIb_SiIII": 0,
+                "HCD_const": 0,
+                "HCD_damp1": -9.5,
+                "HCD_damp2": -11.5,
+                "HCD_damp3": -11.5,
+                "HCD_damp4": -9.5,
+            }
+        else:
+            fid_vals_conts = {
+                "f_Lya_SiIII": -4.25,
+                "s_Lya_SiIII": 4.75,
+                "f_Lya_SiII": -4.5,
+                "s_Lya_SiII": 4.75,
+                "f_SiIIa_SiIIb": -0.5,
+                "s_SiIIa_SiIIb": 4.75,
+                "f_SiIIa_SiIII": 0,
+                "f_SiIIb_SiIII": 0,
+                "HCD_const": 0,
+                "HCD_damp1": -1.2,
+                "HCD_damp2": -11.5,
+                "HCD_damp3": -11.5,
+                "HCD_damp4": -4,
+            }
         # add_lines = [
         #     "SiIIa_SiIIb",
         #     "CIVa_CIVb",
@@ -620,28 +713,46 @@ class Args:
 
         self.fid_cont["flat_priors"] = {}
 
-        self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
-            [-1, 1],
-            [-6, -2],
-        ]
+        if name_variation.startswith("sim_"):
+            self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
+                [-1, 1],
+                [-11.5, -2],
+            ]
+        else:
+            self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
+                [-1, 1],
+                [-6, -2],
+            ]
         self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
             [-1, 1],
             [2, 7],
         ]
 
-        self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
-            [-1, 1],
-            [-6, -2],
-        ]
+        if name_variation.startswith("sim_"):
+            self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
+                [-1, 1],
+                [-11.5, -2],
+            ]
+        else:
+            self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
+                [-1, 1],
+                [-6, -2],
+            ]
         self.fid_cont["flat_priors"]["s_Lya_SiII"] = [
             [-1, 1],
             [2, 7],
         ]
 
-        self.fid_cont["flat_priors"]["f_SiIIa_SiIIb"] = [
-            [-1, 4],
-            [-3, 3],
-        ]
+        if name_variation.startswith("sim_"):
+            self.fid_cont["flat_priors"]["f_SiIIa_SiIIb"] = [
+                [-1, 4],
+                [-11.5, -3],
+            ]
+        else:
+            self.fid_cont["flat_priors"]["f_SiIIa_SiIIb"] = [
+                [-1, 4],
+                [-3, 3],
+            ]
         self.fid_cont["flat_priors"]["s_SiIIa_SiIIb"] = [
             [-1, 3],
             [0, 5.5],
@@ -649,7 +760,7 @@ class Args:
 
         self.fid_cont["flat_priors"]["f_SiIIa_SiIII"] = [
             [-1, 2],
-            [0, 4],
+            [-1, 4],
         ]
         self.fid_cont["flat_priors"]["f_SiIIb_SiIII"] = [
             [-1, 1],
@@ -735,300 +846,3 @@ class Args:
 # self.Gauss_priors["R_coeff_0"] = [2]
 
 # self.Gauss_priors = {}
-
-# elif fit_type == "global":
-#             for prop in props_cont:
-#                 self.fid_cont["z_max"][prop] = 5
-#             props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
-#             props_cont = [
-#                 "f_Lya_SiIII",
-#                 "s_Lya_SiIII",
-#                 "f_Lya_SiII",
-#                 "s_Lya_SiII",
-#                 "f_SiIIa_SiIIb",
-#                 "s_SiIIa_SiIIb",
-#                 "f_SiIIa_SiIII",
-#                 "f_SiIIb_SiIII",
-#                 "HCD_damp1",
-#                 "HCD_damp4",
-#             ]
-
-#             z_max_props = [
-#                 "f_SiIIa_SiIII",
-#                 "f_SiIIb_SiIII",
-#                 "f_Lya_SiII",
-#                 "s_Lya_SiII",
-#             ]
-#             for prop in z_max_props:
-#                 self.fid_cont["z_max"][prop] = 3.5
-#             z_max_props = ["f_SiIIa_SiIIb", "s_SiIIa_SiIIb"]
-#             for prop in z_max_props:
-#                 self.fid_cont["z_max"][prop] = 3.3
-#             z_max_props = ["f_Lya_SiIII", "s_Lya_SiIII"]
-#             for prop in z_max_props:
-#                 self.fid_cont["z_max"][prop] = 3.9
-
-#             self.opt_props = props_igm + props_cont
-
-#             self.fid_igm["tau_eff_znodes"] = np.array(
-#                 [2.2, 2.4, 2.6, 2.8, 3.2, 3.6, 3.8, 4.2]
-#             )
-#             self.fid_igm["sigT_kms_znodes"] = np.array([2.2, 4.2])
-#             self.fid_igm["gamma_znodes"] = np.array([2.2, 2.6, 4.2])
-#             self.fid_igm["kF_kms_znodes"] = []
-#             for prop in props_igm:
-#                 self.fid_igm["n_" + prop] = len(self.fid_igm[prop + "_znodes"])
-#                 if self.fid_igm["n_" + prop] <= 1:
-#                     self.fid_igm[prop + "_ztype"] = "pivot"
-#                 else:
-#                     self.fid_igm[prop + "_ztype"] = "interp_spl"
-
-#             # do not gain anything by using splines?
-#             # self.fid_igm["n_tau_eff"] = 3
-#             # self.fid_igm["n_sigT_kms"] = 3  # what about 2?
-#             # self.fid_igm["n_gamma"] = 0
-#             self.fid_igm["n_kF_kms"] = 0
-
-#             # znodes:
-#             # tau: 2.2, 2.4, 2.6, 3.2, 3.6, 3.8, 4.2
-#             # sigT: 2.2, 2.6, 4.2
-#             # fLya-SiIII: 2.2, 2.8, 3.2, 4.2 as a function of tau-prior? check
-#             # sLya-SiIII: 2.2, 4.2
-#             # fLya-SiII: 2.2, 2.6, 3.4
-#             # sLya-SiII: 2.2, 2.6, 3.4
-#             # fSiIIa-SiIIb: 2.2, 3.6
-#             # sSiIIa-SiIIb: 2.2, 2.8, 3.6
-#             # fSiIIa-SiIII: 2.2, 3.4
-#             # fSiIIb-SiIII: 2.2, 3.4
-#             # HCD-damp1: All?
-#             # HCD-damp4: 2.2, 3.2, 4.2
-
-#             # Lya-SiII: 2.2, 2.4, 2.8, DONE
-#             # SiII-SiII: 3.2 DONE
-#             # DLA: 3.4, 3.6, 3.8 DONE
-#             # Lya-SiIII: 3.6, 3.8 DONE
-
-#             for prop in props_cont:
-#                 if prop in self.opt_props:
-#                     _znodes = 0
-
-#                 if prop in ["f_Lya_SiIII", "s_Lya_SiIII"]:
-#                     _znodes = np.array([2.2, 2.8, 3.4, 3.6, 3.8])
-
-#                 if prop in ["f_SiIIa_SiIII", "f_SiIIb_SiIII"]:
-#                     _znodes = np.array([2.2, 3.4])
-
-#                 if prop in ["f_Lya_SiII"]:
-#                     _znodes = np.array([2.2, 2.4, 2.6, 2.8, 3.4])
-#                 if prop in ["s_Lya_SiII"]:
-#                     _znodes = np.array([2.2, 2.4, 2.8, 3.4])
-
-#                 if prop in ["f_SiIIa_SiIIb", "s_SiIIa_SiIIb"]:
-#                     _znodes = np.array([2.2, 2.8, 3.2])
-
-#                 if prop in ["HCD_damp1"]:
-#                     _znodes = np.array([2.2, 2.8, 3.4, 3.6, 3.9, 4.2])
-
-#                 if prop in ["HCD_damp4"]:
-#                     _znodes = np.array([2.2, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2])
-
-#                 self.fid_cont[prop + "_znodes"] = _znodes
-#                 self.fid_cont["n_" + prop] = len(
-#                     self.fid_cont[prop + "_znodes"]
-#                 )
-#                 if self.fid_cont["n_" + prop] <= 1:
-#                     self.fid_cont[prop + "_ztype"] = "pivot"
-#                     if prop != "HCD_const":
-#                         self.fid_cont[prop] = [0, -11.5]
-#                     else:
-#                         self.fid_cont[prop] = [0, 0]
-#                 else:
-#                     self.fid_cont[prop + "_ztype"] = "interp_spl"
-
-#             for ii in range(4):
-#                 if self.fid_cont["n_HCD_damp" + str(ii + 1)] == 0:
-#                     self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -11.5]
-#                 else:
-#                     self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -(ii + 1)]
-
-
-# elif fit_type == "andreu":
-#     for prop in props_cont:
-#         self.fid_cont["z_max"][prop] = 5
-#     props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
-#     props_cont = [
-#         "f_Lya_SiIII",
-#         "s_Lya_SiIII",
-#         "f_Lya_SiII",
-#         "s_Lya_SiII",
-#         "f_SiIIa_SiIIb",
-#         "s_SiIIa_SiIIb",
-#         "f_SiIIa_SiIII",
-#         "f_SiIIb_SiIII",
-#         "HCD_damp1",
-#         "HCD_damp4",
-#     ]
-
-#     z_max_props = [
-#         "f_SiIIa_SiIII",
-#         "f_SiIIb_SiIII",
-#         "f_Lya_SiII",
-#         "s_Lya_SiII",
-#     ]
-#     for prop in z_max_props:
-#         self.fid_cont["z_max"][prop] = 3.5
-#     z_max_props = ["f_SiIIa_SiIIb", "s_SiIIa_SiIIb"]
-#     for prop in z_max_props:
-#         self.fid_cont["z_max"][prop] = 3.7
-
-#     self.opt_props = props_igm + props_cont
-
-#     self.fid_igm["tau_eff_znodes"] = np.linspace(2.2, 4.2, 11)
-#     self.fid_igm["sigT_kms_znodes"] = np.linspace(2.2, 4.2, 6)
-#     self.fid_igm["gamma_znodes"] = []
-#     self.fid_igm["kF_kms_znodes"] = []
-#     for prop in props_igm:
-#         self.fid_igm["n_" + prop] = len(self.fid_igm[prop + "_znodes"])
-#         if self.fid_igm["n_" + prop] <= 1:
-#             self.fid_igm[prop + "_ztype"] = "pivot"
-#         else:
-#             self.fid_igm[prop + "_ztype"] = "interp_spl"
-
-#     # do not gain anything by using splines?
-#     # self.fid_igm["n_tau_eff"] = 3
-#     # self.fid_igm["n_sigT_kms"] = 3  # what about 2?
-#     # self.fid_igm["n_gamma"] = 0
-#     # self.fid_igm["n_kF_kms"] = 0
-
-#     # znodes = [0, 1]
-
-#     for prop in props_cont:
-#         if prop in self.opt_props:
-#             _znodes = 0
-
-#         if prop in [
-#             "f_SiIIa_SiIII",
-#             "f_SiIIb_SiIII",
-#             "f_Lya_SiII",
-#             "s_Lya_SiII",
-#             "f_SiIIa_SiIIb",
-#             "s_SiIIa_SiIIb",
-#         ]:
-#             _znodes = np.linspace(2.2, self.fid_cont["z_max"][prop], 3)
-
-#         if prop in ["f_Lya_SiIII", "s_Lya_SiIII"]:
-#             _znodes = np.linspace(2.2, 4.2, 6)
-
-#         if prop in ["HCD_damp1", "HCD_damp4"]:
-#             _znodes = np.linspace(2.2, 4.2, 6)
-
-#         self.fid_cont[prop + "_znodes"] = _znodes
-#         self.fid_cont["n_" + prop] = len(
-#             self.fid_cont[prop + "_znodes"]
-#         )
-#         if self.fid_cont["n_" + prop] <= 1:
-#             self.fid_cont[prop + "_ztype"] = "pivot"
-#             if prop != "HCD_const":
-#                 self.fid_cont[prop] = [0, -11.5]
-#             else:
-#                 self.fid_cont[prop] = [0, 0]
-#         else:
-#             self.fid_cont[prop + "_ztype"] = "interp_spl"
-
-#     for ii in range(4):
-#         if self.fid_cont["n_HCD_damp" + str(ii + 1)] == 0:
-#             self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -11.5]
-#         else:
-#             self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -(ii + 1)]
-
-# elif fit_type == "andreu2":
-#     for prop in props_cont:
-#         self.fid_cont["z_max"][prop] = 5
-#     props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
-#     props_cont = [
-#         "f_Lya_SiIII",
-#         "s_Lya_SiIII",
-#         "f_Lya_SiII",
-#         "s_Lya_SiII",
-#         "f_SiIIa_SiIIb",
-#         "s_SiIIa_SiIIb",
-#         "f_SiIIa_SiIII",
-#         "f_SiIIb_SiIII",
-#         "HCD_damp1",
-#         "HCD_damp4",
-#     ]
-
-#     # z_max_props = [
-#     #     "f_SiIIa_SiIII",
-#     #     "f_SiIIb_SiIII",
-#     #     "f_Lya_SiII",
-#     #     "s_Lya_SiII",
-#     # ]
-#     # for prop in z_max_props:
-#     #     self.fid_cont["z_max"][prop] = 3.5
-#     # z_max_props = ["f_SiIIa_SiIIb", "s_SiIIa_SiIIb"]
-#     # for prop in z_max_props:
-#     #     self.fid_cont["z_max"][prop] = 3.3
-#     # z_max_props = ["f_Lya_SiIII", "s_Lya_SiIII"]
-#     # for prop in z_max_props:
-#     #     self.fid_cont["z_max"][prop] = 3.9
-
-#     self.opt_props = props_igm + props_cont
-
-#     self.fid_igm["tau_eff_znodes"] = np.linspace(zmin, zmax, 6)
-#     self.fid_igm["sigT_kms_znodes"] = np.array([zmin, 3.0, zmax])
-#     self.fid_igm["gamma_znodes"] = np.array([zmin, 3.0, zmax])
-#     self.fid_igm["kF_kms_znodes"] = []
-#     for prop in props_igm:
-#         self.fid_igm["n_" + prop] = len(self.fid_igm[prop + "_znodes"])
-#         if self.fid_igm["n_" + prop] <= 1:
-#             self.fid_igm[prop + "_ztype"] = "pivot"
-#         else:
-#             self.fid_igm[prop + "_ztype"] = "interp_spl"
-
-#     # do not gain anything by using splines?
-#     # self.fid_igm["n_tau_eff"] = 3
-#     # self.fid_igm["n_sigT_kms"] = 3  # what about 2?
-#     # self.fid_igm["n_gamma"] = 0
-#     self.fid_igm["n_kF_kms"] = 0
-
-#     # znodes = [0, 1]
-
-#     for prop in props_cont:
-#         if prop in self.opt_props:
-#             _znodes = 0
-
-#         if prop in [
-#             "f_Lya_SiIII",
-#             "s_Lya_SiIII",
-#             "f_Lya_SiII",
-#             "s_Lya_SiII",
-#             "f_SiIIa_SiIIb",
-#             "s_SiIIa_SiIIb",
-#         ]:
-#             _znodes = np.array([zmin, 2.9, zmax])
-
-#         if prop in ["f_SiIIa_SiIII", "f_SiIIb_SiIII"]:
-#             _znodes = np.array([zmin, zmax])
-
-#         if prop in ["HCD_damp1", "HCD_damp4"]:
-#             _znodes = np.linspace(zmin, zmax, 4)
-
-#         self.fid_cont[prop + "_znodes"] = _znodes
-#         self.fid_cont["n_" + prop] = len(
-#             self.fid_cont[prop + "_znodes"]
-#         )
-#         if self.fid_cont["n_" + prop] <= 1:
-#             self.fid_cont[prop + "_ztype"] = "pivot"
-#             if prop != "HCD_const":
-#                 self.fid_cont[prop] = [0, -11.5]
-#             else:
-#                 self.fid_cont[prop] = [0, 0]
-#         else:
-#             self.fid_cont[prop + "_ztype"] = "interp_spl"
-
-#     for ii in range(4):
-#         if self.fid_cont["n_HCD_damp" + str(ii + 1)] == 0:
-#             self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -11.5]
-#         else:
-#             self.fid_cont["HCD_damp" + str(ii + 1)] = [0, -(ii + 1)]

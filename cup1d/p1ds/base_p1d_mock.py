@@ -161,7 +161,7 @@ class BaseMockP1D(BaseDataP1D):
             self.truth["linP"][par] = theory.fid_cosmo["linP_params"][par]
 
         self.truth["igm"] = theory.model_igm.fid_igm
-        self.truth["cont"] = theory.model_cont.get_dict_cont()
+        # self.truth["cont"] = theory.model_cont.get_dict_cont()
 
     # def _get_cosmo(self, nyx_version="Jul2024"):
     #     # get cosmology

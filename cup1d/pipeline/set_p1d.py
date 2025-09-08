@@ -62,7 +62,8 @@ def set_P1D(args, archive=None, theory=None):
 
         if load_archive:
             if data_label.startswith("mpg"):
-                archive_mock = set_archive(training_set="Cabayol23")
+                # archive_mock = set_archive(training_set="Cabayol23")
+                archive_mock = set_archive(training_set="Pedersen21")
             elif data_label.startswith("nyx"):
                 archive_mock = set_archive(training_set=args.nyx_training_set)
 
@@ -88,11 +89,9 @@ def set_P1D(args, archive=None, theory=None):
 
         data = set_p1d_from_mock(
             theory,
-            true_cosmo,
             p1d_ideal,
             input_sim=data_label,
             data_cov_label=args.cov_label,
-            cov_fname=args.p1d_fname,
             apply_smoothing=args.apply_smoothing,
             add_noise=args.add_noise,
             seed=args.seed_noise,
@@ -102,20 +101,17 @@ def set_P1D(args, archive=None, theory=None):
     elif data_label.startswith("mock"):
         data = mock_data.Mock_P1D(
             theory,
-            true_cosmo,
             data_label=data_label[5:],
             add_noise=args.add_noise,
             seed=args.seed_noise,
             z_min=args.z_min,
             z_max=args.z_max,
-            p1d_fname=args.p1d_fname,
             cov_only_diag=args.cov_syst_type,
         )
 
     elif data_label == "challenge_DESIY1":
         data = challenge_DESIY1.P1D_challenge_DESIY1(
             theory,
-            true_cosmo,
             p1d_fname=args.p1d_fname,
             z_min=args.z_min,
             z_max=args.z_max,

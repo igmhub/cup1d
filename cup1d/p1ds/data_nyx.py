@@ -26,7 +26,6 @@ class Nyx_P1D(BaseMockP1D):
     def __init__(
         self,
         theory,
-        true_cosmo,
         testing_data,
         apply_smoothing=True,
         input_sim="nyx_central",
@@ -71,7 +70,7 @@ class Nyx_P1D(BaseMockP1D):
 
         # setup P1D from mock with k values from data_cov_label
         # as well as covariance matrix
-        zs, k_kms, Pk_kms, cov = self._load_p1d(theory, true_cosmo)
+        zs, k_kms, Pk_kms, cov = self._load_p1d(theory)
 
         # set theory (just to save truth)
         theory.model_igm.set_fid_igm(np.array(zs))

@@ -55,6 +55,56 @@ from cup1d.utils.utils import get_path_repo
 from scipy.stats import chi2 as chi2_scipy
 
 
+# %% [markdown]
+# #### Check if works with sims
+
+# %%
+name_variation= "sim_mpg_central"
+# fit_type = "global_igm"
+fit_type = "global_opt"
+args = Args(
+    data_label="mpg_central", 
+    cov_label="DESIY1_QMLE3", 
+    emulator_label="CH24_mpgcen_gpr",
+    true_cosmo_label="mpg_central",
+    fid_cosmo_label="mpg_central",
+    apply_smoothing=False
+)
+args.set_baseline(fit_type=fit_type, fix_cosmo=False, name_variation=name_variation)
+
+# %%
+
+pip = Pipeline(args)
+
+# %%
+# for par in pip.fitter.like.free_params:
+#     print(par.name, par.value)
+
+# %%
+pip.fitter.like.plot_p1d()
+
+# %%
+# pip.fitter.like.plot_igm()
+
+# %%
+p0 = pip.fitter.like.sampling_point_from_parameters()
+pip.fitter.like.get_chi2(p0)
+
+# %%
+pip.run_minimizer(p0, restart=True)
+
+# %%
+p0 = pip.fitter.mle_cube.copy()
+pip.fitter.like.get_chi2(p0)
+
+# %%
+pip.fitter.mle
+
+# %%
+pip.fitter.like.plot_p1d(p0)
+
+# %%
+
 # %%
 
 # args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_nyxcen_gpr")
@@ -175,7 +225,7 @@ plt.ylim(0.1)
 var_deg = 657
 
 results_var = {
-    "fiducial":   np.array([ 785.471, 0.42385, -2.28224]),
+    "fiducial":   np.array([ 785.4, 0.435, -2.283]),
     "HCD":        np.array([ 844.907, 0.54528, -2.33871]),
     "metal_trad": np.array([1985.443, 0.47164, -2.29145]),
     "metal_si2":  np.array([ 884.533, 0.53581, -2.28978]),
@@ -195,7 +245,7 @@ ndeg = {
     "cov": var_deg,
 }
 
-err = np.array([0.06, 0.02])
+err = np.array([0.036, 0.014])
 
 
 for key in results_var:
@@ -207,7 +257,7 @@ for key in results_var:
     consist = np.sum(diffp**2/err**2)
     prob_var = chi2_scipy.sf(consist, 2) * 100
     print(np.round(prob_var, 1), np.round(chi2, 0), f'{prob:.1e}')
-    
+
 
 # %%
 fit_type = "global_opt"

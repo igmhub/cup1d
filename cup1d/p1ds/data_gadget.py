@@ -28,12 +28,10 @@ class Gadget_P1D(BaseMockP1D):
     def __init__(
         self,
         theory,
-        true_cosmo,
         testing_data,
         apply_smoothing=True,
         input_sim="mpg_central",
         data_cov_label="Chabanier2019",
-        cov_fname=None,
         data_cov_factor=1.0,
         add_syst=True,
         add_noise=False,
@@ -55,7 +53,6 @@ class Gadget_P1D(BaseMockP1D):
         self.data_cov_factor = data_cov_factor
         self.data_cov_label = data_cov_label
         self.input_sim = input_sim
-        self.cov_fname = cov_fname
 
         if apply_smoothing:
             self.testing_data = super().set_smoothing_Mpc(
@@ -73,20 +70,30 @@ class Gadget_P1D(BaseMockP1D):
 
         # setup P1D from mock with k values from data_cov_label
         # as well as covariance matrix
-        zs, k_kms, Pk_kms, cov = self._load_p1d(theory, true_cosmo)
+        zs, k_kms, Pk_kms, cov = self._load_p1d(theory)
+
+        zs = np.array(zs)
 
         # set theory (just to save truth)
-        theory.model_igm.set_fid_igm(np.array(zs))
-        theory.set_fid_cosmo(zs, input_cosmo=true_cosmo)
+        theory.model_igm.set_fid_igm(zs)
+        theory.set_fid_cosmo(zs)
 
         # apply contaminants
+        syst_total = theory.model_syst.get_contamination(zs, k_kms)
+
+        mF = theory.model_igm.models["F_model"].get_mean_flux(zs)
+        M_of_z = theory.fid_cosmo["M_of_zs"]
+        mult_cont_total, add_cont_total = theory.model_cont.get_contamination(
+            zs, k_kms, mF, M_of_z
+        )
+        # print("sys", syst_total)
+        # print("mult", mult_cont_total)
+        # print("add", add_cont_total)
+
         for iz, z in enumerate(zs):
-            mF = theory.model_igm.F_model.get_mean_flux(z)
-            M_of_z = theory.fid_cosmo["M_of_zs"][iz]
-            cont_total = theory.model_cont.get_contamination(
-                z, k_kms[iz], mF, M_of_z
-            )
-            Pk_kms[iz] *= cont_total
+            Pk_kms[iz] = (
+                Pk_kms[iz] * mult_cont_total[iz] + add_cont_total[iz]
+            ) * syst_total[iz]
 
         # setup base class
         super().__init__(
@@ -159,7 +166,7 @@ class Gadget_P1D(BaseMockP1D):
     #             -1 - ii
     #         ]
 
-    def _load_p1d(self, theory, true_cosmo):
+    def _load_p1d(self, theory):
         # figure out dataset to mimic
         if self.data_cov_label == "Chabanier2019":
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)
@@ -169,11 +176,8 @@ class Gadget_P1D(BaseMockP1D):
             data = data_QMLE_Ohio.P1D_QMLE_Ohio()
         elif self.data_cov_label == "Karacayli2022":
             data = data_Karacayli2022.P1D_Karacayli2022()
-        elif self.data_cov_label == "DESIY1":
-            # data = data_DESIY1.P1D_DESIY1(p1d_fname=self.cov_fname)
-            data = challenge_DESIY1.P1D_challenge_DESIY1(
-                theory, true_cosmo, p1d_fname=self.cov_fname
-            )
+        elif self.data_cov_label.startswith("DESIY1"):
+            data = data_DESIY1.P1D_DESIY1(data_label=self.data_cov_label)
         else:
             raise ValueError("Unknown data_cov_label", self.data_cov_label)
 

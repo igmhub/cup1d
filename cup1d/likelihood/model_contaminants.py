@@ -55,7 +55,10 @@ class Contaminants(object):
                     prop_coeffs[key3] = pars_cont[key3]
                 else:
                     if key3.endswith("otype"):
-                        prop_coeffs[key3] = "exp"
+                        if key3.startswith("HCD_const"):
+                            prop_coeffs[key3] = "const"
+                        else:
+                            prop_coeffs[key3] = "exp"
                     elif key3.endswith("ztype"):
                         prop_coeffs[key3] = "pivot"
 

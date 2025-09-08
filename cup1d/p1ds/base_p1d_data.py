@@ -22,16 +22,20 @@ def _drop_zbins(
 ):
     """Drop redshift bins below z_min or above z_max"""
 
+    # k_in center of the kbin
+    # kmin_in starting of the kbin
+    # kmax_in ending of the kbin
+
     z_in = np.array(z_in)
     ind = np.argwhere((z_in >= z_min) & (z_in <= z_max))[:, 0]
     z_out = z_in[ind]
 
     k_out = []
-    kmin_out = []
-    kmax_out = []
     Pk_out = []
     cov_out = []
     cov_stat_out = []
+    kmin_out = []
+    kmax_out = []
     if Pksmooth_kms is None:
         Pksmooth_out = None
     else:
@@ -40,16 +44,24 @@ def _drop_zbins(
         Pksmooth_out = None
     for jj in ind:
         # remove tailing zeros
-        ind = np.argwhere(Pk_in[jj] != 0)[:, 0]
-        k_out.append(k_in[jj][ind])
-        kmin_out.append(kmin_in[jj][ind])
-        kmax_out.append(kmax_in[jj][ind])
-        Pk_out.append(Pk_in[jj][ind])
+        ind2 = np.argwhere(Pk_in[jj] != 0)[:, 0]
+        k_out.append(k_in[jj][ind2])
+        if kmin_in is not None:
+            kmin_out.append(kmin_in[jj][ind2])
+        else:
+            kdiff = 0.5 * (k_in[jj][ind2][1] - k_in[jj][ind2][0])
+            kmin_out.append(k_in[jj][ind2] - kdiff)
+        if kmax_in is not None:
+            kmax_out.append(kmax_in[jj][ind2])
+        else:
+            kdiff = 0.5 * (k_in[jj][ind2][1] - k_in[jj][ind2][0])
+            kmax_out.append(k_in[jj][ind2] + kdiff)
+        Pk_out.append(Pk_in[jj][ind2])
         if Pksmooth_kms is not None:
-            Pksmooth_out.append(Pksmooth_kms[jj][ind])
-        cov_out.append(cov_in[jj][ind, :][:, ind])
+            Pksmooth_out.append(Pksmooth_kms[jj][ind2])
+        cov_out.append(cov_in[jj][ind2, :][:, ind2])
         if cov_stat is not None:
-            cov_stat_out.append(cov_stat[jj][ind, :][:, ind])
+            cov_stat_out.append(cov_stat[jj][ind2, :][:, ind2])
 
     if full_zs is not None:
         ind = np.argwhere((full_zs >= z_min) & (full_zs <= z_max))[:, 0]

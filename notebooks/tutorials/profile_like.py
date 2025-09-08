@@ -47,18 +47,18 @@ print(chi2_levels)
 
 # +
 fit_type = "global_opt"
-# data_lab = "DESIY1_QMLE3"
-data_lab = "DESIY1_QMLE"
+data_lab = "DESIY1_QMLE3"
+# data_lab = "DESIY1_QMLE"
 # data_lab = "DESIY1_FFT_dir"
 # data_lab = "DESIY1_FFT"
-# emu = "mpg"
-emu = "nyx"
+emu = "mpg"
+# emu = "nyx"
 
 variation = None
 # variation = "cov"
 
 # type_prof = "prof_2d"
-# nelem = 100
+# nelem = 64
 
 type_prof = "prof_2d_deep"
 nelem = 900
@@ -84,6 +84,9 @@ for ii in range(nelem):
     params[ii, 1] = data["blind_cosmo"]["n_star"]
     mle_cube[ii] = data["mle_cube"]
     mle.append(data["mle"])
+    if data["mle"]['$f_{\rm HCD1}_0$'] > -1:
+        if data["chi2"]-data_cen['best_chi2'] < 7:
+            print(ii, data["mle"]['$f_{\rm HCD1}_0$'], params[ii, :], data["chi2"]-data_cen['best_chi2'])
 
 np.sum(chi2 == 0)
 # -
@@ -91,10 +94,11 @@ np.sum(chi2 == 0)
 data_cen["mle"]
 # data_cen["mle_cube"]
 
-ind = np.argmin(chi2)
-mle[ind]
+print(data_cen["mle_cosmo_cen"])
+print(params[np.argmin(chi2)])
+mle[np.argmin(chi2)]
 
-np.exp(-1)
+
 
 min_chi2 = np.min([chi2.min(), data_cen['best_chi2']])
 print(min_chi2, data_cen['best_chi2']-min_chi2, chi2.min()-min_chi2)
@@ -103,10 +107,11 @@ print(min_chi2, data_cen['best_chi2']-min_chi2, chi2.min()-min_chi2)
 
 # +
 out_dict = {}
+n2d = int(np.sqrt(nelem))
 
-xparams = params[:,0].reshape(30, 30)
-yparams = params[:,1].reshape(30, 30)
-zchi2 = chi2.reshape(30, 30)
+xparams = params[:,0].reshape(n2d, n2d)
+yparams = params[:,1].reshape(n2d, n2d)
+zchi2 = chi2.reshape(n2d, n2d)
 ind2 = np.argmin(chi2)
 
 if min_chi2 == chi2.min():
@@ -153,6 +158,7 @@ if plot:
     plt.axvline(xinter[_].min(), color="C1")
 
     plt.axhline(1)
+    plt.ylim(0, 20)
 
 # +
 plot = True
@@ -173,6 +179,7 @@ if plot:
     plt.axvline(yinter[_].min(), color="C1")
     
     plt.axhline(1)
+    plt.ylim(0, 20)
 # -
 
 # #### Get correlation from 2d-ellipse
@@ -206,6 +213,7 @@ CS = plt.contour(
     )
 
 for jj in range(1, 0, -1):
+    print(jj)
     p = CS.collections[jj].get_paths()
     x = []
     y = []
@@ -237,9 +245,6 @@ if type_prof == "prof_2d_deep":
 ind3 = np.argsort(chi2[ind])
 print((params[ind])[ind3[:3]].mean(axis=0))
 print((params[ind])[ind3[:3]])
-# -
-
-out_dict["err_Delta2_star"]
 
 # +
 
@@ -347,6 +352,9 @@ from matplotlib import rcParams
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
+# -
+
+out_dict.keys()
 
 # +
 fig, ax = plt.subplots(figsize=(8, 6))
@@ -354,6 +362,7 @@ ftsize = 20
 ls = ["-", "--"]
 
 variations = ["DESIY1_QMLE3_mpg", "DESIY1_FFT_dir_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT_mpg", "DESIY1_QMLE3_nyx", "cov"]
+# variations = ["DESIY1_QMLE3_mpg", "DESIY1_FFT_dir_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT_mpg", "DESIY1_QMLE3_nyx"]
 dict_trans = {
     "DESIY1_QMLE3_mpg":"QMLE3", 
     "DESIY1_FFT_dir_mpg":"FFTDM", 
@@ -374,36 +383,35 @@ for ii, var in enumerate(variations):
     else:
         file = "out_pl/"+ var + "_" + fit_type + ".npy"
     out_dict = np.load(file, allow_pickle=True).item()
+    
     prob = chi2_scipy.sf(out_dict['chi2'], var_deg) * 100
     print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
     if ii == 0:
         dict_diff = {
-            "x": out_dict["xbest"],
-            "y": out_dict["ybest"]
+            "Delta2_star": out_dict["Delta2_star"],
+            "n_star": out_dict["n_star"],
+            "err_Delta2_star": out_dict["err_Delta2_star"],
+            "err_n_star": out_dict["err_n_star"],
         }
 
     consist = 0
-    for key in ["x", "y"]:
-        err1 = 0.5 * (out_dict[key+"ell1"].max()-out_dict[key+"ell1"].min())
-        err2 = 0.5 * (out_dict[key+"ell2"].max()-out_dict[key+"ell2"].min())
-        print(np.round(out_dict[key+"best"], 2), np.round(err1, 2), np.round(err2, 2))
-        print("diff", np.round(out_dict[key+"best"] - dict_diff[key], 3), np.round(err1, 3))
-        if ii == 0:
-            dict_diff["e"+key] = err1
-        consist += (out_dict[key+"best"] - dict_diff[key])**2/np.max([dict_diff["e"+key], err1])**2
+    for key in ["Delta2_star", "n_star"]:
+        print(np.round(out_dict[key], 3), np.round(out_dict["err_" + key], 3))
+        print("diff", np.round(out_dict[key] - dict_diff[key], 3), np.round(out_dict["err_" + key], 3))
+        consist += (out_dict[key] - dict_diff[key])**2/np.max([dict_diff["err_"+key], out_dict["err_" + key]])**2
 
     prob_var = chi2_scipy.sf(consist, 2) * 100
     print(np.round(prob_var, 1))
 
     col = "C"+str(ii)
-    ax.scatter(out_dict["xbest"], out_dict["ybest"], color=col, marker="x")
+    ax.scatter(out_dict["Delta2_star"], out_dict["n_star"], color=col, marker="x")
 
     for jj in range(1, 2):
         if jj == 1:
             lab = dict_trans[var]
         else:
             lab= None
-        ax.plot(out_dict["xell"+str(jj)], out_dict["yell"+str(jj)], col+ls[jj-1], label=lab)
+        ax.plot(out_dict["xell"+str(jj)], out_dict["yell"+str(jj)], col+ls[jj-1], lw=3, label=lab)
 
 # ax.scatter(0.4, -2.28, color="k", marker="x", label="Planck")
 
@@ -415,8 +423,8 @@ ax.tick_params(
 
 plt.legend(fontsize=ftsize-2)
 plt.tight_layout()
-# plt.savefig("figs/variations_2d.pdf")
-# plt.savefig("figs/variations_2d.png")
+plt.savefig("figs/variations_2d.pdf")
+plt.savefig("figs/variations_2d.png")
 # -
 
 

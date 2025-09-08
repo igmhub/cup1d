@@ -81,7 +81,9 @@ def fit_ellipse(x, y, npts=200):
         + b_len * np.sin(t) * np.cos(theta)
     )
 
+    # correlation coefficient
     rho = rho_from_axes(a_len, b_len, theta)
+    print("angle, rho:", theta * 180 / np.pi, rho)
 
     return xfit, yfit, rho
 
@@ -110,6 +112,8 @@ def plot_ellipse(sigma1=0.2, sigma2=0.5, rho=0.6, mean=[1.0, 2.0], ax=None):
 
     # Angle of ellipse (in degrees)
     angle = np.degrees(np.arctan2(*eigvecs[:, 0][::-1]))
+    # print("angle")
+    # angle = np.degrees(0.14250882064032286) * 2
 
     # Plot
     if ax is None:

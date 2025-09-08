@@ -158,6 +158,7 @@ class Contaminant(object):
 
     def get_value(self, name, z, like_params=[]):
         coeff = self.get_coeff(name, like_params=like_params)
+        # print(name, coeff, self.prop_coeffs[name + "_otype"])
 
         if self.prop_coeffs[name + "_ztype"] == "pivot":
             xz = np.log((1 + z) / (1 + self.z_0))

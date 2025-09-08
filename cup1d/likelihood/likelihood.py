@@ -647,16 +647,16 @@ class Likelihood(object):
                 self.truth["like_params"][pname2[par.name]] = self.truth[
                     "linP"
                 ][pname2[par.name]]
-            else:
-                if par.name not in self.truth["cont"]:
-                    print("could not find {} in truth".format(par.name))
-                    continue
-                self.truth["like_params"][par.name] = self.truth["cont"][
-                    par.name
-                ]
-                self.truth["like_params_cube"][
-                    par.name
-                ] = par.get_value_in_cube(self.truth["cont"][par.name])
+            # else:
+            #     if par.name not in self.truth["cont"]:
+            #         print("could not find {} in truth".format(par.name))
+            #         continue
+            #     self.truth["like_params"][par.name] = self.truth["cont"][
+            #         par.name
+            #     ]
+            #     self.truth["like_params_cube"][
+            #         par.name
+            #     ] = par.get_value_in_cube(self.truth["cont"][par.name])
 
     def set_fid(self):
         """Store fiducial cosmology assumed for the fit"""
@@ -1204,7 +1204,7 @@ class Likelihood(object):
 
                 length = 1
             else:
-                fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+                fig, ax = plt.subplots(1, 1, figsize=(14, 8))
                 length = 1
                 ax = [ax]
         else:
@@ -1386,7 +1386,7 @@ class Likelihood(object):
                     if print_chi2:
                         if plot_panels == False:
                             ypos = 0.75 + yshift
-                            axs.text(xpos, ypos, label, fontsize=fontsize - 2)
+                            axs.text(xpos, ypos, label, fontsize=fontsize - 4)
 
                     if print_ratio:
                         print(p1d_data / p1d_theory)
@@ -1439,7 +1439,7 @@ class Likelihood(object):
                         + "%"
                     )
                     if print_chi2:
-                        ax[ii].text(xpos, ypos, label, fontsize=fontsize - 2)
+                        ax[ii].text(xpos, ypos, label, fontsize=fontsize - 4)
 
                     ax[ii].plot(
                         k_kms,
@@ -1500,7 +1500,7 @@ class Likelihood(object):
                 if plot_panels == False:
                     axs.legend(fontsize=fontsize)
             else:
-                ax[ii].legend(loc="lower right", ncol=4, fontsize=fontsize - 2)
+                ax[ii].legend(loc="lower right", ncol=4, fontsize=fontsize - 4)
 
             # ax[ii].set_xlim(min(k_kms[0]) - 0.001, max(k_kms[-1]) + 0.001)
             # if plot_panels == False:
@@ -1796,13 +1796,13 @@ class Likelihood(object):
         """Plot IGM histories"""
 
         # true IGM parameters
-        if self.truth is not None:
-            pars_true = {}
-            pars_true["z"] = self.truth["igm"]["z"]
-            pars_true["tau_eff"] = self.truth["igm"]["tau_eff"]
-            pars_true["gamma"] = self.truth["igm"]["gamma"]
-            pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
-            pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
+        # if self.truth is not None:
+        #     pars_true = {}
+        #     pars_true["z"] = self.truth["igm"]["z"]
+        #     pars_true["tau_eff"] = self.truth["igm"]["tau_eff"]
+        #     pars_true["gamma"] = self.truth["igm"]["gamma"]
+        #     pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
+        #     pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
 
         zs = np.linspace(self.data.z.min(), self.data.z.max(), 100)
         pars_fid = {}
@@ -1852,15 +1852,15 @@ class Likelihood(object):
         ]
 
         for ii in range(len(arr_labs)):
-            if self.truth is not None:
-                _ = pars_true[arr_labs[ii]] != 0
-                ax[ii].plot(
-                    pars_true["z"][_],
-                    pars_true[arr_labs[ii]][_],
-                    "C0:o",
-                    alpha=0.75,
-                    label="true",
-                )
+            # if self.truth is not None:
+            #     _ = pars_true[arr_labs[ii]] != 0
+            #     ax[ii].plot(
+            #         pars_true["z"][_],
+            #         pars_true[arr_labs[ii]][_],
+            #         "C0:o",
+            #         alpha=0.75,
+            #         label="true",
+            #     )
 
             _ = pars_fid[arr_labs[ii]] != 0
             ax[ii].plot(

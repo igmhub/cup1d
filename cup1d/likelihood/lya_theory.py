@@ -717,16 +717,17 @@ class Theory(object):
         syst_total = self.model_syst.get_contamination(
             zs, k_kms, like_params=like_params
         )
-        # note that we use mF of fiducial history for metal contamination
         mult_cont_total, add_cont_total = self.model_cont.get_contamination(
             zs,
             k_kms,
-            # emu_call["mF_fid"],
             emu_call["mF"],
             M_of_z,
             like_params=like_params,
             remove=remove,
         )
+        # print("mult_cont_total", mult_cont_total)
+        # print("add_cont_total", add_cont_total)
+        # print("syst_total", syst_total)
 
         for iz, z in enumerate(zs):
             p1d_kms[iz] = (
