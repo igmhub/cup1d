@@ -34,13 +34,25 @@ def set_p1d_filename(data_label="QMLE3"):
         p1d_fname = os.path.join(
             path_in_challenge,
             "fft_measurement",
-            "p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits",
+            "p1d_fft_y1_measurement_kms_v8_directmetalsubtraction.fits",
         )
     elif data_label.endswith("FFT"):
         p1d_fname = os.path.join(
             path_in_challenge,
             "fft_measurement",
-            "p1d_fft_y1_measurement_kms_v7.fits",
+            "p1d_fft_y1_measurement_kms_v8_baseline.fits",
+        )
+    elif data_label.endswith("FFT3_dir"):
+        p1d_fname = os.path.join(
+            path_in_challenge,
+            "fft_measurement",
+            "p1d_fft_y1_measurement_kms_v8_nocrossexp_snr3noweights_directmetalsubtraction.fits",
+        )
+    elif data_label.endswith("FFT3"):
+        p1d_fname = os.path.join(
+            path_in_challenge,
+            "fft_measurement",
+            "p1d_fft_y1_measurement_kms_v8_nocrossexp_snr3noweights.fits",
         )
     else:
         raise ValueError(

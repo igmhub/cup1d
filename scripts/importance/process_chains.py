@@ -15,18 +15,19 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    # key_model = "base" # Y
+    key_model = "base"  # Y
     # key_model = "base_mnu" #OP, OP+BAO
     # key_model = "base_nrun"  # YP
     # key_model = "base_nnu"  # YP
-    key_model = "base_r"  # YP
+    # key_model = "base_r"  # YP
     # key_model = "base_omegak"  # YP
     # key_model = "base_w_wa"  # YP
     # key_model = "base_nrun_nrunrun"  # YP
     # key_model = "base_nrun_nnu_w_mnu"  # YO
     # key_model = "base_nnu_meffsterile"  # NP, check Planck and prepare lace
 
-    key_data = "plikHM_TTTEEE_lowl_lowE"
+    key_data = "plikHM_TTTEEE_lowl"
+    # key_data = "plikHM_TTTEEE_lowl_lowE"
     # key_data = "plikHM_TTTEEE_lowl_lowE_BAO"
     # key_data = "plikHM_TTTEEE_lowl_lowE_BAO_Riess18_Pantheon18_lensing"
 

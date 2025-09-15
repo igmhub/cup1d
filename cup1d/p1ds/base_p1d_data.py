@@ -204,6 +204,7 @@ class BaseDataP1D(object):
 
         import matplotlib.pyplot as plt
         from matplotlib import rcParams
+        from matplotlib import colormaps
 
         rcParams["mathtext.fontset"] = "stix"
         rcParams["font.family"] = "STIXGeneral"
@@ -211,10 +212,10 @@ class BaseDataP1D(object):
         fig, ax = plt.subplots(figsize=(8, 6))
 
         N = len(self.z)
-        for i in range(N):
-            k_kms = self.k_kms[i]
-            Pk_kms = self.get_Pk_iz(i)
-            err_Pk_kms = np.sqrt(np.diagonal(self.get_cov_iz(i)))
+        for ii in range(N):
+            k_kms = self.k_kms[ii]
+            Pk_kms = self.get_Pk_iz(ii)
+            err_Pk_kms = np.sqrt(np.diagonal(self.get_cov_iz(ii)))
             if use_dimensionless:
                 fact = k_kms / np.pi
             else:
@@ -223,7 +224,8 @@ class BaseDataP1D(object):
                 k_kms,
                 fact * Pk_kms,
                 yerr=fact * err_Pk_kms,
-                label=r"$z = {}$".format(np.round(self.z[i], 3)),
+                label=r"$z = {}$".format(np.round(self.z[ii], 3)),
+                color=colormaps["tab20"].colors[ii],
             )
 
         ax.legend(ncol=4, fontsize=ftsize - 4)
@@ -233,7 +235,7 @@ class BaseDataP1D(object):
             plt.xscale("log")
         plt.xlabel(r"$k\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
         if use_dimensionless:
-            plt.ylabel(r"$k\,P(k)/ \pi$", fontsize=ftsize)
+            plt.ylabel(r"$\mathrm{\pi}^{-1}k\,P(k)$", fontsize=ftsize)
         else:
             plt.ylabel(r"$P(k) [km/s]$", fontsize=ftsize)
 

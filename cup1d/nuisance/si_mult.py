@@ -176,7 +176,9 @@ class SiMult(Contaminant):
                     null = np.exp(self.null_vals[key])
                 _ = vals[key] <= null
                 vals[key][_] = 0
-        # print(vals)
+
+        # for key in vals:
+        #     print(key, vals[key])
 
         ra3 = self.rat["SiIIa_SiIII"]
         rb3 = self.rat["SiIIb_SiIII"]
@@ -195,29 +197,28 @@ class SiMult(Contaminant):
         metal_corr = []
 
         for iz in range(len(z)):
-            aSiIII = vals["f_Lya_SiIII"][iz] / (1 - mF[iz])
-            aSiII = vals["f_Lya_SiII"][iz] / (1 - mF[iz])
-
-            # k-dependent damping
+            # k-dependent damping of Lya-SiIII
             G_SiIII_Lya = 2 - 2 / (
                 1 + np.exp(-vals["s_Lya_SiIII"][iz] * k_kms[iz])
             )
+            # k-dependent damping of Lya-SiII
             G_SiII_Lya = 2 - 2 / (
                 1 + np.exp(-vals["s_Lya_SiII"][iz] * k_kms[iz])
             )
 
-            # deviations from optically-thin limit
+            # scale amplitude of Cmm
             if "f_SiIIb_SiIII" in vals:
                 G_SiII_SiIII = vals["f_SiIIb_SiIII"][iz]
             else:
                 G_SiII_SiIII = 1
 
+            # deviations from optically-thin limit
             if "f_SiIIa_SiIII" in vals:
                 f_SiIIa_SiIII = vals["f_SiIIa_SiIII"][iz]
             else:
                 f_SiIIa_SiIII = 1
 
-            # not modeled here anymore
+            # not relevant anymore modeled here anymore
             if "s_SiIIa_SiIIb" in vals:
                 G_SiII_SiII = 2 - 2 / (
                     1 + np.exp(-vals["s_SiIIa_SiIIb"][iz] * k_kms[iz])
@@ -227,10 +228,20 @@ class SiMult(Contaminant):
             if "f_SiIIa_SiIIb" in vals:
                 G_SiII_SiII *= vals["f_SiIIa_SiIIb"][iz]
 
+            # amplitude of SiIII
+            aSiIII = vals["f_Lya_SiIII"][iz] / (1 - mF[iz])
+            # amplitude of SiII, rb3 for convenience
+            aSiII = rb3 * vals["f_Lya_SiII"][iz] / (1 - mF[iz])
+            # deviations of ra3 from optically-thin limit
+            _ra3 = ra3 * f_SiIIa_SiIII
+
+            # print(G_SiII_SiIII)
+            # print(_ra3 / rb3)
+
             C0 = aSiIII**2 * self.off["SiIII_Lya"] + aSiII**2 * (
-                ra3**2 * f_SiIIa_SiIII**2 * self.off["SiIIa_Lya"]
-                + rb3**2 * self.off["SiIIb_Lya"]
-                + rc3**2 * self.off["SiIIc_Lya"]
+                (_ra3 / rb3) ** 2 * self.off["SiIIa_Lya"]
+                + self.off["SiIIb_Lya"]
+                + (rc3 / rb3) ** 2 * self.off["SiIIc_Lya"]
             )
 
             CSiIII_Lya = (
@@ -247,14 +258,12 @@ class SiMult(Contaminant):
                 * G_SiII_Lya
                 * (
                     self.off["SiIIa_Lya"]
-                    * ra3
-                    * f_SiIIa_SiIII
+                    * (_ra3 / rb3)
                     * np.cos(self.dv["SiIIa_Lya"] * k_kms[iz])
                     + self.off["SiIIb_Lya"]
-                    * rb3
                     * np.cos(self.dv["SiIIb_Lya"] * k_kms[iz])
                     + self.off["SiIIc_Lya"]
-                    * rc3
+                    * (rc3 / rb3)
                     * np.cos(self.dv["SiIIc_Lya"] * k_kms[iz])
                 )
             )
@@ -268,14 +277,12 @@ class SiMult(Contaminant):
                 * G_SiII_SiIII
                 * (
                     self.off["SiIII_SiIIc"]
-                    * rc3
+                    * (rc3 / rb3)
                     * np.cos(self.dv["SiIII_SiIIc"] * k_kms[iz])
                     + self.off["SiIII_SiIIb"]
-                    * rb3
                     * np.cos(self.dv["SiIII_SiIIb"] * k_kms[iz])
                     + self.off["SiIII_SiIIa"]
-                    * f_SiIIa_SiIII
-                    * ra3
+                    * (_ra3 / rb3)
                     * np.cos(self.dv["SiIII_SiIIa"] * k_kms[iz])
                 )
             )
@@ -286,16 +293,14 @@ class SiMult(Contaminant):
                 * G_SiII_SiII
                 * (
                     self.off["SiIIc_SiIIb"]
-                    * rc3
-                    * rb3
+                    * (rc3 / rb3)
                     * np.cos(self.dv["SiIIc_SiIIb"] * k_kms[iz])
                     + self.off["SiIIc_SiIIa"]
-                    * rc3
-                    * ra3
+                    * (rc3 / rb3)
+                    * (ra3 / rb3)
                     * np.cos(self.dv["SiIIc_SiIIa"] * k_kms[iz])
                     + self.off["SiIIb_SiIIa"]
-                    * rb3
-                    * ra3
+                    * (_ra3 / rb3)
                     * np.cos(self.dv["SiIIb_SiIIa"] * k_kms[iz])
                 )
             )

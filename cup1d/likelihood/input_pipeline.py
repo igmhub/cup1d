@@ -223,7 +223,7 @@ class Args:
                     name_variation,
                 )
 
-        if name_variation.startswith("sim_"):
+        if (name_variation is not None) and (name_variation.startswith("sim_")):
             self.ic_from_file = None
 
         # set all cont to zero
@@ -467,7 +467,10 @@ class Args:
             self.file_ic = os.path.join(
                 os.path.dirname(get_path_repo("cup1d")), "data", "ics", fname
             )
-            if name_variation.startswith("sim_"):
+
+            if (name_variation is not None) and (
+                name_variation.startswith("sim_")
+            ):
                 self.file_ic = None
 
             for prop in props_cont:
@@ -667,7 +670,7 @@ class Args:
         else:
             raise ValueError("Fit type not recognized")
 
-        if name_variation.startswith("sim_"):
+        if (name_variation is not None) and (name_variation.startswith("sim_")):
             fid_vals_conts = {
                 "f_Lya_SiIII": -11.5,
                 "s_Lya_SiIII": 2.1,
@@ -716,7 +719,7 @@ class Args:
 
         self.fid_cont["flat_priors"] = {}
 
-        if name_variation.startswith("sim_"):
+        if (name_variation is not None) and (name_variation.startswith("sim_")):
             self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
                 [-1, 1],
                 [-11.5, -2],
@@ -726,12 +729,13 @@ class Args:
                 [-1, 1],
                 [-6, -2],
             ]
+
         self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
             [-1, 1],
             [2, 7],
         ]
 
-        if name_variation.startswith("sim_"):
+        if (name_variation is not None) and (name_variation.startswith("sim_")):
             self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
                 [-1, 1],
                 [-11.5, -2],
@@ -746,7 +750,7 @@ class Args:
             [2, 7],
         ]
 
-        if name_variation.startswith("sim_"):
+        if (name_variation is not None) and (name_variation.startswith("sim_")):
             self.fid_cont["flat_priors"]["f_SiIIa_SiIIb"] = [
                 [-1, 4],
                 [-11.5, -3],
@@ -756,6 +760,7 @@ class Args:
                 [-1, 4],
                 [-3, 3],
             ]
+
         self.fid_cont["flat_priors"]["s_SiIIa_SiIIb"] = [
             [-1, 3],
             [0, 5.5],

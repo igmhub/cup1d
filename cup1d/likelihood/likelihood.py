@@ -269,7 +269,7 @@ class Likelihood(object):
         """
 
         # get emulator error
-        filename = "cov_" + self.theory.emulator.emulator_label + ".npy"
+        filename = "l1O_cov_" + self.theory.emulator.emulator_label + ".npy"
         full_path = os.path.join(
             get_path_repo("lace"), "data", "covariance", filename
         )
@@ -278,6 +278,12 @@ class Likelihood(object):
         emu_cov_zz = dict_save["zz"]
         emu_cov_unique_zz = np.unique(emu_cov_zz)
         emu_cov_k_Mpc = dict_save["k_Mpc"]
+        # check if recorded covariance with correlations across redshifts (covz = True)
+        # or same covariance across all redshifts (covz = False)
+        if len(emu_cov_zz) == len(emu_cov_unique_zz):
+            covz = False
+        else:
+            covz = True
 
         # Iterate over both datasets: main dataset (idata = 0) and additional dataset (idata = 1)
         for idata in range(2):
@@ -319,24 +325,24 @@ class Likelihood(object):
                 covemu = np.zeros_like(cov)
                 # Indices of the diagonal elements
                 # Add emulator error
-                if self.emu_cov_factor is not None:
-                    if self.emu_cov_factor != 0:
-                        if ii == 0:
-                            if idata == 0:
-                                self.covemu_Pk_kms = []
-                            else:
-                                self.extra_covemu_Pk_kms = []
+                if (self.emu_cov_factor is not None) and (
+                    self.emu_cov_factor != 0
+                ):
+                    if ii == 0:
+                        if idata == 0:
+                            self.covemu_Pk_kms = []
+                        else:
+                            self.extra_covemu_Pk_kms = []
 
-                        dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
-                            data.z[ii]
-                        )
-                        # data k_kms to Mpc
-                        k_Mpc = data.k_kms[ii] * dkms_dMpc
-                        add_emu_cov_kms = np.zeros(
-                            (k_Mpc.shape[0], k_Mpc.shape[0])
-                        )
+                    dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
+                        data.z[ii]
+                    )
+                    # data k_kms to Mpc
+                    k_Mpc = data.k_kms[ii] * dkms_dMpc
+                    add_emu_cov_kms = np.zeros((k_Mpc.shape[0], k_Mpc.shape[0]))
 
-                        # find closest z in cov
+                    # find closest z in cov
+                    if covz:
                         ind = np.argmin(np.abs(emu_cov_unique_zz - data.z[ii]))
                         # get cov from closest z
                         ind = np.argwhere(emu_cov_zz == emu_cov_unique_zz[ind])[
@@ -344,35 +350,35 @@ class Likelihood(object):
                         ]
                         _emu_cov = emu_cov[ind, :][:, ind]
                         _k_Mpc = emu_cov_k_Mpc[ind]
+                    else:
+                        _emu_cov = emu_cov
+                        _k_Mpc = emu_cov_k_Mpc
 
-                        # rescale covariance matrix by power spectrum,
-                        # I stored the relative error
-                        for i0 in range(k_Mpc.shape[0]):
+                    # rescale covariance matrix by power spectrum,
+                    # since the covariance matrix stores the relative error
+                    for i0 in range(k_Mpc.shape[0]):
+                        # get closest k in emu cov matrix
+                        j0 = np.argmin(np.abs(k_Mpc[i0] - _k_Mpc))
+                        for i1 in range(k_Mpc.shape[0]):
+                            # skip if diagonal and i0 != i1
+                            if (self.emu_cov_type == "diagonal") & (i0 != i1):
+                                continue
+
                             # get closest k in emu cov matrix
-                            j0 = np.argmin(np.abs(k_Mpc[i0] - _k_Mpc))
-                            for i1 in range(k_Mpc.shape[0]):
-                                # skip if diagonal and i0 != i1
-                                if (self.emu_cov_type == "diagonal") & (
-                                    i0 != i1
-                                ):
-                                    continue
-
-                                # get closest k in emu cov matrix
-                                j1 = np.argmin(np.abs(k_Mpc[i1] - _k_Mpc))
-                                add_emu_cov_kms[i0, i1] = (
-                                    _emu_cov[j0, j1]
-                                    * pksmooth[ii][i0]
-                                    * pksmooth[ii][i1]
-                                )
-                        emu_cov_blocks.append(add_emu_cov_kms)
-                        # from Pk in Mpc to Pk in km/s
-                        # add to cov
-                        for i0 in range(k_Mpc.shape[0]):
-                            for i1 in range(k_Mpc.shape[0]):
-                                cov[i0, i1] += (
-                                    add_emu_cov_kms[i0, i1]
-                                    * self.emu_cov_factor
-                                )
+                            j1 = np.argmin(np.abs(k_Mpc[i1] - _k_Mpc))
+                            add_emu_cov_kms[i0, i1] = (
+                                _emu_cov[j0, j1]
+                                * pksmooth[ii][i0]
+                                * pksmooth[ii][i1]
+                            )
+                    emu_cov_blocks.append(add_emu_cov_kms)
+                    # from Pk in Mpc to Pk in km/s
+                    # add to cov of data
+                    for i0 in range(k_Mpc.shape[0]):
+                        for i1 in range(k_Mpc.shape[0]):
+                            cov[i0, i1] += (
+                                add_emu_cov_kms[i0, i1] * self.emu_cov_factor
+                            )
 
                 # inflate errors
                 cov *= self.cov_factor
@@ -399,54 +405,55 @@ class Likelihood(object):
                 # Copy the full covariance matrix
                 cov = data.full_cov_Pk_kms.copy()
                 # Indices of the diagonal elements
-                if self.emu_cov_factor is not None:
-                    if self.emu_cov_factor != 0:
-                        # diagonal
-                        if self.emu_cov_type == "diagonal":
-                            diag_emu_cov = []
-                            for ii in range(len(emu_cov_blocks)):
-                                diag_emu_cov.append(np.diag(emu_cov_blocks[ii]))
-                            full_emu_cov = np.concatenate(diag_emu_cov)
-                            ind = np.diag_indices_from(cov)
-                            cov[ind] += full_emu_cov * self.emu_cov_factor
-                        # block
-                        elif self.emu_cov_type == "block":
-                            full_emu_cov = block_diag(*emu_cov_blocks)
-                            cov += full_emu_cov * self.emu_cov_factor
-                        # full
-                        else:
-                            full_emu_cov = np.zeros_like(cov)
-                            for i0 in range(cov.shape[0]):
+                if (self.emu_cov_factor is not None) and (
+                    self.emu_cov_factor != 0
+                ):
+                    # diagonal
+                    if self.emu_cov_type == "diagonal":
+                        diag_emu_cov = []
+                        for ii in range(len(emu_cov_blocks)):
+                            diag_emu_cov.append(np.diag(emu_cov_blocks[ii]))
+                        full_emu_cov = np.concatenate(diag_emu_cov)
+                        ind = np.diag_indices_from(cov)
+                        cov[ind] += full_emu_cov * self.emu_cov_factor
+                    # block
+                    elif self.emu_cov_type == "block":
+                        full_emu_cov = block_diag(*emu_cov_blocks)
+                        cov += full_emu_cov * self.emu_cov_factor
+                    # full
+                    else:
+                        full_emu_cov = np.zeros_like(cov)
+                        for i0 in range(cov.shape[0]):
+                            dkms_dMpc = self.theory.fid_cosmo[
+                                "cosmo"
+                            ].dkms_dMpc(data.full_zs[i0])
+                            j0 = np.argmin(
+                                (data.full_zs[i0] - emu_cov_zz) ** 2
+                                + (
+                                    data.full_k_kms[i0] * dkms_dMpc
+                                    - emu_cov_k_Mpc
+                                )
+                                ** 2
+                            )
+                            for i1 in range(cov.shape[0]):
                                 dkms_dMpc = self.theory.fid_cosmo[
                                     "cosmo"
-                                ].dkms_dMpc(data.full_zs[i0])
-                                j0 = np.argmin(
-                                    (data.full_zs[i0] - emu_cov_zz) ** 2
+                                ].dkms_dMpc(data.full_zs[i1])
+                                j1 = np.argmin(
+                                    (data.full_zs[i1] - emu_cov_zz) ** 2
                                     + (
-                                        data.full_k_kms[i0] * dkms_dMpc
+                                        data.full_k_kms[i1] * dkms_dMpc
                                         - emu_cov_k_Mpc
                                     )
                                     ** 2
                                 )
-                                for i1 in range(cov.shape[0]):
-                                    dkms_dMpc = self.theory.fid_cosmo[
-                                        "cosmo"
-                                    ].dkms_dMpc(data.full_zs[i1])
-                                    j1 = np.argmin(
-                                        (data.full_zs[i1] - emu_cov_zz) ** 2
-                                        + (
-                                            data.full_k_kms[i1] * dkms_dMpc
-                                            - emu_cov_k_Mpc
-                                        )
-                                        ** 2
-                                    )
-                                    full_emu_cov[i0, i1] = (
-                                        emu_cov[j0, j1]
-                                        * data.full_Pk_kms[i0]
-                                        * data.full_Pk_kms[i1]
-                                    )
+                                full_emu_cov[i0, i1] = (
+                                    emu_cov[j0, j1]
+                                    * data.full_Pk_kms[i0]
+                                    * data.full_Pk_kms[i1]
+                                )
 
-                            cov += full_emu_cov * self.emu_cov_factor
+                        cov += full_emu_cov * self.emu_cov_factor
 
                 # inflate errors
                 cov *= self.cov_factor
@@ -1238,8 +1245,7 @@ class Likelihood(object):
             + "%"
         )
 
-        if print_chi2:
-            fig.suptitle(label, fontsize=fontsize)
+        fig.suptitle(label, fontsize=fontsize)
 
         out = {}
 
@@ -1953,13 +1959,7 @@ class Likelihood(object):
         else:
             plt.show()
 
-    def plot_cov_to_pk(
-        self,
-        use_pk_smooth=True,
-        save_directory=None,
-        fname="cov_to_pk.pdf",
-        ftsize=16,
-    ):
+    def plot_cov_to_pk(self, use_pk_smooth=True, fname=None, ftsize=18):
         npanels = int(np.round(np.sqrt(len(self.cov_Pk_kms))))
 
         fig, ax = plt.subplots(
@@ -1975,40 +1975,52 @@ class Likelihood(object):
                 pk = self.data.Pksmooth_kms[ii].copy()
             else:
                 pk = self.data.Pk_kms[ii].copy()
-            ax[ii].plot(
-                self.data.k_kms[ii], np.sqrt(cov_stat) / pk, label=r"$x$ = Stat"
-            )
-            ax[ii].plot(
-                self.data.k_kms[ii], np.sqrt(cov_syst) / pk, label=r"$x$ = Syst"
-            )
-            ax[ii].plot(
-                self.data.k_kms[ii], np.sqrt(cov_emu) / pk, label=r"$x$ = Emu"
-            )
-            ax[ii].plot(
-                self.data.k_kms[ii], np.sqrt(cov_tot) / pk, label=r"$x$ = Total"
-            )
+
+            if ii == 0:
+                lab = r"$x$ = Stat"
+            else:
+                lab = None
+            ax[ii].plot(self.data.k_kms[ii], np.sqrt(cov_stat) / pk, label=lab)
+            if ii == 1:
+                lab = r"$x$ = Syst"
+            else:
+                lab = None
+            ax[ii].plot(self.data.k_kms[ii], np.sqrt(cov_syst) / pk, label=lab)
+            if ii == 2:
+                lab = r"$x$ = Emu"
+            else:
+                lab = None
+            ax[ii].plot(self.data.k_kms[ii], np.sqrt(cov_emu) / pk, label=lab)
+            if ii == 3:
+                lab = r"$x$ = Total"
+            else:
+                lab = None
+            ax[ii].plot(self.data.k_kms[ii], np.sqrt(cov_tot) / pk, label=lab)
             ax[ii].text(
-                0.25,
                 0.95,
+                0.2,
                 "z=" + str(self.data.z[ii]),
                 ha="right",
                 va="top",
                 transform=ax[ii].transAxes,
                 fontsize=ftsize,
             )
-            ax[ii].tick_params(axis="both", which="major", labelsize=ftsize - 2)
+            ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
         if len(ax) > len(self.cov_Pk_kms):
             for ii in range(len(self.cov_Pk_kms), len(ax)):
                 ax[ii].axis("off")
-        ax[0].legend(ncols=1, fontsize=ftsize - 4)
-        fig.supxlabel(r"$k\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize)
-        fig.supylabel(r"$\sigma_x/P_\mathrm{1D}$", fontsize=ftsize)
+
+        for ii in range(4):
+            ax[ii].legend(fontsize=ftsize - 2, loc="upper right")
+        fig.supxlabel(r"$k\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize + 2)
+        fig.supylabel(r"$\sigma_x/P_\mathrm{1D}$", fontsize=ftsize + 2)
+        ax[0].set_ylim(0.0, 0.06)
+        ax[3].set_ylim(0.0, 0.06)
         plt.tight_layout()
 
-        if save_directory is not None:
-            name = os.path.join(save_directory, fname)
-            plt.savefig(name + ".pdf")
-            plt.savefig(name + ".png")
+        if fname is not None:
+            plt.savefig(fname + ".pdf")
+            plt.savefig(fname + ".png")
         else:
             plt.show()
 

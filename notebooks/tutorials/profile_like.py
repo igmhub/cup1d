@@ -56,8 +56,9 @@ emu = "mpg"
 
 variation = None
 # variation = "cov"
-variation = "sim_mpg_central"
-variation = "sim_nyx_central"
+# variation = "sim_mpg_central"
+# variation = "sim_nyx_central"
+# variation = "sim_sherwood"
 
 # type_prof = "prof_2d"
 # nelem = 64
@@ -149,8 +150,8 @@ if plot:
     _ = (zchi2.min(axis=0) - min_chi2) < 1
     sig_d2s = 0.5 * (xparams[0, _].max() - xparams[0, _].min())
     print(np.round(sig_d2s, 3))
-    plt.axvline(xparams[0, _].max())
-    plt.axvline(xparams[0, _].min())
+    # plt.axvline(xparams[0, _].max())
+    # plt.axvline(xparams[0, _].min())
     
     xinter = np.linspace(xparams[0,:].min(), xparams[0,:].max(), 1000)
     chi2_inter = np.interp(xinter, xparams[0,:], zchi2.min(axis=0) - min_chi2)
@@ -159,8 +160,14 @@ if plot:
     plt.axvline(xinter[_].max(), color="C1")
     plt.axvline(xinter[_].min(), color="C1")
 
+    plt.ylabel(r"$\Delta\chi2$")
+    plt.xlabel(r"$\Delta^2_\star$")
+
     plt.axhline(1)
     plt.ylim(0, 20)
+    
+    plt.savefig("figs/pl1d_D2s_qmle3.pdf")
+    plt.savefig("figs/pl1d_D2s_qmle3.png")
 
 # +
 plot = True
@@ -170,8 +177,8 @@ if plot:
     plt.plot(yparams[:,0], zchi2.min(axis=1) - min_chi2)
     _ = (zchi2.min(axis=1) - min_chi2) < 1
     print(np.round(0.5 * (yparams[_, 0].max() - yparams[_, 0].min()), 3))
-    plt.axvline(yparams[_, 0].max())
-    plt.axvline(yparams[_, 0].min())
+    # plt.axvline(yparams[_, 0].max())
+    # plt.axvline(yparams[_, 0].min())
     
     yinter = np.linspace(yparams[:,0].min(), yparams[:,0].max(), 1000)
     chi2_inter = np.interp(yinter, yparams[:,0], zchi2.min(axis=1) - min_chi2)
@@ -180,8 +187,13 @@ if plot:
     plt.axvline(yinter[_].max(), color="C1")
     plt.axvline(yinter[_].min(), color="C1")
     
+    plt.ylabel(r"$\Delta\chi2$")
+    plt.xlabel(r"$n_\star$")
+    
     plt.axhline(1)
     plt.ylim(0, 20)
+    plt.savefig("figs/pl1d_ns_qmle3.pdf")
+    plt.savefig("figs/pl1d_ns_qmle3.png")
 # -
 
 # #### Get correlation from 2d-ellipse
@@ -221,8 +233,10 @@ for jj in range(1, 0, -1):
     y = []
     for ii in range(len(p)):
         v = p[ii].vertices
-        x.append(v[:,0])
-        y.append(v[:,1])
+        print(jj, ii, v.shape)
+        if v.shape[0] > 10:
+            x.append(v[:,0])
+            y.append(v[:,1])
     x = np.concatenate(x)
     y = np.concatenate(y)
     
@@ -289,12 +303,12 @@ CS = ax[0].contourf(
 )
 
 
-ax[0].scatter(
-    data_cen['mle_cosmo_cen']['Delta2_star'],
-    data_cen['mle_cosmo_cen']['n_star'],
-    c = "k",
-    marker = "X"
-)
+# ax[0].scatter(
+#     data_cen['mle_cosmo_cen']['Delta2_star'],
+#     data_cen['mle_cosmo_cen']['n_star'],
+#     c = "k",
+#     marker = "X"
+# )
 
 # patch1 = mpatches.Patch(color='C0', label=r"0.5 $\sigma$")
 patch2 = mpatches.Patch(color='C0', label=r"1 $\sigma$")
@@ -331,13 +345,16 @@ print(chi2[ind][ind_min],
       np.round(0.5 * (yfit.max()-yfit.min()), 2)
 )
 
-plot_ellipse(
-    out_dict["err_Delta2_star"],
-    out_dict["err_n_star"],
-    out_dict["rho"],
-    [out_dict["xcen_2d"], out_dict["ycen_2d"]],
-    ax=ax[0]
-)
+# plot_ellipse(
+#     out_dict["err_Delta2_star"],
+#     out_dict["err_n_star"],
+#     out_dict["rho"],
+#     [out_dict["xcen_2d"], out_dict["ycen_2d"]],
+#     ax=ax[0]
+# )
+
+for ii in range(2):
+    ax[ii].scatter(out_dict["Delta2_star"], out_dict["n_star"], marker="x", color="k")
 
 # ind_min = np.argmin(interp[ind2])
 # print(interp[ind2][ind_min], np.round(xi[ind2, :][ind_min], 2))
@@ -346,7 +363,8 @@ plot_ellipse(
 plt.tight_layout()
 
 
-# plt.savefig("compare_variations.pdf")
+plt.savefig("figs/pl_qmle3.pdf")
+plt.savefig("figs/pl_qmle3.png")
 # -
 
 
@@ -446,9 +464,11 @@ fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 20
 ls = ["-", "--"]
 
-variations = ["sim_mpg_central"]
+variations = ["sim_mpg_central", "sim_nyx_central", "sim_sherwood"]
 dict_trans = {
-    "sim_mpg_central":"mpg_central", 
+    "sim_mpg_central":"mpg-central", 
+    "sim_nyx_central":"nyx-central", 
+    "sim_sherwood":"sherwood", 
 }
 var_deg = [550-26, 681-26, 670-26]
 

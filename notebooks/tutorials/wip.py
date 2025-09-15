@@ -208,7 +208,7 @@ pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True)
 # args.set_baseline(fit_type="global_all", fix_cosmo=True)
 
 args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
-args.set_baseline(fit_type="global_opt", fix_cosmo=True)
+args.set_baseline(fit_type="global_opt", fix_cosmo=False, P1D_type="DESIY1_QMLE3")
 pip = Pipeline(args)
 
 p0 = pip.fitter.like.sampling_point_from_parameters()
@@ -218,21 +218,42 @@ pip.fitter.like.get_chi2(p0)
 fit_type = "global_opt"
 data_lab = "DESIY1_QMLE3"
 emu = "mpg"
+
 folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
 data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
-tar_cosmo = pip.fitter.like.apply_unblinding(data_cen['mle_cosmo_cen'])
-pip.fitter.like.theory.rescale_fid_cosmo(tar_cosmo)
+# tar_cosmo = pip.fitter.like.apply_unblinding(data_cen['mle_cosmo_cen'])
+# pip.fitter.like.theory.rescale_fid_cosmo(tar_cosmo)
 
 # %%
-p0 = data_cen["mle_cube"][2:]
-print(data_cen['best_chi2'], pip.fitter.like.get_chi2(p0))
+data_cen["mle_cosmo_cen"]
+
+# %%
+p0 = pip.fitter.like.sampling_point_from_parameters()
+pip.run_minimizer(p0, restart=True)
+
+# %%
+p0min = pip.fitter.mle_cube.copy()
+
+# %%
+pip.fitter.mle
+
+# %%
+pip.fitter.mle
+
+# %%
+# p0 = data_cen["mle_cube"].copy()
+# print(data_cen['best_chi2'], pip.fitter.like.get_chi2(p0min))
+
+# %%
+pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, plot_fname="figs/glob_opt_qmle3", print_chi2=False)
+
+# %%
+# pip.fitter.like.data.plot_p1d(fname="figs/p1d_qmle3")
+pip.fitter.like.plot_cov_to_pk(fname="figs/err2p1d_qmle3")
+
 
 # %% [markdown]
 # ### Get some data for Sec results
-
-# %%
-data_cen["mle"]
-
 
 # %%
 def mle_to_table(mle):
