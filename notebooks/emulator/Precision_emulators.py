@@ -163,7 +163,7 @@ for ii in range(nsam):
 
 # %%
 fig, ax = plt.subplots(figsize=(8, 6))
-ftsize = 20
+ftsize = 24
 
 for per in [5, 16, 84, 95]:
     lab = str(per) + "th percentile"
@@ -184,10 +184,10 @@ ax.tick_params(
     axis="both", which="major", labelsize=ftsize - 2
 )
 
-plt.legend(fontsize=ftsize-4, ncol=1)
+plt.legend(fontsize=ftsize-2, ncol=1)
 plt.tight_layout()
-plt.savefig("mpg_smooth.pdf")
-plt.savefig("mpg_smooth.png")
+plt.savefig("figs/mpg_smooth.pdf")
+plt.savefig("figs/mpg_smooth.png")
 
 # %% [markdown]
 # ### L1O

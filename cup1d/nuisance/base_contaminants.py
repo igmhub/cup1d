@@ -185,7 +185,10 @@ class Contaminant(object):
                     name,
                 )
         else:
-            raise ValueError("prop_coeffs must be interp or pivot for", name)
+            raise ValueError(
+                "prop_coeffs must be interp_lin, interp_spl, interp_smspl, or pivot for",
+                name,
+            )
 
         if self.z_max is not None:
             if len(np.atleast_1d(z)) > 1:

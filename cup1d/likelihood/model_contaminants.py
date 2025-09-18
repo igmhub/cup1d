@@ -29,8 +29,7 @@ class Contaminants(object):
     ):
         self.pars_cont = pars_cont
         self.ic_correction = ic_correction
-        # setup metal models
-        self.metal_models = {}
+
         if "flat_priors" in pars_cont:
             flat_priors = pars_cont["flat_priors"]
         else:
@@ -63,9 +62,14 @@ class Contaminants(object):
                         prop_coeffs[key3] = "pivot"
 
         # if joint_model:
-        self.metal_add = ["CIVa_CIVb", "MgIIa_MgIIb", "Si_add"]
+        self.metal_add = [
+            # "CIVa_CIVb",
+            # "MgIIa_MgIIb",
+            "Si_add",
+        ]
 
         # setup metal models
+        self.metal_models = {}
         key = "Si_mult"
         try:
             self.metal_models[key] = metal_models[key]

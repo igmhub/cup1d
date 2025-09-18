@@ -81,6 +81,8 @@ class Resolution_Model_Chunks(object):
         R_coeff = self.get_R_coeffs(like_params=like_params)
 
         z_pivot, z_pivot_index = split_into_n_chunks(z, self.n_R)
+        # print(z_pivot, z_pivot_index)
+        # print(R_coeff)
 
         cont = []
         for ii in range(self.n_R):

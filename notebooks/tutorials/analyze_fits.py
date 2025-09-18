@@ -33,15 +33,19 @@ from cup1d.likelihood.pipeline import Pipeline
 from cup1d.utils.utils import get_path_repo
 
 # +
-emu = "mpg"
+# emu = "mpg"
 # emu = "nyx"
-data_label = "DESIY1_QMLE3"
+# data_label = "DESIY1_QMLE3"
 # data_label = "DESIY1_FFT_dir"
-type_fit = "global_opt"
+# type_fit = "global_opt"
 
-args = Args(data_label=data_label, emulator_label="CH24_"+emu+"cen_gpr")
-args.set_baseline(fit_type=type_fit, fix_cosmo=True, P1D_type=data_label)
-pip = Pipeline(args, out_folder=None)
+# args = Args(data_label=data_label, emulator_label="CH24_"+emu+"cen_gpr")
+# args.set_baseline(fit_type=type_fit, fix_cosmo=True, P1D_type=data_label)
+# pip = Pipeline(args, out_folder=None)
+
+name_variation = None
+args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
+args.set_baseline(fit_type="global_opt", fix_cosmo=True, P1D_type="DESIY1_QMLE3", name_variation=name_variation, inflate_err=True)
 
 ndeg = 0 
 for ii in range(len(pip.fitter.like.data.k_kms)):

@@ -381,7 +381,8 @@ class Likelihood(object):
                             )
 
                 # inflate errors
-                cov *= self.cov_factor
+                ind = np.argmin(np.abs(self.cov_factor["z"] - data.z[ii]))
+                cov *= self.cov_factor["val"][ind] ** 2
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
                     self.icov_Pk_kms.append(np.linalg.inv(cov))
@@ -420,6 +421,7 @@ class Likelihood(object):
                     elif self.emu_cov_type == "block":
                         full_emu_cov = block_diag(*emu_cov_blocks)
                         cov += full_emu_cov * self.emu_cov_factor
+
                     # full
                     else:
                         full_emu_cov = np.zeros_like(cov)
@@ -453,10 +455,25 @@ class Likelihood(object):
                                     * data.full_Pk_kms[i1]
                                 )
 
-                        cov += full_emu_cov * self.emu_cov_factor
+                                cov[i0, i1] += (
+                                    full_emu_cov[i0, i1] * self.emu_cov_factor
+                                )
 
                 # inflate errors
-                cov *= self.cov_factor
+                for i0 in range(cov.shape[0]):
+                    ind0 = np.argmin(
+                        np.abs(self.cov_factor["z"] - data.full_zs[i0])
+                    )
+                    fact0 = self.cov_factor["val"][ind0]
+
+                    for i1 in range(cov.shape[0]):
+                        ind1 = np.argmin(
+                            np.abs(self.cov_factor["z"] - data.full_zs[i1])
+                        )
+                        fact1 = self.cov_factor["val"][ind1]
+
+                        cov[i0, i1] = cov[i0, i1] * fact0 * fact1
+
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
                     self.full_icov_Pk_kms = np.linalg.inv(cov)
@@ -1083,6 +1100,7 @@ class Likelihood(object):
         z_at_time=False,
         fontsize=20,
         glob_full=False,
+        chi2_nozcov=False,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
@@ -1122,6 +1140,10 @@ class Likelihood(object):
             chi2, chi2_all = self.get_chi2(
                 values=values, return_all=True, zmask=zmask
             )
+
+            if chi2_nozcov:
+                chi2 = np.sum(chi2_all)
+
         else:
             emu_p1d = []
             chi2_all = []
@@ -1235,13 +1257,17 @@ class Likelihood(object):
         prob = chi2_scipy.sf(chi2, _ndeg)
         print(prob * 100)
 
+        if prob > 0.0001:
+            str_chi2 = str(np.round(prob * 100, 2))
+        else:
+            str_chi2 = str(np.round(prob * 100, 4))
         label = (
             r"$\chi^2=$"
             + str(np.round(chi2, 2))
             + r", $n_\mathrm{deg}$="
             + str(_ndeg)
             + ", prob="
-            + str(np.round(prob * 100, 2))
+            + str_chi2
             + "%"
         )
 
@@ -1794,8 +1820,10 @@ class Likelihood(object):
         cloud=False,
         free_params=None,
         save_directory=None,
-        stat_best_fit="mle",
         zmask=None,
+        plot_type="all",
+        plot_fid=True,
+        ftsize=18,
     ):
         """Plot IGM histories"""
 
@@ -1844,16 +1872,24 @@ class Likelihood(object):
                 "P_model"
             ].get_kF_kms(zs, like_params=free_params)
 
-        fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
-        ax = ax.reshape(-1)
+        if plot_type == "all":
+            fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
+            arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
+            latex_labs = [
+                r"$\tau_\mathrm{eff}$",
+                r"$\gamma$",
+                r"$\sigma_\mathrm{T} [\mathrm{km\,s^{-1}}]$",
+                r"$k_F$ [km/s]",
+            ]
+        elif plot_type == "tau_sigT":
+            fig, ax = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
+            arr_labs = ["tau_eff", "sigT_kms"]
+            latex_labs = [
+                r"$\tau_\mathrm{eff}$",
+                r"$\sigma_\mathrm{T}\,\left[\mathrm{km\,s^{-1}}\right]$",
+            ]
 
-        arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
-        latex_labs = [
-            r"$\tau_\mathrm{eff}$",
-            r"$\gamma$",
-            r"$\sigma_T$ [km/s]",
-            r"$k_F$ [km/s]",
-        ]
+        ax = ax.reshape(-1)
 
         for ii in range(len(arr_labs)):
             # if self.truth is not None:
@@ -1866,31 +1902,16 @@ class Likelihood(object):
             #         label="true",
             #     )
 
-            _ = pars_fid[arr_labs[ii]] != 0
-            ax[ii].plot(
-                pars_fid["z"][_],
-                pars_fid[arr_labs[ii]][_],
-                "C1--",
-                label="fiducial",
-                alpha=0.75,
-                lw=3,
-            )
-
-            if free_params is not None:
-                _ = pars_test[arr_labs[ii]] != 0
-                ax[ii].plot(
-                    pars_test["z"][_],
-                    pars_test[arr_labs[ii]][_],
-                    "C2o-.",
-                    label="fit",
-                    alpha=0.75,
-                    lw=3,
-                )
-
             if cloud:
-                for sim_label in self.theory.emu_igm_all:
+                for jj, sim_label in enumerate(self.theory.emu_igm_all):
                     if is_number_string(sim_label[-1]) == False:
                         continue
+                    if jj == 0:
+                        lab = "Training data"
+                        alpha = 0.75
+                    else:
+                        lab = None
+                        alpha = 0.1
 
                     _ = np.argwhere(
                         self.theory.emu_igm_all[sim_label][arr_labs[ii]] != 0
@@ -1900,24 +1921,61 @@ class Likelihood(object):
                             self.theory.emu_igm_all[sim_label]["z"][_],
                             self.theory.emu_igm_all[sim_label][arr_labs[ii]][_],
                             marker=".",
-                            color="black",
-                            alpha=0.05,
+                            color="C1",
+                            alpha=alpha,
+                            label=lab,
                         )
 
-            ax[ii].set_ylabel(latex_labs[ii])
+            _ = pars_fid[arr_labs[ii]] != 0
+
+            if plot_fid:
+                ax[ii].plot(
+                    pars_fid["z"][_],
+                    pars_fid[arr_labs[ii]][_],
+                    "C1--",
+                    label="fiducial",
+                    alpha=0.75,
+                    lw=3,
+                )
+
+            if free_params is not None:
+                _ = pars_test[arr_labs[ii]] != 0
+                ax[ii].plot(
+                    pars_test["z"][_],
+                    pars_test[arr_labs[ii]][_],
+                    "C0:",
+                    label="Best-fitting model",
+                    alpha=1,
+                    lw=3,
+                )
+
+                lab = arr_labs[ii] + "_znodes"
+                if lab in self.args.fid_igm:
+                    yy = np.interp(
+                        self.args.fid_igm[lab],
+                        pars_test["z"][_],
+                        pars_test[arr_labs[ii]][_],
+                    )
+                    ax[ii].scatter(
+                        self.args.fid_igm[lab], yy, marker="o", color="C0"
+                    )
+
+            ax[ii].set_ylabel(latex_labs[ii], fontsize=ftsize)
             if ii == 0:
                 ax[ii].set_yscale("log")
-                ax[ii].legend()
+                ax[ii].legend(fontsize=ftsize, loc="upper left")
 
-            if (ii == 2) | (ii == 3):
-                ax[ii].set_xlabel(r"$z$")
+            if (ii == 2) | (ii == len(arr_labs) - 1):
+                ax[ii].set_xlabel(r"$z$", fontsize=ftsize)
 
+            ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+            ax[ii].tick_params(axis="both", which="minor", labelsize=ftsize - 2)
+
+        ax[0].set_ylim(0.09)
         plt.tight_layout()
 
         if save_directory is not None:
-            name = os.path.join(
-                save_directory, "IGM_histories_" + stat_best_fit
-            )
+            name = os.path.join(save_directory, "IGM_histories")
             plt.savefig(name + ".pdf")
             plt.savefig(name + ".png")
         else:
@@ -2161,10 +2219,14 @@ class Likelihood(object):
             pname, iistr = split_string(p.name)
             ii = int(iistr)
 
-            try:
+            if (pname + "_znodes") in self.args.fid_igm:
                 znode = self.args.fid_igm[pname + "_znodes"][ii]
-            except:
+            elif (pname + "_znodes") in self.args.fid_cont:
                 znode = self.args.fid_cont[pname + "_znodes"][ii]
+            elif (pname + "_znodes") in self.args.fid_syst:
+                znode = self.args.fid_syst[pname + "_znodes"][ii]
+            else:
+                raise ValueError("Could not find znode for " + p.name)
 
             iz = np.argmin(np.abs(dir_out["z"] - znode))
             # print(iz, znode, dir_out["z"][iz])
@@ -2207,20 +2269,48 @@ class Likelihood(object):
             pname, iistr = split_string(p.name)
             ii = int(iistr)
 
-            try:
+            if (pname + "_znodes") in self.args.fid_igm:
                 znode = self.args.fid_igm[pname + "_znodes"][ii]
-            except:
-                znode = self.args.fid_cont[pname + "_znodes"][ii]
-
-            _z = dir_out[pname]["z"]
-            _val = dir_out[pname]["val"]
-            p.value = np.interp(znode, _z, _val)
-
-            try:
                 isfixed = self.args.fid_igm[pname + "_fixed"]
-            except:
+            elif (pname + "_znodes") in self.args.fid_cont:
+                znode = self.args.fid_cont[pname + "_znodes"][ii]
                 isfixed = self.args.fid_cont[pname + "_fixed"]
+            elif (pname + "_znodes") in self.args.fid_syst:
+                znode = self.args.fid_syst[pname + "_znodes"][ii]
+                isfixed = self.args.fid_syst[pname + "_fixed"]
+            else:
+                raise ValueError(
+                    pname
+                    + "_znodes not found in either fid_igm, fid_cont, or fid_syst"
+                )
+
             p.fixed = isfixed
+
+            if (pname not in dir_out) and (pname == "kF_kms"):
+                p.value = 1
+            elif (pname not in dir_out) and (pname == "HCD_const"):
+                p.value = 0
+            elif (pname not in dir_out) and (pname == "HCD_damp2"):
+                p.value = -4.5
+            elif (pname not in dir_out) and (pname == "HCD_damp3"):
+                p.value = -5.3
+            elif (pname not in dir_out) and (pname == "R_coeff"):
+                p.value = 0
+            else:
+                _z = dir_out[pname]["z"]
+                _val = dir_out[pname]["val"]
+                p.value = np.interp(znode, _z, _val)
+
+            # if p.name == "tau_eff_0":
+            #     p.value = 0.0
+            # elif p.name == "tau_eff_1":
+            #     p.value = -0.1
+            # elif p.name == "gamma_0":
+            #     p.value = 0.9
+            # elif p.name == "gamma_1":
+            #     p.value = 0.9
+            # elif p.name == "R_coeff_0":
+            #     p.value = -0.7
 
             if verbose:
                 print(

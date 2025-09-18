@@ -69,6 +69,13 @@ cmb = planck_chains.get_planck_2018(
     linP_tag=None
 )
 
+cmb_tau = planck_chains.get_planck_2018(
+    model='base',
+    data='plikHM_TTTEEE_lowl_linP',
+    root_dir=root_dir,
+    linP_tag=None
+)
+
 cmb_nrun = planck_chains.get_planck_2018(
     model='base_nrun',
     data='plikHM_TTTEEE_lowl_lowE_linP',
@@ -138,14 +145,39 @@ cmb["samples"].getParamSampleDict(0).keys()
 
 # %%
 ftsize = 20
-lw = 2
+lw = 3
+cmb_all = [cmb, cmb_tau, cmb_mnu, cmb_nnu, cmb_nrun, cmb_nrun_nrunrun]
+cmb_labs = [
+    r"Planck $\Lambda$CDM", 
+    r"Planck $\Lambda$CDM (no lowE)",
+    r"Planck $\sum m_\nu$",
+    r"Planck $N_\mathrm{eff}$",
+    r"Planck $\mathrm{d}n_\mathrm{s} / \mathrm{d}\log k$",
+    r"Planck $\mathrm{d}n_\mathrm{s} / \mathrm{d}\log k$, $\mathrm{d}^2 n_\mathrm{s} / \mathrm{d}\log k^2$"
+]
+
 g = plots.getSinglePlotter(width_inch=10)
-g.plot_2d(cmb['samples'], ['linP_DL2_star', 'linP_n_star'], colors=["C0"], lws=lw)
-g.plot_2d(cmb_mnu['samples'], ['linP_DL2_star', 'linP_n_star'], colors=["C1"], lws=lw)
-g.plot_2d(cmb_nnu['samples'], ['linP_DL2_star', 'linP_n_star'], colors=["C2"], lws=lw)
-g.plot_2d(cmb_nrun['samples'], ['linP_DL2_star', 'linP_n_star'], colors=["C3"], lws=lw)
-g.plot_2d(cmb_nrun_nrunrun['samples'], ['linP_DL2_star', 'linP_n_star'], colors=["C4"], lws=lw)
+
+for ii, icmb in enumerate(cmb_all):
+    if ii == 0:
+        filled = True
+    else:
+        filled = False
+    g.plot_2d(
+        icmb['samples'], 
+        ['linP_DL2_star', 'linP_n_star'], 
+        colors=["C"+str(ii)], 
+        lws=lw, 
+        alphas=0.8, 
+        filled=filled
+    )
+
 ax = g.subplots[0,0]
+ax.axhline(y=1,color='k',lw=lw,label=r"DESI-DR1 Ly$\alpha$ (this work)")
+for ii, icmb in enumerate(cmb_all):
+    ax.axhline(y=1,color="C"+str(ii),lw=lw,label=cmb_labs[ii])    
+
+
 
 true_DL2=0.35
 true_neff=-2.3
@@ -160,20 +192,15 @@ neff_grid, DL2_grid = np.mgrid[-2.4:-2.2:200j, 0.2:0.65:200j]
 chi2_desi = coeff_mult * marg_lya_like.gaussian_chi2(neff_grid,DL2_grid, true_neff, true_DL2, neff_err, DL2_err, r)
 CS = ax.contour(DL2_grid, neff_grid, chi2_desi, levels=thresholds[:2], colors='k', linewidths=lw)
 
-ax.axhline(y=1,color='k',lw=lw,label=r"DESI-DR1 Ly$\alpha$ (this work)")
-ax.axhline(y=1,color='C0',lw=lw,label=r"Planck $\Lambda$CDM")
-ax.axhline(y=1,color='C1',lw=lw,label=r"Planck $\sum m_\nu$")
-ax.axhline(y=1,color='C2',lw=lw,label=r"Planck $N_\mathrm{eff}$")
-ax.axhline(y=1,color='C3',lw=lw,label=r"Planck $\mathrm{d}n_\mathrm{s} / \mathrm{d}\log k$")
-ax.axhline(y=1,color='C4',lw=lw,label=r"Planck $\mathrm{d}n_\mathrm{s} / \mathrm{d}\log k$, $\mathrm{d}^2 n_\mathrm{s} / \mathrm{d}\log k^2$")
+
 
 ax.set_xlim(0.25, 0.45)
-ax.set_ylim(-2.4, -2.2)
+ax.set_ylim(-2.37, -2.23)
 ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
 ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
 ax.tick_params(axis="both", which="major", labelsize=ftsize)
 
-plt.legend(fontsize=ftsize-2, loc="upper left")
+plt.legend(fontsize=ftsize-2, loc="upper left", ncol=2)
 # plt.tight_layout()
 
 plt.savefig("figs/star_planck_mine.png", bbox_inches='tight')
@@ -280,11 +307,62 @@ g = plots.getSubplotPlotter(width_inch=16)
 g.settings.axes_fontsize = 10
 g.settings.legend_fontsize = 14
 g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
-                ['linP_DL2_star','linP_n_star','logA','ns'],
-                legend_labels=['Planck 2018 + SDSS',labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+                ['linP_DL2_star','linP_n_star'],
+                legend_labels=['Planck 2018',labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+# g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+#                 ['linP_DL2_star','linP_n_star','logA','ns'],
+#                 legend_labels=['Planck 2018 + SDSS',labels_DESI[0],labels_DESI[1],labels_DESI[2]])
 # g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
 #                 ['linP_DL2_star','linP_n_star','logA','ns', "tau"],
 #                 legend_labels=['Planck 2018 + SDSS',labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+
+# %% [markdown]
+# #### In tau
+
+# %%
+samples_DESI=[]
+true_DL2=[0.33,0.35,0.37]
+true_neff=[-2.295,-2.30,-2.305]
+DL2_err = 0.056
+neff_err = 0.022
+r=-0.134
+coeff_mult = 2.3 # should it be 0.5?
+
+chain_type = cmb_tau
+
+
+labels_DESI=[]
+for ii in range(len(true_DL2)):
+    new_samples=chain_type['samples'].copy()
+    p=new_samples.getParams()
+    new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
+        p.linP_n_star, 
+        p.linP_DL2_star, 
+        true_DL2=true_DL2[ii],
+        true_neff=true_neff[ii],
+        neff_err=neff_err,
+        DL2_err=DL2_err,
+        r=r
+    )
+    new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
+    samples_DESI.append(new_samples)
+    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
+
+
+g = plots.getSubplotPlotter(width_inch=16)
+g.settings.axes_fontsize = 10
+g.settings.legend_fontsize = 14
+g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+                ['linP_DL2_star','linP_n_star', "tau"],
+                legend_labels=['Planck 2018 (no lowE)',labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+# g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+#                 ['linP_DL2_star','linP_n_star','logA','ns'],
+#                 legend_labels=['Planck 2018 + SDSS',labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+# g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+#                 ['linP_DL2_star','linP_n_star','logA','ns', "tau"],
+#                 legend_labels=['Planck 2018 + SDSS',labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+plt.savefig("figs/import_tau.png")
+plt.savefig("figs/import_tau.pdf")
 
 # %% [markdown]
 # #### No constraints on w0, wa

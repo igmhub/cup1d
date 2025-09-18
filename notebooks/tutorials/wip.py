@@ -198,6 +198,7 @@ p0[-1]=0
 pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True)
 
 # %%
+# Turner24
 
 # %%
 
@@ -207,12 +208,169 @@ pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True)
 
 # args.set_baseline(fit_type="global_all", fix_cosmo=True)
 
+# fid 0.18697989940945323
+# HCD depend z, 0.13580926057347983
+# same num IGM, new fid, 0.1755366851767883
+
+name_variation = None
+# name_variation = "no_res"
+# name_variation = "Turner24"
+
 args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
-args.set_baseline(fit_type="global_opt", fix_cosmo=False, P1D_type="DESIY1_QMLE3")
+args.set_baseline(
+    fit_type="global_opt", 
+    fix_cosmo=False, 
+    P1D_type="DESIY1_QMLE3", 
+    name_variation=name_variation, 
+    inflate_err=True
+)
+
 pip = Pipeline(args)
 
 p0 = pip.fitter.like.sampling_point_from_parameters()
 pip.fitter.like.get_chi2(p0)
+
+# %%
+# from cup1d.likelihood.cosmologies import set_cosmo
+
+# cosmos = set_cosmo("mpg_central", return_all=True)
+
+# p1 = np.zeros(len(cosmos))
+# p2 = np.zeros(len(cosmos))
+# for ii, key in enumerate(cosmos):
+#     p1[ii] = cosmos[key]["star_params"]['Delta2_star']
+#     p2[ii] = cosmos[key]["star_params"]['n_star']
+
+# plt.scatter(p1, p2)
+
+# print(p1.min(), p1.max())
+# print(p2.min(), p2.max())
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+# from cup1d.nuisance.resolution_class import get_Rz_Naim
+
+# # k_kms = np.geomspace(0.003, 0.04, 100) 
+# nz = len(pip.fitter.like.data.z)
+# fig, ax = plt.subplots(4, 3, figsize=(8, 6), sharex=True, sharey=True)
+# ax = ax.reshape(-1)
+# for jj in range(nz):
+#     bias = 0.015
+    
+#     k_kms = pip.fitter.like.data.k_kms[jj]
+#     z = pip.fitter.like.data.z[jj]
+#     cont = bias * 2 * get_Rz_Naim(z)**2 * k_kms**2
+#     pk = pip.fitter.like.data.Pk_kms[jj]
+#     err = np.sqrt(np.diag(pip.fitter.like.cov_Pk_kms[jj]))
+#     ax[jj].set_title("z=" + str(z))
+#     # ax[jj].plot(k_kms, pk * cont)
+#     # ax[jj].plot(k_kms, err)
+#     ax[jj].plot(k_kms, pk * cont/err)
+#     ax[jj].set_xscale("log")
+#     ax[jj].axhline(0.5)
+# plt.tight_layout()
+
+# %%
+
+pip.fitter.like.get_chi2(p0)
+
+# %%
+# pip.fitter.like.data.plot_p1d(fname="figs/p1d_qmle3")
+# pip.fitter.like.data.plot_p1d()
+# pip.fitter.like.plot_cov_to_pk(fname="figs/err2p1d_qmle3")
+
+# %%
+# cov_stat = pip.fitter.like.data.covstat_Pk_kms.copy()
+# covfull_stat = pip.fitter.like.data.cov_Pk_kms.copy()
+
+# %%
+# cov_stat3 = pip.fitter.like.data.covstat_Pk_kms.copy()
+# covfull_stat3 = pip.fitter.like.data.cov_Pk_kms.copy()
+
+# %%
+# res = 0
+# for ii in range(len(cov_stat)):
+#     y1 = covfull_stat[ii] - cov_stat[ii]
+#     y2 = covfull_stat3[ii] - cov_stat3[ii]
+#     res += np.mean(np.sqrt(np.diag(y1))/np.sqrt(np.diag(y2)))
+# res/=len(cov_stat)
+# res
+
+# %%
+pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
+# pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, print_chi2=False)
+
+# %%
+p0 = pip.fitter.like.sampling_point_from_parameters()
+# p0[2] = 0.5
+# p0[14] = 0.5
+# p0 = p0min
+pip.run_minimizer(p0, restart=True)
+
+# %%
+# p0 = pip.fitter.like.sampling_point_from_parameters()
+free_params = pip.fitter.like.parameters_from_sampling_point(p0min)
+# free_params = pip.fitter.like.parameters_from_sampling_point(p0)
+
+# %%
+# with resolution
+Delta2_star 0.48258
+n_star -2.26846
+alpha_star -0.21803
+prob 3.6517204717834764
+chi2 703.49
+
+# with no resolution
+chi2
+Delta2_star 0.50047
+n_star -2.2727
+alpha_star -0.21803
+
+# %%
+# pip.fitter.like.args
+
+# %%
+
+# pip.fitter.like.plot_p1d(residuals=True, plot_panels=True, glob_full=True, fontsize=18, chi2_nozcov=True)
+
+# %%
+pip.fitter.like.plot_igm(free_params=free_params, plot_fid = False, plot_type="tau_sigT", cloud=True, ftsize=20, save_directory="figs")
+
+# %%
+# pip.fitter.like.plot_igm(free_params=free_params, plot_fid = False, plot_type="tau_sigT", cloud=True, ftsize=20)
+# pip.fitter.like.plot_igm(cloud=True, ftsize=5)
+pip.fitter.like.plot_igm(free_params=free_params, cloud=True, ftsize=5)
+
+# %%
+p0min = pip.fitter.mle_cube.copy()
+pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, print_chi2=False)
+
+# %%
+p0min = pip.fitter.mle_cube.copy()
+# pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, print_chi2=False, plot_fname="figs/residual_opt_global")
+pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, print_chi2=False, plot_fname=None)
+
+# %%
+pip.fitter.mle
+
+# %%
+pip.fitter.mle
+
+# %%
+pip.fitter.mle_cosmo
+
+# %%
 
 # %%
 fit_type = "global_opt"
@@ -230,6 +388,13 @@ data_cen["mle_cosmo_cen"]
 # %%
 p0 = pip.fitter.like.sampling_point_from_parameters()
 pip.run_minimizer(p0, restart=True)
+p0min = pip.fitter.mle_cube.copy()
+
+# %% [markdown]
+# Turner24 807
+
+# %%
+772
 
 # %%
 p0min = pip.fitter.mle_cube.copy()

@@ -73,7 +73,7 @@ class Args:
     )
     syst_params: dict = field(
         default_factory=lambda: {
-            "res": 0,
+            "R_coeff": [0, 0],
         }
     )
     true_syst: dict = field(
@@ -161,18 +161,39 @@ class Args:
         self,
         fix_cosmo=True,
         fit_type="at_a_time",
-        ztar=0,
-        zmin=2.2,
-        zmax=4.2,
+        z_min=2.2,
+        z_max=4.2,
         P1D_type="DESIY1_QMLE3",
         name_variation=None,
+        inflate_err=False,
     ):
         """
         Set baseline parameters
         """
+
+        self.z_min = z_min
+        self.z_max = z_max
         self.ic_from_file = None
         self.fit_type = fit_type
-        self.fid_syst["n_res"] = 0
+
+        # multiply cov by square
+        if inflate_err:
+            self.cov_factor = {
+                "z": np.linspace(z_min, z_max, 11),
+                "val": np.ones(11),
+            }
+            zinf = np.array([3.0, 3.6, 4.0])
+            for z in zinf:
+                ind = np.argmin(np.abs(self.cov_factor["z"] - z))
+                if z == 3.6:
+                    self.cov_factor["val"][ind] = 1.1
+                else:
+                    self.cov_factor["val"][ind] = 1.1
+        else:
+            self.cov_factor = {
+                "z": np.linspace(z_min, z_max, 11),
+                "val": np.ones(11),
+            }
 
         if fit_type not in [
             "global_all",  # all params from at_a_time_global
@@ -187,8 +208,6 @@ class Args:
         if P1D_type.startswith("DESIY1"):
             self.P1D_type = P1D_type
             self.cov_syst_type = "red"
-            self.z_min = 2.1
-            self.z_max = 4.3
 
             path_in_challenge = os.path.join(
                 os.path.dirname(get_path_repo("cup1d")), "data", "in_DESI_DR1"
@@ -243,6 +262,9 @@ class Args:
             "n_f_SiIIb_SiIII",
         ]
         self.fid_cont["HCD_const_otype"] = "const"
+        self.fid_syst["R_coeff_ztype"] = "interp_lin"
+        self.fid_syst["R_coeff_otype"] = "const"
+        self.fid_syst["R_coeff_fixed"] = False
         for prop in cont_props:
             self.fid_cont[prop] = 0
 
@@ -257,7 +279,6 @@ class Args:
 
         self.null_vals = {}
 
-        self.cov_factor = 1
         self.cov_syst_type = "red"
         self.emu_cov_factor = 1
         self.emu_cov_type = "block"
@@ -290,6 +311,9 @@ class Args:
         self.fid_igm["label_mF"] = sim_fid
         self.fid_igm["label_T"] = sim_fid
         self.fid_igm["label_kF"] = sim_fid
+
+        if name_variation == "Turner24":
+            self.fid_igm["label_mF"] = "Turner24"
 
         self.fid_cont["hcd_model_type"] = "new_rogers"
 
@@ -327,6 +351,8 @@ class Args:
                 "f_SiIIa_SiIII",
                 "f_SiIIb_SiIII",
                 "HCD_damp1",
+                "HCD_damp2",
+                "HCD_damp3",
                 "HCD_damp4",
             ]
 
@@ -334,10 +360,10 @@ class Args:
                 self.fid_cont["z_max"][prop] = 5
 
             print("baseline_prop", baseline_prop)
-
-            self.fid_syst["res_model_type"] = "pivot"
-            self.fid_syst["n_res"] = 0
-            self.fid_syst["R_coeff"] = [0, 0]
+            self.fid_syst["R_coeff_znodes"] = np.array([2.2])
+            # self.fid_syst["R_coeff_znodes"] = []
+            self.fid_syst["n_R_coeff"] = 1
+            self.fid_syst["R_coeff_ztype"] = "pivot"
 
             props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
             props_cont = [
@@ -350,8 +376,8 @@ class Args:
                 "f_SiIIa_SiIII",
                 "f_SiIIb_SiIII",
                 "HCD_damp1",
-                # "HCD_damp2",
-                # "HCD_damp3",
+                "HCD_damp2",
+                "HCD_damp3",
                 "HCD_damp4",
                 # "HCD_const",
             ]
@@ -425,6 +451,8 @@ class Args:
                 "f_SiIIa_SiIII",
                 "f_SiIIb_SiIII",
                 "HCD_damp1",
+                "HCD_damp2",
+                "HCD_damp3",
                 "HCD_damp4",
             ]
 
@@ -432,6 +460,12 @@ class Args:
             nodes = np.array(
                 [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
             )
+
+            self.fid_syst["R_coeff_znodes"] = np.array(
+                [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8]
+            )
+            # self.fid_syst["R_coeff_znodes"] = []
+            self.fid_syst["n_R_coeff"] = len(self.fid_syst["R_coeff_znodes"])
 
             self.fid_igm["tau_eff_znodes"] = nodes
             self.fid_igm["sigT_kms_znodes"] = nodes
@@ -553,19 +587,58 @@ class Args:
                     "f_SiIIa_SiIII",
                     "f_SiIIb_SiIII",
                     "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
                     "HCD_damp4",
                 ]
+
+            ztest = [
+                # "f_Lya_SiIII",
+                # "s_Lya_SiIII",
+                # "f_Lya_SiII",
+                # "s_Lya_SiII",
+                "f_SiIIa_SiIIb",
+                "s_SiIIa_SiIIb",
+                # "f_SiIIa_SiIII",
+                # "f_SiIIb_SiIII",
+                # "HCD_damp1",
+                # "HCD_damp2",
+                # "HCD_damp3",
+                # "HCD_damp4",
+            ]
+
+            if name_variation == "no_res":
+                self.fid_syst["R_coeff_znodes"] = []
+            else:
+                self.fid_syst["R_coeff_znodes"] = np.array(
+                    [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8]
+                )
+            self.fid_syst["n_R_coeff"] = len(self.fid_syst["R_coeff_znodes"])
 
             self.opt_props = props_igm + props_cont
             var_props = self.opt_props
 
             # nodes = np.geomspace(2.2, 4.2, 3)
-            nodes = np.geomspace(zmin, zmax, 1)
+            nodes = np.geomspace(self.z_min, self.z_max, 1)
+            nodes2 = np.geomspace(self.z_min, self.z_max, 2)
 
-            self.fid_igm["tau_eff_znodes"] = np.geomspace(zmin, zmax, 6)
-            self.fid_igm["sigT_kms_znodes"] = np.geomspace(zmin, zmax, 4)
-            self.fid_igm["gamma_znodes"] = np.geomspace(zmin, zmax, 4)
+            if name_variation == "Turner24":
+                self.fid_igm["tau_eff_znodes"] = np.array([3.0])
+            else:
+                self.fid_igm["tau_eff_znodes"] = np.geomspace(
+                    self.z_min, self.z_max, 6
+                )
+            self.fid_igm["sigT_kms_znodes"] = np.geomspace(
+                self.z_min, self.z_max, 6
+            )
+            self.fid_igm["gamma_znodes"] = np.geomspace(
+                self.z_min, self.z_max, 6
+            )
+
             self.fid_igm["kF_kms_znodes"] = []
+            # self.fid_igm["kF_kms_znodes"] = np.geomspace(
+            #     self.z_min, self.z_max, 4
+            # )
             for prop in props_igm:
                 self.fid_igm["n_" + prop] = len(self.fid_igm[prop + "_znodes"])
                 if self.fid_igm["n_" + prop] <= 1:
@@ -579,7 +652,11 @@ class Args:
                     self.fid_igm[prop + "_fixed"] = False
 
             for prop in props_cont:
-                self.fid_cont[prop + "_znodes"] = nodes
+                if prop in ztest:
+                    self.fid_cont[prop + "_znodes"] = nodes2
+                else:
+                    self.fid_cont[prop + "_znodes"] = nodes
+
                 self.fid_cont["n_" + prop] = len(
                     self.fid_cont[prop + "_znodes"]
                 )
@@ -763,7 +840,7 @@ class Args:
 
         self.fid_cont["flat_priors"]["s_SiIIa_SiIIb"] = [
             [-1, 3],
-            [0, 5.5],
+            [0, 7.5],
         ]
 
         self.fid_cont["flat_priors"]["f_SiIIa_SiIII"] = [
@@ -777,11 +854,15 @@ class Args:
 
         # priors
         # -0.03, 75% of all fluctuations
-        self.fid_cont["flat_priors"]["HCD_damp1"] = [[-0.5, 0.5], [-10.0, -1.0]]
+        # self.fid_cont["flat_priors"]["HCD_damp1"] = [[-0.5, 0.5], [-10.0, -1.0]]
+        self.fid_cont["flat_priors"]["HCD_damp1"] = [
+            [-0.5, 0.5],
+            [-10.0, -0.03],
+        ]
         self.fid_cont["flat_priors"]["HCD_damp2"] = [[-0.5, 0.5], [-10.0, -1.0]]
         self.fid_cont["flat_priors"]["HCD_damp3"] = [[-0.5, 0.5], [-10.0, -1.0]]
         self.fid_cont["flat_priors"]["HCD_damp4"] = [[-0.5, 0.5], [-10.0, -1.0]]
-        self.fid_cont["flat_priors"]["HCD_const"] = [[-1, 1], [-0.2, 1e-6]]
+        self.fid_cont["flat_priors"]["HCD_const"] = [[-1, 1], [-0.2, 0.2]]
 
         for key in self.fid_cont:
             if key in self.fid_cont["flat_priors"]:

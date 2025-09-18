@@ -31,10 +31,15 @@ from cup1d.utils.utils import get_path_repo
 # -
 
 
-emu = "mpg"
-args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_"+emu+"cen_gpr")
-args.set_baseline(fit_type="at_a_time_global", fix_cosmo=True)
+name_variation = None
+args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
+args.set_baseline(fit_type="at_a_time_global", fix_cosmo=True, P1D_type="DESIY1_QMLE3", name_variation=name_variation, inflate_err=True)
 pip = Pipeline(args, out_folder=None)
+
+npoints = []
+for ii in range(len(pip.fitter.like.data.z)):
+    npoints.append(len(pip.fitter.like.data.k_kms[ii]))
+npoints = np.array(npoints)
 
 # ### Do fits
 
@@ -42,8 +47,8 @@ out_mle = []
 out_mle_cube = []
 out_chi2 = []
 out_pnames = []
-# for ii in range(len(pip.fitter.like.data.z)):
-for ii in range(1):
+for ii in range(len(pip.fitter.like.data.z)):
+# for ii in range(7,8):
     zmask = np.array([pip.fitter.like.data.z[ii]])
 
     pip = Pipeline(args, out_folder=None)
@@ -80,8 +85,11 @@ plotter = Plotter(pip.fitter, save_directory=diru, zmask=zmask)
 plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize=20)
 # -
 
+
+    
+
 fname = os.path.join(
-    os.path.dirname(get_path_repo("cup1d")), "data", "ics", emu + "_ic_at_a_time.npy"
+    os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_at_a_time.npy"
 )
 dir_out = {
     "z":pip.fitter.like.data.z,
@@ -91,6 +99,9 @@ dir_out = {
     "chi2":out_chi2,
 }
 np.save(fname, dir_out)
+
+for ii in range(len(out_mle_cube)):
+    print(out_mle_cube[ii][-1])
 
 from cup1d.optimize.show_results import print_results
 print_results(pip.fitter.like, out_chi2, out_mle_cube)

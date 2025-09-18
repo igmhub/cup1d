@@ -127,6 +127,11 @@ class HCD_Model_Rogers(Contaminant):
                 cont += vals[f"HCD_damp{it+1}"][iz] * fun_damping(
                     k_kms[iz], a_z, b_z
                 )
+                # cont += (
+                #     vals[f"HCD_damp{it+1}"][iz]
+                #     * ((1 + z[iz]) / (1 + self.z_0)) ** (-3.55)
+                #     * fun_damping(k_kms[iz], a_z, b_z)
+                # )
             dla_corr.append(cont)
 
         if len(z) == 1:

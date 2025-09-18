@@ -88,7 +88,7 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red"):
         elif type_analysis == "red":
             sys_labels_corr = [
                 # "E_DLA_COMPLETENESS",
-                # "E_BAL_COMPLETENESS",
+                "E_BAL_COMPLETENESS",
                 # "E_RESOLUTION",
                 "E_CONTINUUM",
                 "E_NOISE_SCALE",
@@ -136,15 +136,15 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red"):
             sys_labels_ucorr = []
         elif (type_analysis == "red") | (type_analysis == "xred"):
             sys_labels_corr = [
-                # "E_PSF",
+                "E_PSF",
                 # "E_RESOLUTION",
-                # "E_SIDE_BAND",
+                "E_SIDE_BAND",
                 "E_LINES",
                 "E_DLA",
                 "E_BAL",
                 "E_CONTINUUM",
                 # "E_DLA_COMPLETENESS",
-                # "E_BAL_COMPLETENESS",
+                "E_BAL_COMPLETENESS",
             ]
             sys_labels_ucorr = [
                 # "E_LINES",

@@ -1,7 +1,6 @@
 import numpy as np
 
-from cup1d.nuisance.resolution_model import Resolution_Model
-from cup1d.nuisance.resolution_model_chunks import Resolution_Model_Chunks
+from cup1d.nuisance import resolution_class
 
 
 class Systematics(object):
@@ -10,29 +9,50 @@ class Systematics(object):
     def __init__(
         self, free_param_names=None, resolution_model=None, pars_syst=None
     ):
+        self.pars_syst = pars_syst
+
+        if "flat_priors" in pars_syst:
+            flat_priors = pars_syst["flat_priors"]
+        else:
+            flat_priors = None
         if "Gauss_priors" in pars_syst:
             Gauss_priors = pars_syst["Gauss_priors"]
         else:
             Gauss_priors = None
+
+        if "z_max" in pars_syst:
+            z_max = pars_syst["z_max"]
+        else:
+            z_max = None
+
+        prop_coeffs = {}
+        fid_vals = {}
+        for key in pars_syst:
+            fid_vals[key] = pars_syst[key]
+            for key2 in ["otype", "ztype", "znodes"]:
+                key3 = key + "_" + key2
+                if key3 in pars_syst:
+                    prop_coeffs[key3] = pars_syst[key3]
+                else:
+                    if key3.endswith("otype"):
+                        if key3.startswith("HCD_const"):
+                            prop_coeffs[key3] = "const"
+                        else:
+                            prop_coeffs[key3] = "exp"
+                    elif key3.endswith("ztype"):
+                        prop_coeffs[key3] = "pivot"
+
         # setup Resolution model
         if resolution_model:
             self.resolution_model = resolution_model
         else:
-            if pars_syst["res_model_type"] == "pivot":
-                self.resolution_model = Resolution_Model(
-                    free_param_names=free_param_names,
-                    fid_R_coeff=pars_syst["R_coeff"],
-                    Gauss_priors=Gauss_priors,
-                )
-            elif pars_syst["res_model_type"] == "chunks":
-                self.resolution_model = Resolution_Model_Chunks(
-                    free_param_names=free_param_names,
-                    Gauss_priors=Gauss_priors,
-                )
-            else:
-                raise ValueError(
-                    "resolution_model_type must be 'pivot' or 'chunks'"
-                )
+            self.resolution_model = resolution_class.Resolution(
+                free_param_names=free_param_names,
+                fid_vals=fid_vals,
+                prop_coeffs=prop_coeffs,
+                flat_priors=flat_priors,
+                Gauss_priors=Gauss_priors,
+            )
 
     # def get_dict_cont(self):
     #     dict_out = {}
@@ -53,7 +73,5 @@ class Systematics(object):
         cont_resolution = self.resolution_model.get_contamination(
             z=z, k_kms=k_kms, like_params=like_params
         )
-
-        # print("cont_resolution", cont_resolution)
 
         return cont_resolution

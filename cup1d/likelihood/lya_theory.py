@@ -714,9 +714,18 @@ class Theory(object):
             #         )
 
         # apply contaminants
-        syst_total = self.model_syst.get_contamination(
-            zs, k_kms, like_params=like_params
-        )
+        apply_syst = False
+        for par in like_params:
+            if par.name.startswith("R_coeff"):
+                apply_syst = True
+
+        if apply_syst:
+            syst_total = self.model_syst.get_contamination(
+                zs, k_kms, like_params=like_params
+            )
+        else:
+            syst_total = np.ones(len(zs))
+
         mult_cont_total, add_cont_total = self.model_cont.get_contamination(
             zs,
             k_kms,
@@ -727,7 +736,7 @@ class Theory(object):
         )
         # print("mult_cont_total", mult_cont_total)
         # print("add_cont_total", add_cont_total)
-        # print("syst_total", syst_total)
+        # print("syst_total", syst_total[0])
 
         for iz, z in enumerate(zs):
             p1d_kms[iz] = (
@@ -783,8 +792,8 @@ class Theory(object):
         #     params.append(par)
 
         # get parameters from systematic model
-        for par in self.model_syst.resolution_model.get_parameters():
-            params.append(par)
+        for key in self.model_syst.resolution_model.params:
+            params.append(self.model_syst.resolution_model.params[key])
 
         # for par in params:
         #     print(par.name)
