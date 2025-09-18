@@ -28,11 +28,9 @@ def main():
         fix_cosmo=False,
         P1D_type=data_label,
         name_variation=name_variation,
+        inflate_err=True,
     )
     pip = Pipeline(args, out_folder=args.out_folder)
-
-    if name_variation == "cov":
-        pip.fitter.like.full_icov_Pk_kms /= 1.1**2
 
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 
