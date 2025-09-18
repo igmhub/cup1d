@@ -16,19 +16,19 @@ def main():
     # data_label = "DESIY1_FFT_dir"
     # data_label = "DESIY1_FFT"
 
-    # name_variation = None
-    name_variation = "cov"
+    name_variation = None
+    # name_variation = "cov"
 
-    # prof_type = "prof_2d"
-    # nsig = 8
-    # nelem = 8
+    prof_type = "prof_2d"
+    nsig = 6
+    nelem = 8
     # mle_cosmo_cen = None
 
-    prof_type = "prof_2d_deep"
-    nsig = 5
-    nelem = 30
+    # prof_type = "prof_2d_deep"
+    # nsig = 5
+    # nelem = 30
 
-    mle_cosmo_cen = {"Delta2_star": 0.44, "n_star": -2.28}  # all mpg
+    mle_cosmo_cen = {"Delta2_star": 0.46, "n_star": -2.27}  # all mpg
     # mle_cosmo_cen = {"Delta2_star": 0.40, "n_star": -2.26}  # nyx qmle3 done
 
     # baseline
@@ -39,12 +39,13 @@ def main():
         fix_cosmo=True,
         P1D_type=data_label,
         name_variation=name_variation,
+        inflate_err=True,
     )
     out_folder = os.path.join(args.out_folder, prof_type)
     pip = Pipeline(args, out_folder=out_folder)
 
-    if name_variation == "cov":
-        pip.fitter.like.full_icov_Pk_kms /= 1.1**2
+    # if name_variation == "cov":
+    #     pip.fitter.like.full_icov_Pk_kms /= 1.1**2
 
     sigma_cosmo = {"Delta2_star": 0.027, "n_star": 0.017}
 
