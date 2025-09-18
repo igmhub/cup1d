@@ -185,11 +185,14 @@ class Args:
             zinf = np.array([3.0, 3.6, 4.0])
             for z in zinf:
                 ind = np.argmin(np.abs(self.cov_factor["z"] - z))
-                if z == 3.6:
-                    self.cov_factor["val"][ind] = 1.1
-                else:
-                    self.cov_factor["val"][ind] = 1.1
+                self.cov_factor["val"][ind] = 1.1
         else:
+            self.cov_factor = {
+                "z": np.linspace(z_min, z_max, 11),
+                "val": np.ones(11),
+            }
+
+        if (name_variation is not None) and (name_variation == "no_inflate"):
             self.cov_factor = {
                 "z": np.linspace(z_min, z_max, 11),
                 "val": np.ones(11),
@@ -239,7 +242,9 @@ class Args:
                     os.path.dirname(get_path_repo("cup1d")),
                     "data",
                     "out_DESI_DR1",
+                    self.P1D_type,
                     name_variation,
+                    self.emulator_label,
                 )
 
         if (name_variation is not None) and (name_variation.startswith("sim_")):
@@ -299,6 +304,7 @@ class Args:
             pass
         else:
             self.fid_cosmo_label = "Planck18"
+
         print("fid cosmo label", self.fid_cosmo_label)
 
         if ("mpg" in self.emulator_label) | ("Mpg" in self.emulator_label):
@@ -511,20 +517,7 @@ class Args:
                 self.fid_cont["z_max"][prop] = 5
             props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
 
-            if name_variation == "HCD":
-                props_cont = [
-                    "f_Lya_SiIII",
-                    "s_Lya_SiIII",
-                    "f_Lya_SiII",
-                    "s_Lya_SiII",
-                    "f_SiIIa_SiIIb",
-                    "s_SiIIa_SiIIb",
-                    "f_SiIIa_SiIII",
-                    "f_SiIIb_SiIII",
-                    # "HCD_damp1",
-                    # "HCD_damp4",
-                ]
-            elif name_variation == "metal_trad":
+            if name_variation == "metal_trad":
                 props_cont = [
                     "f_Lya_SiIII",
                     # "s_Lya_SiIII",
@@ -535,6 +528,8 @@ class Args:
                     # "f_SiIIa_SiIII",
                     # "f_SiIIb_SiIII",
                     "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
                     "HCD_damp4",
                 ]
             elif name_variation == "metal_si2":
@@ -548,6 +543,8 @@ class Args:
                     "f_SiIIa_SiIII",
                     "f_SiIIb_SiIII",
                     "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
                     "HCD_damp4",
                 ]
             elif name_variation == "metal_deco":
@@ -561,6 +558,8 @@ class Args:
                     "f_SiIIa_SiIII",
                     "f_SiIIb_SiIII",
                     "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
                     "HCD_damp4",
                 ]
             elif name_variation == "metal_thin":
@@ -574,6 +573,8 @@ class Args:
                     # "f_SiIIa_SiIII",
                     # "f_SiIIb_SiIII",
                     "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
                     "HCD_damp4",
                 ]
             else:
@@ -592,20 +593,31 @@ class Args:
                     "HCD_damp4",
                 ]
 
-            ztest = [
-                # "f_Lya_SiIII",
-                # "s_Lya_SiIII",
-                # "f_Lya_SiII",
-                # "s_Lya_SiII",
-                "f_SiIIa_SiIIb",
-                "s_SiIIa_SiIIb",
-                # "f_SiIIa_SiIII",
-                # "f_SiIIb_SiIII",
-                # "HCD_damp1",
-                # "HCD_damp2",
-                # "HCD_damp3",
-                # "HCD_damp4",
-            ]
+            if name_variation == "metals_z":
+                ztest = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                ]
+            elif name_variation == "hcd_z":
+                ztest = [
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+            else:
+                ztest = [
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                ]
 
             if name_variation == "no_res":
                 self.fid_syst["R_coeff_znodes"] = []
@@ -622,17 +634,24 @@ class Args:
             nodes = np.geomspace(self.z_min, self.z_max, 1)
             nodes2 = np.geomspace(self.z_min, self.z_max, 2)
 
+            if name_variation == "more_igm":
+                nz_igm = 8
+            elif name_variation == "less_igm":
+                nz_igm = 4
+            else:
+                nz_igm = 6
+
             if name_variation == "Turner24":
                 self.fid_igm["tau_eff_znodes"] = np.array([3.0])
             else:
                 self.fid_igm["tau_eff_znodes"] = np.geomspace(
-                    self.z_min, self.z_max, 6
+                    self.z_min, self.z_max, nz_igm
                 )
             self.fid_igm["sigT_kms_znodes"] = np.geomspace(
-                self.z_min, self.z_max, 6
+                self.z_min, self.z_max, nz_igm
             )
             self.fid_igm["gamma_znodes"] = np.geomspace(
-                self.z_min, self.z_max, 6
+                self.z_min, self.z_max, nz_igm
             )
 
             self.fid_igm["kF_kms_znodes"] = []
