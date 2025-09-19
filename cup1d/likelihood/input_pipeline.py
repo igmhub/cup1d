@@ -192,11 +192,16 @@ class Args:
                 "val": np.ones(11),
             }
 
-        if (name_variation is not None) and (name_variation == "no_inflate"):
+        if (name_variation is not None) and ("no_inflate" in name_variation):
             self.cov_factor = {
                 "z": np.linspace(z_min, z_max, 11),
                 "val": np.ones(11),
             }
+
+        if (name_variation is not None) and ("no_emu_cov" in name_variation):
+            self.emu_cov_factor = 1e-20
+        else:
+            self.emu_cov_factor = 1
 
         if fit_type not in [
             "global_all",  # all params from at_a_time_global
@@ -285,7 +290,6 @@ class Args:
         self.null_vals = {}
 
         self.cov_syst_type = "red"
-        self.emu_cov_factor = 1
         self.emu_cov_type = "block"
         self.prior_Gauss_rms = None
         self.rebin_k = 8  # good enough to 0.06 chi2

@@ -212,9 +212,27 @@ pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True)
 # HCD depend z, 0.13580926057347983
 # same num IGM, new fid, 0.1755366851767883
 
-name_variation = None
+# name_variation = None
 # name_variation = "no_res"
 # name_variation = "Turner24"
+variations = [
+    "fid",
+    "no_inflate",  # no increase errors for 3, 3.6, and 4
+    "cosmo",  # different fiducial cosmo
+    "metal_trad",  # 2 params for metals like eBOSS
+    "metal_si2",  # no SiII-SiII cont
+    "metal_deco",  # no decorrelation metals
+    "metal_thin",  # no desviation from optically-thin limit
+    "no_res",  # no resolution correction
+    "Turner24",  # mF from Turner24 with 1 free param to scale
+    "more_igm",  # 8 params for IGM evolution
+    "less_igm",  # 4 params for IGM evolution
+    "metals_z",  # 2 params for z ev metals
+    "hcd_z",  # 2 params for z ev hcd
+]
+
+# name_variation = variations[12]
+name_variation = None
 
 args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
 args.set_baseline(
@@ -227,8 +245,31 @@ args.set_baseline(
 
 pip = Pipeline(args)
 
-p0 = pip.fitter.like.sampling_point_from_parameters()
+
+# %%
+
+p0 = pip.fitter.like.sampling_point_from_parameters().copy()
 pip.fitter.like.get_chi2(p0)
+
+# %%
+npoints = 0
+for ii in range(len(pip.fitter.like.data.z)):
+    npoints += len(pip.fitter.like.data.k_kms[ii])
+npoints - len(pip.fitter.like.free_param_names)
+
+# %%
+data_lab = "DESIY1_QMLE3"
+fit_type = "global_opt"
+emu = "mpg"
+folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
+data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
+data_cen.keys()
+
+# %%
+p0 = data_cen["mle_cube"].copy()
+pip.fitter.like.get_chi2(p0)
+
+# %%
 
 # %%
 # from cup1d.likelihood.cosmologies import set_cosmo

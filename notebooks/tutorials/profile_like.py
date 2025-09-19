@@ -28,7 +28,7 @@ import matplotlib.patches as mpatches
 from scipy.stats import chi2 as chi2_scipy
 
 # +
-cont = np.array([0, 1, 2, 3])
+cont = np.array([0, 1, 2, 3, 4, 5])
 prob_levels = np.zeros(len(cont))
 chi2_levels = np.zeros(len(cont))
 
@@ -76,6 +76,7 @@ mle_cube_cen = data_cen["mle_cube"].copy()
 chi2 = np.zeros(nelem)
 params = np.zeros((nelem, 2))
 mle_cube = np.zeros((nelem, len(mle_cube_cen)-2))
+hcd0 = np.zeros((nelem))
 mle = []
 for ii in range(nelem):
     try:
@@ -85,7 +86,8 @@ for ii in range(nelem):
     chi2[ii] = data["chi2"]
     params[ii, 0] = data["blind_cosmo"]["Delta2_star"]
     params[ii, 1] = data["blind_cosmo"]["n_star"]
-    mle_cube[ii] = data["mle_cube"]
+    hcd0[ii] = data["mle"]['$f_{\rm HCD1}_0$']
+    # mle_cube[ii] = data["mle_cube"]
     mle.append(data["mle"])
     if data["mle"]['$f_{\rm HCD1}_0$'] > -1:
         if data["chi2"]-data_cen['best_chi2'] < 7:
@@ -94,8 +96,33 @@ for ii in range(nelem):
 np.sum(chi2 == 0)
 # -
 
-data_cen["mle"]
+fig, ax = plt.subplots(1, 3, figsize=(12, 6))
+ax[0].scatter(params[:, 0], params[:, 1], c=chi2-data_cen['best_chi2'], cmap="tab20")
+ax[1].scatter(params[:, 0], hcd0, c=chi2-data_cen['best_chi2'], cmap="tab20")
+ax[2].scatter(params[:, 1], hcd0, c=chi2-data_cen['best_chi2'], cmap="tab20")
+ax[1].axhline(-1.5, c="k", lw=2)
+ax[2].axhline(-1.5, c="k", lw=2)
+ax[2].axvline(-2.25, c="k", lw=2)
+ax[0].axhline(-2.25, c="k", lw=2)
+ax[0].set_xlabel("D2star")
+ax[0].set_ylabel("nstar")
+ax[1].set_xlabel("D2star")
+ax[2].set_xlabel("nstar")
+ax[1].set_ylabel("LLS")
+ax[2].set_ylabel("LLS")
+plt.tight_layout()
+plt.savefig("figs/HCD_cosmo.pdf")
+
+
+
+
+
+data_cen
+
+# +
+# data_cen["mle"]
 # data_cen["mle_cube"]
+# -
 
 print(data_cen["mle_cosmo_cen"])
 print(params[np.argmin(chi2)])
@@ -149,7 +176,7 @@ if plot:
     plt.plot(xparams[0,:], zchi2.min(axis=0) - min_chi2)
     _ = (zchi2.min(axis=0) - min_chi2) < 1
     sig_d2s = 0.5 * (xparams[0, _].max() - xparams[0, _].min())
-    print(np.round(sig_d2s, 3))
+    # print(np.round(sig_d2s, 3))
     # plt.axvline(xparams[0, _].max())
     # plt.axvline(xparams[0, _].min())
     
@@ -166,8 +193,8 @@ if plot:
     plt.axhline(1)
     plt.ylim(0, 20)
     
-    plt.savefig("figs/pl1d_D2s_qmle3.pdf")
-    plt.savefig("figs/pl1d_D2s_qmle3.png")
+    # plt.savefig("figs/pl1d_D2s_qmle3.pdf")
+    # plt.savefig("figs/pl1d_D2s_qmle3.png")
 
 # +
 plot = True
@@ -176,7 +203,7 @@ if plot:
     
     plt.plot(yparams[:,0], zchi2.min(axis=1) - min_chi2)
     _ = (zchi2.min(axis=1) - min_chi2) < 1
-    print(np.round(0.5 * (yparams[_, 0].max() - yparams[_, 0].min()), 3))
+    # print(np.round(0.5 * (yparams[_, 0].max() - yparams[_, 0].min()), 3))
     # plt.axvline(yparams[_, 0].max())
     # plt.axvline(yparams[_, 0].min())
     
@@ -192,8 +219,8 @@ if plot:
     
     plt.axhline(1)
     plt.ylim(0, 20)
-    plt.savefig("figs/pl1d_ns_qmle3.pdf")
-    plt.savefig("figs/pl1d_ns_qmle3.png")
+    # plt.savefig("figs/pl1d_ns_qmle3.pdf")
+    # plt.savefig("figs/pl1d_ns_qmle3.png")
 # -
 
 # #### Get correlation from 2d-ellipse
@@ -264,43 +291,62 @@ print((params[ind])[ind3[:3]].mean(axis=0))
 print((params[ind])[ind3[:3]])
 # -
 
-file
-
-# +
-
+fact1 = 0.9
+fact2 = 0.8
+fact1 = 1
+fact2 = 1
 plot_ellipse(
-    out_dict["err_Delta2_star"],
-    out_dict["err_n_star"],
+    out_dict["err_Delta2_star"]* fact1,
+    out_dict["err_n_star"]* fact2,
     out_dict["rho"],
     [out_dict["xcen_2d"], out_dict["ycen_2d"]]
 )
 plt.plot(out_dict["xell1"], out_dict["yell1"], color="C0")
 plt.scatter(out_dict["Delta2_star"], out_dict["n_star"], marker="x", color="k")
 
+print(out_dict["err_Delta2_star"], out_dict["err_n_star"])
+
+ 0.11 0.05
+
 # +
-fig, ax = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(10, 6))
-ftsize = 16
+fig, ax = plt.subplots(1, figsize=(8, 6))
+ftsize = 20
 
 ind = chi2 != 0
+xx = params[ind, 0]
+yy = params[ind, 1]
+delta_chi = chi2[ind] - min_chi2
 
-ax[1].scatter(
-    params[ind, 0], 
-    params[ind, 1], 
-    c=chi2[ind] - min_chi2, 
-    cmap="tab10", 
-    vmin=vmin, 
-    vmax=vmax, 
-    marker="o", 
-    alpha=1
-)
 
-CS = ax[0].contourf(
+CS = ax.contourf(
     xi[:, 0].reshape(nelem, nelem), 
     xi[:, 1].reshape(nelem, nelem), 
     interp.reshape(nelem, nelem) - min_chi2, 
     chi2_levels,
-    colors=["C0", "C1", "C2"],
+    colors=["C0", "C1", "C2", "C3", "C4"],
+    alpha=0.8
 )
+
+
+for ii in range(len(chi2_levels)-1):
+    ind = (delta_chi >= chi2_levels[ii]) & (delta_chi < chi2_levels[ii+1])
+    # print(ind)
+    ax.scatter(
+        xx[ind], 
+        yy[ind], 
+        c="C"+str(ii), 
+        marker="o", 
+        alpha=1
+    )
+# ii = 5
+# ind = (delta_chi >= chi2_levels[-1])
+# ax.scatter(
+#     xx[ind], 
+#     yy[ind], 
+#     c="C"+str(ii), 
+#     marker="o", 
+#     alpha=1
+# )
 
 
 # ax[0].scatter(
@@ -314,30 +360,33 @@ CS = ax[0].contourf(
 patch2 = mpatches.Patch(color='C0', label=r"1 $\sigma$")
 patch3 = mpatches.Patch(color='C1', label=r"2 $\sigma$")
 patch4 = mpatches.Patch(color='C2', label=r"3 $\sigma$")
+patch5 = mpatches.Patch(color='C3', label=r"4 $\sigma$")
+patch6 = mpatches.Patch(color='C4', label=r"5 $\sigma$")
+# patch7 = mpatches.Patch(color='C5', label=r">5 $\sigma$")
 
-ax[0].text(0.05, 0.93, r"$\chi^2_\mathrm{min}$="+str(np.round(min_chi2, 1)), 
-            transform=ax[0].transAxes, fontsize=ftsize)
+ax.text(0.05, 0.07, r"$\chi^2_\mathrm{min}$="+str(np.round(min_chi2, 1)), 
+            transform=ax.transAxes, fontsize=ftsize)
 
 
-ax[0].set_ylabel(r"$n_\star$", fontsize=ftsize)
-ax[0].legend(handles=[patch2, patch3, patch4], fontsize=ftsize)
+ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
+ax.legend(handles=[patch2, patch3, patch4, patch5, patch6], fontsize=ftsize-2, loc="upper right")
 
-for jj in range(2):
-    ax[jj].set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
-    ax[jj].tick_params(
-        axis="both", which="major", labelsize=ftsize - 2
-    )
-    # ax[jj].plot(x, y, "k")
-    ax[jj].plot(xfit, yfit, "k--")
+ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
+ax.tick_params(
+    axis="both", which="major", labelsize=ftsize - 2
+)
+# ax[jj].plot(x, y, "k")
+ax.plot(xfit, yfit, "k--")
 
 
 best_ell = {
     "Delta2_star": xfit.mean(),
     "n_star": yfit.mean(),
 }
-print(np.round(xfit.mean(), 2), np.round(0.5 * (xfit.max()-xfit.min()), 2))
-print(np.round(yfit.mean(), 2), np.round(0.5 * (yfit.max()-yfit.min()), 2))
+# print(np.round(xfit.mean(), 2), np.round(0.5 * (xfit.max()-xfit.min()), 2))
+# print(np.round(yfit.mean(), 2), np.round(0.5 * (yfit.max()-yfit.min()), 2))
 
+ind = chi2 != 0
 ind_min = np.argmin(chi2[ind])
 print(chi2[ind][ind_min], 
       np.round(params[ind, :][ind_min], 2), 
@@ -353,8 +402,7 @@ print(chi2[ind][ind_min],
 #     ax=ax[0]
 # )
 
-for ii in range(2):
-    ax[ii].scatter(out_dict["Delta2_star"], out_dict["n_star"], marker="x", color="k")
+ax.scatter(out_dict["Delta2_star"], out_dict["n_star"], marker="x", color="k")
 
 # ind_min = np.argmin(interp[ind2])
 # print(interp[ind2][ind_min], np.round(xi[ind2, :][ind_min], 2))
@@ -380,7 +428,11 @@ rcParams["font.family"] = "STIXGeneral"
 
 out_dict.keys()
 
+# #### with errors
+
 # +
+
+
 fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 20
 ls = ["-", "--"]
@@ -408,7 +460,7 @@ for ii, var in enumerate(variations):
         file = "out_pl/"+ var + "_" + fit_type + ".npy"
     out_dict = np.load(file, allow_pickle=True).item()
     
-    prob = chi2_scipy.sf(out_dict['chi2'], var_deg) * 100
+    prob = chi2_scipy.sf(out_dict['chi2'], var_deg)
     print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
     if ii == 0:
         dict_diff = {
@@ -424,7 +476,7 @@ for ii, var in enumerate(variations):
         print("diff", np.round(out_dict[key] - dict_diff[key], 3), np.round(out_dict["err_" + key], 3))
         consist += (out_dict[key] - dict_diff[key])**2/np.max([dict_diff["err_"+key], out_dict["err_" + key]])**2
 
-    prob_var = chi2_scipy.sf(consist, 2) * 100
+    prob_var = chi2_scipy.sf(consist, 2)
     print(np.round(prob_var, 1))
 
     col = "C"+str(ii)
@@ -447,9 +499,142 @@ ax.tick_params(
 
 plt.legend(fontsize=ftsize-2)
 plt.tight_layout()
-plt.savefig("figs/variations_2d.pdf")
-plt.savefig("figs/variations_2d.png")
+# plt.savefig("figs/variations_2d.pdf")
+# plt.savefig("figs/variations_2d.png")
 # -
+
+
+# #### No errors
+
+
+
+# +
+base_folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+data_lab = "DESIY1_QMLE3"
+
+fig, ax = plt.subplots(figsize=(8, 6))
+ftsize = 20
+sym = ["x", "o"]
+cmap = plt.cm.get_cmap("tab20")
+
+variations = {
+    "fid":[638, 1],
+    "no_inflate":[638, 1],  # no increase errors for 3, 3.6, and 4
+    # "no_emu_cov":638, # no emu error
+    # "no_inflate_no_emu_cov":638, # no emu error, no increase errors for 3, 3.6, and 4
+    "cosmo":[638, 1],  # different fiducial cosmo
+    "Turner24":[643, 1],  # mF from Turner24 with 1 free param to scale
+    "more_igm":[632, 1],  # 8 params for IGM evolution
+    "less_igm":[644, 1],  # 4 params for IGM evolution
+    "metal_trad":[646, 0],  # 2 params for metals like eBOSS
+    "metal_si2":[642, 0],  # no SiII-SiII cont
+    "metal_deco":[640, 0],  # no decorrelation metals
+    "metal_thin":[640, 0],  # no desviation from optically-thin limit
+    "no_res":[647, 0],  # no resolution correction
+    "metals_z":[632, 1],  # 2 params for z ev metals
+    "hcd_z":[634, 1],  # 2 params for z ev hcd
+}
+
+fit_type = "global_opt"
+
+x0 = 0
+y0 = 0
+for ii, var in enumerate(variations):
+    print()
+    if var == "fid":
+        file = "out_pl/"+data_lab+"_mpg_" + fit_type + ".npy"
+        key_chi2 = "chi2"
+    else:
+        file = base_folder + data_lab + "/"+var+"/CH24_mpgcen_gpr/best_dircosmo.npy"
+        key_chi2 = "best_chi2"
+        
+    out_dict = np.load(file, allow_pickle=True).item()
+    
+    prob = chi2_scipy.sf(out_dict[key_chi2], variations[var][0])
+    if prob < 1e-4:
+        print(var, np.round(out_dict[key_chi2], 1), f'{prob:.1e}')
+    else:
+        print(var, np.round(out_dict[key_chi2], 1), np.round(prob,4))
+    if ii == 0:
+        dict_diff = {
+            "Delta2_star": out_dict["Delta2_star"],
+            "n_star": out_dict["n_star"],
+            "err_Delta2_star": out_dict["err_Delta2_star"],
+            "err_n_star": out_dict["err_n_star"],
+        }
+        print("err", 
+              np.round(out_dict["err_Delta2_star"], 3), 
+              np.round(out_dict["err_n_star"], 3)
+             )
+        
+        # print(
+        #     "check_ellipse",
+        #       np.round(0.5 * (out_dict["xell1"].max()-out_dict["xell1"].min()), 2),
+        #       np.round(0.5 * (out_dict["yell1"].max()-out_dict["yell1"].min()), 2)
+        # )
+
+    if ii > 0:
+        consist = 0
+        for key in ["Delta2_star", "n_star"]:
+            # print(np.round(out_dict[key], 3), np.round(out_dict["err_" + key], 3))
+            print("diff", 
+                  np.round(out_dict['mle_cosmo_cen'][key] - dict_diff[key], 3), 
+                  np.round(dict_diff["err_" + key], 3)
+                 )
+            consist += (out_dict['mle_cosmo_cen'][key] - dict_diff[key])**2/dict_diff["err_"+key]**2
+
+        prob_var = chi2_scipy.sf(consist, 2)
+        print("prob_const", np.round(prob_var, 2))
+
+    
+
+    col = cmap(ii)
+    if ii == 0:
+        ax.scatter(out_dict["Delta2_star"], out_dict["n_star"], color=col, marker=sym[variations[var][1]])
+    else:
+        ax.scatter(
+            out_dict['mle_cosmo_cen']["Delta2_star"], 
+            out_dict['mle_cosmo_cen']["n_star"], 
+            color=col, 
+            marker=sym[variations[var][1]], 
+            label=var
+        )
+        
+
+    if ii == 0:
+        for jj in range(1, 2):
+            if jj == 1:
+                lab = var
+            else:
+                lab= None
+            ax.plot(out_dict["xell"+str(jj)], out_dict["yell"+str(jj)], color=col, ls=ls[jj-1], lw=3, label=lab)
+
+
+ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
+ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
+ax.tick_params(
+    axis="both", which="major", labelsize=ftsize - 2
+)
+
+plt.legend(fontsize=ftsize-6, loc="upper right", ncol=3)
+plt.tight_layout()
+
+# +
+formats = [
+    "{:>8.3f}",   # first number, 3 decimal places, right aligned width 8
+    "{:>7.3f}",   # second number
+    "{:>5.2f}",   # third number
+    "{:>5d}",     # integer
+    "{:>7.4f}"    # last number
+]
+
+for label, row in zip(labels, values):
+    formatted = " & ".join(fmt.format(val) for fmt, val in zip(formats, row))
+    print(f"{label:<20} & {formatted}\\\\")
+# -
+
+out_dict
+
 
 
 # ### Validation
