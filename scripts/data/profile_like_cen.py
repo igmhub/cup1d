@@ -20,14 +20,14 @@ def main():
     # data_label = "DESIY1_FFT"
 
     variations = [
-        None,
-        "no_inflate",  # no increase errors for 3, 3.6, and 4
-        "cosmo",  # different fiducial cosmo
-        "metal_trad",  # 2 params for metals like eBOSS
-        "metal_si2",  # no SiII-SiII cont
-        "metal_deco",  # no decorrelation metals
-        "metal_thin",  # no desviation from optically-thin limit
-        "no_res",  # no resolution correction
+        # None,
+        # "no_inflate",  # no increase errors for 3, 3.6, and 4
+        # "cosmo",  # different fiducial cosmo
+        # "metal_trad",  # 2 params for metals like eBOSS
+        # "metal_si2",  # no SiII-SiII cont
+        # "metal_deco",  # no decorrelation metals
+        # "metal_thin",  # no desviation from optically-thin limit
+        # "no_res",  # no resolution correction
         "Turner24",  # mF from Turner24 with 1 free param to scale
         "more_igm",  # 8 params for IGM evolution
         "less_igm",  # 4 params for IGM evolution
