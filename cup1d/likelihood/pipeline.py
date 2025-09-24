@@ -390,10 +390,14 @@ class Pipeline(object):
         for jj, p in enumerate(self.fitter.like.free_params):
             pname, iistr = split_string(p.name)
             ii = int(iistr)
-            try:
+            if pname in self.fitter.like.args.fid_igm:
                 znode = self.fitter.like.args.fid_igm[pname + "_znodes"][ii]
-            except:
+            elif pname in self.fitter.like.args.fid_cont:
                 znode = self.fitter.like.args.fid_cont[pname + "_znodes"][ii]
+            elif pname in self.fitter.like.args.fid_syst:
+                znode = self.fitter.like.args.fid_syst[pname + "_znodes"][ii]
+            else:
+                raise ValueError("pname not found:", pname)
             # print(pname, znode, vals[jj])
 
             if pname not in out_dict:

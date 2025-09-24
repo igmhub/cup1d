@@ -72,9 +72,8 @@ class Gadget_P1D(BaseMockP1D):
         # as well as covariance matrix
         zs, k_kms, Pk_kms, cov = self._load_p1d(theory)
 
-        zs = np.array(zs)
-
         # set theory (just to save truth)
+        zs = np.array(zs)
         theory.model_igm.set_fid_igm(zs)
         theory.set_fid_cosmo(zs)
 

@@ -1100,6 +1100,7 @@ class Likelihood(object):
         z_at_time=False,
         fontsize=20,
         glob_full=False,
+        n_param_glob_full=16,
         chi2_nozcov=False,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
@@ -1394,24 +1395,33 @@ class Likelihood(object):
                     # print chi2
                     xpos = k_kms[0]
                     ndeg = np.sum(p1d_data != 0)
+                    # get degrees of freedom
                     if z_at_time:
                         _ndeg = ndeg_all[iz]
                     else:
                         _ndeg = ndeg - n_free_p
-
                     if glob_full:
-                        _ndeg = ndeg - 13
+                        _ndeg = ndeg - n_param_glob_full
+
                     prob = chi2_scipy.sf(chi2_all[ii, iz], _ndeg)
 
-                    label = (
-                        r"$\chi^2=$"
-                        + str(np.round(chi2_all[ii, iz], 2))
-                        + r", $n_\mathrm{deg}$="
-                        + str(_ndeg)
-                        + ", prob="
-                        + str(np.round(prob * 100, 2))
-                        + "%"
-                    )
+                    if print_chi2:
+                        label = (
+                            r"$\chi^2=$"
+                            + str(np.round(chi2_all[ii, iz], 2))
+                            + r", $n_\mathrm{deg}$="
+                            + str(_ndeg)
+                            + ", prob="
+                            + str(np.round(prob * 100, 2))
+                            + "%"
+                        )
+                    else:
+                        label = (
+                            r"$\chi^2=$"
+                            + str(np.round(chi2_all[ii, iz], 2))
+                            + r", $n_\mathrm{data}$="
+                            + str(ndeg)
+                        )
 
                     if print_chi2:
                         if plot_panels == False:
@@ -1459,17 +1469,25 @@ class Likelihood(object):
                     ndeg = np.sum(p1d_data != 0)
                     prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg - n_free_p)
 
-                    label = (
-                        r"$\chi^2=$"
-                        + str(np.round(chi2_all[ii, iz], 2))
-                        + r", $n_\mathrm{deg}$="
-                        + str(ndeg - n_free_p)
-                        + ", prob="
-                        + str(np.round(prob * 100, 2))
-                        + "%"
-                    )
                     if print_chi2:
-                        ax[ii].text(xpos, ypos, label, fontsize=fontsize - 4)
+                        label = (
+                            r"$\chi^2=$"
+                            + str(np.round(chi2_all[ii, iz], 2))
+                            + r", $n_\mathrm{deg}$="
+                            + str(ndeg - n_free_p)
+                            + ", prob="
+                            + str(np.round(prob * 100, 2))
+                            + "%"
+                        )
+                    else:
+                        label = (
+                            r"$\chi^2=$"
+                            + str(np.round(chi2_all[ii, iz], 2))
+                            + r", $n_\mathrm{data}$="
+                            + str(ndeg)
+                        )
+
+                    ax[ii].text(xpos, ypos, label, fontsize=fontsize - 4)
 
                     ax[ii].plot(
                         k_kms,
@@ -1498,14 +1516,14 @@ class Likelihood(object):
                     elif iz == len(zs) - 1:
                         axs.set_ylim(1 - y2plot, 1 + y2plot)
 
-                    if print_chi2:
-                        axs.text(
-                            0.05,
-                            0.05,
-                            label,
-                            fontsize=fontsize - 4,
-                            transform=axs.transAxes,
-                        )
+                    # if print_chi2:
+                    axs.text(
+                        0.05,
+                        0.05,
+                        label,
+                        fontsize=fontsize - 4,
+                        transform=axs.transAxes,
+                    )
 
                 if ii == 0:
                     out["zs"].append(z)

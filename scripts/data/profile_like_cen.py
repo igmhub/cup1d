@@ -20,10 +20,10 @@ def main():
     # data_label = "DESIY1_FFT"
 
     variations = [
-        # None,
+        None,
         # "no_inflate",  # no increase errors for 3, 3.6, and 4
-        "no_emu_cov",  # no emu error
-        "no_inflate_no_emu_cov",  # no emu error, no increase errors for 3, 3.6, and 4
+        # "no_emu_cov",  # no emu error
+        # "no_inflate_no_emu_cov",  # no emu error, no increase errors for 3, 3.6, and 4
         # "cosmo",  # different fiducial cosmo
         # "metal_trad",  # 2 params for metals like eBOSS
         # "metal_si2",  # no SiII-SiII cont
@@ -54,7 +54,6 @@ def main():
             fix_cosmo=False,
             P1D_type=data_label,
             name_variation=name_variation,
-            inflate_err=True,
         )
         pip = Pipeline(args, out_folder=args.out_folder)
 

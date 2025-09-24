@@ -28,18 +28,29 @@ from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
 from cup1d.likelihood.plotter import Plotter
 from cup1d.utils.utils import get_path_repo
-# -
 
 
+# +
+
+data_label = "DESIY1_QMLE3"
 name_variation = None
-args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
-args.set_baseline(fit_type="at_a_time_global", fix_cosmo=True, P1D_type="DESIY1_QMLE3", name_variation=name_variation, inflate_err=True)
+
+args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
+args.set_baseline(
+    fit_type="at_a_time_global", 
+    fix_cosmo=True, 
+    P1D_type=data_label, 
+    name_variation=name_variation, 
+)
+
 pip = Pipeline(args, out_folder=None)
+# -
 
 npoints = []
 for ii in range(len(pip.fitter.like.data.z)):
     npoints.append(len(pip.fitter.like.data.k_kms[ii]))
 npoints = np.array(npoints)
+npoints
 
 # ### Do fits
 
@@ -48,7 +59,7 @@ out_mle_cube = []
 out_chi2 = []
 out_pnames = []
 for ii in range(len(pip.fitter.like.data.z)):
-# for ii in range(7,8):
+# for ii in range(1):
     zmask = np.array([pip.fitter.like.data.z[ii]])
 
     pip = Pipeline(args, out_folder=None)
@@ -105,37 +116,3 @@ for ii in range(len(out_mle_cube)):
 
 from cup1d.optimize.show_results import print_results
 print_results(pip.fitter.like, out_chi2, out_mle_cube)
-
-# mpg
-$z$ & $\chi^2$ & ndeg & prob\ \hline
-2.2 & 29.91 & 36 & 75.25 \\
-2.4 & 43.87 & 39 & 27.26 \\
-2.6 & 55.84 & 42 & 7.48 \\
-2.8 & 51.64 & 45 & 23.03 \\
-3.0 & 70.98 & 48 & 1.72 \\
-3.2 & 53.91 & 50 & 32.72 \\
-3.4 & 48.28 & 52 & 62.09 \\
-3.6 & 83.18 & 54 & 0.66 \\
-3.8 & 62.54 & 56 & 25.52 \\
-4.0 & 81.48 & 57 & 1.84 \\
-4.2 & 64.47 & 59 & 29.11 \\
-\hline
-All & 646.12 & 538 & 0.09 \\ \hline
-Prob 0.09105993734928322
-
-# nyx
-$z$ & $\chi^2$ & ndeg & prob\ \hline
-2.2 & 29.88 & 36 & 75.4 \\
-2.4 & 42.52 & 39 & 32.2 \\
-2.6 & 55.87 & 42 & 7.44 \\
-2.8 & 55.56 & 45 & 13.45 \\
-3.0 & 69.56 & 48 & 2.26 \\
-3.2 & 53.78 & 50 & 33.18 \\
-3.4 & 46.49 & 52 & 68.97 \\
-3.6 & 83.07 & 54 & 0.67 \\
-3.8 & 62.3 & 56 & 26.21 \\
-4.0 & 81.28 & 57 & 1.9 \\
-4.2 & 65.49 & 59 & 26.19 \\
-\hline
-All & 645.78 & 538 & 0.09 \\ \hline
-Prob 0.09387017518663274

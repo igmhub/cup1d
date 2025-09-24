@@ -27,21 +27,37 @@ import matplotlib.pyplot as plt
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
 from cup1d.utils.utils import get_path_repo
-# -
 
 
+# +
+data_label = "DESIY1_QMLE3"
 name_variation = None
-args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
-args.set_baseline(fit_type="global_all", fix_cosmo=True, P1D_type="DESIY1_QMLE3", name_variation=name_variation, inflate_err=True)
+
+args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
+args.set_baseline(
+    fit_type="global_all", 
+    fix_cosmo=True, 
+    P1D_type=data_label, 
+    name_variation=name_variation, 
+)
+
 pip = Pipeline(args, out_folder=None)
+# -
 
 p0 = pip.fitter.like.sampling_point_from_parameters()
 pip.fitter.like.get_chi2(p0)
 
-16  * 11
-
-# pip.fitter.like.plot_p1d(residuals=True, plot_panels=True, glob_full=True, fontsize=18, plot_fname="figs/residual_full_global", chi2_nozcov=True)
-pip.fitter.like.plot_p1d(residuals=True, plot_panels=True, glob_full=True, fontsize=18, chi2_nozcov=True)
+# pname = None
+pname = "figs/residual_full_global"
+pip.fitter.like.plot_p1d(
+    residuals=True,
+    plot_panels=True,
+    glob_full=True,
+    n_param_glob_full=16,
+    fontsize=18,
+    chi2_nozcov=True,
+    plot_fname=pname,
+)
 
 pip.run_minimizer(p0, restart=True)
 
@@ -55,16 +71,17 @@ pip.save_global_ic(fname)
 # ### For reduced
 
 # +
-emu = "nyx"
-# emu = "mpg"
-
 data_label = "DESIY1_QMLE3"
+name_variation = None
 
-args = Args(data_label=data_label, emulator_label="CH24_"+emu+"cen_gpr")
-args.set_baseline(fit_type="global_opt", fix_cosmo=True, P1D_type=data_label)
-args.file_ic = os.path.join(
-    os.path.dirname(get_path_repo("cup1d")), "data", "ics", emu + "_ic_global_orig.npy"
+args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
+args.set_baseline(
+    fit_type="global_opt", 
+    fix_cosmo=True, 
+    P1D_type=data_label, 
+    name_variation=name_variation, 
 )
+
 pip = Pipeline(args, out_folder=None)
 # -
 
@@ -74,7 +91,7 @@ pip.fitter.like.get_chi2(p0)
 pip.run_minimizer(p0, restart=True)
 
 fname = os.path.join(
-    os.path.dirname(get_path_repo("cup1d")), "data", "ics", emu + "_ic_global_red.npy"
+    os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_global_red.npy"
 )
 pip.save_global_ic(fname)
 
@@ -83,19 +100,23 @@ pip.save_global_ic(fname)
 # ### Check all good
 
 # +
-# emu = "nyx"
-emu = "mpg"
-
 data_label = "DESIY1_QMLE3"
+name_variation = None
 
-args = Args(data_label=data_label, emulator_label="CH24_"+emu+"cen_gpr")
-args.set_baseline(fit_type="global_opt", fix_cosmo=True, P1D_type=data_label)
+args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
+args.set_baseline(
+    fit_type="global_opt", 
+    fix_cosmo=True, 
+    P1D_type=data_label, 
+    name_variation=name_variation, 
+)
+
 pip = Pipeline(args, out_folder=None)
 p0 = pip.fitter.like.sampling_point_from_parameters()
 pip.fitter.like.get_chi2(p0)
 # -
 
-pip.fitter.like.plot_p1d(residuals=True, plot_panels=True)
+pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True)
 
 pip.fitter.like.plot_igm(cloud=True)
 

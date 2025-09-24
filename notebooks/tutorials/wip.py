@@ -218,6 +218,7 @@ pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True)
 variations = [
     "fid",
     "no_inflate",  # no increase errors for 3, 3.6, and 4
+    "all_inflate",
     "cosmo",  # different fiducial cosmo
     "metal_trad",  # 2 params for metals like eBOSS
     "metal_si2",  # no SiII-SiII cont
@@ -231,16 +232,24 @@ variations = [
     "hcd_z",  # 2 params for z ev hcd
 ]
 
+# metals_z 3.89548175069871
+
 # name_variation = variations[12]
+# name_variation = "metals_z"
+# name_variation = "all_inflate"
+# name_variation = "no_inflate"
+# name_variation = "Turner24"
+
+data_label = "DESIY1_QMLE3"
+# data_label = "DESIY1_FFT3_dir"
 name_variation = None
 
-args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
+args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
 args.set_baseline(
     fit_type="global_opt", 
     fix_cosmo=False, 
-    P1D_type="DESIY1_QMLE3", 
+    P1D_type=data_label, 
     name_variation=name_variation, 
-    inflate_err=True
 )
 
 pip = Pipeline(args)
@@ -250,6 +259,12 @@ pip = Pipeline(args)
 
 p0 = pip.fitter.like.sampling_point_from_parameters().copy()
 pip.fitter.like.get_chi2(p0)
+
+# %%
+# pip.fitter.like.plot_p1d()
+# pip.fitter.like.plot_cov_to_pk(fname="figs/nyx_err2p1d_qmle3")
+
+# %%
 
 # %%
 npoints = 0
@@ -360,6 +375,9 @@ p0 = pip.fitter.like.sampling_point_from_parameters()
 pip.run_minimizer(p0, restart=True)
 
 # %%
+pip.fitter.mle
+
+# %%
 # p0 = pip.fitter.like.sampling_point_from_parameters()
 free_params = pip.fitter.like.parameters_from_sampling_point(p0min)
 # free_params = pip.fitter.like.parameters_from_sampling_point(p0)
@@ -399,8 +417,11 @@ pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, print_chi2=Fal
 
 # %%
 p0min = pip.fitter.mle_cube.copy()
-# pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, print_chi2=False, plot_fname="figs/residual_opt_global")
-pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, print_chi2=False, plot_fname=None)
+pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, print_chi2=False, plot_fname="figs/residual_opt_global")
+# pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, print_chi2=False, plot_fname=None)
+
+# %%
+np.exp(-11)
 
 # %%
 pip.fitter.mle
