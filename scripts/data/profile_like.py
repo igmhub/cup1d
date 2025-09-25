@@ -17,7 +17,8 @@ def main():
     # data_label = "DESIY1_FFT"
 
     # name_variation = None
-    name_variation = "no_inflate"
+    # name_variation = "no_inflate"
+    name_variation = "no_emu_cov"
 
     # prof_type = "prof_2d"
     # nsig = 6

@@ -27,6 +27,12 @@ from scipy.interpolate import griddata
 import matplotlib.patches as mpatches
 from scipy.stats import chi2 as chi2_scipy
 
+
+from matplotlib import rcParams
+
+rcParams["mathtext.fontset"] = "stix"
+rcParams["font.family"] = "STIXGeneral"
+
 # +
 cont = np.array([0, 1, 2, 3, 4, 5])
 prob_levels = np.zeros(len(cont))
@@ -54,8 +60,9 @@ data_lab = "DESIY1_QMLE3"
 emu = "mpg"
 # emu = "nyx"
 
-variation = None
-# variation = "cov"
+# variation = None
+variation = "no_inflate"
+
 # variation = "sim_mpg_central"
 # variation = "sim_nyx_central"
 # variation = "sim_sherwood"
@@ -67,7 +74,7 @@ type_prof = "prof_2d_deep"
 nelem = 900
 
 if variation is not None:
-    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+variation+"/"
+    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+variation+"/CH24_"+emu+"cen_gpr/"
 else:
     folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
 data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
@@ -77,6 +84,8 @@ chi2 = np.zeros(nelem)
 params = np.zeros((nelem, 2))
 mle_cube = np.zeros((nelem, len(mle_cube_cen)-2))
 hcd0 = np.zeros((nelem))
+tau3 = np.zeros((nelem))
+all_pars = np.zeros((nelem, len(mle_cube_cen)+1))
 mle = []
 for ii in range(nelem):
     try:
@@ -87,41 +96,132 @@ for ii in range(nelem):
     params[ii, 0] = data["blind_cosmo"]["Delta2_star"]
     params[ii, 1] = data["blind_cosmo"]["n_star"]
     hcd0[ii] = data["mle"]['$f_{\rm HCD1}_0$']
-    # hcd0[ii] = data["mle"]['$\tau_{\rm eff_3}$']
+    tau3[ii] = data["mle"]['$\tau_{\rm eff_3}$']
+
+    jj = 0
+    for key in data_cen["mle"]:
+        if key in data["mle"]:
+            all_pars[ii, jj] = data["mle"][key]
+            jj+=1
     
     # mle_cube[ii] = data["mle_cube"]
     mle.append(data["mle"])
-    if data["mle"]['$f_{\rm HCD1}_0$'] > -1:
-        if data["chi2"]-data_cen['best_chi2'] < 7:
-            print(ii, data["mle"]['$f_{\rm HCD1}_0$'], params[ii, :], data["chi2"]-data_cen['best_chi2'])
+    # if data["mle"]['$f_{\rm HCD1}_0$'] > -1:
+    #     if data["chi2"]-data_cen['best_chi2'] < 7:
+    #         print(ii, data["mle"]['$f_{\rm HCD1}_0$'], params[ii, :], data["chi2"]-data_cen['best_chi2'])
+
+_ = chi2 != 0
+min_chi2 = np.min([chi2[_].min(), data_cen['best_chi2']])
+print(min_chi2, data_cen['best_chi2']-min_chi2, chi2[_].min()-min_chi2)
 
 np.sum(chi2 == 0)
 # -
 
-data["mle"]
+data_cen['best_chi2']
 
-fig, ax = plt.subplots(1, 3, figsize=(12, 6))
-ax[0].scatter(params[:, 0], params[:, 1], c=chi2-data_cen['best_chi2'], cmap="tab20")
-ax[1].scatter(params[:, 0], hcd0, c=chi2-data_cen['best_chi2'], cmap="tab20")
-ax[2].scatter(params[:, 1], hcd0, c=chi2-data_cen['best_chi2'], cmap="tab20")
+data_cen["mle"]
+
+
+# +
+def fix_key(s):
+    # Re-encode the string so we see escape codes again
+    return s.encode('unicode_escape').decode().replace('\\\\', '\\')
+
+fixed = {fix_key(k): v for k, v in data_cen["mle"].items()}
+
+# +
+fig, ax = plt.subplots(2, 3, figsize=(12, 10), sharex="col")
+ax = ax.reshape(-1)
+
+
+_ = chi2 != 0
+ax[0].scatter(params[_, 0], params[_, 1], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
+ax[1].scatter(params[_, 0], hcd0[_], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
+ax[2].scatter(params[_, 1], hcd0[_], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
+ax[4].scatter(params[_, 0], tau3[_], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
+ax[5].scatter(params[_, 1], tau3[_], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
+
 # ax[1].axhline(-1.5, c="k", lw=2)
 # ax[2].axhline(-1.5, c="k", lw=2)
 # ax[2].axvline(-2.25, c="k", lw=2)
 # ax[0].axhline(-2.25, c="k", lw=2)
-ax[0].set_xlabel("D2star")
+ax[3].set_xlabel("D2star")
+ax[4].set_xlabel("D2star")
+ax[5].set_xlabel("nstar")
+
 ax[0].set_ylabel("nstar")
-ax[1].set_xlabel("D2star")
-ax[2].set_xlabel("nstar")
 ax[1].set_ylabel("LLS")
 ax[2].set_ylabel("LLS")
+ax[4].set_ylabel("tau3")
+ax[5].set_ylabel("tau3")
 plt.tight_layout()
 # plt.savefig("figs/HCD_cosmo.pdf")
 
+# +
+plot = False
+
+if plot:
+    _ = chi2 - min_chi2 < 2.3
+    
+    ihcd = 1
+    for jj in range(all_pars.shape[1]-3):
+    # for jj in range(1):
+        jj2 = 0
+        for key in fixed:
+            if jj2 == jj+2:
+                key2 = key
+            jj2 += 1
+        
+        fig, ax = plt.subplots(1, 3, figsize=(12, 8), sharex="col")
+        ax = ax.reshape(-1)
+        ax[0].scatter(params[:, 0], params[:, 1], c=chi2-data_cen['best_chi2'], cmap="tab20")
+        ax[1].scatter(params[:, 0], all_pars[:,jj], c=chi2-data_cen['best_chi2'], cmap="tab20")
+        ax[2].scatter(params[:, 1], all_pars[:,jj], c=chi2-data_cen['best_chi2'], cmap="tab20")
+        c1 = np.corrcoef(params[_,0], all_pars[_, jj])[1, 0]
+        c2 = np.corrcoef(params[_,1], all_pars[_, jj])[1, 0]
+        ax[1].text(
+            0.1, 
+            0.1, 
+            "r=" + str(np.round(c1, 2)), 
+            horizontalalignment='left',
+            verticalalignment='bottom',
+            transform=ax[1].transAxes
+        )
+        ax[2].text(
+            0.1, 
+            0.1, 
+            "r=" + str(np.round(c2, 2)), 
+            horizontalalignment='left',
+            verticalalignment='bottom',
+            transform=ax[2].transAxes
+        )
+        
+        # if "\\" in key2:
+        #     out = key2.replace('\\\\', '\\')
+        # else:
+        #     out = key2
+        #     fig.suptitle(key2.encode('unicode_escape').decode())
+        # else:
+        #     fig.suptitle(key2)
+        # print(out.encode('unicode_escape').decode())
+        if "HCD" in key2:
+            key2 = "HCD" + str(ihcd)
+            ihcd += 1
+    
+        fig.suptitle(key2)
+    
+        
+        plt.tight_layout()
+        plt.savefig("fig_corr/"+str(jj)+".png")
+        plt.close()
+
+# +
+# data_cen["mle"]
+# -
 
 
 
 
-data_cen
 
 # +
 # data_cen["mle"]
@@ -134,8 +234,7 @@ mle[np.argmin(chi2)]
 
 
 
-min_chi2 = np.min([chi2.min(), data_cen['best_chi2']])
-print(min_chi2, data_cen['best_chi2']-min_chi2, chi2.min()-min_chi2)
+
 
 # ## Get 1D errors
 
@@ -297,8 +396,8 @@ if type_prof == "prof_2d_deep":
 ind3 = np.argsort(chi2[ind])
 print((params[ind])[ind3[:3]].mean(axis=0))
 print((params[ind])[ind3[:3]])
-# -
 
+# +
 fact1 = 0.9
 fact2 = 0.8
 fact1 = 1
@@ -312,9 +411,11 @@ plot_ellipse(
 plt.plot(out_dict["xell1"], out_dict["yell1"], color="C0")
 plt.scatter(out_dict["Delta2_star"], out_dict["n_star"], marker="x", color="k")
 
-print(out_dict["err_Delta2_star"], out_dict["err_n_star"])
+plt.xlim(0.4, 0.63)
+plt.ylim(-2.34, -2.2)
+# -
 
- 0.11 0.05
+print(out_dict["err_Delta2_star"], out_dict["err_n_star"])
 
 # +
 fig, ax = plt.subplots(1, figsize=(8, 6))
@@ -418,21 +519,18 @@ ax.scatter(out_dict["Delta2_star"], out_dict["n_star"], marker="x", color="k")
 
 plt.tight_layout()
 
-
-plt.savefig("figs/pl_qmle3.pdf")
-plt.savefig("figs/pl_qmle3.png")
+if variation is not None:
+    plt.savefig("figs/pl_qmle3_"+variation+".pdf")
+    plt.savefig("figs/pl_qmle3_"+variation+".png")
+else:
+    plt.savefig("figs/pl_qmle3.pdf")
+    plt.savefig("figs/pl_qmle3.png")
 # -
 
 
 # ## All together
 
-# +
 
-from matplotlib import rcParams
-
-rcParams["mathtext.fontset"] = "stix"
-rcParams["font.family"] = "STIXGeneral"
-# -
 
 out_dict.keys()
 
@@ -571,15 +669,15 @@ cmap = colormaps["tab20"]
 
 variations = {
     "fid":[638, 1, "Fiducial"],
-    "no_inflate":[638, 1, "No inflate"],  # no increase errors for 3, 3.6, and 4
-    "no_emu_cov":[638, 1, "No emu cov"], # no emu error
-    "no_inflate_no_emu_cov":[638, 1, "No inflate, no emu"], # no emu error, no increase errors for 3, 3.6, and 4
+    "no_inflate":[638, 1, "No inflate"],  # no increase errors
     "cosmo":[638, 1, "Cosmo"],  # different fiducial cosmo
     "Turner24":[643, 1, r"Turner+24 $\bar F$"],  # mF from Turner24 with 1 free param to scale
     "more_igm":[632, 1, "IGM $n_z=8$"],  # 8 params for IGM evolution
     "less_igm":[644, 1, "IGM $n_z=4$"],  # 4 params for IGM evolution
     "metals_z":[632, 1, "Metals $n_z=2$"],  # 2 params for z ev metals
     "hcd_z":[634, 1, "HCD $n_z=2$"],  # 2 params for z ev hcd
+    "no_emu_cov":[638, 0, "No emu cov"], # no emu error
+    "no_inflate_no_emu_cov":[638, 0, "No inflate, no emu"], # no emu error, no increase errors
     "metal_trad":[646, 0, "Simple metal"],  # 2 params for metals like eBOSS
     "metal_si2":[642, 0, "No \siisii"],  # no SiII-SiII cont
     "metal_deco":[640, 0, "No metal decorr"],  # no decorrelation metals
@@ -605,9 +703,9 @@ for ii, var in enumerate(variations):
         key_chi2 = "best_chi2"
         
     out_dict = np.load(file, allow_pickle=True).item()
-    if var == "metals_z":
-        for key in out_dict["mle"]:
-            print(key, out_dict["mle"][key])
+    # if var == "metals_z":
+    #     for key in out_dict["mle"]:
+    #         print(key, out_dict["mle"][key])
     
     prob = chi2_scipy.sf(out_dict[key_chi2], variations[var][0])
     if prob < 1e-4:
@@ -689,7 +787,7 @@ for ii, var in enumerate(variations):
             ax.plot(
                 out_dict["xell"+str(jj)] - dict_diff["Delta2_star"], 
                 out_dict["yell"+str(jj)] - dict_diff["n_star"], 
-                color=col, ls=ls[jj-1], lw=3, label=lab)
+                color=col, ls="-", lw=3, label=lab)
 
 
 
@@ -728,8 +826,6 @@ for line in tablex:
 # -
 
 
-
-out_dict
 
 
 

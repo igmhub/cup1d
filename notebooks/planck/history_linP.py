@@ -33,6 +33,12 @@ from cup1d.likelihood import marg_lya_like
 # %matplotlib inline
 from cup1d.utils.utils import get_path_repo
 
+
+from matplotlib import rcParams
+
+rcParams["mathtext.fontset"] = "stix"
+rcParams["font.family"] = "STIXGeneral"
+
 # %% [markdown]
 # ### Read extended CMB chains from historical releases
 #
@@ -108,17 +114,25 @@ cmb = planck_chains.get_planck_2018(
 # ### Plot linear power parameters from chain and from Lya likelihoods
 
 # %%
+fit_type = "global_opt"
+data_lab = "DESIY1_QMLE3"
+emu = "mpg"
+file = "../tutorials/out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
+out_dict = np.load(file, allow_pickle=True).item()
+
+# %%
 true_DL2=0.35
 true_neff=-2.3
 
-DL2_err = 0.056
-neff_err = 0.022
-r=-0.134
+# DL2_err = 0.056
+# neff_err = 0.022
+# r=-0.134
 coeff_mult = 1
 
 # create grid (note j in number of elements, crazy python)
 # thresholds = [2.30,6.17,11.8]
-thresholds = [2.30, 6.18]
+# thresholds = [2.30, 6.18]
+thresholds = [2.30]
 neff_grid, DL2_grid = np.mgrid[-2.4:-2.2:200j, 0.2:0.65:200j]
 chi2_Mc2005=coeff_mult * marg_lya_like.gaussian_chi2_McDonald2005(neff_grid,DL2_grid)
 chi2_PD2015=coeff_mult * marg_lya_like.gaussian_chi2_PalanqueDelabrouille2015(neff_grid,DL2_grid)
@@ -126,9 +140,14 @@ chi2_Ch2019=coeff_mult * marg_lya_like.gaussian_chi2_Chabanier2019(neff_grid,DL2
 chi2_Wa2024=coeff_mult * marg_lya_like.gaussian_chi2_Walther2024(neff_grid,DL2_grid)
 
 
-coeff_mult = 2.3 # no idea why
-chi2_desi = coeff_mult * marg_lya_like.gaussian_chi2(neff_grid,DL2_grid, true_neff, true_DL2, neff_err, DL2_err, r)
+# chi2_desi = marg_lya_like.gaussian_chi2(neff_grid, DL2_grid, out_dict["ycen_2d"], out_dict["xcen_2d"], out_dict["err_n_star"], out_dict["err_Delta2_star"], out_dict["rho"])
+chi2_desi = marg_lya_like.gaussian_chi2(neff_grid, DL2_grid, true_neff, true_DL2, out_dict["err_n_star"], out_dict["err_Delta2_star"], out_dict["rho"])
 
+
+# %%
+# plt.contour(DL2_grid, neff_grid,chi2_desi,levels=thresholds[:2],colors='C0')
+# plt.xlim(0.4, 0.63)
+# plt.ylim(-2.34, -2.2)
 
 # %%
 def print_err(ell):
@@ -163,6 +182,8 @@ cmb.keys()
 # %% jupyter={"outputs_hidden": false}
 labs = ['McDonald+05', 'Palanque-Delabrouille+15', 'Chabanier+19', 'Walther+24', 'This work']
 
+fontsize = 18
+
 # specify CMB chain to plot
 # cmb=wmap9
 # g = plots.getSinglePlotter(width_inch=8)
@@ -171,6 +192,8 @@ labs = ['McDonald+05', 'Palanque-Delabrouille+15', 'Chabanier+19', 'Walther+24',
 #g.plot_2d(planck2018_mnu_BAO['samples'], ['linP_n_star', 'linP_DL2_star'],lims=[-2.4,-2.25,0.2,0.5])
 
 g = plots.getSubplotPlotter(width_inch=8)
+g.settings.num_plot_contours = 1
+
 g.settings.axes_fontsize = 10
 g.settings.legend_fontsize = 14
 g.triangle_plot(
@@ -183,7 +206,7 @@ ax = g.subplots[1, 0]
 ax_NS = g.subplots[0, 0]
 ax_D2S = g.subplots[1, 1]
 x_D2S = np.linspace(0.2, 0.5, 500)
-x_NS = np.linspace(-2.4, -2.25, 500)
+x_NS = np.linspace(-2.4, -2.2, 500)
 
 CS = ax.contour(neff_grid,DL2_grid,chi2_Mc2005,levels=thresholds[:2],colors='C0')
 xcen, ycen, xerr, yerr = print_err(CS)
@@ -224,7 +247,7 @@ ax_NS.plot(x_NS, pdf/pdf.max())
 for ii in range(len(labs)):
     ax.axhline(y=1,color='C'+str(ii),label=labs[ii])
 
-ax.set_xlim(-2.4, -2.25)
+ax.set_xlim(-2.4, -2.2)
 ax.set_ylim(0.2, 0.5)
 
 # plt.title(r'Linear power constraints at ($z=3$, $k_p=0.009$ s/km)')
@@ -243,24 +266,37 @@ g.subplots[1, 1].legend(
     bbox_to_anchor=(1, 2),
     loc='upper right', 
     borderaxespad=0.,
-    fontsize=14
+    fontsize=fontsize-2
 )
 
+ax.tick_params(
+    axis="both", which="major", labelsize=fontsize
+)
+ax_D2S.tick_params(
+    axis="both", which="major", labelsize=fontsize
+)
+
+
+ax.set_ylabel(r"$\Delta_\star$", fontsize=fontsize)
+ax.set_xlabel(r"$n_\star$", fontsize=fontsize)
+ax_D2S.set_xlabel(r"$\Delta_\star$", fontsize=fontsize)
+
+
 plt.tight_layout()
-plt.savefig("figs/star_literature.png")
-plt.savefig("figs/star_literature.pdf")
+# plt.savefig("figs/star_literature.png")
+# plt.savefig("figs/star_literature.pdf")
 
 # %%
 
-CS = plt.contour(DL2_grid, neff_grid, chi2_Ch2019, levels=thresholds[:2],colors='C0')
-print_err(CS)
+# CS = plt.contour(DL2_grid, neff_grid, chi2_Ch2019, levels=thresholds[:2],colors='C0')
+# print_err(CS)
 
-# plt.ylim(-2.41, -2.29)
-# plt.ylim(-2.4, -2.25)
-plt.ylim(-2.35, -2.33)
-# plt.xlim(0.14, 0.44)
-# plt.xlim(0.20, 0.40)
-plt.xlim(0.28, 0.36)
-plt.grid()
+# # plt.ylim(-2.41, -2.29)
+# # plt.ylim(-2.4, -2.25)
+# plt.ylim(-2.35, -2.33)
+# # plt.xlim(0.14, 0.44)
+# # plt.xlim(0.20, 0.40)
+# plt.xlim(0.28, 0.36)
+# plt.grid()
 
 # %%

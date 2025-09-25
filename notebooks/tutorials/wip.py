@@ -258,7 +258,10 @@ pip = Pipeline(args)
 # %%
 
 p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
+
+# %%
 
 # %%
 # pip.fitter.like.plot_p1d()
