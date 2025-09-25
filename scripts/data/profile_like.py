@@ -1,4 +1,5 @@
 import os
+import sys
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
@@ -18,7 +19,8 @@ def main():
 
     # name_variation = None
     # name_variation = "no_inflate"
-    name_variation = "no_emu_cov"
+    # name_variation = "no_emu_cov"
+    name_variation = sys.argv[1]
 
     # prof_type = "prof_2d"
     # nsig = 6
