@@ -11,16 +11,23 @@ from cup1d.utils.utils import get_path_repo
 
 def main():
     emu = "mpg"
-    # emu = "nyx"
     data_label = "DESIY1_QMLE3"
-    # data_label = "DESIY1_QMLE"
-    # data_label = "DESIY1_FFT_dir"
-    # data_label = "DESIY1_FFT"
-
-    # name_variation = None
-    # name_variation = "no_inflate"
-    # name_variation = "no_emu_cov"
     name_variation = sys.argv[1]
+
+    if name_variation == "nyx":
+        name_variation = None
+        emu = "nyx"
+    elif name_variation == "DESIY1_QMLE":
+        name_variation = None
+        data_label = "DESIY1_QMLE"
+    elif name_variation == "DESIY1_FFT3_dir":
+        name_variation = None
+        data_label = "DESIY1_FFT3_dir"
+    elif name_variation == "DESIY1_FFT_dir":
+        name_variation = None
+        data_label = "DESIY1_FFT_dir"
+    elif name_variation == "None":
+        name_variation = None
 
     # prof_type = "prof_2d"
     # nsig = 6
