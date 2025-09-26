@@ -9,39 +9,50 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
-    emu = "mpg"
-    # emu = "nyx"
-
-    # baseline
-    fit_type = "global_opt"
-    data_label = "DESIY1_QMLE3"
-    # data_label = "DESIY1_QMLE"
-    # data_label = "DESIY1_FFT_dir"
-    # data_label = "DESIY1_FFT"
-
     variations = [
         # None,
-        "no_inflate",  # no increase errors
-        "no_emu_cov",  # no emu error
-        "no_inflate_no_emu_cov",  # no emu error, no increase errors for 3, 3.6, and 4
-        "cosmo",  # different fiducial cosmo
-        "metal_trad",  # 2 params for metals like eBOSS
-        "metal_si2",  # no SiII-SiII cont
-        "metal_deco",  # no decorrelation metals
-        "metal_thin",  # no desviation from optically-thin limit
-        "no_res",  # no marginalize over resolution
-        "Turner24",  # mF from Turner24 with 1 free param to scale
-        "more_igm",  # 8 params for IGM evolution
-        "less_igm",  # 4 params for IGM evolution
-        "metals_z",  # 2 params for z ev metals
-        "hcd_z",  # 2 params for z ev hcd
+        "nyx",
+        "DESIY1_QMLE",
+        "DESIY1_FFT3_dir",
+        "DESIY1_FFT_dir",
+        # "no_inflate",  # no increase errors
+        # "no_emu_cov",  # no emu error
+        # "no_inflate_no_emu_cov",  # no emu error, no increase errors for 3, 3.6, and 4
+        # "cosmo",  # different fiducial cosmo
+        # "metal_trad",  # 2 params for metals like eBOSS
+        # "metal_si2",  # no SiII-SiII cont
+        # "metal_deco",  # no decorrelation metals
+        # "metal_thin",  # no desviation from optically-thin limit
+        # "no_res",  # no marginalize over resolution
+        # "Turner24",  # mF from Turner24 with 1 free param to scale
+        # "more_igm",  # 8 params for IGM evolution
+        # "less_igm",  # 4 params for IGM evolution
+        # "metals_z",  # 2 params for z ev metals
+        # "hcd_z",  # 2 params for z ev hcd
     ]
 
     for ivar in range(len(variations)):
+        emu = "mpg"
+        data_label = "DESIY1_QMLE3"
         name_variation = variations[ivar]
+
+        if name_variation is "nyx":
+            name_variation = None
+            emu = "nyx"
+        elif name_variation is "DESIY1_QMLE":
+            name_variation = None
+            data_label = "DESIY1_QMLE"
+        elif name_variation is "DESIY1_FFT3_dir":
+            name_variation = None
+            data_label = "DESIY1_FFT3_dir"
+        elif name_variation is "DESIY1_FFT_dir":
+            name_variation = None
+            data_label = "DESIY1_FFT_dir"
 
         for ii in range(5):
             print("")
+        print("DATA:", data_label)
+        print("EMULATOR:", "CH24_" + emu + "cen_gpr")
         print("VARIATION:", name_variation)
         for ii in range(5):
             print("")
@@ -50,7 +61,7 @@ def main():
             data_label=data_label, emulator_label="CH24_" + emu + "cen_gpr"
         )
         args.set_baseline(
-            fit_type=fit_type,
+            fit_type="global_opt",
             fix_cosmo=False,
             P1D_type=data_label,
             name_variation=name_variation,
