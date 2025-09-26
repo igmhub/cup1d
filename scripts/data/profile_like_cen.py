@@ -13,8 +13,8 @@ def main():
         # None,
         # "nyx",
         # "DESIY1_QMLE",
-        "DESIY1_FFT3_dir",
-        "DESIY1_FFT_dir",
+        # "DESIY1_FFT3_dir",
+        # "DESIY1_FFT_dir",
         # "no_inflate",  # no increase errors
         # "no_emu_cov",  # no emu error
         # "no_inflate_no_emu_cov",  # no emu error, no increase errors for 3, 3.6, and 4
@@ -29,6 +29,8 @@ def main():
         # "less_igm",  # 4 params for IGM evolution
         # "metals_z",  # 2 params for z ev metals
         # "hcd_z",  # 2 params for z ev hcd
+        "zmin",
+        "zmax",
     ]
 
     for ivar in range(len(variations)):

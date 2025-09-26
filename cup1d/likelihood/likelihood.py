@@ -1100,6 +1100,7 @@ class Likelihood(object):
         z_at_time=False,
         fontsize=20,
         glob_full=False,
+        fix_cosmo=False,
         n_param_glob_full=16,
         chi2_nozcov=False,
     ):
@@ -1253,6 +1254,8 @@ class Likelihood(object):
                 for iz in range(len(self.extra_data.k_kms)):
                     ndeg += np.sum(self.extra_data.Pk_kms[iz] != 0)
             _ndeg = ndeg - n_free_p
+            if fix_cosmo:
+                _ndeg -= 2
         else:
             _ndeg = np.sum(ndeg_all)
         prob = chi2_scipy.sf(chi2, _ndeg)

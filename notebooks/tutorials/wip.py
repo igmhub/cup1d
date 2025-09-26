@@ -242,12 +242,13 @@ variations = [
 
 data_label = "DESIY1_QMLE3"
 # data_label = "DESIY1_FFT3_dir"
-name_variation = None
+# name_variation = None
+name_variation = "zmax"
 
 args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
 args.set_baseline(
     fit_type="global_opt", 
-    fix_cosmo=False, 
+    fix_cosmo=True, 
     P1D_type=data_label, 
     name_variation=name_variation, 
 )
@@ -264,7 +265,7 @@ pip.fitter.like.get_chi2(p0)
 # %%
 
 # %%
-# pip.fitter.like.plot_p1d()
+pip.fitter.like.plot_p1d()
 # pip.fitter.like.plot_cov_to_pk(fname="figs/nyx_err2p1d_qmle3")
 
 # %%
@@ -281,10 +282,25 @@ fit_type = "global_opt"
 emu = "mpg"
 folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
 data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
-data_cen.keys()
+
+
+ii = 556
+type_prof = "prof_2d_deep"
+data_best = np.load(folder + type_prof + "/profile_"+str(ii)+ ".npy", allow_pickle=True).item()
+
+data_best.keys()
 
 # %%
-p0 = data_cen["mle_cube"].copy()
+data_best["chi2"]
+
+# %%
+
+tar_cosmo = pip.fitter.like.apply_unblinding(data_best["blind_cosmo"])
+pip.fitter.like.theory.rescale_fid_cosmo(tar_cosmo)
+
+# %%
+# p0 = data_cen["mle_cube"].copy()
+p0 = data_best["mle_cube"].copy()
 pip.fitter.like.get_chi2(p0)
 
 # %%
@@ -367,7 +383,9 @@ pip.fitter.like.get_chi2(p0)
 # res
 
 # %%
-pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
+# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
+pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False, fix_cosmo=True, plot_fname="figs/residual_fid_opt_global")
+
 # pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, print_chi2=False)
 
 # %%

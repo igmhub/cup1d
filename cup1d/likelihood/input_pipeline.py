@@ -439,6 +439,13 @@ class Args:
         self.set_params_zero()
 
         ## set cosmology
+        if (name_variation is not None) and (name_variation == "zmin"):
+            self.z_min = 2.6
+        if (name_variation is not None) and (name_variation == "zmax"):
+            self.z_max = 3.4
+        ##
+
+        ## set cosmology
         if (name_variation is not None) and (name_variation == "cosmo"):
             self.fid_cosmo_label = "DESIDR2_ACT"
         ##
@@ -758,6 +765,11 @@ class Args:
             else:
                 nz_igm = 6
 
+            if name_variation == "zmin":
+                nz_igm = 4
+            elif name_variation == "zmax":
+                nz_igm = 4
+
             if name_variation == "Turner24":
                 self.fid_igm["tau_eff_znodes"] = np.array([3.0])
             else:
@@ -810,6 +822,15 @@ class Args:
                 self.fid_syst["R_coeff_znodes"] = np.array(
                     [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8]
                 )
+
+            if name_variation == "zmin":
+                self.fid_syst["R_coeff_znodes"] = self.fid_syst[
+                    "R_coeff_znodes"
+                ][self.fid_syst["R_coeff_znodes"] >= self.z_min]
+            elif name_variation == "zmax":
+                self.fid_syst["R_coeff_znodes"] = self.fid_syst[
+                    "R_coeff_znodes"
+                ][self.fid_syst["R_coeff_znodes"] <= self.z_max]
             self.fid_syst["n_R_coeff"] = len(self.fid_syst["R_coeff_znodes"])
             self.fid_syst["R_coeff_ztype"] = "interp_lin"
 

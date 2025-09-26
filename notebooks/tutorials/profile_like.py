@@ -55,13 +55,35 @@ print(chi2_levels)
 fit_type = "global_opt"
 data_lab = "DESIY1_QMLE3"
 # data_lab = "DESIY1_QMLE"
+# data_lab = "DESIY1_FFT3_dir"
 # data_lab = "DESIY1_FFT_dir"
-# data_lab = "DESIY1_FFT"
 emu = "mpg"
 # emu = "nyx"
 
-# variation = None
-variation = "no_inflate"
+variations = [
+    # None,
+    # "nyx",
+    # "DESIY1_QMLE",
+    # "DESIY1_FFT3_dir",
+    # "DESIY1_FFT_dir",
+    # "no_inflate",  # no increase errors
+    # "no_emu_cov",  # no emu error
+    # "no_inflate_no_emu_cov",  # no emu error, no increase errors for 3, 3.6, and 4
+    "cosmo",  # different fiducial cosmo
+    # "metal_trad",  # 2 params for metals like eBOSS
+    # "metal_si2",  # no SiII-SiII cont
+    # "metal_deco",  # no decorrelation metals
+    # "metal_thin",  # no desviation from optically-thin limit
+    # "no_res",  # no marginalize over resolution
+    # "Turner24",  # mF from Turner24 with 1 free param to scale
+    # "more_igm",  # 8 params for IGM evolution
+    # "less_igm",  # 4 params for IGM evolution
+    # "metals_z",  # 2 params for z ev metals
+    # "hcd_z",  # 2 params for z ev hcd
+]
+
+variation = variations[0]
+# variation = "no_inflate"
 
 # variation = "sim_mpg_central"
 # variation = "sim_nyx_central"
@@ -112,10 +134,12 @@ for ii in range(nelem):
 
 _ = chi2 != 0
 min_chi2 = np.min([chi2[_].min(), data_cen['best_chi2']])
-print(min_chi2, data_cen['best_chi2']-min_chi2, chi2[_].min()-min_chi2)
+print(min_chi2, data_cen['best_chi2']-min_chi2, chi2[_].min()-min_chi2, np.argmin(chi2))
 
 np.sum(chi2 == 0)
 # -
+
+
 
 data_cen['best_chi2']
 
@@ -130,32 +154,36 @@ def fix_key(s):
 fixed = {fix_key(k): v for k, v in data_cen["mle"].items()}
 
 # +
-fig, ax = plt.subplots(2, 3, figsize=(12, 10), sharex="col")
-ax = ax.reshape(-1)
+plot = False
 
+if plot:
 
-_ = chi2 != 0
-ax[0].scatter(params[_, 0], params[_, 1], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
-ax[1].scatter(params[_, 0], hcd0[_], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
-ax[2].scatter(params[_, 1], hcd0[_], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
-ax[4].scatter(params[_, 0], tau3[_], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
-ax[5].scatter(params[_, 1], tau3[_], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
-
-# ax[1].axhline(-1.5, c="k", lw=2)
-# ax[2].axhline(-1.5, c="k", lw=2)
-# ax[2].axvline(-2.25, c="k", lw=2)
-# ax[0].axhline(-2.25, c="k", lw=2)
-ax[3].set_xlabel("D2star")
-ax[4].set_xlabel("D2star")
-ax[5].set_xlabel("nstar")
-
-ax[0].set_ylabel("nstar")
-ax[1].set_ylabel("LLS")
-ax[2].set_ylabel("LLS")
-ax[4].set_ylabel("tau3")
-ax[5].set_ylabel("tau3")
-plt.tight_layout()
-# plt.savefig("figs/HCD_cosmo.pdf")
+    fig, ax = plt.subplots(2, 3, figsize=(12, 10), sharex="col")
+    ax = ax.reshape(-1)
+    
+    
+    _ = chi2 != 0
+    ax[0].scatter(params[_, 0], params[_, 1], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
+    ax[1].scatter(params[_, 0], hcd0[_], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
+    ax[2].scatter(params[_, 1], hcd0[_], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
+    ax[4].scatter(params[_, 0], tau3[_], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
+    ax[5].scatter(params[_, 1], tau3[_], c=chi2[_]-data_cen['best_chi2'], cmap="tab20")
+    
+    # ax[1].axhline(-1.5, c="k", lw=2)
+    # ax[2].axhline(-1.5, c="k", lw=2)
+    # ax[2].axvline(-2.25, c="k", lw=2)
+    # ax[0].axhline(-2.25, c="k", lw=2)
+    ax[3].set_xlabel("D2star")
+    ax[4].set_xlabel("D2star")
+    ax[5].set_xlabel("nstar")
+    
+    ax[0].set_ylabel("nstar")
+    ax[1].set_ylabel("LLS")
+    ax[2].set_ylabel("LLS")
+    ax[4].set_ylabel("tau3")
+    ax[5].set_ylabel("tau3")
+    plt.tight_layout()
+    # plt.savefig("figs/HCD_cosmo.pdf")
 
 # +
 plot = False
@@ -398,8 +426,7 @@ print((params[ind])[ind3[:3]].mean(axis=0))
 print((params[ind])[ind3[:3]])
 
 # +
-fact1 = 0.9
-fact2 = 0.8
+
 fact1 = 1
 fact2 = 1
 plot_ellipse(
@@ -411,8 +438,8 @@ plot_ellipse(
 plt.plot(out_dict["xell1"], out_dict["yell1"], color="C0")
 plt.scatter(out_dict["Delta2_star"], out_dict["n_star"], marker="x", color="k")
 
-plt.xlim(0.4, 0.63)
-plt.ylim(-2.34, -2.2)
+# plt.xlim(0.4, 0.63)
+# plt.ylim(-2.34, -2.2)
 # -
 
 print(out_dict["err_Delta2_star"], out_dict["err_n_star"])
@@ -543,27 +570,51 @@ fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 20
 ls = ["-", "--"]
 
-variations = ["DESIY1_QMLE3_mpg", "DESIY1_FFT_dir_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT_mpg", "DESIY1_QMLE3_nyx", "cov"]
+variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT3_dir_mpg", "no_inflate", "DESIY1_QMLE3_nyx"]
+# variations = ["DESIY1_QMLE3_mpg", "DESIY1_FFT_dir_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT_mpg", "DESIY1_QMLE3_nyx", "cov"]
 # variations = ["DESIY1_QMLE3_mpg", "DESIY1_FFT_dir_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT_mpg", "DESIY1_QMLE3_nyx"]
 dict_trans = {
-    "DESIY1_QMLE3_mpg":"QMLE3", 
-    "DESIY1_FFT_dir_mpg":"FFTDM", 
-    "DESIY1_QMLE_mpg":"QMLE", 
-    "DESIY1_FFT_mpg":"FFT", 
-    "DESIY1_QMLE3_nyx":"Emulator",
-    "cov":"cov"
+    "DESIY1_QMLE3_mpg":"Fiducial", 
+    "DESIY1_QMLE_mpg":"Data: w/ low SNR", 
+    "DESIY1_FFT3_dir_mpg": "Data: FFT",
+    "no_inflate":"Cov: no extra 5%",
+    "no_emu_cov":"Cov: no emu err", # no emu error
+    "no_inflate_no_emu_cov":"Cov: no emu err, no extra 5\%", 
+    "DESIY1_QMLE3_nyx":"Model: emulator",
+    "cosmo": "Model: fid cosmo",  # different fiducial cosmo
+    "more_igm": "Model: IGM $n_z=8$",  # 8 params for IGM evolution
+    "less_igm": "Model: IGM $n_z=4$",  # 4 params for IGM evolution
+    "metals_z": "Model: metals $n_z=2$",  # 2 params for z ev metals
+    "hcd_z": "Model: HCD $n_z=2$",  # 2 params for z ev hcd
+    "Turner24": r"Model: Turner+24 $\bar F$",  # mF from Turner24 with 1 free param to scale
+    "metal_trad": "Model: simple metal",  # 2 params for metals like eBOSS
+    "metal_si2": "Model: no \siisii",  # no SiII-SiII cont
+    "metal_deco": "Model: no metal decorr",  # no decorrelation metals
+    "metal_thin": "Model: metal thin",  # no desviation from optically-thin limit
+    "no_res": "Model: no resolution",  # no resolution correction
 }
-var_deg = 657
+var_deg = 638
 
 fit_type = "global_opt"
 x0 = 0
 y0 = 0
 for ii, var in enumerate(variations):
     print()
-    if var == "cov":
-        file = "out_pl/"+ var + ".npy"
+    data_lab = "DESIY1_QMLE3"
+    emu = "mpg"
+
+    if "nyx" in var:
+        emu = "nyx"
+    if "FFT3_dir" in var:
+        data_lab = "DESIY1_FFT3_dir"
+    if var == "DESIY1_QMLE_mpg":
+        data_lab = "DESIY1_QMLE"
+    
+    if var != "no_inflate":
+        file = "out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
     else:
-        file = "out_pl/"+ var + "_" + fit_type + ".npy"
+        file = "out_pl/"+ var + ".npy"
+        
     out_dict = np.load(file, allow_pickle=True).item()
     
     prob = chi2_scipy.sf(out_dict['chi2'], var_deg)
@@ -586,7 +637,7 @@ for ii, var in enumerate(variations):
     print(np.round(prob_var, 1))
 
     col = "C"+str(ii)
-    ax.scatter(out_dict["Delta2_star"], out_dict["n_star"], color=col, marker="x")
+    ax.scatter(out_dict["Delta2_star"], out_dict["n_star"], color=col, marker="x", alpha=0.75)
 
     for jj in range(1, 2):
         if jj == 1:
@@ -603,7 +654,7 @@ ax.tick_params(
     axis="both", which="major", labelsize=ftsize - 2
 )
 
-plt.legend(fontsize=ftsize-2)
+plt.legend(fontsize=ftsize-2, loc="upper right")
 plt.tight_layout()
 # plt.savefig("figs/variations_2d.pdf")
 # plt.savefig("figs/variations_2d.png")
@@ -668,21 +719,24 @@ sym = ["x", "o"]
 cmap = colormaps["tab20"]
 
 variations = {
-    "fid":[638, 1, "Fiducial"],
-    "no_inflate":[638, 1, "No inflate"],  # no increase errors
-    "cosmo":[638, 1, "Cosmo"],  # different fiducial cosmo
-    "Turner24":[643, 1, r"Turner+24 $\bar F$"],  # mF from Turner24 with 1 free param to scale
-    "more_igm":[632, 1, "IGM $n_z=8$"],  # 8 params for IGM evolution
-    "less_igm":[644, 1, "IGM $n_z=4$"],  # 4 params for IGM evolution
-    "metals_z":[632, 1, "Metals $n_z=2$"],  # 2 params for z ev metals
-    "hcd_z":[634, 1, "HCD $n_z=2$"],  # 2 params for z ev hcd
-    "no_emu_cov":[638, 0, "No emu cov"], # no emu error
-    "no_inflate_no_emu_cov":[638, 0, "No inflate, no emu"], # no emu error, no increase errors
-    "metal_trad":[646, 0, "Simple metal"],  # 2 params for metals like eBOSS
-    "metal_si2":[642, 0, "No \siisii"],  # no SiII-SiII cont
-    "metal_deco":[640, 0, "No metal decorr"],  # no decorrelation metals
-    "metal_thin":[640, 0, "Metal thin"],  # no desviation from optically-thin limit
-    "no_res":[647, 0, "No resolution"],  # no resolution correction
+    "fid":[638, 1, "Fiducial"], # QMLE3
+    "no_inflate":[638, 1, "Cov: no extra 5\%"],  # no increase errors
+    "no_emu_cov":[638, 0, "Cov: no emu err"], # no emu error
+    "no_inflate_no_emu_cov":[638, 0, "Cov: no emu err, no extra 5\%"], # no emu error, no increase errors
+    "low_snr":[638, 1, "Data: w/ low SNR"], # QMLE
+    "fft":[638, 1, "Data: FFT"], # FFT3_dir
+    "fft_low_snr":[638, 1, "Data: FFT w/ low SNR"], # FFT_dir
+    "cosmo":[638, 1, "Model: fid cosmo"],  # different fiducial cosmo
+    "more_igm":[632, 1, "Model: IGM $n_z=8$"],  # 8 params for IGM evolution
+    "less_igm":[644, 1, "Model: IGM $n_z=4$"],  # 4 params for IGM evolution
+    "metals_z":[632, 1, "Model: metals $n_z=2$"],  # 2 params for z ev metals
+    "hcd_z":[634, 1, "Model: HCD $n_z=2$"],  # 2 params for z ev hcd
+    "Turner24":[643, 1, r"Model: Turner+24 $\bar F$"],  # mF from Turner24 with 1 free param to scale
+    "metal_trad":[646, 0, "Model: simple metal"],  # 2 params for metals like eBOSS
+    "metal_si2":[642, 0, "Model: no \siisii"],  # no SiII-SiII cont
+    "metal_deco":[640, 0, "Model: no metal decorr"],  # no decorrelation metals
+    "metal_thin":[640, 0, "Model: metal thin"],  # no desviation from optically-thin limit
+    "no_res":[647, 0, "Model: no resolution"],  # no resolution correction
 }
 
 
@@ -698,6 +752,15 @@ for ii, var in enumerate(variations):
     if var == "fid":
         file = "out_pl/"+data_lab+"_mpg_" + fit_type + ".npy"
         key_chi2 = "chi2"
+    elif var == "low_snr":
+        file = base_folder + "/DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/best_dircosmo.npy"
+        key_chi2 = "best_chi2"
+    elif var == "fft":
+        file = base_folder + "/DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/best_dircosmo.npy"
+        key_chi2 = "best_chi2"
+    elif var == "fft_low_snr":
+        file = base_folder + "/DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/best_dircosmo.npy"
+        key_chi2 = "best_chi2"
     else:
         file = base_folder + data_lab + "/"+var+"/CH24_mpgcen_gpr/best_dircosmo.npy"
         key_chi2 = "best_chi2"
@@ -714,7 +777,7 @@ for ii, var in enumerate(variations):
     else:
         str_chi2 = np.round(out_dict[key_chi2], 1)
         str_prob = np.round(prob,4)
-    print(var, str(str_chi2))
+    print(var, str(str_chi2), prob)
     if ii == 0:
         dict_diff = {
             "Delta2_star": out_dict["Delta2_star"],
@@ -797,12 +860,13 @@ ax.tick_params(
     axis="both", which="major", labelsize=ftsize - 2
 )
 
-plt.legend(fontsize=ftsize-6, loc="upper right", ncol=3)
+plt.legend(fontsize=ftsize-8, loc="upper right", ncol=1)
 plt.tight_layout()
 
 # +
 # Transpose numeric columns
 cols = list(zip(*[row[1:] for row in table]))
+threshold = [0.07, 0.039]
 
 # Apply formatting rules per column
 formatted_cols = [
@@ -813,11 +877,20 @@ formatted_cols = [
     format_last_column(cols[4]),                   # col 6 (special rules)
 ]
 
+for j in [0, 1]:  # indices of col 2 and 3
+    for i, val in enumerate(cols[j]):
+        if np.abs(float(val)) > threshold[j]:
+            formatted_cols[j][i] = f"\\textcolor{{red}}{{{formatted_cols[j][i]}}}"
+
 # Rebuild table
 tablex = []
 for i, row in enumerate(table):
     label = f"{row[0]:<22}"
     nums = [col[i] for col in formatted_cols]
+    if "Turner" in label:
+        tablex.append("\\hline")
+        tablex.append("\\multicolumn{6}{c}{Not expected to agree}\\\\")
+        tablex.append("\\hline")
     line = label + " & " + " & ".join(nums) + "\\\\"
     tablex.append(line)
 
