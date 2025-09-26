@@ -36,16 +36,16 @@ def main():
         data_label = "DESIY1_QMLE3"
         name_variation = variations[ivar]
 
-        if name_variation is "nyx":
+        if name_variation == "nyx":
             name_variation = None
             emu = "nyx"
-        elif name_variation is "DESIY1_QMLE":
+        elif name_variation == "DESIY1_QMLE":
             name_variation = None
             data_label = "DESIY1_QMLE"
-        elif name_variation is "DESIY1_FFT3_dir":
+        elif name_variation == "DESIY1_FFT3_dir":
             name_variation = None
             data_label = "DESIY1_FFT3_dir"
-        elif name_variation is "DESIY1_FFT_dir":
+        elif name_variation == "DESIY1_FFT_dir":
             name_variation = None
             data_label = "DESIY1_FFT_dir"
 
