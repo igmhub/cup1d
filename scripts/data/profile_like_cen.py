@@ -11,8 +11,8 @@ from cup1d.utils.utils import get_path_repo
 def main():
     variations = [
         # None,
-        "nyx",
-        "DESIY1_QMLE",
+        # "nyx",
+        # "DESIY1_QMLE",
         "DESIY1_FFT3_dir",
         "DESIY1_FFT_dir",
         # "no_inflate",  # no increase errors
