@@ -37,7 +37,6 @@ def main():
         true_cosmo_label=data_label,
         fid_cosmo_label=data_label,
         apply_smoothing=True,
-        apply_smoothing=True,
         add_noise=True,
         seed_noise=seed_noise,
     )
