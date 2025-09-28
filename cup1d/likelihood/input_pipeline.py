@@ -32,14 +32,14 @@ class Args:
     )
     cont_params: dict = field(
         default_factory=lambda: {
-            "f_Lya_SiIII": [0, -11.5],
-            "s_Lya_SiIII": [0, 2],
-            "f_Lya_SiII": [0, -11.5],
-            "s_Lya_SiII": [0, 2],
-            "f_SiIIa_SiIIb": [0, -11.5],
-            "s_SiIIa_SiIIb": [0, 2],
-            "f_SiIIa_SiIII": [0, 0],  # these are variations from exp(0)=1
-            "f_SiIIb_SiIII": [0, 0],  # these are variations from exp(0)=1
+            "f_Lya_SiIII": [0, -20.0],
+            "s_Lya_SiIII": [0, 2.1],
+            "f_Lya_SiII": [0, -20.0],
+            "s_Lya_SiII": [0, 2.1],
+            "f_SiIIa_SiIIb": [0, -20.0],
+            "s_SiIIa_SiIIb": [0, 0.1],
+            "f_SiIIa_SiIII": [0, 0.0],  # these are variations from exp(0)=1
+            "f_SiIIb_SiIII": [0, 0.0],  # these are variations from exp(0)=1
         }
     )
     syst_params: dict = field(
@@ -79,16 +79,18 @@ class Args:
     )
     true_syst: dict = field(
         default_factory=lambda: {
-            "res_model_type": "pivot",
             "R_coeff": [0, 0],
-            "n_res": 0,
+            "n_R_coeff": 0,
+            "R_coeff_ztype": "pivot",
+            "R_coeff_otype": "const",
         }
     )
     fid_syst: dict = field(
         default_factory=lambda: {
-            "res_model_type": "pivot",
             "R_coeff": [0, 0],
-            "n_res": 0,
+            "n_R_coeff": 0,
+            "R_coeff_ztype": "pivot",
+            "R_coeff_otype": "const",
         }
     )
     apply_smoothing: bool = False
@@ -118,7 +120,7 @@ class Args:
     out_folder: str | None = "."
     Gauss_priors: dict | None = None
 
-    def __post_init__(self):
+    def __post_init__(self, val_null=-20):
         """Initialize some parameters"""
         self.check_emulator_label()
         if "nyx" in self.emulator_label:
@@ -130,12 +132,17 @@ class Args:
 
         if self.true_cont["hcd_model_type"] == "new_rogers":
             for jj in range(1, 5):
-                self.cont_params["HCD_damp" + str(jj)] = [0, -11.5]
+                self.cont_params["HCD_damp" + str(jj)] = [0, val_null]
             self.cont_params["HCD_const"] = [0, 0]
         ##
         for key in self.cont_params.keys():
             self.true_cont[key] = self.cont_params[key]
-            self.true_cont["n_" + key] = self.cont_params[key]
+            self.true_cont["n_" + key] = 0
+            self.true_cont[key + "_ztype"] = "pivot"
+            if key == "HCD_const":
+                self.true_cont[key + "_otype"] = "const"
+            else:
+                self.true_cont[key + "_otype"] = "exp"
 
         # # and others
         # self.true_cont["n_sn"] = 0

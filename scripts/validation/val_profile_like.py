@@ -1,4 +1,5 @@
 import os
+import sys
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
@@ -12,7 +13,8 @@ def main():
     # dataset
     # data_label = "mpg_central"
     # data_label = "nyx_central"
-    data_label = "sherwood"
+    # data_label = "sherwood"
+    data_label = sys.argv[1]
 
     if data_label == "mpg_central":
         zmin = 2.25
