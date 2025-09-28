@@ -13,9 +13,9 @@ def main():
     # emu = "nyx"
 
     # baseline
-    # data_label = "mpg_central"
+    data_label = "mpg_central"
     # data_label = "nyx_central"
-    data_label = "sherwood"
+    # data_label = "sherwood"
 
     if data_label == "mpg_central":
         zmin = 2.25
@@ -24,7 +24,6 @@ def main():
         zmin = 2.2
         zmax = 4.2
 
-    fit_type = "global_opt"
     cov_label = "DESIY1_QMLE3"
 
     name_variation = "sim_" + data_label
@@ -39,32 +38,33 @@ def main():
     )
 
     args.set_baseline(
-        fit_type=fit_type,
+        fit_type="global_opt",
         fix_cosmo=False,
+        P1D_type=cov_label,
         name_variation=name_variation,
-        zmin=zmin,
-        zmax=zmax,
+        z_min=zmin,
+        z_max=zmax,
     )
     pip = Pipeline(args, out_folder=args.out_folder)
-
-    if name_variation == "cov":
-        pip.fitter.like.full_icov_Pk_kms /= 1.1**2
 
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 
     print("starting minimization")
-    type_minimizer = "NM"
-    if type_minimizer == "NM":
-        pip.fitter.run_minimizer(
-            pip.fitter.like.minus_log_prob,
-            p0=input_pars,
-            restart=True,
-            # burn_in=True,
-        )
-    else:
-        pip.fitter.run_minimizer_da(
-            pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
-        )
+    # type_minimizer = "NM"
+    # if type_minimizer == "NM":
+    #     pip.fitter.run_minimizer(
+    #         pip.fitter.like.minus_log_prob,
+    #         p0=input_pars,
+    #         restart=True,
+    #         # burn_in=True,
+    #     )
+    # else:
+    #     pip.fitter.run_minimizer_da(
+    #         pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
+    #     )
+    pip.fitter.run_minimizer(
+        pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
+    )
 
     out_dict = {
         "best_chi2": pip.fitter.mle_chi2,

@@ -75,16 +75,14 @@ def main():
         # print("starting minimization")
         # type_minimizer = "NM"
         # if type_minimizer == "NM":
-        pip.fitter.run_minimizer(
-            pip.fitter.like.minus_log_prob,
-            p0=input_pars,
-            restart=True,
-            # burn_in=True,
-        )
         # else:
         #     pip.fitter.run_minimizer_da(
         #         pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
         #     )
+
+        pip.fitter.run_minimizer(
+            pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
+        )
 
         out_dict = {
             "best_chi2": pip.fitter.mle_chi2,

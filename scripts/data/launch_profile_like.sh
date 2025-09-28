@@ -26,15 +26,15 @@ variations=(
     # "metal_trad"
     # "metal_si2"
     # "metal_deco"
-    # "metal_thin"
+    "metal_thin"
     # "no_res"
     # "Turner24"
     # "more_igm"
     # "less_igm"
     # "metals_z"
     # "hcd_z"
-    "zmin"
-    "zmax"
+    # "zmin"
+    # "zmax"
 )
 
 source /global/homes/j/jjchaves/miniconda3/bin/activate lace
