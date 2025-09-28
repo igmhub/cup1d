@@ -24,7 +24,6 @@ def main():
         zmax = 4.2
 
     emu = "mpg"
-    fit_type = "global_opt"
     cov_label = "DESIY1_QMLE3"
 
     name_variation = "sim_" + data_label
@@ -35,7 +34,7 @@ def main():
     # mle_cosmo_cen = None
 
     prof_type = "prof_2d_deep"
-    nsig = 5
+    nsig = 7
     nelem = 30
 
     # if data_label == "mpg_central":
@@ -50,7 +49,6 @@ def main():
     mle_cosmo_cen = {"Delta2_star": 0.35, "n_star": -2.30}
 
     # baseline
-    fit_type = "global_opt"
     args = Args(
         data_label=data_label,
         cov_label=cov_label,
@@ -59,18 +57,17 @@ def main():
         fid_cosmo_label=data_label,
         apply_smoothing=True,
     )
+
     args.set_baseline(
-        fit_type=fit_type,
+        fit_type="global_opt",
         fix_cosmo=True,
+        P1D_type=cov_label,
         name_variation=name_variation,
-        zmin=zmin,
-        zmax=zmax,
+        z_min=zmin,
+        z_max=zmax,
     )
     out_folder = os.path.join(args.out_folder, prof_type)
     pip = Pipeline(args, out_folder=out_folder)
-
-    if name_variation == "cov":
-        pip.fitter.like.full_icov_Pk_kms /= 1.1**2
 
     sigma_cosmo = {"Delta2_star": 0.027, "n_star": 0.017}
 
