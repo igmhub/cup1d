@@ -1,10 +1,9 @@
-import os, sys
+import os
+import sys
 import numpy as np
 from scipy.interpolate import interp1d
 
-from lace.utils import poly_p1d
-from lace.cosmo import camb_cosmo
-from cup1d.likelihood import CAMB_model
+# from lace.cosmo import camb_cosmo
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 from cup1d.p1ds import (
     data_PD2013,
@@ -12,11 +11,7 @@ from cup1d.p1ds import (
     data_QMLE_Ohio,
     data_Karacayli2022,
     data_DESIY1,
-    challenge_DESIY1,
 )
-from cup1d.likelihood import lya_theory
-from cup1d.likelihood.model_contaminants import Contaminants
-from cup1d.likelihood.model_igm import IGM
 
 
 class Nyx_P1D(BaseMockP1D):
