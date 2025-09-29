@@ -454,6 +454,10 @@ class Args:
         ## set cosmology
         if (name_variation is not None) and (name_variation == "cosmo"):
             self.fid_cosmo_label = "DESIDR2_ACT"
+        elif (name_variation is not None) and (name_variation == "cosmo_low"):
+            self.fid_cosmo_label = "Planck18_low_omh2"
+        elif (name_variation is not None) and (name_variation == "cosmo_high"):
+            self.fid_cosmo_label = "Planck18_high_omh2"
         ##
 
         ## set ic correction for lyssa emu

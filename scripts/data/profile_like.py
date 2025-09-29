@@ -34,12 +34,11 @@ def main():
     # nelem = 8
     # mle_cosmo_cen = None
 
-    prof_type = "prof_2d_deep"
+    prof_type = "prof_2d_deep2"
     nsig = 7
     nelem = 30
 
     mle_cosmo_cen = {"Delta2_star": 0.46, "n_star": -2.27}  # all mpg
-    # mle_cosmo_cen = {"Delta2_star": 0.40, "n_star": -2.26}  # nyx qmle3 done
 
     # baseline
     fit_type = "global_opt"

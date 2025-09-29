@@ -10,27 +10,29 @@ from cup1d.utils.utils import get_path_repo
 
 def main():
     variations = [
-        # None,
-        # "nyx",
-        # "DESIY1_QMLE",
-        # "DESIY1_FFT3_dir",
-        # "DESIY1_FFT_dir",
-        # "no_inflate",  # no increase errors
-        # "no_emu_cov",  # no emu error
-        # "no_inflate_no_emu_cov",  # no emu error, no increase errors for 3, 3.6, and 4
-        # "cosmo",  # different fiducial cosmo
-        # "metal_trad",  # 2 params for metals like eBOSS
-        # "metal_si2",  # no SiII-SiII cont
-        # "metal_deco",  # no decorrelation metals
+        None,
+        "nyx",
+        "DESIY1_QMLE",
+        "DESIY1_FFT3_dir",
+        "DESIY1_FFT_dir",
+        "no_inflate",  # no increase errors
+        "no_emu_cov",  # no emu error
+        "no_inflate_no_emu_cov",  # no emu error, no increase errors for 3, 3.6, and 4
+        "cosmo",  # different fiducial cosmo
+        "cosmo_low",
+        "cosmo_high",
+        "metal_trad",  # 2 params for metals like eBOSS
+        "metal_si2",  # no SiII-SiII cont
+        "metal_deco",  # no decorrelation metals
         # "metal_thin",  # no desviation from optically-thin limit
-        # "no_res",  # no marginalize over resolution
+        "no_res",  # no marginalize over resolution
         # "Turner24",  # mF from Turner24 with 1 free param to scale
-        # "more_igm",  # 8 params for IGM evolution
-        # "less_igm",  # 4 params for IGM evolution
-        # "metals_z",  # 2 params for z ev metals
-        # "hcd_z",  # 2 params for z ev hcd
-        "zmin",
-        "zmax",
+        "more_igm",  # 8 params for IGM evolution
+        "less_igm",  # 4 params for IGM evolution
+        "metals_z",  # 2 params for z ev metals
+        "hcd_z",  # 2 params for z ev hcd
+        "zmin",  # low z cut
+        "zmax",  # high z cut
     ]
 
     for ivar in range(len(variations)):

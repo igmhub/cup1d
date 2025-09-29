@@ -76,6 +76,32 @@ def set_cosmo(
             pivot_scalar=0.05,
             w=-1,
         )
+    elif cosmo_label == "Planck18_high_omh2":
+        cosmo = camb_cosmo.get_cosmology(
+            H0=67.66,
+            mnu=0.0,
+            omch2=0.1309,  # 10% higher
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
+    elif cosmo_label == "Planck18_low_omh2":
+        cosmo = camb_cosmo.get_cosmology(
+            H0=67.66,
+            mnu=0.0,
+            omch2=0.1071,  # 10% smaller
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
     elif cosmo_label == "DESIDR2_ACT":
         # ACT https://arxiv.org/pdf/2503.14452, Table 5 (P-ACT)
         # omch2 = 0.1193

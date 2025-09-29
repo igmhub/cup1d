@@ -23,18 +23,20 @@ variations=(
     # "no_emu_cov"
     # "no_inflate_no_emu_cov"
     # "cosmo"
+    "cosmo_low"
+    "cosmo_high"
     # "metal_trad"
     # "metal_si2"
     # "metal_deco"
-    "metal_thin"
     # "no_res"
-    # "Turner24"
     # "more_igm"
     # "less_igm"
     # "metals_z"
     # "hcd_z"
     # "zmin"
     # "zmax"
+    # "Turner24"
+    # "metal_thin"
 )
 
 source /global/homes/j/jjchaves/miniconda3/bin/activate lace
