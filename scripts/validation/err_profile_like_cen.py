@@ -51,7 +51,7 @@ def main():
         z_max=zmax,
     )
 
-    for iseed in range(nseed):
+    for iseed in range(1, nseed):
         for ii in range(5):
             print("")
         print("seed:", iseed)
