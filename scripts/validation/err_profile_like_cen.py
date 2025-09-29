@@ -51,7 +51,7 @@ def main():
         z_max=zmax,
     )
 
-    for iseed in range(0, nseed):
+    for iseed in range(227, 400):
         for ii in range(5):
             print("")
         print("seed:", iseed)
@@ -63,9 +63,10 @@ def main():
             args.out_folder,
             "seed_" + str(args.seed_noise),
         )
-        pip = Pipeline(args, out_folder=out_folder)
+        pip = Pipeline(args, out_folder=out_folder, archive=archive_mock)
 
         input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
+        print(input_pars)
 
         pip.fitter.run_minimizer(
             pip.fitter.like.minus_log_prob, p0=input_pars, restart=True

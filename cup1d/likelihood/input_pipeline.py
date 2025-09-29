@@ -96,8 +96,8 @@ class Args:
     apply_smoothing: bool = False
     cov_label: str = "Chabanier2019"
     cov_label_hires: str = "Karacayli2022"
-    # nyx_training_set: str = "models_Nyx_Mar2025_with_CGAN_val_3axes"
-    nyx_training_set: str = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
+    nyx_training_set: str = "models_Nyx_Mar2025_with_CGAN_val_3axes"
+    # nyx_training_set: str = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
     cov_syst_type: str = "red"
     z_star: float = 3
     kp_kms: float = 0.009
@@ -329,7 +329,7 @@ class Args:
         if (name_variation is not None) and (name_variation.startswith("sim_")):
             self.fid_cont["flat_priors"]["f_SiIIa_SiIIb"] = [
                 [-1, 4],
-                [val_null - 0.5, -3],
+                [val_null - 0.5, 3],
             ]
         else:
             self.fid_cont["flat_priors"]["f_SiIIa_SiIIb"] = [
@@ -354,13 +354,26 @@ class Args:
         # priors
         # -0.03, 75% of all fluctuations
         # self.fid_cont["flat_priors"]["HCD_damp1"] = [[-0.5, 0.5], [-10.0, -1.0]]
+        if (name_variation is not None) and (name_variation.startswith("sim_")):
+            min_hcd = val_null - 0.5
+        else:
+            min_hcd = -10.0
         self.fid_cont["flat_priors"]["HCD_damp1"] = [
             [-0.5, 0.5],
-            [-10.0, -0.03],
+            [min_hcd, -0.03],
         ]
-        self.fid_cont["flat_priors"]["HCD_damp2"] = [[-0.5, 0.5], [-10.0, -1.0]]
-        self.fid_cont["flat_priors"]["HCD_damp3"] = [[-0.5, 0.5], [-10.0, -1.0]]
-        self.fid_cont["flat_priors"]["HCD_damp4"] = [[-0.5, 0.5], [-10.0, -1.0]]
+        self.fid_cont["flat_priors"]["HCD_damp2"] = [
+            [-0.5, 0.5],
+            [min_hcd, -1.0],
+        ]
+        self.fid_cont["flat_priors"]["HCD_damp3"] = [
+            [-0.5, 0.5],
+            [min_hcd, -1.0],
+        ]
+        self.fid_cont["flat_priors"]["HCD_damp4"] = [
+            [-0.5, 0.5],
+            [min_hcd, -1.0],
+        ]
         self.fid_cont["flat_priors"]["HCD_const"] = [[-1, 1], [-0.2, 0.2]]
 
         for key in self.fid_cont:
