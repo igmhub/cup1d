@@ -19,17 +19,7 @@ def main():
     data_label = "nyx_central"
     # data_label = "sherwood"
 
-    if data_label == "mpg_central":
-        zmin = 2.25
-        zmax = 4.25
-        archive_mock = set_archive(training_set="Cabayol23")
-    else:
-        zmin = 2.2
-        zmax = 4.2
-        archive_mock = set_archive(training_set=args.nyx_training_set)
-
     cov_label = "DESIY1_QMLE3"
-
     name_variation = "sim_" + data_label
 
     args = Args(
@@ -42,6 +32,15 @@ def main():
         add_noise=True,
         seed_noise=0,
     )
+
+    if data_label == "mpg_central":
+        zmin = 2.25
+        zmax = 4.25
+        archive_mock = set_archive(training_set="Cabayol23")
+    else:
+        zmin = 2.2
+        zmax = 4.2
+        archive_mock = set_archive(training_set=args.nyx_training_set)
 
     args.set_baseline(
         fit_type="global_opt",
