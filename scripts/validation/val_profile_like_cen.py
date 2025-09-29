@@ -14,8 +14,8 @@ def main():
 
     # baseline
     # data_label = "mpg_central"
-    # data_label = "nyx_central"
-    data_label = "sherwood"
+    data_label = "nyx_central"
+    # data_label = "sherwood"
 
     if data_label == "mpg_central":
         zmin = 2.25
