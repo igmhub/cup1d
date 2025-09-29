@@ -88,7 +88,15 @@ def fit_ellipse(x, y, npts=200):
     return xfit, yfit, rho
 
 
-def plot_ellipse(sigma1=0.2, sigma2=0.5, rho=0.6, mean=[1.0, 2.0], ax=None):
+def plot_ellipse(
+    sigma1=0.2,
+    sigma2=0.5,
+    rho=0.6,
+    mean=[1.0, 2.0],
+    ax=None,
+    color="C1",
+    label="ellipse",
+):
     # Covariance matrix
     cov = np.array(
         [
@@ -126,10 +134,11 @@ def plot_ellipse(sigma1=0.2, sigma2=0.5, rho=0.6, mean=[1.0, 2.0], ax=None):
         width=width,
         height=height,
         angle=angle,
-        edgecolor="r",
+        edgecolor=color,
         facecolor="none",
         lw=2,
+        label=label,
     )
     ax.add_patch(ellipse)
 
-    ax.scatter(*mean, c="r", marker="x", label="Best fit")
+    ax.scatter(*mean, c=color, marker="x")

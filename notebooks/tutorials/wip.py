@@ -53,6 +53,7 @@ from corner import corner
 from cup1d.utils.utils import get_path_repo
 
 from scipy.stats import chi2 as chi2_scipy
+from cup1d.pipeline.set_archive import set_archive
 
 
 # %% [markdown]
@@ -89,28 +90,46 @@ args = Args(
     emulator_label="CH24_mpgcen_gpr",
     true_cosmo_label=true_cosmo_label,
     fid_cosmo_label=fid_cosmo_label,
-    apply_smoothing=True
+    apply_smoothing=True,
+    # add_noise=True,
+    # seed_noise=3,
 )
 args.set_baseline(
     fit_type=fit_type, 
     fix_cosmo=False, 
+    P1D_type="DESIY1_QMLE3",
     name_variation=name_variation,
-    zmin=zmin,
-    zmax=zmax
+    z_min=zmin,
+    z_max=zmax,
 )
 
 # %%
-
-pip = Pipeline(args)
+args.out_folder
 
 # %%
+# archive_mock = set_archive(training_set=args.nyx_training_set)
+
+# %%
+
+# %%
+args.seed_noise=4
+
+# %%
+pip = Pipeline(args, archive=archive_mock)
 
 # %%
 for par in pip.fitter.like.free_params:
     print(par.name, par.value, par.min_value, par.max_value)
 
 # %%
+f_SiIIa_SiIIb_0 0.75 -20.5 0.85
+f_SiIIa_SiIIb_1 0.75 -20.5 0.85
+
+
+# %%
 pip.fitter.like.plot_p1d()
+
+# %%
 
 # %%
 len(pip.fitter.like.free_params)
@@ -160,8 +179,6 @@ for par in dat["fitter"]["mle_cosmo"]:
 p0 = dat["fitter"]["mle_cube"]
 
 # %%
-
-# %%
 # pip.fitter.like.plot_igm()
 
 # %%
@@ -172,6 +189,7 @@ pip.fitter.like.get_chi2(p0)
 pip.run_minimizer(p0, restart=True)
 
 # %%
+pip.fitter.mle
 
 # %%
 p0 = pip.fitter.mle_cube.copy()
@@ -242,8 +260,8 @@ variations = [
 
 data_label = "DESIY1_QMLE3"
 # data_label = "DESIY1_FFT3_dir"
-# name_variation = None
-name_variation = "zmax"
+name_variation = None
+# name_variation = "zmax"
 
 args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
 args.set_baseline(

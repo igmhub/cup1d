@@ -69,7 +69,9 @@ variations = [
     # "no_inflate",  # no increase errors
     # "no_emu_cov",  # no emu error
     # "no_inflate_no_emu_cov",  # no emu error, no increase errors for 3, 3.6, and 4
-    "cosmo",  # different fiducial cosmo
+    # "cosmo",  # different fiducial cosmo
+    # "cosmo_low",  # different fiducial cosmo
+    "cosmo_high",  # different fiducial cosmo
     # "metal_trad",  # 2 params for metals like eBOSS
     # "metal_si2",  # no SiII-SiII cont
     # "metal_deco",  # no decorrelation metals
@@ -80,6 +82,11 @@ variations = [
     # "less_igm",  # 4 params for IGM evolution
     # "metals_z",  # 2 params for z ev metals
     # "hcd_z",  # 2 params for z ev hcd
+    # "zmin",
+    # "zmax",
+    # "sim_mpg_central",
+    # "sim_nyx_central",
+    # "sim_sherwood",
 ]
 
 variation = variations[0]
@@ -92,7 +99,7 @@ variation = variations[0]
 # type_prof = "prof_2d"
 # nelem = 64
 
-type_prof = "prof_2d_deep"
+type_prof = "prof_2d_deep2"
 nelem = 900
 
 if variation is not None:
@@ -118,7 +125,8 @@ for ii in range(nelem):
     params[ii, 0] = data["blind_cosmo"]["Delta2_star"]
     params[ii, 1] = data["blind_cosmo"]["n_star"]
     hcd0[ii] = data["mle"]['$f_{\rm HCD1}_0$']
-    tau3[ii] = data["mle"]['$\tau_{\rm eff_3}$']
+    if variation != "Turner24":
+        tau3[ii] = data["mle"]['$\tau_{\rm eff_3}$']
 
     jj = 0
     for key in data_cen["mle"]:
@@ -139,8 +147,6 @@ print(min_chi2, data_cen['best_chi2']-min_chi2, chi2[_].min()-min_chi2, np.argmi
 np.sum(chi2 == 0)
 # -
 
-
-
 data_cen['best_chi2']
 
 data_cen["mle"]
@@ -154,7 +160,7 @@ def fix_key(s):
 fixed = {fix_key(k): v for k, v in data_cen["mle"].items()}
 
 # +
-plot = False
+plot = True
 
 if plot:
 
@@ -259,8 +265,6 @@ if plot:
 print(data_cen["mle_cosmo_cen"])
 print(params[np.argmin(chi2)])
 mle[np.argmin(chi2)]
-
-
 
 
 
@@ -411,7 +415,7 @@ for jj in range(1, 0, -1):
     out_dict["ycen_2d"] = yfit.mean()
     out_dict["rho"] = rho
 
-if type_prof == "prof_2d_deep":
+if (type_prof == "prof_2d_deep") | (type_prof == "prof_2d_deep2"):
     if variation is None:
         file = "out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
     else:
@@ -565,101 +569,145 @@ out_dict.keys()
 
 # +
 
-
-fig, ax = plt.subplots(figsize=(8, 6))
-ftsize = 20
+ftsize = 22
 ls = ["-", "--"]
 
-variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT3_dir_mpg", "no_inflate", "DESIY1_QMLE3_nyx"]
-# variations = ["DESIY1_QMLE3_mpg", "DESIY1_FFT_dir_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT_mpg", "DESIY1_QMLE3_nyx", "cov"]
-# variations = ["DESIY1_QMLE3_mpg", "DESIY1_FFT_dir_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT_mpg", "DESIY1_QMLE3_nyx"]
 dict_trans = {
     "DESIY1_QMLE3_mpg":"Fiducial", 
+    
     "DESIY1_QMLE_mpg":"Data: w/ low SNR", 
     "DESIY1_FFT3_dir_mpg": "Data: FFT",
+    "zmin": "Data: $z \geq 2.6$",  # restricted zrange
+    "zmax": "Data: $z \leq 3.4$",  # restricted zrange
+    
     "no_inflate":"Cov: no extra 5%",
     "no_emu_cov":"Cov: no emu err", # no emu error
-    "no_inflate_no_emu_cov":"Cov: no emu err, no extra 5\%", 
+    "no_inflate_no_emu_cov":"Cov: no emu err, no extra 5%", 
+    
     "DESIY1_QMLE3_nyx":"Model: emulator",
     "cosmo": "Model: fid cosmo",  # different fiducial cosmo
+    
     "more_igm": "Model: IGM $n_z=8$",  # 8 params for IGM evolution
     "less_igm": "Model: IGM $n_z=4$",  # 4 params for IGM evolution
     "metals_z": "Model: metals $n_z=2$",  # 2 params for z ev metals
     "hcd_z": "Model: HCD $n_z=2$",  # 2 params for z ev hcd
-    "Turner24": r"Model: Turner+24 $\bar F$",  # mF from Turner24 with 1 free param to scale
+    
+    # "Turner24": r"Model: Turner+24 $\bar F$",  # mF from Turner24 with 1 free param to scale ERROR
     "metal_trad": "Model: simple metal",  # 2 params for metals like eBOSS
-    "metal_si2": "Model: no \siisii",  # no SiII-SiII cont
+    "metal_si2": "Model: no SiII-SiII",  # no SiII-SiII cont
     "metal_deco": "Model: no metal decorr",  # no decorrelation metals
-    "metal_thin": "Model: metal thin",  # no desviation from optically-thin limit
+    # "metal_thin": "Model: metal thin",  # no desviation from optically-thin limit ERROR
     "no_res": "Model: no resolution",  # no resolution correction
 }
-var_deg = 638
 
-fit_type = "global_opt"
-x0 = 0
-y0 = 0
-for ii, var in enumerate(variations):
-    print()
-    data_lab = "DESIY1_QMLE3"
-    emu = "mpg"
+fname = ["data", "cov", "model", "modelz", "model_other"]
 
-    if "nyx" in var:
-        emu = "nyx"
-    if "FFT3_dir" in var:
-        data_lab = "DESIY1_FFT3_dir"
-    if var == "DESIY1_QMLE_mpg":
-        data_lab = "DESIY1_QMLE"
+
+for image in range(0, 5):
+
+    if image == 0:
+        variations = ["DESIY1_QMLE3_mpg", "zmin", "zmax", "DESIY1_QMLE_mpg", "DESIY1_FFT3_dir_mpg"]
+    elif image == 1:
+        variations = ["DESIY1_QMLE3_mpg", "no_inflate", "no_emu_cov", "no_inflate_no_emu_cov"]
+    elif image == 2:
+        variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx", "cosmo"]
+    elif image == 3:
+        variations = ["DESIY1_QMLE3_mpg", "more_igm", "less_igm", "metals_z", "hcd_z"]
+    elif image == 4:
+        variations = ["DESIY1_QMLE3_mpg", "no_res", "metal_deco", "metal_si2", "metal_trad"]
+        # variations = ["DESIY1_QMLE3_mpg"]
+
+
+    fig, ax = plt.subplots(figsize=(8, 6))
     
-    if var != "no_inflate":
-        file = "out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
-    else:
-        file = "out_pl/"+ var + ".npy"
+    var_deg = 638
+    
+    fit_type = "global_opt"
+    x0 = 0
+    y0 = 0
+    for ii, var in enumerate(variations):
+        print()
+        data_lab = "DESIY1_QMLE3"
+        emu = "mpg"
+    
+        if "nyx" in var:
+            emu = "nyx"
+        if "FFT3_dir" in var:
+            data_lab = "DESIY1_FFT3_dir"
+        if var == "DESIY1_QMLE_mpg":
+            data_lab = "DESIY1_QMLE"
         
-    out_dict = np.load(file, allow_pickle=True).item()
-    
-    prob = chi2_scipy.sf(out_dict['chi2'], var_deg)
-    print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
-    if ii == 0:
-        dict_diff = {
-            "Delta2_star": out_dict["Delta2_star"],
-            "n_star": out_dict["n_star"],
-            "err_Delta2_star": out_dict["err_Delta2_star"],
-            "err_n_star": out_dict["err_n_star"],
-        }
-
-    consist = 0
-    for key in ["Delta2_star", "n_star"]:
-        print(np.round(out_dict[key], 3), np.round(out_dict["err_" + key], 3))
-        print("diff", np.round(out_dict[key] - dict_diff[key], 3), np.round(out_dict["err_" + key], 3))
-        consist += (out_dict[key] - dict_diff[key])**2/np.max([dict_diff["err_"+key], out_dict["err_" + key]])**2
-
-    prob_var = chi2_scipy.sf(consist, 2)
-    print(np.round(prob_var, 1))
-
-    col = "C"+str(ii)
-    ax.scatter(out_dict["Delta2_star"], out_dict["n_star"], color=col, marker="x", alpha=0.75)
-
-    for jj in range(1, 2):
-        if jj == 1:
-            lab = dict_trans[var]
+        if "DESIY1" in var:
+            file = "out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
         else:
-            lab= None
-        ax.plot(out_dict["xell"+str(jj)], out_dict["yell"+str(jj)], col+ls[jj-1], lw=3, label=lab)
+            file = "out_pl/"+ var + ".npy"
+            
+        out_dict = np.load(file, allow_pickle=True).item()
+        
+        prob = chi2_scipy.sf(out_dict['chi2'], var_deg)
+        print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
+        if ii == 0:
+            dict_diff = {
+                "Delta2_star": out_dict["Delta2_star"],
+                "n_star": out_dict["n_star"],
+                "err_Delta2_star": out_dict["err_Delta2_star"],
+                "err_n_star": out_dict["err_n_star"],
+                "xcen": out_dict["xcen_2d"],
+                "ycen": out_dict["ycen_2d"],
+            }
+    
+        consist = 0
+        for key in ["Delta2_star", "n_star"]:
+            print(np.round(out_dict[key], 3), np.round(out_dict["err_" + key], 3))
+            print("diff", np.round(out_dict[key] - dict_diff[key], 3), np.round(out_dict["err_" + key], 3))
+            consist += (out_dict[key] - dict_diff[key])**2/np.max([dict_diff["err_"+key], out_dict["err_" + key]])**2
+    
+        prob_var = chi2_scipy.sf(consist, 2)
+        print(np.round(prob_var, 1))
+    
+        col = "C"+str(ii)
+        # ax.scatter(out_dict["Delta2_star"], out_dict["n_star"], color=col, marker="x", alpha=0.75)
+    
+        for jj in range(1, 2):
+            if jj == 1:
+                lab = dict_trans[var]
+            else:
+                lab= None
+                
+            if var == "DESIY1_QMLE3_mpg":
+                ax.fill(out_dict["xell"+str(jj)] - dict_diff["xcen"], out_dict["yell"+str(jj)] - dict_diff["ycen"], color=col, lw=3, label=lab, alpha=0.75)
+            else:
+                ax.plot(out_dict["xell"+str(jj)] - dict_diff["xcen"], out_dict["yell"+str(jj)] - dict_diff["ycen"], col+ls[jj-1], lw=3, label=lab)
+    
+    # ax.scatter(0.4, -2.28, color="k", marker="x", label="Planck")
+    
+    ax.set_ylabel(r"$n_\star$", fontsize=ftsize+2)
+    ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize+2)
+    ax.tick_params(
+        axis="both", which="major", labelsize=ftsize - 2
+    )
+    ax.axhline(color="k", ls=":")
+    ax.axvline(color="k", ls=":")
+    
+    
+    plt.legend(fontsize=ftsize-2, loc="upper right", ncol=1)
+    plt.tight_layout()
+    plt.savefig("figs/variations_2d_"+fname[image]+".pdf")
+    plt.savefig("figs/variations_2d_"+fname[image]+".png")
 
-# ax.scatter(0.4, -2.28, color="k", marker="x", label="Planck")
 
-ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
-ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
-ax.tick_params(
-    axis="both", which="major", labelsize=ftsize - 2
-)
+# +
+0.027 * 14
 
-plt.legend(fontsize=ftsize-2, loc="upper right")
-plt.tight_layout()
-# plt.savefig("figs/variations_2d.pdf")
-# plt.savefig("figs/variations_2d.png")
+0.38
+
+# +
+0.017 * 14
+
+0.2
+
+
 # -
-
 
 # #### No errors
 
@@ -915,6 +963,7 @@ ftsize = 20
 ls = ["-", "--"]
 
 variations = ["sim_mpg_central", "sim_nyx_central", "sim_sherwood"]
+# variations = ["sim_mpg_central", "sim_nyx_central"]
 dict_trans = {
     "sim_mpg_central":"mpg-central", 
     "sim_nyx_central":"nyx-central", 
@@ -978,10 +1027,139 @@ ax.tick_params(
 
 plt.legend(fontsize=ftsize-2)
 plt.tight_layout()
-plt.savefig("figs/validation_2d.pdf")
-plt.savefig("figs/validation_2d.png")
+# plt.savefig("figs/validation_2d.pdf")
+# plt.savefig("figs/validation_2d.png")
 # -
 
-prob
+# from matplotlib.patches import Ellipse
+
+
+# +
+fig, ax = plt.subplots(figsize=(8, 6))
+ftsize = 20
+ls = ["-", "--"]
+
+variations = ["sim_nyx_central"]
+# variations = ["sim_mpg_central", "sim_nyx_central"]
+dict_trans = {
+    "sim_mpg_central":"mpg-central", 
+    "sim_nyx_central":"nyx-central", 
+    "sim_sherwood":"sherwood", 
+}
+var_deg = [550-26, 681-26, 670-26]
+
+
+
+fit_type = "global_opt"
+x0 = 0
+y0 = 0
+for ii, var in enumerate(variations):
+    print()
+    file = "out_pl/"+ var + ".npy"
+    out_dict = np.load(file, allow_pickle=True).item()
+    
+    prob = chi2_scipy.sf(out_dict['chi2'], var_deg[ii]) * 100
+    print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
+
+    cosmo = set_cosmo(cosmo_label=var[4:])
+    like_cosmo = CAMB_model.CAMBModel(np.array([3]), cosmo=cosmo)
+    true_cosmo = like_cosmo.get_linP_params()
+
+    consist = 0
+    for key in ["Delta2_star", "n_star"]:
+        print(np.round(out_dict[key], 3), np.round(out_dict["err_" + key], 3))
+        print("diff", np.round(out_dict[key] - true_cosmo[key], 3), np.round(out_dict["err_" + key], 3))
+        consist += (out_dict[key] - true_cosmo[key])**2/out_dict["err_" + key]**2
+
+    prob_var = chi2_scipy.sf(consist, 2) * 100
+    print(np.round(prob_var, 1))
+
+    col = "C"+str(ii)
+    ax.scatter(
+        out_dict["Delta2_star"] - true_cosmo["Delta2_star"], 
+        out_dict["n_star"] - true_cosmo["n_star"], 
+        color=col, marker="x")
+
+    for jj in range(1, 2):
+        if jj == 1:
+            lab = dict_trans[var]
+        else:
+            lab= None
+        ax.plot(
+            out_dict["xell"+str(jj)]- true_cosmo["Delta2_star"], 
+            out_dict["yell"+str(jj)]- true_cosmo["n_star"], 
+            col+ls[jj-1], lw=3, label=lab+" w/o errors")
+
+    nseed = 91
+    xy_all = np.zeros((nseed, 2))
+    for jj in range(nseed):
+        folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+var+"/CH24_mpgcen_gpr/"
+        data_cen = np.load(folder + "seed_" + str(jj) + "/best_dircosmo.npy", allow_pickle=True).item()
+        x = data_cen["mle_cosmo_cen"]["Delta2_star"] - true_cosmo["Delta2_star"]
+        y = data_cen["mle_cosmo_cen"]["n_star"] - true_cosmo["n_star"]
+        xy_all[jj, 0] = x
+        xy_all[jj, 1] = y
+        plt.scatter(x, y, marker=".", color="C1")
+
+
+    # plot ellipse containing 68%
+    mean = xy_all.mean(axis=0)
+    cov = np.cov(xy_all, rowvar=False)
+    rho = cov[0,1]/np.sqrt(cov[0,0] * cov[1,1])
+    
+    # Eigen-decomposition of covariance
+    # vals, vecs = np.linalg.eigh(cov)
+    # order = vals.argsort()[::-1]
+    # vals, vecs = vals[order], vecs[:, order]
+    
+    # # Scale to the 68% quantile of chi-square with 2 dof
+    # chi2_val = chi2_scipy.ppf(0.68, df=2)
+    # _ = vals < 0
+    # width, height = 2 * np.sqrt(vals * chi2_val)
+    # angle = np.degrees(np.arctan2(*vecs[:,0][::-1]))
+    
+    # ellipse = Ellipse(mean, width, height, angle, edgecolor='red', facecolor='none', lw=2)
+    # ax.add_patch(ellipse)
+    
+    plot_ellipse(
+        np.sqrt(cov[0, 0]),
+        np.sqrt(cov[1, 1]),
+        rho,
+        [mean[0], mean[1]],
+        ax=ax,
+        label=lab + " noisy realizations"
+    )
+
+
+ax.axhline(0, color="k", linestyle="--")
+ax.axvline(0, color="k", linestyle="--")
+
+
+
+ax.set_ylabel(r"$\Delta(n_\star)$", fontsize=ftsize)
+ax.set_xlabel(r"$\Delta(\Delta^2_\star)$", fontsize=ftsize)
+ax.tick_params(
+    axis="both", which="major", labelsize=ftsize - 2
+)
+
+plt.legend(fontsize=ftsize-2, loc="upper right")
+plt.tight_layout()
+# plt.savefig("figs/validation_2d.pdf")
+# plt.savefig("figs/validation_2d.png")
+# -
+
+mean
+
+cov[0, 0]
+
+help(plot_ellipse)
+
+points.shape
+
+
+
+data_cen.keys()
+
+true_cosmo
 
 
