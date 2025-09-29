@@ -51,7 +51,7 @@ def main():
         z_max=zmax,
     )
 
-    for iseed in range(7, nseed):
+    for iseed in range(0, nseed):
         for ii in range(5):
             print("")
         print("seed:", iseed)
@@ -78,7 +78,7 @@ def main():
             "mle": pip.fitter.mle,
         }
 
-        file_out = os.path.join(args.out_folder, "best_dircosmo.npy")
+        file_out = os.path.join(out_folder, "best_dircosmo.npy")
 
         print("saving output to:", file_out)
         np.save(file_out, out_dict)
