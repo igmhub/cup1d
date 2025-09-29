@@ -17,10 +17,10 @@ def main():
         "DESIY1_FFT_dir",
         "no_inflate",  # no increase errors
         "no_emu_cov",  # no emu error
-        "no_inflate_no_emu_cov",  # no emu error, no increase errors for 3, 3.6, and 4
-        "cosmo",  # different fiducial cosmo
-        "cosmo_low",
-        "cosmo_high",
+        "no_inflate_no_emu_cov",  # no emu error, no increase errors
+        "cosmo",  # different fiducial cosmo, DESIDR2-ACT
+        "cosmo_low",  # different fiducial cosmo, low Omh2
+        "cosmo_high",  # different fiducial cosmo, high Omh2
         "metal_trad",  # 2 params for metals like eBOSS
         "metal_si2",  # no SiII-SiII cont
         "metal_deco",  # no decorrelation metals
