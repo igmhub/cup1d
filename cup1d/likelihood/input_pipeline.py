@@ -240,38 +240,37 @@ class Args:
             "gamma": 1,
             "kF_kms": 1,
         }
-        if (name_variation is not None) and (name_variation.startswith("sim_")):
-            fid_vals_conts = {
-                "f_Lya_SiIII": val_null,
-                "s_Lya_SiIII": 2.1,
-                "f_Lya_SiII": val_null,
-                "s_Lya_SiII": 2.1,
-                "f_SiIIa_SiIIb": val_null,
-                "s_SiIIa_SiIIb": 0.1,
-                "f_SiIIa_SiIII": 0,
-                "f_SiIIb_SiIII": 0,
-                "HCD_damp1": val_null,
-                "HCD_damp2": val_null,
-                "HCD_damp3": val_null,
-                "HCD_damp4": val_null,
-                "HCD_const": 0,
-            }
-        else:
-            fid_vals_conts = {
-                "f_Lya_SiIII": -4.0,
-                "s_Lya_SiIII": 5.0,
-                "f_Lya_SiII": -4.0,
-                "s_Lya_SiII": 5.5,
-                "f_SiIIa_SiIIb": 0.75,
-                "s_SiIIa_SiIIb": 5.0,
-                "f_SiIIa_SiIII": 1,
-                "f_SiIIb_SiIII": 1,
-                "HCD_damp1": -1.4,
-                "HCD_damp2": -5.0,
-                "HCD_damp3": -5.0,
-                "HCD_damp4": -5.0,
-                "HCD_const": 0,
-            }
+        # if (name_variation is not None) and (name_variation.startswith("sim_")):
+        # fid_vals_conts = {
+        #     "f_Lya_SiIII": val_null,
+        #     "s_Lya_SiIII": 2.1,
+        #     "f_Lya_SiII": val_null,
+        #     "s_Lya_SiII": 2.1,
+        #     "f_SiIIa_SiIIb": val_null,
+        #     "s_SiIIa_SiIIb": 0.1,
+        #     "f_SiIIa_SiIII": 0,
+        #     "f_SiIIb_SiIII": 0,
+        #     "HCD_damp1": val_null,
+        #     "HCD_damp2": val_null,
+        #     "HCD_damp3": val_null,
+        #     "HCD_damp4": val_null,
+        #     "HCD_const": 0,
+        # }
+        fid_vals_conts = {
+            "f_Lya_SiIII": -4.0,
+            "s_Lya_SiIII": 5.0,
+            "f_Lya_SiII": -4.0,
+            "s_Lya_SiII": 5.5,
+            "f_SiIIa_SiIIb": 0.75,
+            "s_SiIIa_SiIIb": 5.0,
+            "f_SiIIa_SiIII": 1,
+            "f_SiIIb_SiIII": 1,
+            "HCD_damp1": -1.4,
+            "HCD_damp2": -5.0,
+            "HCD_damp3": -5.0,
+            "HCD_damp4": -5.0,
+            "HCD_const": 0,
+        }
 
         for key in self.igm_params:
             if self.fid_igm[key + "_ztype"] == "pivot":
@@ -826,8 +825,8 @@ class Args:
             if name_variation == "no_res":
                 self.fid_syst["R_coeff_znodes"] = []
             else:
-                self.fid_syst["R_coeff_znodes"] = np.array(
-                    [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8]
+                self.fid_syst["R_coeff_znodes"] = np.arange(
+                    2.2, 4.2 + 1e-5, 0.2
                 )
 
             if name_variation == "zmin":

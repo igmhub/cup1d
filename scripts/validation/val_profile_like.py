@@ -33,7 +33,7 @@ def main():
     # nelem = 8
     # mle_cosmo_cen = None
 
-    prof_type = "prof_2d_deep"
+    prof_type = "prof_2d_deep2"
     nsig = 7
     nelem = 30
 

@@ -1,5 +1,4 @@
 import os
-import sys
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
@@ -7,10 +6,11 @@ import numpy as np
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
 from cup1d.utils.utils import get_path_repo
+from cup1d.pipeline.set_archive import set_archive
 
 
 def main():
-    seed_noise = int(sys.argv[1])
+    nseed = 1000
     emu = "mpg"
     # emu = "nyx"
 
@@ -22,9 +22,11 @@ def main():
     if data_label == "mpg_central":
         zmin = 2.25
         zmax = 4.25
+        archive_mock = set_archive(training_set="Cabayol23")
     else:
         zmin = 2.2
         zmax = 4.2
+        archive_mock = set_archive(training_set=args.nyx_training_set)
 
     cov_label = "DESIY1_QMLE3"
 
@@ -38,7 +40,7 @@ def main():
         fid_cosmo_label=data_label,
         apply_smoothing=True,
         add_noise=True,
-        seed_noise=seed_noise,
+        seed_noise=0,
     )
 
     args.set_baseline(
@@ -49,44 +51,40 @@ def main():
         z_min=zmin,
         z_max=zmax,
     )
-    out_folder = os.path.join(
-        args.out_folder,
-        "seed_" + str(args.seed_noise),
-    )
-    pip = Pipeline(args, out_folder=out_folder)
 
-    input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
+    for iseed in range(nseed):
+        for ii in range(5):
+            print("")
+        print("seed:", iseed)
+        for ii in range(5):
+            print("")
 
-    print("starting minimization")
-    # type_minimizer = "NM"
-    # if type_minimizer == "NM":
-    #     pip.fitter.run_minimizer(
-    #         pip.fitter.like.minus_log_prob,
-    #         p0=input_pars,
-    #         restart=True,
-    #         # burn_in=True,
-    #     )
-    # else:
-    #     pip.fitter.run_minimizer_da(
-    #         pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
-    #     )
-    pip.fitter.run_minimizer(
-        pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
-    )
+        args.seed_noise = iseed
+        out_folder = os.path.join(
+            args.out_folder,
+            "seed_" + str(args.seed_noise),
+        )
+        pip = Pipeline(args, out_folder=out_folder)
 
-    out_dict = {
-        "best_chi2": pip.fitter.mle_chi2,
-        "mle_cosmo_cen": pip.fitter.mle_cosmo,
-        "mle_cube": pip.fitter.mle_cube,
-        "mle": pip.fitter.mle,
-    }
+        input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 
-    file_out = os.path.join(args.out_folder, "best_dircosmo.npy")
+        pip.fitter.run_minimizer(
+            pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
+        )
 
-    print("saving output to:", file_out)
-    np.save(file_out, out_dict)
+        out_dict = {
+            "best_chi2": pip.fitter.mle_chi2,
+            "mle_cosmo_cen": pip.fitter.mle_cosmo,
+            "mle_cube": pip.fitter.mle_cube,
+            "mle": pip.fitter.mle,
+        }
 
-    pip.fitter.save_fitter()
+        file_out = os.path.join(args.out_folder, "best_dircosmo.npy")
+
+        print("saving output to:", file_out)
+        np.save(file_out, out_dict)
+
+        # pip.fitter.save_fitter()
 
 
 if __name__ == "__main__":

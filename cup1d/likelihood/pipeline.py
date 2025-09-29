@@ -48,7 +48,7 @@ def get_grid_large(nelem):
 class Pipeline(object):
     """Full pipeline for extracting cosmology from P1D using sampler"""
 
-    def __init__(self, args, make_plots=False, out_folder=None):
+    def __init__(self, args, make_plots=False, out_folder=None, archive=None):
         """Set pipeline"""
 
         self.out_folder = out_folder
@@ -94,10 +94,12 @@ class Pipeline(object):
             data = {"P1Ds": None, "extra_P1Ds": None}
             fprint("----------")
             fprint("Setting P1Ds")
-            data["P1Ds"] = set_P1D(args, theory=true_theory)
+            data["P1Ds"] = set_P1D(args, theory=true_theory, archive=archive)
 
             if args.data_label_hires is not None:
-                data["extra_P1Ds"] = set_P1D(args, theory=true_theory)
+                data["extra_P1Ds"] = set_P1D(
+                    args, theory=true_theory, archive=archive
+                )
 
             fprint("Done setting P1Ds")
             fprint("----------")
