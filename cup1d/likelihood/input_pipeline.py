@@ -113,11 +113,15 @@ class Args:
     cov_factor: int = 1
     emu_cov_type: str = "block"
     file_ic: str | None = None
-    test: bool = False
-    explore: bool = False
-    parallel: bool = True
-    n_burn_in: int = 0
-    n_steps: int = 0
+    mcmc: dict = field(
+        default_factory=lambda: {
+            "explore": False,
+            "parallel": True,
+            "n_burn_in": 0,
+            "n_steps": 1,
+            "n_walkers": None,
+        }
+    )
     out_folder: str | None = "."
     Gauss_priors: dict | None = None
 
@@ -234,44 +238,45 @@ class Args:
     #     if (name_variation is not None) and (name_variation.startswith("sim_")):
     #         self.ic_from_file = None
 
-    def set_fiducial(self, name_variation=None, val_null=-20):
+    def set_fiducial(self, name_variation=None, fit_type=None, val_null=-20):
         fid_vals_igm = {
             "tau_eff": 0,
             "sigT_kms": 1,
             "gamma": 1,
             "kF_kms": 1,
         }
-        # if (name_variation is not None) and (name_variation.startswith("sim_")):
-        # fid_vals_conts = {
-        #     "f_Lya_SiIII": val_null,
-        #     "s_Lya_SiIII": 2.1,
-        #     "f_Lya_SiII": val_null,
-        #     "s_Lya_SiII": 2.1,
-        #     "f_SiIIa_SiIIb": val_null,
-        #     "s_SiIIa_SiIIb": 0.1,
-        #     "f_SiIIa_SiIII": 0,
-        #     "f_SiIIb_SiIII": 0,
-        #     "HCD_damp1": val_null,
-        #     "HCD_damp2": val_null,
-        #     "HCD_damp3": val_null,
-        #     "HCD_damp4": val_null,
-        #     "HCD_const": 0,
-        # }
-        fid_vals_conts = {
-            "f_Lya_SiIII": -4.0,
-            "s_Lya_SiIII": 5.0,
-            "f_Lya_SiII": -4.0,
-            "s_Lya_SiII": 5.5,
-            "f_SiIIa_SiIIb": 0.75,
-            "s_SiIIa_SiIIb": 5.0,
-            "f_SiIIa_SiIII": 1,
-            "f_SiIIb_SiIII": 1,
-            "HCD_damp1": -1.4,
-            "HCD_damp2": -5.0,
-            "HCD_damp3": -5.0,
-            "HCD_damp4": -5.0,
-            "HCD_const": 0,
-        }
+        if (fit_type is not None) and (fit_type == "global_igm"):
+            fid_vals_conts = {
+                "f_Lya_SiIII": val_null,
+                "s_Lya_SiIII": 2.1,
+                "f_Lya_SiII": val_null,
+                "s_Lya_SiII": 2.1,
+                "f_SiIIa_SiIIb": val_null,
+                "s_SiIIa_SiIIb": 0.1,
+                "f_SiIIa_SiIII": 0,
+                "f_SiIIb_SiIII": 0,
+                "HCD_damp1": val_null,
+                "HCD_damp2": val_null,
+                "HCD_damp3": val_null,
+                "HCD_damp4": val_null,
+                "HCD_const": 0,
+            }
+        else:
+            fid_vals_conts = {
+                "f_Lya_SiIII": -4.0,
+                "s_Lya_SiIII": 5.0,
+                "f_Lya_SiII": -4.0,
+                "s_Lya_SiII": 5.5,
+                "f_SiIIa_SiIIb": 0.75,
+                "s_SiIIa_SiIIb": 5.0,
+                "f_SiIIa_SiIII": 1,
+                "f_SiIIb_SiIII": 1,
+                "HCD_damp1": -1.4,
+                "HCD_damp2": -5.0,
+                "HCD_damp3": -5.0,
+                "HCD_damp4": -5.0,
+                "HCD_const": 0,
+            }
 
         for key in self.igm_params:
             if self.fid_igm[key + "_ztype"] == "pivot":
@@ -433,6 +438,7 @@ class Args:
         fid_cosmo_label="Planck18",
         name_variation=None,
         inflate=1.05,
+        test_mcmc=False,
     ):
         """
         Set baseline parameters
@@ -440,7 +446,8 @@ class Args:
 
         if fit_type not in [
             "global_all",  # all params from at_a_time_global
-            "global_opt",  # for opt IC
+            "global_opt",  # for opt all
+            "global_igm",  # for opt err
             "at_a_time_global",  # vary same parameters as in global fits
         ]:
             raise ValueError("fit_type " + fit_type + " not implemented")
@@ -454,6 +461,13 @@ class Args:
         self.fid_cosmo_label = fid_cosmo_label
         ##
         self.set_out_folder(name_variation)
+
+        if test_mcmc:
+            self.mcmc["explore"] = True
+            self.mcmc["parallel"] = False
+            self.mcmc["n_burn_in"] = 0
+            self.mcmc["n_steps"] = 1
+            self.mcmc["n_walkers"] = 30
 
         # reset parameters
         self.set_params_zero()
@@ -860,10 +874,96 @@ class Args:
 
         #############
 
+        elif fit_type == "global_igm":
+            self.file_ic = None
+            ##
+
+            baseline_prop = [
+                # "f_Lya_SiIII",
+                # "s_Lya_SiIII",
+                # "f_Lya_SiII",
+                # "s_Lya_SiII",
+                # "f_SiIIa_SiIIb",
+                # "s_SiIIa_SiIIb",
+                # "f_SiIIa_SiIII",
+                # "f_SiIIb_SiIII",
+                # "HCD_damp1",
+                # "HCD_damp2",
+                # "HCD_damp3",
+                # "HCD_damp4",
+            ]
+            zvar = [
+                # "f_Lya_SiIII",
+                # "s_Lya_SiIII",
+                # "f_Lya_SiII",
+                # "s_Lya_SiII",
+                # "f_SiIIa_SiIIb",
+                # "s_SiIIa_SiIIb",
+                # "f_SiIIa_SiIII",
+                # "f_SiIIb_SiIII",
+                # "HCD_damp1",
+                # "HCD_damp2",
+                # "HCD_damp3",
+                # "HCD_damp4",
+            ]
+
+            nz_igm = 6
+
+            self.fid_igm["tau_eff_znodes"] = np.geomspace(
+                self.z_min, self.z_max, nz_igm
+            )
+            self.fid_igm["sigT_kms_znodes"] = np.geomspace(
+                self.z_min, self.z_max, nz_igm
+            )
+            self.fid_igm["gamma_znodes"] = np.geomspace(
+                self.z_min, self.z_max, nz_igm
+            )
+            self.fid_igm["kF_kms_znodes"] = []
+
+            for prop in props_igm:
+                self.fid_igm["n_" + prop] = len(self.fid_igm[prop + "_znodes"])
+                if self.fid_igm["n_" + prop] <= 1:
+                    self.fid_igm[prop + "_ztype"] = "pivot"
+                else:
+                    self.fid_igm[prop + "_ztype"] = "interp_lin"
+            ##
+
+            ## set contaminants
+            nodes = np.geomspace(self.z_min, self.z_max, 2)
+
+            for prop in props_cont:
+                if prop not in baseline_prop:
+                    self.fid_cont["n_" + prop] = 0
+                    continue
+
+                if prop in zvar:
+                    self.fid_cont[prop + "_znodes"] = nodes
+                else:
+                    self.fid_cont[prop + "_znodes"] = np.array([3.0])
+
+                self.fid_cont["n_" + prop] = len(
+                    self.fid_cont[prop + "_znodes"]
+                )
+                if self.fid_cont["n_" + prop] <= 1:
+                    self.fid_cont[prop + "_ztype"] = "pivot"
+                else:
+                    self.fid_cont[prop + "_ztype"] = "interp_lin"
+            ##
+
+            ## set systematic
+            self.fid_syst["R_coeff_znodes"] = []
+            # self.fid_syst["R_coeff_znodes"] = np.arange(
+            #     2.2, 4.2 + 1e-5, 0.2
+            # )
+            self.fid_syst["n_R_coeff"] = len(self.fid_syst["R_coeff_znodes"])
+            self.fid_syst["R_coeff_ztype"] = "interp_lin"
+
+        #############
+
         else:
             raise ValueError("Fit type not recognized")
 
-        self.set_fiducial(name_variation)
+        self.set_fiducial(name_variation, fit_type=fit_type)
 
 
 # Set Gaussian priors

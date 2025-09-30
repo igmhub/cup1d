@@ -1066,7 +1066,6 @@ class Plotter(object):
         self.fitter.like.plot_igm(
             cloud=cloud,
             free_params=self.like_params,
-            stat_best_fit=stat_best_fit,
             save_directory=self.save_directory,
             zmask=zmask,
         )

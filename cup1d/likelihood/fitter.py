@@ -75,10 +75,10 @@ class Fitter(object):
             # number of walkers
             if nwalkers is not None:
                 if nwalkers < 2 * self.ndim:
+                    nwalkers = 2 * self.ndim + 1
                     self.print(
                         "nwalkers={} ; ndim={}".format(nwalkers, self.ndim)
                     )
-                    raise ValueError("specified number of walkers too small")
             else:
                 max_walkers = 40 * self.ndim
                 min_walkers = 2 * self.ndim
@@ -189,6 +189,10 @@ class Fitter(object):
                 self.ndim,
                 log_func,
                 blobs_dtype=self.blobs_dtype,
+            )
+            print(
+                f"Running MCMC with {self.nwalkers} walkers, {self.ndim} dimensions, and {self.nsteps}, {self.burnin_nsteps}.",
+                flush=True,
             )
             for sample in sampler.sample(
                 p0, iterations=self.burnin_nsteps + self.nsteps
@@ -989,15 +993,19 @@ class Fitter(object):
         # SAMPLER
         if save_chains:
             dict_out["sampler"] = {}
-            dict_out["sampler"]["nsteps"] = self.nsteps
-            dict_out["sampler"]["burnin_nsteps"] = self.burnin_nsteps
-            dict_out["sampler"]["nwalkers"] = self.nwalkers
+            for key in self.like.args.mcmc:
+                dict_out["sampler"][key] = self.like.args.mcmc[key]
 
         # TRUTH
         dict_out["truth"] = self.truth
 
         # IGM
-        like_params = self.like.parameters_from_sampling_point(self.mle_cube)
+        if self.mle_cube is not None:
+            like_params = self.like.parameters_from_sampling_point(
+                self.mle_cube
+            )
+        else:
+            like_params = self.like.parameters_from_sampling_point()
         dict_out["IGM"] = {}
         zs = dict_out["data"]["zs"]
         dict_out["IGM"]["z"] = zs

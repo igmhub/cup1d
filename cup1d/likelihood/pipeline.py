@@ -61,7 +61,6 @@ class Pipeline(object):
         # create print function (only for rank 0)
         fprint = create_print_function(verbose=args.verbose)
         self.fprint = fprint
-        self.explore = args.explore
 
         if rank == 0:
             self.fprint("----------")
@@ -138,10 +137,11 @@ class Pipeline(object):
         self.fitter = Fitter(
             like=like,
             rootdir=self.out_folder,
-            nburnin=args.n_burn_in,
-            nsteps=args.n_steps,
-            parallel=args.parallel,
-            explore=args.explore,
+            nwalkers=args.mcmc["n_walkers"],
+            nburnin=args.mcmc["n_burn_in"],
+            nsteps=args.mcmc["n_steps"],
+            parallel=args.mcmc["parallel"],
+            explore=args.mcmc["explore"],
             fix_cosmology=args.fix_cosmo,
         )
 
@@ -188,7 +188,7 @@ class Pipeline(object):
     def run_minimizer(
         self,
         p0,
-        make_plots=True,
+        make_plots=False,
         mask_pars=False,
         save_chains=False,
         zmask=None,
@@ -248,7 +248,7 @@ class Pipeline(object):
             # get testing_data from task 0
             self.fitter.mle_cube = comm.recv(source=0, tag=(rank + 1) * 13)
 
-    def run_sampler(self, pini=None, make_plots=True, zmask=None):
+    def run_sampler(self, pini=None, make_plots=False, zmask=None):
         """
         Run the sampler (after minimizer)
         """

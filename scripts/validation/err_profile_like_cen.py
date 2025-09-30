@@ -51,6 +51,7 @@ def main():
         z_max=zmax,
     )
 
+    # first run up to 227
     for iseed in range(227, 400):
         for ii in range(5):
             print("")
