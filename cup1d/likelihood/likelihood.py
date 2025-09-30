@@ -17,6 +17,7 @@ from cup1d.utils.various_dicts import conv_strings
 
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 from matplotlib import rcParams
 
 rcParams["mathtext.fontset"] = "stix"
@@ -1863,12 +1864,18 @@ class Likelihood(object):
         pars_fid["tau_eff"] = self.theory.model_igm.models[
             "F_model"
         ].get_tau_eff(zs)
+        pars_fid["mF"] = self.theory.model_igm.models["F_model"].get_mean_flux(
+            zs
+        )
         pars_fid["gamma"] = self.theory.model_igm.models["T_model"].get_gamma(
             zs
         )
         pars_fid["sigT_kms"] = self.theory.model_igm.models[
             "T_model"
         ].get_sigT_kms(zs)
+        pars_fid["T0"] = (
+            self.theory.model_igm.models["T_model"].get_T0(zs) / 1e4
+        )
         pars_fid["kF_kms"] = self.theory.model_igm.models["P_model"].get_kF_kms(
             zs
         )
@@ -1883,12 +1890,21 @@ class Likelihood(object):
             pars_test["tau_eff"] = self.theory.model_igm.models[
                 "F_model"
             ].get_tau_eff(zs, like_params=free_params)
+            pars_test["mF"] = self.theory.model_igm.models[
+                "F_model"
+            ].get_mean_flux(zs, like_params=free_params)
             pars_test["gamma"] = self.theory.model_igm.models[
                 "T_model"
             ].get_gamma(zs, like_params=free_params)
             pars_test["sigT_kms"] = self.theory.model_igm.models[
                 "T_model"
             ].get_sigT_kms(zs, like_params=free_params)
+            pars_test["T0"] = (
+                self.theory.model_igm.models["T_model"].get_T0(
+                    zs, like_params=free_params
+                )
+                / 1e4
+            )
             pars_test["kF_kms"] = self.theory.model_igm.models[
                 "P_model"
             ].get_kF_kms(zs, like_params=free_params)
@@ -1903,12 +1919,20 @@ class Likelihood(object):
                 r"$k_F$ [km/s]",
             ]
         elif plot_type == "tau_sigT":
-            fig, ax = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
-            arr_labs = ["tau_eff", "sigT_kms"]
+            fig, ax = plt.subplots(3, 1, figsize=(8, 6), sharex=True)
+            # arr_labs = ["tau_eff", "sigT_kms", "gamma"]
+            # latex_labs = [
+            #     r"$\tau_\mathrm{eff}$",
+            #     r"$\sigma_\mathrm{T}\,\left[\mathrm{km\,s^{-1}}\right]$",
+            #     r"$\gamma$",
+            # ]
+            arr_labs = ["mF", "T0", "gamma"]
             latex_labs = [
-                r"$\tau_\mathrm{eff}$",
-                r"$\sigma_\mathrm{T}\,\left[\mathrm{km\,s^{-1}}\right]$",
+                r"$\bar{F}$",
+                r"$T_0[K]/10^4$",
+                r"$\gamma$",
             ]
+            gal21, tu24 = others_igm()
 
         ax = ax.reshape(-1)
 
@@ -1965,12 +1989,17 @@ class Likelihood(object):
                     pars_test["z"][_],
                     pars_test[arr_labs[ii]][_],
                     "C0:",
-                    label="Best-fitting model",
+                    label="This study",
                     alpha=1,
                     lw=3,
                 )
 
-                lab = arr_labs[ii] + "_znodes"
+                if arr_labs[ii] == "mF":
+                    lab = "tau_eff_znodes"
+                elif arr_labs[ii] == "T0":
+                    lab = "sigT_kms_znodes"
+                else:
+                    lab = arr_labs[ii] + "_znodes"
                 if lab in self.args.fid_igm:
                     yy = np.interp(
                         self.args.fid_igm[lab],
@@ -1981,16 +2010,62 @@ class Likelihood(object):
                         self.args.fid_igm[lab], yy, marker="o", color="C0"
                     )
 
+            if arr_labs[ii] == "mF":
+                ax[ii].errorbar(
+                    gal21["z"],
+                    gal21["mF"],
+                    yerr=gal21["mF_err"],
+                    fmt="--",
+                    color="C1",
+                    label="Galdwick+2021",
+                    alpha=0.75,
+                    lw=2,
+                )
+                ax[ii].errorbar(
+                    tu24["z"],
+                    tu24["mF"],
+                    yerr=tu24["mF_err"],
+                    fmt="-.",
+                    color="C2",
+                    label="Turner+2024",
+                    alpha=0.75,
+                    lw=2,
+                )
+            elif arr_labs[ii] == "T0":
+                ax[ii].errorbar(
+                    gal21["z"],
+                    gal21["T0"],
+                    yerr=gal21["T0_err"],
+                    fmt="--",
+                    color="C1",
+                    label="Galdwick+2021",
+                    alpha=0.75,
+                    lw=2,
+                )
+            elif arr_labs[ii] == "gamma":
+                ax[ii].errorbar(
+                    gal21["z"],
+                    gal21["gamma"],
+                    yerr=gal21["gamma_err"],
+                    fmt="--",
+                    color="C1",
+                    label="Galdwick+2021",
+                    alpha=0.75,
+                    lw=2,
+                )
+
             ax[ii].set_ylabel(latex_labs[ii], fontsize=ftsize)
             if ii == 0:
-                ax[ii].set_yscale("log")
-                ax[ii].legend(fontsize=ftsize, loc="upper left")
+                if arr_labs[ii] != "mF":
+                    ax[ii].set_yscale("log")
+                ax[ii].legend(fontsize=ftsize - 4, loc="lower left")
 
             if (ii == 2) | (ii == len(arr_labs) - 1):
                 ax[ii].set_xlabel(r"$z$", fontsize=ftsize)
 
             ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
             ax[ii].tick_params(axis="both", which="minor", labelsize=ftsize - 2)
+            ax[ii].yaxis.set_major_locator(MaxNLocator(nbins=3, prune=None))
 
         ax[0].set_ylim(0.09)
         plt.tight_layout()
@@ -2353,3 +2428,157 @@ class Likelihood(object):
         self.theory.model_cont.hcd_model.reset_coeffs(free_params)
         self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(free_params)
         self.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)
+
+
+def others_igm():
+    # Galdwick 2021
+
+    z = np.array([2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8])
+
+    # mean transmitted flux
+    Fmean = np.array(
+        [
+            0.8690,
+            0.8261,
+            0.7919,
+            0.7665,
+            0.7398,
+            0.7105,
+            0.6731,
+            0.5927,
+            0.5320,
+            0.4695,
+        ]
+    )
+
+    # uncertainty on mean transmitted flux
+    dFmean = np.array(
+        [
+            0.0214,
+            0.0206,
+            0.0210,
+            0.0216,
+            0.0212,
+            0.0213,
+            0.0223,
+            0.0247,
+            0.0280,
+            0.0278,
+        ]
+    )
+
+    T0 = (
+        np.array(
+            [9500, 11000, 12750, 13500, 14750, 14750, 12750, 11250, 10250, 9250]
+        )
+        / 1e4
+    )
+    dT0 = (
+        np.array([1393, 1028, 1132, 1390, 1341, 1322, 1493, 1125, 1070, 876])
+        / 1e4
+    )
+
+    # gamma and its uncertainty
+    gamma = np.array(
+        [1.500, 1.425, 1.325, 1.275, 1.250, 1.225, 1.275, 1.350, 1.400, 1.525]
+    )
+    dgamma = np.array(
+        [0.096, 0.133, 0.122, 0.122, 0.109, 0.120, 0.129, 0.108, 0.101, 0.140]
+    )
+
+    gal21 = {
+        "z": z,
+        "mF": Fmean,
+        "mF_err": dFmean,
+        "T0": T0,
+        "T0_err": dT0,
+        "gamma": gamma,
+        "gamma_err": dgamma,
+    }
+
+    # Turner 2024
+    z_tu24 = np.array(
+        [
+            2.05,
+            2.15,
+            2.25,
+            2.35,
+            2.45,
+            2.55,
+            2.65,
+            2.75,
+            2.85,
+            2.95,
+            3.05,
+            3.15,
+            3.25,
+            3.35,
+            3.45,
+            3.55,
+            3.65,
+            3.75,
+            3.85,
+            3.95,
+            4.05,
+            4.15,
+        ]
+    )
+
+    mF_tu24 = np.exp(
+        -np.array(
+            [
+                0.147,
+                0.158,
+                0.179,
+                0.200,
+                0.226,
+                0.235,
+                0.268,
+                0.292,
+                0.316,
+                0.342,
+                0.373,
+                0.410,
+                0.455,
+                0.498,
+                0.527,
+                0.579,
+                0.638,
+                0.694,
+                0.770,
+                0.830,
+                0.854,
+                0.928,
+            ]
+        )
+    )
+    emF_tu24 = np.array(
+        [
+            0.012,
+            0.012,
+            0.015,
+            0.016,
+            0.016,
+            0.018,
+            0.019,
+            0.020,
+            0.021,
+            0.022,
+            0.023,
+            0.023,
+            0.022,
+            0.025,
+            0.030,
+            0.032,
+            0.031,
+            0.032,
+            0.033,
+            0.034,
+            0.036,
+            0.039,
+        ]
+    )
+
+    tu24 = {"z": z_tu24, "mF": mF_tu24, "mF_err": emF_tu24}
+
+    return gal21, tu24

@@ -1066,9 +1066,12 @@ class Fitter(object):
         dict_out["fitter"]["lnprob_mle"] = self.lnprop_mle
 
         if save_chains:
-            dict_out["fitter"]["lnprob"] = self.lnprob
-            dict_out["fitter"]["chain"] = self.chain
-            dict_out["fitter"]["blobs"] = self.blobs
+            out_file = self.save_directory + "/lnprob.npy"
+            np.save(out_file, self.lnprob)
+            out_file = self.save_directory + "/chain.npy"
+            np.save(out_file, self.chain)
+            out_file = self.save_directory + "/blobs.npy"
+            np.save(out_file, self.blobs)
 
             dict_out["fitter"]["chain_from_cube"] = {}
             for ip in range(self.chain.shape[-1]):
@@ -1089,5 +1092,5 @@ class Fitter(object):
                 dict_out["fitter"]["chain_names"].append(param_dict_rev[key])
 
         out_file = self.save_directory + "/fitter_results.npy"
-        print("Saving chain to " + out_file)
+        print("Saving data to " + out_file)
         np.save(out_file, dict_out)

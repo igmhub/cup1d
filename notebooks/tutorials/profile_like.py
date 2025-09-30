@@ -70,8 +70,8 @@ variations = [
     # "no_emu_cov",  # no emu error
     # "no_inflate_no_emu_cov",  # no emu error, no increase errors for 3, 3.6, and 4
     # "cosmo",  # different fiducial cosmo
-    # "cosmo_low",  # different fiducial cosmo
-    "cosmo_high",  # different fiducial cosmo
+    "cosmo_low",  # different fiducial cosmo
+    # "cosmo_high",  # different fiducial cosmo
     # "metal_trad",  # 2 params for metals like eBOSS
     # "metal_si2",  # no SiII-SiII cont
     # "metal_deco",  # no decorrelation metals
@@ -1090,13 +1090,14 @@ for ii, var in enumerate(variations):
             out_dict["yell"+str(jj)]- true_cosmo["n_star"], 
             col+ls[jj-1], lw=3, label=lab+" w/o errors")
 
-    nseed = 91
+    nseed = 400
     xy_all = np.zeros((nseed, 2))
     for jj in range(nseed):
         folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+var+"/CH24_mpgcen_gpr/"
         data_cen = np.load(folder + "seed_" + str(jj) + "/best_dircosmo.npy", allow_pickle=True).item()
         x = data_cen["mle_cosmo_cen"]["Delta2_star"] - true_cosmo["Delta2_star"]
         y = data_cen["mle_cosmo_cen"]["n_star"] - true_cosmo["n_star"]
+        # print(data_cen["mle"]['$f_{\rm HCD1}_0$'])
         xy_all[jj, 0] = x
         xy_all[jj, 1] = y
         plt.scatter(x, y, marker=".", color="C1")
@@ -1134,6 +1135,8 @@ for ii, var in enumerate(variations):
 ax.axhline(0, color="k", linestyle="--")
 ax.axvline(0, color="k", linestyle="--")
 
+ax.set_xlim(-0.1, 0.15)
+ax.set_ylim(-0.1, 0.15)
 
 
 ax.set_ylabel(r"$\Delta(n_\star)$", fontsize=ftsize)
@@ -1148,7 +1151,9 @@ plt.tight_layout()
 # plt.savefig("figs/validation_2d.png")
 # -
 
-mean
+xy_all.max(axis=0) + true_cosmo["n_star"]
+
+data_cen["mle"]
 
 cov[0, 0]
 

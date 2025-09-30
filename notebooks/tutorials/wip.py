@@ -60,6 +60,71 @@ from cup1d.pipeline.set_archive import set_archive
 # #### Check if works with sims
 
 # %%
+file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_5/fitter_results.npy"
+
+# %%
+dat = np.load(file, allow_pickle=True).item()
+dat.keys()
+
+# %%
+arr = np.linspace(0, 1, 100000000)
+
+# %%
+np.save("test.npy", {"a": arr, "b": arr})
+
+# %%
+np.load("test.npy", allow_pickle=True)
+
+# %%
+dat["fitter"].keys()
+
+# %%
+dat["fitter"]["chain_names"]
+
+# %%
+nburn = 0
+for ii in range(dat["fitter"]["lnprob"].shape[1]):
+    # plt.plot(dat["fitter"]["lnprob"][nburn:, ii])
+    # plt.plot(dat["fitter"]["blobs"]["Delta2_star"][nburn:, ii])
+    plt.plot(dat["fitter"]["blobs"]["n_star"][nburn:, ii])
+
+# %%
+chain_re = dat["fitter"]["chain"].reshape(-1, 20)
+nelem = chain_re.shape[0]
+
+# %%
+mat = np.corrcoef(par_fig, rowvar=False)
+
+# %%
+plt.imshow(mat, cmap="turbo")
+plt.colorbar()
+
+# %%
+mat[0]
+
+# %%
+mat[1]
+
+# %%
+par_fig = np.zeros((nelem, chain_re.shape[1]+2))
+
+# %%
+par_fig.shape
+
+# %%
+par_fig[:, 0] = dat["fitter"]["blobs"]["Delta2_star"].reshape(-1)
+par_fig[:, 1] = dat["fitter"]["blobs"]["n_star"].reshape(-1)
+par_fig[:, 2:] = chain_re[:, 0:]
+
+# %%
+ind = np.array([0, 1, 6])
+
+# %%
+fig = corner(par_fig[:, ind], levels=[0.68, 0.95], bins=50)
+
+# %%
+
+# %%
 
 # data_label = "mpg_central"
 data_label = "nyx_central"
@@ -73,9 +138,6 @@ if data_label == "mpg_central":
 elif data_label == "nyx_central":
     zmin=2.2
     zmax=4.2
-elif data_label == "accel2":
-    zmin=2.6
-    zmax=4.
 else:
     zmin=2.2
     zmax=4.2
@@ -83,7 +145,7 @@ else:
 true_cosmo_label = data_label
 fid_cosmo_label = data_label
 name_variation= "sim_" + data_label
-fit_type = "global_opt"
+fit_type = "global_igm"
 args = Args(
     data_label=data_label, 
     cov_label="DESIY1_QMLE3", 
@@ -92,7 +154,7 @@ args = Args(
     fid_cosmo_label=fid_cosmo_label,
     apply_smoothing=True,
     # add_noise=True,
-    # seed_noise=3,
+    # seed_noise=0,
 )
 args.set_baseline(
     fit_type=fit_type, 
@@ -101,33 +163,63 @@ args.set_baseline(
     name_variation=name_variation,
     z_min=zmin,
     z_max=zmax,
+    test_mcmc=True
 )
+args.mcmc["n_walkers"] = 21
 
 # %%
-args.out_folder
-
-# %%
-# archive_mock = set_archive(training_set=args.nyx_training_set)
-
-# %%
-
-# %%
-args.seed_noise=4
+archive_mock = set_archive(training_set=args.nyx_training_set)
 
 # %%
 pip = Pipeline(args, archive=archive_mock)
+
+# %%
+# pip.fitter.like.data.plot_p1d()
+
+# %%
+p0 = pip.fitter.like.sampling_point_from_parameters()
+pip.fitter.like.get_chi2(p0)
+
+# %%
+# args.fid_cont
 
 # %%
 for par in pip.fitter.like.free_params:
     print(par.name, par.value, par.min_value, par.max_value)
 
 # %%
-f_SiIIa_SiIIb_0 0.75 -20.5 0.85
-f_SiIIa_SiIIb_1 0.75 -20.5 0.85
-
+pip.fitter.like.plot_p1d()
 
 # %%
-pip.fitter.like.plot_p1d()
+mle_cube
+
+# %%
+pip.run_minimizer(p0, restart=True)
+
+# %%
+# pip.plotter.plot_igm()
+
+# %%
+pip.fitter.nsteps=20
+
+# %%
+# %%time
+pip.run_sampler()
+
+# %%
+10 - 3s
+
+# %%
+20 - 5s
+
+# %%
+41*20/5
+
+# %%
+164 per sec and rank. 
+
+# %%
+41 * 2000/164/5
 
 # %%
 
@@ -187,6 +279,9 @@ pip.fitter.like.get_chi2(p0)
 
 # %%
 pip.run_minimizer(p0, restart=True)
+
+# %%
+pip.fitter.chain.shape
 
 # %%
 pip.fitter.mle
@@ -266,7 +361,7 @@ name_variation = None
 args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
 args.set_baseline(
     fit_type="global_opt", 
-    fix_cosmo=True, 
+    fix_cosmo=False, 
     P1D_type=data_label, 
     name_variation=name_variation, 
 )
@@ -279,8 +374,6 @@ pip = Pipeline(args)
 p0 = pip.fitter.like.sampling_point_from_parameters().copy()
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
-
-# %%
 
 # %%
 pip.fitter.like.plot_p1d()
@@ -317,8 +410,8 @@ tar_cosmo = pip.fitter.like.apply_unblinding(data_best["blind_cosmo"])
 pip.fitter.like.theory.rescale_fid_cosmo(tar_cosmo)
 
 # %%
-# p0 = data_cen["mle_cube"].copy()
-p0 = data_best["mle_cube"].copy()
+p0 = data_cen["mle_cube"].copy()
+# p0 = data_best["mle_cube"].copy()
 pip.fitter.like.get_chi2(p0)
 
 # %%
@@ -402,9 +495,9 @@ pip.fitter.like.get_chi2(p0)
 
 # %%
 # pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
-pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False, fix_cosmo=True, plot_fname="figs/residual_fid_opt_global")
+# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False, fix_cosmo=True, plot_fname="figs/residual_fid_opt_global")
 
-# pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, print_chi2=False)
+pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
 
 # %%
 p0 = pip.fitter.like.sampling_point_from_parameters()
@@ -418,8 +511,8 @@ pip.fitter.mle
 
 # %%
 # p0 = pip.fitter.like.sampling_point_from_parameters()
-free_params = pip.fitter.like.parameters_from_sampling_point(p0min)
-# free_params = pip.fitter.like.parameters_from_sampling_point(p0)
+# free_params = pip.fitter.like.parameters_from_sampling_point(p0min)
+free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 
 # %%
 # with resolution
@@ -443,7 +536,21 @@ alpha_star -0.21803
 # pip.fitter.like.plot_p1d(residuals=True, plot_panels=True, glob_full=True, fontsize=18, chi2_nozcov=True)
 
 # %%
-pip.fitter.like.plot_igm(free_params=free_params, plot_fid = False, plot_type="tau_sigT", cloud=True, ftsize=20, save_directory="figs")
+
+
+
+plt.errorbar(z, Fmean, dFmean)
+plt.errorbar(z_tu24, mF_tu24, emF_tu24)
+# plt.errorbar(z, T0, dT0)
+# plt.errorbar(z, gamma, dgamma)
+
+# %%
+# 
+pip.fitter.like.plot_igm(free_params=free_params, plot_fid = False, plot_type="tau_sigT", cloud=False, ftsize=20, save_directory="figs")
+
+# %%
+
+# %%
 
 # %%
 # pip.fitter.like.plot_igm(free_params=free_params, plot_fid = False, plot_type="tau_sigT", cloud=True, ftsize=20)
