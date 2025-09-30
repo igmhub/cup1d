@@ -52,10 +52,10 @@ def main():
     )
     args.mcmc["n_walkers"] = 21
     # args.mcmc["n_steps"] = 100  # 46 s
-    # args.mcmc["n_steps"] = 1500  # 1000 s
-    # args.mcmc["parallel"] = True
-    args.mcmc["n_steps"] = 1
-    args.mcmc["parallel"] = False
+    args.mcmc["n_steps"] = 2000  # 1000 s
+    args.mcmc["parallel"] = True
+    # args.mcmc["n_steps"] = 1
+    # args.mcmc["parallel"] = False
     pip = Pipeline(args, out_folder=args.out_folder)
 
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
