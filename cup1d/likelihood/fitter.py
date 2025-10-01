@@ -30,9 +30,11 @@ class Fitter(object):
     def __init__(
         self,
         like=None,
-        nwalkers=None,
-        nsteps=None,
-        nburnin=None,
+        nwalkers=1,
+        thin=0,
+        nsteps=1,
+        nburn=0,
+        thin=1,
         verbose=False,
         subfolder=None,
         rootdir=None,
@@ -48,7 +50,6 @@ class Fitter(object):
         self.parallel = parallel
         self.explore = explore
         self.verbose = verbose
-        self.burnin_nsteps = nburnin
 
         self.param_dict = param_dict
         self.param_dict_rev = param_dict_rev
@@ -67,47 +68,54 @@ class Fitter(object):
 
         self.like = like
         # number of free parameters to sample
+        self.thin = thin
+        self.nburn = nburn
+        self.nsteps = nsteps
         self.ndim = len(self.like.free_params)
+
+        if nwalkers < 2 * self.ndim:
+            self.nwalkers = 2 * self.ndim + 1
+        else:
+            self.nwalkers = nwalkers
 
         if self.rank == 0:
             self._setup_chain_folder(rootdir, subfolder)
 
             # number of walkers
-            if nwalkers is not None:
-                if nwalkers < 2 * self.ndim:
-                    nwalkers = 2 * self.ndim + 1
-                    self.print(
-                        "nwalkers={} ; ndim={}".format(nwalkers, self.ndim)
-                    )
-            else:
-                max_walkers = 40 * self.ndim
-                min_walkers = 2 * self.ndim
-                nwalkers = max_walkers // self.size + 1
-                combined_steps = max_walkers * (nsteps + self.burnin_nsteps)
+            # if nwalkers is not None:
+            # if nwalkers < 2 * self.ndim:
+            #     nwalkers = 2 * self.ndim + 1
+            #     self.print(
+            #         "nwalkers={} ; ndim={}".format(nwalkers, self.ndim)
+            #     )
+            # else:
+            #     max_walkers = 40 * self.ndim
+            #     min_walkers = 2 * self.ndim
+            #     nwalkers = max_walkers // self.size + 1
+            #     combined_steps = max_walkers * (nsteps + self.nburn)
 
-                if nwalkers < min_walkers:
-                    nwalkers = min_walkers
-                    nsteps = (
-                        combined_steps // (nwalkers * self.size)
-                        - self.burnin_nsteps
-                    )
+            #     if nwalkers < min_walkers:
+            #         nwalkers = min_walkers
+            #         nsteps = (
+            #             combined_steps // (nwalkers * self.size) - self.nburn
+            #         )
 
             for irank in range(1, self.size):
-                self.comm.send(nsteps, dest=irank, tag=irank * 11)
-                self.comm.send(nwalkers, dest=irank, tag=irank * 13)
+                # self.comm.send(nsteps, dest=irank, tag=irank * 11)
+                # self.comm.send(nwalkers, dest=irank, tag=irank * 13)
                 self.comm.send(self.save_directory, dest=irank, tag=irank * 15)
 
         else:
-            nsteps = self.comm.recv(source=0, tag=self.rank * 11)
-            nwalkers = self.comm.recv(source=0, tag=self.rank * 13)
+            # nsteps = self.comm.recv(source=0, tag=self.rank * 11)
+            # nwalkers = self.comm.recv(source=0, tag=self.rank * 13)
             self.save_directory = self.comm.recv(source=0, tag=self.rank * 15)
 
         self.nwalkers = nwalkers
         self.nsteps = nsteps
 
-        print(
-            "rank", self.rank, "nwalkers", self.nwalkers, "nsteps", self.nsteps
-        )
+        # print(
+        #     "rank", self.rank, "nwalkers", self.nwalkers, "nsteps", self.nsteps
+        # )
 
         self.print(
             "setup with ",
@@ -120,7 +128,9 @@ class Fitter(object):
         )
         self.print(
             "combined steps ",
-            self.nwalkers * self.size * (self.nsteps + self.burnin_nsteps),
+            self.nwalkers * self.size * (self.nsteps + self.nburn),
+            "useful steps ",
+            self.nwalkers * self.size * (self.nsteps),
         )
 
         ## Set up list of parameter names in tex format for plotting
@@ -191,30 +201,30 @@ class Fitter(object):
                 blobs_dtype=self.blobs_dtype,
             )
             print(
-                f"Running MCMC with {self.nwalkers} walkers, {self.ndim} dimensions, and {self.nsteps}, {self.burnin_nsteps}.",
+                f"Running MCMC with {self.nwalkers} walkers, {self.ndim} dimensions, and {self.nsteps}, {self.nburn}.",
                 flush=True,
             )
             for sample in sampler.sample(
-                p0, iterations=self.burnin_nsteps + self.nsteps
+                p0, iterations=self.nburn + self.nsteps
             ):
                 if sampler.iteration % 100 == 0:
                     self.print(
                         "Step %d out of %d "
-                        % (sampler.iteration, self.burnin_nsteps + self.nsteps)
+                        % (sampler.iteration, self.nburn + self.nsteps)
                     )
 
             ## Get samples, flat=False to be able to mask not converged chains latter
             self.lnprob = sampler.get_log_prob(
-                flat=False, discard=self.burnin_nsteps
+                flat=False, discard=self.nburn, thin=self.thin
             )
             self.chain = sampler.get_chain(
-                flat=False, discard=self.burnin_nsteps
+                flat=False, discard=self.nburn, thin=self.thin
             )
             self.blobs = sampler.get_blobs(
-                flat=False, discard=self.burnin_nsteps
+                flat=False, discard=self.nburn, thin=self.thin
             )
         else:
-            # MPIPool does not work in nersc for whatever reason
+            # MPIPool does not work for me in nersc for whatever reason
             # I need to get creative
 
             np.random.seed(self.rank)
@@ -224,20 +234,24 @@ class Fitter(object):
             )
 
             for sample in sampler.sample(
-                p0, iterations=self.burnin_nsteps + self.nsteps
+                p0, iterations=self.nburn + self.nsteps
             ):
                 if sampler.iteration % 100 == 0:
                     self.print(
                         "Step %d out of %d "
-                        % (sampler.iteration, self.nsteps + self.burnin_nsteps)
+                        % (sampler.iteration, self.nsteps + self.nburn)
                     )
 
             print(f"Rank {self.rank} done", flush=True)
             _lnprob = sampler.get_log_prob(
-                flat=False, discard=self.burnin_nsteps
+                flat=False, discard=self.nburn, thin=self.thin
             )
-            _chain = sampler.get_chain(flat=False, discard=self.burnin_nsteps)
-            _blobs = sampler.get_blobs(flat=False, discard=self.burnin_nsteps)
+            _chain = sampler.get_chain(
+                flat=False, discard=self.nburn, thin=self.thin
+            )
+            _blobs = sampler.get_blobs(
+                flat=False, discard=self.nburn, thin=self.thin
+            )
 
             if self.rank != 0:
                 self.comm.send(_lnprob, dest=0, tag=1000 + self.rank)
@@ -252,8 +266,6 @@ class Fitter(object):
                 lnprob.append(_lnprob)
                 chain.append(_chain)
                 blobs.append(_blobs)
-                # print(chain[-1].shape)
-                # print(chain[-1][0])
 
                 for irank in range(1, self.size):
                     self.print("Receiving from rank %d" % irank)
@@ -262,8 +274,6 @@ class Fitter(object):
                     )
                     chain.append(self.comm.recv(source=irank, tag=2000 + irank))
                     blobs.append(self.comm.recv(source=irank, tag=3000 + irank))
-                    # print(irank, chain[-1].shape)
-                    # print(chain[-1][0])
 
                 self.lnprob = np.concatenate(lnprob, axis=1)
                 self.chain = np.concatenate(chain, axis=1)

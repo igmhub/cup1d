@@ -140,6 +140,7 @@ class Pipeline(object):
             nwalkers=args.mcmc["n_walkers"],
             nburnin=args.mcmc["n_burn_in"],
             nsteps=args.mcmc["n_steps"],
+            thin=args.mcmc["thin"],
             parallel=args.mcmc["parallel"],
             explore=args.mcmc["explore"],
             fix_cosmology=args.fix_cosmo,

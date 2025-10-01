@@ -119,7 +119,8 @@ class Args:
             "parallel": True,
             "n_burn_in": 0,
             "n_steps": 1,
-            "n_walkers": None,
+            "n_walkers": 1,
+            "thin": 1,
         }
     )
     out_folder: str | None = "."
@@ -438,7 +439,7 @@ class Args:
         fid_cosmo_label="Planck18",
         name_variation=None,
         inflate=1.05,
-        test_mcmc=False,
+        mcmc_conf="test",
     ):
         """
         Set baseline parameters
@@ -462,12 +463,27 @@ class Args:
         ##
         self.set_out_folder(name_variation)
 
-        if test_mcmc:
+        if mcmc_conf == "test":
             self.mcmc["explore"] = True
             self.mcmc["parallel"] = False
             self.mcmc["n_burn_in"] = 0
             self.mcmc["n_steps"] = 1
-            self.mcmc["n_walkers"] = 30
+            self.mcmc["n_walkers"] = 1
+            self.mcmc["thin"] = 1
+        elif mcmc_conf == "explore":
+            self.mcmc["explore"] = True
+            self.mcmc["parallel"] = True
+            self.mcmc["n_burn_in"] = 1000
+            self.mcmc["n_steps"] = 1000
+            self.mcmc["n_walkers"] = 10
+            self.mcmc["thin"] = 20
+        elif mcmc_conf == "full":
+            self.mcmc["explore"] = True
+            self.mcmc["parallel"] = True
+            self.mcmc["n_burn_in"] = 2000
+            self.mcmc["n_steps"] = 2000
+            self.mcmc["n_walkers"] = 10
+            self.mcmc["thin"] = 40
 
         # reset parameters
         self.set_params_zero()

@@ -70,8 +70,8 @@ variations = [
     # "no_emu_cov",  # no emu error
     # "no_inflate_no_emu_cov",  # no emu error, no increase errors for 3, 3.6, and 4
     # "cosmo",  # different fiducial cosmo
-    "cosmo_low",  # different fiducial cosmo
-    # "cosmo_high",  # different fiducial cosmo
+    # "cosmo_low",  # different fiducial cosmo
+    "cosmo_high",  # different fiducial cosmo
     # "metal_trad",  # 2 params for metals like eBOSS
     # "metal_si2",  # no SiII-SiII cont
     # "metal_deco",  # no decorrelation metals
@@ -585,7 +585,11 @@ dict_trans = {
     "no_inflate_no_emu_cov":"Cov: no emu err, no extra 5%", 
     
     "DESIY1_QMLE3_nyx":"Model: emulator",
-    "cosmo": "Model: fid cosmo",  # different fiducial cosmo
+    "cosmo": "Model: $\omega_0\omega_a$CDM",  # different fiducial cosmo
+    # "cosmo_low": "Model: $\Lambda$CDM, low $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
+    # "cosmo_high": "Model: $\Lambda$CDM, high $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
+    "cosmo_low": "Model: low $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
+    "cosmo_high": "Model: high $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
     
     "more_igm": "Model: IGM $n_z=8$",  # 8 params for IGM evolution
     "less_igm": "Model: IGM $n_z=4$",  # 4 params for IGM evolution
@@ -603,14 +607,14 @@ dict_trans = {
 fname = ["data", "cov", "model", "modelz", "model_other"]
 
 
-for image in range(0, 5):
+for image in range(2, 3):
 
     if image == 0:
         variations = ["DESIY1_QMLE3_mpg", "zmin", "zmax", "DESIY1_QMLE_mpg", "DESIY1_FFT3_dir_mpg"]
     elif image == 1:
         variations = ["DESIY1_QMLE3_mpg", "no_inflate", "no_emu_cov", "no_inflate_no_emu_cov"]
     elif image == 2:
-        variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx", "cosmo"]
+        variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx", "cosmo_low", "cosmo_high", "cosmo"]
     elif image == 3:
         variations = ["DESIY1_QMLE3_mpg", "more_igm", "less_igm", "metals_z", "hcd_z"]
     elif image == 4:
@@ -688,9 +692,14 @@ for image in range(0, 5):
     )
     ax.axhline(color="k", ls=":")
     ax.axvline(color="k", ls=":")
+
+    if image == 2:
+        loc = "lower left"
+    else:
+        loc = "upper right"
     
     
-    plt.legend(fontsize=ftsize-2, loc="upper right", ncol=1)
+    plt.legend(fontsize=ftsize-4, loc=loc, ncol=1)
     plt.tight_layout()
     plt.savefig("figs/variations_2d_"+fname[image]+".pdf")
     plt.savefig("figs/variations_2d_"+fname[image]+".png")
@@ -1151,7 +1160,9 @@ plt.tight_layout()
 # plt.savefig("figs/validation_2d.png")
 # -
 
-xy_all.max(axis=0) + true_cosmo["n_star"]
+true_cosmo["Delta2_star"]
+
+true_cosmo["n_star"]
 
 data_cen["mle"]
 

@@ -60,20 +60,111 @@ from cup1d.pipeline.set_archive import set_archive
 # #### Check if works with sims
 
 # %%
-file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_5/fitter_results.npy"
+from emcee.autocorr import integrated_time
+
+def compute_autocorr_time(x, y, c=5.0):
+    """
+    Compute the integrated autocorrelation time for an emcee chain.
+
+    Parameters
+    ----------
+    chain : ndarray
+        Shape (nsteps, nwalkers, ndim).
+    c : float
+        The step size factor (default=5.0, as in emcee docs).
+
+    Returns
+    -------
+    tau : ndarray
+        Autocorrelation time estimate per parameter.
+    """
+    # Flatten over walkers: (nsteps*nwalkers, ndim)
+    dat = np.zeros((x.shape[0], x.shape[1], 2))
+    dat[...,0] = x - 0.36018356241235394
+    dat[...,1] = y + 2.2987193427919963
+    return integrated_time(dat, c=c, quiet=True)
+
 
 # %%
-dat = np.load(file, allow_pickle=True).item()
-dat.keys()
+
+file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_6/lnprob.npy"
+lnprob = np.load(file)
 
 # %%
-arr = np.linspace(0, 1, 100000000)
+# dat = np.load(file, allow_pickle=True).item()
+file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_6/blobs.npy"
+blob = np.load(file)
+blob.shape
 
 # %%
-np.save("test.npy", {"a": arr, "b": arr})
+nburn = 1000
+thin = 20
+nelem = int(blob["Delta2_star"][nburn:].reshape(-1).shape[0]/thin)
+ind = np.random.permutation(np.arange(nelem * thin))[:nelem]
+dat = np.zeros((nelem, 2))
+dat[:,0] = (blob["Delta2_star"][nburn:, :].reshape(-1))[ind] - 0.36018356241235394
+dat[:,1] = (blob["n_star"][nburn:, :].reshape(-1))[ind] + 2.2987193427919963
 
 # %%
-np.load("test.npy", allow_pickle=True)
+dat.shape
+
+# %%
+nburn = 1000
+for ii in range(8):
+    nburn = 1000 + ii * 100
+    print(ii, compute_autocorr_time(blob["Delta2_star"][nburn:], blob["n_star"][nburn:]))
+
+# %%
+# 1.20?
+
+# %%
+lnprob = blob.copy()
+
+# %%
+nburn = 1500
+for ii in range(lnprob.shape[1]):
+    plt.plot(lnprob[:, ii])
+    
+plt.plot(np.mean(lnprob, axis=1))
+plt.plot(np.median(lnprob, axis=1))
+
+# %%
+
+plt.plot(np.mean(lnprob, axis=1))
+plt.plot(np.median(lnprob, axis=1))
+
+# %%
+nelem = blob["Delta2_star"].reshape(-1).shape[0]
+dat = np.zeros((nelem, 2))
+dat[:,0] = blob["Delta2_star"].reshape(-1) - 0.36018356241235394
+dat[:,1] = blob["n_star"].reshape(-1) + 2.2987193427919963
+
+# %%
+ndim = 2
+fig = corner(dat[:, :], levels=[0.68, 0.95], bins=30, range=[0.98]*ndim, show_titles=True)
+fig.axes[2].axvline(color="k", ls=":")
+fig.axes[2].axhline(color="k", ls=":")
+
+nseed = 400
+for jj in range(nseed):
+    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/"
+    data_cen = np.load(folder + "seed_" + str(jj) + "/best_dircosmo.npy", allow_pickle=True).item()
+    x = data_cen["mle_cosmo_cen"]["Delta2_star"] - 0.36018356241235394
+    y = data_cen["mle_cosmo_cen"]["n_star"] + 2.2987193427919963
+    fig.axes[2].scatter(x, y, marker=".", color="C1")
+
+# %%
+
+# %%
+for jj in range(nseed):
+        folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+var+"/CH24_mpgcen_gpr/"
+        data_cen = np.load(folder + "seed_" + str(jj) + "/best_dircosmo.npy", allow_pickle=True).item()
+        x = data_cen["mle_cosmo_cen"]["Delta2_star"] - true_cosmo["Delta2_star"]
+        y = data_cen["mle_cosmo_cen"]["n_star"] - true_cosmo["n_star"]
+        # print(data_cen["mle"]['$f_{\rm HCD1}_0$'])
+        xy_all[jj, 0] = x
+        xy_all[jj, 1] = y
+        plt.scatter(x, y, marker=".", color="C1")
 
 # %%
 dat["fitter"].keys()
