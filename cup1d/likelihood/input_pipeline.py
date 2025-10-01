@@ -439,7 +439,7 @@ class Args:
         fid_cosmo_label="Planck18",
         name_variation=None,
         inflate=1.05,
-        mcmc_conf="test",
+        mcmc_conf="explore",
     ):
         """
         Set baseline parameters

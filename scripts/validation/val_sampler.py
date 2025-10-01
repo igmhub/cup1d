@@ -14,7 +14,7 @@ def main():
     # emu = "nyx"
     # fit_type = "global_igm"
     fit_type = "global_opt"
-    mcmc_conf = "test"
+    mcmc_conf = "explore"
 
     # baseline
     data_label = sys.argv[1]
@@ -50,12 +50,6 @@ def main():
         z_max=zmax,
         mcmc_conf=mcmc_conf,
     )
-    # args.mcmc["n_walkers"] = 21
-    # args.mcmc["n_steps"] = 100  # 46 s
-    # args.mcmc["n_steps"] = 2000  # 1000 s
-    # args.mcmc["parallel"] = True
-    # args.mcmc["n_steps"] = 1
-    # args.mcmc["parallel"] = False
     pip = Pipeline(args, out_folder=args.out_folder)
 
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
