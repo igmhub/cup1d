@@ -86,72 +86,158 @@ def compute_autocorr_time(x, y, c=5.0):
 
 
 # %%
-
-file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_6/lnprob.npy"
-lnprob = np.load(file)
+folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
+file = "sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
+lnprob = np.load(folder + file + "lnprob.npy")
 
 # %%
 # dat = np.load(file, allow_pickle=True).item()
-file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_6/blobs.npy"
-blob = np.load(file)
+# file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_6/blobs.npy"
+blob = np.load(folder + file + "blobs.npy")
 blob.shape
 
 # %%
-nburn = 1000
-thin = 20
-nelem = int(blob["Delta2_star"][nburn:].reshape(-1).shape[0]/thin)
-ind = np.random.permutation(np.arange(nelem * thin))[:nelem]
-dat = np.zeros((nelem, 2))
-dat[:,0] = (blob["Delta2_star"][nburn:, :].reshape(-1))[ind] - 0.36018356241235394
-dat[:,1] = (blob["n_star"][nburn:, :].reshape(-1))[ind] + 2.2987193427919963
+chain = np.load(folder + file + "chain.npy")
+chain.shape
+
+# %%
+fdict = np.load(folder + file + "fitter_results.npy", allow_pickle=True).item()
+
+# %%
+labels = fdict["like"]["free_param_names"]
+nburn_extra = 0
+truth = [0,0]
+nelem = (chain.shape[0] - nburn_extra) * chain.shape[1]
+ndim = chain.shape[-1]
+dat = np.zeros((nelem, ndim))
+dat[:, 0] = blob["Delta2_star"][nburn_extra:, :].reshape(-1) - truth[0]
+dat[:, 1] = blob["n_star"][nburn_extra:, :].reshape(-1) - truth[1]
+dat[:, 2:] = chain[:, :, 2:].reshape(-1, ndim - 2)
+
+for ii in range(2, ndim):
+    lab = labels[ii]
+    vmax = fdict["like"]["free_params"][lab]["max_value"]
+    vmin = fdict["like"]["free_params"][lab]["min_value"]
+    dat[:, ii] = dat[:, ii] * (vmax - vmin) + vmin
+                
+
+# %%
+def get_contours(x, y):
+    H, xedges, yedges = np.histogram2d(x, y, bins=50, density=True)
+
+    # Flatten, sort by density
+    Hflat = H.flatten()
+    idx = np.argsort(Hflat)[::-1]
+    Hsorted = Hflat[idx]
+    cdf = np.cumsum(Hsorted) / np.sum(Hsorted)
+    
+    # density levels corresponding to 68% and 95%
+    levels = [Hsorted[cdf <= p][-1] for p in (0.68, 0.95)]
+    levels = np.sort(levels)
+    
+    # contour plot
+    X, Y = 0.5*(xedges[:-1]+xedges[1:]), 0.5*(yedges[:-1]+yedges[1:])
+    X, Y = np.meshgrid(X, Y)
+
+    return X, Y, H, levels
+
+
+# %%
+labels = fdict["like"]["free_param_names"]
+ds_range = np.percentile(dat[:, 0], [0.2, 98])
+ns_range = np.percentile(dat[:, 1], [0.2, 98])
+fig, ax = plt.subplots(2, 6, sharex="col", sharey="row", figsize=(12, 8))
+for ii0 in range(0, 6):
+    ii = ii0 + 2 + 36
+    x, y, h, levels = get_contours(dat[:, ii], dat[:, 0])
+    ax[0, ii0].contour(x, y, h.T, levels=levels, colors="k")
+    
+    
+    x, y, h, levels = get_contours(dat[:, ii], dat[:, 1])
+    ax[1, ii0].contour(x, y, h.T, levels=levels, colors="k")
+    
+    
+    range_par = np.percentile(dat[:, ii], [0.1, 99.9])
+    ax[1, ii0].set_xlim(range_par)
+    ax[1, ii0].set_xlabel(labels[ii])
+
+ax[0, 0].set_ylim(ds_range)
+ax[1, 0].set_ylim(ns_range)
+ax[0, 0].set_ylabel(r"$\Delta_\star$")
+ax[1, 0].set_ylabel(r"$n_\star$")
+    
+plt.tight_layout()
+    # plt.savefig(fname_out + "cosmo_" + str(ii) + ".pdf")
+    # plt.savefig(fname_out + "cosmo_" + str(ii) + ".png")
+
+# %%
+# nelem = blob.shape[0] * blob.shape[1]
+# dat = np.zeros((nelem, 2))
+# dat[:,0] = (blob["Delta2_star"][:, :].reshape(-1)) - 0.36018356241235394
+# dat[:,1] = (blob["n_star"][:, :].reshape(-1)) + 2.2987193427919963
+
+# %%
+# fdict["like"]["free_param_names"][30]
+
+# %%
+fdict["like"]["free_param_names"]
+
+# %%
+np.array(fdict["like"]["free_param_names"])[ind]
+
+# %%
+mat = np.corrcoef(dat[:, :-11], rowvar=False)
+
+# %%
+
+plt.imshow(mat, cmap="turbo")
+plt.colorbar()
+
+# %%
+# ind = np.array([0, 1, 4, 20, 24, 25, 26, 27, 30, 31, 32, 33])
+# ndim = len(ind)
+# fig = corner(
+#     dat[:, ind],
+#     levels=[0.68, 0.95],
+#     bins=50,
+#     range=[0.98] * ndim,
+#     show_titles=True,
+#     labels=np.array(fdict["like"]["free_param_names"])[ind]
+# )
 
 # %%
 dat.shape
 
 # %%
-nburn = 1000
-for ii in range(8):
-    nburn = 1000 + ii * 100
-    print(ii, compute_autocorr_time(blob["Delta2_star"][nburn:], blob["n_star"][nburn:]))
-
-# %%
-# 1.20?
-
-# %%
-lnprob = blob.copy()
-
-# %%
-nburn = 1500
-for ii in range(lnprob.shape[1]):
-    plt.plot(lnprob[:, ii])
-    
-plt.plot(np.mean(lnprob, axis=1))
-plt.plot(np.median(lnprob, axis=1))
-
-# %%
-
-plt.plot(np.mean(lnprob, axis=1))
-plt.plot(np.median(lnprob, axis=1))
-
-# %%
-nelem = blob["Delta2_star"].reshape(-1).shape[0]
-dat = np.zeros((nelem, 2))
-dat[:,0] = blob["Delta2_star"].reshape(-1) - 0.36018356241235394
-dat[:,1] = blob["n_star"].reshape(-1) + 2.2987193427919963
+print(ii, compute_autocorr_time(blob["Delta2_star"], blob["n_star"]))
 
 # %%
 ndim = 2
-fig = corner(dat[:, :], levels=[0.68, 0.95], bins=30, range=[0.98]*ndim, show_titles=True)
+fig = corner(dat[:, :], levels=[0.68, 0.95, 0.99], bins=50, 
+             range=[1.]*ndim, show_titles=True, color="C0", title_fmt='.3f')
 fig.axes[2].axvline(color="k", ls=":")
 fig.axes[2].axhline(color="k", ls=":")
+fig.axes[0].axvline(color="k", ls=":")
+fig.axes[3].axvline(color="k", ls=":")
 
-nseed = 400
-for jj in range(nseed):
-    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/"
-    data_cen = np.load(folder + "seed_" + str(jj) + "/best_dircosmo.npy", allow_pickle=True).item()
-    x = data_cen["mle_cosmo_cen"]["Delta2_star"] - 0.36018356241235394
-    y = data_cen["mle_cosmo_cen"]["n_star"] + 2.2987193427919963
-    fig.axes[2].scatter(x, y, marker=".", color="C1")
+# nseed = 400
+# for jj in range(nseed):
+#     folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/"
+#     data_cen = np.load(folder + "seed_" + str(jj) + "/best_dircosmo.npy", allow_pickle=True).item()
+#     x = data_cen["mle_cosmo_cen"]["Delta2_star"] - 0.36018356241235394
+#     y = data_cen["mle_cosmo_cen"]["n_star"] + 2.2987193427919963
+#     fig.axes[2].scatter(x, y, marker=".", color="C1")
+
+# %%
+contours = []
+for i, coll in enumerate(ax.collections):
+    level = [0.68, 0.95, 0.99][i // 2]  # corner usually creates 2 entries per level (line + fill)
+    for path in coll.get_paths():
+        verts = path.vertices  # (N,2) array
+        contours.append((level, verts))
+
+# %%
+plt.plot(contours[-1][1][:, 0], contours[-1][1][:, 1], lw=3)
 
 # %%
 
@@ -185,10 +271,10 @@ nelem = chain_re.shape[0]
 
 # %%
 mat = np.corrcoef(par_fig, rowvar=False)
-
-# %%
 plt.imshow(mat, cmap="turbo")
 plt.colorbar()
+
+# %%
 
 # %%
 mat[0]
@@ -217,8 +303,8 @@ fig = corner(par_fig[:, ind], levels=[0.68, 0.95], bins=50)
 
 # %%
 
-# data_label = "mpg_central"
-data_label = "nyx_central"
+data_label = "mpg_central"
+# data_label = "nyx_central"
 # data_label = "nyx_seed"
 # data_label = "accel2"
 # data_label = "sherwood"
@@ -254,15 +340,15 @@ args.set_baseline(
     name_variation=name_variation,
     z_min=zmin,
     z_max=zmax,
-    test_mcmc=True
+    mcmc_conf="test"
 )
-args.mcmc["n_walkers"] = 21
 
 # %%
 archive_mock = set_archive(training_set=args.nyx_training_set)
 
 # %%
-pip = Pipeline(args, archive=archive_mock)
+# pip = Pipeline(args, archive=archive_mock)
+pip = Pipeline(args)
 
 # %%
 # pip.fitter.like.data.plot_p1d()
@@ -282,29 +368,13 @@ for par in pip.fitter.like.free_params:
 pip.fitter.like.plot_p1d()
 
 # %%
-mle_cube
-
-# %%
 pip.run_minimizer(p0, restart=True)
 
 # %%
 # pip.plotter.plot_igm()
 
 # %%
-pip.fitter.nsteps=20
-
-# %%
-# %%time
-pip.run_sampler()
-
-# %%
-10 - 3s
-
-# %%
-20 - 5s
-
-# %%
-41*20/5
+pip.run_sampler(pini=p0)
 
 # %%
 164 per sec and rank. 
