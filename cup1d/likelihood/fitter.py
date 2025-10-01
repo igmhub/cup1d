@@ -31,7 +31,6 @@ class Fitter(object):
         self,
         like=None,
         nwalkers=1,
-        thin=0,
         nsteps=1,
         nburn=0,
         thin=1,
@@ -109,9 +108,6 @@ class Fitter(object):
             # nsteps = self.comm.recv(source=0, tag=self.rank * 11)
             # nwalkers = self.comm.recv(source=0, tag=self.rank * 13)
             self.save_directory = self.comm.recv(source=0, tag=self.rank * 15)
-
-        self.nwalkers = nwalkers
-        self.nsteps = nsteps
 
         # print(
         #     "rank", self.rank, "nwalkers", self.nwalkers, "nsteps", self.nsteps

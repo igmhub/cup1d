@@ -14,6 +14,7 @@ echo "Job started at: $(date)"
 mkdir -p logs
 
 # Define variations
+
 variations=(
     "mpg_central"
     "nyx_central"

@@ -138,7 +138,7 @@ class Pipeline(object):
             like=like,
             rootdir=self.out_folder,
             nwalkers=args.mcmc["n_walkers"],
-            nburnin=args.mcmc["n_burn_in"],
+            nburn=args.mcmc["n_burn_in"],
             nsteps=args.mcmc["n_steps"],
             thin=args.mcmc["thin"],
             parallel=args.mcmc["parallel"],

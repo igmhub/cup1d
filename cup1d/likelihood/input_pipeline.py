@@ -465,11 +465,11 @@ class Args:
 
         if mcmc_conf == "test":
             self.mcmc["explore"] = True
-            self.mcmc["parallel"] = False
+            self.mcmc["parallel"] = True
             self.mcmc["n_burn_in"] = 0
-            self.mcmc["n_steps"] = 1
+            self.mcmc["n_steps"] = 4
             self.mcmc["n_walkers"] = 1
-            self.mcmc["thin"] = 1
+            self.mcmc["thin"] = 2
         elif mcmc_conf == "explore":
             self.mcmc["explore"] = True
             self.mcmc["parallel"] = True

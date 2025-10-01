@@ -1,4 +1,5 @@
 import os
+import sys
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
@@ -13,11 +14,10 @@ def main():
     # emu = "nyx"
     # fit_type = "global_igm"
     fit_type = "global_opt"
+    mcmc_conf = "test"
 
     # baseline
-    # data_label = "mpg_central"
-    data_label = "nyx_central"
-    # data_label = "sherwood"
+    data_label = sys.argv[1]
 
     if data_label == "mpg_central":
         zmin = 2.25
@@ -48,12 +48,12 @@ def main():
         name_variation=name_variation,
         z_min=zmin,
         z_max=zmax,
-        test_mcmc=True,
+        mcmc_conf=mcmc_conf,
     )
-    args.mcmc["n_walkers"] = 21
+    # args.mcmc["n_walkers"] = 21
     # args.mcmc["n_steps"] = 100  # 46 s
-    args.mcmc["n_steps"] = 2000  # 1000 s
-    args.mcmc["parallel"] = True
+    # args.mcmc["n_steps"] = 2000  # 1000 s
+    # args.mcmc["parallel"] = True
     # args.mcmc["n_steps"] = 1
     # args.mcmc["parallel"] = False
     pip = Pipeline(args, out_folder=args.out_folder)
