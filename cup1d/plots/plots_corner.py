@@ -76,6 +76,7 @@ def plots_chain(
 
 
 def plot_lnprob(lnprob, folder_out=None, ftsize=20):
+    print("plotting lnprob")
     for ii in range(lnprob.shape[1]):
         plt.plot(lnprob[:, ii])
 
@@ -93,6 +94,7 @@ def plot_lnprob(lnprob, folder_out=None, ftsize=20):
 
 
 def corner_blobs(dat, folder_out=None, ftsize=20, labels=None):
+    print("plotting corner_blobs")
     labs = []
     for ilab in range(2):
         labs.append(param_dict[labels[ilab]])
@@ -129,6 +131,7 @@ def corner_blobs(dat, folder_out=None, ftsize=20, labels=None):
 
 
 def corner_chain(dat, folder_out=None, ftsize=20, labels=None, divs=2):
+    print("plotting corner_chain")
     # fig corner
     ndim = dat.shape[1] - 11
     labs = []
@@ -146,7 +149,7 @@ def corner_chain(dat, folder_out=None, ftsize=20, labels=None, divs=2):
             dat[:, ind],
             levels=[0.68, 0.95],
             bins=30,
-            range=[0.98] * ndim,
+            range=[0.98] * len(ind),
             show_titles=True,
             title_fmt=".3f",
             label_kwargs={"fontsize": ftsize},
@@ -170,6 +173,7 @@ def corner_chain(dat, folder_out=None, ftsize=20, labels=None, divs=2):
 def corr_compressed(
     dat, labels, priors, folder_out=None, ftsize=20, truth=[0, 0], sigmas=2
 ):
+    print("plotting corr_compressed")
     # labels = fdict["like"]["free_param_names"]
     frange = 0.1
     cmap = plt.get_cmap("Blues")
@@ -331,6 +335,7 @@ def corr_compressed(
 
 
 def plot_corr(dat, ftsize=20, folder_out=None):
+    print("Plotting correlation matrix")
     mat = np.corrcoef(dat[:, :-11], rowvar=False)
 
     plt.imshow(mat, cmap="turbo")
