@@ -56,132 +56,7 @@ from scipy.stats import chi2 as chi2_scipy
 from cup1d.pipeline.set_archive import set_archive
 
 
-# %% [markdown]
-# #### Check if works with sims
-
 # %%
-from emcee.autocorr import integrated_time
-
-def compute_autocorr_time(x, y, c=5.0):
-    """
-    Compute the integrated autocorrelation time for an emcee chain.
-
-    Parameters
-    ----------
-    chain : ndarray
-        Shape (nsteps, nwalkers, ndim).
-    c : float
-        The step size factor (default=5.0, as in emcee docs).
-
-    Returns
-    -------
-    tau : ndarray
-        Autocorrelation time estimate per parameter.
-    """
-    # Flatten over walkers: (nsteps*nwalkers, ndim)
-    dat = np.zeros((x.shape[0], x.shape[1], 2))
-    dat[...,0] = x - 0.36018356241235394
-    dat[...,1] = y + 2.2987193427919963
-    return integrated_time(dat, c=c, quiet=True)
-
-
-# %%
-folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
-file = "sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
-lnprob = np.load(folder + file + "lnprob.npy")
-
-# %%
-# dat = np.load(file, allow_pickle=True).item()
-# file = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_6/blobs.npy"
-blob = np.load(folder + file + "blobs.npy")
-blob.shape
-
-# %%
-chain = np.load(folder + file + "chain.npy")
-chain.shape
-
-# %%
-fdict = np.load(folder + file + "fitter_results.npy", allow_pickle=True).item()
-
-# %%
-labels = fdict["like"]["free_param_names"]
-nburn_extra = 0
-truth = [0,0]
-
-
-# %%
-# fdict["like"]["free_params"]
-
-# %%
-from cup1d.plots.plots_corner import corr_compressed
-
-# %%
-labels = fdict["like"]["free_param_names"]
-corr_compressed(dat, labels, priors, folder_out="figs/")
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-# nelem = blob.shape[0] * blob.shape[1]
-# dat = np.zeros((nelem, 2))
-# dat[:,0] = (blob["Delta2_star"][:, :].reshape(-1)) - 0.36018356241235394
-# dat[:,1] = (blob["n_star"][:, :].reshape(-1)) + 2.2987193427919963
-
-# %%
-# fdict["like"]["free_param_names"][30]
-
-# %%
-fdict["like"]["free_param_names"]
-
-# %%
-np.array(fdict["like"]["free_param_names"])[ind]
-
-# %%
-mat = np.corrcoef(dat[:, :-11], rowvar=False)
-
-# %%
-
-plt.imshow(mat, cmap="turbo")
-plt.colorbar()
-
-# %%
-# ind = np.array([0, 1, 4, 20, 24, 25, 26, 27, 30, 31, 32, 33])
-# ndim = len(ind)
-# fig = corner(
-#     dat[:, ind],
-#     levels=[0.68, 0.95],
-#     bins=50,
-#     range=[0.98] * ndim,
-#     show_titles=True,
-#     labels=np.array(fdict["like"]["free_param_names"])[ind]
-# )
-
-# %%
-dat.shape
-
-# %%
-print(ii, compute_autocorr_time(blob["Delta2_star"], blob["n_star"]))
-
-# %%
-ndim = 2
-fig = corner(dat[:, :], levels=[0.68, 0.95, 0.99], bins=50, 
-             range=[1.]*ndim, show_titles=True, color="C0", title_fmt='.3f')
-fig.axes[2].axvline(color="k", ls=":")
-fig.axes[2].axhline(color="k", ls=":")
-fig.axes[0].axvline(color="k", ls=":")
-fig.axes[3].axvline(color="k", ls=":")
-
-# nseed = 400
-# for jj in range(nseed):
-#     folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/"
-#     data_cen = np.load(folder + "seed_" + str(jj) + "/best_dircosmo.npy", allow_pickle=True).item()
-#     x = data_cen["mle_cosmo_cen"]["Delta2_star"] - 0.36018356241235394
-#     y = data_cen["mle_cosmo_cen"]["n_star"] + 2.2987193427919963
-#     fig.axes[2].scatter(x, y, marker=".", color="C1")
 
 # %%
 contours = []
@@ -193,68 +68,6 @@ for i, coll in enumerate(ax.collections):
 
 # %%
 plt.plot(contours[-1][1][:, 0], contours[-1][1][:, 1], lw=3)
-
-# %%
-
-# %%
-for jj in range(nseed):
-        folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"+var+"/CH24_mpgcen_gpr/"
-        data_cen = np.load(folder + "seed_" + str(jj) + "/best_dircosmo.npy", allow_pickle=True).item()
-        x = data_cen["mle_cosmo_cen"]["Delta2_star"] - true_cosmo["Delta2_star"]
-        y = data_cen["mle_cosmo_cen"]["n_star"] - true_cosmo["n_star"]
-        # print(data_cen["mle"]['$f_{\rm HCD1}_0$'])
-        xy_all[jj, 0] = x
-        xy_all[jj, 1] = y
-        plt.scatter(x, y, marker=".", color="C1")
-
-# %%
-dat["fitter"].keys()
-
-# %%
-dat["fitter"]["chain_names"]
-
-# %%
-nburn = 0
-for ii in range(dat["fitter"]["lnprob"].shape[1]):
-    # plt.plot(dat["fitter"]["lnprob"][nburn:, ii])
-    # plt.plot(dat["fitter"]["blobs"]["Delta2_star"][nburn:, ii])
-    plt.plot(dat["fitter"]["blobs"]["n_star"][nburn:, ii])
-
-# %%
-chain_re = dat["fitter"]["chain"].reshape(-1, 20)
-nelem = chain_re.shape[0]
-
-# %%
-mat = np.corrcoef(par_fig, rowvar=False)
-plt.imshow(mat, cmap="turbo")
-plt.colorbar()
-
-# %%
-
-# %%
-mat[0]
-
-# %%
-mat[1]
-
-# %%
-par_fig = np.zeros((nelem, chain_re.shape[1]+2))
-
-# %%
-par_fig.shape
-
-# %%
-par_fig[:, 0] = dat["fitter"]["blobs"]["Delta2_star"].reshape(-1)
-par_fig[:, 1] = dat["fitter"]["blobs"]["n_star"].reshape(-1)
-par_fig[:, 2:] = chain_re[:, 0:]
-
-# %%
-ind = np.array([0, 1, 6])
-
-# %%
-fig = corner(par_fig[:, ind], levels=[0.68, 0.95], bins=50)
-
-# %%
 
 # %%
 
@@ -332,20 +145,6 @@ pip.run_minimizer(p0, restart=True)
 pip.run_sampler(pini=p0)
 
 # %%
-164 per sec and rank. 
-
-# %%
-41 * 2000/164/5
-
-# %%
-
-# %%
-len(pip.fitter.like.free_params)
-
-# %%
-pip.fitter.like.data.full_k_kms.shape
-
-# %%
 from cup1d.likelihood.cosmologies import set_cosmo
 
 from cup1d.likelihood import CAMB_model
@@ -397,31 +196,7 @@ pip.fitter.like.get_chi2(p0)
 pip.run_minimizer(p0, restart=True)
 
 # %%
-pip.fitter.chain.shape
-
-# %%
-pip.fitter.mle
-
-# %%
 p0 = pip.fitter.mle_cube.copy()
-
-# %%
-p0[-2] = 0
-
-# %%
-pip.fitter.like.get_chi2(p0)
-
-# %%
-
-# %%
-p0 = pip.fitter.mle_cube.copy()
-pip.fitter.like.get_chi2(p0)
-
-# %%
-pip.fitter.mle
-
-# %%
-p0[-1]=0
 
 # %%
 pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True)
@@ -482,8 +257,11 @@ args.set_baseline(
     name_variation=name_variation, 
 )
 
-pip = Pipeline(args)
+pip = Pipeline(args, out_folder=args.out_folder)
 
+
+# %%
+pip.fitter.save_directory
 
 # %%
 

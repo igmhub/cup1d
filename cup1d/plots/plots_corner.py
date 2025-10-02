@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from corner import corner
 from emcee.autocorr import integrated_time
 import matplotlib.pyplot as plt
@@ -14,12 +15,14 @@ from cup1d.utils.various_dicts import param_dict
 
 
 def prepare_data(folder_in, truth=[0, 0], nburn_extra=0):
-    fdict = np.load(folder_in + "fitter_results.npy", allow_pickle=True).item()
+    fdict = np.load(
+        os.path.join(folder_in, "fitter_results.npy"), allow_pickle=True
+    ).item()
     labels = fdict["like"]["free_param_names"]
 
-    lnprob = np.load(folder_in + "lnprob.npy")[nburn_extra:, :]
-    blobs = np.load(folder_in + "blobs.npy")
-    chain = np.load(folder_in + "chain.npy")
+    lnprob = np.load(os.path.join(folder_in, "lnprob.npy"))[nburn_extra:, :]
+    blobs = np.load(os.path.join(folder_in, "blobs.npy"))
+    chain = np.load(os.path.join(folder_in, "chain.npy"))
 
     auto_time = integrated_time(chain[nburn_extra:, :, :2], c=5.0, quiet=True)
     print(auto_time, chain.shape)
@@ -66,7 +69,7 @@ def plots_chain(
 
     corr_compressed(dat, labels, priors, folder_out=folder_out)
 
-    plot_corr(dat, folder_out=folder_out, ftsize=ftsize)
+    plot_corr(dat, labels, folder_out=folder_out, ftsize=ftsize)
 
     corner_blobs(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
 
@@ -84,8 +87,8 @@ def plot_lnprob(lnprob, folder_out=None, ftsize=20):
     plt.plot(np.median(lnprob, axis=1), lw=3, label="median")
 
     if folder_out is not None:
-        plt.savefig(folder_out + "lnprob.pdf")
-        plt.savefig(folder_out + "lnprob.png")
+        plt.savefig(os.path.join(folder_out, "lnprob.pdf"))
+        plt.savefig(os.path.join(folder_out, "lnprob.png"))
     else:
         plt.show()
     plt.close()
@@ -121,8 +124,8 @@ def corner_blobs(dat, folder_out=None, ftsize=20, labels=None):
         ax.tick_params(labelsize=ftsize - 4)
 
     if folder_out is not None:
-        plt.savefig(folder_out + "corner_compressed.pdf")
-        plt.savefig(folder_out + "corner_compressed.png")
+        plt.savefig(os.path.join(folder_out, "corner_compressed.pdf"))
+        plt.savefig(os.path.join(folder_out, "corner_compressed.png"))
     else:
         plt.show()
     plt.close()
@@ -161,8 +164,12 @@ def corner_chain(dat, folder_out=None, ftsize=20, labels=None, divs=2):
             ax.tick_params(labelsize=ftsize - 4)
 
         if folder_out is not None:
-            plt.savefig(folder_out + "corner_all" + str(ii) + ".pdf")
-            plt.savefig(folder_out + "corner_all" + str(ii) + ".png")
+            plt.savefig(
+                os.path.join(folder_out, "corner_all" + str(ii) + ".pdf")
+            )
+            plt.savefig(
+                os.path.join(folder_out, "corner_all" + str(ii) + ".png")
+            )
         else:
             plt.show()
         plt.close()
@@ -327,26 +334,75 @@ def corr_compressed(
         if folder_out is None:
             plt.show()
         else:
-            plt.savefig(folder_out + "corr_compressed_" + str(igroup) + ".pdf")
-            plt.savefig(folder_out + "corr_compressed_" + str(igroup) + ".png")
+            plt.savefig(
+                os.path.join(
+                    folder_out, "corr_compressed_" + str(igroup) + ".pdf"
+                )
+            )
+            plt.savefig(
+                os.path.join(
+                    folder_out, "corr_compressed_" + str(igroup) + ".png"
+                )
+            )
         plt.close()
 
     return
 
 
-def plot_corr(dat, ftsize=20, folder_out=None):
+def plot_corr(dat, labs, ftsize=20, folder_out=None):
     print("Plotting correlation matrix")
     mat = np.corrcoef(dat[:, :-11], rowvar=False)
 
-    plt.imshow(mat, cmap="turbo")
-    plt.colorbar()
+    labels = []
+    for ii in range(mat.shape[0]):
+        labels.append(param_dict[labs[ii]])
+
+    # Mask upper triangle
+    mask = np.triu(np.ones_like(mat, dtype=bool))
+
+    fig, ax = plt.subplots(figsize=(12, 12))
+
+    # Apply mask: set upper triangle to NaN
+    mat_masked = np.ma.masked_where(mask, mat)
+
+    # Heatmap
+    im = ax.imshow(mat_masked, cmap="bwr", vmin=-1, vmax=1)
+
+    # Colorbar
+    cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    # cbar.set_label("Correlation", fontsize=ftsize)
+    cbar.ax.tick_params(labelsize=ftsize - 6)
+
+    # Axis labels
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=90, fontsize=ftsize - 6)
+    ax.set_yticks(range(len(labels)))
+    ax.set_yticklabels(labels, fontsize=ftsize - 6)
+
+    # Annotate only the lower triangle
+    for i in range(mat.shape[0]):
+        for j in range(i + 1):  # only lower triangle
+            if (np.abs(mat[i, j]) > 0.25) & (np.abs(mat[i, j]) < 0.99):
+                ax.text(
+                    j,
+                    i,
+                    f"{mat[i,j]:.2f}",
+                    ha="center",
+                    va="center",
+                    color="black",
+                    fontsize=ftsize - 12,
+                )
 
     plt.tight_layout()
     if folder_out is None:
         plt.show()
     else:
-        plt.savefig(folder_out + "corr_mat.pdf")
-        plt.savefig(folder_out + "corr_mat.png")
+        plt.savefig(
+            os.path.join(folder_out, "corr_mat.pdf"), bbox_inches="tight"
+        )
+        plt.savefig(
+            os.path.join(folder_out, "corr_mat.png"), bbox_inches="tight"
+        )
     plt.close()
 
 

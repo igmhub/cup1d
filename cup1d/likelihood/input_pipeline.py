@@ -467,23 +467,23 @@ class Args:
             self.mcmc["explore"] = True
             self.mcmc["parallel"] = True
             self.mcmc["n_burn_in"] = 0
-            self.mcmc["n_steps"] = 4
+            self.mcmc["n_steps"] = 5
             self.mcmc["n_walkers"] = 1
-            self.mcmc["thin"] = 2
+            self.mcmc["thin"] = 1
         elif mcmc_conf == "explore":
-            self.mcmc["explore"] = False
+            self.mcmc["explore"] = True
             self.mcmc["parallel"] = True
             self.mcmc["n_burn_in"] = 1500
-            self.mcmc["n_steps"] = 1000
+            self.mcmc["n_steps"] = 1500
             self.mcmc["n_walkers"] = 10
-            self.mcmc["thin"] = 20
+            self.mcmc["thin"] = 15
         elif mcmc_conf == "full":
             self.mcmc["explore"] = False
             self.mcmc["parallel"] = True
-            self.mcmc["n_burn_in"] = 2000
-            self.mcmc["n_steps"] = 2000
+            self.mcmc["n_burn_in"] = 1500
+            self.mcmc["n_steps"] = 4000
             self.mcmc["n_walkers"] = 10
-            self.mcmc["thin"] = 40
+            self.mcmc["thin"] = 20
 
         # reset parameters
         self.set_params_zero()
