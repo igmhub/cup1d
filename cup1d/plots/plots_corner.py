@@ -82,7 +82,7 @@ def plot_lnprob(lnprob, folder_out=None, ftsize=20):
     plt.plot(np.mean(lnprob, axis=1), lw=3, label="mean")
     plt.plot(np.median(lnprob, axis=1), lw=3, label="median")
 
-    if folder_out is None:
+    if folder_out is not None:
         plt.savefig(folder_out + "lnprob.pdf")
     else:
         plt.show()
@@ -117,7 +117,7 @@ def corner_blobs(dat, folder_out=None, ftsize=20, labels=None):
     for ax in fig.get_axes():
         ax.tick_params(labelsize=ftsize - 4)
 
-    if folder_out is None:
+    if folder_out is not None:
         plt.savefig(folder_out + "corner_compressed.pdf")
     else:
         plt.show()
@@ -148,7 +148,7 @@ def corner_chain(dat, folder_out=None, ftsize=20, labels=None):
     for ax in fig.get_axes():
         ax.tick_params(labelsize=ftsize - 4)
 
-    if folder_out is None:
+    if folder_out is not None:
         plt.savefig(folder_out + "corner_all.pdf")
     else:
         plt.show()
