@@ -84,6 +84,7 @@ def plot_lnprob(lnprob, folder_out=None, ftsize=20):
 
     if folder_out is not None:
         plt.savefig(folder_out + "lnprob.pdf")
+        plt.savefig(folder_out + "lnprob.png")
     else:
         plt.show()
     plt.close()
@@ -119,6 +120,7 @@ def corner_blobs(dat, folder_out=None, ftsize=20, labels=None):
 
     if folder_out is not None:
         plt.savefig(folder_out + "corner_compressed.pdf")
+        plt.savefig(folder_out + "corner_compressed.png")
     else:
         plt.show()
     plt.close()
@@ -126,33 +128,41 @@ def corner_blobs(dat, folder_out=None, ftsize=20, labels=None):
     return
 
 
-def corner_chain(dat, folder_out=None, ftsize=20, labels=None):
+def corner_chain(dat, folder_out=None, ftsize=20, labels=None, divs=2):
     # fig corner
-    ndim = dat.shape[1]
+    ndim = dat.shape[1] - 11
     labs = []
     for ilab in range(ndim):
         labs.append(param_dict[labels[ilab]])
-    fig = corner(
-        dat,
-        levels=[0.68, 0.95],
-        bins=30,
-        range=[0.98] * ndim,
-        show_titles=True,
-        # color="C0",
-        title_fmt=".3f",
-        label_kwargs={"fontsize": ftsize},
-        title_kwargs={"fontsize": ftsize - 2},
-        labels=labs,
-    )
 
-    for ax in fig.get_axes():
-        ax.tick_params(labelsize=ftsize - 4)
+    inds = np.array_split(np.arange(ndim), divs)
 
-    if folder_out is not None:
-        plt.savefig(folder_out + "corner_all.pdf")
-    else:
-        plt.show()
-    plt.close()
+    for ii in range(divs):
+        if ii != 0:
+            ind = np.concatenate([np.arange(2), inds[ii]])
+        else:
+            ind = inds[ii]
+        fig = corner(
+            dat[:, ind],
+            levels=[0.68, 0.95],
+            bins=30,
+            range=[0.98] * ndim,
+            show_titles=True,
+            title_fmt=".3f",
+            label_kwargs={"fontsize": ftsize},
+            title_kwargs={"fontsize": ftsize - 2},
+            labels=labs[ind],
+        )
+
+        for ax in fig.get_axes():
+            ax.tick_params(labelsize=ftsize - 4)
+
+        if folder_out is not None:
+            plt.savefig(folder_out + "corner_all" + str(ii) + ".pdf")
+            plt.savefig(folder_out + "corner_all" + str(ii) + ".png")
+        else:
+            plt.show()
+        plt.close()
 
     return
 
@@ -315,6 +325,7 @@ def corr_compressed(
         else:
             plt.savefig(folder_out + "corr_compressed_" + str(igroup) + ".pdf")
             plt.savefig(folder_out + "corr_compressed_" + str(igroup) + ".png")
+        plt.close()
 
     return
 
@@ -331,6 +342,7 @@ def plot_corr(dat, ftsize=20, folder_out=None):
     else:
         plt.savefig(folder_out + "corr_mat.pdf")
         plt.savefig(folder_out + "corr_mat.png")
+    plt.close()
 
 
 def get_contours(x, y, sigmas=1, bins=30):
