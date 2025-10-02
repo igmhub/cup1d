@@ -62,13 +62,13 @@ def plots_chain(
         folder_in, truth, nburn_extra=nburn_extra
     )
 
-    # plot_lnprob(lnprob, folder_out, ftsize)
+    plot_lnprob(lnprob, folder_out, ftsize)
 
-    # corr_compressed(dat, labels, priors, folder_out=folder_out)
+    corr_compressed(dat, labels, priors, folder_out=folder_out)
 
-    # plot_corr(dat, folder_out=folder_out, ftsize=ftsize)
+    plot_corr(dat, folder_out=folder_out, ftsize=ftsize)
 
-    # corner_blobs(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
+    corner_blobs(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
 
     corner_chain(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
 
