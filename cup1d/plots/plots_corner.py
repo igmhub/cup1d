@@ -151,7 +151,7 @@ def corner_chain(dat, folder_out=None, ftsize=20, labels=None, divs=2):
             title_fmt=".3f",
             label_kwargs={"fontsize": ftsize},
             title_kwargs={"fontsize": ftsize - 2},
-            labels=labs[ind],
+            labels=np.array(labs)[ind],
         )
 
         for ax in fig.get_axes():
