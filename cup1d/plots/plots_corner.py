@@ -13,25 +13,15 @@ rcParams["font.family"] = "STIXGeneral"
 from cup1d.utils.various_dicts import param_dict
 
 
-def plots_chain(
-    folder_in, labels, folder_out=None, nburn_extra=0, ftsize=20, truth=[0, 0]
-):
-    lnprob = np.load(folder_in + "lnprob.npy")
-    plot_lnprob(lnprob, folder_out, nburn_extra, ftsize)
-    lnprob = 0
+def prepare_data(folder_in, truth=[0, 0], nburn_extra=0):
+    fdict = np.load(folder_in + "fitter_results.npy", allow_pickle=True).item()
+    labels = fdict["like"]["free_param_names"]
 
+    lnprob = np.load(folder_in + "lnprob.npy")[nburn_extra:, :]
     blobs = np.load(folder_in + "blobs.npy")
-    corner_blobs(
-        blobs,
-        folder_out=folder_out,
-        nburn_extra=nburn_extra,
-        ftsize=ftsize,
-        truth=truth,
-        labels=labels,
-    )
-
     chain = np.load(folder_in + "chain.npy")
-    auto_time = integrated_time(chain[:, :, :2], c=5.0, quiet=True)
+
+    auto_time = integrated_time(chain[nburn_extra:, :, :2], c=5.0, quiet=True)
     print(auto_time, chain.shape)
 
     nelem = (chain.shape[0] - nburn_extra) * chain.shape[1]
@@ -39,24 +29,50 @@ def plots_chain(
     dat = np.zeros((nelem, ndim))
     dat[:, 0] = blob["Delta2_star"][nburn_extra:, :].reshape(-1) - truth[0]
     dat[:, 1] = blob["n_star"][nburn_extra:, :].reshape(-1) - truth[1]
-    dat[:, 2:] = chain[:, :, 2:].reshape(-1, ndim - 2)
+    dat[:, 2:] = chain[nburn_extra:, :, 2:].reshape(-1, ndim - 2)
+    priors = np.zeros((ndim, 2))
 
-    corner_chain(
-        dat,
-        folder_out=folder_out,
-        nburn_extra=nburn_extra,
-        ftsize=ftsize,
-        truth=truth,
-        labels=labels,
+    for ii in range(2, ndim):
+        lab = labels[ii]
+        vmax = fdict["like"]["free_params"][lab]["max_value"]
+        vmin = fdict["like"]["free_params"][lab]["min_value"]
+        dat[:, ii] = dat[:, ii] * (vmax - vmin) + vmin
+        priors[ii, 0] = vmin
+        priors[ii, 1] = vmax
+
+    return labels, lnprob, dat, priors
+
+
+def plots_chain(
+    folder_in, folder_out=None, nburn_extra=0, ftsize=20, truth=[0, 0]
+):
+    """
+    Plot the chains
+    """
+
+    labels, lnprob, dat, priors = prepare_data(
+        folder_in, truth, nburn_extra=nburn_extra
     )
 
+    plot_lnprob(lnprob, folder_out, ftsize)
 
-def plot_lnprob(lnprob, folder_out=None, nburn_extra=0, ftsize=20):
+    corr_compressed(dat, labels, priors, folder_out=folder_out)
+
+    plot_corr(dat, folder_out=folder_out, ftsize=ftsize)
+
+    corner_blobs(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
+
+    corner_chain(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
+
+    return
+
+
+def plot_lnprob(lnprob, folder_out=None, ftsize=20):
     for ii in range(lnprob.shape[1]):
-        plt.plot(lnprob[nburn_extra:, ii])
+        plt.plot(lnprob[:, ii])
 
-    plt.plot(np.mean(lnprob[nburn_extra:, :], axis=1), lw=3, label="mean")
-    plt.plot(np.median(lnprob[nburn_extra:, :], axis=1), lw=3, label="median")
+    plt.plot(np.mean(lnprob, axis=1), lw=3, label="mean")
+    plt.plot(np.median(lnprob, axis=1), lw=3, label="median")
 
     if fname_out is None:
         plt.savefig(fname_out + "lnprob.pdf")
@@ -67,21 +83,16 @@ def plot_lnprob(lnprob, folder_out=None, nburn_extra=0, ftsize=20):
     return
 
 
-def corner_blobs(
-    blobs, folder_out=None, nburn_extra=0, ftsize=20, truth=[0, 0], labels=None
-):
-    nelem = int(blob["Delta2_star"][nburn_extra:].reshape(-1).shape[0])
-    dat = np.zeros((nelem, 2))
-    dat[:, 0] = blob["Delta2_star"][nburn_extra:, :].reshape(-1) - truth[0]
-    dat[:, 1] = blob["n_star"][nburn_extra:, :].reshape(-1) - truth[1]
+def corner_blobs(dat, folder_out=None, ftsize=20, labels=None):
     fig = corner(
-        dat,
-        levels=[0.68, 0.95, 0.99],
+        dat[:, :2],
+        levels=[0.68, 0.95],
         bins=50,
         # range=[1.] * 2,
         show_titles=True,
         # color="C0",
         title_fmt=".3f",
+        labels=labels,
     )
 
     if truth != [0, 0]:
@@ -99,14 +110,7 @@ def corner_blobs(
     return
 
 
-def corner_chain(
-    dat,
-    folder_out=None,
-    nburn_extra=0,
-    ftsize=20,
-    truth=[0, 0],
-    labels=None,
-):
+def corner_chain(dat, folder_out=None, ftsize=20, labels=None):
     # fig corner
     fig = corner(
         dat,
@@ -114,6 +118,7 @@ def corner_chain(
         bins=30,
         range=[0.98] * ndim,
         show_titles=True,
+        labels=labels,
     )
 
     if fname_out is None:
@@ -126,14 +131,7 @@ def corner_chain(
 
 
 def corr_compressed(
-    dat,
-    labels,
-    priors,
-    folder_out=None,
-    nburn_extra=0,
-    ftsize=20,
-    truth=[0, 0],
-    sigmas=2,
+    dat, labels, priors, folder_out=None, ftsize=20, truth=[0, 0], sigmas=2
 ):
     # labels = fdict["like"]["free_param_names"]
     frange = 0.1
@@ -294,7 +292,7 @@ def corr_compressed(
     return
 
 
-def plot_corr(chain):
+def plot_corr(dat, ftsize=20, folder_out=None):
     mat = np.corrcoef(dat[:, :-11], rowvar=False)
 
     plt.imshow(mat, cmap="turbo")

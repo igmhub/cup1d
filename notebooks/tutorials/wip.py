@@ -107,68 +107,23 @@ fdict = np.load(folder + file + "fitter_results.npy", allow_pickle=True).item()
 labels = fdict["like"]["free_param_names"]
 nburn_extra = 0
 truth = [0,0]
-nelem = (chain.shape[0] - nburn_extra) * chain.shape[1]
-ndim = chain.shape[-1]
-dat = np.zeros((nelem, ndim))
-dat[:, 0] = blob["Delta2_star"][nburn_extra:, :].reshape(-1) - truth[0]
-dat[:, 1] = blob["n_star"][nburn_extra:, :].reshape(-1) - truth[1]
-dat[:, 2:] = chain[:, :, 2:].reshape(-1, ndim - 2)
 
-for ii in range(2, ndim):
-    lab = labels[ii]
-    vmax = fdict["like"]["free_params"][lab]["max_value"]
-    vmin = fdict["like"]["free_params"][lab]["min_value"]
-    dat[:, ii] = dat[:, ii] * (vmax - vmin) + vmin
-                
 
 # %%
-def get_contours(x, y):
-    H, xedges, yedges = np.histogram2d(x, y, bins=50, density=True)
+# fdict["like"]["free_params"]
 
-    # Flatten, sort by density
-    Hflat = H.flatten()
-    idx = np.argsort(Hflat)[::-1]
-    Hsorted = Hflat[idx]
-    cdf = np.cumsum(Hsorted) / np.sum(Hsorted)
-    
-    # density levels corresponding to 68% and 95%
-    levels = [Hsorted[cdf <= p][-1] for p in (0.68, 0.95)]
-    levels = np.sort(levels)
-    
-    # contour plot
-    X, Y = 0.5*(xedges[:-1]+xedges[1:]), 0.5*(yedges[:-1]+yedges[1:])
-    X, Y = np.meshgrid(X, Y)
-
-    return X, Y, H, levels
-
+# %%
+from cup1d.plots.plots_corner import corr_compressed
 
 # %%
 labels = fdict["like"]["free_param_names"]
-ds_range = np.percentile(dat[:, 0], [0.2, 98])
-ns_range = np.percentile(dat[:, 1], [0.2, 98])
-fig, ax = plt.subplots(2, 6, sharex="col", sharey="row", figsize=(12, 8))
-for ii0 in range(0, 6):
-    ii = ii0 + 2 + 36
-    x, y, h, levels = get_contours(dat[:, ii], dat[:, 0])
-    ax[0, ii0].contour(x, y, h.T, levels=levels, colors="k")
-    
-    
-    x, y, h, levels = get_contours(dat[:, ii], dat[:, 1])
-    ax[1, ii0].contour(x, y, h.T, levels=levels, colors="k")
-    
-    
-    range_par = np.percentile(dat[:, ii], [0.1, 99.9])
-    ax[1, ii0].set_xlim(range_par)
-    ax[1, ii0].set_xlabel(labels[ii])
+corr_compressed(dat, labels, priors, folder_out="figs/")
 
-ax[0, 0].set_ylim(ds_range)
-ax[1, 0].set_ylim(ns_range)
-ax[0, 0].set_ylabel(r"$\Delta_\star$")
-ax[1, 0].set_ylabel(r"$n_\star$")
-    
-plt.tight_layout()
-    # plt.savefig(fname_out + "cosmo_" + str(ii) + ".pdf")
-    # plt.savefig(fname_out + "cosmo_" + str(ii) + ".png")
+# %%
+
+# %%
+
+# %%
 
 # %%
 # nelem = blob.shape[0] * blob.shape[1]
