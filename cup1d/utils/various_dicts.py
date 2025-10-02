@@ -7,6 +7,7 @@ param_dict = {
     "kF_Mpc": r"$k_F$",
     "n_p": r"$n_p$",
     "Delta2_star": r"$\Delta^2_\star$",
+    "delta2_star": r"$\Delta^2_\star$",
     "n_star": r"$n_\star$",
     "alpha_star": r"$\alpha_\star$",
     "g_star": r"$g_\star$",
