@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 
 
-def purge_chains(ln_prop_chains, nsplit=8, abs_diff=2):
+def purge_chains(ln_prop_chains, nsplit=4, abs_diff=10):
     """Purge emcee chains that have not converged"""
     minval = np.median(ln_prop_chains) - abs_diff
     # split each walker in nsplit chunks
