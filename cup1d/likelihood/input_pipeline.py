@@ -151,14 +151,12 @@ class Args:
             else:
                 self.true_cont[key + "_otype"] = "exp"
 
-        if path_data == "jjchaves":
-            self.path_data = path = os.path.join(
+        if self.path_data == "jjchaves":
+            self.path_data = os.path.join(
                 os.sep, "pscratch", "sd", "j", "jjchaves"
             )
-        elif path_data == "cup1d":
+        elif self.path_data == "cup1d":
             self.path_data = os.path.dirname(get_path_repo("cup1d"))
-        else:
-            self.path_data = path_data
 
         # # and others
         # self.true_cont["n_sn"] = 0
@@ -483,14 +481,14 @@ class Args:
         elif mcmc_conf == "explore":
             self.mcmc["explore"] = True
             self.mcmc["parallel"] = True
-            self.mcmc["n_burn_in"] = 1500
-            self.mcmc["n_steps"] = 2000
+            self.mcmc["n_burn_in"] = 1000
+            self.mcmc["n_steps"] = 1000
             self.mcmc["n_walkers"] = 10
             self.mcmc["thin"] = 20
         elif mcmc_conf == "full":
             self.mcmc["explore"] = False
             self.mcmc["parallel"] = True
-            self.mcmc["n_burn_in"] = 1500
+            self.mcmc["n_burn_in"] = 1000
             self.mcmc["n_steps"] = 4000
             self.mcmc["n_walkers"] = 10
             self.mcmc["thin"] = 20
