@@ -961,6 +961,8 @@ for line in tablex:
 
 # ### Validation
 
+
+
 from cup1d.likelihood.cosmologies import set_cosmo
 from cup1d.likelihood import CAMB_model
 
@@ -1039,6 +1041,128 @@ plt.tight_layout()
 # plt.savefig("figs/validation_2d.pdf")
 # plt.savefig("figs/validation_2d.png")
 # -
+
+# #### Contours from chains
+
+from cup1d.likelihood.cosmologies import set_cosmo
+from cup1d.likelihood import CAMB_model
+import matplotlib.cm as cm
+
+# +
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
+folder = base + "sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
+dat_mpg = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_1/"
+dat_nyx = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+# folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
+# dat3 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "sim_sherwood/CH24_mpgcen_gpr/chain_2/"
+dat_sherwood = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+# +
+fig, ax = plt.subplots(figsize=(8, 6))
+ftsize = 20
+ls = ["-", "--"]
+
+variations = ["sim_mpg_central", "sim_nyx_central", "sim_sherwood"]
+# variations = ["sim_mpg_central", "sim_nyx_central"]
+# variations = ["sim_mpg_central"]
+dict_trans = {
+    "sim_mpg_central":"mpg-central", 
+    "sim_nyx_central":"nyx-central", 
+    "sim_sherwood":"sherwood", 
+}
+
+nfreepars = 45
+var_deg = [550-nfreepars, 681-nfreepars, 670-nfreepars]
+
+fit_type = "global_opt"
+x0 = 0
+y0 = 0
+for ii, var in enumerate(variations):
+    # print()
+    # file = "out_pl/"+ var + ".npy"
+    # out_dict = np.load(file, allow_pickle=True).item()
+    
+    # prob = chi2_scipy.sf(out_dict['chi2'], var_deg[ii]) * 100
+    # print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
+    if var == "sim_mpg_central":
+        dat = dat_mpg
+        cmap = plt.colormaps["Blues"]
+    elif var == "sim_nyx_central":
+        dat = dat_nyx
+        cmap = plt.colormaps["Oranges"]
+    elif var == "sim_sherwood":
+        dat = dat_sherwood
+        cmap = plt.colormaps["Greens"]
+
+    cosmo = set_cosmo(cosmo_label=var[4:])
+    like_cosmo = CAMB_model.CAMBModel(np.array([3]), cosmo=cosmo)
+    true_cosmo = like_cosmo.get_linP_params()
+
+    # consist = 0
+    # for key in ["Delta2_star", "n_star"]:
+    #     print(np.round(out_dict[key], 3), np.round(out_dict["err_" + key], 3))
+    #     print("diff", np.round(out_dict[key] - true_cosmo[key], 3), np.round(out_dict["err_" + key], 3))
+    #     consist += (out_dict[key] - true_cosmo[key])**2/out_dict["err_" + key]**2
+
+    # prob_var = chi2_scipy.sf(consist, 2) * 100
+    # print(np.round(prob_var, 1))
+
+    col = "C"+str(ii)
+    lw = [3, 2]
+    col = [0.7, 0.3]
+    for inum, num in enumerate([0.68, 0.95]):
+        if inum == 0:
+            label=dict_trans[var]
+        else:
+            label=None
+        for jj in range(len(dat[num])):
+            x = dat[num][jj][0] - true_cosmo["Delta2_star"]
+            y = dat[num][jj][1] - true_cosmo["n_star"]
+            plt.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
+            plt.fill(x, y, color=cmap(col[inum]), alpha=0.5)
+    # ax.scatter(
+    #     out_dict["Delta2_star"] - true_cosmo["Delta2_star"], 
+    #     out_dict["n_star"] - true_cosmo["n_star"], 
+    #     color=col, marker="x")
+
+    # for jj in range(1, 2):
+    #     if jj == 1:
+    #         lab = dict_trans[var]
+    #     else:
+    #         lab= None
+    #     ax.plot(
+    #         out_dict["xell"+str(jj)]- true_cosmo["Delta2_star"], 
+    #         out_dict["yell"+str(jj)]- true_cosmo["n_star"], 
+    #         col+ls[jj-1], lw=3, label=lab)
+
+
+ax.axhline(0, color="k", linestyle="--")
+ax.axvline(0, color="k", linestyle="--")
+
+
+
+ax.set_ylabel(r"$\Delta(n_\star)$", fontsize=ftsize)
+ax.set_xlabel(r"$\Delta(\Delta^2_\star)$", fontsize=ftsize)
+ax.tick_params(
+    axis="both", which="major", labelsize=ftsize - 2
+)
+
+plt.legend(fontsize=ftsize-2)
+plt.tight_layout()
+plt.savefig("figs/validation_2d.pdf")
+plt.savefig("figs/validation_2d.png")
+# -
+
+
+
+
+
+
 
 # from matplotlib.patches import Ellipse
 

@@ -57,14 +57,49 @@ from cup1d.pipeline.set_archive import set_archive
 
 
 # %%
+
+# %%
 from cup1d.plots.plots_corner import plots_chain
 
 # %%
-# folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
-# folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_1/"
-# folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
-folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_sherwood/CH24_mpgcen_gpr/chain_2/"
+
+# %%
+blobs = np.load(folder + "blobs.npy")
+
+# %%
+
+# %%
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
+# folder = base + "sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
+folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_1/"
+# folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
+# folder = base + "sim_sherwood/CH24_mpgcen_gpr/chain_2/"
+# folder = base + "global_opt/CH24_mpgcen_gpr/chain_1/"
 plots_chain(folder)
+
+# %%
+
+# %%
+folder = base + "sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
+dat1 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_1/"
+dat2 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
+dat3 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "sim_sherwood/CH24_mpgcen_gpr/chain_2/"
+dat4 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+# %%
+dat.keys()
+
+# %%
+for jj, dat in enumerate([dat2, dat3]):
+    for num in [0.68, 0.95]:
+        for ii in range(len(dat[num])):
+            plt.plot(dat[num][ii][0], dat[num][ii][1], "C" + str(jj))
 
 # %%
 contours = []
