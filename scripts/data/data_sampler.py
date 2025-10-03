@@ -47,8 +47,8 @@ def main():
         fix_cosmo=True,
         P1D_type=data_label,
         name_variation=name_variation,
-        # mcmc_conf="explore",
-        mcmc_conf="test",
+        mcmc_conf="explore",
+        # mcmc_conf="test",
     )
     pip = Pipeline(args, out_folder=args.out_folder)
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
