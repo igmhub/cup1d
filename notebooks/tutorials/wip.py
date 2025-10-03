@@ -57,6 +57,14 @@ from cup1d.pipeline.set_archive import set_archive
 
 
 # %%
+from cup1d.plots.plots_corner import plots_chain
+
+# %%
+# folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_1/"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
+folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/sim_sherwood/CH24_mpgcen_gpr/chain_2/"
+plots_chain(folder)
 
 # %%
 contours = []

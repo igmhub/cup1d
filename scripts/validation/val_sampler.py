@@ -15,6 +15,7 @@ def main():
     # fit_type = "global_igm"
     fit_type = "global_opt"
     mcmc_conf = "explore"
+    path_data = "jjchaves"
 
     # baseline
     data_label = sys.argv[1]
@@ -34,6 +35,7 @@ def main():
         data_label=data_label,
         cov_label=cov_label,
         emulator_label="CH24_" + emu + "cen_gpr",
+        path_data=path_data,
         true_cosmo_label=data_label,
         fid_cosmo_label=data_label,
         apply_smoothing=True,

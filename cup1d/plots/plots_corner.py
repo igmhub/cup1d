@@ -61,6 +61,9 @@ def plots_chain(
     Plot the chains
     """
 
+    if folder_out is None:
+        folder_out = folder_in
+
     labels, lnprob, dat, priors = prepare_data(
         folder_in, truth, nburn_extra=nburn_extra
     )
@@ -73,7 +76,7 @@ def plots_chain(
 
     corner_blobs(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
 
-    corner_chain(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
+    # corner_chain(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
 
     return
 
@@ -236,11 +239,10 @@ def corr_compressed(
             ##
             x_line = []
             y_line = []
-            for collection in cs1.collections:
-                for path in collection.get_paths():
-                    v = path.vertices
-                    x_line.extend(v[:, 0])
-                    y_line.extend(v[:, 1])
+            for path in cs1.get_paths():
+                v = path.vertices
+                x_line.extend(v[:, 0])
+                y_line.extend(v[:, 1])
 
             if ii == 0:
                 yrange1 = [np.min(y_line), np.max(y_line)]
@@ -268,11 +270,10 @@ def corr_compressed(
             ##
             x_line = []
             y_line = []
-            for collection in cs2.collections:
-                for path in collection.get_paths():
-                    v = path.vertices
-                    x_line.extend(v[:, 0])
-                    y_line.extend(v[:, 1])
+            for path in cs2.get_paths():
+                v = path.vertices
+                x_line.extend(v[:, 0])
+                y_line.extend(v[:, 1])
 
             if ii == 0:
                 yrange2 = [np.min(y_line), np.max(y_line)]
@@ -351,59 +352,98 @@ def corr_compressed(
 
 def plot_corr(dat, labs, ftsize=20, folder_out=None):
     print("Plotting correlation matrix")
-    mat = np.corrcoef(dat[:, :-11], rowvar=False)
 
-    labels = []
-    for ii in range(mat.shape[0]):
-        labels.append(param_dict[labs[ii]])
+    groups = ["tau", "sigT_kms", "gamma", "Lya", ["SiIIa", "SiIIb"], "HCD"]
 
-    # Mask upper triangle
-    mask = np.triu(np.ones_like(mat, dtype=bool))
+    for iiter in range(3):
+        if iiter == 0:
+            egroups = ["cte", "cte", "cte", "exp", "exp", "exp"]
+            pdata = dat[:, :-11].copy()
+        elif iiter == 1:
+            egroups = ["cte", "cte", "cte", "cte", "cte", "cte"]
+            pdata = dat[:, :-11].copy()
+        elif iiter == 2:
+            egroups = ["cte", "cte", "cte", "cte", "cte", "cte"]
+            pdata = dat[:, :].copy()
 
-    fig, ax = plt.subplots(figsize=(12, 12))
+        labels = []
+        for ii in range(pdata.shape[1]):
+            lab = labs[ii]
+            labels.append(param_dict[lab])
 
-    # Apply mask: set upper triangle to NaN
-    mat_masked = np.ma.masked_where(mask, mat)
+            if ii < 2:
+                continue
 
-    # Heatmap
-    im = ax.imshow(mat_masked, cmap="bwr", vmin=-1, vmax=1)
+            for jj, key in enumerate(groups):
+                inside = False
+                if len(key) == 2:
+                    if (key[0] in lab) | (key[1] in lab):
+                        inside = True
+                else:
+                    if key in lab:
+                        inside = True
 
-    # Colorbar
-    cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    # cbar.set_label("Correlation", fontsize=ftsize)
-    cbar.ax.tick_params(labelsize=ftsize - 6)
+                if inside:
+                    # print("Group", key, "found in", lab, egroups[jj])
+                    if egroups[jj] == "cte":
+                        pass
+                    else:
+                        pdata[ii] = np.exp(pdata[ii])
+                        if lab.startswith("s_"):
+                            pdata[ii] = 1 / pdata[ii]
+                    break
 
-    # Axis labels
-    ax.set_xticks(range(len(labels)))
-    ax.set_xticklabels(labels, rotation=90, fontsize=ftsize - 6)
-    ax.set_yticks(range(len(labels)))
-    ax.set_yticklabels(labels, fontsize=ftsize - 6)
+        mat = np.corrcoef(pdata, rowvar=False)
 
-    # Annotate only the lower triangle
-    for i in range(mat.shape[0]):
-        for j in range(i + 1):  # only lower triangle
-            if (np.abs(mat[i, j]) > 0.25) & (np.abs(mat[i, j]) < 0.99):
-                ax.text(
-                    j,
-                    i,
-                    f"{mat[i,j]:.2f}",
-                    ha="center",
-                    va="center",
-                    color="black",
-                    fontsize=ftsize - 12,
-                )
+        # Mask upper triangle
+        mask = np.triu(np.ones_like(mat, dtype=bool))
 
-    plt.tight_layout()
-    if folder_out is None:
-        plt.show()
-    else:
-        plt.savefig(
-            os.path.join(folder_out, "corr_mat.pdf"), bbox_inches="tight"
-        )
-        plt.savefig(
-            os.path.join(folder_out, "corr_mat.png"), bbox_inches="tight"
-        )
-    plt.close()
+        fig, ax = plt.subplots(figsize=(12, 12))
+
+        # Apply mask: set upper triangle to NaN
+        mat_masked = np.ma.masked_where(mask, mat)
+
+        # Heatmap
+        im = ax.imshow(mat_masked, cmap="bwr", vmin=-1, vmax=1)
+
+        # Colorbar
+        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        # cbar.set_label("Correlation", fontsize=ftsize)
+        cbar.ax.tick_params(labelsize=ftsize - 6)
+
+        # Axis labels
+        ax.set_xticks(range(len(labels)))
+        ax.set_xticklabels(labels, rotation=90, fontsize=ftsize - 6)
+        ax.set_yticks(range(len(labels)))
+        ax.set_yticklabels(labels, fontsize=ftsize - 6)
+
+        # Annotate only the lower triangle
+        for i in range(mat.shape[0]):
+            for j in range(i + 1):  # only lower triangle
+                if np.abs(mat[i, j]) > 0.25:
+                    ax.text(
+                        j,
+                        i,
+                        f"{mat[i,j]:.2f}",
+                        ha="center",
+                        va="center",
+                        color="black",
+                        fontsize=ftsize - 12,
+                    )
+
+        plt.tight_layout()
+        if folder_out is None:
+            plt.show()
+        else:
+            plt.savefig(
+                os.path.join(folder_out, "corr_mat" + str(iiter) + ".pdf"),
+                bbox_inches="tight",
+            )
+            plt.savefig(
+                os.path.join(folder_out, "corr_mat" + str(iiter) + ".png"),
+                bbox_inches="tight",
+            )
+        plt.close()
 
 
 def get_contours(x, y, sigmas=1, bins=30):

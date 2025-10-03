@@ -125,6 +125,7 @@ class Args:
     )
     out_folder: str | None = "."
     Gauss_priors: dict | None = None
+    path_data: str = "cup1d"
 
     def __post_init__(self, val_null=-20):
         """Initialize some parameters"""
@@ -149,6 +150,15 @@ class Args:
                 self.true_cont[key + "_otype"] = "const"
             else:
                 self.true_cont[key + "_otype"] = "exp"
+
+        if path_data == "jjchaves":
+            self.path_data = path = os.path.join(
+                os.sep, "pscratch", "sd", "j", "jjchaves"
+            )
+        elif path_data == "cup1d":
+            self.path_data = os.path.dirname(get_path_repo("cup1d"))
+        else:
+            self.path_data = path_data
 
         # # and others
         # self.true_cont["n_sn"] = 0
@@ -412,7 +422,7 @@ class Args:
     def set_out_folder(self, name_variation):
         if name_variation is None:
             self.out_folder = os.path.join(
-                os.path.dirname(get_path_repo("cup1d")),
+                self.path_data,
                 "data",
                 "out_DESI_DR1",
                 self.P1D_type,
@@ -421,7 +431,7 @@ class Args:
             )
         else:
             self.out_folder = os.path.join(
-                os.path.dirname(get_path_repo("cup1d")),
+                self.path_data,
                 "data",
                 "out_DESI_DR1",
                 self.P1D_type,
@@ -616,9 +626,7 @@ class Args:
                 fname = "mpg_ic_at_a_time.npy"
             else:
                 fname = "nyx_ic_at_a_time.npy"
-            self.file_ic = os.path.join(
-                os.path.dirname(get_path_repo("cup1d")), "data", "ics", fname
-            )
+            self.file_ic = os.path.join(self.path_data, "data", "ics", fname)
 
             # for prop in props_cont:
             #     self.fid_cont["z_max"][prop] = 5
@@ -680,9 +688,7 @@ class Args:
                 fname = "mpg_ic_global_red.npy"
             else:
                 fname = "nyx_ic_global_red.npy"
-            self.file_ic = os.path.join(
-                os.path.dirname(get_path_repo("cup1d")), "data", "ics", fname
-            )
+            self.file_ic = os.path.join(self.path_data, "data", "ics", fname)
 
             if (name_variation is not None) and (
                 name_variation.startswith("sim_")

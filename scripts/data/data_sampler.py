@@ -20,6 +20,7 @@ def main():
     emu = "mpg"
     data_label = "DESIY1_QMLE3"
     name_variation = sys.argv[1]
+    path_data = "jjchaves"
 
     if name_variation == "nyx":
         name_variation = None
@@ -39,14 +40,15 @@ def main():
     args = Args(
         data_label=data_label,
         emulator_label="CH24_" + emu + "cen_gpr",
+        path_data=path_data,
     )
     args.set_baseline(
         fit_type="global_opt",
         fix_cosmo=True,
         P1D_type=data_label,
         name_variation=name_variation,
-        mcmc_conf="explore",
-        # mcmc_conf="test",
+        # mcmc_conf="explore",
+        mcmc_conf="test",
     )
     pip = Pipeline(args, out_folder=args.out_folder)
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
