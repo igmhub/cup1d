@@ -7,12 +7,13 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 from cup1d.utils.utils import get_path_repo
 
 
-def set_p1d_filename(data_label="QMLE3"):
+def set_p1d_filename(data_label="QMLE3", path_data=None):
     """Set path to DESI DR1 P1D file"""
 
-    path_in_challenge = os.path.join(
-        os.path.dirname(get_path_repo("cup1d")), "data", "in_DESI_DR1"
-    )
+    if path_data is None:
+        path_data = os.path.dirname(get_path_repo("cup1d"))
+
+    path_in_challenge = os.path.join(path_data, "data", "in_DESI_DR1")
 
     if data_label.endswith("QMLE3"):
         p1d_fname = os.path.join(
@@ -181,13 +182,14 @@ class P1D_DESIY1(BaseDataP1D):
         z_min=0.0,
         z_max=10.0,
         cov_syst_type="red",
+        path_data=None,
     ):
         """Read measured P1D from file.
         - full_cov: for now, no covariance between redshift bins
         - z_min: z=2.0 bin is not recommended by Karacayli2024
         - z_max: maximum redshift to include"""
 
-        p1d_fname = set_p1d_filename(data_label=data_label)
+        p1d_fname = set_p1d_filename(data_label=data_label, path_data=path_data)
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         res = read_from_file(p1d_fname=p1d_fname, cov_syst_type=cov_syst_type)
