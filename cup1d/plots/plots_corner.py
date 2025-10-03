@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 from matplotlib import rcParams
+import matplotlib
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -76,7 +77,53 @@ def plots_chain(
 
     corner_blobs(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
 
+    save_contours(dat[:, 0], dat[:, 1], folder_out=folder_out)
+
     # corner_chain(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
+
+
+def save_contours(x, y, folder_out=None, bins=50):
+    """Extract contours from 2D histogram"""
+    H, xedges, yedges = np.histogram2d(x, y, bins=bins, density=True)
+
+    # Compute cumulative distribution in descending order
+    H_flat = H.flatten()
+    idx = np.argsort(H_flat)[::-1]
+    H_sorted = H_flat[idx]
+    cdf = np.cumsum(H_sorted) / np.sum(H_sorted)
+
+    # Density thresholds for 1σ and 2σ
+    levels = [H_sorted[np.searchsorted(cdf, p)] for p in [0.68, 0.95]]
+    # Reverse for contour plotting
+    levels_plot = np.sort(levels)  # increasing order for plt.contour
+
+    # Map original sigma to threshold used for plotting
+    sigma_to_level = {0.68: levels[0], 0.95: levels[1]}
+
+    # Create meshgrid
+    X = 0.5 * (xedges[:-1] + xedges[1:])
+    Y = 0.5 * (yedges[:-1] + yedges[1:])
+    X, Y = np.meshgrid(X, Y)
+
+    # Compute contours
+    cs = plt.contour(X, Y, H.T, levels=levels_plot)
+
+    # Extract vertices for each level using allsegs
+    contours_dict = {}
+    for sigma, segs in zip([0.68, 0.95], cs.allsegs):
+        level_contours = []
+        # cs.allsegs is in the same order as levels_plot (increasing)
+        # so match by density
+        threshold = sigma_to_level[sigma]
+        # find the matching index in levels_plot
+        idx = np.where(levels_plot == threshold)[0][0]
+        for seg in cs.allsegs[idx]:
+            x_line, y_line = seg[:, 0], seg[:, 1]
+            level_contours.append((x_line, y_line))
+        contours_dict[sigma] = level_contours
+
+    np.save(os.path.join(folder_out, "line_sigmas.npy"), contours_dict)
+    plt.close()
 
     return
 
@@ -131,6 +178,7 @@ def corner_blobs(dat, folder_out=None, ftsize=20, labels=None):
         plt.savefig(os.path.join(folder_out, "corner_compressed.png"))
     else:
         plt.show()
+
     plt.close()
 
     return

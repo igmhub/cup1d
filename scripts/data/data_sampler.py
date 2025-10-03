@@ -44,7 +44,7 @@ def main():
     )
     args.set_baseline(
         fit_type="global_opt",
-        fix_cosmo=True,
+        fix_cosmo=False,
         P1D_type=data_label,
         name_variation=name_variation,
         mcmc_conf="explore",

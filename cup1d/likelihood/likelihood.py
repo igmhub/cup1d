@@ -2,6 +2,7 @@ import numpy as np
 import os
 import math
 import copy
+from mpi4py import MPI
 from scipy.stats.distributions import chi2 as chi2_scipy
 from scipy.optimize import minimize
 from scipy.linalg import block_diag
@@ -69,6 +70,8 @@ class Likelihood(object):
         - extra_p1d_data: extra P1D data, e.g., from HIRES
         - min_log_like: use this instead of - infinity"""
 
+        self.rank = MPI.COMM_WORLD.Get_rank()
+
         self.verbose = verbose
         self.prior_Gauss_rms = prior_Gauss_rms
         self.cov_factor = cov_factor
@@ -112,7 +115,7 @@ class Likelihood(object):
         # setup parameters
         self.free_param_names = free_param_names
         self.set_free_parameters(free_param_names, free_param_limits)
-        if verbose:
+        if verbose & (self.rank == 0):
             print(len(self.free_params), "free parameters")
 
         self.set_Gauss_priors()
@@ -130,15 +133,19 @@ class Likelihood(object):
 
         if start_from_min and (args.file_ic is not None):
             if os.path.isfile(args.file_ic):
-                print("Loading ICs from", args.file_ic)
+                if self.rank == 0:
+                    print("Loading ICs from", args.file_ic)
                 if "ic_global" in args.file_ic:
-                    print("Setting ICs from global fit")
+                    if self.rank == 0:
+                        print("Setting ICs from global fit")
                     self.set_ic_global(args.file_ic, verbose=True)
                 else:
-                    print("Setting ICs from at a time fit")
+                    if self.rank == 0:
+                        print("Setting ICs from at a time fit")
                     self.set_ic_from_z_at_time(args.file_ic, verbose=True)
             else:
-                print("No best fit found to set ICs:", fname)
+                if self.rank == 0:
+                    print("No best fit found to set ICs:", fname)
 
     def rebinning(self, zs, Pk_kms_finek):
         """For rebinning Pk predictions"""
@@ -201,7 +208,8 @@ class Likelihood(object):
 
         if self.data.apply_blinding:
             if sample is not None:
-                print("Blinding " + sample)
+                if self.rank == 0:
+                    print("Blinding " + sample)
             for key in self.blind:
                 if conv:
                     key2 = conv_strings[key]
@@ -531,7 +539,7 @@ class Likelihood(object):
                     "Could not find free parameter {} in theory".format(par)
                 )
 
-        if self.verbose:
+        if self.verbose & (self.rank == 0):
             print("likelihood setup with {} free parameters".format(Nfree))
 
         return
@@ -596,7 +604,8 @@ class Likelihood(object):
 
         # access true cosmology used in mock data
         if hasattr(self.data, "truth") == False:
-            print("will not store truth, working with real data")
+            if self.rank == 0:
+                print("will not store truth, working with real data")
             self.truth = None
             return
 
@@ -1260,7 +1269,8 @@ class Likelihood(object):
         else:
             _ndeg = np.sum(ndeg_all)
         prob = chi2_scipy.sf(chi2, _ndeg)
-        print(prob * 100)
+        if self.rank == 0:
+            print(prob * 100)
 
         if prob > 0.0001:
             str_chi2 = str(np.round(prob * 100, 2))
@@ -1433,7 +1443,8 @@ class Likelihood(object):
                             axs.text(xpos, ypos, label, fontsize=fontsize - 4)
 
                     if print_ratio:
-                        print(p1d_data / p1d_theory)
+                        if self.rank == 0:
+                            print(p1d_data / p1d_theory)
                     ymin = min(ymin, min(p1d_data / p1d_theory + yshift))
                     ymax = max(ymax, max(p1d_data / p1d_theory + yshift))
 
@@ -1629,7 +1640,8 @@ class Likelihood(object):
                 _data_z, _data_k_kms, values, return_covar=False
             )
             if _res is None:
-                return print("Prior out of range")
+                if self.rank == 0:
+                    return print("Prior out of range")
             emu_p1d = _res
 
             # the sum of chi2_all may be different from chi2 due to covariance
@@ -1647,7 +1659,8 @@ class Likelihood(object):
                 )
                 # print(iz, _data_z[iz], _res)
                 if _res is None:
-                    return print("Prior out of range for z = ", _data_z[iz])
+                    if self.rank == 0:
+                        return print("Prior out of range for z = ", _data_z[iz])
                 if len(_res) == 1:
                     emu_p1d.append(_res[0])
                 else:
@@ -1661,7 +1674,8 @@ class Likelihood(object):
                 return_covar=return_covar,
             )
             if _res is None:
-                return print("Prior out of range")
+                if self.rank == 0:
+                    return print("Prior out of range")
             if return_covar:
                 emu_p1d_extra, emu_cov_extra = _res
             else:
@@ -1744,8 +1758,9 @@ class Likelihood(object):
             ax[iz].legend()
 
         dme = np.concatenate(out["(d-m)/err"])
-        print("dme, mean", np.mean(dme))
-        print("dme, std", np.std(dme))
+        if self.rank == 0:
+            print("dme, mean", np.mean(dme))
+            print("dme, std", np.std(dme))
         ax[iz + 1].hist(dme, label="All", bins=bins, density=True)
         ax[iz + 1].plot(x, stats.norm.pdf(x, mu, sigma), color="C1")
         ax[iz + 1].legend()
@@ -2332,7 +2347,7 @@ class Likelihood(object):
             )[0, 0]
             p.value = list(dir_out["mle"][iz].values())[iname]
 
-            if verbose:
+            if verbose & (self.rank == 0):
                 print(
                     p.name,
                     "\t",
@@ -2408,7 +2423,7 @@ class Likelihood(object):
             # elif p.name == "R_coeff_0":
             #     p.value = -0.7
 
-            if verbose:
+            if verbose & (self.rank == 0):
                 print(
                     p.name,
                     "\t",
