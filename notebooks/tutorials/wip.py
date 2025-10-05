@@ -304,7 +304,7 @@ pip = Pipeline(args, out_folder=args.out_folder)
 
 
 # %%
-pip.fitter.save_directory
+pip.fitter.like.blind
 
 # %%
 
