@@ -8,6 +8,7 @@ from matplotlib.ticker import MaxNLocator
 
 from matplotlib import rcParams
 import matplotlib
+from scipy.stats import chi2 as chi2_scipy
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -69,17 +70,79 @@ def plots_chain(
         folder_in, truth, nburn_extra=nburn_extra
     )
 
-    plot_lnprob(lnprob, folder_out, ftsize)
+    # try:
+    #     plot_lnprob(lnprob, folder_out, ftsize)
+    # except:
+    #     print("Could not plot lnprob")
 
-    corr_compressed(dat, labels, priors, folder_out=folder_out)
+    # try:
+    #     corr_compressed(dat, labels, priors, folder_out=folder_out)
+    # except:
+    #     print("Could not plot corr_compressed")
 
-    plot_corr(dat, labels, folder_out=folder_out, ftsize=ftsize)
+    # try:
+    #     plot_corr(dat, labels, folder_out=folder_out, ftsize=ftsize)
+    # except:
+    #     print("Could not plot corr")
 
-    corner_blobs(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
+    # try:
+    #     corner_blobs(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
+    # except:
+    #     print("Could not plot corner_blobs")
 
-    save_contours(dat[:, 0], dat[:, 1], folder_out=folder_out)
+    # try:
+    #     save_contours(dat[:, 0], dat[:, 1], folder_out=folder_out)
+    # except:
+    #     print("Could not save contours")
+
+    try:
+        get_summary(folder_out)
+    except:
+        print("Could not get summary")
 
     # corner_chain(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
+
+
+def get_summary(folder_out):
+    dict_out = {}
+
+    data = np.load(
+        os.path.join(folder_out, "fitter_results.npy"), allow_pickle=True
+    ).item()
+    dict_out["ndata"] = data["data"]["full_Pk_kms"].shape[0]
+    dict_out["npar"] = data["fitter"]["mle_cube"].shape[0]
+    dict_out["ndeg"] = dict_out["ndata"] - dict_out["npar"]
+    dict_out["chi2"] = -2 * np.max(
+        [
+            data["fitter"]["lnprob_mle"],
+            np.load(os.path.join(folder_out, "lnprob.npy")).max(),
+        ]
+    )
+    dict_out["prob_chi2"] = chi2_scipy.sf(dict_out["chi2"], dict_out["ndeg"])
+
+    data = np.load(
+        os.path.join(folder_out, "line_sigmas.npy"), allow_pickle=True
+    ).item()
+    dict_out["delta2_star_2dcen"] = np.median(data[0.68][0][0])
+    dict_out["nstar_2dcen"] = np.median(data[0.68][0][1])
+
+    data = np.load(os.path.join(folder_out, "blobs.npy"))
+    dict_out["delta2_star_16_50_84"] = np.percentile(
+        data["Delta2_star"], [16, 50, 84]
+    )
+    dict_out["n_star_16_50_84"] = np.percentile(data["n_star"], [16, 50, 84])
+
+    dict_out["delta2_star_err"] = 0.5 * (
+        dict_out["delta2_star_16_50_84"][2]
+        - dict_out["delta2_star_16_50_84"][0]
+    )
+    dict_out["n_star_err"] = 0.5 * (
+        dict_out["n_star_16_50_84"][2] - dict_out["n_star_16_50_84"][0]
+    )
+
+    print(dict_out)
+
+    np.save(os.path.join(folder_out, "summary.npy"), dict_out)
 
 
 def save_contours(x, y, folder_out=None, bins=50):

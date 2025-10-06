@@ -62,61 +62,196 @@ from cup1d.pipeline.set_archive import set_archive
 from cup1d.plots.plots_corner import plots_chain
 
 # %%
-
-# %%
-blobs = np.load(folder + "blobs.npy")
-
-# %%
-
-# %%
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 # folder = base + "sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
-folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_1/"
+# folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_1/"
 # folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
 # folder = base + "sim_sherwood/CH24_mpgcen_gpr/chain_2/"
-# folder = base + "global_opt/CH24_mpgcen_gpr/chain_1/"
-plots_chain(folder)
+
+# folders = [
+#     "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/",
+#     "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_2/",
+#     "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_3/",
+#     "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_5/",
+#     "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_6/",
+#     "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_3/",
+#     "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_4/",
+#     "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/",
+#     "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/",
+#     "DESIY1_QMLE3/hcd_z/CH24_mpgcen_gpr/chain_4/",
+#     "DESIY1_QMLE3/less_igm/CH24_mpgcen_gpr/chain_4/",
+#     "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_4/",
+#     "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_4/",
+#     "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_4/",
+#     "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_3/",
+#     "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_4/",
+#     "DESIY1_QMLE3/metals_z/CH24_mpgcen_gpr/chain_4/",
+#     "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_4/",
+#     "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_4/",
+#     "DESIY1_QMLE3/no_inflate_no_emu_cov/CH24_mpgcen_gpr/chain_4/",
+#     "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_3/",
+#     "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_3/",
+#     "DESIY1_QMLE3/no_res/CH24_mpgcen_gpr/chain_4/",
+# ]
+variations = {
+    "DESIY1_QMLE3_mpg": ["Fiducial", "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"],
+    "DESIY1_QMLE3_nyx": ["Model: emulator", "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_2/"],
+    "DESIY1_FFT3_dir_mpg": ["Data: FFT", "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_3/"],
+    "DESIY1_FFT_dir_mpg": ["Data: FFT w/ low SNR", "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_5/"],
+    "DESIY1_QMLE_mpg": ["Data: w/ low SNR", "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_6/"],
+    "Turner24": [r"Model: $\bar F$ from Turner+24", "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_3/"],
+    "cosmo": ["Model: $\omega_0\omega_a$CDM", "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_4/"],
+    "cosmo_high": ["Model: high $\Omega_\mathrm{M}h^2$", "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"],
+    "cosmo_low": ["Model: low $\Omega_\mathrm{M}h^2$", "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"],
+    "hcd_z": ["Model: HCD $n_z=2$", "DESIY1_QMLE3/hcd_z/CH24_mpgcen_gpr/chain_4/"],
+    "less_igm": ["Model: IGM $n_z=4$", "DESIY1_QMLE3/less_igm/CH24_mpgcen_gpr/chain_4/"],
+    "more_igm": ["Model: IGM $n_z=8$", "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_4/"],
+    "metal_deco": ["Model: no metal decorr", "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_4/"],
+    "metal_si2": ["Model: no SiII-SiII", "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_4/"],
+    "metal_thin": ["Model: metal thin", "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_3/"],
+    "metal_trad": ["Model: simple metal", "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_4/"],
+    "metals_z": ["Model: metals $n_z=2$", "DESIY1_QMLE3/metals_z/CH24_mpgcen_gpr/chain_4/"],
+    "no_emu_cov": ["Cov: no emu err", "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_4/"],
+    "no_inflate": ["Cov: no extra 5%", "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_4/"],
+    "no_inflate_no_emu_cov": ["Cov: no emu err, no extra 5%", "DESIY1_QMLE3/no_inflate_no_emu_cov/CH24_mpgcen_gpr/chain_4/"],
+    "zmax": ["Data: $z \\leq 3.4$", "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_3/"],
+    "zmin": ["Data: $z \\geq 2.6$", "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_3/"],
+    "no_res": ["Model: no resolution", "DESIY1_QMLE3/no_res/CH24_mpgcen_gpr/chain_4/"],
+}
+
+fid_vals = {}
+
+table = []
+
+for ii, var in enumerate(variations):
+    folder = os.path.join(base, variations[var][1])
+    # print(var,variations[var][1])
+    # plots_chain(folder)
+    data = np.load(
+        os.path.join(folder, "summary.npy"), allow_pickle=True
+    ).item()
+    delta2_star = data["delta2_star_16_50_84"][1]
+    n_star = data["n_star_16_50_84"][1]
+    if ii == 0:
+        fid_vals["delta2_star"] = delta2_star
+        fid_vals["delta2_star_2dcen"] = data["delta2_star_2dcen"]
+        fid_vals["delta2_star_err"] = data["delta2_star_err"]
+        fid_vals["n_star"] = n_star
+        fid_vals["nstar_2dcen"] = data["nstar_2dcen"]
+        fid_vals["n_star_err"] = data["n_star_err"]
+
+    row = []
+    row.append(variations[var][0])
+    row.append(delta2_star - fid_vals["delta2_star"])
+    row.append(n_star - fid_vals["n_star"])
+
+    diffx = data['delta2_star_2dcen'] - fid_vals["delta2_star_2dcen"]
+    errx = np.max([data["delta2_star_err"], fid_vals["delta2_star_err"]])
+    diffy = data['nstar_2dcen'] - fid_vals["nstar_2dcen"]
+    erry = np.max([data["n_star_err"], fid_vals["n_star_err"]])
+    consist = diffx**2/errx**2 + diffy**2/erry**2
+    row.append(chi2_scipy.sf(consist, 2))
+
+    row.append(data["chi2"])
+    row.append(data["prob_chi2"])
+
+    table.append(row)
+
+# %%
+data
+
+
+# %%
+def format_last_column(values):
+    """Format last column with trailing zeros or LaTeX scientific notation."""
+    formatted = []
+    for val in values:
+        if abs(val) >= 1e-3:
+            s = f"{val:.4f}"   # fixed 4 decimals
+        else:
+            coeff, exp = f"{val:.1e}".split("e")
+            exp = int(exp)
+            s = f"${coeff}\\times10^{{{exp}}}$"
+        formatted.append(s)
+    width = max(len(s) for s in formatted)
+    return [f"{s:>{width}}" for s in formatted]
+
+
+def format_column(values, sigfigs=2, force_decimals=True, one_decimal=False, two_decimals=False):
+    formatted = []
+    for val in values:
+        if one_decimal:
+            s = f"{val:.1f}"
+        elif two_decimals:
+            s = f"{val:.2f}"
+        elif force_decimals:
+            s = f"{val:.3f}"
+        else:
+            s = f"{val:.{sigfigs}g}"
+        formatted.append(s)
+    width = max(len(s) for s in formatted)
+    return [f"{s:>{width}}" for s in formatted]
+
+
+
+
+# %%
+# Transpose numeric columns
+cols = list(zip(*[row[1:] for row in table]))
+threshold = [fid_vals["delta2_star_err"], fid_vals["n_star_err"]]
+
+# Apply formatting rules per column
+formatted_cols = [
+    format_column(cols[0], force_decimals=True),   # col 2 (3 decimals)
+    format_column(cols[1], force_decimals=True),   # col 3 (3 decimals)
+    format_column(cols[2], two_decimals=True),     # col 4 (2 decimals)
+    format_column(cols[3], one_decimal=True),      # col 5 (1 decimal)
+    format_last_column(cols[4]),                   # col 6 (special rules)
+]
+
+for j in [0, 1]:  # indices of col 2 and 3
+    for i, val in enumerate(cols[j]):
+        if np.abs(float(val)) > threshold[j]:
+            formatted_cols[j][i] = f"\\textcolor{{red}}{{{formatted_cols[j][i]}}}"
+
+# Rebuild table
+tablex = []
+for i, row in enumerate(table):
+    label = f"{row[0]:<22}"
+    nums = [col[i] for col in formatted_cols]
+    if "Turner" in label:
+        tablex.append("\\hline")
+        tablex.append("\\multicolumn{6}{c}{Not expected to agree}\\\\")
+        tablex.append("\\hline")
+    line = label + " & " + " & ".join(nums) + "\\\\"
+    tablex.append(line)
+
+for line in tablex:
+    print(line)
 
 # %%
 
 # %%
-folder = base + "sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
-dat1 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-
-folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_1/"
-dat2 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-
-folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
-dat3 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-
-folder = base + "sim_sherwood/CH24_mpgcen_gpr/chain_2/"
-dat4 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-
-# %%
-dat.keys()
-
-# %%
-for jj, dat in enumerate([dat2, dat3]):
-    for num in [0.68, 0.95]:
-        for ii in range(len(dat[num])):
-            plt.plot(dat[num][ii][0], dat[num][ii][1], "C" + str(jj))
-
-# %%
-contours = []
-for i, coll in enumerate(ax.collections):
-    level = [0.68, 0.95, 0.99][i // 2]  # corner usually creates 2 entries per level (line + fill)
-    for path in coll.get_paths():
-        verts = path.vertices  # (N,2) array
-        contours.append((level, verts))
-
-# %%
-plt.plot(contours[-1][1][:, 0], contours[-1][1][:, 1], lw=3)
 
 # %%
 
-data_label = "mpg_central"
+# %%
+0.5 * (dict_out["n_star_16_50_84"][2] - dict_out["n_star_16_50_84"][0])
+
+# %%
+dict_out
+
+# %%
+
+# %%
+# emulator_label = "CH24_mpgcen_gpr"
+emulator_label = "CH24_nyxcen_gpr"
+
+
+# data_label = "mpg_central"
 # data_label = "nyx_central"
-# data_label = "nyx_seed"
+data_label = "nyx_seed"
+# data_label = "nyx_cgan_base"
 # data_label = "accel2"
 # data_label = "sherwood"
 
@@ -137,9 +272,8 @@ fit_type = "global_igm"
 args = Args(
     data_label=data_label, 
     cov_label="DESIY1_QMLE3", 
-    emulator_label="CH24_mpgcen_gpr",
+    emulator_label=emulator_label,
     true_cosmo_label=true_cosmo_label,
-    fid_cosmo_label=fid_cosmo_label,
     apply_smoothing=True,
     # add_noise=True,
     # seed_noise=0,
@@ -148,6 +282,7 @@ args.set_baseline(
     fit_type=fit_type, 
     fix_cosmo=False, 
     P1D_type="DESIY1_QMLE3",
+    fid_cosmo_label=fid_cosmo_label,
     name_variation=name_variation,
     z_min=zmin,
     z_max=zmax,
@@ -155,11 +290,39 @@ args.set_baseline(
 )
 
 # %%
+args.nyx_training_set = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
+
+# %%
 archive_mock = set_archive(training_set=args.nyx_training_set)
 
 # %%
-# pip = Pipeline(args, archive=archive_mock)
-pip = Pipeline(args)
+for sim in archive_mock.data:
+    if sim["sim_label"] == "nyx_seed":
+        break
+
+# %%
+# test1 = archive_mock.get_testing_data("nyx_central")
+test2 = archive_mock.get_testing_data("nyx_seed")
+
+# %%
+ls = ["-", "--"]
+for ii in range(3):
+    col = "C" + str(ii)
+    print(test1[ii]["z"], test2[ii+1]["z"])
+    plt.plot(test1[ii]["k_Mpc"], test1[ii]["k_Mpc"] * test1[ii]["p1d_Mpc"], col+ls[0])
+    plt.plot(test2[ii+1]["k_Mpc"]*0.6777, test2[ii+1]["k_Mpc"] * test2[ii+1]["p1d_Mpc"], col+ls[1])
+plt.xscale("log")
+
+# %%
+
+# %%
+
+# %%
+pip = Pipeline(args, archive=archive_mock)
+# pip = Pipeline(args)
+
+# %%
+# np.load("/home/jchaves/Proyectos/projects/lya/data/nyx/nyx_emu_cosmo_models_Nyx_Mar2025_with_CGAN_val_3axes.npy", allow_pickle=True).item()
 
 # %%
 # pip.fitter.like.data.plot_p1d()
@@ -182,10 +345,13 @@ pip.fitter.like.plot_p1d()
 pip.run_minimizer(p0, restart=True)
 
 # %%
+pip.fitter.like.plot_p1d(pip.fitter.mle_cube)
+
+# %%
 # pip.plotter.plot_igm()
 
 # %%
-pip.run_sampler(pini=p0)
+# pip.run_sampler(pini=p0)
 
 # %%
 from cup1d.likelihood.cosmologies import set_cosmo

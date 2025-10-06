@@ -919,41 +919,9 @@ ax.tick_params(
 
 plt.legend(fontsize=ftsize-8, loc="upper right", ncol=1)
 plt.tight_layout()
-
-# +
-# Transpose numeric columns
-cols = list(zip(*[row[1:] for row in table]))
-threshold = [0.07, 0.039]
-
-# Apply formatting rules per column
-formatted_cols = [
-    format_column(cols[0], force_decimals=True),   # col 2 (3 decimals)
-    format_column(cols[1], force_decimals=True),   # col 3 (3 decimals)
-    format_column(cols[2], two_decimals=True),     # col 4 (2 decimals)
-    format_column(cols[3], one_decimal=True),      # col 5 (1 decimal)
-    format_last_column(cols[4]),                   # col 6 (special rules)
-]
-
-for j in [0, 1]:  # indices of col 2 and 3
-    for i, val in enumerate(cols[j]):
-        if np.abs(float(val)) > threshold[j]:
-            formatted_cols[j][i] = f"\\textcolor{{red}}{{{formatted_cols[j][i]}}}"
-
-# Rebuild table
-tablex = []
-for i, row in enumerate(table):
-    label = f"{row[0]:<22}"
-    nums = [col[i] for col in formatted_cols]
-    if "Turner" in label:
-        tablex.append("\\hline")
-        tablex.append("\\multicolumn{6}{c}{Not expected to agree}\\\\")
-        tablex.append("\\hline")
-    line = label + " & " + " & ".join(nums) + "\\\\"
-    tablex.append(line)
-
-for line in tablex:
-    print(line)
 # -
+
+
 
 
 
@@ -1183,8 +1151,8 @@ dat_fft = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 folder = base + "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_6/"
 dat_qmle = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-# folder = base + "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_3/"
-# dat_turner = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_3/"
+dat_turner = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_4/"
 dat_cosmo = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
@@ -1213,8 +1181,8 @@ dat_metal_si2 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 folder = base + "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_3/"
 dat_metal_thin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-# folder = base + "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_4/"
-# dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_4/"
+dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/metals_z/CH24_mpgcen_gpr/chain_4/"
 dat_metals_z = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
@@ -1222,8 +1190,20 @@ dat_metals_z = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 folder = base + "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_4/"
 dat_no_emu_cov = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-# folder = base + "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_4/"
-# dat_no_inflate = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_4/"
+dat_no_inflate = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/no_inflate_no_emu_cov/CH24_mpgcen_gpr/chain_4/"
+dat_no_inflate_no_emu_cov = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_3/"
+dat_zmax = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_3/"
+dat_zmin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/no_res/CH24_mpgcen_gpr/chain_4/"
+dat_no_res = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 # -
 
 
@@ -1251,8 +1231,6 @@ dict_trans = {
     
     "DESIY1_QMLE3_nyx":"Model: emulator",
     "cosmo": "Model: $\omega_0\omega_a$CDM",  # different fiducial cosmo
-    # "cosmo_low": "Model: $\Lambda$CDM, low $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
-    # "cosmo_high": "Model: $\Lambda$CDM, high $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
     "cosmo_low": "Model: low $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
     "cosmo_high": "Model: high $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
     
@@ -1261,15 +1239,15 @@ dict_trans = {
     "metals_z": "Model: metals $n_z=2$",  # 2 params for z ev metals
     "hcd_z": "Model: HCD $n_z=2$",  # 2 params for z ev hcd
     
-    # "Turner24": r"Model: Turner+24 $\bar F$",  # mF from Turner24 with 1 free param to scale ERROR
+    "Turner24": r"Model: $\bar F$ from Turner+24",  # mF from Turner24 with 1 free param to scale ERROR
     "metal_trad": "Model: simple metal",  # 2 params for metals like eBOSS
     "metal_si2": "Model: no SiII-SiII",  # no SiII-SiII cont
     "metal_deco": "Model: no metal decorr",  # no decorrelation metals
-    # "metal_thin": "Model: metal thin",  # no desviation from optically-thin limit ERROR
+    "metal_thin": "Model: metal thin",  # no desviation from optically-thin limit ERROR
     "no_res": "Model: no resolution",  # no resolution correction
 }
 
-fname = ["data", "cov", "model", "modelz", "model_other"]
+fname = ["data_diff", "cov", "cosmo", "modelz", "model_ing_yes", "model_ing_no", "data"]
 
 
 dict_diff = {
@@ -1281,23 +1259,29 @@ dict_diff = {
     "ycen": np.median(dat_mpg[0.68][0][1]),
 }
 
-for image in range(3,4):
+for image in range(5,6):
 
     if image == 0:
-        variations = ["DESIY1_QMLE3_mpg", "zmin", "zmax", "DESIY1_QMLE_mpg", "DESIY1_FFT3_dir_mpg"]
-        dats = [dat_mpg, dat_zmin, dat_zmax, dat_qmle, dat_fft3]
+        variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx", "DESIY1_FFT3_dir_mpg"]
+        dats = [dat_mpg, dat_nyx, dat_fft3]
     elif image == 1:
         variations = ["DESIY1_QMLE3_mpg", "no_inflate", "no_emu_cov", "no_inflate_no_emu_cov"]
         dats = [dat_mpg, dat_no_inflate, dat_no_emu_cov, dat_no_inflate_no_emu_cov]
     elif image == 2:
-        variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx", "cosmo_low", "cosmo_high", "cosmo"]
-        dats = [dat_mpg, dat_nyx, dat_cosmo_low, dat_cosmo_high, dat_cosmo]
+        variations = ["DESIY1_QMLE3_mpg", "cosmo_low", "cosmo_high", "cosmo"]
+        dats = [dat_mpg, dat_cosmo_low, dat_cosmo_high, dat_cosmo]
     elif image == 3:
         variations = ["DESIY1_QMLE3_mpg", "more_igm", "less_igm", "metals_z", "hcd_z"]
         dats = [dat_mpg, dat_more_igm, dat_less_igm, dat_metals_z, dat_hcd_z]
     elif image == 4:
-        variations = ["DESIY1_QMLE3_mpg", "no_res", "metal_deco", "metal_si2", "metal_trad"]
-        dats = [dat_mpg, dat_no_res, dat_metal_deco, dat_metal_si2, dat_metal_trad]
+        variations = ["DESIY1_QMLE3_mpg", "no_res", "metal_deco", "metal_thin"]
+        dats = [dat_mpg, dat_no_res, dat_metal_deco, dat_metal_thin]
+    elif image == 5:
+        variations = ["DESIY1_QMLE3_mpg", "Turner24", "metal_si2", "metal_trad"]
+        dats = [dat_mpg, dat_turner, dat_metal_si2, dat_metal_trad]
+    elif image == 6:
+        variations = ["DESIY1_QMLE3_mpg", "zmin", "zmax", "DESIY1_QMLE_mpg"]
+        dats = [dat_mpg, dat_zmin, dat_zmax, dat_qmle]
 
     fig, ax = plt.subplots(figsize=(8, 6))
     
@@ -1329,16 +1313,16 @@ for image in range(3,4):
     ax.axhline(color="k", ls=":")
     ax.axvline(color="k", ls=":")
 
-    if image == 7:
-        loc = "lower left"
+    if image == 0:
+        loc = "lower right"
     else:
         loc = "upper right"
     
     
     plt.legend(fontsize=ftsize-4, loc=loc, ncol=1)
     plt.tight_layout()
-    # plt.savefig("figs/variations_2d_"+fname[image]+".pdf")
-    # plt.savefig("figs/variations_2d_"+fname[image]+".png")
+    plt.savefig("figs/variations_"+fname[image]+".pdf")
+    plt.savefig("figs/variations_"+fname[image]+".png")
 
 # +
 fig, ax = plt.subplots(figsize=(8, 6))
