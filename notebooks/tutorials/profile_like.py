@@ -1039,7 +1039,7 @@ variations = ["sim_mpg_central", "sim_nyx_central", "sim_sherwood"]
 # variations = ["sim_mpg_central"]
 dict_trans = {
     "sim_mpg_central":"mpg-central", 
-    "sim_nyx_central":"nyx-central", 
+    "sim_nyx_central":"lyssa-central", 
     "sim_sherwood":"sherwood", 
 }
 
@@ -1130,7 +1130,7 @@ plt.savefig("figs/validation_2d.png")
 # plt.hist2d(dat_turner["Delta2_star"].reshape(-1), dat_turner["n_star"].reshape(-1), bins=50);
 # -
 
-
+len(np.arange(2.25, 4.2501, 0.25))
 
 
 
@@ -1210,7 +1210,6 @@ dat_no_res = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 # +
 
-ftsize = 22
 ls = ["-", "--"]
 
 lw = [3, 2]
@@ -1222,12 +1221,13 @@ dict_trans = {
     
     "DESIY1_QMLE_mpg":"Data: w/ low SNR", 
     "DESIY1_FFT3_dir_mpg": "Data: FFT",
+    "DESIY1_FFT_dir_mpg":"Data: FFT w/ low SNR", 
     "zmin": "Data: $z \geq 2.6$",  # restricted zrange
     "zmax": "Data: $z \leq 3.4$",  # restricted zrange
     
-    "no_inflate":"Cov: no extra 5%",
-    "no_emu_cov":"Cov: no emu err", # no emu error
-    "no_inflate_no_emu_cov":"Cov: no emu err, no extra 5%", 
+    "no_emu_cov":"Cov: w/o emu err", # no emu error
+    "no_inflate":"Cov: w/o 5% err",
+    "no_inflate_no_emu_cov":"Cov: w/o emu ,5% err", 
     
     "DESIY1_QMLE3_nyx":"Model: emulator",
     "cosmo": "Model: $\omega_0\omega_a$CDM",  # different fiducial cosmo
@@ -1239,8 +1239,8 @@ dict_trans = {
     "metals_z": "Model: metals $n_z=2$",  # 2 params for z ev metals
     "hcd_z": "Model: HCD $n_z=2$",  # 2 params for z ev hcd
     
-    "Turner24": r"Model: $\bar F$ from Turner+24",  # mF from Turner24 with 1 free param to scale ERROR
-    "metal_trad": "Model: simple metal",  # 2 params for metals like eBOSS
+    "Turner24": r"Model: $\bar F$ Turner+24",  # mF from Turner24 with 1 free param to scale ERROR
+    "metal_trad": "Model: trad metal",  # 2 params for metals like eBOSS
     "metal_si2": "Model: no SiII-SiII",  # no SiII-SiII cont
     "metal_deco": "Model: no metal decorr",  # no decorrelation metals
     "metal_thin": "Model: metal thin",  # no desviation from optically-thin limit ERROR
@@ -1259,11 +1259,16 @@ dict_diff = {
     "ycen": np.median(dat_mpg[0.68][0][1]),
 }
 
-for image in range(5,6):
+for image in range(3,6):
+
+    if image in [3, 4, 5]:
+        ftsize = 26
+    else:
+        ftsize = 22
 
     if image == 0:
-        variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx", "DESIY1_FFT3_dir_mpg"]
-        dats = [dat_mpg, dat_nyx, dat_fft3]
+        variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT3_dir_mpg", "DESIY1_QMLE3_nyx"]
+        dats = [dat_mpg, dat_qmle, dat_fft3, dat_nyx]
     elif image == 1:
         variations = ["DESIY1_QMLE3_mpg", "no_inflate", "no_emu_cov", "no_inflate_no_emu_cov"]
         dats = [dat_mpg, dat_no_inflate, dat_no_emu_cov, dat_no_inflate_no_emu_cov]
@@ -1280,8 +1285,8 @@ for image in range(5,6):
         variations = ["DESIY1_QMLE3_mpg", "Turner24", "metal_si2", "metal_trad"]
         dats = [dat_mpg, dat_turner, dat_metal_si2, dat_metal_trad]
     elif image == 6:
-        variations = ["DESIY1_QMLE3_mpg", "zmin", "zmax", "DESIY1_QMLE_mpg"]
-        dats = [dat_mpg, dat_zmin, dat_zmax, dat_qmle]
+        variations = ["DESIY1_QMLE3_mpg", "zmin", "zmax"]
+        dats = [dat_mpg, dat_zmin, dat_zmax]
 
     fig, ax = plt.subplots(figsize=(8, 6))
     
@@ -1323,105 +1328,6 @@ for image in range(5,6):
     plt.tight_layout()
     plt.savefig("figs/variations_"+fname[image]+".pdf")
     plt.savefig("figs/variations_"+fname[image]+".png")
-
-# +
-fig, ax = plt.subplots(figsize=(8, 6))
-ftsize = 20
-ls = ["-", "--"]
-
-variations = ["sim_mpg_central", "sim_nyx_central", "sim_sherwood"]
-variations = ["sim_mpg_central", "sim_nyx_central"]
-# variations = ["sim_mpg_central"]
-dict_trans = {
-    "sim_mpg_central":"lace-mpg", 
-    "sim_nyx_central":"lace-nyx", 
-    # "sim_sherwood":"sherwood", 
-}
-
-# nfreepars = 45
-# var_deg = [550-nfreepars, 681-nfreepars, 670-nfreepars]
-
-# fit_type = "global_opt"
-x0 = 0
-y0 = 0
-for ii, var in enumerate(variations):
-    # print()
-    # file = "out_pl/"+ var + ".npy"
-    # out_dict = np.load(file, allow_pickle=True).item()
-    
-    # prob = chi2_scipy.sf(out_dict['chi2'], var_deg[ii]) * 100
-    # print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
-    if var == "sim_mpg_central":
-        dat = dat_mpg
-        cmap = plt.colormaps["Blues"]
-    elif var == "sim_nyx_central":
-        dat = dat_nyx
-        cmap = plt.colormaps["Oranges"]
-    elif var == "sim_sherwood":
-        dat = dat_sherwood
-        cmap = plt.colormaps["Greens"]
-
-    cosmo = set_cosmo(cosmo_label=var[4:])
-    like_cosmo = CAMB_model.CAMBModel(np.array([3]), cosmo=cosmo)
-    # true_cosmo = like_cosmo.get_linP_params()
-    true_cosmo = {
-        'Delta2_star': 0,
-         'n_star': 0,
-    }
-
-    # consist = 0
-    # for key in ["Delta2_star", "n_star"]:
-    #     print(np.round(out_dict[key], 3), np.round(out_dict["err_" + key], 3))
-    #     print("diff", np.round(out_dict[key] - true_cosmo[key], 3), np.round(out_dict["err_" + key], 3))
-    #     consist += (out_dict[key] - true_cosmo[key])**2/out_dict["err_" + key]**2
-
-    # prob_var = chi2_scipy.sf(consist, 2) * 100
-    # print(np.round(prob_var, 1))
-
-    col = "C"+str(ii)
-    lw = [3, 2]
-    col = [0.7, 0.3]
-    for inum, num in enumerate([0.68, 0.95]):
-        if inum == 0:
-            label=dict_trans[var]
-        else:
-            label=None
-        for jj in range(len(dat[num])):
-            x = dat[num][jj][0] - true_cosmo["Delta2_star"]
-            y = dat[num][jj][1] - true_cosmo["n_star"]
-            plt.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
-            plt.fill(x, y, color=cmap(col[inum]), alpha=0.5)
-    # ax.scatter(
-    #     out_dict["Delta2_star"] - true_cosmo["Delta2_star"], 
-    #     out_dict["n_star"] - true_cosmo["n_star"], 
-    #     color=col, marker="x")
-
-    # for jj in range(1, 2):
-    #     if jj == 1:
-    #         lab = dict_trans[var]
-    #     else:
-    #         lab= None
-    #     ax.plot(
-    #         out_dict["xell"+str(jj)]- true_cosmo["Delta2_star"], 
-    #         out_dict["yell"+str(jj)]- true_cosmo["n_star"], 
-    #         col+ls[jj-1], lw=3, label=lab)
-
-
-# ax.axhline(0, color="k", linestyle="--")
-# ax.axvline(0, color="k", linestyle="--")
-
-
-
-ax.set_ylabel(r"$\Delta(n_\star)$", fontsize=ftsize)
-ax.set_xlabel(r"$\Delta(\Delta^2_\star)$", fontsize=ftsize)
-ax.tick_params(
-    axis="both", which="major", labelsize=ftsize - 2
-)
-
-plt.legend(fontsize=ftsize-2)
-plt.tight_layout()
-# plt.savefig("figs/validation_2d.pdf")
-# plt.savefig("figs/validation_2d.png")
 # -
 
 

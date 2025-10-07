@@ -237,9 +237,9 @@ y_ns /= y_ns.max()
 # %%
 
 # %% jupyter={"outputs_hidden": false}
-labs = ['This work', 'McDonald+05', 'Palanque-Delabrouille+15', 'Chabanier+19', r'Walther+24 ($\bar{F}$ prior)']
+labs = ['This work', 'McDonald+05', 'Palanque-Delabrouille+15', 'Chabanier+19', r'Walther+24 (w/ $\bar{F}$ prior)']
 cmap = plt.colormaps["Blues"]
-fontsize = 18
+fontsize = 22
 lw = [3, 2]
 col = [0.7, 0.3]
 true_cosmo = {
@@ -254,11 +254,11 @@ true_cosmo = {
 # g.plot_2d(cmb['samples'], ['linP_n_star', 'linP_DL2_star'],lims=[-2.4,-2.25,0.2,0.5])
 #g.plot_2d(planck2018_mnu_BAO['samples'], ['linP_n_star', 'linP_DL2_star'],lims=[-2.4,-2.25,0.2,0.5])
 
-g = plots.getSubplotPlotter(width_inch=8)
+g = plots.getSubplotPlotter(width_inch=10)
 g.settings.num_plot_contours = 2
 
-g.settings.axes_fontsize = 10
-g.settings.legend_fontsize = 14
+g.settings.axes_fontsize = fontsize-6
+g.settings.legend_fontsize = fontsize-6
 g.triangle_plot(
     [cmb['samples']],
     ['linP_DL2_star', 'linP_n_star'],
@@ -350,7 +350,7 @@ g.subplots[1, 1].legend(
     bbox_to_anchor=(1, 2),
     loc='upper right', 
     borderaxespad=0.,
-    fontsize=fontsize-2
+    fontsize=fontsize-1
 )
 
 ax.tick_params(
@@ -366,9 +366,9 @@ ax.set_ylabel(r"$n_\star$", fontsize=fontsize)
 ax_NS.set_xlabel(r"$n_\star$", fontsize=fontsize)
 
 
-plt.tight_layout()
-# plt.savefig("figs/star_literature.png")
-# plt.savefig("figs/star_literature.pdf")
+# plt.tight_layout()
+plt.savefig("figs/star_literature.png")
+plt.savefig("figs/star_literature.pdf")
 
 # %%
 
