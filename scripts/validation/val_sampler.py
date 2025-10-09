@@ -18,7 +18,12 @@ def main():
     path_data = "jjchaves"
 
     # baseline
-    data_label = sys.argv[1]
+    if sys.argv[1].endswith("igm") | sys.argv[1].endswith("igm0"):
+        data_label = "mpg_central"
+        name_variation = "sim_" + sys.argv[1]
+    else:
+        data_label = sys.argv[1]
+        name_variation = "sim_" + data_label
 
     if data_label == "mpg_central":
         zmin = 2.25
@@ -28,8 +33,6 @@ def main():
         zmax = 4.2
 
     cov_label = "DESIY1_QMLE3"
-
-    name_variation = "sim_" + data_label
 
     args = Args(
         data_label=data_label,
