@@ -189,6 +189,7 @@ class P1D_DESIY1(BaseDataP1D):
         - z_min: z=2.0 bin is not recommended by Karacayli2024
         - z_max: maximum redshift to include"""
 
+        print("EOOOOOOO", path_data)
         p1d_fname = set_p1d_filename(data_label=data_label, path_data=path_data)
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
