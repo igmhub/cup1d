@@ -248,13 +248,6 @@ class Args:
     #         self.ic_from_file = None
 
     def set_fiducial(self, name_variation=None, fit_type=None, val_null=-20):
-        fid_vals_igm = {
-            "tau_eff": 0,
-            "sigT_kms": 1,
-            "gamma": 1,
-            "kF_kms": 1,
-        }
-
         null_vals_params = {
             "tau_eff": 0,
             "sigT_kms": 1,
@@ -274,6 +267,12 @@ class Args:
             "HCD_damp4": val_null,
             "HCD_const": 0,
             "R_coeff": 0,
+        }
+        fid_vals_igm = {
+            "tau_eff": 0,
+            "sigT_kms": 1,
+            "gamma": 1,
+            "kF_kms": 1,
         }
         fid_vals_conts = {
             "f_Lya_SiIII": -4.0,
@@ -295,7 +294,9 @@ class Args:
         }
 
         if (fit_type is not None) and (fit_type == "global_igm"):
-            fid_vals_conts = self.null_vals_conts
+            fid_vals_igm = null_vals_params
+            fid_vals_conts = null_vals_params
+            fid_vals_syst = null_vals_params
 
         for key in self.igm_params:
             if self.fid_igm["n_" + key] == 0:
@@ -517,7 +518,7 @@ class Args:
             self.mcmc["explore"] = True
             self.mcmc["parallel"] = True
             self.mcmc["n_burn_in"] = 1500
-            self.mcmc["n_steps"] = 1500
+            self.mcmc["n_steps"] = 2000
             self.mcmc["n_walkers"] = 10
             self.mcmc["thin"] = 20
         elif mcmc_conf == "full":
@@ -567,6 +568,9 @@ class Args:
 
         if (name_variation is not None) and (name_variation == "Turner24"):
             self.fid_igm["label_mF"] = "Turner24"
+        if name_variation.startswith("sim_mpg_central_igm"):
+            self.fit_type = "global_igm"
+            fit_type = self.fit_type
         ##
 
         ## inflate errors
@@ -978,6 +982,8 @@ class Args:
             ]
 
             nz_igm = 6
+            if name_variation == "sim_mpg_central_igm0":
+                nz_igm = 0
 
             self.fid_igm["tau_eff_znodes"] = np.geomspace(
                 self.z_min, self.z_max, nz_igm

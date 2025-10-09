@@ -57,10 +57,10 @@ class HCD_Model_Rogers(Contaminant):
         # fiducial values
         if fid_vals is None:
             fid_vals = {
-                "HCD_damp1": [0, -11.5],
-                "HCD_damp2": [0, -11.5],
-                "HCD_damp3": [0, -11.5],
-                "HCD_damp4": [0, -11.5],
+                "HCD_damp1": [0, -20.0],
+                "HCD_damp2": [0, -20.0],
+                "HCD_damp3": [0, -20.0],
+                "HCD_damp4": [0, -20.0],
                 "HCD_const": [0, 0],
             }
 

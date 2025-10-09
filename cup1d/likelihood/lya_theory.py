@@ -736,7 +736,7 @@ class Theory(object):
         )
         # print("mult_cont_total", mult_cont_total)
         # print("add_cont_total", add_cont_total)
-        # print("syst_total", syst_total[0])
+        # print("syst_total", syst_total)
 
         for iz, z in enumerate(zs):
             p1d_kms[iz] = (

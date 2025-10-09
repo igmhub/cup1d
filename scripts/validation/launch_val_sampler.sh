@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH -A desi
 #SBATCH -q regular
-#SBATCH -t 06:00:00
+#SBATCH -t 03:00:00
 #SBATCH --constraint=cpu
 #SBATCH --nodes=1
 #SBATCH -J p1d
 #SBATCH -o logs/p1d.%j.out
 #SBATCH -e logs/p1d.%j.err
-#SBATCH --array=1-1   # number of variations minus 1
+#SBATCH --array=0-1   # number of variations minus 1
 
 echo "Job started at: $(date)"
 
@@ -16,9 +16,11 @@ mkdir -p logs
 # Define variations
 
 variations=(
-    "mpg_central"
-    "nyx_central"
-    "sherwood"
+    # "mpg_central"
+    # "nyx_central"
+    # "sherwood"
+    "mpg_central_igm"
+    "mpg_central_igm0"
 )
 
 source /global/homes/j/jjchaves/miniconda3/bin/activate lace

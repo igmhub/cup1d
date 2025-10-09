@@ -71,7 +71,7 @@ class Resolution(Contaminant):
             }
 
         # fiducial values
-        if fid_vals is None:
+        if (fid_vals is None) | (len(fid_vals["R_coeff"]) == 0):
             fid_vals = {
                 "R_coeff": [0, 0],
             }

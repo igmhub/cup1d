@@ -129,19 +129,17 @@ class SiMult(Contaminant):
         if fid_vals is None:
             fid_vals = {}
             for coeff in list_coeffs:
-                fid_vals[coeff] = [0, -11.5]
+                fid_vals[coeff] = [0, -20.0]
 
         if null_vals is None:
             null_vals = {}
             for coeff in list_coeffs:
-                null_vals[coeff] = -11.5
+                null_vals[coeff] = -20.0
 
         if z_max is None:
             z_max = {}
             for coeff in list_coeffs:
-                z_max[coeff] = 3.5
-            z_max["f_Lya_SiIII"] = 4.3
-            z_max["s_Lya_SiIII"] = 4.3
+                z_max[coeff] = 10
 
         super().__init__(
             coeffs=coeffs,
