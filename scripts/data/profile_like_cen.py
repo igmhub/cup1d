@@ -22,7 +22,7 @@ def main():
         # "cosmo",  # different fiducial cosmo, DESIDR2-ACT
         # "cosmo_low",  # different fiducial cosmo, low Omh2
         # "cosmo_high",  # different fiducial cosmo, high Omh2
-        # "metal_trad",  # 2 params for metals like eBOSS
+        "metal_trad",  # 2 params for metals like eBOSS
         # "metal_si2",  # no SiII-SiII cont
         # "metal_deco",  # no decorrelation metals
         # # "metal_thin",  # no desviation from optically-thin limit
@@ -34,7 +34,7 @@ def main():
         # "hcd_z",  # 2 params for z ev hcd
         # "zmin",  # low z cut
         # "zmax",  # high z cut
-        "DLAs"
+        # "DLAs"
     ]
 
     for ivar in range(len(variations)):
