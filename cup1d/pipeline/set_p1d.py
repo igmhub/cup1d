@@ -113,6 +113,7 @@ def set_P1D(args, archive=None, theory=None):
             seed=args.seed_noise,
             z_min=args.z_min,
             z_max=args.z_max,
+            path_data=args.path_data,
         )
     elif data_label.startswith("mock"):
         data = mock_data.Mock_P1D(

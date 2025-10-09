@@ -32,6 +32,7 @@ class Gadget_P1D(BaseMockP1D):
         seed=0,
         z_min=0,
         z_max=10,
+        path_data=None,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
         - testing_data: p1d measurements from Gadget sims
@@ -64,7 +65,7 @@ class Gadget_P1D(BaseMockP1D):
 
         # setup P1D from mock with k values from data_cov_label
         # as well as covariance matrix
-        zs, k_kms, Pk_kms, cov = self._load_p1d(theory)
+        zs, k_kms, Pk_kms, cov = self._load_p1d(theory, path_data=path_data)
 
         # set theory (just to save truth)
         zs = np.array(zs)
@@ -159,7 +160,7 @@ class Gadget_P1D(BaseMockP1D):
     #             -1 - ii
     #         ]
 
-    def _load_p1d(self, theory):
+    def _load_p1d(self, theory, path_data=None):
         # figure out dataset to mimic
         if self.data_cov_label == "Chabanier2019":
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)
@@ -170,7 +171,9 @@ class Gadget_P1D(BaseMockP1D):
         elif self.data_cov_label == "Karacayli2022":
             data = data_Karacayli2022.P1D_Karacayli2022()
         elif self.data_cov_label.startswith("DESIY1"):
-            data = data_DESIY1.P1D_DESIY1(data_label=self.data_cov_label)
+            data = data_DESIY1.P1D_DESIY1(
+                data_label=self.data_cov_label, path_data=path_data
+            )
         else:
             raise ValueError("Unknown data_cov_label", self.data_cov_label)
 
