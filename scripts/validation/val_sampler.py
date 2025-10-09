@@ -4,12 +4,18 @@ import sys
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
+from mpi4py import MPI
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
 from cup1d.utils.utils import get_path_repo
 
 
 def main():
+    ## MPI stuff
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
     emu = "mpg"
     # emu = "nyx"
     # fit_type = "global_igm"
@@ -74,6 +80,11 @@ def main():
     #     )
     pip.run_minimizer(input_pars, restart=True)
     pip.run_sampler()
+
+    if rank == 0:
+        plots_chain(
+            pip.fitter.save_directory, folder_out=pip.fitter.save_directory
+        )
 
     # out_dict = {
     #     "best_chi2": pip.fitter.mle_chi2,

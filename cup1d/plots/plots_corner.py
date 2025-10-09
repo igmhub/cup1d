@@ -44,7 +44,8 @@ def prepare_data(folder_in, truth=[0, 0], nburn_extra=0):
     dat = np.zeros((nelem, ndim))
     dat[:, 0] = blobs["Delta2_star"][nburn_extra:, :].reshape(-1) - truth[0]
     dat[:, 1] = blobs["n_star"][nburn_extra:, :].reshape(-1) - truth[1]
-    dat[:, 2:] = chain[nburn_extra:, :, 2:].reshape(-1, ndim - 2)
+    if ndim > 2:
+        dat[:, 2:] = chain[nburn_extra:, :, 2:].reshape(-1, ndim - 2)
     dat_Asns = chain[nburn_extra:, :, :2].reshape(-1, 2)
 
     for ii in range(2):
