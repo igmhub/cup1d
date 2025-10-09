@@ -4,11 +4,16 @@ from corner import corner
 from emcee.autocorr import integrated_time
 import matplotlib.pyplot as plt
 
+from scipy.ndimage import gaussian_filter
 from matplotlib.ticker import MaxNLocator
+from scipy.stats import gaussian_kde
 
 from matplotlib import rcParams
 import matplotlib
 from scipy.stats import chi2 as chi2_scipy
+
+# from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -40,8 +45,15 @@ def prepare_data(folder_in, truth=[0, 0], nburn_extra=0):
     dat[:, 0] = blobs["Delta2_star"][nburn_extra:, :].reshape(-1) - truth[0]
     dat[:, 1] = blobs["n_star"][nburn_extra:, :].reshape(-1) - truth[1]
     dat[:, 2:] = chain[nburn_extra:, :, 2:].reshape(-1, ndim - 2)
-    priors = np.zeros((ndim, 2))
+    dat_Asns = chain[nburn_extra:, :, :2].reshape(-1, 2)
 
+    for ii in range(2):
+        lab = labels[ii]
+        vmax = fdict["like"]["free_params"][lab]["max_value"]
+        vmin = fdict["like"]["free_params"][lab]["min_value"]
+        dat_Asns[:, ii] = dat_Asns[:, ii] * (vmax - vmin) + vmin
+
+    priors = np.zeros((ndim, 2))
     for ii in range(2, ndim):
         lab = labels[ii]
         vmax = fdict["like"]["free_params"][lab]["max_value"]
@@ -53,7 +65,7 @@ def prepare_data(folder_in, truth=[0, 0], nburn_extra=0):
     labels[0] = "Delta2_star"
     labels[1] = "n_star"
 
-    return labels, lnprob, dat, priors
+    return labels, lnprob, dat, priors, dat_Asns
 
 
 def plots_chain(
@@ -66,34 +78,45 @@ def plots_chain(
     if folder_out is None:
         folder_out = folder_in
 
-    labels, lnprob, dat, priors = prepare_data(
+    labels, lnprob, dat, priors, dat_Asns = prepare_data(
         folder_in, truth, nburn_extra=nburn_extra
     )
 
-    # try:
-    #     plot_lnprob(lnprob, folder_out, ftsize)
-    # except:
-    #     print("Could not plot lnprob")
+    plot_corr(dat, labels, folder_out=folder_out, ftsize=ftsize)
+    if 1 > 0:
+        return
 
-    # try:
-    #     corr_compressed(dat, labels, priors, folder_out=folder_out)
-    # except:
-    #     print("Could not plot corr_compressed")
+    try:
+        plot_lnprob(lnprob, folder_out, ftsize)
+    except:
+        print("Could not plot lnprob")
 
-    # try:
-    #     plot_corr(dat, labels, folder_out=folder_out, ftsize=ftsize)
-    # except:
-    #     print("Could not plot corr")
+    try:
+        corr_compressed(dat, labels, priors, folder_out=folder_out)
+    except:
+        print("Could not plot corr_compressed")
 
-    # try:
-    #     corner_blobs(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
-    # except:
-    #     print("Could not plot corner_blobs")
+    try:
+        plot_corr(dat, labels, folder_out=folder_out, ftsize=ftsize)
+    except:
+        print("Could not plot corr")
 
-    # try:
-    #     save_contours(dat[:, 0], dat[:, 1], folder_out=folder_out)
-    # except:
-    #     print("Could not save contours")
+    try:
+        corner_blobs(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
+    except:
+        print("Could not plot corner_blobs")
+
+    try:
+        save_contours(dat[:, 0], dat[:, 1], folder_out=folder_out)
+    except:
+        print("Could not save contours")
+
+    try:
+        save_contours(
+            dat_Asns[:, 0], dat_Asns[:, 1], folder_out=folder_out, flag="_Asns"
+        )
+    except:
+        print("Could not save contours")
 
     try:
         get_summary(folder_out)
@@ -145,7 +168,7 @@ def get_summary(folder_out):
     np.save(os.path.join(folder_out, "summary.npy"), dict_out)
 
 
-def save_contours(x, y, folder_out=None, bins=50):
+def save_contours(x, y, folder_out=None, bins=50, flag=""):
     """Extract contours from 2D histogram"""
     H, xedges, yedges = np.histogram2d(x, y, bins=bins, density=True)
 
@@ -185,7 +208,9 @@ def save_contours(x, y, folder_out=None, bins=50):
             level_contours.append((x_line, y_line))
         contours_dict[sigma] = level_contours
 
-    np.save(os.path.join(folder_out, "line_sigmas.npy"), contours_dict)
+    np.save(
+        os.path.join(folder_out, "line_sigmas" + flag + ".npy"), contours_dict
+    )
     plt.close()
 
     return
@@ -292,60 +317,104 @@ def corner_chain(dat, folder_out=None, ftsize=20, labels=None, divs=2):
 
 
 def corr_compressed(
-    dat, labels, priors, folder_out=None, ftsize=20, truth=[0, 0], sigmas=2
+    dat,
+    labels,
+    priors,
+    folder_out=None,
+    ftsize=20,
+    truth=[0, 0],
+    sigmas=2,
+    threshold=1e-4,
 ):
     print("plotting corr_compressed")
     # labels = fdict["like"]["free_param_names"]
     frange = 0.1
     cmap = plt.get_cmap("Blues")
-    groups = ["tau", "sigT_kms", "gamma", "Lya", ["SiIIa", "SiIIb"], "HCD"]
-    egroups = ["cte", "cte", "cte", "exp", "exp", "exp"]
+    groups = [
+        "tau",
+        "sigT_kms",
+        "gamma",
+        "Lya",
+        ["SiIIa", "SiIIb"],
+        "HCD",
+        "mix",
+    ]
+    # groups = [
+    #     "mix",
+    # ]
+    # groups = [["HCD_damp1", "HCD_damp2"]]
+    egroups = ["exp", "cte", "cte", "exp", "exp", "exp", "exp"]
     # groups = [["SiIIa", "SiIIb"]]
     # egroups = ["exp"]
     for igroup, key in enumerate(groups):
         lab_use = {}
-        for ii, lab in enumerate(labels):
-            if len(key) == 2:
-                if (key[0] in lab) | (key[1] in lab):
-                    lab_use[lab] = ii
-            else:
-                if key in lab:
-                    lab_use[lab] = ii
+
+        if key != "mix":
+            for ii, lab in enumerate(labels):
+                if len(key) == 2:
+                    if (key[0] in lab) | (key[1] in lab):
+                        lab_use[lab] = ii
+                else:
+                    if key in lab:
+                        lab_use[lab] = ii
+        else:
+            lab_use = {
+                "tau_eff_3": 5,
+                "HCD_damp1_0": 30,
+            }
 
         if key in ["tau", "sigT_kms", "gamma"]:
             sharex = "all"
         else:
             sharex = "col"
 
+        if key != "mix":
+            xsize = len(lab_use) * 3
+        else:
+            xsize = 8
+
         fig, ax = plt.subplots(
-            2,
-            len(lab_use),
-            sharex="col",
-            sharey="row",
-            figsize=(len(lab_use) * 3, 8),
+            2, len(lab_use), sharex="col", sharey="row", figsize=(xsize, 6)
         )
         for ii, lab in enumerate(lab_use):
-            pp = dat[:, lab_use[lab]]
+            pp = dat[:, lab_use[lab]].copy()
 
-            x, y, h, levels = get_contours(pp, dat[:, 0], sigmas=sigmas)
             if egroups[igroup] == "cte":
-                xplot = x
+                pass
             else:
-                xplot = np.exp(x)
+                pp = np.exp(pp)
                 if lab.startswith("s_"):
-                    xplot = 1 / xplot
-            cs1 = ax[0, ii].contour(xplot, y, h, levels=levels, colors="k")
-            cs1 = ax[0, ii].contourf(xplot, y, h, levels=levels, cmap=cmap)
+                    pp = 1 / pp
 
-            x, y, h, levels = get_contours(pp, dat[:, 1], sigmas=sigmas)
-            if egroups[igroup] == "cte":
-                xplot = x
-            else:
-                xplot = np.exp(x)
-                if lab.startswith("s_"):
-                    xplot = 1 / xplot
-            cs2 = ax[1, ii].contour(xplot, y, h, levels=levels, colors="k")
-            cs2 = ax[1, ii].contourf(xplot, y, h, levels=levels, cmap=cmap)
+            x, y, h, levels = get_contours(
+                pp, dat[:, 0], sigmas=sigmas, threshold=threshold
+            )
+            cs1 = ax[0, ii].contour(x, y, h, levels=levels, colors="k")
+            cs1 = ax[0, ii].contourf(x, y, h, levels=levels, cmap=cmap)
+
+            x, y, h, levels = get_contours(
+                pp, dat[:, 1], sigmas=sigmas, threshold=threshold
+            )
+            cs2 = ax[1, ii].contour(x, y, h, levels=levels, colors="k")
+            cs2 = ax[1, ii].contourf(x, y, h, levels=levels, cmap=cmap)
+
+            for j1 in range(2):
+                rr = np.corrcoef(pp, dat[:, j1])[0, 1]
+                if rr < 0:
+                    xppos = 0.95
+                    ha = "right"
+                else:
+                    xppos = 0.05
+                    ha = "left"
+                ax[j1, ii].text(
+                    xppos,
+                    0.95,
+                    r"$r=$" + str(np.round(rr, 2)),
+                    transform=ax[j1, ii].transAxes,
+                    ha=ha,
+                    va="top",
+                    fontsize=ftsize + 1,
+                )
 
             ##
             x_line = []
@@ -354,6 +423,9 @@ def corr_compressed(
                 v = path.vertices
                 x_line.extend(v[:, 0])
                 y_line.extend(v[:, 1])
+
+            # print(lab, np.min(y_line), np.max(y_line))
+            # print(np.min(x_line), np.max(x_line))
 
             if ii == 0:
                 yrange1 = [np.min(y_line), np.max(y_line)]
@@ -413,12 +485,16 @@ def corr_compressed(
             dy = xrange[1] - xrange[0]
             xrange[0] -= frange * dy
             xrange[1] += frange * dy
+            if pp.min() < threshold:
+                xrange[0] = 0
 
             # if sigmas == 2:
             #     range_par = np.percentile(dat[:, lab_use[lab]], [0.1, 99.9])
             # else:
             #     range_par = np.percentile(dat[:, lab_use[lab]], [3, 97])
             ax[1, ii].set_xlabel(param_dict[lab], fontsize=ftsize + 2)
+
+            # ax[1, ii].axhline(-2.2, ls=":", color="k")
 
             for i0 in range(2):
                 ax[i0, ii].set_xlim(xrange)
@@ -439,7 +515,7 @@ def corr_compressed(
 
         ax[0, 0].set_ylim(yrange1)
         ax[1, 0].set_ylim(yrange2)
-        ax[0, 0].set_ylabel(r"$\Delta_\star$", fontsize=ftsize + 2)
+        ax[0, 0].set_ylabel(r"$\Delta^2_\star$", fontsize=ftsize + 2)
         ax[1, 0].set_ylabel(r"$n_\star$", fontsize=ftsize + 2)
 
         plt.tight_layout()
@@ -449,19 +525,21 @@ def corr_compressed(
             plt.savefig(
                 os.path.join(
                     folder_out, "corr_compressed_" + str(igroup) + ".pdf"
-                )
+                ),
+                bbox_inches="tight",
             )
             plt.savefig(
                 os.path.join(
                     folder_out, "corr_compressed_" + str(igroup) + ".png"
-                )
+                ),
+                bbox_inches="tight",
             )
         plt.close()
 
     return
 
 
-def plot_corr(dat, labs, ftsize=20, folder_out=None):
+def plot_corr(dat, labs, ftsize=20, folder_out=None, threshold=0.35):
     print("Plotting correlation matrix")
 
     groups = ["tau", "sigT_kms", "gamma", "Lya", ["SiIIa", "SiIIb"], "HCD"]
@@ -518,9 +596,29 @@ def plot_corr(dat, labs, ftsize=20, folder_out=None):
         im = ax.imshow(mat_masked, cmap="bwr", vmin=-1, vmax=1)
 
         # Colorbar
-        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        # cbar.set_label("Correlation", fontsize=ftsize)
+        # get the axes position in figure coordinates
+        bbox = ax.get_position()
+
+        # define the colorbar inset position (top-right inside the axes)
+        left = bbox.x0 + bbox.width * 0.58  # horizontal offset from left
+        bottom = bbox.y0 + bbox.height * 0.97  # vertical offset from bottom
+        width = bbox.width * 0.45  # width of colorbar
+        height = bbox.height * 0.05  # height of colorbar
+
+        # add a small inset axes for the colorbar
+        cax = fig.add_axes([left, bottom, width, height])
+
+        # create the colorbar inside this inset axes
+        cbar = fig.colorbar(im, cax=cax, orientation="horizontal")
+        cbar.set_label("Correlation", fontsize=ftsize)
         cbar.ax.tick_params(labelsize=ftsize - 6)
+
+        # optional: ensure proper aspect and visibility
+        cax.set_aspect("auto")
+
+        # cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        # cbar.set_label("Correlation", fontsize=ftsize)
+        # cbar.ax.tick_params(labelsize=ftsize - 6)
 
         # Axis labels
         ax.set_xticks(range(len(labels)))
@@ -531,7 +629,7 @@ def plot_corr(dat, labs, ftsize=20, folder_out=None):
         # Annotate only the lower triangle
         for i in range(mat.shape[0]):
             for j in range(i + 1):  # only lower triangle
-                if np.abs(mat[i, j]) > 0.25:
+                if np.abs(mat[i, j]) > threshold:
                     ax.text(
                         j,
                         i,
@@ -557,7 +655,7 @@ def plot_corr(dat, labs, ftsize=20, folder_out=None):
         plt.close()
 
 
-def get_contours(x, y, sigmas=1, bins=30):
+def get_contours(x, y, sigmas=1, bins=40, threshold=1e-4):
     """
     Return mesh (X,Y), histogram values H (shape matches X,Y), and contour
     thresholds that enclose 68% and optionally 95% of the samples.
@@ -566,8 +664,14 @@ def get_contours(x, y, sigmas=1, bins=30):
         X, Y, H, levels = get_contours(x, y, sigmas=2, bins=50)
         plt.contour(X, Y, H, levels=levels)
     """
+    if np.min(x) < threshold:
+        x = np.concatenate([x, -x])
+        y = np.concatenate([y, y])
+
     # Use raw counts (simpler to work with probability mass)
     H, xedges, yedges = np.histogram2d(x, y, bins=bins, density=False)
+    # if smooth:
+    #     H = gaussian_filter(H, smooth)
 
     # bin centres for plotting (meshgrid expects shape (ny, nx))
     xcenters = 0.5 * (xedges[:-1] + xedges[1:])

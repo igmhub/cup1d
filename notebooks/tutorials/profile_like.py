@@ -1031,7 +1031,7 @@ dat_sherwood = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 # +
 fig, ax = plt.subplots(figsize=(8, 6))
-ftsize = 20
+ftsize = 24
 ls = ["-", "--"]
 
 variations = ["sim_mpg_central", "sim_nyx_central", "sim_sherwood"]
@@ -1108,8 +1108,8 @@ for ii, var in enumerate(variations):
     #         col+ls[jj-1], lw=3, label=lab)
 
 
-ax.axhline(0, color="k", linestyle="--")
-ax.axvline(0, color="k", linestyle="--")
+ax.axhline(0, color="k", linestyle=":")
+ax.axvline(0, color="k", linestyle=":")
 
 
 
@@ -1119,7 +1119,7 @@ ax.tick_params(
     axis="both", which="major", labelsize=ftsize - 2
 )
 
-plt.legend(fontsize=ftsize-2)
+plt.legend(fontsize=ftsize-2, loc="upper right")
 plt.tight_layout()
 plt.savefig("figs/validation_2d.pdf")
 plt.savefig("figs/validation_2d.png")
@@ -1136,8 +1136,11 @@ len(np.arange(2.25, 4.2501, 0.25))
 
 # +
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+
 folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
 dat_mpg = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+dat_mpg_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_2/"
 dat_nyx = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
@@ -1156,12 +1159,18 @@ dat_turner = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_4/"
 dat_cosmo = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_4/"
+dat_cosmo_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"
 dat_cosmo_high = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"
+dat_cosmo_high_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"
 dat_cosmo_low = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"
+dat_cosmo_low_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/hcd_z/CH24_mpgcen_gpr/chain_4/"
 dat_hcd_z = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
@@ -1247,34 +1256,27 @@ dict_trans = {
     "no_res": "Model: no resolution",  # no resolution correction
 }
 
-fname = ["data_diff", "cov", "cosmo", "modelz", "model_ing_yes", "model_ing_no", "data"]
+fname = ["data_diff", "cov", "cosmo", "modelz", "model_ing_yes", "model_ing_no", "data", "emu", "cosmo_Asns"]
 
 
-dict_diff = {
-    # "Delta2_star": out_dict["Delta2_star"],
-    # "n_star": out_dict["n_star"],
-    # "err_Delta2_star": out_dict["err_Delta2_star"],
-    # "err_n_star": out_dict["err_n_star"],
-    "xcen": np.median(dat_mpg[0.68][0][0]),
-    "ycen": np.median(dat_mpg[0.68][0][1]),
-}
+for image in range(9):
 
-for image in range(3,6):
-
-    if image in [3, 4, 5]:
-        ftsize = 26
-    else:
-        ftsize = 22
+    # if image in [3, 4, 5]:
+    #     ftsize = 26
+    # else:
+    #     ftsize = 22
+    ftsize = 24
+    factx = 1
 
     if image == 0:
-        variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT3_dir_mpg", "DESIY1_QMLE3_nyx"]
-        dats = [dat_mpg, dat_qmle, dat_fft3, dat_nyx]
+        variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE_mpg", "DESIY1_FFT3_dir_mpg"]
+        dats = [dat_mpg, dat_qmle, dat_fft3]
     elif image == 1:
         variations = ["DESIY1_QMLE3_mpg", "no_inflate", "no_emu_cov", "no_inflate_no_emu_cov"]
         dats = [dat_mpg, dat_no_inflate, dat_no_emu_cov, dat_no_inflate_no_emu_cov]
     elif image == 2:
-        variations = ["DESIY1_QMLE3_mpg", "cosmo_low", "cosmo_high", "cosmo"]
-        dats = [dat_mpg, dat_cosmo_low, dat_cosmo_high, dat_cosmo]
+        variations = ["DESIY1_QMLE3_mpg", "cosmo", "cosmo_low", "cosmo_high"]
+        dats = [dat_mpg, dat_cosmo, dat_cosmo_low, dat_cosmo_high]
     elif image == 3:
         variations = ["DESIY1_QMLE3_mpg", "more_igm", "less_igm", "metals_z", "hcd_z"]
         dats = [dat_mpg, dat_more_igm, dat_less_igm, dat_metals_z, dat_hcd_z]
@@ -1287,6 +1289,18 @@ for image in range(3,6):
     elif image == 6:
         variations = ["DESIY1_QMLE3_mpg", "zmin", "zmax"]
         dats = [dat_mpg, dat_zmin, dat_zmax]
+    elif image == 7:
+        variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx"]
+        dats = [dat_mpg, dat_nyx]
+    elif image == 8:
+        variations = ["DESIY1_QMLE3_mpg", "cosmo", "cosmo_low", "cosmo_high"]
+        dats = [dat_mpg_Asns, dat_cosmo_Asns, dat_cosmo_low_Asns, dat_cosmo_high_Asns]
+        factx = 1e9
+
+    dict_diff = {
+        "xcen": np.median(dats[0][0.68][0][0]),
+        "ycen": np.median(dats[0][0.68][0][1]),
+    }
 
     fig, ax = plt.subplots(figsize=(8, 6))
     
@@ -1304,24 +1318,27 @@ for image in range(3,6):
             else:
                 label=None
             for jj in range(len(dat[num])):
-                x = dat[num][jj][0] - dict_diff["xcen"]
+                x = (dat[num][jj][0] - dict_diff["xcen"]) * factx
                 y = dat[num][jj][1] - dict_diff["ycen"]
                 ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
                 ax.fill(x, y, color=cmap(col[inum]), alpha=0.5)
 
-    
-    ax.set_xlabel(r"$\Delta(\Delta^2_\star)$", fontsize=ftsize+2)
-    ax.set_ylabel(r"$\Delta(n_\star)$", fontsize=ftsize+2)
+    if image != 8:
+        ax.set_xlabel(r"$\Delta(\Delta^2_\star)$", fontsize=ftsize+2)
+        ax.set_ylabel(r"$\Delta(n_\star)$", fontsize=ftsize+2)
+    else:
+        ax.set_xlabel(r"$\Delta(A_s)[\times 10^{-9}]$", fontsize=ftsize+2)
+        ax.set_ylabel(r"$\Delta(n_s)$", fontsize=ftsize+2)
     ax.tick_params(
         axis="both", which="major", labelsize=ftsize - 2
     )
     ax.axhline(color="k", ls=":")
     ax.axvline(color="k", ls=":")
 
-    if image == 0:
-        loc = "lower right"
-    else:
-        loc = "upper right"
+    # if image == 0:
+    #     loc = "lower right"
+    # else:
+    loc = "upper right"
     
     
     plt.legend(fontsize=ftsize-4, loc=loc, ncol=1)

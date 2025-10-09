@@ -757,6 +757,21 @@ class Args:
                     "HCD_damp3",
                     "HCD_damp4",
                 ]
+            elif name_variation == "DLAs":
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    # "HCD_damp1",
+                    # "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
             else:
                 baseline_prop = [
                     "f_Lya_SiIII",

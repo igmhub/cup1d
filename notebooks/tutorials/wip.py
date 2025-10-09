@@ -63,6 +63,39 @@ from cup1d.plots.plots_corner import plots_chain
 
 # %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+
+variations = {
+    "DESIY1_QMLE3_mpg": ["Fiducial", "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"],
+    # "zmax": ["Data: $z \\leq 3.4$", "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_3/"],
+    # "zmin": ["Data: $z \\geq 2.6$", "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_3/"],
+    # "DESIY1_QMLE_mpg": ["Data: w/ low SNR", "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_6/"],
+    # "DESIY1_FFT3_dir_mpg": ["Data: FFT", "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_3/"],
+    # "DESIY1_FFT_dir_mpg": ["Data: FFT w/ low SNR", "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_5/"],
+    # "no_emu_cov": ["Cov: w/o emu err", "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_4/"],
+    # "no_inflate": ["Cov: w/o 5\% err", "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_4/"],
+    # "no_inflate_no_emu_cov": ["Cov: w/o emu, 5\% err", "DESIY1_QMLE3/no_inflate_no_emu_cov/CH24_mpgcen_gpr/chain_4/"],
+    # "DESIY1_QMLE3_nyx": ["Model: emulator", "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_2/"],
+    # "cosmo": ["Model: $\omega_0\omega_a$CDM", "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_4/"],
+    # "cosmo_high": ["Model: high $\Omega_\mathrm{M}h^2$", "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"],
+    # "cosmo_low": ["Model: low $\Omega_\mathrm{M}h^2$", "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"],
+    # "more_igm": ["Model: IGM $n_z=8$", "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_4/"],
+    # "less_igm": ["Model: IGM $n_z=4$", "DESIY1_QMLE3/less_igm/CH24_mpgcen_gpr/chain_4/"],
+    # "Turner24": [r"Model: Turner+24", "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_3/"],
+    # "hcd_z": ["Model: HCD $n_z=2$", "DESIY1_QMLE3/hcd_z/CH24_mpgcen_gpr/chain_4/"],
+    # "metals_z": ["Model: metals $n_z=2$", "DESIY1_QMLE3/metals_z/CH24_mpgcen_gpr/chain_4/"],
+    # "no_res": ["Model: no resolution", "DESIY1_QMLE3/no_res/CH24_mpgcen_gpr/chain_4/"],
+    # "metal_thin": ["Model: metal thin", "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_3/"],
+    # "metal_deco": ["Model: no metal decorr", "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_4/"],
+    # "metal_si2": ["Model: no SiII-SiII", "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_4/"],
+    # "metal_trad": ["Model: trad metal", "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_4/"],
+}
+
+for ii, var in enumerate(variations):
+    folder = os.path.join(base, variations[var][1])
+    plots_chain(folder)
+
+# %%
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 # folder = base + "sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
 # folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_1/"
 # folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
@@ -93,31 +126,6 @@ base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 #     "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_3/",
 #     "DESIY1_QMLE3/no_res/CH24_mpgcen_gpr/chain_4/",
 # ]
-variations = {
-    "DESIY1_QMLE3_mpg": ["Fiducial", "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"],
-    "zmax": ["Data: $z \\leq 3.4$", "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_3/"],
-    "zmin": ["Data: $z \\geq 2.6$", "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_3/"],
-    "DESIY1_QMLE_mpg": ["Data: w/ low SNR", "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_6/"],
-    "DESIY1_FFT3_dir_mpg": ["Data: FFT", "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_3/"],
-    "DESIY1_FFT_dir_mpg": ["Data: FFT w/ low SNR", "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_5/"],
-    "no_emu_cov": ["Cov: w/o emu err", "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_4/"],
-    "no_inflate": ["Cov: w/o 5\% err", "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_4/"],
-    "no_inflate_no_emu_cov": ["Cov: w/o emu, 5\% err", "DESIY1_QMLE3/no_inflate_no_emu_cov/CH24_mpgcen_gpr/chain_4/"],
-    "DESIY1_QMLE3_nyx": ["Model: emulator", "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_2/"],
-    "cosmo": ["Model: $\omega_0\omega_a$CDM", "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_4/"],
-    "cosmo_high": ["Model: high $\Omega_\mathrm{M}h^2$", "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"],
-    "cosmo_low": ["Model: low $\Omega_\mathrm{M}h^2$", "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"],
-    "more_igm": ["Model: IGM $n_z=8$", "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_4/"],
-    "less_igm": ["Model: IGM $n_z=4$", "DESIY1_QMLE3/less_igm/CH24_mpgcen_gpr/chain_4/"],
-    "Turner24": [r"Model: Turner+24", "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_3/"],
-    "hcd_z": ["Model: HCD $n_z=2$", "DESIY1_QMLE3/hcd_z/CH24_mpgcen_gpr/chain_4/"],
-    "metals_z": ["Model: metals $n_z=2$", "DESIY1_QMLE3/metals_z/CH24_mpgcen_gpr/chain_4/"],
-    "no_res": ["Model: no resolution", "DESIY1_QMLE3/no_res/CH24_mpgcen_gpr/chain_4/"],
-    "metal_thin": ["Model: metal thin", "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_3/"],
-    "metal_deco": ["Model: no metal decorr", "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_4/"],
-    "metal_si2": ["Model: no SiII-SiII", "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_4/"],
-    "metal_trad": ["Model: trad metal", "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_4/"],
-}
 
 fid_vals = {}
 
@@ -349,8 +357,8 @@ emulator_label = "CH24_nyxcen_gpr"
 
 
 # data_label = "mpg_central"
-# data_label = "nyx_central"
-data_label = "nyx_seed"
+data_label = "nyx_central"
+# data_label = "nyx_seed"
 # data_label = "nyx_cgan_base"
 # data_label = "accel2"
 # data_label = "sherwood"
@@ -401,23 +409,6 @@ for sim in archive_mock.data:
         break
 
 # %%
-# test1 = archive_mock.get_testing_data("nyx_central")
-test2 = archive_mock.get_testing_data("nyx_seed")
-
-# %%
-ls = ["-", "--"]
-for ii in range(3):
-    col = "C" + str(ii)
-    print(test1[ii]["z"], test2[ii+1]["z"])
-    plt.plot(test1[ii]["k_Mpc"], test1[ii]["k_Mpc"] * test1[ii]["p1d_Mpc"], col+ls[0])
-    plt.plot(test2[ii+1]["k_Mpc"]*0.6777, test2[ii+1]["k_Mpc"] * test2[ii+1]["p1d_Mpc"], col+ls[1])
-plt.xscale("log")
-
-# %%
-
-# %%
-
-# %%
 pip = Pipeline(args, archive=archive_mock)
 # pip = Pipeline(args)
 
@@ -442,10 +433,22 @@ for par in pip.fitter.like.free_params:
 pip.fitter.like.plot_p1d()
 
 # %%
+65.9
+
+# %%
 pip.run_minimizer(p0, restart=True)
 
 # %%
 pip.fitter.like.plot_p1d(pip.fitter.mle_cube)
+
+# %%
+2.5 vs 0.8
+
+# %%
+pip.fitter.mle_cosmo
+
+# %%
+pip.fitter.mle_cosmo
 
 # %%
 # pip.plotter.plot_igm()
@@ -556,7 +559,7 @@ variations = [
 data_label = "DESIY1_QMLE3"
 # data_label = "DESIY1_FFT3_dir"
 name_variation = None
-# name_variation = "zmax"
+name_variation = "DLAs"
 
 args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
 args.set_baseline(
