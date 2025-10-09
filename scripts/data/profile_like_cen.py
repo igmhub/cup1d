@@ -9,6 +9,7 @@ from cup1d.utils.utils import get_path_repo
 
 
 def main():
+    path_data = "jjchaves"
     variations = [
         # None,
         # "nyx",
@@ -63,7 +64,9 @@ def main():
             print("")
 
         args = Args(
-            data_label=data_label, emulator_label="CH24_" + emu + "cen_gpr"
+            data_label=data_label,
+            emulator_label="CH24_" + emu + "cen_gpr",
+            path_data=path_data,
         )
         args.set_baseline(
             fit_type="global_opt",
