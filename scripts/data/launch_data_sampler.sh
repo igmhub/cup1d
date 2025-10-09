@@ -28,10 +28,10 @@ variations=(
     # "cosmo"
     # "cosmo_low"
     # "cosmo_high"
-    # "metal_trad"
-    # "metal_si2"
-    # "metal_deco"
-    # "no_res"
+    "metal_trad"
+    "metal_si2"
+    "metal_deco"
+    "no_res"
     # "more_igm"
     # "less_igm"
     # "metals_z"
@@ -39,7 +39,7 @@ variations=(
     # "zmin"
     # "zmax"
     # "Turner24"
-    # "metal_thin"
+    "metal_thin"
     "DLAs"
 )
 

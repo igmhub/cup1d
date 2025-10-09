@@ -254,57 +254,92 @@ class Args:
             "gamma": 1,
             "kF_kms": 1,
         }
+
+        null_vals_params = {
+            "tau_eff": 0,
+            "sigT_kms": 1,
+            "gamma": 1,
+            "kF_kms": 1,
+            "f_Lya_SiIII": val_null,
+            "s_Lya_SiIII": 2.1,
+            "f_Lya_SiII": val_null,
+            "s_Lya_SiII": 2.1,
+            "f_SiIIa_SiIIb": val_null,
+            "s_SiIIa_SiIIb": 0.1,
+            "f_SiIIa_SiIII": 0,
+            "f_SiIIb_SiIII": 0,
+            "HCD_damp1": val_null,
+            "HCD_damp2": val_null,
+            "HCD_damp3": val_null,
+            "HCD_damp4": val_null,
+            "HCD_const": 0,
+            "R_coeff": 0,
+        }
+        fid_vals_conts = {
+            "f_Lya_SiIII": -4.0,
+            "s_Lya_SiIII": 5.0,
+            "f_Lya_SiII": -4.0,
+            "s_Lya_SiII": 5.5,
+            "f_SiIIa_SiIIb": 0.75,
+            "s_SiIIa_SiIIb": 5.0,
+            "f_SiIIa_SiIII": 1,
+            "f_SiIIb_SiIII": 1,
+            "HCD_damp1": -1.4,
+            "HCD_damp2": -5.0,
+            "HCD_damp3": -5.0,
+            "HCD_damp4": -5.0,
+            "HCD_const": 0,
+        }
+        fid_vals_syst = {
+            "R_coeff": 0,
+        }
+
         if (fit_type is not None) and (fit_type == "global_igm"):
-            fid_vals_conts = {
-                "f_Lya_SiIII": val_null,
-                "s_Lya_SiIII": 2.1,
-                "f_Lya_SiII": val_null,
-                "s_Lya_SiII": 2.1,
-                "f_SiIIa_SiIIb": val_null,
-                "s_SiIIa_SiIIb": 0.1,
-                "f_SiIIa_SiIII": 0,
-                "f_SiIIb_SiIII": 0,
-                "HCD_damp1": val_null,
-                "HCD_damp2": val_null,
-                "HCD_damp3": val_null,
-                "HCD_damp4": val_null,
-                "HCD_const": 0,
-            }
-        else:
-            fid_vals_conts = {
-                "f_Lya_SiIII": -4.0,
-                "s_Lya_SiIII": 5.0,
-                "f_Lya_SiII": -4.0,
-                "s_Lya_SiII": 5.5,
-                "f_SiIIa_SiIIb": 0.75,
-                "s_SiIIa_SiIIb": 5.0,
-                "f_SiIIa_SiIII": 1,
-                "f_SiIIb_SiIII": 1,
-                "HCD_damp1": -1.4,
-                "HCD_damp2": -5.0,
-                "HCD_damp3": -5.0,
-                "HCD_damp4": -5.0,
-                "HCD_const": 0,
-            }
+            fid_vals_conts = self.null_vals_conts
 
         for key in self.igm_params:
+            if self.fid_igm["n_" + key] == 0:
+                self.fid_igm[key + "_fixed"] = True
+                use_val = null_vals_params[key]
+            else:
+                self.fid_igm[key + "_fixed"] = False
+                use_val = fid_vals_igm[key]
+
             if self.fid_igm[key + "_ztype"] == "pivot":
-                self.fid_igm[key] = [0, 1]
+                self.fid_igm[key] = [0, use_val]
             else:
                 self.fid_igm[key] = (
-                    np.zeros(len(self.fid_igm[key + "_znodes"]))
-                    + fid_vals_igm[key]
+                    np.zeros(len(self.fid_igm[key + "_znodes"])) + use_val
                 )
-                # print(self.fid_igm[key + "_znodes"])
-                # print(key, self.fid_igm[key])
 
         for key in self.cont_params.keys():
+            if self.fid_cont["n_" + key] == 0:
+                self.fid_cont[key + "_fixed"] = True
+                use_val = null_vals_params[key]
+            else:
+                self.fid_cont[key + "_fixed"] = False
+                use_val = fid_vals_conts[key]
+
             if self.fid_cont[key + "_ztype"] == "pivot":
-                self.fid_cont[key] = [0, fid_vals_conts[key]]
+                self.fid_cont[key] = [0, use_val]
             else:
                 self.fid_cont[key] = (
-                    np.zeros(len(self.fid_cont[key + "_znodes"]))
-                    + fid_vals_conts[key]
+                    np.zeros(len(self.fid_cont[key + "_znodes"])) + use_val
+                )
+
+        for key in self.syst_params.keys():
+            if self.fid_syst["n_" + key] == 0:
+                self.fid_syst[key + "_fixed"] = True
+                use_val = null_vals_params[key]
+            else:
+                self.fid_syst[key + "_fixed"] = False
+                use_val = fid_vals_syst[key]
+
+            if self.fid_syst[key + "_ztype"] == "pivot":
+                self.fid_syst[key] = [0, use_val]
+            else:
+                self.fid_syst[key] = (
+                    np.zeros(len(self.fid_syst[key + "_znodes"])) + use_val
                 )
 
         self.fid_cont["flat_priors"] = {}

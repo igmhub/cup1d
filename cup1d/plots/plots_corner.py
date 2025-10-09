@@ -82,9 +82,9 @@ def plots_chain(
         folder_in, truth, nburn_extra=nburn_extra
     )
 
-    plot_corr(dat, labels, folder_out=folder_out, ftsize=ftsize)
-    if 1 > 0:
-        return
+    # plot_corr(dat, labels, folder_out=folder_out, ftsize=ftsize)
+    # if 1 > 0:
+    #     return
 
     try:
         plot_lnprob(lnprob, folder_out, ftsize)

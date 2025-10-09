@@ -2412,17 +2412,6 @@ class Likelihood(object):
                 _val = dir_out[pname]["val"]
                 p.value = np.interp(znode, _z, _val)
 
-            # if p.name == "tau_eff_0":
-            #     p.value = 0.0
-            # elif p.name == "tau_eff_1":
-            #     p.value = -0.1
-            # elif p.name == "gamma_0":
-            #     p.value = 0.9
-            # elif p.name == "gamma_1":
-            #     p.value = 0.9
-            # elif p.name == "R_coeff_0":
-            #     p.value = -0.7
-
             if verbose & (self.rank == 0):
                 print(
                     p.name,
