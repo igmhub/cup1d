@@ -568,7 +568,9 @@ class Args:
 
         if (name_variation is not None) and (name_variation == "Turner24"):
             self.fid_igm["label_mF"] = "Turner24"
-        if name_variation.startswith("sim_mpg_central_igm"):
+        if (name_variation is not None) and (
+            name_variation.startswith("sim_mpg_central_igm")
+        ):
             self.fit_type = "global_igm"
             fit_type = self.fit_type
         ##
