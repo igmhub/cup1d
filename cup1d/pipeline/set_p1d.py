@@ -84,6 +84,7 @@ def set_P1D(args, archive=None, theory=None):
         ##
 
         # get P1Ds from archive
+        print
         p1d_ideal = archive_mock.get_testing_data(data_label)
         if len(p1d_ideal) == 0:
             raise ValueError("Could not set P1D data for", data_label)
@@ -122,6 +123,7 @@ def set_P1D(args, archive=None, theory=None):
             z_min=args.z_min,
             z_max=args.z_max,
             cov_only_diag=args.cov_syst_type,
+            path_data=args.path_data,
         )
 
     elif data_label == "challenge_DESIY1":

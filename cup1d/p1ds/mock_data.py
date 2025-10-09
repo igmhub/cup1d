@@ -31,6 +31,7 @@ class Mock_P1D(BaseMockP1D):
         add_noise=False,
         seed=0,
         p1d_fname=None,
+        path_data=None,
     ):
         """Copy data and replace P1D signal using theory
 
@@ -73,6 +74,7 @@ class Mock_P1D(BaseMockP1D):
                     p1d_fname=p1d_fname,
                     z_min=z_min,
                     z_max=z_max,
+                    path_data=path_data,
                 )
         elif data_label == "challenge_DESIY1":
             if p1d_fname is None:
@@ -86,6 +88,7 @@ class Mock_P1D(BaseMockP1D):
                     p1d_fname=p1d_fname,
                     z_min=z_min,
                     z_max=z_max,
+                    path_data=path_data,
                 )
         else:
             raise ValueError("Unknown data_label", data_label)
