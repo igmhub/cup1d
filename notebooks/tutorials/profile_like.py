@@ -1010,6 +1010,8 @@ plt.tight_layout()
 # plt.savefig("figs/validation_2d.png")
 # -
 
+# # Profile above, MCMC below
+
 # #### Contours from chains
 
 from cup1d.likelihood.cosmologies import set_cosmo
@@ -1020,117 +1022,41 @@ import matplotlib.cm as cm
 
 # +
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
-folder = base + "sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
-dat_mpg = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "sim_mpg_central/CH24_mpgcen_gpr/chain_1/"
+dat_mpg_sim = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+sum_mpg_sim = np.load(folder + "summary.npy", allow_pickle=True).item()
+
+folder = base + "sim_mpg_central_igm/CH24_mpgcen_gpr/chain_1/"
+dat_mpg_igm = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+sum_mpg_igm = np.load(folder + "summary.npy", allow_pickle=True).item()
+
+folder = base + "sim_mpg_central_igm0/CH24_mpgcen_gpr/chain_1/"
+dat_mpg_igm0 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+sum_mpg_igm0 = np.load(folder + "summary.npy", allow_pickle=True).item()
 
 folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_1/"
-dat_nyx = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+dat_nyx_sim = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "sim_sherwood/CH24_mpgcen_gpr/chain_2/"
+folder = base + "sim_sherwood/CH24_mpgcen_gpr/chain_1/"
 dat_sherwood = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 # +
-fig, ax = plt.subplots(figsize=(8, 6))
-ftsize = 24
-ls = ["-", "--"]
+print(sum_mpg_sim["delta2_star_err"]/sum_mpg_igm["delta2_star_err"])
+print(sum_mpg_sim["n_star_err"]/sum_mpg_igm["n_star_err"])
 
-variations = ["sim_mpg_central", "sim_nyx_central", "sim_sherwood"]
-# variations = ["sim_mpg_central", "sim_nyx_central"]
-# variations = ["sim_mpg_central"]
-dict_trans = {
-    "sim_mpg_central":"mpg-central", 
-    "sim_nyx_central":"lyssa-central", 
-    "sim_sherwood":"sherwood", 
-}
+print(sum_mpg_sim["delta2_star_err"]/sum_mpg_igm0["delta2_star_err"])
+print(sum_mpg_sim["n_star_err"]/sum_mpg_igm0["n_star_err"])
 
-# nfreepars = 45
-# var_deg = [550-nfreepars, 681-nfreepars, 670-nfreepars]
-
-# fit_type = "global_opt"
-x0 = 0
-y0 = 0
-for ii, var in enumerate(variations):
-    # print()
-    # file = "out_pl/"+ var + ".npy"
-    # out_dict = np.load(file, allow_pickle=True).item()
-    
-    # prob = chi2_scipy.sf(out_dict['chi2'], var_deg[ii]) * 100
-    # print(var, np.round(out_dict['chi2'], 1), f'{prob:.1e}')
-    if var == "sim_mpg_central":
-        dat = dat_mpg
-        cmap = plt.colormaps["Blues"]
-    elif var == "sim_nyx_central":
-        dat = dat_nyx
-        cmap = plt.colormaps["Oranges"]
-    elif var == "sim_sherwood":
-        dat = dat_sherwood
-        cmap = plt.colormaps["Greens"]
-
-    cosmo = set_cosmo(cosmo_label=var[4:])
-    like_cosmo = CAMB_model.CAMBModel(np.array([3]), cosmo=cosmo)
-    true_cosmo = like_cosmo.get_linP_params()
-
-    # consist = 0
-    # for key in ["Delta2_star", "n_star"]:
-    #     print(np.round(out_dict[key], 3), np.round(out_dict["err_" + key], 3))
-    #     print("diff", np.round(out_dict[key] - true_cosmo[key], 3), np.round(out_dict["err_" + key], 3))
-    #     consist += (out_dict[key] - true_cosmo[key])**2/out_dict["err_" + key]**2
-
-    # prob_var = chi2_scipy.sf(consist, 2) * 100
-    # print(np.round(prob_var, 1))
-
-    col = "C"+str(ii)
-    lw = [3, 2]
-    col = [0.7, 0.3]
-    for inum, num in enumerate([0.68, 0.95]):
-        if inum == 0:
-            label=dict_trans[var]
-        else:
-            label=None
-        for jj in range(len(dat[num])):
-            x = dat[num][jj][0] - true_cosmo["Delta2_star"]
-            y = dat[num][jj][1] - true_cosmo["n_star"]
-            plt.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
-            plt.fill(x, y, color=cmap(col[inum]), alpha=0.5)
-    # ax.scatter(
-    #     out_dict["Delta2_star"] - true_cosmo["Delta2_star"], 
-    #     out_dict["n_star"] - true_cosmo["n_star"], 
-    #     color=col, marker="x")
-
-    # for jj in range(1, 2):
-    #     if jj == 1:
-    #         lab = dict_trans[var]
-    #     else:
-    #         lab= None
-    #     ax.plot(
-    #         out_dict["xell"+str(jj)]- true_cosmo["Delta2_star"], 
-    #         out_dict["yell"+str(jj)]- true_cosmo["n_star"], 
-    #         col+ls[jj-1], lw=3, label=lab)
-
-
-ax.axhline(0, color="k", linestyle=":")
-ax.axvline(0, color="k", linestyle=":")
-
-
-
-ax.set_ylabel(r"$\Delta(n_\star)$", fontsize=ftsize)
-ax.set_xlabel(r"$\Delta(\Delta^2_\star)$", fontsize=ftsize)
-ax.tick_params(
-    axis="both", which="major", labelsize=ftsize - 2
-)
-
-plt.legend(fontsize=ftsize-2, loc="upper right")
-plt.tight_layout()
-plt.savefig("figs/validation_2d.pdf")
-plt.savefig("figs/validation_2d.png")
 # +
 
-# folder = base + "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_3/"
-# dat_turner = np.load(folder + "blobs.npy")
-# plt.hist2d(dat_turner["Delta2_star"].reshape(-1), dat_turner["n_star"].reshape(-1), bins=50);
-# -
+print(1-sum_qmle["delta2_star_err"]/sum_mpg["delta2_star_err"])
+print(1-sum_qmle["n_star_err"]/sum_mpg["n_star_err"])
 
-len(np.arange(2.25, 4.2501, 0.25))
+# +
+
+print(sum_nyx["delta2_star_err"]/sum_mpg["delta2_star_err"])
+print(sum_nyx["n_star_err"]/sum_mpg["n_star_err"])
+# -
 
 
 
@@ -1139,82 +1065,90 @@ base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 
 folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
 dat_mpg = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+sum_mpg = np.load(folder + "summary.npy", allow_pickle=True).item()
 folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
 dat_mpg_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_1/"
 dat_nyx = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+sum_nyx = np.load(folder + "summary.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_3/"
+folder = base + "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_1/"
 dat_fft3 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_5/"
+folder = base + "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_1/"
 dat_fft = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_6/"
+folder = base + "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_1/"
 dat_qmle = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+sum_qmle = np.load(folder + "summary.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_3/"
+folder = base + "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_1/"
 dat_turner = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo_high = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo_high_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo_low = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo_low_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/hcd_z/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/hcd_z/CH24_mpgcen_gpr/chain_1/"
 dat_hcd_z = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/less_igm/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/less_igm/CH24_mpgcen_gpr/chain_1/"
 dat_less_igm = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_1/"
 dat_more_igm = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_1/"
 dat_metal_deco = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_1/"
 dat_metal_si2 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_3/"
+folder = base + "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_1/"
 dat_metal_thin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_1/"
 dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/metals_z/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/metals_z/CH24_mpgcen_gpr/chain_1/"
 dat_metals_z = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_1/"
 dat_no_emu_cov = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_1/"
 dat_no_inflate = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/no_inflate_no_emu_cov/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/no_inflate_no_emu_cov/CH24_mpgcen_gpr/chain_1/"
 dat_no_inflate_no_emu_cov = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_3/"
+folder = base + "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_1/"
 dat_zmax = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_3/"
+folder = base + "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_1/"
 dat_zmin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/no_res/CH24_mpgcen_gpr/chain_4/"
+folder = base + "DESIY1_QMLE3/no_res/CH24_mpgcen_gpr/chain_1/"
 dat_no_res = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-# -
 
+folder = base + "DESIY1_QMLE3/DLAs/CH24_mpgcen_gpr/chain_1/"
+dat_dlas = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+# -
+from cup1d.likelihood.cosmologies import set_cosmo
+from cup1d.likelihood import CAMB_model
+import matplotlib.cm as cm
 
 
 # +
@@ -1223,6 +1157,7 @@ ls = ["-", "--"]
 
 lw = [3, 2]
 col = [0.7, 0.3]
+ftsize = 28
 cmaps = ["Blues", "Oranges", "Greens", "Reds", "Purples"]
 
 dict_trans = {
@@ -1236,36 +1171,45 @@ dict_trans = {
     
     "no_emu_cov":"Cov: w/o emu err", # no emu error
     "no_inflate":"Cov: w/o 5% err",
-    "no_inflate_no_emu_cov":"Cov: w/o emu ,5% err", 
+    "no_inflate_no_emu_cov":"Cov: w/o emu, 5% err", 
     
-    "DESIY1_QMLE3_nyx":"Model: emulator",
+    "DESIY1_QMLE3_nyx":"Model: lace-lyssa",
+    
     "cosmo": "Model: $\omega_0\omega_a$CDM",  # different fiducial cosmo
     "cosmo_low": "Model: low $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
     "cosmo_high": "Model: high $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
     
     "more_igm": "Model: IGM $n_z=8$",  # 8 params for IGM evolution
     "less_igm": "Model: IGM $n_z=4$",  # 4 params for IGM evolution
+    "Turner24": r"Model: $\bar{F}\, n_z=1$",  # mF from Turner24 with 1 free param to scale ERROR
     "metals_z": "Model: metals $n_z=2$",  # 2 params for z ev metals
     "hcd_z": "Model: HCD $n_z=2$",  # 2 params for z ev hcd
     
-    "Turner24": r"Model: $\bar F$ Turner+24",  # mF from Turner24 with 1 free param to scale ERROR
     "metal_trad": "Model: trad metal",  # 2 params for metals like eBOSS
     "metal_si2": "Model: no SiII-SiII",  # no SiII-SiII cont
-    "metal_deco": "Model: no metal decorr",  # no decorrelation metals
-    "metal_thin": "Model: metal thin",  # no desviation from optically-thin limit ERROR
+    "metal_deco": "Model: no H-Si decorr",  # no decorrelation metals
+    "metal_thin": "Model: metal opt thin",  # no desviation from optically-thin limit ERROR
     "no_res": "Model: no resolution",  # no resolution correction
+    "DLAs": "Model: only DLAs",  # no LLS, sub-DLA
+
+    "sim_mpg_central": "mpg-central", 
+    "sim_mpg_central_all": "Model: cosmo, IGM, cont, syst", 
+    "sim_mpg_central_igm": "Model: cosmo, IGM",
+    "sim_mpg_central_igm0": "Model: cosmo", 
+    "sim_nyx_central": "lyssa-central", 
+    "sim_sherwood": "sherwood", 
 }
 
-fname = ["data_diff", "cov", "cosmo", "modelz", "model_ing_yes", "model_ing_no", "data", "emu", "cosmo_Asns"]
+
+fname = ["data_diff", "cov", "cosmo", "modelz", "model_ing_yes", "model_ing_no", "data", "emu", "cosmo_Asns", "DLAs", "val_sims", "val_sims_model"]
 
 
-for image in range(9):
+for image in range(4, 6):
 
     # if image in [3, 4, 5]:
     #     ftsize = 26
     # else:
     #     ftsize = 22
-    ftsize = 24
     factx = 1
 
     if image == 0:
@@ -1278,14 +1222,14 @@ for image in range(9):
         variations = ["DESIY1_QMLE3_mpg", "cosmo", "cosmo_low", "cosmo_high"]
         dats = [dat_mpg, dat_cosmo, dat_cosmo_low, dat_cosmo_high]
     elif image == 3:
-        variations = ["DESIY1_QMLE3_mpg", "more_igm", "less_igm", "metals_z", "hcd_z"]
-        dats = [dat_mpg, dat_more_igm, dat_less_igm, dat_metals_z, dat_hcd_z]
+        variations = ["DESIY1_QMLE3_mpg", "more_igm", "less_igm", "Turner24"]
+        dats = [dat_mpg, dat_more_igm, dat_less_igm, dat_turner]
     elif image == 4:
-        variations = ["DESIY1_QMLE3_mpg", "no_res", "metal_deco", "metal_thin"]
-        dats = [dat_mpg, dat_no_res, dat_metal_deco, dat_metal_thin]
+        variations = ["DESIY1_QMLE3_mpg", "no_res", "metals_z", "metal_trad"]
+        dats = [dat_mpg, dat_no_res, dat_metals_z, dat_metal_trad]
     elif image == 5:
-        variations = ["DESIY1_QMLE3_mpg", "Turner24", "metal_si2", "metal_trad"]
-        dats = [dat_mpg, dat_turner, dat_metal_si2, dat_metal_trad]
+        variations = ["DESIY1_QMLE3_mpg", "metal_thin", "metal_deco", "metal_si2"]
+        dats = [dat_mpg, dat_metal_thin, dat_metal_deco, dat_metal_si2]
     elif image == 6:
         variations = ["DESIY1_QMLE3_mpg", "zmin", "zmax"]
         dats = [dat_mpg, dat_zmin, dat_zmax]
@@ -1296,6 +1240,15 @@ for image in range(9):
         variations = ["DESIY1_QMLE3_mpg", "cosmo", "cosmo_low", "cosmo_high"]
         dats = [dat_mpg_Asns, dat_cosmo_Asns, dat_cosmo_low_Asns, dat_cosmo_high_Asns]
         factx = 1e9
+    elif image == 9:
+        variations = ["DESIY1_QMLE3_mpg", "hcd_z", "DLAs"]
+        dats = [dat_mpg, dat_hcd_z, dat_dlas]
+    elif image == 10:
+        variations = ["sim_mpg_central", "sim_nyx_central", "sim_sherwood"]
+        dats = [dat_mpg_sim, dat_nyx_sim, dat_sherwood]
+    elif image == 11:
+        variations = ["sim_mpg_central_all", "sim_mpg_central_igm", "sim_mpg_central_igm0"]
+        dats = [dat_mpg_sim, dat_mpg_igm, dat_mpg_igm0]
 
     dict_diff = {
         "xcen": np.median(dats[0][0.68][0][0]),
@@ -1309,8 +1262,22 @@ for image in range(9):
     y0 = 0
     for ii, var in enumerate(variations):
         print()
-        dat = dats[ii]
+        dat = dats[ii].copy()
         cmap = plt.colormaps[cmaps[ii]]
+
+        if var.startswith("sim_"):
+            if "mpg_central" in var:
+                cosmo = set_cosmo(cosmo_label="mpg_central")
+            else:
+                cosmo = set_cosmo(cosmo_label=var[4:])
+            like_cosmo = CAMB_model.CAMBModel(np.array([3]), cosmo=cosmo)
+            true_cosmo = like_cosmo.get_linP_params()
+            ds_diff = true_cosmo["Delta2_star"]
+            ns_diff = true_cosmo["n_star"]
+            # print(var, ds_diff, ns_diff)
+        else:
+            ds_diff = dict_diff["xcen"]
+            ns_diff = dict_diff["ycen"]
 
         for inum, num in enumerate([0.68, 0.95]):
             if inum == 0:
@@ -1318,8 +1285,8 @@ for image in range(9):
             else:
                 label=None
             for jj in range(len(dat[num])):
-                x = (dat[num][jj][0] - dict_diff["xcen"]) * factx
-                y = dat[num][jj][1] - dict_diff["ycen"]
+                x = (dat[num][jj][0] - ds_diff) * factx
+                y = dat[num][jj][1] - ns_diff
                 ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
                 ax.fill(x, y, color=cmap(col[inum]), alpha=0.5)
 
@@ -1346,10 +1313,6 @@ for image in range(9):
     plt.savefig("figs/variations_"+fname[image]+".pdf")
     plt.savefig("figs/variations_"+fname[image]+".png")
 # -
-
-
-
-
 
 
 
@@ -1473,23 +1436,5 @@ plt.tight_layout()
 # plt.savefig("figs/validation_2d.pdf")
 # plt.savefig("figs/validation_2d.png")
 # -
-
-true_cosmo["Delta2_star"]
-
-true_cosmo["n_star"]
-
-data_cen["mle"]
-
-cov[0, 0]
-
-help(plot_ellipse)
-
-points.shape
-
-
-
-data_cen.keys()
-
-true_cosmo
 
 

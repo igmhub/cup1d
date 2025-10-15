@@ -38,6 +38,7 @@ from matplotlib import rcParams
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
+# rcParams["text.usetex"] = True
 
 # %% [markdown]
 # ### Read extended CMB chains from historical releases
@@ -142,7 +143,8 @@ neff_grid, DL2_grid = np.mgrid[-2.4:-2.2:200j, 0.2:0.65:200j]
 chi2_Mc2005=coeff_mult * marg_lya_like.gaussian_chi2_McDonald2005(neff_grid, DL2_grid)
 chi2_PD2015=coeff_mult * marg_lya_like.gaussian_chi2_PalanqueDelabrouille2015(neff_grid, DL2_grid)
 chi2_Ch2019=coeff_mult * marg_lya_like.gaussian_chi2_Chabanier2019(neff_grid, DL2_grid)
-chi2_Wa2024=coeff_mult * marg_lya_like.gaussian_chi2_Walther2024(neff_grid, DL2_grid)
+chi2_Wa2024=coeff_mult * marg_lya_like.gaussian_chi2_Walther2024(neff_grid, DL2_grid, ana_type="priors")
+chi2_Wa2024_np=coeff_mult * marg_lya_like.gaussian_chi2_Walther2024(neff_grid, DL2_grid, ana_type="no_priors")
 
 
 # chi2_desi = marg_lya_like.gaussian_chi2(neff_grid, DL2_grid, out_dict["ycen_2d"], out_dict["xcen_2d"], out_dict["err_n_star"], out_dict["err_Delta2_star"], out_dict["rho"])
@@ -237,9 +239,9 @@ y_ns /= y_ns.max()
 # %%
 
 # %% jupyter={"outputs_hidden": false}
-labs = ['This work', 'McDonald+05', 'Palanque-Delabrouille+15', 'Chabanier+19', r'Walther+24 (w/ $\bar{F}$ prior)']
+labs = ['DESI-DR1 (this work)', 'SDSS (McDonald+05)', 'BOSS\n(Palanque-Delabrouille+15)', 'eBOSS (Chabanier+19)', 'eBOSS + {$\\bar{F}, \\Omega_m, H_0$} priors\n(Walther+24)']
 cmap = plt.colormaps["Blues"]
-fontsize = 22
+fontsize = 26
 lw = [3, 2]
 col = [0.7, 0.3]
 true_cosmo = {
@@ -270,7 +272,7 @@ g.triangle_plot(
 ax = g.subplots[1, 0]
 ax_NS = g.subplots[1, 1]
 ax_D2S = g.subplots[0, 0]
-x_D2S = np.linspace(0.2, 0.5, 500)
+x_D2S = np.linspace(0.2, 0.55, 500)
 x_NS = np.linspace(-2.4, -2.2, 500)
 
 for inum, num in enumerate([0.68, 0.95]):
@@ -319,6 +321,13 @@ ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C4')
 pdf = stats.norm.pdf(x_NS, ycen, yerr)
 ax_NS.plot(x_NS, pdf/pdf.max(),color='C4')
 
+# CS = ax.contour(DL2_grid, neff_grid,chi2_Wa2024_np,levels=thresholds,colors='C5')
+# xcen, ycen, xerr, yerr = print_err(CS)
+# pdf = stats.norm.pdf(x_D2S, xcen, xerr)
+# ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C5')
+# pdf = stats.norm.pdf(x_NS, ycen, yerr)
+# ax_NS.plot(x_NS, pdf/pdf.max(),color='C5')
+
 
 # CS = ax.contour(neff_grid,DL2_grid,chi2_desi,levels=thresholds[:2],colors='C4')
 # xcen, ycen, xerr, yerr = print_err(CS)
@@ -332,7 +341,7 @@ for ii in range(len(labs)):
     ax.axhline(y=1,color='C'+str(ii),label=labs[ii])
 
 ax.set_ylim(-2.4, -2.2)
-ax.set_xlim(0.2, 0.5)
+ax.set_xlim(0.2, 0.55)
 
 # plt.title(r'Linear power constraints at ($z=3$, $k_p=0.009$ s/km)')
 # plt.grid()  
@@ -350,7 +359,7 @@ g.subplots[1, 1].legend(
     bbox_to_anchor=(1, 2),
     loc='upper right', 
     borderaxespad=0.,
-    fontsize=fontsize-1
+    fontsize=fontsize-6
 )
 
 ax.tick_params(
@@ -366,9 +375,9 @@ ax.set_ylabel(r"$n_\star$", fontsize=fontsize)
 ax_NS.set_xlabel(r"$n_\star$", fontsize=fontsize)
 
 
-# plt.tight_layout()
+plt.tight_layout()
 plt.savefig("figs/star_literature.png")
-plt.savefig("figs/star_literature.pdf")
+plt.savefig("figs/star_literature.pdf", bbox_inches="tight")
 
 # %%
 

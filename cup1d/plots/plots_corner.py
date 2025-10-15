@@ -83,7 +83,8 @@ def plots_chain(
         folder_in, truth, nburn_extra=nburn_extra
     )
 
-    # plot_corr(dat, labels, folder_out=folder_out, ftsize=ftsize)
+    # corr_compressed(dat, labels, priors, folder_out=folder_out)
+    # get_summary(folder_out)
     # if 1 > 0:
     #     return
 
@@ -133,7 +134,13 @@ def get_summary(folder_out):
     data = np.load(
         os.path.join(folder_out, "fitter_results.npy"), allow_pickle=True
     ).item()
-    dict_out["ndata"] = data["data"]["full_Pk_kms"].shape[0]
+    if "full_Pk_kms" in data["data"]:
+        dict_out["ndata"] = data["data"]["full_Pk_kms"].shape[0]
+    else:
+        ndata = 0
+        for ii in range(len(data["data"]["Pk_kms"])):
+            ndata += data["data"]["Pk_kms"][ii].shape[0]
+        dict_out["ndata"] = ndata
     dict_out["npar"] = data["fitter"]["mle_cube"].shape[0]
     dict_out["ndeg"] = dict_out["ndata"] - dict_out["npar"]
     dict_out["chi2"] = -2 * np.max(
@@ -361,6 +368,9 @@ def corr_compressed(
         else:
             lab_use = {
                 "tau_eff_3": 5,
+                # "f_SiIIa_SiIIb_0": 24,
+                # "f_SiIIa_SiIIb_1": 25,
+                # "s_SiIIa_SiIIb_1": 27,
                 "HCD_damp1_0": 30,
             }
 

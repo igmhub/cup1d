@@ -111,8 +111,15 @@ dir_out = {
 }
 np.save(fname, dir_out)
 
-for ii in range(len(out_mle_cube)):
-    print(out_mle_cube[ii][-1])
+# +
+# for ii in range(len(out_mle_cube)):
+#     print(out_mle_cube[ii][-1])
+# -
 
 from cup1d.optimize.show_results import print_results
 print_results(pip.fitter.like, out_chi2, out_mle_cube)
+
+from cup1d.optimize.show_results import print_results
+print_results(pip.fitter.like, out_chi2, out_mle_cube)
+
+

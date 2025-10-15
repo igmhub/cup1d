@@ -59,6 +59,7 @@ class CAMBModel(object):
         else:
             min_val = 0.90e-09
             max_val = 3.60e-09
+        # print(min_val, max_val)
         params.append(
             likelihood_parameter.LikelihoodParameter(
                 name="As",
@@ -74,6 +75,7 @@ class CAMBModel(object):
         else:
             min_val = 0.85
             max_val = 1.10
+        # print(min_val, max_val)
         params.append(
             likelihood_parameter.LikelihoodParameter(
                 name="ns",

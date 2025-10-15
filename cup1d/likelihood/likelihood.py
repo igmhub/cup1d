@@ -1145,6 +1145,13 @@ class Likelihood(object):
             else:
                 emu_p1d = _res
 
+            # dict_save = {
+            #     "z": _data_z,
+            #     "k_kms": _data_k_kms,
+            #     "p1d_model": emu_p1d,
+            # }
+            # np.save("test_model.npy", dict_save)
+
             if len(emu_p1d) == 1:
                 emu_p1d = emu_p1d[0]
 
@@ -1852,14 +1859,573 @@ class Likelihood(object):
 
     #     return
 
+    def plot_hcd_cont(
+        self,
+        zstar=3,
+        p0=None,
+        chain=None,
+        save_directory=None,
+        ftsize=24,
+        nelem=5000,
+    ):
+        if chain is not None:
+            if len(chain.shape) == 3:
+                chain_use = chain.reshape(-1, chain.shape[-1])
+            else:
+                chain_use = chain.copy()
+            ind = np.random.permutation(np.arange(0, chain_use.shape[0]))[
+                :nelem
+            ]
+            chain_use = chain_use[ind]
+
+        ind = np.argwhere(self.data.z == zstar)[0][0]
+        k_kms_inter = np.linspace(
+            self.data.k_kms[ind].min(), self.data.k_kms[ind].max(), 500
+        )
+
+        labels = ["LLS", "sub-DLA", "small DLA", "large DLA", "All"]
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ls = ["--", "-.", (0, (2, 2, 2, 2)), ":", "-"]
+
+        for ii in range(5):
+            par_plot = "HCD_damp" + str(ii + 1) + "_0"
+            # print(par_plot)
+
+            if chain is None:
+                free_params = self.parameters_from_sampling_point(p0)
+                for par in free_params:
+                    if ii + 1 <= 4:
+                        if "HCD_damp" in par.name:
+                            if par.name != par_plot:
+                                # print(par.name, par.value)
+                                par.value = -20
+
+                hcd_cont = self.theory.model_cont.hcd_model.get_contamination(
+                    z=np.array([zstar]),
+                    k_kms=[k_kms_inter],
+                    like_params=free_params,
+                )
+                ax.plot(
+                    k_kms_inter,
+                    hcd_cont,
+                    label=labels[ii],
+                    alpha=0.75,
+                    ls=ls[ii],
+                    lw=3,
+                    color="C" + str(ii),
+                )
+            else:
+                all_hcd_cont = np.zeros((nelem, len(k_kms_inter)))
+
+                for jj in range(nelem):
+                    free_params = self.parameters_from_sampling_point(
+                        chain_use[jj]
+                    )
+                    for par in free_params:
+                        if ii + 1 <= 4:
+                            if "HCD_damp" in par.name:
+                                if par.name != par_plot:
+                                    # print(par.name, par.value)
+                                    par.value = -20
+                    all_hcd_cont[
+                        jj, :
+                    ] = self.theory.model_cont.hcd_model.get_contamination(
+                        z=np.array([zstar]),
+                        k_kms=[k_kms_inter],
+                        like_params=free_params,
+                    )
+                hcd_cont = np.percentile(all_hcd_cont, [16, 50, 84], axis=0)
+
+                ax.plot(
+                    k_kms_inter,
+                    hcd_cont[1],
+                    label=labels[ii],
+                    alpha=0.75,
+                    ls=ls[ii],
+                    lw=3,
+                    color="C" + str(ii),
+                )
+                ax.fill_between(
+                    k_kms_inter,
+                    hcd_cont[0],
+                    hcd_cont[2],
+                    alpha=0.3,
+                    color="C" + str(ii),
+                )
+        ax.axhline(1, color="k", ls=":", lw=2)
+        ax.set_ylabel(r"$C_\mathrm{HCD}$", fontsize=ftsize)
+        ax.set_xlabel(r"$k$ [s/km]", fontsize=ftsize)
+        ax.tick_params(axis="both", which="major", labelsize=ftsize)
+        ax.legend(fontsize=ftsize - 2)
+
+        plt.tight_layout()
+
+        if save_directory is not None:
+            name = os.path.join(save_directory, "cont_hcd")
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
+        else:
+            plt.show()
+
+    def plot_metal_cont_add(
+        self,
+        free_params=None,
+        chain=None,
+        save_directory=None,
+        ftsize=24,
+        nelem=5000,
+    ):
+        if chain is not None:
+            if len(chain.shape) == 3:
+                chain_use = chain.reshape(-1, chain.shape[-1])
+            else:
+                chain_use = chain.copy()
+            ind = np.random.permutation(np.arange(0, chain_use.shape[0]))[
+                :nelem
+            ]
+            chain_use = chain_use[ind]
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ls = ["-", "--", "-.", ":"]
+        for ii, zstar in enumerate([2.2, 2.8, 3.4, 4.0]):
+            ind = np.argwhere(self.data.z == zstar)[0][0]
+            k_kms_inter = np.linspace(
+                self.data.k_kms[ind].min(), self.data.k_kms[ind].max(), 500
+            )
+            k_kms = self.data.k_kms[ind].copy()
+            mF = self.theory.model_igm.models["F_model"].get_mean_flux(
+                zstar, like_params=free_params
+            )
+
+            if chain is None:
+                si_add_cont_all = self.theory.model_cont.metal_models[
+                    "Si_add"
+                ].get_contamination(
+                    z=np.array([zstar]),
+                    k_kms=[k_kms_inter],
+                    mF=np.array([mF]),
+                    like_params=free_params,
+                )
+                ax.plot(
+                    k_kms_inter,
+                    si_add_cont_all[0],
+                    label=r"$z=$" + str(zstar),
+                    alpha=0.75,
+                    ls=ls[ii],
+                    lw=4,
+                    color="C" + str(ii),
+                )
+            else:
+                all_si_add_cont = np.zeros((nelem, len(k_kms_inter)))
+                for jj in range(nelem):
+                    free_params = self.parameters_from_sampling_point(
+                        chain_use[jj]
+                    )
+                    all_si_add_cont[
+                        jj, :
+                    ] = self.theory.model_cont.metal_models[
+                        "Si_add"
+                    ].get_contamination(
+                        z=np.array([zstar]),
+                        k_kms=[k_kms_inter],
+                        mF=np.array([mF]),
+                        like_params=free_params,
+                    )[
+                        0
+                    ]
+                si_add_cont = np.percentile(
+                    all_si_add_cont, [16, 50, 84], axis=0
+                )
+
+                ax.plot(
+                    k_kms_inter,
+                    si_add_cont[1],
+                    label=r"$z=$" + str(zstar),
+                    alpha=0.75,
+                    ls=ls[ii],
+                    lw=2,
+                    color="C" + str(ii),
+                )
+                ax.fill_between(
+                    k_kms_inter,
+                    si_add_cont[0],
+                    si_add_cont[2],
+                    alpha=0.3,
+                    color="C" + str(ii),
+                )
+
+        ax.axhline(0, color="k", ls=":", lw=2)
+        ax.legend(fontsize=ftsize - 4, loc="upper right")
+        ax.tick_params(axis="both", which="major", labelsize=ftsize)
+        ax.set_ylabel(r"$C_\mathrm{SiII-SiII}$ [km/s]", fontsize=ftsize)
+        ax.set_xlabel(r"$k$ [s/km]", fontsize=ftsize)
+        ax.set_ylim(-0.2, 3)
+
+        plt.tight_layout()
+
+        if save_directory is not None:
+            name = os.path.join(save_directory, "cont_metal_add")
+            plt.savefig(name + ".pdf", bbox_inches="tight")
+            plt.savefig(name + ".png", bbox_inches="tight")
+        else:
+            plt.show()
+
+    def plot_metal_cont_mult(
+        self,
+        free_params=None,
+        chain=None,
+        zstar=3,
+        save_directory=None,
+        ftsize=24,
+        nelem=5000,
+    ):
+        """Plot metallicity contours"""
+
+        if chain is not None:
+            if len(chain.shape) == 3:
+                chain_use = chain.reshape(-1, chain.shape[-1])
+            else:
+                chain_use = chain.copy()
+            ind = np.random.permutation(np.arange(0, chain_use.shape[0]))[
+                :nelem
+            ]
+            chain_use = chain_use[ind]
+
+        ind = np.argwhere(self.data.z == zstar)[0][0]
+        k_kms_inter = np.linspace(
+            self.data.k_kms[ind].min(), self.data.k_kms[ind].max(), 500
+        )
+        # k_kms = self.data.k_kms[ind].copy()
+
+        # dat_si_mult_cont_all = self.theory.model_cont.metal_models[
+        #     "Si_mult"
+        # ].get_contamination(
+        #     z=np.array([zstar]),
+        #     k_kms=[k_kms],
+        #     mF=np.array([mF]),
+        #     like_params=free_params,
+        # )
+
+        if chain is None:
+            mF = self.theory.model_igm.models["F_model"].get_mean_flux(
+                zstar, like_params=free_params
+            )
+
+            si_mult_cont_all = self.theory.model_cont.metal_models[
+                "Si_mult"
+            ].get_contamination(
+                z=np.array([zstar]),
+                k_kms=[k_kms_inter],
+                mF=np.array([mF]),
+                like_params=free_params,
+            )
+
+            remove = {
+                "SiIII_Lya": 1,
+                "SiIIa_Lya": 0,
+                "SiIIb_Lya": 0,
+                "SiIIc_Lya": 0,
+                "SiIII_SiIIa": 0,
+                "SiIII_SiIIb": 0,
+                "SiIII_SiIIc": 0,
+                "SiIIc_SiIIb": 0,
+                "SiIIc_SiIIa": 0,
+                "SiIIb_SiIIa": 0,
+            }
+
+            si_mult_cont_SiIII = self.theory.model_cont.metal_models[
+                "Si_mult"
+            ].get_contamination(
+                z=np.array([zstar]),
+                k_kms=[k_kms_inter],
+                mF=np.array([mF]),
+                like_params=free_params,
+                remove=remove,
+            )
+
+            remove = {
+                "SiIII_Lya": 0,
+                "SiIIa_Lya": 1,
+                "SiIIb_Lya": 1,
+                "SiIIc_Lya": 0,
+                "SiIII_SiIIa": 0,
+                "SiIII_SiIIb": 0,
+                "SiIII_SiIIc": 0,
+                "SiIIc_SiIIb": 0,
+                "SiIIc_SiIIa": 0,
+                "SiIIb_SiIIa": 0,
+            }
+
+            si_mult_cont_SiII = self.theory.model_cont.metal_models[
+                "Si_mult"
+            ].get_contamination(
+                z=np.array([zstar]),
+                k_kms=[k_kms_inter],
+                mF=np.array([mF]),
+                like_params=free_params,
+                remove=remove,
+            )
+
+            remove = {
+                "SiIII_Lya": 0,
+                "SiIIa_Lya": 0,
+                "SiIIb_Lya": 0,
+                "SiIIc_Lya": 0,
+                "SiIII_SiIIa": 1,
+                "SiIII_SiIIb": 1,
+                "SiIII_SiIIc": 0,
+                "SiIIc_SiIIb": 0,
+                "SiIIc_SiIIa": 0,
+                "SiIIb_SiIIa": 0,
+            }
+
+            si_mult_cont_Si23 = self.theory.model_cont.metal_models[
+                "Si_mult"
+            ].get_contamination(
+                z=np.array([zstar]),
+                k_kms=[k_kms_inter],
+                mF=np.array([mF]),
+                like_params=free_params,
+                remove=remove,
+            )
+
+            fig, ax = plt.subplots(4, figsize=(8, 6), sharey=True, sharex=True)
+            ax[0].plot(
+                k_kms_inter,
+                si_mult_cont_SiIII[0],
+                label=r"Ly$\alpha$-SiIII",
+                alpha=0.75,
+                ls="-",
+                lw=3,
+                color="C0",
+            )
+            ax[1].plot(
+                k_kms_inter,
+                si_mult_cont_SiII[0],
+                label=r"Ly$\alpha$-SiII",
+                alpha=0.75,
+                ls="-",
+                lw=3,
+                color="C1",
+            )
+            ax[2].plot(
+                k_kms_inter,
+                si_mult_cont_Si23[0],
+                label=r"SiII-SiIII",
+                alpha=0.75,
+                ls="-",
+                lw=3,
+                color="C2",
+            )
+            ax[3].plot(
+                k_kms_inter,
+                si_mult_cont_all[0],
+                label=r"All",
+                alpha=0.75,
+                ls="-",
+                lw=3,
+                color="C3",
+            )
+        else:
+            si_mult_cont_all = np.zeros((nelem, len(k_kms_inter)))
+            si_mult_cont_SiIII = np.zeros((nelem, len(k_kms_inter)))
+            si_mult_cont_SiII = np.zeros((nelem, len(k_kms_inter)))
+            si_mult_cont_Si23 = np.zeros((nelem, len(k_kms_inter)))
+
+            for jj in range(nelem):
+                free_params = self.parameters_from_sampling_point(chain_use[jj])
+
+                mF = self.theory.model_igm.models["F_model"].get_mean_flux(
+                    zstar, like_params=free_params
+                )
+
+                si_mult_cont_all[jj] = self.theory.model_cont.metal_models[
+                    "Si_mult"
+                ].get_contamination(
+                    z=np.array([zstar]),
+                    k_kms=[k_kms_inter],
+                    mF=np.array([mF]),
+                    like_params=free_params,
+                )[
+                    0
+                ]
+
+                remove = {
+                    "SiIII_Lya": 1,
+                    "SiIIa_Lya": 0,
+                    "SiIIb_Lya": 0,
+                    "SiIIc_Lya": 0,
+                    "SiIII_SiIIa": 0,
+                    "SiIII_SiIIb": 0,
+                    "SiIII_SiIIc": 0,
+                    "SiIIc_SiIIb": 0,
+                    "SiIIc_SiIIa": 0,
+                    "SiIIb_SiIIa": 0,
+                }
+
+                si_mult_cont_SiIII[jj] = self.theory.model_cont.metal_models[
+                    "Si_mult"
+                ].get_contamination(
+                    z=np.array([zstar]),
+                    k_kms=[k_kms_inter],
+                    mF=np.array([mF]),
+                    like_params=free_params,
+                    remove=remove,
+                )[
+                    0
+                ]
+
+                remove = {
+                    "SiIII_Lya": 0,
+                    "SiIIa_Lya": 1,
+                    "SiIIb_Lya": 1,
+                    "SiIIc_Lya": 0,
+                    "SiIII_SiIIa": 0,
+                    "SiIII_SiIIb": 0,
+                    "SiIII_SiIIc": 0,
+                    "SiIIc_SiIIb": 0,
+                    "SiIIc_SiIIa": 0,
+                    "SiIIb_SiIIa": 0,
+                }
+
+                si_mult_cont_SiII[jj] = self.theory.model_cont.metal_models[
+                    "Si_mult"
+                ].get_contamination(
+                    z=np.array([zstar]),
+                    k_kms=[k_kms_inter],
+                    mF=np.array([mF]),
+                    like_params=free_params,
+                    remove=remove,
+                )[
+                    0
+                ]
+
+                remove = {
+                    "SiIII_Lya": 0,
+                    "SiIIa_Lya": 0,
+                    "SiIIb_Lya": 0,
+                    "SiIIc_Lya": 0,
+                    "SiIII_SiIIa": 1,
+                    "SiIII_SiIIb": 1,
+                    "SiIII_SiIIc": 0,
+                    "SiIIc_SiIIb": 0,
+                    "SiIIc_SiIIa": 0,
+                    "SiIIb_SiIIa": 0,
+                }
+
+                si_mult_cont_Si23[jj] = self.theory.model_cont.metal_models[
+                    "Si_mult"
+                ].get_contamination(
+                    z=np.array([zstar]),
+                    k_kms=[k_kms_inter],
+                    mF=np.array([mF]),
+                    like_params=free_params,
+                    remove=remove,
+                )[
+                    0
+                ]
+
+            per_siIII = np.percentile(si_mult_cont_SiIII, [16, 50, 84], axis=0)
+            per_siII = np.percentile(si_mult_cont_SiII, [16, 50, 84], axis=0)
+            per_si23 = np.percentile(si_mult_cont_Si23, [16, 50, 84], axis=0)
+            per_siall = np.percentile(si_mult_cont_all, [16, 50, 84], axis=0)
+
+            fig, ax = plt.subplots(4, figsize=(8, 6), sharey=True, sharex=True)
+            ax[0].plot(
+                k_kms_inter,
+                per_siIII[1],
+                label=r"Ly$\alpha$-SiIII",
+                alpha=0.75,
+                ls="-",
+                lw=2,
+                color="C0",
+            )
+            ax[0].fill_between(
+                k_kms_inter,
+                per_siIII[0],
+                per_siIII[2],
+                alpha=0.3,
+                color="C0",
+            )
+
+            ax[1].plot(
+                k_kms_inter,
+                per_siII[1],
+                label=r"Ly$\alpha$-SiII",
+                alpha=0.75,
+                ls="-",
+                lw=2,
+                color="C1",
+            )
+            ax[1].fill_between(
+                k_kms_inter,
+                per_siII[0],
+                per_siII[2],
+                alpha=0.3,
+                color="C1",
+            )
+
+            ax[2].plot(
+                k_kms_inter,
+                per_si23[1],
+                label=r"SiII-SiIII",
+                alpha=0.75,
+                ls="-",
+                lw=2,
+                color="C2",
+            )
+            ax[2].fill_between(
+                k_kms_inter,
+                per_si23[0],
+                per_si23[2],
+                alpha=0.3,
+                color="C2",
+            )
+
+            ax[3].plot(
+                k_kms_inter,
+                per_siall[1],
+                label=r"All",
+                alpha=0.75,
+                ls="-",
+                lw=2,
+                color="C3",
+            )
+            ax[3].fill_between(
+                k_kms_inter,
+                per_siall[0],
+                per_siall[2],
+                alpha=0.3,
+                color="C3",
+            )
+
+        # ax[3].scatter(k_kms, dat_si_mult_cont_all[0], s=30, color="C3")
+        for ii in range(4):
+            ax[ii].axhline(1, color="k", ls=":", lw=2)
+            ax[ii].legend(fontsize=ftsize - 4, loc="lower right")
+            ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
+        fig.supylabel(r"$C_\mathrm{metal}$", fontsize=ftsize)
+        ax[-1].set_xlabel(r"$k$ [s/km]", fontsize=ftsize)
+
+        plt.tight_layout()
+
+        if save_directory is not None:
+            name = os.path.join(save_directory, "cont_metal_mult")
+            plt.savefig(name + ".pdf")
+            plt.savefig(name + ".png")
+        else:
+            plt.show()
+
     def plot_igm(
         self,
         cloud=False,
+        chain=None,
         free_params=None,
         save_directory=None,
         zmask=None,
         plot_type="all",
         plot_fid=True,
+        lab_fid="mpg-central",
         ftsize=18,
     ):
         """Plot IGM histories"""
@@ -1874,26 +2440,100 @@ class Likelihood(object):
         #     pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
 
         zs = np.linspace(self.data.z.min(), self.data.z.max(), 100)
+        p0 = self.sampling_point_from_parameters()
+        p0[:] = 0.5
+        fid_params = self.parameters_from_sampling_point(p0)
         pars_fid = {}
         pars_fid["z"] = zs
         pars_fid["tau_eff"] = self.theory.model_igm.models[
             "F_model"
-        ].get_tau_eff(zs)
+        ].get_tau_eff(zs, like_params=fid_params)
         pars_fid["mF"] = self.theory.model_igm.models["F_model"].get_mean_flux(
-            zs
+            zs, like_params=fid_params
         )
         pars_fid["gamma"] = self.theory.model_igm.models["T_model"].get_gamma(
-            zs
+            zs, like_params=fid_params
         )
         pars_fid["sigT_kms"] = self.theory.model_igm.models[
             "T_model"
-        ].get_sigT_kms(zs)
+        ].get_sigT_kms(zs, like_params=fid_params)
         pars_fid["T0"] = (
-            self.theory.model_igm.models["T_model"].get_T0(zs) / 1e4
+            self.theory.model_igm.models["T_model"].get_T0(
+                zs, like_params=fid_params
+            )
+            / 1e4
         )
         pars_fid["kF_kms"] = self.theory.model_igm.models["P_model"].get_kF_kms(
-            zs
+            zs, like_params=fid_params
         )
+        if chain is not None:
+            if zmask is not None:
+                zs2 = zmask
+            else:
+                zs2 = self.data.z
+
+            pars_chain = {}
+            pars_chain["z"] = zs
+            pars_chain["tau_eff"] = np.zeros((chain.shape[0], zs.shape[0]))
+            pars_chain["mF"] = np.zeros((chain.shape[0], zs.shape[0]))
+            pars_chain["gamma"] = np.zeros((chain.shape[0], zs.shape[0]))
+            pars_chain["sigT_kms"] = np.zeros((chain.shape[0], zs.shape[0]))
+            pars_chain["T0"] = np.zeros((chain.shape[0], zs.shape[0]))
+
+            pars_chain2 = {}
+            pars_chain2["z"] = zs2
+            # pars_chain2["tau_eff"] = np.zeros((chain.shape[0], zs2.shape[0]))
+            pars_chain2["mF"] = np.zeros((chain.shape[0], zs2.shape[0]))
+            pars_chain2["gamma"] = np.zeros((chain.shape[0], zs2.shape[0]))
+            # pars_chain2["sigT_kms"] = np.zeros((chain.shape[0], zs2.shape[0]))
+            pars_chain2["T0"] = np.zeros((chain.shape[0], zs2.shape[0]))
+
+            for ii in range(chain.shape[0]):
+                chain_params = self.parameters_from_sampling_point(chain[ii, :])
+                # pars_chain["tau_eff"][ii] = self.theory.model_igm.models[
+                #     "F_model"
+                # ].get_tau_eff(zs, like_params=chain_params)
+                pars_chain["mF"][ii] = self.theory.model_igm.models[
+                    "F_model"
+                ].get_mean_flux(zs, like_params=chain_params)
+                pars_chain["gamma"][ii] = self.theory.model_igm.models[
+                    "T_model"
+                ].get_gamma(zs, like_params=chain_params)
+                # pars_chain["sigT_kms"][ii] = self.theory.model_igm.models[
+                #     "T_model"
+                # ].get_sigT_kms(zs, like_params=chain_params)
+                pars_chain["T0"][ii] = (
+                    self.theory.model_igm.models["T_model"].get_T0(
+                        zs, like_params=chain_params
+                    )
+                    / 1e4
+                )
+
+                pars_chain2["mF"][ii] = self.theory.model_igm.models[
+                    "F_model"
+                ].get_mean_flux(zs2, like_params=chain_params)
+                pars_chain2["gamma"][ii] = self.theory.model_igm.models[
+                    "T_model"
+                ].get_gamma(zs2, like_params=chain_params)
+                pars_chain2["T0"][ii] = (
+                    self.theory.model_igm.models["T_model"].get_T0(
+                        zs2, like_params=chain_params
+                    )
+                    / 1e4
+                )
+
+            tab_out = []
+            tab_out.append(zs2)
+            tab_out.append(
+                np.percentile(pars_chain2["mF"], [16, 50, 84], axis=0)
+            )
+            tab_out.append(
+                np.percentile(pars_chain2["T0"], [16, 50, 84], axis=0)
+            )
+            tab_out.append(
+                np.percentile(pars_chain2["gamma"], [16, 50, 84], axis=0)
+            )
+            pars_chain2 = 0
 
         if free_params is not None:
             if zmask is not None:
@@ -1942,8 +2582,9 @@ class Likelihood(object):
             #     r"$\gamma$",
             # ]
             arr_labs = ["mF", "T0", "gamma"]
+            nexp_mF = 1
             latex_labs = [
-                r"$\bar{F}$",
+                r"$(1+z)\bar{F}$",
                 r"$T_0[K]/10^4$",
                 r"$\gamma$",
             ]
@@ -1986,23 +2627,52 @@ class Likelihood(object):
                             label=lab,
                         )
 
-            _ = pars_fid[arr_labs[ii]] != 0
-
             if plot_fid:
+                _ = pars_fid[arr_labs[ii]] != 0
+                if arr_labs[ii] == "mF":
+                    norm = (1 + pars_fid["z"][_]) ** nexp_mF
+                else:
+                    norm = 1
+
                 ax[ii].plot(
                     pars_fid["z"][_],
-                    pars_fid[arr_labs[ii]][_],
-                    "C1--",
-                    label="fiducial",
+                    norm * pars_fid[arr_labs[ii]][_],
+                    "C3-",
+                    label=lab_fid,
                     alpha=0.75,
-                    lw=3,
+                    lw=2,
+                )
+
+            if chain is not None:
+                ax[ii].fill_between(
+                    pars_fid["z"][_],
+                    norm
+                    * np.percentile(pars_chain[arr_labs[ii]][:, _], 5, axis=0),
+                    norm
+                    * np.percentile(pars_chain[arr_labs[ii]][:, _], 95, axis=0),
+                    color="lightblue",
+                    alpha=0.5,
+                )
+                ax[ii].fill_between(
+                    pars_fid["z"][_],
+                    norm
+                    * np.percentile(pars_chain[arr_labs[ii]][:, _], 16, axis=0),
+                    norm
+                    * np.percentile(pars_chain[arr_labs[ii]][:, _], 84, axis=0),
+                    color="C0",
+                    alpha=0.5,
                 )
 
             if free_params is not None:
                 _ = pars_test[arr_labs[ii]] != 0
+                if arr_labs[ii] == "mF":
+                    norm = (1 + pars_test["z"][_]) ** nexp_mF
+                else:
+                    norm = 1
+
                 ax[ii].plot(
                     pars_test["z"][_],
-                    pars_test[arr_labs[ii]][_],
+                    norm * pars_test[arr_labs[ii]][_],
                     "C0:",
                     label="This study",
                     alpha=1,
@@ -2021,25 +2691,34 @@ class Likelihood(object):
                         pars_test["z"][_],
                         pars_test[arr_labs[ii]][_],
                     )
+                    if arr_labs[ii] == "mF":
+                        norm = (1 + self.args.fid_igm[lab]) ** nexp_mF
+                    else:
+                        norm = 1
                     ax[ii].scatter(
-                        self.args.fid_igm[lab], yy, marker="o", color="C0"
+                        self.args.fid_igm[lab],
+                        norm * yy,
+                        marker="o",
+                        color="C0",
                     )
 
             if arr_labs[ii] == "mF":
+                norm = (1 + gal21["z"]) ** nexp_mF
                 ax[ii].errorbar(
                     gal21["z"],
-                    gal21["mF"],
-                    yerr=gal21["mF_err"],
+                    norm * gal21["mF"],
+                    yerr=norm * gal21["mF_err"],
                     fmt="--",
                     color="C1",
-                    label="Galdwick+2021",
+                    label="Gaikwad+2021",
                     alpha=0.75,
                     lw=2,
                 )
+                norm = (1 + tu24["z"]) ** nexp_mF
                 ax[ii].errorbar(
                     tu24["z"],
-                    tu24["mF"],
-                    yerr=tu24["mF_err"],
+                    norm * tu24["mF"],
+                    yerr=norm * tu24["mF_err"],
                     fmt="-.",
                     color="C2",
                     label="Turner+2024",
@@ -2073,7 +2752,7 @@ class Likelihood(object):
             if ii == 0:
                 if arr_labs[ii] != "mF":
                     ax[ii].set_yscale("log")
-                ax[ii].legend(fontsize=ftsize - 4, loc="lower left")
+                ax[ii].legend(fontsize=ftsize - 4, loc="lower left", ncol=2)
 
             if (ii == 2) | (ii == len(arr_labs) - 1):
                 ax[ii].set_xlabel(r"$z$", fontsize=ftsize)
@@ -2082,7 +2761,7 @@ class Likelihood(object):
             ax[ii].tick_params(axis="both", which="minor", labelsize=ftsize - 2)
             ax[ii].yaxis.set_major_locator(MaxNLocator(nbins=3, prune=None))
 
-        ax[0].set_ylim(0.09)
+        # ax[0].set_ylim(0.09)
         plt.tight_layout()
 
         if save_directory is not None:
@@ -2091,6 +2770,8 @@ class Likelihood(object):
             plt.savefig(name + ".png")
         else:
             plt.show()
+
+        return tab_out
 
     def plot_cov_terms(self, save_directory=None):
         npanels = int(np.round(np.sqrt(len(self.cov_Pk_kms))))

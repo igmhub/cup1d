@@ -66,33 +66,151 @@ base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 
 variations = {
     "DESIY1_QMLE3_mpg": ["Fiducial", "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"],
-    # "zmax": ["Data: $z \\leq 3.4$", "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_3/"],
-    # "zmin": ["Data: $z \\geq 2.6$", "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_3/"],
-    # "DESIY1_QMLE_mpg": ["Data: w/ low SNR", "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_6/"],
-    # "DESIY1_FFT3_dir_mpg": ["Data: FFT", "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_3/"],
-    # "DESIY1_FFT_dir_mpg": ["Data: FFT w/ low SNR", "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_5/"],
-    # "no_emu_cov": ["Cov: w/o emu err", "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_4/"],
-    # "no_inflate": ["Cov: w/o 5\% err", "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_4/"],
-    # "no_inflate_no_emu_cov": ["Cov: w/o emu, 5\% err", "DESIY1_QMLE3/no_inflate_no_emu_cov/CH24_mpgcen_gpr/chain_4/"],
-    # "DESIY1_QMLE3_nyx": ["Model: emulator", "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_2/"],
-    # "cosmo": ["Model: $\omega_0\omega_a$CDM", "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_4/"],
-    # "cosmo_high": ["Model: high $\Omega_\mathrm{M}h^2$", "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"],
-    # "cosmo_low": ["Model: low $\Omega_\mathrm{M}h^2$", "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"],
-    # "more_igm": ["Model: IGM $n_z=8$", "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_4/"],
-    # "less_igm": ["Model: IGM $n_z=4$", "DESIY1_QMLE3/less_igm/CH24_mpgcen_gpr/chain_4/"],
-    # "Turner24": [r"Model: Turner+24", "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_3/"],
-    # "hcd_z": ["Model: HCD $n_z=2$", "DESIY1_QMLE3/hcd_z/CH24_mpgcen_gpr/chain_4/"],
-    # "metals_z": ["Model: metals $n_z=2$", "DESIY1_QMLE3/metals_z/CH24_mpgcen_gpr/chain_4/"],
-    # "no_res": ["Model: no resolution", "DESIY1_QMLE3/no_res/CH24_mpgcen_gpr/chain_4/"],
-    # "metal_thin": ["Model: metal thin", "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_3/"],
-    # "metal_deco": ["Model: no metal decorr", "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_4/"],
-    # "metal_si2": ["Model: no SiII-SiII", "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_4/"],
-    # "metal_trad": ["Model: trad metal", "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_4/"],
+    "zmax": ["Data: $z \\leq 3.4$", "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_1/"],
+    "zmin": ["Data: $z \\geq 2.6$", "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_1/"],
+    
+    "DESIY1_QMLE_mpg": ["Data: w/ low SNR", "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_1/"],
+    "DESIY1_FFT3_dir_mpg": ["Data: FFT", "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_1/"],
+    # "DESIY1_FFT_dir_mpg": ["Data: FFT w/ low SNR", "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_1/"],
+    
+    "no_emu_cov": ["Cov: w/o emu err", "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_1/"],
+    "no_inflate": ["Cov: w/o 5\% err", "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_1/"],
+    "no_inflate_no_emu_cov": ["Cov: w/o emu, 5\% err", "DESIY1_QMLE3/no_inflate_no_emu_cov/CH24_mpgcen_gpr/chain_1/"],
+    
+    "DESIY1_QMLE3_nyx": ["Model: lace-lyssa", "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_1/"],
+    
+    "cosmo": ["Model: $\omega_0\omega_a$CDM", "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/"],
+    "cosmo_high": ["Model: high $\Omega_\mathrm{M}h^2$", "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_1/"],
+    "cosmo_low": ["Model: low $\Omega_\mathrm{M}h^2$", "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/"],
+    
+    "more_igm": ["Model: IGM $n_z=8$", "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_1/"],
+    "less_igm": ["Model: IGM $n_z=4$", "DESIY1_QMLE3/less_igm/CH24_mpgcen_gpr/chain_1/"],
+    "Turner24": ["Model: $\\bar{F}\\, n_z=1$", "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_1/"],
+    
+    "hcd_z": ["Model: HCD $n_z=2$", "DESIY1_QMLE3/hcd_z/CH24_mpgcen_gpr/chain_1/"],
+    "dlas": ["Model: only DLAs", "DESIY1_QMLE3/DLAs/CH24_mpgcen_gpr/chain_1/"],
+    
+    "metals_z": ["Model: metals $n_z=2$", "DESIY1_QMLE3/metals_z/CH24_mpgcen_gpr/chain_1/"],
+    "metal_trad": ["Model: trad metal", "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_1/"],
+    "metal_thin": ["Model: metal thin", "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_1/"],
+    "metal_deco": ["Model: no metal decorr", "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_1/"],
+    "metal_si2": ["Model: no SiII-SiII", "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_1/"],
+    
+    "no_res": ["Model: no resolution", "DESIY1_QMLE3/no_res/CH24_mpgcen_gpr/chain_1/"],
+    
+    # "sim_mpg_central": ["Val: mpg-central simulation", "DESIY1_QMLE3/sim_mpg_central/CH24_mpgcen_gpr/chain_1/"],
+    # "sim_mpg_central_igm": ["Val: mpg-central simulation only IGM", "DESIY1_QMLE3/sim_mpg_central_igm/CH24_mpgcen_gpr/chain_1/"],
+    # "sim_mpg_central_igm0": ["Val: mpg-central simulation only cosmo", "DESIY1_QMLE3/sim_mpg_central_igm0/CH24_mpgcen_gpr/chain_1/"],
+    # "sim_nyx_central": ["Val: nyx-central simulation", "DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_1/"],
+    # "sim_sherwood": ["Val: sherwood simulation", "DESIY1_QMLE3/sim_sherwood/CH24_mpgcen_gpr/chain_1/"],
+}
+variations = {
+    "DESIY1_QMLE3_mpg": ["Fiducial", "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"],
 }
 
 for ii, var in enumerate(variations):
     folder = os.path.join(base, variations[var][1])
     plots_chain(folder)
+
+# %%
+from cup1d.utils.utils import purge_chains
+
+# %%
+help(purge_chains)
+
+# %%
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+# chain = np.load(base + folder + "chain.npy")
+chain = 0
+# blobs = np.load(base + folder + "blobs.npy")
+# lnprob = np.load(base + folder + "lnprob.npy")
+
+# mask, other = purge_chains(lnprob)
+
+# for ii in range(other.shape[0]):
+# # for ii in range(5):
+#     # print(np.median(lnprob[:, other[ii]]))
+#     plt.plot(lnprob[:, other[ii]])
+
+# %%
+from cup1d.plots.plots_corner import prepare_data
+from cup1d.utils.various_dicts import param_dict
+
+# %%
+labels, lnprob, dat, priors, dat_Asns = prepare_data(base + folder)
+
+# %%
+dat = dat.reshape(-1, dat.shape[-1])
+
+for ii in range(2, dat.shape[-1]):
+    if ("sigT_kms" in labels[ii]) | ("gamma" in labels[ii]) | ("R_coeff_" in labels[ii]):
+        pass
+    else:
+        dat[:, ii] = np.exp(dat[:, ii])
+        if labels[ii].startswith("s_"):
+            dat[:, ii] = 1 / dat[:, ii]
+
+# %%
+# Compute percentiles
+p16, p50, p84 = np.percentile(dat, [16, 50, 84], axis=0)
+
+# Asymmetric errors
+err_minus = p50 - p16
+err_plus  = p84 - p50
+
+
+# %%
+def format_value_with_error(m, ep, em):
+    if ep == 0 or em == 0 or np.isnan(ep) or np.isnan(em):
+        return f"${m:.2f}^{{+{ep:.2f}}}_{{-{em:.2f}}}$"
+    
+    # Use scientific notation if either error is < 1e-3
+    if min(ep, em) < 1e-3:
+        exp = int(np.floor(np.log10(abs(m)))) if m != 0 else 0
+        scale = 10**exp
+        m_s, ep_s, em_s = m/scale, ep/scale, em/scale
+        return f"${m_s:.2f}^{{+{ep_s:.2f}}}_{{-{em_s:.2f}}}\\times10^{{{exp}}}$"
+    
+    # Otherwise, use two significant digits for the errors
+    exp_err = int(np.floor(np.log10(min(ep, em))))
+    ndec = max(-exp_err + 1, 0)
+    m_str  = f"{m:.{ndec}f}"
+    ep_str = f"{ep:.{ndec}f}"
+    em_str = f"{em:.{ndec}f}"
+    return f"${m_str}^{{+{ep_str}}}_{{-{em_str}}}$"
+
+
+
+# %%
+
+# # Print each row
+# ii = 0
+# for label, m, ep, em in zip(labels, p50, err_plus, err_minus):
+#     formatted = format_value_with_error(m, ep, em)
+#     if ii > 10:
+#         print(f"{param_dict[label]:<45} & {formatted}\\\\")
+#     ii += 1
+
+# %%
+
+imin = 20
+n = len(labels) - imin
+half = (n + 1) // 2  # split index
+for ii in range(half):
+    i = ii + imin
+    left_label = param_dict[labels[i]]
+    left_value = format_value_with_error(p50[i], err_plus[i], err_minus[i])
+    if i > 1:
+        if i + half < n + imin:
+            right_label = param_dict[labels[i + half]]
+            right_value = format_value_with_error(p50[i + half], err_plus[i + half], err_minus[i + half])
+            print(f"{left_label:<10} & {left_value:<20} & {right_label:<10} & {right_value} \\\\")
+        else:
+            # Odd number of parameters
+            print(f"{left_label:<10} & {left_value:<20} & & \\\\")
+
+# %%
 
 # %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
@@ -177,18 +295,18 @@ for ii, var in enumerate(variations):
     table.append(row)
 
 # %%
-chi2_scipy.sf(1, 1)
+# chi2_scipy.sf(1, 1)
 
 # %%
 # blobs = np.load(base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/blobs.npy")
 # np.corrcoef(blobs["Delta2_star"].reshape(-1), blobs["n_star"].reshape(-1))[1,0]
-
-# %%
-
-# %%
 blobs = 0
 chain = 0
 
+
+# %%
+
+# %%
 
 # %%
 def format_last_column(values):
@@ -254,12 +372,12 @@ def match_precision(x, xp, xm, sig=2):
 def format_last(val):
     """Scientific notation if |val| < 1e-3 (and val != 0), else 4 decimals."""
     if val == 0:
-        return "0.0000"
-    if abs(val) < 1e-3:
+        return "0.00"
+    if abs(val) < 1e-2:
         coeff, exp = f"{val:.1e}".split("e")
         exp = int(exp)
         return f"${coeff}\\times10^{{{exp}}}$"
-    return f"{val:.4f}"
+    return f"{val:.2f}"
 
 
 def make_latex_table(table, color_threshold=0.25, color="red"):
@@ -332,32 +450,14 @@ def make_latex_table(table, color_threshold=0.25, color="red"):
 make_latex_table(table)
 
 # %%
-1-(0.04 + 0.034)/(0.044 + 0.037)
 
 # %%
-1-(0.026+0.020)/(0.031 + 0.024)
-
-# %%
-1-(0.017+0.014)/(0.031 + 0.024)
-
-# %%
-0.0119/0.0041
-
-# %%
-0.5 * (dict_out["n_star_16_50_84"][2] - dict_out["n_star_16_50_84"][0])
-
-# %%
-dict_out
-
-# %%
-
-# %%
-# emulator_label = "CH24_mpgcen_gpr"
-emulator_label = "CH24_nyxcen_gpr"
+emulator_label = "CH24_mpgcen_gpr"
+# emulator_label = "CH24_nyxcen_gpr"
 
 
-# data_label = "mpg_central"
-data_label = "nyx_central"
+data_label = "mpg_central"
+# data_label = "nyx_central"
 # data_label = "nyx_seed"
 # data_label = "nyx_cgan_base"
 # data_label = "accel2"
@@ -376,7 +476,10 @@ else:
 true_cosmo_label = data_label
 fid_cosmo_label = data_label
 name_variation= "sim_" + data_label
-fit_type = "global_igm"
+name_variation= "sim_" + data_label + "_igm"
+name_variation= "sim_" + data_label + "_igm0"
+fit_type = "global_opt"
+
 args = Args(
     data_label=data_label, 
     cov_label="DESIY1_QMLE3", 
@@ -404,13 +507,59 @@ args.nyx_training_set = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
 archive_mock = set_archive(training_set=args.nyx_training_set)
 
 # %%
-for sim in archive_mock.data:
+archive_mock = set_archive(training_set="Cabayol23")
+
+# %%
+central = archive_mock.get_testing_data("nyx_central")
+
+# %%
+seed = archive_mock.get_testing_data("nyx_seed")
+
+# %%
+mpg_central = archive_mock.get_testing_data("mpg_central")
+mpg_seed = archive_mock.get_testing_data("mpg_seed")
+
+# %%
+# mpg_central[-2]
+
+# %%
+_ = (central[0]["k_Mpc"] < 2) & (central[0]["k_Mpc"] > 0.1)
+mean1 = np.median(central[0]["p1d_Mpc"][_]/seed[1]["p1d_Mpc"][_])
+plt.plot(central[0]["k_Mpc"][_], (central[0]["p1d_Mpc"]/seed[1]["p1d_Mpc"])[_] - mean1, label="nyx-central/nyx-seed-1")
+std1 = np.std((central[0]["p1d_Mpc"]/seed[1]["p1d_Mpc"])[_] - mean1)
+
+_ = (mpg_central[-2]["k_Mpc"] < 2) & (mpg_central[-2]["k_Mpc"] > 0.1)
+mean2 = np.median(mpg_central[-2]["p1d_Mpc"][_]/mpg_seed[-2]["p1d_Mpc"][_])
+plt.plot(mpg_central[-2]["k_Mpc"][_], (mpg_central[-2]["p1d_Mpc"]/mpg_seed[-2]["p1d_Mpc"])[_]-mean2, label="mpg-central/mpg-seed-1")
+std2 = np.std((mpg_central[-2]["p1d_Mpc"]/mpg_seed[-2]["p1d_Mpc"])[_]-mean2)
+
+plt.legend()
+plt.axhline(0, color="k")
+plt.xlim(0.1,4)
+plt.ylim(-0.04,0.04)
+plt.xscale("log")
+plt.xlabel("k[1/Mpc]")
+plt.ylabel("Relative difference")
+plt.savefig("cosmic_variance_nyx_mpg.png")
+
+# %%
+87.7/29.3
+
+# %%
+std2
+
+# %%
+std1/std2
+
+# %%
+for ii, sim in archive_mock.data:
     if sim["sim_label"] == "nyx_seed":
+        print(sim)
         break
 
 # %%
-pip = Pipeline(args, archive=archive_mock)
-# pip = Pipeline(args)
+# pip = Pipeline(args, archive=archive_mock)
+pip = Pipeline(args)
 
 # %%
 # np.load("/home/jchaves/Proyectos/projects/lya/data/nyx/nyx_emu_cosmo_models_Nyx_Mar2025_with_CGAN_val_3axes.npy", allow_pickle=True).item()
@@ -428,6 +577,9 @@ pip.fitter.like.get_chi2(p0)
 # %%
 for par in pip.fitter.like.free_params:
     print(par.name, par.value, par.min_value, par.max_value)
+
+# %%
+name_variation
 
 # %%
 pip.fitter.like.plot_p1d()
@@ -553,13 +705,18 @@ variations = [
 # name_variation = variations[12]
 # name_variation = "metals_z"
 # name_variation = "all_inflate"
-# name_variation = "no_inflate"
 # name_variation = "Turner24"
 
 data_label = "DESIY1_QMLE3"
 # data_label = "DESIY1_FFT3_dir"
 name_variation = None
-name_variation = "DLAs"
+# name_variation = "no_inflate"
+# name_variation = "no_emu_cov"
+# name_variation = "no_inflate_no_emu_cov"
+
+# name_variation = "metal_deco"
+# name_variation = "metal_si2"
+# name_variation = "no_res"
 
 args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
 args.set_baseline(
@@ -573,16 +730,141 @@ pip = Pipeline(args, out_folder=args.out_folder)
 
 
 # %%
+data_lab = "DESIY1_QMLE3"
+fit_type = "global_opt"
+emu = "mpg"
+folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/chain_1/"
+data = np.load(folder + "fitter_results.npy", allow_pickle=True).item()
+p0 = data["fitter"]["mle_cube"]
+free_params = pip.fitter.like.parameters_from_sampling_point(p0)
+
+# %%
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+chain = np.load(base + folder + "chain.npy")
+
+# %%
+0.0075/0.00345
+
+# %%
+
+# %%
+0.0061/(0.5*(0.0045 + 0.0036))
+
+# %%
+zstar = 3
+pip.fitter.like.plot_metal_cont_mult(chain=chain, zstar=zstar, save_directory="figs")
+
+# %%
+pip.fitter.like.plot_metal_cont_add(free_params=free_params, chain=chain, save_directory="figs")
+
+# %%
+zstar = 3
+pip.fitter.like.plot_hcd_cont(p0=p0, chain=chain, zstar=zstar, save_directory="figs")
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+chain = chain.reshape(-1, chain.shape[-1])
+p0 = np.median(chain, axis=0);
+
+# %%
+ind = np.random.permutation(np.arange(0, chain.shape[0]))[:20000]
+
+# %%
+# 
+free_params = pip.fitter.like.parameters_from_sampling_point(p0)
+tab_out = pip.fitter.like.plot_igm(
+    free_params=free_params,
+    plot_fid=True,
+    plot_type="tau_sigT",
+    cloud=False,
+    ftsize=20,
+    chain=chain[ind, :],
+    save_directory="figs",
+)
+
+
+# %% editable=true slideshow={"slide_type": ""}
+def format_asym_error(arr):
+    """Format median + errors from percentiles (arr[0]=16th, arr[1]=50th, arr[2]=84th)."""
+    lower = arr[1] - arr[0]
+    upper = arr[2] - arr[1]
+    
+    # Determine number of decimal places based on the smaller error (2 significant figures)
+    err = min(lower, upper)
+    if err == 0:
+        ndec = 2
+    else:
+        exp = int(np.floor(np.log10(abs(err))))
+        ndec = max(-exp + 1, 0)
+    
+    m_str = f"{arr[1]:.{ndec}f}"
+    upper_str = f"{upper:.{ndec}f}"
+    lower_str = f"{lower:.{ndec}f}"
+    
+    return f"${m_str}^{{+{upper_str}}}_{{-{lower_str}}}$"
+
+
+# %%
+z, mF, T0, gamma = tab_out
+
+# %%
+print(r"\begin{tabular}{cccc}")
+print(r"$z$ & $\bar{F}$ & $T_0[K]/10^4$ & $\gamma$ \\")
+print(r"\hline")
+
+for i in range(z.shape[0]):
+    mF_str = format_asym_error(mF[:, i])
+    T0_str = format_asym_error(T0[:, i])
+    gamma_str = format_asym_error(gamma[:, i])
+    print(f"{z[i]:.2f} & {mF_str} & {T0_str} & {gamma_str} \\\\")
+    # print(r"\hline")
+
+print(r"\end{tabular}")
+
+# %%
+for ii in range(len(z)):
+    print(
+
+# %%
+# std_mpg = np.sqrt(np.diag(pip.fitter.like.emu_full_cov_Pk_kms)).copy()
+# std_nyx = np.sqrt(np.diag(pip.fitter.like.emu_full_cov_Pk_kms)).copy()
+# np.mean(std_nyx/std_mpg)
+
+# %%
+pip.fitter.like.free_param_names[26]
+
+# %%
+
+# %%
+
+# %%
 
 p0 = pip.fitter.like.sampling_point_from_parameters().copy()
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
 
 # %%
+
+# %%
+
+# %%
+# pip.fitter.like.theory.model_cont.metal_models["Si_add"].coeffs
+
+# %%
 pip.fitter.like.plot_p1d(p0)
 # pip.fitter.like.plot_cov_to_pk(fname="figs/nyx_err2p1d_qmle3")
 
 # %%
+# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
+pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False, fix_cosmo=False, plot_fname="figs/residual_fid_opt_global")
+
+# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
 
 # %%
 npoints = 0
@@ -591,18 +873,18 @@ for ii in range(len(pip.fitter.like.data.z)):
 npoints - len(pip.fitter.like.free_param_names)
 
 # %%
-data_lab = "DESIY1_QMLE3"
-fit_type = "global_opt"
-emu = "mpg"
-folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
-data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
+# data_lab = "DESIY1_QMLE3"
+# fit_type = "global_opt"
+# emu = "mpg"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/"
+# data_cen = np.load(folder + "best_dircosmo.npy", allow_pickle=True).item()
 
 
-ii = 556
-type_prof = "prof_2d_deep"
-data_best = np.load(folder + type_prof + "/profile_"+str(ii)+ ".npy", allow_pickle=True).item()
+# ii = 556
+# type_prof = "prof_2d_deep"
+# data_best = np.load(folder + type_prof + "/profile_"+str(ii)+ ".npy", allow_pickle=True).item()
 
-data_best.keys()
+# data_best.keys()
 
 # %%
 data_best["chi2"]
@@ -697,10 +979,6 @@ pip.fitter.like.get_chi2(p0)
 # res
 
 # %%
-# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
-pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False, fix_cosmo=False, plot_fname="figs/residual_fid_opt_global")
-
-# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
 
 # %%
 677.23 - 593.67
@@ -711,6 +989,10 @@ pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False,
 # p0[14] = 0.5
 # p0 = p0min
 pip.run_minimizer(p0, restart=True)
+
+# %%
+Delta2_star 0.46458
+n_star -2.26928
 
 # %%
 p0 = pip.fitter.mle_cube
@@ -831,7 +1113,7 @@ pip.fitter.like.plot_p1d(p0min, residuals=True, plot_panels=True, plot_fname="fi
 pip.fitter.like.plot_cov_to_pk(fname="figs/err2p1d_qmle3")
 
 
-# %% [markdown]
+# %% [markdown] jp-MarkdownHeadingCollapsed=true
 # ### Get some data for Sec results
 
 # %%

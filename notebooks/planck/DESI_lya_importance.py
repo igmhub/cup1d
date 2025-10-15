@@ -118,12 +118,12 @@ cmb_nnu = planck_chains.get_planck_2018(
 #     linP_tag=None
 # )
 
-# cmb_w_wa = planck_chains.get_planck_2018(
-#     model='base_w_wa',
-#     data='plikHM_TTTEEE_lowl_lowE_BAO_linP',
-#     root_dir=root_dir,
-#     linP_tag=None
-# )
+cmb_w_wa = planck_chains.get_planck_2018(
+    model='base_w_wa',
+    data='plikHM_TTTEEE_lowl_lowE_BAO_linP',
+    root_dir=root_dir,
+    linP_tag=None
+)
 
 
 # cmb_nrun_nnu_w_mnu = planck_chains.get_planck_2018(
@@ -134,25 +134,45 @@ cmb_nnu = planck_chains.get_planck_2018(
 # )
 
 # %%
-{'x0': 0.443151934816415,
- 'y0': -2.2830673979023928,
- 'a': 0.05671364141407182,
- 'b': 0.02081226136234671,
- 'theta': -0.13448802462450818}
+# cmb["samples"].getParamSampleDict(0).keys()
 
 # %%
-cmb["samples"].getParamSampleDict(0).keys()
+# fit_type = "global_opt"
+# data_lab = "DESIY1_QMLE3"
+# emu = "mpg"
+# file = "../tutorials/out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
+# out_dict = np.load(file, allow_pickle=True).item()
+
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+
+dat_mpg = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+true_cosmo = {}
+true_cosmo["Delta2_star"] = 0.12
+true_cosmo["n_star"] = 0.03
 
 # %%
-fit_type = "global_opt"
-data_lab = "DESIY1_QMLE3"
-emu = "mpg"
-file = "../tutorials/out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
-out_dict = np.load(file, allow_pickle=True).item()
+
+blobs = np.load(folder + "blobs.npy")
+per_ds = np.percentile(blobs["Delta2_star"].reshape(-1), [16, 50, 84])
+per_ns = np.percentile(blobs["n_star"].reshape(-1), [16, 50, 84])
+
+# %%
+print(np.round(per_ds[2] - per_ds[1], 3))
+print(np.round(per_ds[1] - per_ds[0], 3))
+
+print(np.round(per_ns[2] - per_ns[1], 3))
+print(np.round(per_ns[1] - per_ns[0], 3))
+
+# %%
+
+# %%
 
 # %%
 ftsize = 22
-lw = 3
+cmap = plt.colormaps["Blues"]
+col = [0.7, 0.3]
+lw = [3, 2]
 cmb_all = [cmb, cmb_tau, cmb_mnu, cmb_nnu, cmb_nrun, cmb_nrun_nrunrun]
 cmb_labs = [
     r"Planck $\Lambda$CDM", 
@@ -164,42 +184,59 @@ cmb_labs = [
 ]
 
 g = plots.getSinglePlotter(width_inch=10)
-g.settings.num_plot_contours = 1
+g.settings.num_plot_contours = 2
 
 for ii, icmb in enumerate(cmb_all):
     if ii == 0:
-        filled = True
+        filled = False
+        lwu = 5
     else:
         filled = False
+        lwu = 2
     g.plot_2d(
         icmb['samples'], 
         ['linP_DL2_star', 'linP_n_star'], 
-        colors=["C"+str(ii)], 
-        lws=lw, 
-        alphas=0.8,
+        colors=["C"+str(ii+1)], 
+        lws=lwu, 
+        alphas=[0.8, 0.5],
         filled=filled,
     )
 
 ax = g.subplots[0,0]
-ax.axhline(y=1,color='k',lw=lw,label=r"DESI-DR1 Ly$\alpha$ (this work)")
+
+
+for inum, num in enumerate([0.68, 0.95]):
+    if inum == 0:
+        label="This work"
+    else:
+        label=None
+    for jj in range(len(dat_mpg[num])):
+        x = dat_mpg[num][jj][0] - true_cosmo["Delta2_star"]
+        y = dat_mpg[num][jj][1] - true_cosmo["n_star"]
+        ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
+        ax.fill(x, y, color=cmap(col[inum]), alpha=0.5)
+
+# ax.axhline(y=1,color='k',lw=lw,label=r"DESI-DR1 Ly$\alpha$ (this work)")
 for ii, icmb in enumerate(cmb_all):
-    ax.axhline(y=1,color="C"+str(ii),lw=lw,label=cmb_labs[ii])    
+    ax.axhline(y=1,color="C"+str(ii+1),lw=lw[0],label=cmb_labs[ii])    
 
 
+# true_DL2=0.35
+# true_neff=-2.3
 
-true_DL2=0.35
-true_neff=-2.3
-
-# DL2_err = 0.056
-# neff_err = 0.022
-# r=-0.134
+# DL2_err = 0.043
+# neff_err = 0.025
+# # r=-0.134
+# r=0.1
 # thresholds = [2.30, 6.18]
-thresholds = [2.30]
-neff_grid, DL2_grid = np.mgrid[-2.4:-2.2:200j, 0.2:0.65:200j]
+# # thresholds = [2.30]
+# neff_grid, DL2_grid = np.mgrid[-2.4:-2.2:200j, 0.2:0.65:200j]
+
+# coeff_mult = 0.5 # just for importance sampling
+# coeff_mult = 1
 
 # chi2_desi = coeff_mult * marg_lya_like.gaussian_chi2(neff_grid,DL2_grid, true_neff, true_DL2, neff_err, DL2_err, r)
-chi2_desi = marg_lya_like.gaussian_chi2(neff_grid, DL2_grid, true_neff, true_DL2, out_dict["err_n_star"], out_dict["err_Delta2_star"], out_dict["rho"])
-CS = ax.contour(DL2_grid, neff_grid, chi2_desi, levels=thresholds[:2], colors='k', linewidths=lw)
+# CS = ax.contour(DL2_grid, neff_grid, chi2_desi, levels=thresholds[:2], colors='k', linewidths=lw)
 
 
 
@@ -280,10 +317,13 @@ new_loglike.shape
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
 true_neff=[-2.295,-2.30,-2.305]
-DL2_err = out_dict["err_Delta2_star"]
-neff_err = out_dict["err_n_star"]
-r=out_dict["rho"]
-coeff_mult = 1
+# DL2_err = out_dict["err_Delta2_star"]
+# neff_err = out_dict["err_n_star"]
+# r=out_dict["rho"]
+DL2_err = 0.043
+neff_err = 0.025
+r=0.1
+coeff_mult = 0.5
 # coeff_mult = 2.3 # should it be 0.5?
 
 chain_type = cmb
@@ -375,10 +415,14 @@ plt.savefig("figs/import_tau.pdf")
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
 true_neff=[-2.295,-2.30,-2.305]
-DL2_err = 0.056
-neff_err = 0.022
-r=-0.134
-coeff_mult = 2.3 # should it be 0.5?
+# DL2_err = 0.056
+# neff_err = 0.022
+# r=-0.134
+# coeff_mult = 2.3 # should it be 0.5?
+DL2_err = 0.043
+neff_err = 0.025
+r=0.1
+coeff_mult = 0.5
 
 chain_type = cmb_w_wa
 
@@ -454,10 +498,14 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
 true_neff=[-2.295,-2.30,-2.305]
-DL2_err = 0.056
-neff_err = 0.022
-r=-0.134
-coeff_mult = 2.3 # should it be 0.5?
+# DL2_err = 0.056
+# neff_err = 0.022
+# r=-0.134
+# coeff_mult = 2.3 # should it be 0.5?
+DL2_err = 0.043
+neff_err = 0.025
+r=0.1
+coeff_mult = 0.5
 
 chain_type = cmb_mnu
 
@@ -520,10 +568,14 @@ cmb_nrun["samples"].getParamSampleDict(0).keys()
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
 true_neff=[-2.295,-2.30,-2.305]
-DL2_err = out_dict["err_Delta2_star"]
-neff_err = out_dict["err_n_star"]
-r=out_dict["rho"]
-coeff_mult = 1 # should it be 0.5?
+# DL2_err = out_dict["err_Delta2_star"]
+# neff_err = out_dict["err_n_star"]
+# r=out_dict["rho"]
+# coeff_mult = 1 # should it be 0.5?
+DL2_err = 0.043
+neff_err = 0.025
+r=0.1
+coeff_mult = 0.5
 
 chain_type = cmb_nrun
 
@@ -626,10 +678,14 @@ plt.savefig("figs/import_nnu.pdf")
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
 true_neff=[-2.295,-2.30,-2.305]
-DL2_err = out_dict["err_Delta2_star"]
-neff_err = out_dict["err_n_star"]
-r=out_dict["rho"]
-coeff_mult = 1 # should it be 0.5?
+# DL2_err = out_dict["err_Delta2_star"]
+# neff_err = out_dict["err_n_star"]
+# r=out_dict["rho"]
+# coeff_mult = 1 # should it be 0.5?
+DL2_err = 0.043
+neff_err = 0.025
+r=0.1
+coeff_mult = 0.5
 
 chain_type = cmb_nrun_nrunrun
 
@@ -677,10 +733,14 @@ plt.savefig("figs/import_nrun_nrunrun.pdf")
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
 true_neff=[-2.295,-2.30,-2.305]
-DL2_err = 0.056
-neff_err = 0.022
-r=-0.134
-coeff_mult = 2.3 # should it be 0.5?
+# DL2_err = 0.056
+# neff_err = 0.022
+# r=-0.134
+# coeff_mult = 2.3 # should it be 0.5?
+DL2_err = 0.043
+neff_err = 0.025
+r=0.1
+coeff_mult = 0.5
 
 chain_type = cmb_nrun_nnu_w_mnu
 

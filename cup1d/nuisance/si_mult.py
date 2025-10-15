@@ -182,6 +182,19 @@ class SiMult(Contaminant):
         rb3 = self.rat["SiIIb_SiIII"]
         rc3 = self.rat["SiIIc_SiIII"]
 
+        self.off = {
+            "SiIII_Lya": 1,
+            "SiIIa_Lya": 1,
+            "SiIIb_Lya": 1,
+            "SiIIc_Lya": 0,
+            "SiIII_SiIIa": 1,
+            "SiIII_SiIIb": 1,
+            "SiIII_SiIIc": 0,
+            "SiIIc_SiIIb": 0,
+            "SiIIc_SiIIa": 0,
+            "SiIIb_SiIIa": 0,
+        }
+
         if remove is not None:
             for key in remove:
                 if key in self.off:

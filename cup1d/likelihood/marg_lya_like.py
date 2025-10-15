@@ -73,6 +73,7 @@ def gaussian_chi2_Walther2024(neff, DL2, ana_type="priors"):
         neff_err = 0.0067
         # correlation coefficient
         r = 0.55
+        print("using prior")
     else:
         # DL2 = k^3 P(k) / (2 pi^2), at z=3
         DL2_val = 0.260
@@ -82,5 +83,6 @@ def gaussian_chi2_Walther2024(neff, DL2, ana_type="priors"):
         neff_err = 0.0066
         # correlation coefficient
         r = 0.55
+        print("no prior")
 
     return gaussian_chi2(neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r)
