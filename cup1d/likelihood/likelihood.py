@@ -2419,7 +2419,7 @@ class Likelihood(object):
     def plot_igm(
         self,
         cloud=False,
-        chain=None,
+        chain_uformat=None,
         free_params=None,
         save_directory=None,
         zmask=None,
@@ -2427,6 +2427,7 @@ class Likelihood(object):
         plot_fid=True,
         lab_fid="mpg-central",
         ftsize=18,
+        nelem=20000,
     ):
         """Plot IGM histories"""
 
@@ -2466,7 +2467,16 @@ class Likelihood(object):
         pars_fid["kF_kms"] = self.theory.model_igm.models["P_model"].get_kF_kms(
             zs, like_params=fid_params
         )
-        if chain is not None:
+
+        chain = None
+        if chain_uformat is not None:
+            if len(chain_uformat.shape) == 3:
+                chain = chain_uformat.reshape(-1, chain_uformat.shape[-1])
+            else:
+                chain = chain_uformat.copy()
+            ind = np.random.permutation(np.arange(0, chain.shape[0]))[:nelem]
+            chain = chain[ind]
+
             if zmask is not None:
                 zs2 = zmask
             else:
