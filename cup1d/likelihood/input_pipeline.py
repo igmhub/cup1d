@@ -813,6 +813,22 @@ class Args:
                     "HCD_damp3",
                     "HCD_damp4",
                 ]
+            elif name_variation == "HCD0":
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                    "HCD_const",
+                ]
             else:
                 baseline_prop = [
                     "f_Lya_SiIII",
@@ -897,7 +913,13 @@ class Args:
             self.fid_igm["gamma_znodes"] = np.geomspace(
                 self.z_min, self.z_max, nz_igm
             )
-            self.fid_igm["kF_kms_znodes"] = []
+
+            if name_variation == "kF_kms":
+                self.fid_igm["kF_kms_znodes"] = np.geomspace(
+                    self.z_min, self.z_max, nz_igm
+                )
+            else:
+                self.fid_igm["kF_kms_znodes"] = []
 
             for prop in props_igm:
                 self.fid_igm["n_" + prop] = len(self.fid_igm[prop + "_znodes"])
