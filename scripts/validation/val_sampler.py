@@ -8,6 +8,7 @@ from mpi4py import MPI
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
 from cup1d.utils.utils import get_path_repo
+from cup1d.plots_and_tables.plots_corner import plots_chain
 
 
 def main():

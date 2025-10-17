@@ -69,7 +69,7 @@ from cup1d.pipeline.set_archive import set_archive
 # plot_table_igm(base)
 
 # %%
-from cup1d.plots.plots_corner import plots_chain
+from cup1d.plots_and_tables.plots_corner import plots_chain
 
 # %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
@@ -264,7 +264,7 @@ name_variation = None
 # name_variation = "metal_si2"
 # name_variation = "no_res"
 # name_variation = "HCD0"
-name_variation = "kF_kms"
+# name_variation = "kF_kms"
 
 args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
 args.set_baseline(
