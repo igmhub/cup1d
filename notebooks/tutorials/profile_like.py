@@ -1145,6 +1145,13 @@ dat_no_res = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/DLAs/CH24_mpgcen_gpr/chain_1/"
 dat_dlas = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+
+folder = base + "DESIY1_QMLE3/kF_kms/CH24_mpgcen_gpr/chain_2/"
+dat_kF = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/HCD0/CH24_mpgcen_gpr/chain_2/"
+dat_HCD0 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 # -
 from cup1d.likelihood.cosmologies import set_cosmo
 from cup1d.likelihood import CAMB_model
@@ -1173,24 +1180,29 @@ dict_trans = {
     "no_inflate":"Cov: w/o 5% err",
     "no_inflate_no_emu_cov":"Cov: w/o emu, 5% err", 
     
-    "DESIY1_QMLE3_nyx":"Model: lace-lyssa",
+    "DESIY1_QMLE3_nyx":"Emulator: lace-lyssa",
     
-    "cosmo": "Model: $\omega_0\omega_a$CDM",  # different fiducial cosmo
-    "cosmo_low": "Model: low $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
-    "cosmo_high": "Model: high $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
+    "cosmo": "Cosmo: $\omega_0\omega_a$CDM",  # different fiducial cosmo
+    "cosmo_low": "Cosmo: low $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
+    "cosmo_high": "Cosmo: high $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
     
-    "more_igm": "Model: IGM $n_z=8$",  # 8 params for IGM evolution
-    "less_igm": "Model: IGM $n_z=4$",  # 4 params for IGM evolution
-    "Turner24": r"Model: $\bar{F}\, n_z=1$",  # mF from Turner24 with 1 free param to scale ERROR
-    "metals_z": "Model: metals $n_z=2$",  # 2 params for z ev metals
-    "hcd_z": "Model: HCD $n_z=2$",  # 2 params for z ev hcd
+    "more_igm": "IGM: $n_z=8$",  # 8 params for IGM evolution
+    "less_igm": "IGM: $n_z=4$",  # 4 params for IGM evolution
+    "Turner24": r"IGM: $\bar{F},\, n_z=1$",  # mF from Turner24 with 1 free param to scale ERROR
+    "kF_kms": r"IGM: w/ $k_\mathrm{F}$",
+
+    "hcd_z": "HCD: $n_z=2$",  # 2 params for z ev hcd
+    "DLAs": "HCD: only DLAs",  # no LLS, sub-DLA
+    "HCD0": "HCD: w/ $f_\\mathrm{const}^\\mathrm{HCD}$", # w/ constant term
     
-    "metal_trad": "Model: trad metal",  # 2 params for metals like eBOSS
-    "metal_si2": "Model: no SiII-SiII",  # no SiII-SiII cont
-    "metal_deco": "Model: no H-Si decorr",  # no decorrelation metals
-    "metal_thin": "Model: metal opt thin",  # no desviation from optically-thin limit ERROR
+    "metals_z": "Metals: $n_z=2$",  # 2 params for z ev metals
+    
+    "metal_trad": "Metals: traditional",  # 2 params for metals like eBOSS
+    "metal_si2": "Metals: no SiII-SiII",  # no SiII-SiII cont
+    "metal_deco": "Metals: no H-Si decorr",  # no decorrelation metals
+    "metal_thin": "Metals: opt thin",  # no desviation from optically-thin limit ERROR
+    
     "no_res": "Model: no resolution",  # no resolution correction
-    "DLAs": "Model: only DLAs",  # no LLS, sub-DLA
 
     "sim_mpg_central": "mpg-central", 
     "sim_mpg_central_all": "Model: cosmo, IGM, cont, syst", 
@@ -1201,10 +1213,23 @@ dict_trans = {
 }
 
 
-fname = ["data_diff", "cov", "cosmo", "modelz", "model_ing_yes", "model_ing_no", "data", "emu", "cosmo_Asns", "DLAs", "val_sims", "val_sims_model"]
+fname = [
+    "data_diff",
+    "cov",
+    "cosmo",
+    "modelz",
+    "model_ing_yes",
+    "model_ing_no",
+    "data",
+    "emu",
+    "cosmo_Asns",
+    "DLAs",
+    "val_sims",
+    "val_sims_model",
+    "test",
+]
 
-
-for image in range(4, 6):
+for image in range(10):
 
     # if image in [3, 4, 5]:
     #     ftsize = 26
@@ -1222,8 +1247,8 @@ for image in range(4, 6):
         variations = ["DESIY1_QMLE3_mpg", "cosmo", "cosmo_low", "cosmo_high"]
         dats = [dat_mpg, dat_cosmo, dat_cosmo_low, dat_cosmo_high]
     elif image == 3:
-        variations = ["DESIY1_QMLE3_mpg", "more_igm", "less_igm", "Turner24"]
-        dats = [dat_mpg, dat_more_igm, dat_less_igm, dat_turner]
+        variations = ["DESIY1_QMLE3_mpg", "more_igm", "less_igm", "kF_kms", "Turner24"]
+        dats = [dat_mpg, dat_more_igm, dat_less_igm, dat_kF, dat_turner]
     elif image == 4:
         variations = ["DESIY1_QMLE3_mpg", "no_res", "metals_z", "metal_trad"]
         dats = [dat_mpg, dat_no_res, dat_metals_z, dat_metal_trad]
@@ -1241,14 +1266,15 @@ for image in range(4, 6):
         dats = [dat_mpg_Asns, dat_cosmo_Asns, dat_cosmo_low_Asns, dat_cosmo_high_Asns]
         factx = 1e9
     elif image == 9:
-        variations = ["DESIY1_QMLE3_mpg", "hcd_z", "DLAs"]
-        dats = [dat_mpg, dat_hcd_z, dat_dlas]
+        variations = ["DESIY1_QMLE3_mpg", "hcd_z", "DLAs", "HCD0"]
+        dats = [dat_mpg, dat_hcd_z, dat_dlas, dat_HCD0]
     elif image == 10:
         variations = ["sim_mpg_central", "sim_nyx_central", "sim_sherwood"]
         dats = [dat_mpg_sim, dat_nyx_sim, dat_sherwood]
     elif image == 11:
         variations = ["sim_mpg_central_all", "sim_mpg_central_igm", "sim_mpg_central_igm0"]
         dats = [dat_mpg_sim, dat_mpg_igm, dat_mpg_igm0]
+
 
     dict_diff = {
         "xcen": np.median(dats[0][0.68][0][0]),
@@ -1302,18 +1328,47 @@ for image in range(4, 6):
     ax.axhline(color="k", ls=":")
     ax.axvline(color="k", ls=":")
 
-    # if image == 0:
-    #     loc = "lower right"
-    # else:
-    loc = "upper right"
+
+# fname = [
+#     "data_diff",
+#     "cov",
+#     "cosmo",
+#     "modelz",
+#     "model_ing_yes",
+#     "model_ing_no",
+#     "data",
+#     "emu",
+#     "cosmo_Asns",
+#     "DLAs",
+#     "val_sims",
+#     "val_sims_model",
+#     "test",
+# ]
     
+    if fname[image] in ["cov", "cosmo", "modelz", "model_ing_yes", "model_ing_no", "cosmo_Asns", "DLAs"]:
+        ymin, ymax = plt.ylim()
+        yrange = ymax - ymin
+        ax.set_ylim(ymin, ymax + 0.2 * yrange)
+
+    if fname[image] in ["modelz"]:
+        ncol = 2
+    else:
+        ncol = 1
+        
+    if fname[image] in ["data"]:
+        loc = "lower right"
+    else:
+        loc = "upper right"
     
-    plt.legend(fontsize=ftsize-4, loc=loc, ncol=1)
+    plt.legend(fontsize=ftsize-6, loc=loc, ncol=ncol)
     plt.tight_layout()
     plt.savefig("figs/variations_"+fname[image]+".pdf")
     plt.savefig("figs/variations_"+fname[image]+".png")
 # -
+if fname[image] in ["cosmo"]:
+    print("a")
 
+fname[image]
 
 
 

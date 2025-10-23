@@ -25,10 +25,18 @@ def format_asym_error(arr):
     return f"${m_str}^{{+{upper_str}}}_{{-{lower_str}}}$"
 
 
-def plot_table_igm(base, save_fig=None):
-    data_label = "DESIY1_QMLE3"
-    name_variation = None
-    args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
+def plot_table_igm(
+    base,
+    save_fig=None,
+    data_label="DESIY1_QMLE3",
+    name_variation=None,
+):
+    if name_variation is None:
+        emulator_label = "CH24_mpgcen_gpr"
+    elif name_variation == "nyx":
+        emulator_label = "CH24_nyxcen_gpr"
+
+    args = Args(data_label=data_label, emulator_label=emulator_label)
     args.set_baseline(
         fit_type="global_opt",
         fix_cosmo=False,
@@ -37,7 +45,8 @@ def plot_table_igm(base, save_fig=None):
     )
     pip = Pipeline(args, out_folder=args.out_folder)
 
-    folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+    folder = data_label + "/global_opt/" + emulator_label + "/chain_1/"
+    print("Read data from: " + base + folder)
 
     data = np.load(
         base + folder + "fitter_results.npy", allow_pickle=True

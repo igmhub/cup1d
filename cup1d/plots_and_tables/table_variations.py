@@ -175,59 +175,67 @@ def table_variations(base):
             "DESIY1_QMLE3/no_inflate_no_emu_cov/CH24_mpgcen_gpr/chain_1/",
         ],
         "DESIY1_QMLE3_nyx": [
-            "Model: lace-lyssa",
+            "Emulator: lace-lyssa",
             "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_1/",
         ],
         "cosmo": [
-            "Model: $\omega_0\omega_a$CDM",
+            "Cosmo: $\omega_0\omega_a$CDM",
             "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/",
         ],
         "cosmo_high": [
-            "Model: high $\Omega_\mathrm{M}h^2$",
+            "Cosmo: high $\Omega_\mathrm{M}h^2$",
             "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_1/",
         ],
         "cosmo_low": [
-            "Model: low $\Omega_\mathrm{M}h^2$",
+            "Cosmo: low $\Omega_\mathrm{M}h^2$",
             "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/",
         ],
         "more_igm": [
-            "Model: IGM $n_z=8$",
+            "IGM: $n_z=8$",
             "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_1/",
         ],
         "less_igm": [
-            "Model: IGM $n_z=4$",
+            "IGM: $n_z=4$",
             "DESIY1_QMLE3/less_igm/CH24_mpgcen_gpr/chain_1/",
         ],
         "Turner24": [
-            "Model: $\\bar{F}\\, n_z=1$",
+            "IGM: $\\bar{F}\\, n_z=1$",
             "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_1/",
         ],
+        "kF_kms": [
+            "IGM: w/ $k_{\\mathrm{F}}$",
+            "DESIY1_QMLE3/kF_kms/CH24_mpgcen_gpr/chain_2/",
+        ],
         "hcd_z": [
-            "Model: HCD $n_z=2$",
+            "HCD: $n_z=2$",
             "DESIY1_QMLE3/hcd_z/CH24_mpgcen_gpr/chain_1/",
         ],
         "dlas": [
-            "Model: only DLAs",
+            "HCD: only DLAs",
             "DESIY1_QMLE3/DLAs/CH24_mpgcen_gpr/chain_1/",
         ],
+        "hcd0": [
+            "HCD: w/ $f_{\\mathrm{const}}^{\\mathrm{HCD}}$",
+            "DESIY1_QMLE3/HCD0/CH24_mpgcen_gpr/chain_2/",
+        ],
         "metals_z": [
-            "Model: metals $n_z=2$",
+            "Metals: $n_z=2$",
             "DESIY1_QMLE3/metals_z/CH24_mpgcen_gpr/chain_1/",
         ],
         "metal_trad": [
-            "Model: trad metal",
+            "Metals: traditional",
             "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_1/",
         ],
         "metal_thin": [
-            "Model: metal thin",
+            "Metals: opt thin",
             "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_1/",
         ],
         "metal_deco": [
-            "Model: no metal decorr",
+            "Metals: no H-Si decorr",
             "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_1/",
         ],
         "metal_si2": [
-            "Model: no SiII-SiII",
+            "Metals: no SiII-SiII",
             "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_1/",
         ],
         "no_res": [

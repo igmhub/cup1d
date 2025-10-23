@@ -64,9 +64,11 @@ from cup1d.pipeline.set_archive import set_archive
 # base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 # table_variations(base)
 
-# from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
-# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-# plot_table_igm(base)
+save_fig = "/home/jchaves/Proyectos/projects/lya/LaCE/notebooks/tests/"
+
+from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+plot_table_igm(base, name_variation="nyx", save_fig=save_fig)
 
 # %%
 from cup1d.plots_and_tables.plots_corner import plots_chain
@@ -125,8 +127,9 @@ for ii, var in enumerate(variations):
 # %%
 
 # %%
-# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-# folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+plots_chain(base + folder)
 # chain = np.load(base + folder + "chain.npy")
 # chain = 0
 # blobs = np.load(base + folder + "blobs.npy")
@@ -138,6 +141,12 @@ for ii, var in enumerate(variations):
 # # for ii in range(5):
 #     # print(np.median(lnprob[:, other[ii]]))
 #     plt.plot(lnprob[:, other[ii]])
+
+# %%
+# plt.hist2d(blobs["Delta2_star"].reshape(-1), blobs["n_star"].reshape(-1), bins=50);
+
+# %%
+11648 * 3000/1e6
 
 # %% [markdown]
 # ### Mocks

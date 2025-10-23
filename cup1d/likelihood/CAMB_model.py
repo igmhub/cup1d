@@ -9,11 +9,14 @@ from cup1d.likelihood import likelihood_parameter
 class CAMBModel(object):
     """Interface between CAMB object and Theory"""
 
-    def __init__(self, zs, cosmo=None, z_star=3.0, kp_kms=0.009):
+    def __init__(
+        self, zs, cosmo=None, z_star=3.0, kp_kms=0.009, fast_camb=True
+    ):
         """Setup from CAMB object and list of redshifts"""
 
         # list of redshifts at which we evaluate linear power
         self.zs = zs
+        self.fast_camb = fast_camb
 
         # setup CAMB cosmology object
         if cosmo is None:
@@ -121,7 +124,7 @@ class CAMBModel(object):
 
         if self.cached_camb_results is None:
             self.cached_camb_results = camb_cosmo.get_camb_results(
-                self.cosmo, zs=self.zs, fast_camb=True
+                self.cosmo, zs=self.zs, fast_camb=self.fast_camb
             )
 
         return self.cached_camb_results
@@ -143,7 +146,11 @@ class CAMBModel(object):
 
         if self.cached_linP_params is None:
             self.cached_linP_params = fit_linP.parameterize_cosmology_kms(
-                self.cosmo, self.get_camb_results(), self.z_star, self.kp_kms
+                self.cosmo,
+                self.get_camb_results(),
+                self.z_star,
+                self.kp_kms,
+                fast_camb=self.fast_camb,
             )
 
         return self.cached_linP_params

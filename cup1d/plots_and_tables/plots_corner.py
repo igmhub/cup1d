@@ -85,6 +85,7 @@ def plots_chain(
 
     # corr_compressed(dat, labels, priors, folder_out=folder_out)
     # get_summary(folder_out)
+    # plot_res(dat, folder_out=folder_out)
     # if 1 > 0:
     #     return
 
@@ -121,11 +122,43 @@ def plots_chain(
         print("Could not save contours")
 
     try:
+        plot_res(dat, folder_out=folder_out)
+    except:
+        print("Could not plot res")
+
+    try:
         get_summary(folder_out)
     except:
         print("Could not get summary")
 
     # corner_chain(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
+
+
+def plot_res(dat, folder_out=None, ftsize=20):
+    zz = np.arange(2.2, 4.201, 0.2)
+    # res_params = chain[..., -11:].reshape(-1, 11)
+    res = np.percentile(dat[:, -11:], [16, 50, 84], axis=0)
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    ax.plot(zz, res[1])
+    ax.fill_between(zz, res[0], res[2], alpha=0.2)
+    ax.set_ylabel(r"$f_\mathrm{res}$", fontsize=ftsize)
+    ax.set_xlabel(r"$z$", fontsize=ftsize)
+    ax.tick_params(axis="both", which="major", labelsize=ftsize)
+    ax.axhline(color="k", ls="--")
+
+    plt.tight_layout()
+
+    if folder_out is not None:
+        plt.savefig(os.path.join(folder_out, "zreso.pdf"), bbox_inches="tight")
+        plt.savefig(os.path.join(folder_out, "zreso.png"), bbox_inches="tight")
+
+    else:
+        plt.show()
+
+    plt.close()
+
+    return
 
 
 def get_summary(folder_out):
