@@ -190,16 +190,17 @@ class Contaminants(object):
         self, z, k_kms, mF, M_of_z, like_params=[], remove=None
     ):
         # include multiplicative metal contamination
+        cont_all = {}
 
         if len(z) == 1:
-            cont_mul_metals = np.ones_like(k_kms)
-            cont_add_metals = np.zeros_like(k_kms)
+            cont_all["cont_mul_metals"] = np.ones_like(k_kms)
+            cont_all["cont_add_metals"] = np.zeros_like(k_kms)
         else:
-            cont_mul_metals = []
-            cont_add_metals = []
+            cont_all["cont_mul_metals"] = []
+            cont_all["cont_add_metals"] = []
             for iz in range(len(z)):
-                cont_mul_metals.append(np.ones_like(k_kms[iz]))
-                cont_add_metals.append(np.zeros_like(k_kms[iz]))
+                cont_all["cont_mul_metals"].append(np.ones_like(k_kms[iz]))
+                cont_all["cont_add_metals"].append(np.zeros_like(k_kms[iz]))
 
         for model_name in self.metal_models:
             cont = self.metal_models[model_name].get_contamination(
@@ -211,24 +212,24 @@ class Contaminants(object):
             )
             if len(z) == 1:
                 if model_name in self.metal_add:
-                    cont_add_metals += cont
+                    cont_all["cont_add_metals"] += cont
                 else:
-                    cont_mul_metals *= cont
+                    cont_all["cont_mul_metals"] *= cont
             else:
                 for iz in range(len(z)):
                     if model_name in self.metal_add:
                         if type(cont) != int:
-                            cont_add_metals[iz] += cont[iz]
+                            cont_all["cont_add_metals"][iz] += cont[iz]
                         else:
-                            cont_add_metals[iz] += cont
+                            cont_all["cont_add_metals"][iz] += cont
                     else:
                         if type(cont) != int:
-                            cont_mul_metals[iz] *= cont[iz]
+                            cont_all["cont_mul_metals"][iz] *= cont[iz]
                         else:
-                            cont_mul_metals[iz] *= cont
+                            cont_all["cont_mul_metals"][iz] *= cont
 
         # include HCD contamination
-        cont_HCD = self.hcd_model.get_contamination(
+        cont_all["cont_HCD"] = self.hcd_model.get_contamination(
             z=z,
             k_kms=k_kms,
             like_params=like_params,
@@ -246,7 +247,7 @@ class Contaminants(object):
         #     k_Mpc=k_Mpc,
         #     like_params=like_params,
         # )
-        cont_SN = 1
+        cont_all["cont_SN"] = np.ones_like(z)
 
         # include AGN contamination
         # cont_AGN = self.agn_model.get_contamination(
@@ -256,62 +257,62 @@ class Contaminants(object):
         # )
         # if np.any(cont_AGN < 0):
         #     cont_AGN = 1
-        cont_AGN = 1
+        cont_all["cont_AGN"] = np.ones_like(z)
 
         if self.ic_correction:
-            IC_corr = ref_nyx_ic_correction(k_kms, z)
+            cont_all["IC_corr"] = ref_nyx_ic_correction(k_kms, z)
         else:
-            IC_corr = 1
+            cont_all["IC_corr"] = np.ones_like(z)
 
-        if len(z) == 1:
-            mult_cont_total = (
-                cont_mul_metals * cont_HCD * cont_SN * cont_AGN * IC_corr
-            )
-            add_cont_total = cont_add_metals
-        else:
-            mult_cont_total = []
-            add_cont_total = []
-            if type(cont_mul_metals) == int:
-                _cont_mul_metals = np.ones_like(z)
-            else:
-                _cont_mul_metals = cont_mul_metals
+        # if len(z) == 1:
+        #     mult_cont_total = (
+        #         cont_mul_metals * cont_HCD * cont_SN * cont_AGN * IC_corr
+        #     )
+        #     add_cont_total = cont_add_metals
+        # else:
+        #     mult_cont_total = []
+        #     add_cont_total = []
+        #     if type(cont_mul_metals) == int:
+        #         _cont_mul_metals = np.ones_like(z)
+        #     else:
+        #         _cont_mul_metals = cont_mul_metals
 
-            if type(cont_add_metals) == int:
-                _cont_add_metals = np.zeros_like(z)
-            else:
-                _cont_add_metals = cont_add_metals
+        #     if type(cont_add_metals) == int:
+        #         _cont_add_metals = np.zeros_like(z)
+        #     else:
+        #         _cont_add_metals = cont_add_metals
 
-            if type(cont_HCD) == int:
-                _cont_HCD = np.ones_like(z)
-            else:
-                _cont_HCD = cont_HCD
+        #     if type(cont_HCD) == int:
+        #         _cont_HCD = np.ones_like(z)
+        #     else:
+        #         _cont_HCD = cont_HCD
 
-            if type(cont_SN) == int:
-                _cont_SN = np.ones_like(z)
-            else:
-                _cont_SN = cont_SN
+        #     if type(cont_SN) == int:
+        #         _cont_SN = np.ones_like(z)
+        #     else:
+        #         _cont_SN = cont_SN
 
-            if type(cont_AGN) == int:
-                _cont_AGN = np.ones_like(z)
-            else:
-                _cont_AGN = cont_AGN
+        #     if type(cont_AGN) == int:
+        #         _cont_AGN = np.ones_like(z)
+        #     else:
+        #         _cont_AGN = cont_AGN
 
-            if type(IC_corr) == int:
-                _IC_corr = np.ones_like(z)
-            else:
-                _IC_corr = IC_corr
+        #     if type(IC_corr) == int:
+        #         _IC_corr = np.ones_like(z)
+        #     else:
+        #         _IC_corr = IC_corr
 
-            for iz in range(len(z)):
-                mult_cont_total.append(
-                    _cont_mul_metals[iz]
-                    * _cont_HCD[iz]
-                    * _cont_SN[iz]
-                    * _cont_AGN[iz]
-                    * _IC_corr[iz]
-                )
-                add_cont_total.append(_cont_add_metals[iz])
+        #     for iz in range(len(z)):
+        #         mult_cont_total.append(
+        #             _cont_mul_metals[iz]
+        #             * _cont_HCD[iz]
+        #             * _cont_SN[iz]
+        #             * _cont_AGN[iz]
+        #             * _IC_corr[iz]
+        #         )
+        #         add_cont_total.append(_cont_add_metals[iz])
 
-        return mult_cont_total, add_cont_total
+        return cont_all
 
 
 def ref_nyx_ic_correction(k_kms, z):

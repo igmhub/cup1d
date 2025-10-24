@@ -327,13 +327,24 @@ chain = np.load(base + folder + "chain.npy")
 
 # %%
 
-p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+# p0 = pip.fitter.like.sampling_point_from_parameters().copy()
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
 
 # %%
+pip.run_minimizer(p0, restart=True)
 
 # %%
+p0 = pip.fitter.mle_cube
+# p0 = data_best["mle_cube"].copy()
+pip.fitter.like.get_chi2(p0)
+
+# %%
+Delta2_star 0.47082
+n_star -2.2733
+alpha_star -0.21803
+680.856366168462
+680.9484089662342
 
 # %%
 # pip.fitter.like.theory.model_cont.metal_models["Si_add"].coeffs

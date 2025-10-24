@@ -713,7 +713,7 @@ class Theory(object):
             #             * M_of_z[iz] ** 2
             #         )
 
-        # apply contaminants
+        # check if need to apply systematics
         apply_syst = False
         for par in like_params:
             if par.name.startswith("R_coeff"):
@@ -726,7 +726,7 @@ class Theory(object):
         else:
             syst_total = np.ones(len(zs))
 
-        mult_cont_total, add_cont_total = self.model_cont.get_contamination(
+        cont_all = self.model_cont.get_contamination(
             zs,
             k_kms,
             emu_call["mF"],
@@ -738,13 +738,34 @@ class Theory(object):
         # print("add_cont_total", add_cont_total)
         # print("syst_total", syst_total)
 
+        p1d_cont_kms = []
+
         for iz, z in enumerate(zs):
-            p1d_kms[iz] = (
-                p1d_kms[iz] * mult_cont_total[iz] + add_cont_total[iz]
+            # Pcont = (mul_metal * HCD * IC_corr * Pemu + add_metal) * syst
+            _p1d_cont_kms = (
+                cont_all["cont_HCD"][iz]
+                * cont_all["cont_mul_metals"][iz]
+                * cont_all["IC_corr"][iz]
+                * p1d_kms[iz]
+                + cont_all["cont_add_metals"][iz]
             ) * syst_total[iz]
 
+            # essentially the same results as using the previous expression
+            # Pcont = (mul_metal * IC_corr * Pemu + add_metal) * HCD * syst
+            # _p1d_cont_kms = (
+            #     (
+            #         cont_all["cont_mul_metals"][iz]
+            #         * cont_all["IC_corr"][iz]
+            #         * p1d_kms[iz]
+            #         + cont_all["cont_add_metals"][iz]
+            #     )
+            #     * cont_all["cont_HCD"][iz]
+            #     * syst_total[iz]
+            # )
+            p1d_cont_kms.append(_p1d_cont_kms)
+
         # decide what to return, and return it
-        out = [p1d_kms]
+        out = [p1d_cont_kms]
         if return_covar:
             out.append(covars)
         if return_blob:
