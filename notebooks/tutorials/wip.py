@@ -381,9 +381,13 @@ R_coeff_10 1.0 0.02
 Delta2_star 0.43053
 n_star -2.26356
 
+new baseline, 
+586.4304163703927
+Delta2_star 0.42289
+n_star -2.27332
 
 # %%
-pip.fitter.mle
+# pip.fitter.mle
 
 # %%
 # pip.fitter.like.theory.model_cont.metal_models["Si_add"].coeffs
@@ -393,13 +397,13 @@ pip.fitter.like.plot_p1d(p0, print_chi2=False)
 # pip.fitter.like.plot_cov_to_pk(fname="figs/nyx_err2p1d_qmle3")
 
 # %%
-pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
-# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False, fix_cosmo=False, plot_fname="figs/residual_fid_opt_global")
+# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
+pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False, fix_cosmo=False, plot_fname="figs/residual_fid_opt_global")
 
 # pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
 
 # %%
-pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
+# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
 
 # %%
 npoints = 0
