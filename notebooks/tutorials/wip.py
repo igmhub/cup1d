@@ -246,13 +246,13 @@ variations = [
     "metal_trad",  # 2 params for metals like eBOSS
     "metal_si2",  # no SiII-SiII cont
     "metal_deco",  # no decorrelation metals
-    "metal_thin",  # no desviation from optically-thin limit
-    "no_res",  # no resolution correction
+    # "metal_thin",  # no desviation from optically-thin limit
+    # "no_res",  # no resolution correction
     "Turner24",  # mF from Turner24 with 1 free param to scale
     "more_igm",  # 8 params for IGM evolution
     "less_igm",  # 4 params for IGM evolution
-    "metals_z",  # 2 params for z ev metals
-    "hcd_z",  # 2 params for z ev hcd
+    # "metals_z",  # 2 params for z ev metals
+    # "hcd_z",  # 2 params for z ev hcd
 ]
 
 # metals_z 3.89548175069871
@@ -274,8 +274,13 @@ name_variation = None
 # name_variation = "no_res"
 # name_variation = "HCD0"
 # name_variation = "kF_kms"
+# name_variation = "metal_thin"
 
-args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
+# emu_cov_type = "block"
+emu_cov_type = "diagonal"
+# name_variation = "Ma2025"
+
+args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr", emu_cov_type=emu_cov_type)
 args.set_baseline(
     fit_type="global_opt", 
     fix_cosmo=False, 
@@ -285,6 +290,15 @@ args.set_baseline(
 
 pip = Pipeline(args, out_folder=args.out_folder)
 
+
+# %%
+
+pip.fitter.like.theory.model_cont.metal_models["Si_mult"].coeffs
+
+# %%
+# cov1
+# free_params = pip.fitter.like.parameters_from_sampling_point(p0)
+# pip.fitter.like.get_chi2(p0)
 
 # %%
 data_lab = "DESIY1_QMLE3"
@@ -324,10 +338,11 @@ chain = np.load(base + folder + "chain.npy")
 # %%
 # pip.fitter.like.data.plot_p1d(fname="figs/p1d_qmle3")
 # pip.fitter.like.plot_cov_to_pk(fname="figs/err2p1d_qmle3")
+# pip.fitter.like.plot_cov_to_pk()
 
 # %%
 
-# p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+p0 = pip.fitter.like.sampling_point_from_parameters().copy()
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
 
@@ -340,17 +355,41 @@ p0 = pip.fitter.mle_cube
 pip.fitter.like.get_chi2(p0)
 
 # %%
-Delta2_star 0.47082
-n_star -2.2733
-alpha_star -0.21803
-680.856366168462
-680.9484089662342
+new baseline, emu diagonal, no 5%, no opt thin, geom IGM
+Passed out: 588.729654770444 (+37, 4 params less), 91
+Almost out of bounds:
+tau_eff_3 0.01525322049937576 -0.21413998755240043
+gamma_0 0.9988588852833431 1.2642916038691219
+gamma_3 7.277174836702373e-05 0.7636913741791961
+kF_kms_0 0.016400906053116643 0.8210684569387425
+kF_kms_3 0.96978692450308 1.2816956091087834
+R_coeff_7 0.9995119157015389 0.019980476628061555
+R_coeff_10 0.9600913519364411 0.018403654077457646
+Delta2_star 0.40793
+n_star -2.27768
+
+
+new baseline, emu diagonal, no 5%, no opt thin, lin IGM
+Passed out: 586.339000087996
+Almost out of bounds:
+tau_eff_3 0.0004793877378067514 -0.22071364914121383
+gamma_0 0.9859609687718103 1.257827056674585
+gamma_3 0.00023703338688466557 0.763773703531654
+kF_kms_0 0.017705398759685742 0.8216987208075481
+R_coeff_7 0.9971686113140668 0.01988674445256267
+R_coeff_10 1.0 0.02
+Delta2_star 0.43053
+n_star -2.26356
+
+
+# %%
+pip.fitter.mle
 
 # %%
 # pip.fitter.like.theory.model_cont.metal_models["Si_add"].coeffs
 
 # %%
-pip.fitter.like.plot_p1d(p0)
+pip.fitter.like.plot_p1d(p0, print_chi2=False)
 # pip.fitter.like.plot_cov_to_pk(fname="figs/nyx_err2p1d_qmle3")
 
 # %%
@@ -358,6 +397,9 @@ pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
 # pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False, fix_cosmo=False, plot_fname="figs/residual_fid_opt_global")
 
 # pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
+
+# %%
+pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
 
 # %%
 npoints = 0

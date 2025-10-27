@@ -70,8 +70,18 @@ class Systematics(object):
 
     def get_contamination(self, z, k_kms, like_params=[]):
         # include multiplicative resolution correction
-        cont_resolution = self.resolution_model.get_contamination(
+        cont = self.resolution_model.get_contamination(
             z=z, k_kms=k_kms, like_params=like_params
         )
+
+        if len(z) == 1:
+            cont_resolution = np.ones_like(k_kms) * cont
+        else:
+            cont_resolution = []
+            for iz in range(len(z)):
+                if type(cont) != int:
+                    cont_resolution.append(np.ones_like(k_kms[iz]) * cont[iz])
+                else:
+                    cont_resolution.append(np.ones_like(k_kms[iz]) * cont)
 
         return cont_resolution

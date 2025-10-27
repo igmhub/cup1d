@@ -72,10 +72,16 @@ class Args:
         }
     )
     true_cont: dict = field(
-        default_factory=lambda: {"hcd_model_type": "new_rogers"}
+        default_factory=lambda: {
+            "hcd_model_type": "new_rogers",
+            "metal_model_type": "McDonald",
+        }
     )
     fid_cont: dict = field(
-        default_factory=lambda: {"hcd_model_type": "new_rogers"}
+        default_factory=lambda: {
+            "hcd_model_type": "new_rogers",
+            "metal_model_type": "McDonald",
+        }
     )
     true_syst: dict = field(
         default_factory=lambda: {
@@ -111,7 +117,7 @@ class Args:
     prior_Gauss_rms: float | None = None
     emu_cov_factor: int | None = 1
     cov_factor: int = 1
-    emu_cov_type: str = "block"
+    emu_cov_type: str = "diagonal"
     file_ic: str | None = None
     mcmc: dict = field(
         default_factory=lambda: {
@@ -279,18 +285,18 @@ class Args:
             "s_Lya_SiIII": 5.0,
             "f_Lya_SiII": -4.0,
             "s_Lya_SiII": 5.5,
-            "f_SiIIa_SiIIb": 0.75,
-            "s_SiIIa_SiIIb": 5.0,
+            "f_SiIIa_SiIIb": 0.5,
+            "s_SiIIa_SiIIb": 4.0,
             "f_SiIIa_SiIII": 1,
             "f_SiIIb_SiIII": 1,
             "HCD_damp1": -1.4,
-            "HCD_damp2": -5.0,
+            "HCD_damp2": -6.0,
             "HCD_damp3": -5.0,
             "HCD_damp4": -5.0,
-            "HCD_const": 0,
+            "HCD_const": 0.0,
         }
         fid_vals_syst = {
-            "R_coeff": 0,
+            "R_coeff": 0.0,
         }
 
         if (fit_type is not None) and (fit_type == "global_igm"):
@@ -350,27 +356,44 @@ class Args:
                 [-1, 1],
                 [val_null - 0.5, -2],
             ]
+        elif (name_variation is not None) and (name_variation == "Ma2025"):
+            self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
+                [-1, 1],
+                [-6, 2],
+            ]
         else:
             self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
                 [-1, 1],
                 [-6, -2],
             ]
 
-        self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
-            [-1, 1],
-            [2, 7],
-        ]
+        if (name_variation is not None) and (name_variation == "Ma2025"):
+            self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
+                [-1, 1],
+                [-20, 6],
+            ]
+        else:
+            self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
+                [-1, 1],
+                [2, 7],
+            ]
 
         if (name_variation is not None) and (name_variation.startswith("sim_")):
             self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
                 [-1, 1],
                 [val_null - 0.5, -2],
             ]
+        elif (name_variation is not None) and (name_variation == "Ma2025"):
+            self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
+                [-1, 1],
+                [-6, 2],
+            ]
         else:
             self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
                 [-1, 1],
                 [-6, -2],
             ]
+
         self.fid_cont["flat_priors"]["s_Lya_SiII"] = [
             [-1, 1],
             [2, 7],
@@ -482,7 +505,7 @@ class Args:
         P1D_type="DESIY1_QMLE3",
         fid_cosmo_label="Planck18",
         name_variation=None,
-        inflate=1.05,
+        inflate=1.0,
         mcmc_conf="explore",
     ):
         """
@@ -575,6 +598,11 @@ class Args:
             fit_type = self.fit_type
         ##
 
+        if (name_variation is not None) and (name_variation == "Ma2025"):
+            self.fid_cont["metal_model_type"] = "SiVid"
+        else:
+            self.fid_cont["metal_model_type"] = "McDonald"
+
         ## inflate errors
         # we multiply cov by inflate square
         if "DESIY1" in P1D_type:
@@ -596,7 +624,6 @@ class Args:
             self.emu_cov_factor = 1e-20
         else:
             self.emu_cov_factor = 1
-        ##
 
         props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
         props_cont = [
@@ -606,8 +633,8 @@ class Args:
             "s_Lya_SiII",
             "f_SiIIa_SiIIb",
             "s_SiIIa_SiIIb",
-            "f_SiIIa_SiIII",
-            "f_SiIIb_SiIII",
+            # "f_SiIIa_SiIII",
+            # "f_SiIIb_SiIII",
             "HCD_damp1",
             "HCD_damp2",
             "HCD_damp3",
@@ -625,23 +652,48 @@ class Args:
             self.fid_syst["n_R_coeff"] = 1
             self.fid_syst["R_coeff_ztype"] = "pivot"
 
-            baseline_prop = [
-                "tau_eff",
-                "sigT_kms",
-                "gamma",
-                "f_Lya_SiIII",
-                "s_Lya_SiIII",
-                "f_Lya_SiII",
-                "s_Lya_SiII",
-                "f_SiIIa_SiIIb",
-                "s_SiIIa_SiIIb",
-                "f_SiIIa_SiIII",
-                "f_SiIIb_SiIII",
-                "HCD_damp1",
-                "HCD_damp2",
-                "HCD_damp3",
-                "HCD_damp4",
-            ]
+            if name_variation is None:
+                baseline_prop = [
+                    "tau_eff",
+                    "sigT_kms",
+                    "gamma",
+                    "kF_kms",
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "Ma2025":
+                baseline_prop = [
+                    "tau_eff",
+                    "sigT_kms",
+                    "gamma",
+                    "kF_kms",
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    # "s_Lya_SiII",
+                    # "f_SiIIa_SiIIb",
+                    # "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+            else:
+                raise ValueError(
+                    "name_variation not implemented", name_variation
+                )
 
             for prop in props_igm:
                 if prop in baseline_prop:
@@ -674,14 +726,15 @@ class Args:
                 "tau_eff",
                 "sigT_kms",
                 "gamma",
+                "kF_kms",
                 "f_Lya_SiIII",
                 "s_Lya_SiIII",
                 "f_Lya_SiII",
                 "s_Lya_SiII",
                 "f_SiIIa_SiIIb",
                 "s_SiIIa_SiIIb",
-                "f_SiIIa_SiIII",
-                "f_SiIIb_SiIII",
+                # "f_SiIIa_SiIII",
+                # "f_SiIIb_SiIII",
                 "HCD_damp1",
                 "HCD_damp2",
                 "HCD_damp3",
@@ -693,8 +746,8 @@ class Args:
             for prop in props_igm:
                 if prop in baseline_prop:
                     self.fid_igm["n_" + prop] = 11
-                elif prop == "kF_kms":
-                    self.fid_igm["n_" + prop] = 0
+                # elif prop == "kF_kms":
+                #     self.fid_igm["n_" + prop] = 0
                 else:
                     self.fid_igm["n_" + prop] = 0
 
@@ -761,8 +814,8 @@ class Args:
                     "s_Lya_SiII",
                     # "f_SiIIa_SiIIb",
                     # "s_SiIIa_SiIIb",
-                    "f_SiIIa_SiIII",
-                    "f_SiIIb_SiIII",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
                     "HCD_damp1",
                     "HCD_damp2",
                     "HCD_damp3",
@@ -776,8 +829,8 @@ class Args:
                     # "s_Lya_SiII",
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
-                    "f_SiIIa_SiIII",
-                    "f_SiIIb_SiIII",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
                     "HCD_damp1",
                     "HCD_damp2",
                     "HCD_damp3",
@@ -791,6 +844,21 @@ class Args:
                     "s_Lya_SiII",
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "Ma2025":
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    # "s_Lya_SiII",
+                    # "f_SiIIa_SiIIb",
+                    # "s_SiIIa_SiIIb",
                     # "f_SiIIa_SiIII",
                     # "f_SiIIb_SiIII",
                     "HCD_damp1",
@@ -806,8 +874,8 @@ class Args:
                     "s_Lya_SiII",
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
-                    "f_SiIIa_SiIII",
-                    "f_SiIIb_SiIII",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
                     # "HCD_damp1",
                     # "HCD_damp2",
                     "HCD_damp3",
@@ -821,8 +889,8 @@ class Args:
                     "s_Lya_SiII",
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
-                    "f_SiIIa_SiIII",
-                    "f_SiIIb_SiIII",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
                     "HCD_damp1",
                     "HCD_damp2",
                     "HCD_damp3",
@@ -837,63 +905,36 @@ class Args:
                     "s_Lya_SiII",
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
-                    "f_SiIIa_SiIII",
-                    "f_SiIIb_SiIII",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
                     "HCD_damp1",
                     "HCD_damp2",
                     "HCD_damp3",
                     "HCD_damp4",
                 ]
 
-            if name_variation == "metals_z":
-                zvar = [
-                    "f_Lya_SiIII",
-                    "s_Lya_SiIII",
-                    "f_Lya_SiII",
-                    "s_Lya_SiII",
-                    "f_SiIIa_SiIIb",
-                    "s_SiIIa_SiIIb",
-                    "f_SiIIa_SiIII",
-                    "f_SiIIb_SiIII",
-                    # "HCD_damp1",
-                    # "HCD_damp2",
-                    # "HCD_damp3",
-                    # "HCD_damp4",
-                ]
-            elif name_variation == "hcd_z":
-                zvar = [
-                    # "f_Lya_SiIII",
-                    # "s_Lya_SiIII",
-                    # "f_Lya_SiII",
-                    # "s_Lya_SiII",
-                    "f_SiIIa_SiIIb",
-                    "s_SiIIa_SiIIb",
-                    # "f_SiIIa_SiIII",
-                    # "f_SiIIb_SiIII",
-                    "HCD_damp1",
-                    "HCD_damp2",
-                    "HCD_damp3",
-                    "HCD_damp4",
-                ]
-            else:
-                zvar = [
-                    # "f_Lya_SiIII",
-                    # "s_Lya_SiIII",
-                    # "f_Lya_SiII",
-                    # "s_Lya_SiII",
-                    "f_SiIIa_SiIIb",
-                    "s_SiIIa_SiIIb",
-                    # "f_SiIIa_SiIII",
-                    # "f_SiIIb_SiIII",
-                ]
+            zvar = [
+                "f_Lya_SiIII",
+                "s_Lya_SiIII",
+                "f_Lya_SiII",
+                "s_Lya_SiII",
+                "f_SiIIa_SiIIb",
+                "s_SiIIa_SiIIb",
+                # "f_SiIIa_SiIII",
+                # "f_SiIIb_SiIII",
+                "HCD_damp1",
+                "HCD_damp2",
+                "HCD_damp3",
+                "HCD_damp4",
+            ]
 
             ## set IGM
             if name_variation == "more_igm":
-                nz_igm = 8
-            elif name_variation == "less_igm":
-                nz_igm = 4
-            else:
                 nz_igm = 6
+            elif name_variation == "less_igm":
+                nz_igm = 2
+            else:
+                nz_igm = 4
 
             if name_variation == "zmin":
                 nz_igm = 4
@@ -906,6 +947,9 @@ class Args:
                 self.fid_igm["tau_eff_znodes"] = np.geomspace(
                     self.z_min, self.z_max, nz_igm
                 )
+                # self.fid_igm["tau_eff_znodes"] = np.linspace(
+                #     self.z_min, self.z_max, nz_igm
+                # )
 
             self.fid_igm["sigT_kms_znodes"] = np.geomspace(
                 self.z_min, self.z_max, nz_igm
@@ -913,13 +957,21 @@ class Args:
             self.fid_igm["gamma_znodes"] = np.geomspace(
                 self.z_min, self.z_max, nz_igm
             )
+            self.fid_igm["kF_kms_znodes"] = np.geomspace(
+                self.z_min, self.z_max, nz_igm
+            )
+            # self.fid_igm["sigT_kms_znodes"] = np.linspace(
+            #     self.z_min, self.z_max, nz_igm
+            # )
+            # self.fid_igm["gamma_znodes"] = np.linspace(
+            #     self.z_min, self.z_max, nz_igm
+            # )
+            # self.fid_igm["kF_kms_znodes"] = np.linspace(
+            #     self.z_min, self.z_max, nz_igm
+            # )
 
-            if name_variation == "kF_kms":
-                self.fid_igm["kF_kms_znodes"] = np.geomspace(
-                    self.z_min, self.z_max, nz_igm
-                )
-            else:
-                self.fid_igm["kF_kms_znodes"] = []
+            # if name_variation == "kF_kms":
+            #     self.fid_igm["kF_kms_znodes"] = []
 
             for prop in props_igm:
                 self.fid_igm["n_" + prop] = len(self.fid_igm[prop + "_znodes"])

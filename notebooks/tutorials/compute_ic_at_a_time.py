@@ -35,7 +35,11 @@ from cup1d.utils.utils import get_path_repo
 data_label = "DESIY1_QMLE3"
 name_variation = None
 
-args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
+# emu_cov_type = "block"
+emu_cov_type = "diagonal"
+# name_variation = "Ma2025"
+
+args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr", emu_cov_type=emu_cov_type)
 args.set_baseline(
     fit_type="at_a_time_global", 
     fix_cosmo=True, 
@@ -88,16 +92,27 @@ for ii in range(len(pip.fitter.like.data.z)):
     out_mle_cube.append(pip.fitter.mle_cube)
     out_chi2.append(pip.fitter.mle_chi2)
 
+# +
+# pip.fitter.like.theory.model_cont.metal_models["Si_mult"].fid_vals
+# -
+
+pip.fitter.like.get_chi2(pip.fitter.mle_cube, zmask=zmask)
+
 diru = 'figs'
+# diru=None
 plotter = Plotter(pip.fitter, save_directory=diru, zmask=zmask)
 
 # +
 
 plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize=20)
+# +
+
+# plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize=20)
 # -
 
 
-    
+
+
 
 fname = os.path.join(
     os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_at_a_time.npy"
@@ -115,6 +130,9 @@ np.save(fname, dir_out)
 # for ii in range(len(out_mle_cube)):
 #     print(out_mle_cube[ii][-1])
 # -
+
+from cup1d.optimize.show_results import print_results
+print_results(pip.fitter.like, out_chi2, out_mle_cube)
 
 from cup1d.optimize.show_results import print_results
 print_results(pip.fitter.like, out_chi2, out_mle_cube)

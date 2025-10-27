@@ -738,8 +738,15 @@ class Theory(object):
         # print("add_cont_total", add_cont_total)
         # print("syst_total", syst_total)
 
+        # if len(cont_all["cont_HCD"]) != len(z):
+        # print(len(zs))
+        # print(len(cont_all["cont_HCD"]))
+        # print(len(cont_all["cont_mul_metals"]))
+        # print(len(cont_all["IC_corr"]))
+        # print(len(p1d_kms))
+        # print(len(cont_all["cont_add_metals"]))
+        # print(len(syst_total))
         p1d_cont_kms = []
-
         for iz, z in enumerate(zs):
             # Pcont = (mul_metal * HCD * IC_corr * Pemu + add_metal) * syst
             _p1d_cont_kms = (
@@ -763,6 +770,7 @@ class Theory(object):
             #     * syst_total[iz]
             # )
             p1d_cont_kms.append(_p1d_cont_kms)
+        # print(p1d_cont_kms[0])
 
         # decide what to return, and return it
         out = [p1d_cont_kms]

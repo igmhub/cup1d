@@ -25,11 +25,13 @@ param_dict = {
 hcd_dict = ["LLS", "sub-DLA", "small DLA", "large DLA"]
 
 for ii in range(11):
-    param_dict["tau_eff_" + str(ii)] = r"$f_{\tau_{\rm eff_" + str(ii) + "}}$"
-    param_dict["sigT_kms_" + str(ii)] = r"$f_{\sigma_{\rm T_" + str(ii) + "}}$"
-    param_dict["gamma_" + str(ii)] = r"$f_{\gamma_" + str(ii) + r"}$"
-    param_dict["kF_kms_" + str(ii)] = r"$f_{{{k_F}_" + str(ii) + r"}}$"
-    param_dict["R_coeff_" + str(ii)] = r"$R_" + str(ii) + r"$"
+    param_dict["tau_eff_" + str(ii)] = r"$f_{\tau_{\rm eff_{" + str(ii) + "}}}$"
+    param_dict["sigT_kms_" + str(ii)] = (
+        r"$f_{\sigma_{\rm T_{" + str(ii) + "}}}$"
+    )
+    param_dict["gamma_" + str(ii)] = r"$f_{\gamma_{" + str(ii) + r"}}$"
+    param_dict["kF_kms_" + str(ii)] = r"$f_{{{k_F}_{" + str(ii) + r"}}}$"
+    param_dict["R_coeff_" + str(ii)] = r"$f_\mathrm{res_{" + str(ii) + r"}}$"
     param_dict["ln_SN_" + str(ii)] = r"$\log \mathrm{SN}_" + str(ii) + r"$"
     param_dict["ln_AGN_" + str(ii)] = r"$\log \mathrm{AGN}_" + str(ii) + r"$"
     for jj in range(1, 5):

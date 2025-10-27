@@ -386,7 +386,8 @@ class Likelihood(object):
                     for i0 in range(k_Mpc.shape[0]):
                         for i1 in range(k_Mpc.shape[0]):
                             cov[i0, i1] += (
-                                add_emu_cov_kms[i0, i1] * self.emu_cov_factor
+                                add_emu_cov_kms[i0, i1]
+                                * self.emu_cov_factor**2
                             )
 
                 # inflate errors
@@ -399,7 +400,7 @@ class Likelihood(object):
                     if self.emu_cov_factor is not None:
                         if self.emu_cov_factor != 0:
                             self.covemu_Pk_kms.append(
-                                add_emu_cov_kms * self.emu_cov_factor
+                                add_emu_cov_kms * self.emu_cov_factor**2
                             )
                 else:
                     self.extra_icov_Pk_kms.append(np.linalg.inv(cov))
@@ -407,7 +408,7 @@ class Likelihood(object):
                     if self.emu_cov_factor is not None:
                         if self.emu_cov_factor != 0:
                             self.extra_covemu_Pk_kms.append(
-                                add_emu_cov_kms * self.emu_cov_factor
+                                add_emu_cov_kms * self.emu_cov_factor**2
                             )
 
             # Process the full power spectrum data if available
@@ -425,11 +426,11 @@ class Likelihood(object):
                             diag_emu_cov.append(np.diag(emu_cov_blocks[ii]))
                         full_emu_cov = np.concatenate(diag_emu_cov)
                         ind = np.diag_indices_from(cov)
-                        cov[ind] += full_emu_cov * self.emu_cov_factor
+                        cov[ind] += full_emu_cov * self.emu_cov_factor**2
                     # block
                     elif self.emu_cov_type == "block":
                         full_emu_cov = block_diag(*emu_cov_blocks)
-                        cov += full_emu_cov * self.emu_cov_factor
+                        cov += full_emu_cov * self.emu_cov_factor**2
 
                     # full
                     else:
@@ -465,7 +466,8 @@ class Likelihood(object):
                                 )
 
                                 cov[i0, i1] += (
-                                    full_emu_cov[i0, i1] * self.emu_cov_factor
+                                    full_emu_cov[i0, i1]
+                                    * self.emu_cov_factor**2
                                 )
 
                 # inflate errors
@@ -490,7 +492,7 @@ class Likelihood(object):
                     if self.emu_cov_factor is not None:
                         if self.emu_cov_factor != 0:
                             self.emu_full_cov_Pk_kms = (
-                                full_emu_cov * self.emu_cov_factor
+                                full_emu_cov * self.emu_cov_factor**2
                             )
                 else:
                     self.extra_full_icov_Pk_kms = np.linalg.inv(cov)
@@ -498,7 +500,7 @@ class Likelihood(object):
                     if self.emu_cov_factor is not None:
                         if self.emu_cov_factor != 0:
                             self.extra_emu_full_cov_Pk_kms = (
-                                full_emu_cov * self.emu_cov_factor
+                                full_emu_cov * self.emu_cov_factor**2
                             )
 
     def set_free_parameters(self, free_param_names, free_param_limits):
@@ -795,8 +797,6 @@ class Likelihood(object):
             values, ignore_log_det_cov=True, zmask=zmask
         )
 
-        # print(-2 * log_like, -2 * log_like_all, -2 * np.sum(log_like_all))
-
         if return_all:
             return -2.0 * log_like, -2.0 * log_like_all
         else:
@@ -878,6 +878,8 @@ class Likelihood(object):
             else:
                 emu_p1d = _res
 
+        # print("emu_p1d", emu_p1d)
+
         # out of priors
         if len(emu_p1d) == 1:
             if (len(emu_p1d[0]) == 1) | (len(emu_p1d[0]) == len(self.data.z)):
@@ -945,6 +947,10 @@ class Likelihood(object):
                 # compute chi2 for this redshift bin
                 diff = data.Pk_kms[iz] - np.array(emu_p1d_use[iz]).reshape(-1)
                 chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
+                # print(iz, chi2_z, np.mean(icov_Pk_kms[iz]), np.mean(diff))
+                # print(
+                #     np.dot(icov_Pk_kms[iz], diff),
+                # )
                 # print(iz, chi2_z)
                 # check whether to add determinant of covariance as well
                 if ignore_log_det_cov:

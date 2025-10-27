@@ -8,6 +8,7 @@ from cup1d.nuisance import (
     hcd_model_class,
     hcd_model_rogers_class,
     si_mult,
+    si_vid,
     si_add,
     SN_model,
     AGN_model,
@@ -74,14 +75,25 @@ class Contaminants(object):
         try:
             self.metal_models[key] = metal_models[key]
         except:
-            self.metal_models[key] = si_mult.SiMult(
-                free_param_names=free_param_names,
-                fid_vals=fid_vals,
-                prop_coeffs=prop_coeffs,
-                z_max=z_max,
-                flat_priors=flat_priors,
-                Gauss_priors=Gauss_priors,
-            )
+            if pars_cont["metal_model_type"] == "SiVid":
+                # Ma+2025 2509.08613
+                self.metal_models[key] = si_vid.SiVid(
+                    free_param_names=free_param_names,
+                    fid_vals=fid_vals,
+                    prop_coeffs=prop_coeffs,
+                    z_max=z_max,
+                    flat_priors=flat_priors,
+                    Gauss_priors=Gauss_priors,
+                )
+            else:
+                self.metal_models[key] = si_mult.SiMult(
+                    free_param_names=free_param_names,
+                    fid_vals=fid_vals,
+                    prop_coeffs=prop_coeffs,
+                    z_max=z_max,
+                    flat_priors=flat_priors,
+                    Gauss_priors=Gauss_priors,
+                )
 
         key = "Si_add"
         try:
@@ -229,11 +241,22 @@ class Contaminants(object):
                             cont_all["cont_mul_metals"][iz] *= cont
 
         # include HCD contamination
-        cont_all["cont_HCD"] = self.hcd_model.get_contamination(
+        cont = self.hcd_model.get_contamination(
             z=z,
             k_kms=k_kms,
             like_params=like_params,
         )
+        if len(z) == 1:
+            cont_all["cont_HCD"] = np.ones_like(k_kms) * cont
+        else:
+            cont_all["cont_HCD"] = []
+            for iz in range(len(z)):
+                if type(cont) != int:
+                    cont_all["cont_HCD"].append(
+                        np.ones_like(k_kms[iz]) * cont[iz]
+                    )
+                else:
+                    cont_all["cont_HCD"].append(np.ones_like(k_kms[iz]) * cont)
 
         # include SN contamination
         # if len(z) != 1:
