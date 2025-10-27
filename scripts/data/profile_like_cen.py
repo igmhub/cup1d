@@ -11,8 +11,8 @@ from cup1d.utils.utils import get_path_repo
 def main():
     path_data = "jjchaves"
     variations = [
-        # None,
-        # "nyx",
+        None,
+        "nyx",
         # "DESIY1_QMLE",
         # "DESIY1_FFT3_dir",
         # "DESIY1_FFT_dir",
@@ -22,7 +22,7 @@ def main():
         # "cosmo",  # different fiducial cosmo, DESIDR2-ACT
         # "cosmo_low",  # different fiducial cosmo, low Omh2
         # "cosmo_high",  # different fiducial cosmo, high Omh2
-        "metal_trad",  # 2 params for metals like eBOSS
+        # "metal_trad",  # 2 params for metals like eBOSS
         # "metal_si2",  # no SiII-SiII cont
         # "metal_deco",  # no decorrelation metals
         # # "metal_thin",  # no desviation from optically-thin limit
