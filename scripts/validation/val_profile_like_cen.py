@@ -11,6 +11,7 @@ from cup1d.utils.utils import get_path_repo
 def main():
     emu = "mpg"
     # emu = "nyx"
+    path_data = "jjchaves"
 
     # baseline
     # data_label = "mpg_central"
@@ -33,14 +34,15 @@ def main():
         cov_label=cov_label,
         emulator_label="CH24_" + emu + "cen_gpr",
         true_cosmo_label=data_label,
-        fid_cosmo_label=data_label,
         apply_smoothing=True,
+        path_data=path_data,
     )
 
     args.set_baseline(
         fit_type="global_opt",
         fix_cosmo=False,
         P1D_type=cov_label,
+        fid_cosmo_label=data_label,
         name_variation=name_variation,
         z_min=zmin,
         z_max=zmax,
