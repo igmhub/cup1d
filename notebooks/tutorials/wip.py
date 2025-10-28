@@ -57,18 +57,23 @@ from cup1d.pipeline.set_archive import set_archive
 
 
 # %%
-# from cup1d.plots_and_tables.table_nuisance import table_nuisance
-# table_nuisance(base + folder)
+
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+
+from cup1d.plots_and_tables.table_nuisance import table_nuisance
+table_nuisance(base + folder)
 
 # from cup1d.plots_and_tables.table_variations import table_variations
 # base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 # table_variations(base)
 
-save_fig = "/home/jchaves/Proyectos/projects/lya/LaCE/notebooks/tests/"
+# save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
 
-from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-plot_table_igm(base, name_variation="nyx", save_fig=save_fig)
+# from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
+# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+# plot_table_igm(base, name_variation=None, save_fig=save_fig)
+# better from more IGM variation?
 
 # %%
 from cup1d.plots_and_tables.plots_corner import plots_chain
@@ -145,8 +150,60 @@ plots_chain(base + folder)
 # %%
 # plt.hist2d(blobs["Delta2_star"].reshape(-1), blobs["n_star"].reshape(-1), bins=50);
 
+# %% [markdown]
+# ### Fisher
+
 # %%
-11648 * 3000/1e6
+emulator_label = "CH24_mpgcen_gpr"
+# emulator_label = "CH24_nyxcen_gpr"
+
+
+data_label = "mock_DESIY1_QMLE3"
+# data_label = "nyx_central"
+# data_label = "nyx_seed"
+# data_label = "nyx_cgan_base"
+# data_label = "accel2"
+# data_label = "sherwood"
+
+if data_label == "mpg_central":
+    zmin=2.25
+    zmax=4.25
+elif data_label == "nyx_central":
+    zmin=2.2
+    zmax=4.2
+else:
+    zmin=2.2
+    zmax=4.2
+
+zmin=2.25
+zmax=4.25
+
+true_cosmo_label = data_label
+fid_cosmo_label = data_label
+name_variation= "sim_" + data_label
+# name_variation= "sim_" + data_label + "_igm"
+# name_variation= "sim_" + data_label + "_igm0"
+fit_type = "global_opt"
+
+args = Args(
+    data_label=data_label, 
+    cov_label="DESIY1_QMLE3", 
+    emulator_label=emulator_label,
+    true_cosmo_label=true_cosmo_label,
+    apply_smoothing=True,
+    # add_noise=True,
+    # seed_noise=0,
+)
+args.set_baseline(
+    fit_type=fit_type, 
+    fix_cosmo=False, 
+    P1D_type="DESIY1_QMLE3",
+    fid_cosmo_label=fid_cosmo_label,
+    name_variation=name_variation,
+    z_min=zmin,
+    z_max=zmax,
+    mcmc_conf="test"
+)
 
 # %% [markdown]
 # ### Mocks
@@ -199,6 +256,11 @@ args.set_baseline(
     z_max=zmax,
     mcmc_conf="test"
 )
+
+# %%
+name_variation = "sim_1"
+if (name_variation is not None) and name_variation.startswith("sim_"):
+    print(name_variation)
 
 # %%
 # nyx_training_set = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
@@ -263,6 +325,7 @@ variations = [
 # name_variation = "Turner24"
 
 data_label = "DESIY1_QMLE3"
+# data_label = "DESIY1_QMLE"
 # data_label = "DESIY1_FFT3_dir"
 name_variation = None
 # name_variation = "no_inflate"
@@ -275,12 +338,16 @@ name_variation = None
 # name_variation = "HCD0"
 # name_variation = "kF_kms"
 # name_variation = "metal_thin"
+# name_variation = "Gaikwad21"
+# name_variation = "Gaikwad21T"
+# name_variation = "Turner24"
 
 # emu_cov_type = "block"
 emu_cov_type = "diagonal"
 # name_variation = "Ma2025"
 
-emulator_label="CH24_nyxcen_gpr"
+emulator_label="CH24_mpgcen_gpr"
+# emulator_label="CH24_nyxcen_gpr"
 
 args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
 args.set_baseline(
@@ -299,8 +366,9 @@ pip.fitter.like.theory.model_cont.metal_models["Si_mult"].coeffs
 
 # %%
 # cov1
-# free_params = pip.fitter.like.parameters_from_sampling_point(p0)
-# pip.fitter.like.get_chi2(p0)
+p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+free_params = pip.fitter.like.parameters_from_sampling_point(p0)
+pip.fitter.like.get_chi2(p0)
 
 # %%
 data_lab = "DESIY1_QMLE3"
@@ -310,27 +378,24 @@ folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+
 data = np.load(folder + "fitter_results.npy", allow_pickle=True).item()
 p0 = data["fitter"]["mle_cube"]
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
+pip.fitter.like.get_chi2(p0)
+
+# %%
 
 # %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
 chain = np.load(base + folder + "chain.npy")
-# pip.fitter.like.plot_metal_cont_mult(chain=chain, save_directory="figs")
-# pip.fitter.like.plot_metal_cont_add(free_params=free_params, chain=chain, save_directory="figs")
-# pip.fitter.like.plot_hcd_cont(p0=p0, chain=chain, save_directory="figs")
+pip.fitter.like.plot_metal_cont_mult(chain=chain, save_directory="figs")
+pip.fitter.like.plot_metal_cont_add(free_params=free_params, chain=chain, save_directory="figs")
+pip.fitter.like.plot_hcd_cont(p0=p0, chain=chain, save_directory="figs")
 
-# ind = np.random.permutation(np.arange(0, chain.shape[0]))[:20000]
 
-# free_params = pip.fitter.like.parameters_from_sampling_point(p0)
-# tab_out = pip.fitter.like.plot_igm(
-#     free_params=free_params,
-#     plot_fid=True,
-#     plot_type="tau_sigT",
-#     cloud=False,
-#     ftsize=20,
-#     chain=chain[ind, :],
-#     save_directory="figs",
-# )
+# %%
+
+pip.fitter.like.plot_hcd_cont(p0=p0, chain=chain, save_directory="figs")
+
+# %%
 
 # %%
 # std_mpg = np.sqrt(np.diag(pip.fitter.like.emu_full_cov_Pk_kms)).copy()
@@ -338,8 +403,10 @@ chain = np.load(base + folder + "chain.npy")
 # np.mean(std_nyx/std_mpg)
 
 # %%
+# pip.fitter.like.data.plot_p1d()
+
 # pip.fitter.like.data.plot_p1d(fname="figs/p1d_qmle3")
-# pip.fitter.like.plot_cov_to_pk(fname="figs/err2p1d_qmle3")
+# pip.fitter.like.plot_cov_to_pk(fname="figs/err2p1d_qmle")
 # pip.fitter.like.plot_cov_to_pk()
 
 # %%
@@ -402,8 +469,8 @@ pip.fitter.like.plot_p1d(p0, print_chi2=False)
 # pip.fitter.like.plot_cov_to_pk(fname="figs/nyx_err2p1d_qmle3")
 
 # %%
-# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
-pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False, fix_cosmo=False, plot_fname="figs/residual_fid_opt_global")
+pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
+# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False, fix_cosmo=False, plot_fname="figs/residual_fid_opt_global")
 
 # pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
 

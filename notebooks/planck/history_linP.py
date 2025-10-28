@@ -236,7 +236,11 @@ y_ns /= y_ns.max()
 
 # %%
 
-# %%
+true_cosmo = {
+    'Delta2_star': delta2_star.mean()-np.median(cmb["samples"]["linP_DL2_star"]),
+     'n_star': n_star.mean()-np.median(cmb["samples"]["linP_n_star"]),
+}
+
 
 # %% jupyter={"outputs_hidden": false}
 labs = ['DESI-DR1 (this work)', 'SDSS (McDonald+05)', 'BOSS\n(Palanque-Delabrouille+15)', 'eBOSS (Chabanier+19)', 'eBOSS + {$\\bar{F}, \\Omega_m, H_0$} priors\n(Walther+24)']
@@ -244,10 +248,6 @@ cmap = plt.colormaps["Blues"]
 fontsize = 26
 lw = [3, 2]
 col = [0.7, 0.3]
-true_cosmo = {
-    'Delta2_star': 0.1,
-     'n_star': 0.025,
-}
 
 # specify CMB chain to plot
 # cmb=wmap9
@@ -340,8 +340,8 @@ ax_NS.plot(x_NS, pdf/pdf.max(),color='C4')
 for ii in range(len(labs)):
     ax.axhline(y=1,color='C'+str(ii),label=labs[ii])
 
-ax.set_ylim(-2.4, -2.2)
-ax.set_xlim(0.2, 0.55)
+ax.set_ylim(-2.39, -2.24)
+ax.set_xlim(0.23, 0.52)
 
 # plt.title(r'Linear power constraints at ($z=3$, $k_p=0.009$ s/km)')
 # plt.grid()  
@@ -368,6 +368,7 @@ ax.tick_params(
 ax_NS.tick_params(
     axis="both", which="major", labelsize=fontsize
 )
+ax.set_xticks([0.3, 0.4, 0.5])
 
 
 ax.set_xlabel(r"$\Delta_\star$", fontsize=fontsize)

@@ -111,12 +111,12 @@ cmb_nnu = planck_chains.get_planck_2018(
 #     linP_tag=None
 # )
 
-# cmb_omega_k = planck_chains.get_planck_2018(
-#     model='base_omegak',
-#     data='plikHM_TTTEEE_lowl_lowE_linP',
-#     root_dir=root_dir,
-#     linP_tag=None
-# )
+cmb_omega_k = planck_chains.get_planck_2018(
+    model='base_omegak',
+    data='plikHM_TTTEEE_lowl_lowE_linP',
+    root_dir=root_dir,
+    linP_tag=None
+)
 
 cmb_w_wa = planck_chains.get_planck_2018(
     model='base_w_wa',
@@ -147,15 +147,20 @@ base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
 
 dat_mpg = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-true_cosmo = {}
-true_cosmo["Delta2_star"] = 0.12
-true_cosmo["n_star"] = 0.03
+sum_mpg = np.load(folder + "summary.npy", allow_pickle=True).item()
+true_cosmo = {
+    'Delta2_star': sum_mpg["delta2_star_16_50_84"][1]-np.median(cmb["samples"]["linP_DL2_star"]),
+     'n_star': sum_mpg["n_star_16_50_84"][1]-np.median(cmb["samples"]["linP_n_star"]),
+}
+true_cosmo
 
 # %%
 
 blobs = np.load(folder + "blobs.npy")
-per_ds = np.percentile(blobs["Delta2_star"].reshape(-1), [16, 50, 84])
-per_ns = np.percentile(blobs["n_star"].reshape(-1), [16, 50, 84])
+corr = np.corrcoef(blobs["Delta2_star"].reshape(-1), blobs["n_star"].reshape(-1))
+# per_ds = np.percentile(blobs["Delta2_star"].reshape(-1), [16, 50, 84])
+# per_ns = np.percentile(blobs["n_star"].reshape(-1), [16, 50, 84])
+r = corr[0, 1]
 
 # %%
 print(np.round(per_ds[2] - per_ds[1], 3))
@@ -165,6 +170,7 @@ print(np.round(per_ns[2] - per_ns[1], 3))
 print(np.round(per_ns[1] - per_ns[0], 3))
 
 # %%
+sum_mpg['delta2_star_err']
 
 # %%
 
@@ -240,13 +246,13 @@ for ii, icmb in enumerate(cmb_all):
 
 
 
-ax.set_xlim(0.23, 0.47)
-ax.set_ylim(-2.37, -2.23)
+ax.set_xlim(0.25, 0.45)
+ax.set_ylim(-2.36, -2.24)
 ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
 ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
 ax.tick_params(axis="both", which="major", labelsize=ftsize)
 
-plt.legend(fontsize=ftsize-4, loc="upper left", ncol=2)
+plt.legend(fontsize=ftsize-4, loc="upper left", ncol=1)
 # plt.tight_layout()
 
 plt.savefig("figs/star_planck_mine.png", bbox_inches='tight')
@@ -320,11 +326,10 @@ true_neff=[-2.295,-2.30,-2.305]
 # DL2_err = out_dict["err_Delta2_star"]
 # neff_err = out_dict["err_n_star"]
 # r=out_dict["rho"]
-DL2_err = 0.043
-neff_err = 0.025
-r=0.1
+DL2_err = sum_mpg['delta2_star_err']
+neff_err = sum_mpg['n_star_err']
+# r=0.1
 coeff_mult = 0.5
-# coeff_mult = 2.3 # should it be 0.5?
 
 chain_type = cmb
 
@@ -367,10 +372,13 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
 true_neff=[-2.295,-2.30,-2.305]
-DL2_err = out_dict["err_Delta2_star"]
-neff_err = out_dict["err_n_star"]
-r=out_dict["rho"]
-coeff_mult = 1 # should it be 0.5?
+# DL2_err = out_dict["err_Delta2_star"]
+# neff_err = out_dict["err_n_star"]
+# r=out_dict["rho"]
+DL2_err = sum_mpg['delta2_star_err']
+neff_err = sum_mpg['n_star_err']
+coeff_mult = 0.5
+# coeff_mult = 1
 
 chain_type = cmb_tau
 
@@ -419,9 +427,11 @@ true_neff=[-2.295,-2.30,-2.305]
 # neff_err = 0.022
 # r=-0.134
 # coeff_mult = 2.3 # should it be 0.5?
-DL2_err = 0.043
-neff_err = 0.025
-r=0.1
+# DL2_err = 0.043
+# neff_err = 0.025
+# r=0.1
+DL2_err = sum_mpg['delta2_star_err']
+neff_err = sum_mpg['n_star_err']
 coeff_mult = 0.5
 
 chain_type = cmb_w_wa
@@ -459,10 +469,13 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
 true_neff=[-2.295,-2.30,-2.305]
-DL2_err = 0.056
-neff_err = 0.022
-r=-0.134
-coeff_mult = 2.3 # should it be 0.5?
+# DL2_err = 0.056
+# neff_err = 0.022
+# r=-0.134
+# coeff_mult = 2.3 # should it be 0.5?
+DL2_err = sum_mpg['delta2_star_err']
+neff_err = sum_mpg['n_star_err']
+coeff_mult = 0.5
 
 chain_type = cmb_omega_k
 
@@ -502,9 +515,11 @@ true_neff=[-2.295,-2.30,-2.305]
 # neff_err = 0.022
 # r=-0.134
 # coeff_mult = 2.3 # should it be 0.5?
-DL2_err = 0.043
-neff_err = 0.025
-r=0.1
+# DL2_err = 0.043
+# neff_err = 0.025
+# r=0.1
+DL2_err = sum_mpg['delta2_star_err']
+neff_err = sum_mpg['n_star_err']
 coeff_mult = 0.5
 
 chain_type = cmb_mnu
@@ -558,9 +573,6 @@ plt.tight_layout()
 plt.savefig("figs/import_neutrinos.png")
 plt.savefig("figs/import_neutrinos.pdf")
 
-# %%
-cmb_nrun["samples"].getParamSampleDict(0).keys()
-
 # %% [markdown]
 # #### Constraints on nrun
 
@@ -572,9 +584,11 @@ true_neff=[-2.295,-2.30,-2.305]
 # neff_err = out_dict["err_n_star"]
 # r=out_dict["rho"]
 # coeff_mult = 1 # should it be 0.5?
-DL2_err = 0.043
-neff_err = 0.025
-r=0.1
+# DL2_err = 0.043
+# neff_err = 0.025
+# r=0.1
+DL2_err = sum_mpg['delta2_star_err']
+neff_err = sum_mpg['n_star_err']
 coeff_mult = 0.5
 
 chain_type = cmb_nrun
@@ -626,10 +640,12 @@ plt.savefig("figs/import_nrun.pdf")
 samples_DESI=[]
 true_DL2=[0.33,0.35,0.37]
 true_neff=[-2.295,-2.30,-2.305]
-DL2_err = out_dict["err_Delta2_star"]
-neff_err = out_dict["err_n_star"]
-r=out_dict["rho"]
-coeff_mult = 1 # should it be 0.5?
+# DL2_err = out_dict["err_Delta2_star"]
+# neff_err = out_dict["err_n_star"]
+# r=out_dict["rho"]
+DL2_err = sum_mpg['delta2_star_err']
+neff_err = sum_mpg['n_star_err']
+coeff_mult = 0.5 # should it be 0.5?
 
 chain_type = cmb_nnu
 
@@ -682,9 +698,11 @@ true_neff=[-2.295,-2.30,-2.305]
 # neff_err = out_dict["err_n_star"]
 # r=out_dict["rho"]
 # coeff_mult = 1 # should it be 0.5?
-DL2_err = 0.043
-neff_err = 0.025
-r=0.1
+# DL2_err = 0.043
+# neff_err = 0.025
+# r=0.1
+DL2_err = sum_mpg['delta2_star_err']
+neff_err = sum_mpg['n_star_err']
 coeff_mult = 0.5
 
 chain_type = cmb_nrun_nrunrun
