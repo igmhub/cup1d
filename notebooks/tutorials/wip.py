@@ -176,8 +176,8 @@ else:
 true_cosmo_label = data_label
 fid_cosmo_label = data_label
 name_variation= "sim_" + data_label
-name_variation= "sim_" + data_label + "_igm"
-name_variation= "sim_" + data_label + "_igm0"
+# name_variation= "sim_" + data_label + "_igm"
+# name_variation= "sim_" + data_label + "_igm0"
 fit_type = "global_opt"
 
 args = Args(
@@ -215,7 +215,7 @@ for par in pip.fitter.like.free_params:
     print(par.name, par.value, par.min_value, par.max_value)
 
 # %%
-# pip.fitter.like.plot_p1d()
+pip.fitter.like.plot_p1d()
 
 # %%
 pip.run_minimizer(p0, restart=True)
@@ -280,7 +280,9 @@ name_variation = None
 emu_cov_type = "diagonal"
 # name_variation = "Ma2025"
 
-args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr", emu_cov_type=emu_cov_type)
+emulator_label="CH24_nyxcen_gpr"
+
+args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
 args.set_baseline(
     fit_type="global_opt", 
     fix_cosmo=False, 
@@ -393,6 +395,9 @@ n_star -2.27332
 # pip.fitter.like.theory.model_cont.metal_models["Si_add"].coeffs
 
 # %%
+1.0832499884936857e-05 * 100
+
+# %%
 pip.fitter.like.plot_p1d(p0, print_chi2=False)
 # pip.fitter.like.plot_cov_to_pk(fname="figs/nyx_err2p1d_qmle3")
 
@@ -401,6 +406,9 @@ pip.fitter.like.plot_p1d(p0, print_chi2=False)
 pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False, fix_cosmo=False, plot_fname="figs/residual_fid_opt_global")
 
 # pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
+
+# %%
+len(pip.fitter.like.free_params)
 
 # %%
 # pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)

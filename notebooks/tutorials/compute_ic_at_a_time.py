@@ -34,12 +34,14 @@ from cup1d.utils.utils import get_path_repo
 
 data_label = "DESIY1_QMLE3"
 name_variation = None
+# emulator_label = "CH24_mpgcen_gpr"
+emulator_label = "CH24_nyxcen_gpr"
 
 # emu_cov_type = "block"
 emu_cov_type = "diagonal"
 # name_variation = "Ma2025"
 
-args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr", emu_cov_type=emu_cov_type)
+args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
 args.set_baseline(
     fit_type="at_a_time_global", 
     fix_cosmo=True, 
@@ -115,7 +117,8 @@ plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize
 
 
 fname = os.path.join(
-    os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_at_a_time.npy"
+    # os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_at_a_time.npy"
+    os.path.dirname(get_path_repo("cup1d")), "data", "ics", "nyx_ic_at_a_time.npy"
 )
 dir_out = {
     "z":pip.fitter.like.data.z,
@@ -130,9 +133,6 @@ np.save(fname, dir_out)
 # for ii in range(len(out_mle_cube)):
 #     print(out_mle_cube[ii][-1])
 # -
-
-from cup1d.optimize.show_results import print_results
-print_results(pip.fitter.like, out_chi2, out_mle_cube)
 
 from cup1d.optimize.show_results import print_results
 print_results(pip.fitter.like, out_chi2, out_mle_cube)

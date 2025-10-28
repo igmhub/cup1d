@@ -32,8 +32,10 @@ from cup1d.utils.utils import get_path_repo
 # +
 data_label = "DESIY1_QMLE3"
 name_variation = None
+# emulator_label = "CH24_mpgcen_gpr"
+emulator_label = "CH24_nyxcen_gpr"
 
-args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr", emu_cov_type="diagonal")
+args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type="diagonal")
 args.set_baseline(
     fit_type="global_all", 
     fix_cosmo=True, 
@@ -85,8 +87,10 @@ pip.save_global_ic(fname)
 # +
 data_label = "DESIY1_QMLE3"
 name_variation = None
+# emulator_label = "CH24_mpgcen_gpr"
+emulator_label = "CH24_nyxcen_gpr"
 
-args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr", emu_cov_type="diagonal")
+args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type="diagonal")
 args.set_baseline(
     fit_type="global_opt", 
     fix_cosmo=True, 
@@ -97,7 +101,7 @@ args.set_baseline(
 pip = Pipeline(args, out_folder=None)
 # -
 
-# p0 = pip.fitter.like.sampling_point_from_parameters()
+p0 = pip.fitter.like.sampling_point_from_parameters()
 pip.fitter.like.get_chi2(p0)
 
 pip.run_minimizer(p0, restart=True)

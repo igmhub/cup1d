@@ -75,19 +75,21 @@ class Nyx_P1D(BaseMockP1D):
 
         # apply contaminants
         syst_total = theory.model_syst.get_contamination(zs, k_kms)
-
         mF = theory.model_igm.models["F_model"].get_mean_flux(zs)
         M_of_z = theory.fid_cosmo["M_of_zs"]
-        mult_cont_total, add_cont_total = theory.model_cont.get_contamination(
-            zs, k_kms, mF, M_of_z
-        )
+        cont_all = theory.model_cont.get_contamination(zs, k_kms, mF, M_of_z)
         # print("sys", syst_total)
         # print("mult", mult_cont_total)
         # print("add", add_cont_total)
 
         for iz, z in enumerate(zs):
+            # Pcont = (mul_metal * HCD * IC_corr * Pemu + add_metal) * syst
             Pk_kms[iz] = (
-                Pk_kms[iz] * mult_cont_total[iz] + add_cont_total[iz]
+                cont_all["cont_HCD"][iz]
+                * cont_all["cont_mul_metals"][iz]
+                * cont_all["IC_corr"][iz]
+                * Pk_kms[iz]
+                + cont_all["cont_add_metals"][iz]
             ) * syst_total[iz]
 
         # setup base class

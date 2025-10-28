@@ -145,7 +145,7 @@ class Likelihood(object):
                     self.set_ic_from_z_at_time(args.file_ic, verbose=True)
             else:
                 if self.rank == 0:
-                    print("No best fit found to set ICs:", fname)
+                    print("No best fit found to set ICs:", args.file_ic)
 
     def rebinning(self, zs, Pk_kms_finek):
         """For rebinning Pk predictions"""
