@@ -528,6 +528,7 @@ class Args:
         self.fix_cosmo = fix_cosmo
         self.P1D_type = P1D_type
         self.fid_cosmo_label = fid_cosmo_label
+        self.name_variation = name_variation
         ##
         self.set_out_folder(name_variation)
 

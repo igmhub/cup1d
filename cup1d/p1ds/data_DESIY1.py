@@ -62,7 +62,9 @@ def set_p1d_filename(data_label="QMLE3", path_data=None):
     return p1d_fname
 
 
-def compute_cov(syst, type_measurement="QMLE", type_analysis="red"):
+def compute_cov(
+    syst, type_measurement="QMLE", type_analysis="red", variation=None
+):
     if type_measurement == "QMLE":
         sys_labels = [
             "E_DLA_COMPLETENESS",
@@ -87,17 +89,33 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red"):
                 "E_CONTINUUM_ADD",
             ]
         elif type_analysis == "red":
-            sys_labels_corr = [
-                # "E_DLA_COMPLETENESS",
-                "E_BAL_COMPLETENESS",
-                # "E_RESOLUTION",
-                "E_CONTINUUM",
-                "E_NOISE_SCALE",
-            ]
-            sys_labels_ucorr = [
-                "E_NOISE_ADD",
-                "E_CONTINUUM_ADD",
-            ]
+            if (variation is not None) and (variation == "data_syst_diag"):
+                sys_labels_corr = [
+                    # "E_DLA_COMPLETENESS",
+                    # "E_BAL_COMPLETENESS",
+                    # "E_RESOLUTION",
+                    # "E_CONTINUUM",
+                    # "E_NOISE_SCALE",
+                ]
+                sys_labels_ucorr = [
+                    "E_BAL_COMPLETENESS",
+                    "E_CONTINUUM",
+                    "E_NOISE_SCALE",
+                    "E_NOISE_ADD",
+                    "E_CONTINUUM_ADD",
+                ]
+            else:
+                sys_labels_corr = [
+                    # "E_DLA_COMPLETENESS",
+                    "E_BAL_COMPLETENESS",
+                    # "E_RESOLUTION",
+                    "E_CONTINUUM",
+                    "E_NOISE_SCALE",
+                ]
+                sys_labels_ucorr = [
+                    "E_NOISE_ADD",
+                    "E_CONTINUUM_ADD",
+                ]
         elif type_analysis == "xred":
             sys_labels_corr = [
                 # "E_DLA_COMPLETENESS",
@@ -136,21 +154,43 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red"):
             ]
             sys_labels_ucorr = []
         elif (type_analysis == "red") | (type_analysis == "xred"):
-            sys_labels_corr = [
-                "E_PSF",
-                # "E_RESOLUTION",
-                "E_SIDE_BAND",
-                "E_LINES",
-                "E_DLA",
-                "E_BAL",
-                "E_CONTINUUM",
-                # "E_DLA_COMPLETENESS",
-                "E_BAL_COMPLETENESS",
-            ]
-            sys_labels_ucorr = [
-                # "E_LINES",
-                # "E_SIDE_BAND",
-            ]
+            if (variation is not None) and (variation == "data_syst_diag"):
+                sys_labels_corr = [
+                    # "E_PSF",
+                    # # "E_RESOLUTION",
+                    # "E_SIDE_BAND",
+                    # "E_LINES",
+                    # "E_DLA",
+                    # "E_BAL",
+                    # "E_CONTINUUM",
+                    # # "E_DLA_COMPLETENESS",
+                    # "E_BAL_COMPLETENESS",
+                ]
+                sys_labels_ucorr = [
+                    "E_PSF",
+                    "E_SIDE_BAND",
+                    "E_LINES",
+                    "E_DLA",
+                    "E_BAL",
+                    "E_CONTINUUM",
+                    "E_BAL_COMPLETENESS",
+                ]
+            else:
+                sys_labels_corr = [
+                    "E_PSF",
+                    # "E_RESOLUTION",
+                    "E_SIDE_BAND",
+                    "E_LINES",
+                    "E_DLA",
+                    "E_BAL",
+                    "E_CONTINUUM",
+                    # "E_DLA_COMPLETENESS",
+                    "E_BAL_COMPLETENESS",
+                ]
+                sys_labels_ucorr = [
+                    # "E_LINES",
+                    # "E_SIDE_BAND",
+                ]
     else:
         return None
 
@@ -183,6 +223,7 @@ class P1D_DESIY1(BaseDataP1D):
         z_max=10.0,
         cov_syst_type="red",
         path_data=None,
+        variation=None,
     ):
         """Read measured P1D from file.
         - full_cov: for now, no covariance between redshift bins
@@ -193,7 +234,11 @@ class P1D_DESIY1(BaseDataP1D):
         p1d_fname = set_p1d_filename(data_label=data_label, path_data=path_data)
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        res = read_from_file(p1d_fname=p1d_fname, cov_syst_type=cov_syst_type)
+        res = read_from_file(
+            p1d_fname=p1d_fname,
+            cov_syst_type=cov_syst_type,
+            variation=variation,
+        )
         (
             zs,
             k_kms,
@@ -234,6 +279,7 @@ def read_from_file(
     nknyq=0.5,
     max_cov=1e3,
     cov_syst_type="red",
+    variation=None,
 ):
     """Read file containing P1D"""
 
@@ -276,6 +322,7 @@ def read_from_file(
         hdu[dict_with_keys["SYSTEMATICS"]].data,
         type_measurement=type_measurement,
         type_analysis=cov_syst_type,
+        variation=variation,
     )
     cov_raw = cov_stat_raw + cov_syst_raw
 
