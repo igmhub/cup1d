@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH -A desi
 #SBATCH -q regular
-#SBATCH -t 03:00:00
+#SBATCH -t 06:00:00
 #SBATCH --constraint=cpu
 #SBATCH --nodes=1
 #SBATCH -J p1d
 #SBATCH -o logs/p1d.%j.out
 #SBATCH -e logs/p1d.%j.err
-#SBATCH --array=0-6   # number of variations minus 1
+#SBATCH --array=0-0   # number of variations minus 1
 
 echo "Job started at: $(date)"
 
@@ -18,7 +18,7 @@ mkdir -p logs
 # Define variations
 variations=(
     # "None"
-    # "nyx"
+    "nyx"
     # "DESIY1_QMLE"
     # "DESIY1_FFT3_dir"
     # "DESIY1_FFT_dir"
@@ -28,13 +28,14 @@ variations=(
     # "cosmo"
     # "cosmo_low"
     # "cosmo_high"
-    "data_syst_diag"
-    "metal_trad"
-    "metal_si2"
-    "metal_deco"
-    "more_igm"
-    "DLAs"
-    "HCD0"
+    # "data_syst_diag"
+    # "metal_trad"
+    # "metal_si2"
+    # "metal_deco"
+    # "more_igm"
+    # "DLAs"
+    # "HCD0"
+    #############
     # "no_res"
     # "less_igm"
     # "metals_z"
