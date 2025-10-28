@@ -7,7 +7,7 @@
 #SBATCH -J p1d
 #SBATCH -o logs/p1d.%j.out
 #SBATCH -e logs/p1d.%j.err
-#SBATCH --array=0-1   # number of variations minus 1
+#SBATCH --array=0-6   # number of variations minus 1
 
 echo "Job started at: $(date)"
 
@@ -22,12 +22,12 @@ variations=(
     # "DESIY1_QMLE"
     # "DESIY1_FFT3_dir"
     # "DESIY1_FFT_dir"
-    # "no_inflate"
-    # "no_emu_cov"
-    # "no_inflate_no_emu_cov"
-    # "cosmo"
-    # "cosmo_low"
-    # "cosmo_high"
+    "zmin"
+    "zmax"
+    "no_emu_cov"
+    "cosmo"
+    "cosmo_low"
+    "cosmo_high"
     # "metal_trad"
     # "metal_si2"
     # "metal_deco"
@@ -36,13 +36,13 @@ variations=(
     # "less_igm"
     # "metals_z"
     # "hcd_z"
-    # "zmin"
-    # "zmax"
-    # "Turner24"
-    # "metal_thin"
     # "DLAs"
     # "HCD0"
+    # "Turner24"
+    # "metal_thin"
     # "kF_kms"
+    # "no_inflate"
+    # "no_inflate_no_emu_cov"
 )
 
 source /global/homes/j/jjchaves/miniconda3/bin/activate lace

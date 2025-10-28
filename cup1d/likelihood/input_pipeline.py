@@ -609,6 +609,12 @@ class Args:
 
         if (name_variation is not None) and (name_variation == "Turner24"):
             self.fid_igm["label_mF"] = "Turner24"
+        elif (name_variation is not None) and (name_variation == "Gaikwad21"):
+            self.fid_igm["label_mF"] = "Gaikwad21"
+        elif (name_variation is not None) and (
+            (name_variation == "Gaikwad21") | (name_variation == "Gaikwad21T")
+        ):
+            self.fid_igm["label_T"] = "Gaikwad21"
         if (name_variation is not None) and (
             name_variation.startswith("sim_mpg_central_igm")
         ):
@@ -959,7 +965,11 @@ class Args:
             elif name_variation == "zmax":
                 nz_igm = 4
 
-            if name_variation == "Turner24":
+            if (name_variation is not None) and (name_variation == "Gaikwad21"):
+                self.fid_igm["tau_eff_znodes"] = []
+            elif (name_variation is not None) and (
+                name_variation == "Turner24"
+            ):
                 self.fid_igm["tau_eff_znodes"] = np.array([3.0])
             else:
                 self.fid_igm["tau_eff_znodes"] = np.geomspace(
@@ -969,12 +979,20 @@ class Args:
                 #     self.z_min, self.z_max, nz_igm
                 # )
 
-            self.fid_igm["sigT_kms_znodes"] = np.geomspace(
-                self.z_min, self.z_max, nz_igm
-            )
-            self.fid_igm["gamma_znodes"] = np.geomspace(
-                self.z_min, self.z_max, nz_igm
-            )
+            if (name_variation is not None) and (
+                (name_variation == "Gaikwad21")
+                | (name_variation == "Gaikwad21T")
+            ):
+                self.fid_igm["sigT_kms_znodes"] = []
+                self.fid_igm["gamma_znodes"] = []
+            else:
+                self.fid_igm["sigT_kms_znodes"] = np.geomspace(
+                    self.z_min, self.z_max, nz_igm
+                )
+                self.fid_igm["gamma_znodes"] = np.geomspace(
+                    self.z_min, self.z_max, nz_igm
+                )
+
             self.fid_igm["kF_kms_znodes"] = np.geomspace(
                 self.z_min, self.z_max, nz_igm
             )

@@ -143,18 +143,66 @@ class IGM(object):
                 igms_return["kF_kms" + "_z"] = zz
                 igms_return["kF_kms"] = np.poly1d(res_fit)(zz)
                 continue
-            elif sim_igm == "Turner24":
-                import cup1d
+            elif sim_igm.startswith("Turner24"):
+                from cup1d.likelihood.likelihood import others_igm
 
-                repo = os.path.dirname(cup1d.__path__[0])
-                fname = os.path.join(
-                    repo, "data", "nuisance", "Turner24_tau_eff.npy"
-                )
-                igm_hist = np.load(fname, allow_pickle=True).item()
-                igms_return["tau_eff_z"] = igm_hist["z"]
-                igms_return["tau_eff"] = igm_hist["tau_eff"]
-                igms_return["mF"] = igm_hist["mF"]
+                gal21, tu24 = others_igm()
+
+                igms_return["tau_eff_z"] = tu24["z"]
                 igms_return["F_suite"] = "mpg"
+
+                if sim_igm == "Turner24_smooth":
+                    ndeg = 2
+                    pfit = np.polyfit(
+                        tu24["z"],
+                        tu24["mF"],
+                        ndeg,
+                        w=1 / tu24["mF_err"],
+                    )
+                    mF = np.poly1d(pfit)(tu24["z"])
+                else:
+                    mF = tu24["mF"]
+
+                igms_return["mF"] = mF
+                igms_return["tau_eff"] = -np.log(mF)
+                continue
+            elif sim_igm == "Gaikwad21":
+                from lace.cosmo.thermal_broadening import thermal_broadening_kms
+                from cup1d.likelihood.likelihood import others_igm
+
+                if "T_suite" in igms_return:
+                    continue
+
+                gal21, tu24 = others_igm()
+
+                igms_return["tau_eff_z"] = gal21["z"]
+                igms_return["sigT_kms_z"] = gal21["z"]
+                igms_return["gamma_z"] = gal21["z"]
+                igms_return["F_suite"] = "mpg"
+                igms_return["T_suite"] = "mpg"
+
+                if sim_igm == "Gaikwad21_smooth":
+                    ndeg = 5
+                    pfit = np.polyfit(
+                        gal21["z"],
+                        gal21["mF"],
+                        ndeg,
+                        w=1 / gal21["mF_err"],
+                    )
+                    mF = np.poly1d(pfit)(gal21["z"])
+                    T0 = gal21["T0"]
+                    gamma = gal21["gamma"]
+                else:
+                    mF = gal21["mF"]
+                    T0 = gal21["T0"]
+                    gamma = gal21["gamma"]
+
+                igms_return["mF"] = mF
+                igms_return["tau_eff"] = -np.log(mF)
+
+                igms_return["sigT_kms"] = thermal_broadening_kms(T0)
+                # igms_return["sigT_Mpc"] = igm_hist["sigT_Mpc"]
+                igms_return["gamma"] = gamma
                 continue
             else:
                 ValueError("sim_igm must be 'mpg' or 'nyx'")
