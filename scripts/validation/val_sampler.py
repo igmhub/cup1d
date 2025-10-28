@@ -47,7 +47,6 @@ def main():
         emulator_label="CH24_" + emu + "cen_gpr",
         path_data=path_data,
         true_cosmo_label=data_label,
-        fid_cosmo_label=data_label,
         apply_smoothing=True,
         add_noise=False,
         seed_noise=0,
@@ -56,6 +55,7 @@ def main():
     args.set_baseline(
         fit_type=fit_type,
         fix_cosmo=False,
+        fid_cosmo_label=data_label,
         P1D_type=cov_label,
         name_variation=name_variation,
         z_min=zmin,
