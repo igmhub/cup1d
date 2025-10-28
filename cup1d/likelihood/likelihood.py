@@ -1894,7 +1894,7 @@ class Likelihood(object):
         ls = ["--", "-.", (0, (2, 2, 2, 2)), ":", "-"]
 
         for ii in range(5):
-            par_plot = "HCD_damp" + str(ii + 1) + "_0"
+            par_plot = "HCD_damp" + str(ii + 1)
             # print(par_plot)
 
             if chain is None:
@@ -1902,8 +1902,10 @@ class Likelihood(object):
                 for par in free_params:
                     if ii + 1 <= 4:
                         if "HCD_damp" in par.name:
-                            if par.name != par_plot:
-                                # print(par.name, par.value)
+                            # print(par.name, par.value)
+                            if par.name.startswith(par_plot):
+                                pass
+                            else:
                                 par.value = -20
 
                 hcd_cont = self.theory.model_cont.hcd_model.get_contamination(
@@ -1930,8 +1932,9 @@ class Likelihood(object):
                     for par in free_params:
                         if ii + 1 <= 4:
                             if "HCD_damp" in par.name:
-                                if par.name != par_plot:
-                                    # print(par.name, par.value)
+                                if par.name.startswith(par_plot):
+                                    pass
+                                else:
                                     par.value = -20
                     all_hcd_cont[
                         jj, :
@@ -2063,8 +2066,11 @@ class Likelihood(object):
         ax.axhline(0, color="k", ls=":", lw=2)
         ax.legend(fontsize=ftsize - 4, loc="upper right")
         ax.tick_params(axis="both", which="major", labelsize=ftsize)
-        ax.set_ylabel(r"$C_\mathrm{SiII-SiII}$ [km/s]", fontsize=ftsize)
-        ax.set_xlabel(r"$k$ [s/km]", fontsize=ftsize)
+        ax.set_ylabel(
+            r"$C_\mathrm{SiII-SiII}\,[\mathrm{km}\,\mathrm{s}^{-1}]$",
+            fontsize=ftsize,
+        )
+        ax.set_xlabel(r"$k\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
         ax.set_ylim(-0.2, 3)
 
         plt.tight_layout()
@@ -2411,7 +2417,9 @@ class Likelihood(object):
             ax[ii].legend(fontsize=ftsize - 4, loc="lower right")
             ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
         fig.supylabel(r"$C_\mathrm{metal}$", fontsize=ftsize)
-        ax[-1].set_xlabel(r"$k$ [s/km]", fontsize=ftsize)
+        ax[-1].set_xlabel(
+            r"$k\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize
+        )
 
         plt.tight_layout()
 

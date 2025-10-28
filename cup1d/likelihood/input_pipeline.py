@@ -281,38 +281,21 @@ class Args:
             "kF_kms": 1,
         }
 
-        if (name_variation is not None) and name_variation.startswith("sim_"):
-            fid_vals_conts = {
-                "f_Lya_SiIII": -5.0,
-                "s_Lya_SiIII": 5.0,
-                "f_Lya_SiII": -5.0,
-                "s_Lya_SiII": 5.5,
-                "f_SiIIa_SiIIb": -3.0,
-                "s_SiIIa_SiIIb": 4.0,
-                "f_SiIIa_SiIII": 1,
-                "f_SiIIb_SiIII": 1,
-                "HCD_damp1": -6.0,
-                "HCD_damp2": -6.0,
-                "HCD_damp3": -6.0,
-                "HCD_damp4": -6.0,
-                "HCD_const": 0.0,
-            }
-        else:
-            fid_vals_conts = {
-                "f_Lya_SiIII": -4.0,
-                "s_Lya_SiIII": 5.0,
-                "f_Lya_SiII": -4.0,
-                "s_Lya_SiII": 5.5,
-                "f_SiIIa_SiIIb": 0.5,
-                "s_SiIIa_SiIIb": 4.0,
-                "f_SiIIa_SiIII": 1,
-                "f_SiIIb_SiIII": 1,
-                "HCD_damp1": -1.4,
-                "HCD_damp2": -6.0,
-                "HCD_damp3": -5.0,
-                "HCD_damp4": -5.0,
-                "HCD_const": 0.0,
-            }
+        fid_vals_conts = {
+            "f_Lya_SiIII": -4.0,
+            "s_Lya_SiIII": 5.0,
+            "f_Lya_SiII": -4.0,
+            "s_Lya_SiII": 5.5,
+            "f_SiIIa_SiIIb": 0.5,
+            "s_SiIIa_SiIIb": 4.0,
+            "f_SiIIa_SiIII": 1,
+            "f_SiIIb_SiIII": 1,
+            "HCD_damp1": -1.4,
+            "HCD_damp2": -6.0,
+            "HCD_damp3": -5.0,
+            "HCD_damp4": -5.0,
+            "HCD_const": 0.0,
+        }
         fid_vals_syst = {
             "R_coeff": 0.0,
         }
@@ -958,11 +941,6 @@ class Args:
             elif name_variation == "less_igm":
                 nz_igm = 2
             else:
-                nz_igm = 4
-
-            if name_variation == "zmin":
-                nz_igm = 4
-            elif name_variation == "zmax":
                 nz_igm = 4
 
             if (name_variation is not None) and (name_variation == "Gaikwad21"):
