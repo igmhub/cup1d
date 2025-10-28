@@ -281,7 +281,7 @@ class Args:
             "kF_kms": 1,
         }
 
-        if (name_variation is not None) & (name_variation.startswith("sim_")):
+        if (name_variation is not None) and name_variation.startswith("sim_"):
             fid_vals_conts = {
                 "f_Lya_SiIII": -5.0,
                 "s_Lya_SiIII": 5.0,
