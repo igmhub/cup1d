@@ -17,8 +17,8 @@ mkdir -p logs
 
 variations=(
     "mpg_central"
-    # "mpg_central_igm"
-    # "mpg_central_igm0"
+    "mpg_central_igm"
+    "mpg_central_igm0"
     "nyx_central"
     "sherwood"
 )
