@@ -749,7 +749,7 @@ class Fitter(object):
 
         return res
 
-    def get_initial_walkers(self, pini=None, rms=0.01):
+    def get_initial_walkers(self, pini=None, rms=0.03):
         """Setup initial states of walkers in sensible points
         -- initial will set a range within unit volume around the
            fiducial values to initialise walkers (if no prior is used)"""

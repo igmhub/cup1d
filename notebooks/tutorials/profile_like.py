@@ -1034,7 +1034,9 @@ folder = base + "sim_mpg_central_igm0/CH24_mpgcen_gpr/chain_1/"
 dat_mpg_igm0 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 sum_mpg_igm0 = np.load(folder + "summary.npy", allow_pickle=True).item()
 
-folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
+# folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
+# dat_nyx_sim = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_3/"
 dat_nyx_sim = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 folder = base + "sim_sherwood/CH24_mpgcen_gpr/chain_1/"
@@ -1069,9 +1071,13 @@ sum_mpg = np.load(folder + "summary.npy", allow_pickle=True).item()
 folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
 dat_mpg_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
+## emu
+
 # folder = base + "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_1/"
 # dat_nyx = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 # sum_nyx = np.load(folder + "summary.npy", allow_pickle=True).item()
+
+## data
 
 folder = base + "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_1/"
 dat_fft3 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
@@ -1083,33 +1089,68 @@ folder = base + "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_1/"
 dat_qmle = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 sum_qmle = np.load(folder + "summary.npy", allow_pickle=True).item()
 
-
-folder = base + "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_1/"
-dat_no_emu_cov = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-
 folder = base + "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_1/"
 dat_zmax = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_1/"
 dat_zmin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-# folder = base + "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_1/"
-# dat_turner = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+## cov
 
-# folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/"
-# dat_cosmo = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-# folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/"
-# dat_cosmo_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_1/"
+dat_no_emu_cov = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+## IGM
+
+folder = base + "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_1/"
+dat_more_igm = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+
+## cosmo
+
+folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/"
+dat_cosmo = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/"
+dat_cosmo_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
 # folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_1/"
 # dat_cosmo_high = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 # folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_1/"
 # dat_cosmo_high_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
-# folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/"
-# dat_cosmo_low = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-# folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/"
-# dat_cosmo_low_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/"
+dat_cosmo_low = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/"
+dat_cosmo_low_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
+
+## ingredients
+
+folder = base + "DESIY1_QMLE3/DLAs/CH24_mpgcen_gpr/chain_1/"
+dat_dlas = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/HCD0/CH24_mpgcen_gpr/chain_1/"
+dat_HCD0 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_1/"
+dat_metal_deco = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_1/"
+dat_metal_si2 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_1/"
+dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+## other
+
+folder = base + "DESIY1_QMLE3/data_syst_diag/CH24_mpgcen_gpr/chain_1/"
+dat_syst_diag = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+
+## no more
+
+# folder = base + "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_1/"
+# dat_turner = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
 
 # folder = base + "DESIY1_QMLE3/hcd_z/CH24_mpgcen_gpr/chain_1/"
 # dat_hcd_z = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
@@ -1117,24 +1158,13 @@ dat_zmin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 # folder = base + "DESIY1_QMLE3/less_igm/CH24_mpgcen_gpr/chain_1/"
 # dat_less_igm = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-# folder = base + "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_1/"
-# dat_more_igm = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-# folder = base + "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_1/"
-# dat_metal_deco = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-
-# folder = base + "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_1/"
-# dat_metal_si2 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-
-# folder = base + "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_1/"
-# dat_metal_thin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-
-# folder = base + "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_1/"
-# dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 # folder = base + "DESIY1_QMLE3/metals_z/CH24_mpgcen_gpr/chain_1/"
 # dat_metals_z = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
+# folder = base + "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_1/"
+# dat_metal_thin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 # folder = base + "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_1/"
 # dat_no_inflate = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
@@ -1146,15 +1176,11 @@ dat_zmin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 # folder = base + "DESIY1_QMLE3/no_res/CH24_mpgcen_gpr/chain_1/"
 # dat_no_res = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-# folder = base + "DESIY1_QMLE3/DLAs/CH24_mpgcen_gpr/chain_1/"
-# dat_dlas = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 
 # folder = base + "DESIY1_QMLE3/kF_kms/CH24_mpgcen_gpr/chain_2/"
 # dat_kF = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-# folder = base + "DESIY1_QMLE3/HCD0/CH24_mpgcen_gpr/chain_2/"
-# dat_HCD0 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 # -
 from cup1d.likelihood.cosmologies import set_cosmo
 from cup1d.likelihood import CAMB_model
@@ -1175,13 +1201,15 @@ dict_trans = {
     
     "DESIY1_QMLE_mpg":"Data: w/ low SNR", 
     "DESIY1_FFT3_dir_mpg": "Data: FFT",
-    "DESIY1_FFT_dir_mpg":"Data: FFT w/ low SNR", 
+    # "DESIY1_FFT_dir_mpg":"Data: FFT w/ low SNR", 
     "zmin": "Data: $z \geq 2.6$",  # restricted zrange
     "zmax": "Data: $z \leq 3.4$",  # restricted zrange
     
     "no_emu_cov":"Cov: w/o emu err", # no emu error
-    "no_inflate":"Cov: w/o 5% err",
-    "no_inflate_no_emu_cov":"Cov: w/o emu, 5% err", 
+    "dat_syst_diag": "Data: uncorr syst", # systematics data uncorrelated
+    
+    # "no_inflate":"Cov: w/o 5% err",
+    # "no_inflate_no_emu_cov":"Cov: w/o emu, 5% err", 
     
     "DESIY1_QMLE3_nyx":"Emulator: lace-lyssa",
     
@@ -1189,23 +1217,23 @@ dict_trans = {
     "cosmo_low": "Cosmo: low $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
     "cosmo_high": "Cosmo: high $\Omega_\mathrm{M}h^2$",  # different fiducial cosmo
     
-    "more_igm": "IGM: $n_z=8$",  # 8 params for IGM evolution
-    "less_igm": "IGM: $n_z=4$",  # 4 params for IGM evolution
-    "Turner24": r"IGM: $\bar{F},\, n_z=1$",  # mF from Turner24 with 1 free param to scale ERROR
-    "kF_kms": r"IGM: w/ $k_\mathrm{F}$",
+    "more_igm": "IGM: $n_z=6$",  # 6 params for IGM evolution
+    # "less_igm": "IGM: $n_z=4$",  # 4 params for IGM evolution
+    # "Turner24": r"IGM: $\bar{F},\, n_z=1$",  # mF from Turner24 with 1 free param to scale ERROR
+    # "kF_kms": r"IGM: w/ $k_\mathrm{F}$",
 
-    "hcd_z": "HCD: $n_z=2$",  # 2 params for z ev hcd
+    # "hcd_z": "HCD: $n_z=2$",  # 2 params for z ev hcd
     "DLAs": "HCD: only DLAs",  # no LLS, sub-DLA
     "HCD0": "HCD: w/ $f_\\mathrm{const}^\\mathrm{HCD}$", # w/ constant term
     
-    "metals_z": "Metals: $n_z=2$",  # 2 params for z ev metals
+    # "metals_z": "Metals: $n_z=2$",  # 2 params for z ev metals
     
     "metal_trad": "Metals: traditional",  # 2 params for metals like eBOSS
     "metal_si2": "Metals: no SiII-SiII",  # no SiII-SiII cont
     "metal_deco": "Metals: no H-Si decorr",  # no decorrelation metals
-    "metal_thin": "Metals: opt thin",  # no desviation from optically-thin limit ERROR
+    # "metal_thin": "Metals: opt thin",  # no desviation from optically-thin limit ERROR
     
-    "no_res": "Model: no resolution",  # no resolution correction
+    # "no_res": "Model: no resolution",  # no resolution correction
 
     "sim_mpg_central": "mpg-central", 
     "sim_mpg_central_all": "Model: cosmo, IGM, cont, syst", 
@@ -1232,7 +1260,7 @@ fname = [
     "test",
 ]
 
-for image in range(10, 11):
+for image in range(4, 6):
 
     # if image in [3, 4, 5]:
     #     ftsize = 26
@@ -1246,20 +1274,24 @@ for image in range(10, 11):
     elif image == 1:
         # variations = ["DESIY1_QMLE3_mpg", "no_inflate", "no_emu_cov", "no_inflate_no_emu_cov"]
         # dats = [dat_mpg, dat_no_inflate, dat_no_emu_cov, dat_no_inflate_no_emu_cov]
-        variations = ["DESIY1_QMLE3_mpg", "no_emu_cov"]
-        dats = [dat_mpg, dat_no_emu_cov]
+        variations = ["DESIY1_QMLE3_mpg", "no_emu_cov", "dat_syst_diag"]
+        dats = [dat_mpg, dat_no_emu_cov, dat_syst_diag]
     elif image == 2:
         variations = ["DESIY1_QMLE3_mpg", "cosmo", "cosmo_low", "cosmo_high"]
         dats = [dat_mpg, dat_cosmo, dat_cosmo_low, dat_cosmo_high]
-    elif image == 3:
-        variations = ["DESIY1_QMLE3_mpg", "more_igm", "less_igm", "kF_kms", "Turner24"]
-        dats = [dat_mpg, dat_more_igm, dat_less_igm, dat_kF, dat_turner]
+        # variations = ["DESIY1_QMLE3_mpg", "cosmo", "cosmo_low"]
+        # dats = [dat_mpg, dat_cosmo, dat_cosmo_low]
+    # elif image == 3:
+    #     # variations = ["DESIY1_QMLE3_mpg", "more_igm", "less_igm", "kF_kms", "Turner24"]
+    #     # dats = [dat_mpg, dat_more_igm, dat_less_igm, dat_kF, dat_turner]
+    #     variations = ["DESIY1_QMLE3_mpg", "more_igm"]
+    #     dats = [dat_mpg, dat_more_igm]
     elif image == 4:
-        variations = ["DESIY1_QMLE3_mpg", "no_res", "metals_z", "metal_trad"]
-        dats = [dat_mpg, dat_no_res, dat_metals_z, dat_metal_trad]
+        variations = ["DESIY1_QMLE3_mpg", "metal_trad", "metal_si2", "DLAs"]
+        dats = [dat_mpg, dat_metal_trad, dat_metal_si2, dat_dlas]
     elif image == 5:
-        variations = ["DESIY1_QMLE3_mpg", "metal_thin", "metal_deco", "metal_si2"]
-        dats = [dat_mpg, dat_metal_thin, dat_metal_deco, dat_metal_si2]
+        variations = ["DESIY1_QMLE3_mpg", "more_igm", "metal_deco", "HCD0"]
+        dats = [dat_mpg, dat_more_igm, dat_metal_deco, dat_HCD0]
     elif image == 6:
         variations = ["DESIY1_QMLE3_mpg", "zmin", "zmax"]
         dats = [dat_mpg, dat_zmin, dat_zmax]
@@ -1270,15 +1302,17 @@ for image in range(10, 11):
         variations = ["DESIY1_QMLE3_mpg", "cosmo", "cosmo_low", "cosmo_high"]
         dats = [dat_mpg_Asns, dat_cosmo_Asns, dat_cosmo_low_Asns, dat_cosmo_high_Asns]
         factx = 1e9
-    elif image == 9:
-        variations = ["DESIY1_QMLE3_mpg", "hcd_z", "DLAs", "HCD0"]
-        dats = [dat_mpg, dat_hcd_z, dat_dlas, dat_HCD0]
+    # elif image == 9:
+    #     variations = ["DESIY1_QMLE3_mpg", "more_igm", "DLAs", "HCD0"]
+    #     dats = [dat_mpg, dat_more_igm, dat_dlas, dat_HCD0]
     elif image == 10:
         variations = ["sim_mpg_central", "sim_nyx_central", "sim_sherwood"]
         dats = [dat_mpg_sim, dat_nyx_sim, dat_sherwood]
     elif image == 11:
         variations = ["sim_mpg_central_all", "sim_mpg_central_igm", "sim_mpg_central_igm0"]
         dats = [dat_mpg_sim, dat_mpg_igm, dat_mpg_igm0]
+    else:
+        continue
 
 
     dict_diff = {
@@ -1297,7 +1331,11 @@ for image in range(10, 11):
         cmap = plt.colormaps[cmaps[ii]]
 
         if var.startswith("sim_"):
-            cosmo = set_cosmo(cosmo_label=var[4:])
+            if "mpg_central" in var:
+                clabel = "mpg_central"
+            else:
+                clabel = var[4:]
+            cosmo = set_cosmo(cosmo_label=clabel)
             like_cosmo = CAMB_model.CAMBModel(np.array([3]), cosmo=cosmo)
             true_cosmo = like_cosmo.get_linP_params()
             ds_diff = true_cosmo["Delta2_star"]
@@ -1347,15 +1385,10 @@ for image in range(10, 11):
 #     "test",
 # ]
     
-    if fname[image] in ["cosmo", "modelz", "model_ing_yes", "model_ing_no", "cosmo_Asns", "DLAs"]:
+    if fname[image] in ["cosmo", "model_ing_yes", "model_ing_no", "cosmo_Asns", "DLAs"]:
         ymin, ymax = plt.ylim()
         yrange = ymax - ymin
         ax.set_ylim(ymin, ymax + 0.2 * yrange)
-
-    if fname[image] in ["modelz"]:
-        ncol = 2
-    else:
-        ncol = 1
         
     if fname[image] in ["data"]:
         loc = "lower right"
@@ -1364,10 +1397,10 @@ for image in range(10, 11):
     else:
         loc = "upper right"
     
-    plt.legend(fontsize=ftsize-6, loc=loc, ncol=ncol)
+    plt.legend(fontsize=ftsize-6, loc=loc, ncol=1)
     plt.tight_layout()
-    plt.savefig("figs/variations_"+fname[image]+".pdf")
-    plt.savefig("figs/variations_"+fname[image]+".png")
+    plt.savefig("figs/vars/variations_"+fname[image]+".pdf")
+    plt.savefig("figs/vars/variations_"+fname[image]+".png")
 # -
 
 

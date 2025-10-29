@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -A desi
 #SBATCH -q regular
-#SBATCH -t 06:00:00
+#SBATCH -t 03:00:00
 #SBATCH --constraint=cpu
 #SBATCH --nodes=1
 #SBATCH -J p1d
@@ -18,7 +18,7 @@ mkdir -p logs
 # Define variations
 variations=(
     # "None"
-    "nyx"
+    # "nyx"
     # "DESIY1_QMLE"
     # "DESIY1_FFT3_dir"
     # "DESIY1_FFT_dir"
@@ -27,7 +27,7 @@ variations=(
     # "no_emu_cov"
     # "cosmo"
     # "cosmo_low"
-    # "cosmo_high"
+    "cosmo_high"
     # "data_syst_diag"
     # "metal_trad"
     # "metal_si2"

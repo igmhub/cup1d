@@ -342,12 +342,14 @@ name_variation = None
 # name_variation = "Gaikwad21T"
 # name_variation = "Turner24"
 
+# name_variation = "data_syst_diag"
+
 # emu_cov_type = "block"
 emu_cov_type = "diagonal"
 # name_variation = "Ma2025"
 
-emulator_label="CH24_mpgcen_gpr"
-# emulator_label="CH24_nyxcen_gpr"
+# emulator_label="CH24_mpgcen_gpr"
+emulator_label="CH24_nyxcen_gpr"
 
 args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
 args.set_baseline(
@@ -383,17 +385,13 @@ pip.fitter.like.get_chi2(p0)
 # %%
 
 # %%
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
-chain = np.load(base + folder + "chain.npy")
-pip.fitter.like.plot_metal_cont_mult(chain=chain, save_directory="figs")
-pip.fitter.like.plot_metal_cont_add(free_params=free_params, chain=chain, save_directory="figs")
-pip.fitter.like.plot_hcd_cont(p0=p0, chain=chain, save_directory="figs")
+# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+# folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+# chain = np.load(base + folder + "chain.npy")
+# pip.fitter.like.plot_metal_cont_mult(chain=chain, save_directory="figs")
+# pip.fitter.like.plot_metal_cont_add(free_params=free_params, chain=chain, save_directory="figs")
+# pip.fitter.like.plot_hcd_cont(p0=p0, chain=chain, save_directory="figs")
 
-
-# %%
-
-pip.fitter.like.plot_hcd_cont(p0=p0, chain=chain, save_directory="figs")
 
 # %%
 
