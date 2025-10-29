@@ -344,8 +344,8 @@ name_variation = None
 
 # name_variation = "data_syst_diag"
 
-# emu_cov_type = "block"
-emu_cov_type = "diagonal"
+emu_cov_type = "block"
+# emu_cov_type = "diagonal"
 # name_variation = "Ma2025"
 
 emulator_label="CH24_mpgcen_gpr"
@@ -361,6 +361,121 @@ args.set_baseline(
 
 pip = Pipeline(args, out_folder=args.out_folder)
 
+
+# %%
+cov_emu = pip.fitter.like.emu_full_cov_Pk_kms.copy()
+cov_stat_sys = pip.fitter.like.full_cov_Pk_kms - cov_emu
+full_cov = pip.fitter.like.full_cov_Pk_kms.copy()
+full_cov2 = cov_emu * 4 + cov_stat_sys
+full_cov_diag = cov_stat_sys + np.eye(cov_stat_sys.shape[0]) * np.diag(cov_emu)
+full_cov_diag2 = cov_stat_sys + np.eye(cov_stat_sys.shape[0]) * np.diag(cov_emu) * 4
+
+# %%
+ein_emu, _ = np.linalg.eig(cov_emu)
+ein_stat_sys, _ = np.linalg.eig(cov_stat_sys)
+ein_full, _ = np.linalg.eig(full_cov)
+ein_full2, _ = np.linalg.eig(full_cov2)
+ein_cov_diag, _ = np.linalg.eig(full_cov_diag)
+
+# %%
+det_emu = np.linalg.det(cov_emu)
+det_sat_sys = np.linalg.det(cov_stat_sys)
+det_full = np.linalg.det(full_cov)
+det_full2 = np.linalg.det(full_cov2)
+det_cov_diag = np.linalg.det(full_cov_diag)
+
+# %%
+print(det_emu)
+print(det_sat_sys)
+print(det_full)
+print(det_cov_diag)
+
+# %%
+cond_emu = np.linalg.cond(cov_emu)
+cond_sat_sys = np.linalg.cond(cov_stat_sys)
+cond_full = np.linalg.cond(full_cov)
+cond_full2 = np.linalg.cond(full_cov2)
+cond_cov_diag = np.linalg.cond(full_cov_diag)
+
+# %%
+print(cond_emu)
+print(cond_sat_sys)
+print(cond_full)
+print(cond_cov_diag)
+
+# %%
+inv_emu = np.linalg.inv(cov_emu)
+inv_sat_sys = np.linalg.inv(cov_stat_sys)
+inv_full = np.linalg.inv(full_cov)
+inv_full2 = np.linalg.inv(full_cov2)
+inv_cov_diag = np.linalg.inv(full_cov_diag)
+inv_cov_diag2 = np.linalg.inv(full_cov_diag2)
+
+# %%
+pinv_emu = np.linalg.pinv(cov_emu)
+pinv_sat_sys = np.linalg.pinv(cov_stat_sys)
+pinv_full = np.linalg.pinv(full_cov)
+pinv_full2 = np.linalg.pinv(full_cov2)
+pinv_cov_diag = np.linalg.pinv(full_cov_diag)
+
+
+# %%
+def correlation_from_covariance(covariance):
+    v = np.sqrt(np.diag(covariance))
+    outer_v = np.outer(v, v)
+    correlation = covariance / outer_v
+    correlation[covariance == 0] = 0
+    return correlation
+
+
+# %%
+
+# %%
+pre_emu = correlation_from_covariance(inv_emu)
+pre_sat_sys = correlation_from_covariance(inv_sat_sys)
+pre_full = correlation_from_covariance(inv_full)
+pre_full2 = correlation_from_covariance(inv_full2)
+pre_cov_diag = correlation_from_covariance(inv_cov_diag)
+
+# %%
+ppre_emu = correlation_from_covariance(pinv_emu)
+ppre_sat_sys = correlation_from_covariance(pinv_sat_sys)
+ppre_full = correlation_from_covariance(pinv_full)
+ppre_full2 = correlation_from_covariance(pinv_full2)
+ppre_cov_diag = correlation_from_covariance(pinv_cov_diag)
+
+# %%
+# plt.imshow(pre_emu)
+plt.imshow(ppre_emu)
+plt.colorbar()
+
+# %%
+# plt.imshow(pre_sat_sys)
+plt.imshow(ppre_sat_sys)
+plt.colorbar()
+
+# %%
+# plt.imshow(pre_full)
+plt.imshow(pre_cov_diag)
+plt.colorbar()
+
+# %%
+plt.plot(np.diag(inv_full2)/np.diag(inv_full), label="stat + syst + emu * 4")
+# plt.plot(np.diag(inv_sat_sys)/np.diag(inv_full))
+plt.plot(np.diag(inv_cov_diag)/np.diag(inv_full), label="stat + syst + diag(emu)")
+plt.plot(np.diag(inv_cov_diag2)/np.diag(inv_full), ":", label="stat + syst + diag(emu) * 4")
+plt.legend()
+plt.xlabel("element diag")
+plt.ylabel("diag(x)/diag(stat + syst + emu)")
+
+# %%
+plt.plot(np.diag(full_cov2)/np.diag(full_cov), label="stat + syst + emu * 4")
+# plt.plot(np.diag(inv_sat_sys)/np.diag(inv_full))
+plt.plot(np.diag(full_cov_diag)/np.diag(full_cov), label="stat + syst + diag(emu)")
+plt.plot(np.diag(full_cov_diag2)/np.diag(full_cov), ":", label="stat + syst + diag(emu) * 4")
+plt.legend()
+plt.xlabel("element diag")
+plt.ylabel("diag(x)/diag(stat + syst + emu)")
 
 # %%
 

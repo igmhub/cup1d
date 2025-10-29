@@ -35,6 +35,7 @@ variations=(
     # "more_igm"
     # "DLAs"
     # "HCD0"
+    "Ma2025"
     #############
     # "no_res"
     # "less_igm"
