@@ -109,7 +109,7 @@ for ii in range(nsam):
 
 # %%
 fig, ax = plt.subplots(figsize=(8, 6))
-ftsize = 20
+ftsize = 24
 
 for ii in range(1, nsam):
     lab = r"$z=$"+str(np.round(sim_test[ii]['z'], 2))
@@ -122,7 +122,7 @@ ax.axhline(-0.01, ls="--", color="k")
     
 plt.legend()
 ax.set_xscale("log")
-ax.set_xlabel(r"$k\,\left[\mathrm{Mpc}^{-1}\right]$", fontsize=ftsize)
+ax.set_xlabel(r"$k_\parallel\,\left[\mathrm{Mpc}^{-1}\right]$", fontsize=ftsize)
 # plt.ylim(-0.03, 0.03)
 ax.set_xlim(0.08, 4)
 ax.set_ylabel(r"$P_\mathrm{1D}^\mathrm{emu}/P_\mathrm{1D}^\mathrm{smooth}-1$", fontsize=ftsize)
@@ -131,16 +131,12 @@ ax.tick_params(
     axis="both", which="major", labelsize=ftsize - 2
 )
 
-plt.legend(fontsize=ftsize-4, ncol=3)
+plt.legend(fontsize=ftsize-5, ncol=3)
 plt.tight_layout()
-# plt.savefig("mpg_central.pdf")
-# plt.savefig("mpg_central.png")
-# plt.savefig("mpg_seed.pdf")
-# plt.savefig("mpg_seed.png")
-# plt.savefig("mpgcen_seed.pdf")
-# plt.savefig("mpgcen_seed.png")
-plt.savefig("nyx_seed.pdf")
-plt.savefig("nyx_seed.png")
+plt.savefig("figs/mpg_seed.pdf")
+plt.savefig("figs/mpg_seed.png")
+# plt.savefig("figs/nyx_seed.pdf")
+# plt.savefig("figs/nyx_seed.png")
 
 # %%
 
@@ -195,7 +191,7 @@ ax.axhline(-0.01, ls="--", color="k")
     
 plt.legend()
 ax.set_xscale("log")
-ax.set_xlabel(r"$k\,\left[\mathrm{Mpc}^{-1}\right]$", fontsize=ftsize)
+ax.set_xlabel(r"$k_\parallel\,\left[\mathrm{Mpc}^{-1}\right]$", fontsize=ftsize)
 # plt.ylim(-0.03, 0.03)
 # ax.set_xlim(0.08, 4)
 ax.set_ylabel(r"$P_\mathrm{1D}^\mathrm{sim}/P_\mathrm{1D}^\mathrm{smooth}-1$", fontsize=ftsize)
@@ -234,7 +230,7 @@ p1d_Mpc_sm = np.zeros((nsim, nz, k_Mpc.shape[0]))
 
 for jj, isim in enumerate(archive.list_sim_cube):
     if isim == "nyx_14":
-        continue
+        break
     
     testing_data = archive.get_testing_data(isim)
     emulator = GPEmulator(emulator_label=emulator_label, train=False, drop_sim=isim)
@@ -270,9 +266,6 @@ for jj, isim in enumerate(archive.list_sim_cube):
 
 
 # %%
-p1d_Mpc_emu.shape
-
-# %%
 fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 24
 
@@ -295,7 +288,7 @@ ax.axhline(-0.01, ls="--", color="k")
     
 plt.legend()
 ax.set_xscale("log")
-ax.set_xlabel(r"$k\,\left[\mathrm{Mpc}^{-1}\right]$", fontsize=ftsize)
+ax.set_xlabel(r"$k_\parallel\,\left[\mathrm{Mpc}^{-1}\right]$", fontsize=ftsize)
 ax.set_xlim(0.08, 4)
 ax.set_ylabel(r"$P_\mathrm{1D}^\mathrm{emu}/P_\mathrm{1D}^\mathrm{smooth}-1$", fontsize=ftsize)
 
@@ -316,35 +309,7 @@ plt.savefig("figs/nyx_l1o.png")
 # %%
 
 # %% [markdown]
-# ### Test consistency for overlaping values of mF, just in the boundary
-
-# %%
-emu_params = ['Delta2_p', 'n_p', 'mF', 'sigT_Mpc', 'gamma', 'kF_Mpc']
-test_params = {}
-for key in emu_params:
-    test_params[key] = central[5][key]
-
-ind = (central[5]["k_Mpc"] < 4.25) & (central[5]["k_Mpc"] > 0)
-k_Mpc = central[5]["k_Mpc"][ind]
-P1D_test = central[5]["p1d_Mpc"][ind]
-
-# %%
-
-test_params["mF"] = 0.5403
-p1d_Mpc1 = emulator.emulate_p1d_Mpc(model=test_params, k_Mpc=k_Mpc)[0]
-test_params["mF"] = 0.5404
-p1d_Mpc2 = emulator.emulate_p1d_Mpc(model=test_params, k_Mpc=k_Mpc)[0]
-
-# %%
-plt.plot(k_Mpc, (p1d_Mpc1/p1d_Mpc2-1)*100)
-
-
-# %% [markdown]
 # ### OLD
-
-# %%
-
-# %%
 
 # %%
 # our modules

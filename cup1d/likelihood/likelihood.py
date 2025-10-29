@@ -1599,7 +1599,9 @@ class Likelihood(object):
                     fontsize=fontsize,
                 )
 
-        fig.supxlabel(r"$k_\parallel$ [s/km]", fontsize=fontsize)
+        fig.supxlabel(
+            r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize
+        )
         fig.supylabel(
             r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$",
             fontsize=fontsize,
@@ -1963,7 +1965,9 @@ class Likelihood(object):
                 )
         ax.axhline(1, color="k", ls=":", lw=2)
         ax.set_ylabel(r"$C_\mathrm{HCD}$", fontsize=ftsize)
-        ax.set_xlabel(r"$k$ [s/km]", fontsize=ftsize)
+        ax.set_xlabel(
+            r"$k_\parallel\, [\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize
+        )
         ax.tick_params(axis="both", which="major", labelsize=ftsize)
         ax.legend(fontsize=ftsize - 2)
 
@@ -2070,7 +2074,9 @@ class Likelihood(object):
             r"$C_\mathrm{SiII-SiII}\,[\mathrm{km}\,\mathrm{s}^{-1}]$",
             fontsize=ftsize,
         )
-        ax.set_xlabel(r"$k\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
+        ax.set_xlabel(
+            r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize
+        )
         ax.set_ylim(-0.2, 3)
 
         plt.tight_layout()
@@ -2418,7 +2424,7 @@ class Likelihood(object):
             ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
         fig.supylabel(r"$C_\mathrm{metal}$", fontsize=ftsize)
         ax[-1].set_xlabel(
-            r"$k\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize
+            r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize
         )
 
         plt.tight_layout()
@@ -2886,7 +2892,9 @@ class Likelihood(object):
 
         for ii in range(4):
             ax[ii].legend(fontsize=ftsize - 2, loc="upper right")
-        fig.supxlabel(r"$k\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize + 2)
+        fig.supxlabel(
+            r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize + 2
+        )
         fig.supylabel(r"$\sigma_x/P_\mathrm{1D}$", fontsize=ftsize + 2)
         ax[0].set_ylim(0.0, 0.06)
         ax[3].set_ylim(0.0, 0.06)

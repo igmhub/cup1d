@@ -48,7 +48,8 @@ class Plotter(object):
                     print("Not found in args", param)
                     pass
 
-            args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/DESI-DR1/qmle_measurement/DataProducts/v3/desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"  # args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
+            args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/DESI-DR1/qmle_measurement/DataProducts/v3/desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
+            # args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
             self.fitter = Pipeline(args, out_folder=save_directory).fitter
 
             # add sampler results to fitter
@@ -1642,8 +1643,12 @@ class Plotter(object):
             #     fontsize=fontsize - 4,
             # )
             ax[ii].legend(loc="upper right", fontsize=fontsize - 4)
-        ax[-2].set_xlabel(r"$k_\parallel$ [s/km]", fontsize=fontsize)
-        ax[-1].set_xlabel(r"$k_\parallel$ [s/km]", fontsize=fontsize)
+        ax[-2].set_xlabel(
+            r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize
+        )
+        ax[-1].set_xlabel(
+            r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize
+        )
         # fig.suptitle(r"$z=$" + str(zmask[0]), fontsize=fontsize + 2)
         if naxres == 1:
             ax[-1].axis("off")

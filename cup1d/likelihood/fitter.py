@@ -230,7 +230,9 @@ class Fitter(object):
             )
 
             for sample in sampler.sample(
-                p0, iterations=self.nburn + self.nsteps
+                p0,
+                iterations=self.nburn + self.nsteps,
+                skip_initial_state_check=True,
             ):
                 if sampler.iteration % 100 == 0:
                     self.print(
@@ -749,7 +751,7 @@ class Fitter(object):
 
         return res
 
-    def get_initial_walkers(self, pini=None, rms=0.03):
+    def get_initial_walkers(self, pini=None, rms=0.01):
         """Setup initial states of walkers in sensible points
         -- initial will set a range within unit volume around the
            fiducial values to initialise walkers (if no prior is used)"""

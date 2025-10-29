@@ -32,8 +32,8 @@ from cup1d.utils.utils import get_path_repo
 # +
 data_label = "DESIY1_QMLE3"
 name_variation = None
-# emulator_label = "CH24_mpgcen_gpr"
-emulator_label = "CH24_nyxcen_gpr"
+emulator_label = "CH24_mpgcen_gpr"
+# emulator_label = "CH24_nyxcen_gpr"
 
 args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type="diagonal")
 args.set_baseline(

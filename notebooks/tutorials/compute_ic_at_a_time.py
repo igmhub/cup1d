@@ -34,8 +34,8 @@ from cup1d.utils.utils import get_path_repo
 
 data_label = "DESIY1_QMLE3"
 name_variation = None
-# emulator_label = "CH24_mpgcen_gpr"
-emulator_label = "CH24_nyxcen_gpr"
+emulator_label = "CH24_mpgcen_gpr"
+# emulator_label = "CH24_nyxcen_gpr"
 
 # emu_cov_type = "block"
 emu_cov_type = "diagonal"
@@ -64,8 +64,8 @@ out_mle = []
 out_mle_cube = []
 out_chi2 = []
 out_pnames = []
-for ii in range(len(pip.fitter.like.data.z)):
-# for ii in range(1):
+# for ii in range(len(pip.fitter.like.data.z)):
+for ii in range(1):
     zmask = np.array([pip.fitter.like.data.z[ii]])
 
     pip = Pipeline(args, out_folder=None)

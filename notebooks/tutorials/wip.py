@@ -58,11 +58,11 @@ from cup1d.pipeline.set_archive import set_archive
 
 # %%
 
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+# folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
 
-from cup1d.plots_and_tables.table_nuisance import table_nuisance
-table_nuisance(base + folder)
+# from cup1d.plots_and_tables.table_nuisance import table_nuisance
+# table_nuisance(base + folder)
 
 # from cup1d.plots_and_tables.table_variations import table_variations
 # base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
@@ -348,8 +348,8 @@ name_variation = None
 emu_cov_type = "diagonal"
 # name_variation = "Ma2025"
 
-# emulator_label="CH24_mpgcen_gpr"
-emulator_label="CH24_nyxcen_gpr"
+emulator_label="CH24_mpgcen_gpr"
+# emulator_label="CH24_nyxcen_gpr"
 
 args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
 args.set_baseline(
@@ -394,8 +394,6 @@ pip.fitter.like.get_chi2(p0)
 
 
 # %%
-
-# %%
 # std_mpg = np.sqrt(np.diag(pip.fitter.like.emu_full_cov_Pk_kms)).copy()
 # std_nyx = np.sqrt(np.diag(pip.fitter.like.emu_full_cov_Pk_kms)).copy()
 # np.mean(std_nyx/std_mpg)
@@ -403,8 +401,9 @@ pip.fitter.like.get_chi2(p0)
 # %%
 # pip.fitter.like.data.plot_p1d()
 
-# pip.fitter.like.data.plot_p1d(fname="figs/p1d_qmle3")
-# pip.fitter.like.plot_cov_to_pk(fname="figs/err2p1d_qmle")
+# pip.fitter.like.data.plot_p1d(cov_ext=pip.fitter.like.cov_Pk_kms, fname="figs/p1d_qmle3")
+# pip.fitter.like.plot_p1d()
+pip.fitter.like.plot_cov_to_pk(fname="figs/err2p1d_qmle3")
 # pip.fitter.like.plot_cov_to_pk()
 
 # %%
@@ -463,12 +462,19 @@ n_star -2.27332
 1.0832499884936857e-05 * 100
 
 # %%
-pip.fitter.like.plot_p1d(p0, print_chi2=False)
+# pip.fitter.like.plot_p1d(p0, print_chi2=False)
 # pip.fitter.like.plot_cov_to_pk(fname="figs/nyx_err2p1d_qmle3")
 
 # %%
-pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
-# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False, fix_cosmo=False, plot_fname="figs/residual_fid_opt_global")
+# pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
+pip.fitter.like.plot_p1d(
+    p0, 
+    residuals=True, 
+    plot_panels=True, 
+    print_chi2=False, 
+    fix_cosmo=False, 
+    plot_fname="figs/residual_fid_opt_global"
+)
 
 # pip.fitter.like.plot_p1d(p0, residuals=True, plot_panels=True, print_chi2=False)
 

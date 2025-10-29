@@ -99,7 +99,7 @@ vals = [0.11, 0.06, 0.03, 0.03]
 
 fig, ax = plt.subplots(2, 2, figsize=(8, 6))
 ax = ax.reshape(-1)
-ftsize = 18
+ftsize = 20
 
 remove = [
     {
@@ -167,13 +167,13 @@ for ii in range(len(ax)):
     else:
         ax[ii].axhline(0, color="k", ls=":")
 
-fig.supxlabel(r"$k\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
+fig.supxlabel(r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
 fig.supylabel("Metal contamination", fontsize=ftsize)
 
 
 
 plt.tight_layout()
-plt.savefig("mcontamination.png")
+plt.savefig("metal_contamination.png")
 plt.savefig("metal_contamination.pdf")
 
 # %%

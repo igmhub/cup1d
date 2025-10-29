@@ -36,26 +36,13 @@ rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
 # %%
-
-
-coeffs = {
-    "HCD_damp1":[0, -1],
-    "HCD_damp2":[0, -2],
-    "HCD_damp3":[0, -3],
-    "HCD_damp4":[0, -4],
-    "HCD_const":[0, 0],
-}
-
-hcd_model = hcd_model_rogers_class.HCD_Model_Rogers(coeffs = coeffs)
-
-# %%
 k_kms = np.logspace(-3, np.log10(0.04), 100)
 labs = ["LLS", "subDLAs", "small\,DLAs", "large\,DLAs"]
 ls = ["-", ":", "-.", "--"]
-vals = [0.11, 0.06, 0.03, 0.03]
+vals = [0.1, 3e-2, 1e-2, 1e-2]
 
 fig, ax = plt.subplots(1, figsize=(8, 6))
-ftsize = 18
+ftsize = 20
 
 for ii in range(4):
 
@@ -74,18 +61,18 @@ for ii in range(4):
     cont = hcd_model.get_contamination(z=np.array([3]), k_kms=[k_kms])
     ax.plot(k_kms, cont, label=r"$f^\mathrm{HCD}_\mathrm{"+labs[ii]+"}=$"+str(val), ls=ls[ii], lw=2)
 
-ax.tick_params(axis="both", which="major", labelsize=ftsize-2)
+ax.tick_params(axis="both", which="major", labelsize=ftsize)
 plt.axhline(1, color="k", ls=":")
 plt.xscale("log")
 
-plt.xlabel(r"$k\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
+plt.xlabel(r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
 plt.ylabel("HCD contamination", fontsize=ftsize)
 
-plt.legend(fontsize=ftsize-2)
+plt.legend(fontsize=ftsize)
 
 plt.tight_layout()
-# plt.savefig("HCD_contamination.png")
-# plt.savefig("HCD_contamination.pdf")
+plt.savefig("HCD_contamination.png")
+plt.savefig("HCD_contamination.pdf")
 
 # %%
 k_kms = np.logspace(-3, np.log10(0.04), 100)

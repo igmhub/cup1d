@@ -198,6 +198,7 @@ class BaseDataP1D(object):
         xlog=False,
         ylog=True,
         fname=None,
+        cov_ext=None,
         ftsize=18,
     ):
         """Plot P1D mesurement. If use_dimensionless, plot k*P(k)/pi."""
@@ -215,7 +216,10 @@ class BaseDataP1D(object):
         for ii in range(N):
             k_kms = self.k_kms[ii]
             Pk_kms = self.get_Pk_iz(ii)
-            err_Pk_kms = np.sqrt(np.diagonal(self.get_cov_iz(ii)))
+            if cov_ext is None:
+                err_Pk_kms = np.sqrt(np.diagonal(self.get_cov_iz(ii)))
+            else:
+                err_Pk_kms = np.sqrt(np.diagonal(cov_ext[ii]))
             if use_dimensionless:
                 fact = k_kms / np.pi
             else:
@@ -233,9 +237,11 @@ class BaseDataP1D(object):
             plt.yscale("log", nonpositive="clip")
         if xlog:
             plt.xscale("log")
-        plt.xlabel(r"$k\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
+        plt.xlabel(
+            r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize
+        )
         if use_dimensionless:
-            plt.ylabel(r"$\mathrm{\pi}^{-1}k\,P(k)$", fontsize=ftsize)
+            plt.ylabel(r"$\mathrm{\pi}^{-1}k_\parallel\,P(k)$", fontsize=ftsize)
         else:
             plt.ylabel(r"$P(k) [km/s]$", fontsize=ftsize)
 

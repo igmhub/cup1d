@@ -371,7 +371,7 @@ ax_NS.tick_params(
 ax.set_xticks([0.3, 0.4, 0.5])
 
 
-ax.set_xlabel(r"$\Delta_\star$", fontsize=fontsize)
+ax.set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
 ax.set_ylabel(r"$n_\star$", fontsize=fontsize)
 ax_NS.set_xlabel(r"$n_\star$", fontsize=fontsize)
 

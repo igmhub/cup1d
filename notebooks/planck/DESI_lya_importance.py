@@ -163,11 +163,11 @@ corr = np.corrcoef(blobs["Delta2_star"].reshape(-1), blobs["n_star"].reshape(-1)
 r = corr[0, 1]
 
 # %%
-print(np.round(per_ds[2] - per_ds[1], 3))
-print(np.round(per_ds[1] - per_ds[0], 3))
+# print(np.round(per_ds[2] - per_ds[1], 3))
+# print(np.round(per_ds[1] - per_ds[0], 3))
 
-print(np.round(per_ns[2] - per_ns[1], 3))
-print(np.round(per_ns[1] - per_ns[0], 3))
+# print(np.round(per_ns[2] - per_ns[1], 3))
+# print(np.round(per_ns[1] - per_ns[0], 3))
 
 # %%
 sum_mpg['delta2_star_err']
@@ -175,18 +175,18 @@ sum_mpg['delta2_star_err']
 # %%
 
 # %%
-ftsize = 22
+ftsize = 26
 cmap = plt.colormaps["Blues"]
 col = [0.7, 0.3]
 lw = [3, 2]
 cmb_all = [cmb, cmb_tau, cmb_mnu, cmb_nnu, cmb_nrun, cmb_nrun_nrunrun]
 cmb_labs = [
-    r"Planck $\Lambda$CDM", 
-    r"Planck $\Lambda$CDM (no lowE)",
-    r"Planck $\sum m_\nu$",
-    r"Planck $N_\mathrm{eff}$",
-    r"Planck $\mathrm{d}n_\mathrm{s} / \mathrm{d}\log k$",
-    r"Planck $\mathrm{d}n_\mathrm{s} / \mathrm{d}\log k$, $\mathrm{d}^2 n_\mathrm{s} / \mathrm{d}\log k^2$"
+    r"Planck+18 $\Lambda$CDM", 
+    r"Planck+18 $\Lambda$CDM (no lowE)",
+    r"Planck+18 $\sum m_\nu$",
+    r"Planck+18 $N_\mathrm{eff}$",
+    r"Planck+18 $\alpha_\mathrm{s}$",
+    r"Planck+18 $\alpha_\mathrm{s}$, $\mathrm{d} \alpha_\mathrm{s} / \mathrm{d}\log k$"
 ]
 
 g = plots.getSinglePlotter(width_inch=10)
@@ -250,9 +250,9 @@ ax.set_xlim(0.25, 0.45)
 ax.set_ylim(-2.36, -2.24)
 ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
 ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
-ax.tick_params(axis="both", which="major", labelsize=ftsize)
+ax.tick_params(axis="both", which="major", labelsize=ftsize+2)
 
-plt.legend(fontsize=ftsize-4, loc="upper left", ncol=1)
+plt.legend(fontsize=ftsize-6, loc="upper left", ncol=2)
 # plt.tight_layout()
 
 plt.savefig("figs/star_planck_mine.png", bbox_inches='tight')
@@ -626,8 +626,27 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
                 ['linP_DL2_star','linP_n_star','nrun'],
                 legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
 
-print(chain_type['samples'].getInlineLatex('nrun',limit=1))
-print(samples_DESI[1].getInlineLatex('nrun',limit=1))
+fontsize = 20
+ax_D2S_NS = g.subplots[1, 0]
+ax_D2S_new = g.subplots[2, 0]
+ax_NS_new = g.subplots[2, 1]
+ax_new = g.subplots[2, 2]
+axs = [ax_D2S_NS, ax_D2S_new, ax_NS_new, ax_new]
+for ax in axs:
+    ax.tick_params(
+        axis="both", which="major", labelsize=fontsize
+    )
+    
+ax_D2S_NS.set_ylabel(r"$n_\star$", fontsize=fontsize)
+ax_D2S_new.set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
+ax_NS_new.set_xlabel(r"$n_\star$", fontsize=fontsize)
+
+ax_NS_new.set_ylabel(r"$n_\star$", fontsize=fontsize)
+ax_new.set_xlabel(r"$n_\star$", fontsize=fontsize)
+
+
+# print(chain_type['samples'].getInlineLatex('nrun',limit=1))
+# print(samples_DESI[1].getInlineLatex('nrun',limit=1))
 
 plt.tight_layout()
 plt.savefig("figs/import_nrun.png")

@@ -1058,10 +1058,6 @@ print(1-sum_qmle["n_star_err"]/sum_mpg["n_star_err"])
 
 print(sum_nyx["delta2_star_err"]/sum_mpg["delta2_star_err"])
 print(sum_nyx["n_star_err"]/sum_mpg["n_star_err"])
-# -
-sum_mpg
-
-
 # +
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 
@@ -1073,21 +1069,21 @@ dat_mpg_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item(
 
 ## emu
 
-# folder = base + "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_1/"
-# dat_nyx = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-# sum_nyx = np.load(folder + "summary.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_5/"
+dat_nyx = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+sum_nyx = np.load(folder + "summary.npy", allow_pickle=True).item()
 
 ## data
 
 folder = base + "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_1/"
 dat_fft3 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-# folder = base + "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_1/"
-# dat_fft = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-
 folder = base + "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_1/"
 dat_qmle = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 sum_qmle = np.load(folder + "summary.npy", allow_pickle=True).item()
+
+# folder = base + "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_1/"
+# dat_fft = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_1/"
 dat_zmax = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
@@ -1099,6 +1095,9 @@ dat_zmin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_1/"
 dat_no_emu_cov = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/data_syst_diag/CH24_mpgcen_gpr/chain_1/"
+dat_syst_diag = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 ## IGM
 
@@ -1113,9 +1112,9 @@ dat_cosmo = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
-# folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_1/"
+# folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"
 # dat_cosmo_high = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-# folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_1/"
+# folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"
 # dat_cosmo_high_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/"
@@ -1139,11 +1138,6 @@ dat_metal_si2 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_1/"
 dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-
-## other
-
-folder = base + "DESIY1_QMLE3/data_syst_diag/CH24_mpgcen_gpr/chain_1/"
-dat_syst_diag = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 
 ## no more
@@ -1206,7 +1200,7 @@ dict_trans = {
     "zmax": "Data: $z \leq 3.4$",  # restricted zrange
     
     "no_emu_cov":"Cov: w/o emu err", # no emu error
-    "dat_syst_diag": "Data: uncorr syst", # systematics data uncorrelated
+    "dat_syst_diag": "Cov: uncorr syst", # systematics data uncorrelated
     
     # "no_inflate":"Cov: w/o 5% err",
     # "no_inflate_no_emu_cov":"Cov: w/o emu, 5% err", 
@@ -1260,7 +1254,7 @@ fname = [
     "test",
 ]
 
-for image in range(4, 6):
+for image in range(7, 8):
 
     # if image in [3, 4, 5]:
     #     ftsize = 26
