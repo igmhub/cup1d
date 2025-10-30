@@ -344,9 +344,10 @@ name_variation = None
 
 # name_variation = "data_syst_diag"
 
-emu_cov_type = "block"
-# emu_cov_type = "diagonal"
-# name_variation = "Ma2025"
+# emu_cov_type = "block"
+emu_cov_type = "diagonal"
+name_variation = "Metals_Ma2025"
+# name_variation = "HCD_BOSS"
 
 emulator_label="CH24_mpgcen_gpr"
 # emulator_label="CH24_nyxcen_gpr"
@@ -376,6 +377,14 @@ ein_stat_sys, _ = np.linalg.eig(cov_stat_sys)
 ein_full, _ = np.linalg.eig(full_cov)
 ein_full2, _ = np.linalg.eig(full_cov2)
 ein_cov_diag, _ = np.linalg.eig(full_cov_diag)
+
+# %%
+bins = np.linspace(-2.3, 3, 30)
+# print(bins)
+plt.hist(np.log10(ein_full), bins=bins, alpha=0.5, label="stat + syst + emu");
+plt.hist(np.log10(ein_stat_sys), bins=bins, alpha=0.5, label="stat + syst");
+plt.hist(np.log10(ein_cov_diag), bins=bins, alpha=0.5, label="stat + syst + diag(emu)");
+plt.legend()
 
 # %%
 det_emu = np.linalg.det(cov_emu)
@@ -518,7 +527,7 @@ pip.fitter.like.get_chi2(p0)
 
 # pip.fitter.like.data.plot_p1d(cov_ext=pip.fitter.like.cov_Pk_kms, fname="figs/p1d_qmle3")
 # pip.fitter.like.plot_p1d()
-pip.fitter.like.plot_cov_to_pk(fname="figs/err2p1d_qmle3")
+# pip.fitter.like.plot_cov_to_pk(fname="figs/err2p1d_qmle3")
 # pip.fitter.like.plot_cov_to_pk()
 
 # %%

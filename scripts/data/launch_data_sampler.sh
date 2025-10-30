@@ -7,7 +7,7 @@
 #SBATCH -J p1d
 #SBATCH -o logs/p1d.%j.out
 #SBATCH -e logs/p1d.%j.err
-#SBATCH --array=0-0   # number of variations minus 1
+#SBATCH --array=0-3   # number of variations minus 1
 
 echo "Job started at: $(date)"
 
@@ -35,7 +35,8 @@ variations=(
     # "more_igm"
     # "DLAs"
     # "HCD0"
-    "Ma2025"
+    "Metals_Ma2025"
+    "HCD_BOSS"
     #############
     # "no_res"
     # "less_igm"

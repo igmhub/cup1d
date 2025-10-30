@@ -357,7 +357,9 @@ class Args:
                 [-1, 1],
                 [val_null - 0.5, -2],
             ]
-        elif (name_variation is not None) and (name_variation == "Ma2025"):
+        elif (name_variation is not None) and (
+            name_variation == "Metals_Ma2025"
+        ):
             self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
                 [-1, 1],
                 [-6, 2],
@@ -368,7 +370,7 @@ class Args:
                 [-6, -2],
             ]
 
-        if (name_variation is not None) and (name_variation == "Ma2025"):
+        if (name_variation is not None) and (name_variation == "Metals_Ma2025"):
             self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
                 [-1, 1],
                 [-20, 6],
@@ -384,7 +386,9 @@ class Args:
                 [-1, 1],
                 [val_null - 0.5, -2],
             ]
-        elif (name_variation is not None) and (name_variation == "Ma2025"):
+        elif (name_variation is not None) and (
+            name_variation == "Metals_Ma2025"
+        ):
             self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
                 [-1, 1],
                 [-6, 2],
@@ -606,10 +610,15 @@ class Args:
             fit_type = self.fit_type
         ##
 
-        if (name_variation is not None) and (name_variation == "Ma2025"):
+        if (name_variation is not None) and (name_variation == "Metals_Ma2025"):
             self.fid_cont["metal_model_type"] = "SiVid"
         else:
             self.fid_cont["metal_model_type"] = "McDonald"
+
+        if (name_variation is not None) and (name_variation == "HCD_BOSS"):
+            self.fid_cont["hcd_model_type"] = "BOSS"
+        else:
+            self.fid_cont["hcd_model_type"] = "new_rogers"
 
         ## inflate errors
         # we multiply cov by inflate square
@@ -679,7 +688,7 @@ class Args:
                     "HCD_damp3",
                     "HCD_damp4",
                 ]
-            elif name_variation == "Ma2025":
+            elif name_variation == "Metals_Ma2025":
                 baseline_prop = [
                     "tau_eff",
                     "sigT_kms",
@@ -859,7 +868,7 @@ class Args:
                     "HCD_damp3",
                     "HCD_damp4",
                 ]
-            elif name_variation == "Ma2025":
+            elif name_variation == "Metals_Ma2025":
                 baseline_prop = [
                     "f_Lya_SiIII",
                     "s_Lya_SiIII",
@@ -904,6 +913,21 @@ class Args:
                     "HCD_damp3",
                     "HCD_damp4",
                     "HCD_const",
+                ]
+            elif name_variation == "HCD_BOSS":
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    # "HCD_damp2",
+                    # "HCD_damp3",
+                    # "HCD_damp4",
                 ]
             else:
                 baseline_prop = [

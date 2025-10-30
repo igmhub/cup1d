@@ -248,6 +248,7 @@ cmap = plt.colormaps["Blues"]
 fontsize = 26
 lw = [3, 2]
 col = [0.7, 0.3]
+alpha=[0.7, 0.7]
 
 # specify CMB chain to plot
 # cmb=wmap9
@@ -264,9 +265,10 @@ g.settings.legend_fontsize = fontsize-6
 g.triangle_plot(
     [cmb['samples']],
     ['linP_DL2_star', 'linP_n_star'],
-    # legend_labels=[r'Planck+18 $\Lambda$CDM']
+    # legend_labels=[r'Planck+18 $\Lambda$CDM'],
+    lws=lw,
+    line_args={"color": "k", "lw": lw[1], "alpha": alpha[0]},
 )
-
 
 
 ax = g.subplots[1, 0]
@@ -274,6 +276,37 @@ ax_NS = g.subplots[1, 1]
 ax_D2S = g.subplots[0, 0]
 x_D2S = np.linspace(0.2, 0.55, 500)
 x_NS = np.linspace(-2.4, -2.2, 500)
+
+
+CS = ax.contour(DL2_grid, neff_grid,chi2_Mc2005,levels=thresholds,colors='C1', linewidths=lw, alpha=alpha[0])
+xcen, ycen, xerr, yerr = print_err(CS)
+pdf = stats.norm.pdf(x_D2S, xcen, xerr)
+ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C1', lw=lw[0], alpha=alpha[0])
+pdf = stats.norm.pdf(x_NS, ycen, yerr)
+ax_NS.plot(x_NS, pdf/pdf.max(),color='C1', lw=lw[0], alpha=alpha[0])
+
+CS = ax.contour(DL2_grid, neff_grid,chi2_PD2015,levels=thresholds,colors='C2', linewidths=lw, alphas=alpha[0])
+xcen, ycen, xerr, yerr = print_err(CS)
+pdf = stats.norm.pdf(x_D2S, xcen, xerr)
+ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C2', lw=lw[0], alpha=alpha[0])
+pdf = stats.norm.pdf(x_NS, ycen, yerr)
+ax_NS.plot(x_NS, pdf/pdf.max(),color='C2', lw=lw[0], alpha=alpha[0])
+
+CS = ax.contour(DL2_grid, neff_grid,chi2_Ch2019,levels=thresholds,colors='C3', linewidths=lw, alphas=alpha[0])
+xcen, ycen, xerr, yerr = print_err(CS)
+pdf = stats.norm.pdf(x_D2S, xcen, xerr)
+ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C3', lw=lw[0], alpha=alpha[0])
+pdf = stats.norm.pdf(x_NS, ycen, yerr)
+ax_NS.plot(x_NS, pdf/pdf.max(),color='C3', lw=lw[0], alpha=alpha[0])
+
+CS = ax.contour(DL2_grid, neff_grid,chi2_Wa2024,levels=thresholds,colors='C4', linewidths=lw, alphas=alpha[0])
+xcen, ycen, xerr, yerr = print_err(CS)
+pdf = stats.norm.pdf(x_D2S, xcen, xerr)
+ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C4', lw=lw[0], alpha=alpha[0])
+pdf = stats.norm.pdf(x_NS, ycen, yerr)
+ax_NS.plot(x_NS, pdf/pdf.max(),color='C4', lw=lw[0], alpha=alpha[0])
+
+####
 
 for inum, num in enumerate([0.68, 0.95]):
     if inum == 0:
@@ -283,43 +316,11 @@ for inum, num in enumerate([0.68, 0.95]):
     for jj in range(len(dat_mpg[num])):
         x = dat_mpg[num][jj][0] - true_cosmo["Delta2_star"]
         y = dat_mpg[num][jj][1] - true_cosmo["n_star"]
-        ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
-        ax.fill(x, y, color=cmap(col[inum]), alpha=0.5)
+        ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=alpha[inum])
+        ax.fill(x, y, color=cmap(col[inum]), alpha=alpha[inum])
 
-# ax_D2S.plot(hist_d2s_x- true_cosmo["Delta2_star"], hist_d2s_y, color=cmap(col[0]))
-# ax_NS.plot(hist_ns_x- true_cosmo["n_star"], hist_ns_y, color=cmap(col[0]))
-
-ax_D2S.plot(x_d2s- true_cosmo["Delta2_star"], y_d2s, color=cmap(col[0]))
-ax_NS.plot(x_ns- true_cosmo["n_star"], y_ns, color=cmap(col[0]))
-
-
-CS = ax.contour(DL2_grid, neff_grid,chi2_Mc2005,levels=thresholds,colors='C1')
-xcen, ycen, xerr, yerr = print_err(CS)
-pdf = stats.norm.pdf(x_D2S, xcen, xerr)
-ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C1')
-pdf = stats.norm.pdf(x_NS, ycen, yerr)
-ax_NS.plot(x_NS, pdf/pdf.max(),color='C1')
-
-CS = ax.contour(DL2_grid, neff_grid,chi2_PD2015,levels=thresholds,colors='C2')
-xcen, ycen, xerr, yerr = print_err(CS)
-pdf = stats.norm.pdf(x_D2S, xcen, xerr)
-ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C2')
-pdf = stats.norm.pdf(x_NS, ycen, yerr)
-ax_NS.plot(x_NS, pdf/pdf.max(),color='C2')
-
-CS = ax.contour(DL2_grid, neff_grid,chi2_Ch2019,levels=thresholds,colors='C3')
-xcen, ycen, xerr, yerr = print_err(CS)
-pdf = stats.norm.pdf(x_D2S, xcen, xerr)
-ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C3')
-pdf = stats.norm.pdf(x_NS, ycen, yerr)
-ax_NS.plot(x_NS, pdf/pdf.max(),color='C3')
-
-CS = ax.contour(DL2_grid, neff_grid,chi2_Wa2024,levels=thresholds,colors='C4')
-xcen, ycen, xerr, yerr = print_err(CS)
-pdf = stats.norm.pdf(x_D2S, xcen, xerr)
-ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C4')
-pdf = stats.norm.pdf(x_NS, ycen, yerr)
-ax_NS.plot(x_NS, pdf/pdf.max(),color='C4')
+ax_D2S.plot(x_d2s- true_cosmo["Delta2_star"], y_d2s, color=cmap(col[0]), lw=lw[0])
+ax_NS.plot(x_ns- true_cosmo["n_star"], y_ns, color=cmap(col[0]), lw=lw[0])
 
 # CS = ax.contour(DL2_grid, neff_grid,chi2_Wa2024_np,levels=thresholds,colors='C5')
 # xcen, ycen, xerr, yerr = print_err(CS)
@@ -350,9 +351,9 @@ ax.set_xlim(0.23, 0.52)
 
  # $\Lambda$CDM
 handles = []
-handles.append(mlines.Line2D([], [], color='black', label=r'Planck+18', lw=2))
+handles.append(mlines.Line2D([], [], color='black', label=r'Planck+18', lw=3))
 for ii in range(len(labs)):
-    handles.append(mlines.Line2D([], [], color='C'+str(ii), label=labs[ii], lw=2))
+    handles.append(mlines.Line2D([], [], color='C'+str(ii), label=labs[ii], lw=3))
     
 g.subplots[1, 1].legend(
     handles=handles, 
@@ -369,11 +370,18 @@ ax_NS.tick_params(
     axis="both", which="major", labelsize=fontsize
 )
 ax.set_xticks([0.3, 0.4, 0.5])
+ax.set_yticks([-2.35, -2.30, -2.25])
+ax_NS.set_xticks([-2.35, -2.30, -2.25])
 
 
 ax.set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
 ax.set_ylabel(r"$n_\star$", fontsize=fontsize)
 ax_NS.set_xlabel(r"$n_\star$", fontsize=fontsize)
+
+for ax in g.subplots[-1]:  # last row of panels
+    for label in ax.get_xticklabels():
+        label.set_rotation(45)
+        label.set_ha('right')
 
 
 plt.tight_layout()

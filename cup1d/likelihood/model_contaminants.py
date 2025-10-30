@@ -7,6 +7,7 @@ from cup1d.nuisance import (
     hcd_model_Rogers2017,
     hcd_model_class,
     hcd_model_rogers_class,
+    hcd_boss,
     si_mult,
     si_vid,
     si_add,
@@ -157,9 +158,17 @@ class Contaminants(object):
                     flat_priors=flat_priors,
                     Gauss_priors=Gauss_priors,
                 )
+            elif pars_cont["hcd_model_type"] == "BOSS":
+                self.hcd_model = hcd_boss.HCD_BOSS(
+                    free_param_names=free_param_names,
+                    fid_vals=fid_vals,
+                    prop_coeffs=prop_coeffs,
+                    flat_priors=flat_priors,
+                    Gauss_priors=Gauss_priors,
+                )
             else:
                 raise ValueError(
-                    "hcd_model_type must be one of 'Rogers2017', 'McDonald2005', 'new', or 'new2'"
+                    "hcd_model_type must be one of 'Rogers2017', 'McDonald2005', 'new', or 'BOSS'"
                 )
 
         # # setup SN model

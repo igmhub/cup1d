@@ -163,14 +163,13 @@ corr = np.corrcoef(blobs["Delta2_star"].reshape(-1), blobs["n_star"].reshape(-1)
 r = corr[0, 1]
 
 # %%
-# print(np.round(per_ds[2] - per_ds[1], 3))
-# print(np.round(per_ds[1] - per_ds[0], 3))
-
-# print(np.round(per_ns[2] - per_ns[1], 3))
-# print(np.round(per_ns[1] - per_ns[0], 3))
-
-# %%
-sum_mpg['delta2_star_err']
+desi_dr1 = {
+    "Delta2_star":sum_mpg["delta2_star_16_50_84"][1] - true_cosmo["Delta2_star"],
+    "n_star":sum_mpg["n_star_16_50_84"][1] - true_cosmo["n_star"],
+    "r":r,
+    "Delta2_star_err":sum_mpg['delta2_star_err'],
+    "n_star_err":sum_mpg["n_star_err"],
+}
 
 # %%
 
@@ -179,28 +178,38 @@ ftsize = 26
 cmap = plt.colormaps["Blues"]
 col = [0.7, 0.3]
 lw = [3, 2]
-cmb_all = [cmb, cmb_tau, cmb_mnu, cmb_nnu, cmb_nrun, cmb_nrun_nrunrun]
+cmb_all = [
+    cmb, 
+    # cmb_tau, 
+    # cmb_mnu, 
+    cmb_nnu, 
+    cmb_nrun, 
+    # cmb_nrun_nrunrun
+]
 cmb_labs = [
-    r"Planck+18 $\Lambda$CDM", 
-    r"Planck+18 $\Lambda$CDM (no lowE)",
-    r"Planck+18 $\sum m_\nu$",
-    r"Planck+18 $N_\mathrm{eff}$",
-    r"Planck+18 $\alpha_\mathrm{s}$",
-    r"Planck+18 $\alpha_\mathrm{s}$, $\mathrm{d} \alpha_\mathrm{s} / \mathrm{d}\log k$"
+    r"Planck 2018: $\Lambda$CDM", 
+    # r"Planck+18 $\Lambda$CDM (no lowE)",
+    # r"Planck+18 $\sum m_\nu$",
+    r"Planck 2018: $N_\mathrm{eff}$",
+    r"Planck 2018: $\alpha_\mathrm{s}$",
+    # r"Planck+18 $\alpha_\mathrm{s}$, $\mathrm{d} \alpha_\mathrm{s} / \mathrm{d}\log k$"
 ]
 
 g = plots.getSinglePlotter(width_inch=10)
 g.settings.num_plot_contours = 2
 
 for ii, icmb in enumerate(cmb_all):
+
+    new_samples=icmb['samples'].copy()
+    
     if ii == 0:
         filled = False
-        lwu = 5
+        lwu = 3
     else:
         filled = False
-        lwu = 2
+        lwu = 3
     g.plot_2d(
-        icmb['samples'], 
+        new_samples, 
         ['linP_DL2_star', 'linP_n_star'], 
         colors=["C"+str(ii+1)], 
         lws=lwu, 
@@ -227,37 +236,22 @@ for ii, icmb in enumerate(cmb_all):
     ax.axhline(y=1,color="C"+str(ii+1),lw=lw[0],label=cmb_labs[ii])    
 
 
-# true_DL2=0.35
-# true_neff=-2.3
-
-# DL2_err = 0.043
-# neff_err = 0.025
-# # r=-0.134
-# r=0.1
-# thresholds = [2.30, 6.18]
-# # thresholds = [2.30]
-# neff_grid, DL2_grid = np.mgrid[-2.4:-2.2:200j, 0.2:0.65:200j]
-
-# coeff_mult = 0.5 # just for importance sampling
-# coeff_mult = 1
-
-# chi2_desi = coeff_mult * marg_lya_like.gaussian_chi2(neff_grid,DL2_grid, true_neff, true_DL2, neff_err, DL2_err, r)
-# CS = ax.contour(DL2_grid, neff_grid, chi2_desi, levels=thresholds[:2], colors='k', linewidths=lw)
-
-
-
 ax.set_xlim(0.25, 0.45)
 ax.set_ylim(-2.36, -2.24)
 ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
 ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
-ax.tick_params(axis="both", which="major", labelsize=ftsize+2)
+ax.tick_params(axis="both", which="major", labelsize=ftsize)
 
-plt.legend(fontsize=ftsize-6, loc="upper left", ncol=2)
+plt.legend(fontsize=ftsize, loc="upper left", ncol=2)
 # plt.tight_layout()
 
 plt.savefig("figs/star_planck_mine.png", bbox_inches='tight')
 plt.savefig("figs/star_planck_mine.pdf", bbox_inches='tight')
 
+
+# %%
+
+# %%
 
 # %%
 # from matplotlib import colormaps
@@ -289,6 +283,149 @@ def gaussian_chi2_mock_DESI(neff, DL2, true_DL2=0.35, true_neff=-2.3, DL2_err=0.
     # r=0.55
     return marg_lya_like.gaussian_chi2(neff, DL2, true_neff, true_DL2, neff_err, DL2_err, r)
 
+
+# %%
+from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import FormatStrFormatter
+
+def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
+    latex_param = {
+        "nnu": r"$N_\mathrm{eff}$",
+        "tau": r"$\tau$",
+        "mnu": r"$\sum m_\nu$",
+        "nrun": r"$\alpha_\mathrm{s}$",
+        "nrunrun": r"$\mathrm{d} \alpha_\mathrm{s} / \mathrm{d}\log k$"
+    }
+    samples_DESI=[]
+    labels_DESI=[]
+    for ii in range(1):
+        new_samples=chain_type['samples'].copy()
+        p=new_samples.getParams()
+        new_loglike = 0.5 * gaussian_chi2_mock_DESI(
+            p.linP_n_star, 
+            p.linP_DL2_star, 
+            true_neff=desi_dr1["n_star"], 
+            true_DL2=desi_dr1["Delta2_star"], 
+            neff_err=desi_dr1["n_star_err"],
+            DL2_err=desi_dr1["Delta2_star_err"],
+            r=desi_dr1["r"]
+        )
+        new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
+        samples_DESI.append(new_samples)
+        labels_DESI.append(r"Planck 2018 + DESI DR1")
+    
+    g = plots.getSubplotPlotter(width_inch=8)
+    g.settings.axes_fontsize = fontsize
+    g.settings.legend_fontsize = fontsize
+
+    if param_name == "nrunrun":
+        arr_plot = ['linP_DL2_star','linP_n_star', "nrun", param_name]
+    else:
+        arr_plot = ['linP_DL2_star','linP_n_star', param_name]
+
+    
+    g.triangle_plot(
+        [chain_type['samples'],samples_DESI[0]],
+        arr_plot,
+        legend_labels=["Planck 2018",labels_DESI[0]],
+        colors=["C0", "C1"],
+        filled=True,
+        lws=[3,3],
+        alphas=[0.8, 0.8],
+        line_args=[
+            {"color": "C0", "lw": 3, "alpha": 0.8},
+            {"color": "C1", "lw": 3, "alpha": 0.8},
+        ],
+    )
+
+    if param_name == "mnu":
+        print("1 sigma", param_name, chain_type['samples'].getInlineLatex(param_name,limit=1))
+        print("1 sigma", param_name, samples_DESI[0].getInlineLatex(param_name,limit=1))
+        print("2 sigma", param_name, chain_type['samples'].getInlineLatex(param_name,limit=2))
+        print("2 sigma", param_name, samples_DESI[0].getInlineLatex(param_name,limit=2))
+    else:
+        if (param_name != "nrunrun"): 
+            print(chain_type['samples'].getInlineLatex(param_name, limit=1))
+            print(samples_DESI[0].getInlineLatex(param_name, limit=1))
+        else:
+            print("nrun", chain_type['samples'].getInlineLatex("nrun", limit=1))
+            print("nrun", samples_DESI[0].getInlineLatex("nrun", limit=1))
+            print(param_name, chain_type['samples'].getInlineLatex(param_name, limit=1))
+            print(param_name, samples_DESI[0].getInlineLatex(param_name, limit=1))
+            
+
+    if (param_name != "nrunrun"): 
+        ndim = 3
+    else:
+        ndim = 4
+        
+    for jj in range(ndim):
+        g.subplots[ndim-1, jj].tick_params(
+            axis="both", which="major", labelsize=fontsize
+        )
+        g.subplots[-1, jj].xaxis.set_major_locator(MaxNLocator(nbins=3))
+        g.subplots[-1, jj].xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+    
+    for jj in range(1, ndim):
+        g.subplots[jj, 0].tick_params(
+            axis="both", which="major", labelsize=fontsize
+        )            
+        g.subplots[jj, 0].yaxis.set_major_locator(MaxNLocator(nbins=3))
+        g.subplots[jj, 0].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+
+        
+    g.subplots[-1, 0].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
+    g.subplots[-1, 1].set_xlabel(r"$n_\star$", fontsize=fontsize)
+    g.subplots[1, 0].set_ylabel(r"$n_\star$", fontsize=fontsize)
+
+    if (param_name != "nrunrun"): 
+        g.subplots[-1, 2].set_xlabel(latex_param[param_name], fontsize=fontsize)
+        g.subplots[2, 0].set_ylabel(latex_param[param_name], fontsize=fontsize)
+    else:
+        g.subplots[-1, 2].set_xlabel(latex_param["nrun"], fontsize=fontsize)
+        g.subplots[-1, 3].set_xlabel(latex_param[param_name], fontsize=fontsize)
+        g.subplots[2, 0].set_ylabel(latex_param["nrun"], fontsize=fontsize)
+        g.subplots[3, 0].set_ylabel(latex_param[param_name], fontsize=fontsize)
+    
+
+    for ax in g.subplots[-1]:  # last row of panels
+        for label in ax.get_xticklabels():
+            label.set_rotation(45)
+            label.set_ha('right')
+
+        
+    plt.tight_layout()
+    plt.savefig("figs/import_"+param_name+".png", bbox_inches="tight")
+    plt.savefig("figs/import_"+param_name+".pdf", bbox_inches="tight")
+
+# %%
+
+plot_combine(cmb_nnu, desi_dr1, "nnu")
+
+# %%
+
+plot_combine(cmb_nrun, desi_dr1, "nrun")
+
+# %%
+
+plot_combine(cmb_mnu, desi_dr1, "mnu")
+
+# %%
+# plot_combine(cmb_tau, desi_dr1, "tau")
+# plot_combine(cmb_mnu, desi_dr1, "mnu")
+# plot_combine(cmb_nnu, desi_dr1, "nnu")
+# plot_combine(cmb_nrun, desi_dr1, "nrun")
+# plot_combine(cmb_nrun_nrunrun, desi_dr1, "nrunrun")
+
+# %%
+1-46/67
+
+# %%
+1-16/19
+
+# %%
+
+# %%
 
 # %%
 # true_DL2=0.35
@@ -367,6 +504,8 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
 
 # %% [markdown]
 # #### In tau
+
+# %%
 
 # %%
 samples_DESI=[]
@@ -508,9 +647,11 @@ g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_D
 # ### Constraints on mnu
 
 # %%
+
+# %%
 samples_DESI=[]
-true_DL2=[0.33,0.35,0.37]
-true_neff=[-2.295,-2.30,-2.305]
+# true_DL2=[0.33,0.35,0.37]
+# true_neff=[-2.295,-2.30,-2.305]
 # DL2_err = 0.056
 # neff_err = 0.022
 # r=-0.134
@@ -518,29 +659,46 @@ true_neff=[-2.295,-2.30,-2.305]
 # DL2_err = 0.043
 # neff_err = 0.025
 # r=0.1
-DL2_err = sum_mpg['delta2_star_err']
-neff_err = sum_mpg['n_star_err']
-coeff_mult = 0.5
+# DL2_err = sum_mpg['delta2_star_err']
+# neff_err = sum_mpg['n_star_err']
+# coeff_mult = 0.5
 
 chain_type = cmb_mnu
 
 
+# labels_DESI=[]
+# for ii in range(len(true_DL2)):
+#     new_samples=chain_type['samples'].copy()
+#     p=new_samples.getParams()
+#     new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
+#         p.linP_n_star, 
+#         p.linP_DL2_star, 
+#         true_DL2=true_DL2[ii],
+#         true_neff=true_neff[ii],
+#         neff_err=neff_err,
+#         DL2_err=DL2_err,
+#         r=r
+#     )
+#     new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
+#     samples_DESI.append(new_samples)
+#     labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
+
 labels_DESI=[]
-for ii in range(len(true_DL2)):
+for ii in range(1):
     new_samples=chain_type['samples'].copy()
     p=new_samples.getParams()
-    new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
+    new_loglike = 0.5 * gaussian_chi2_mock_DESI(
         p.linP_n_star, 
         p.linP_DL2_star, 
-        true_DL2=true_DL2[ii],
-        true_neff=true_neff[ii],
-        neff_err=neff_err,
-        DL2_err=DL2_err,
-        r=r
+        true_neff=desi_dr1["n_star"], 
+        true_DL2=desi_dr1["Delta2_star"], 
+        neff_err=desi_dr1["n_star_err"],
+        DL2_err=desi_dr1["Delta2_star_err"],
+        r=desi_dr1["r"]
     )
     new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
     samples_DESI.append(new_samples)
-    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
+    labels_DESI.append(r"+ DESI DR1")
 
 
 # g = plots.getSubplotPlotter(width_inch=8)
@@ -551,22 +709,28 @@ for ii in range(len(true_DL2)):
 #                 legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
 
 
+# g = plots.getSubplotPlotter(width_inch=8)
+# g.settings.axes_fontsize = 12
+# g.settings.legend_fontsize = 14
+# g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+#                 ['linP_DL2_star','linP_n_star','mnu'],
+#                 legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
 g = plots.getSubplotPlotter(width_inch=8)
 g.settings.axes_fontsize = 12
 g.settings.legend_fontsize = 14
-g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+g.triangle_plot([chain_type['samples'],samples_DESI[0]],
                 ['linP_DL2_star','linP_n_star','mnu'],
-                legend_labels=["Planck 2018",labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+                legend_labels=["Planck 2018",labels_DESI[0]])
 
 
 print(chain_type['samples'].getInlineLatex('mnu',limit=1))
-# print(samples_DESI[0].getInlineLatex('mnu',limit=1))
-print(samples_DESI[1].getInlineLatex('mnu',limit=1))
+print(samples_DESI[0].getInlineLatex('mnu',limit=1))
+# print(samples_DESI[1].getInlineLatex('mnu',limit=1))
 # print(samples_DESI[2].getInlineLatex('mnu',limit=1))
 # print("")
 print(chain_type['samples'].getInlineLatex('mnu',limit=2))
-# print(samples_DESI[0].getInlineLatex('mnu',limit=2))
-print(samples_DESI[1].getInlineLatex('mnu',limit=2))
+print(samples_DESI[0].getInlineLatex('mnu',limit=2))
+# print(samples_DESI[1].getInlineLatex('mnu',limit=2))
 # print(samples_DESI[2].getInlineLatex('mnu',limit=2))
 
 plt.tight_layout()
@@ -652,6 +816,10 @@ plt.tight_layout()
 plt.savefig("figs/import_nrun.png")
 plt.savefig("figs/import_nrun.pdf")
 
+# %%
+
+# %%
+
 # %% [markdown]
 # #### Constraints on nnu
 
@@ -708,6 +876,10 @@ plt.savefig("figs/import_nnu.pdf")
 
 # %% [markdown]
 # #### Constraints on nrun and nrunrun
+
+# %%
+
+# %%
 
 # %%
 samples_DESI=[]

@@ -1,3 +1,22 @@
+"""
+For convenience, we decided to use the inverse of the Hessian in order to get a first estimation of the error without doing the $\chi^2$ scan. We estimate it as follows.
+
+\begin{itemize}
+    \item I compute the the Hessian using finite differences. I am using the following expression for the diagonal elements
+    \begin{equation}
+        H[i, i] = [f(p + h) + f(p - h) - 2 * f(p)] / h^2
+    \end{equation}
+    and for the off-diagonal
+    \begin{equation}
+    H[i, j] = [f(p + h_x + h_y) + f(p - h_x - h_y) - f(p - h_x + h_y) - f(p + h_x - h_y)] / (4 * h^2)
+    \end{equation}
+
+    \item I then take the inverse of the matrix.
+
+    \item The last step is that, since we are sampling $A_s$ and $n_s$ internally, I need to propagate errors into $\Delta^2_\star$ and $n_\star$.
+"""
+
+
 import numpy as np
 
 
