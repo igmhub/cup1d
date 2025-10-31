@@ -7,7 +7,7 @@
 #SBATCH -J p1d
 #SBATCH -o logs/p1d.%j.out
 #SBATCH -e logs/p1d.%j.err
-#SBATCH --array=0-2   # number of variations minus 1
+#SBATCH --array=0-22   # number of variations minus 1
 
 echo "Job started at: $(date)"
 
