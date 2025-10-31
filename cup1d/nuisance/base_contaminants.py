@@ -245,11 +245,12 @@ class Contaminant(object):
 
         return coeff
 
-    def reset_coeffs(self, like_params):
+    def reset_coeffs(self, like_params, rank=0):
         """Reset all coefficients to fiducial values"""
         for name in self.coeffs:
             Npar = 0
-            print("orig", name, self.coeffs[name])
+            if rank == 0:
+                print("orig", name, self.coeffs[name])
             array_names = []
             array_values = []
             for par in like_params:
@@ -264,7 +265,8 @@ class Contaminant(object):
             if Npar == 0:
                 continue
             elif Npar != self.n_pars[name]:
-                print(Npar, self.n_pars[name])
+                if rank == 0:
+                    print(Npar, self.n_pars[name])
                 raise ValueError("number of params mismatch for: " + name)
 
             for ii in range(Npar):
@@ -273,7 +275,8 @@ class Contaminant(object):
                     self.coeffs[name][-(ii + 1)] = array_values[ind_arr]
                 else:
                     self.coeffs[name][ii] = array_values[ind_arr]
-            print("new", name, self.coeffs[name])
+            if rank == 0:
+                print("new", name, self.coeffs[name])
 
     def plot_parameters(self, z, like_params, folder=None):
         """Plot likelihood parameters"""

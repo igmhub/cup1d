@@ -34,13 +34,24 @@ def main():
     elif name_variation == "DESIY1_FFT_dir":
         name_variation = None
         data_label = "DESIY1_FFT_dir"
-    elif name_variation == "None":
+
+    if name_variation == "emu_diag":
+        name_variation = None
+        emu_cov_type = "diag"
+    elif name_variation == "emu_block":
+        name_variation = None
+        emu_cov_type = "block"
+    else:
+        emu_cov_type = "full"
+
+    if name_variation == "None":
         name_variation = None
 
     args = Args(
         data_label=data_label,
         emulator_label="CH24_" + emu + "cen_gpr",
         path_data=path_data,
+        emu_cov_type=emu_cov_type,
     )
     args.set_baseline(
         fit_type="global_opt",

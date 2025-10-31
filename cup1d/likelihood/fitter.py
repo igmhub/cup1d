@@ -299,6 +299,8 @@ class Fitter(object):
         zmask=None,
         mask_pars=False,
         restart=False,
+        neval=1000,
+        chi2_tol=0.25,
     ):
         """Minimizer"""
 
@@ -326,10 +328,6 @@ class Fitter(object):
                         x, ind_fix=ind_fix, pfix=pfix
                     )
                     return fun
-
-        # the convergence of the scipy routine is very tricky, so I do it by hand
-        neval = 1000
-        chi2_tol = 0.1
 
         _log_func_minimize = set_log_func_minimize(
             p0, zmask=zmask, mask_pars=mask_pars
@@ -374,8 +372,8 @@ class Fitter(object):
                         options={
                             "fatol": chi2_tol,  # fatol and xatol are both evaluated
                             "xatol": 1e-6,  # needed to reach the good convergence
-                            "maxiter": neval * 4,
-                            "maxfev": neval * 4,
+                            "maxiter": neval,
+                            "maxfev": neval,
                         },
                     )
                     print(
@@ -981,7 +979,7 @@ class Fitter(object):
         # LIKELIHOOD
         dict_out["like"] = {}
         # dict_out["like"]["cosmo_fid_label"] = self.like.fid
-        dict_out["like"]["emu_cov_factor"] = self.like.emu_cov_factor
+        # dict_out["like"]["emu_cov_factor"] = self.like.emu_cov_factor
         dict_out["like"]["free_param_names"] = self.like.free_param_names
         dict_out["like"]["free_params"] = {}
         for par in self.like.free_params:

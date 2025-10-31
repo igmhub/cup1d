@@ -247,6 +247,7 @@ class P1D_DESIY1(BaseDataP1D):
             full_zs,
             full_Pk_kms,
             full_cov_kms,
+            full_cov_stat_kms,
             self.blinding,
             Pksmooth_kms,
             cov_stat,
@@ -264,6 +265,7 @@ class P1D_DESIY1(BaseDataP1D):
             full_zs=full_zs,
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=full_cov_kms,
+            full_cov_stat_kms=full_cov_stat_kms,
             Pksmooth_kms=Pksmooth_kms,
             cov_stat=cov_stat,
             k_kms_min=k_kms_min,
@@ -398,6 +400,7 @@ def read_from_file(
     full_zs = zs_raw[mask_raw]
     full_Pk_kms = Pk_kms_raw[mask_raw]
     full_cov_kms = cov_raw[mask_raw, :][:, mask_raw]
+    full_cov_stat_kms = cov_stat_raw[mask_raw, :][:, mask_raw]
 
     return (
         zs,
@@ -407,6 +410,7 @@ def read_from_file(
         full_zs,
         full_Pk_kms,
         full_cov_kms,
+        full_cov_stat_kms,
         blinding,
         Pksmooth_kms,
         cov_stat,

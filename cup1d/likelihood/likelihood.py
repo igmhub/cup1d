@@ -50,7 +50,6 @@ class Likelihood(object):
         verbose=False,
         cov_factor=1.0,
         prior_Gauss_rms=None,
-        emu_cov_factor=None,
         emu_cov_type="block",
         extra_data=None,
         min_log_like=-1e100,
@@ -75,7 +74,6 @@ class Likelihood(object):
         self.verbose = verbose
         self.prior_Gauss_rms = prior_Gauss_rms
         self.cov_factor = cov_factor
-        self.emu_cov_factor = emu_cov_factor
         self.emu_cov_type = emu_cov_type
         self.min_log_like = min_log_like
         self.data = data
@@ -115,7 +113,7 @@ class Likelihood(object):
         # setup parameters
         self.free_param_names = free_param_names
         self.set_free_parameters(free_param_names, free_param_limits)
-        if verbose & (self.rank == 0):
+        if verbose and (self.rank == 0):
             print(len(self.free_params), "free parameters")
 
         self.set_Gauss_priors()
@@ -282,17 +280,17 @@ class Likelihood(object):
         full_path = os.path.join(
             get_path_repo("lace"), "data", "covariance", filename
         )
-        dict_save = np.load(full_path, allow_pickle=True).item()
-        emu_cov = dict_save["cov"]
-        emu_cov_zz = dict_save["zz"]
-        emu_cov_unique_zz = np.unique(emu_cov_zz)
-        emu_cov_k_Mpc = dict_save["k_Mpc"]
-        # check if recorded covariance with correlations across redshifts (covz = True)
-        # or same covariance across all redshifts (covz = False)
-        if len(emu_cov_zz) == len(emu_cov_unique_zz):
-            covz = False
-        else:
-            covz = True
+        emu_cov = np.load(full_path, allow_pickle=True).item()
+        # contains:
+        # dict_save["zz"] = zz
+        # dict_save["k_Mpc"] = k_Mpc
+        # cross-k
+        # dict_save["k_Mpc_k"] = k_Mpc_k
+        # dict_save["cov_k"] = cov
+        # cross-zk
+        # dict_save["zz_zk"] = zz_zk
+        # dict_save["k_Mpc_zk"] = k_Mpc_k
+        # dict_save["cov_zk"] = cov
 
         # Iterate over both datasets: main dataset (idata = 0) and additional dataset (idata = 1)
         for idata in range(2):
@@ -301,6 +299,7 @@ class Likelihood(object):
                 # Initialize list to store inverse covariance matrices for Pk_kms
                 self.icov_Pk_kms = []
                 self.cov_Pk_kms = []
+                self.cov_emu_Pk_kms = []
                 # Initialize the full inverse covariance matrix for Pk_kms
                 self.full_icov_Pk_kms = None
                 self.full_cov_Pk_kms = None
@@ -309,6 +308,7 @@ class Likelihood(object):
                 # Initialize list for extra inverse covariance matrices
                 self.extra_icov_Pk_kms = []
                 self.extra_cov_Pk_kms = []
+                self.extra_cov_emu_Pk_kms = []
                 # Initialize the full inverse covariance matrix for extra data
                 self.extra_full_icov_Pk_kms = None
                 self.extra_full_cov_Pk_kms = None
@@ -330,158 +330,196 @@ class Likelihood(object):
             emu_cov_blocks = []
             for ii in range(len(data.z)):
                 # Copy the covariance matrix for the current redshift bin
-                cov = data.cov_Pk_kms[ii].copy()
-                covemu = np.zeros_like(cov)
-                # Indices of the diagonal elements
-                # Add emulator error
-                if (self.emu_cov_factor is not None) and (
-                    self.emu_cov_factor != 0
-                ):
-                    if ii == 0:
-                        if idata == 0:
-                            self.covemu_Pk_kms = []
-                        else:
-                            self.extra_covemu_Pk_kms = []
-
-                    dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
-                        data.z[ii]
-                    )
-                    # data k_kms to Mpc
-                    k_Mpc = data.k_kms[ii] * dkms_dMpc
-                    add_emu_cov_kms = np.zeros((k_Mpc.shape[0], k_Mpc.shape[0]))
-
-                    # find closest z in cov
-                    if covz:
-                        ind = np.argmin(np.abs(emu_cov_unique_zz - data.z[ii]))
-                        # get cov from closest z
-                        ind = np.argwhere(emu_cov_zz == emu_cov_unique_zz[ind])[
-                            :, 0
-                        ]
-                        _emu_cov = emu_cov[ind, :][:, ind]
-                        _k_Mpc = emu_cov_k_Mpc[ind]
-                    else:
-                        _emu_cov = emu_cov
-                        _k_Mpc = emu_cov_k_Mpc
-
-                    # rescale covariance matrix by power spectrum,
-                    # since the covariance matrix stores the relative error
-                    for i0 in range(k_Mpc.shape[0]):
-                        # get closest k in emu cov matrix
-                        j0 = np.argmin(np.abs(k_Mpc[i0] - _k_Mpc))
-                        for i1 in range(k_Mpc.shape[0]):
-                            # skip if diagonal and i0 != i1
-                            if (self.emu_cov_type == "diagonal") & (i0 != i1):
-                                continue
-
-                            # get closest k in emu cov matrix
-                            j1 = np.argmin(np.abs(k_Mpc[i1] - _k_Mpc))
-                            add_emu_cov_kms[i0, i1] = (
-                                _emu_cov[j0, j1]
-                                * pksmooth[ii][i0]
-                                * pksmooth[ii][i1]
-                            )
-                    emu_cov_blocks.append(add_emu_cov_kms)
-                    # from Pk in Mpc to Pk in km/s
-                    # add to cov of data
-                    for i0 in range(k_Mpc.shape[0]):
-                        for i1 in range(k_Mpc.shape[0]):
-                            cov[i0, i1] += (
-                                add_emu_cov_kms[i0, i1]
-                                * self.emu_cov_factor**2
-                            )
+                cov_stat = data.covstat_Pk_kms[ii].copy()
+                cov_syst = data.cov_Pk_kms[ii] - cov_stat
 
                 # inflate errors
                 ind = np.argmin(np.abs(self.cov_factor["z"] - data.z[ii]))
-                cov *= self.cov_factor["val"][ind] ** 2
+                # inflate errors stat
+                cov_stat *= self.cov_factor["val_stat"][ind] ** 2
+                # inflate errors syst
+                cov_syst *= self.cov_factor["val_syst"][ind] ** 2
+                emu_cov_factor = self.cov_factor["val_emu"][ind] ** 2
+
+                # Full covariance after inflating errors
+                cov = cov_stat + cov_syst
+                # Set emulator covariance, we stored relative difference
+                # also add emulator covariance to stat + syst covariance
+
+                # data k_kms to Mpc
+                dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(data.z[ii])
+                k_Mpc = data.k_kms[ii] * dkms_dMpc
+
+                # initialize emulator covariance
+                add_emu_cov_kms = np.zeros((k_Mpc.shape[0], k_Mpc.shape[0]))
+
+                # find closest z in cov
+                ind0 = np.argmin(np.abs(emu_cov["zz_zk"] - data.z[ii]))
+                # get cov from closest z
+                ind = np.argwhere(emu_cov["zz_zk"] == emu_cov["zz_zk"][ind0])[
+                    :, 0
+                ]
+                # block diagonal for that redshift
+                _emu_cov = emu_cov["cov_zk"][ind, :][:, ind]
+                _k_Mpc = emu_cov["k_Mpc_zk"][ind]
+
+                # rescale covariance matrix by power spectrum,
+                # since the covariance matrix stores the relative error
+                for i0 in range(k_Mpc.shape[0]):
+                    # get closest k in emu cov matrix
+                    j0 = np.argmin(np.abs(k_Mpc[i0] - _k_Mpc))
+                    for i1 in range(k_Mpc.shape[0]):
+                        # skip if diagonal and i0 != i1
+                        if (self.emu_cov_type == "diagonal") and (i0 != i1):
+                            continue
+                        # get closest k in emu cov matrix
+                        j1 = np.argmin(np.abs(k_Mpc[i1] - _k_Mpc))
+                        add_emu_cov_kms[i0, i1] = (
+                            _emu_cov[j0, j1]
+                            * pksmooth[ii][i0]
+                            * pksmooth[ii][i1]
+                            * emu_cov_factor
+                        )
+
+                        cov[i0, i1] += add_emu_cov_kms[i0, i1]
+
+                    emu_cov_blocks.append(add_emu_cov_kms)
+
+                # inflate errors full
+                ind = np.argmin(np.abs(self.cov_factor["z"] - data.z[ii]))
+                cov *= self.cov_factor["val_full"][ind] ** 2
+
                 # Compute and store the inverse covariance matrix
                 if idata == 0:
                     self.icov_Pk_kms.append(np.linalg.inv(cov))
                     self.cov_Pk_kms.append(cov)
-                    if self.emu_cov_factor is not None:
-                        if self.emu_cov_factor != 0:
-                            self.covemu_Pk_kms.append(
-                                add_emu_cov_kms * self.emu_cov_factor**2
-                            )
+                    if self.emu_cov_type == "diagonal":
+                        self.cov_emu_Pk_kms.append(
+                            np.diag(np.diag(add_emu_cov_kms))
+                        )
+                    else:
+                        self.cov_emu_Pk_kms.append(add_emu_cov_kms)
                 else:
                     self.extra_icov_Pk_kms.append(np.linalg.inv(cov))
                     self.extra_cov_Pk_kms.append(cov)
-                    if self.emu_cov_factor is not None:
-                        if self.emu_cov_factor != 0:
-                            self.extra_covemu_Pk_kms.append(
-                                add_emu_cov_kms * self.emu_cov_factor**2
-                            )
+                    if self.emu_cov_type == "diagonal":
+                        self.extra_cov_emu_Pk_kms.append(
+                            np.diag(np.diag(add_emu_cov_kms))
+                        )
+                    else:
+                        self.extra_cov_emu_Pk_kms.append(add_emu_cov_kms)
 
             # Process the full power spectrum data if available
             if data.full_Pk_kms is not None:
-                # Copy the full covariance matrix
-                cov = data.full_cov_Pk_kms.copy()
-                # Indices of the diagonal elements
-                if (self.emu_cov_factor is not None) and (
-                    self.emu_cov_factor != 0
-                ):
-                    # diagonal
-                    if self.emu_cov_type == "diagonal":
-                        diag_emu_cov = []
-                        for ii in range(len(emu_cov_blocks)):
-                            diag_emu_cov.append(np.diag(emu_cov_blocks[ii]))
-                        full_emu_cov = np.concatenate(diag_emu_cov)
-                        ind = np.diag_indices_from(cov)
-                        cov[ind] += full_emu_cov * self.emu_cov_factor**2
-                    # block
-                    elif self.emu_cov_type == "block":
-                        full_emu_cov = block_diag(*emu_cov_blocks)
-                        cov += full_emu_cov * self.emu_cov_factor**2
+                # inflate errors
+                cov_stat = data.full_cov_stat_Pk_kms.copy()
+                cov_syst = data.full_cov_Pk_kms - cov_stat
+                for i0 in range(cov_stat.shape[0]):
+                    ind0 = np.argmin(
+                        np.abs(self.cov_factor["z"] - data.full_zs[i0])
+                    )
+                    for i1 in range(cov_stat.shape[0]):
+                        ind1 = np.argmin(
+                            np.abs(self.cov_factor["z"] - data.full_zs[i1])
+                        )
+                        cov_stat[i0, i1] = (
+                            cov_stat[i0, i1]
+                            * self.cov_factor["val_stat"][ind0]
+                            * self.cov_factor["val_stat"][ind1]
+                        )
+                        cov_syst[i0, i1] = (
+                            cov_syst[i0, i1]
+                            * self.cov_factor["val_syst"][ind0]
+                            * self.cov_factor["val_syst"][ind1]
+                        )
+                cov = cov_stat + cov_syst
+                # diagonal emu, already inflated
+                if self.emu_cov_type == "diagonal":
+                    diag_emu_cov = []
+                    for ii in range(len(emu_cov_blocks)):
+                        diag_emu_cov.append(np.diag(emu_cov_blocks[ii]))
+                    full_emu_cov = np.concatenate(diag_emu_cov)
+                    ind = np.diag_indices_from(cov)
+                    cov[ind] += full_emu_cov
+                # block emu, already inflated
+                elif self.emu_cov_type == "block":
+                    full_emu_cov = block_diag(*emu_cov_blocks)
+                    cov += full_emu_cov
+                # full emu
+                else:
+                    full_emu_cov = np.zeros_like(cov)
+                    for i0 in range(cov.shape[0]):
+                        dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
+                            data.full_zs[i0]
+                        )
+                        full_k_kms0 = data.full_k_kms[i0] * dkms_dMpc
 
-                    # full
-                    else:
-                        full_emu_cov = np.zeros_like(cov)
-                        for i0 in range(cov.shape[0]):
+                        # find closest z in cov
+                        ind0 = np.argmin(
+                            np.abs(emu_cov["zz_zk"] - data.full_zs[i0])
+                        )
+                        ind = np.argwhere(
+                            emu_cov["zz_zk"] == emu_cov["zz_zk"][ind0]
+                        )[:, 0]
+                        # find closest k for such z
+                        ind1 = np.argmin(
+                            np.abs(emu_cov["k_Mpc_zk"] - full_k_kms0)
+                        )
+                        # closest index in z and k
+                        j0 = ind[ind1]
+
+                        # index to inflate
+                        ind0_infl = np.argmin(
+                            np.abs(self.cov_factor["z"] - data.full_zs[i0])
+                        )
+
+                        for i1 in range(cov.shape[0]):
                             dkms_dMpc = self.theory.fid_cosmo[
                                 "cosmo"
-                            ].dkms_dMpc(data.full_zs[i0])
-                            j0 = np.argmin(
-                                (data.full_zs[i0] - emu_cov_zz) ** 2
-                                + (
-                                    data.full_k_kms[i0] * dkms_dMpc
-                                    - emu_cov_k_Mpc
-                                )
-                                ** 2
+                            ].dkms_dMpc(data.full_zs[i1])
+                            full_k_kms1 = data.full_k_kms[i1] * dkms_dMpc
+
+                            # find closest z in cov
+                            ind0 = np.argmin(
+                                np.abs(emu_cov["zz_zk"] - data.full_zs[i1])
                             )
-                            for i1 in range(cov.shape[0]):
-                                dkms_dMpc = self.theory.fid_cosmo[
-                                    "cosmo"
-                                ].dkms_dMpc(data.full_zs[i1])
-                                j1 = np.argmin(
-                                    (data.full_zs[i1] - emu_cov_zz) ** 2
-                                    + (
-                                        data.full_k_kms[i1] * dkms_dMpc
-                                        - emu_cov_k_Mpc
-                                    )
-                                    ** 2
-                                )
-                                full_emu_cov[i0, i1] = (
-                                    emu_cov[j0, j1]
-                                    * data.full_Pk_kms[i0]
-                                    * data.full_Pk_kms[i1]
-                                )
+                            ind = np.argwhere(
+                                emu_cov["zz_zk"] == emu_cov["zz_zk"][ind0]
+                            )[:, 0]
+                            # find closest k for such z
+                            ind1 = np.argmin(
+                                np.abs(emu_cov["k_Mpc_zk"] - full_k_kms1)
+                            )
+                            # closest index in z and k
+                            j1 = ind[ind1]
 
-                                cov[i0, i1] += (
-                                    full_emu_cov[i0, i1]
-                                    * self.emu_cov_factor**2
-                                )
+                            # index to inflate
+                            ind1_infl = np.argmin(
+                                np.abs(self.cov_factor["z"] - data.full_zs[i1])
+                            )
 
-                # inflate errors
+                            full_emu_cov[i0, i1] = (
+                                emu_cov["cov_zk"][j0, j1]
+                                * data.full_Pk_kms[i0]
+                                * data.full_Pk_kms[i1]
+                                * self.cov_factor["val_emu"][ind0_infl]
+                                * self.cov_factor["val_emu"][ind1_infl]
+                            )
+
+                    cov += full_emu_cov
+
+                # inflate errors full
                 for i0 in range(cov.shape[0]):
                     ind0 = np.argmin(
                         np.abs(self.cov_factor["z"] - data.full_zs[i0])
                     )
-                    fact0 = self.cov_factor["val"][ind0]
+                    fact0 = self.cov_factor["val_full"][ind0]
 
                     for i1 in range(cov.shape[0]):
                         ind1 = np.argmin(
                             np.abs(self.cov_factor["z"] - data.full_zs[i1])
                         )
-                        fact1 = self.cov_factor["val"][ind1]
+                        fact1 = self.cov_factor["val_full"][ind1]
 
                         cov[i0, i1] = cov[i0, i1] * fact0 * fact1
 
@@ -489,19 +527,11 @@ class Likelihood(object):
                 if idata == 0:
                     self.full_icov_Pk_kms = np.linalg.inv(cov)
                     self.full_cov_Pk_kms = cov
-                    if self.emu_cov_factor is not None:
-                        if self.emu_cov_factor != 0:
-                            self.emu_full_cov_Pk_kms = (
-                                full_emu_cov * self.emu_cov_factor**2
-                            )
+                    self.emu_full_cov_Pk_kms = full_emu_cov
                 else:
                     self.extra_full_icov_Pk_kms = np.linalg.inv(cov)
                     self.extra_full_cov_Pk_kms = cov
-                    if self.emu_cov_factor is not None:
-                        if self.emu_cov_factor != 0:
-                            self.extra_emu_full_cov_Pk_kms = (
-                                full_emu_cov * self.emu_cov_factor**2
-                            )
+                    self.extra_emu_full_cov_Pk_kms = full_emu_cov
 
     def set_free_parameters(self, free_param_names, free_param_limits):
         """Setup likelihood parameters that we want to vary"""
@@ -541,7 +571,7 @@ class Likelihood(object):
                     "Could not find free parameter {} in theory".format(par)
                 )
 
-        if self.verbose & (self.rank == 0):
+        if self.verbose and (self.rank == 0):
             print("likelihood setup with {} free parameters".format(Nfree))
 
         return
@@ -877,8 +907,6 @@ class Likelihood(object):
                 emu_p1d, blob = _res
             else:
                 emu_p1d = _res
-
-        # print("emu_p1d", emu_p1d)
 
         # out of priors
         if len(emu_p1d) == 1:
@@ -2812,7 +2840,7 @@ class Likelihood(object):
         for ii in range(len(self.cov_Pk_kms)):
             cov_stat = np.diag(self.data.covstat_Pk_kms[ii])
             cov_syst = np.diag(self.data.cov_Pk_kms[ii]) - cov_stat
-            cov_emu = np.diag(self.covemu_Pk_kms[ii])
+            cov_emu = np.diag(self.cov_emu_Pk_kms[ii])
             cov_tot = np.diag(self.cov_Pk_kms[ii])
             ax[ii].plot(
                 self.data.k_kms[ii], cov_stat / cov_tot, label=r"$x$ = Stat"
@@ -2849,7 +2877,7 @@ class Likelihood(object):
         for ii in range(len(self.cov_Pk_kms)):
             cov_stat = np.diag(self.data.covstat_Pk_kms[ii])
             cov_syst = np.diag(self.data.cov_Pk_kms[ii]) - cov_stat
-            cov_emu = np.diag(self.covemu_Pk_kms[ii])
+            cov_emu = np.diag(self.cov_emu_Pk_kms[ii])
             cov_tot = np.diag(self.cov_Pk_kms[ii])
             if use_pk_smooth:
                 pk = self.data.Pksmooth_kms[ii].copy()
@@ -3060,7 +3088,7 @@ class Likelihood(object):
             )[0, 0]
             p.value = list(dir_out["mle"][iz].values())[iname]
 
-            if verbose & (self.rank == 0):
+            if verbose and (self.rank == 0):
                 print(
                     p.name,
                     "\t",
@@ -3075,11 +3103,21 @@ class Likelihood(object):
                 )
 
         # reset the coefficients of the models
-        self.theory.model_igm.models["F_model"].reset_coeffs(free_params)
-        self.theory.model_igm.models["T_model"].reset_coeffs(free_params)
-        self.theory.model_cont.hcd_model.reset_coeffs(free_params)
-        self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(free_params)
-        self.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)
+        self.theory.model_igm.models["F_model"].reset_coeffs(
+            free_params, rank=self.rank
+        )
+        self.theory.model_igm.models["T_model"].reset_coeffs(
+            free_params, rank=self.rank
+        )
+        self.theory.model_cont.hcd_model.reset_coeffs(
+            free_params, rank=self.rank
+        )
+        self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(
+            free_params, rank=self.rank
+        )
+        self.theory.model_cont.metal_models["Si_add"].reset_coeffs(
+            free_params, rank=self.rank
+        )
 
     def set_ic_global(self, fname, verbose=True):
         """Set the initial conditions for the likelihood from a fit"""
@@ -3110,22 +3148,24 @@ class Likelihood(object):
 
             p.fixed = isfixed
 
-            if (pname not in dir_out) and (pname == "kF_kms"):
-                p.value = 1
-            elif (pname not in dir_out) and (pname == "HCD_const"):
-                p.value = 0
-            elif (pname not in dir_out) and (pname == "HCD_damp2"):
-                p.value = -4.5
-            elif (pname not in dir_out) and (pname == "HCD_damp3"):
-                p.value = -5.3
-            elif (pname not in dir_out) and (pname == "R_coeff"):
+            # if (pname not in dir_out) and (pname == "kF_kms"):
+            #     p.value = 1
+            # elif (pname not in dir_out) and (pname == "HCD_const"):
+            #     p.value = 0
+            # elif (pname not in dir_out) and (pname == "HCD_damp2"):
+            #     p.value = -4.5
+            # elif (pname not in dir_out) and (pname == "HCD_damp3"):
+            #     p.value = -5.3
+            # elif (pname not in dir_out) and (pname == "R_coeff"):
+            #     p.value = 0
+            if (pname not in dir_out) and (pname == "HCD_const"):
                 p.value = 0
             else:
                 _z = dir_out[pname]["z"]
                 _val = dir_out[pname]["val"]
                 p.value = np.interp(znode, _z, _val)
 
-            if verbose & (self.rank == 0):
+            if verbose and (self.rank == 0):
                 print(
                     p.name,
                     "\t",
@@ -3140,11 +3180,21 @@ class Likelihood(object):
                 )
 
         # reset the coefficients of the models
-        self.theory.model_igm.models["F_model"].reset_coeffs(free_params)
-        self.theory.model_igm.models["T_model"].reset_coeffs(free_params)
-        self.theory.model_cont.hcd_model.reset_coeffs(free_params)
-        self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(free_params)
-        self.theory.model_cont.metal_models["Si_add"].reset_coeffs(free_params)
+        self.theory.model_igm.models["F_model"].reset_coeffs(
+            free_params, rank=self.rank
+        )
+        self.theory.model_igm.models["T_model"].reset_coeffs(
+            free_params, rank=self.rank
+        )
+        self.theory.model_cont.hcd_model.reset_coeffs(
+            free_params, rank=self.rank
+        )
+        self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(
+            free_params, rank=self.rank
+        )
+        self.theory.model_cont.metal_models["Si_add"].reset_coeffs(
+            free_params, rank=self.rank
+        )
 
 
 def others_igm():

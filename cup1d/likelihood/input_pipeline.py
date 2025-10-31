@@ -115,9 +115,7 @@ class Args:
     fix_cosmo: bool = False
     vary_alphas: bool = False
     prior_Gauss_rms: float | None = None
-    emu_cov_factor: int | None = 1
-    cov_factor: int = 1
-    emu_cov_type: str = "diagonal"
+    emu_cov_type: str = "full"
     file_ic: str | None = None
     mcmc: dict = field(
         default_factory=lambda: {
@@ -426,7 +424,7 @@ class Args:
         ]
         self.fid_cont["flat_priors"]["f_SiIIb_SiIII"] = [
             [-1, 1],
-            [-1, 3],
+            [-1, 5],
         ]
 
         # priors
@@ -510,8 +508,8 @@ class Args:
         P1D_type="DESIY1_QMLE3",
         fid_cosmo_label="Planck18",
         name_variation=None,
-        inflate=1.0,
         mcmc_conf="explore",
+        ic_global=True,
     ):
         """
         Set baseline parameters
@@ -621,26 +619,32 @@ class Args:
             self.fid_cont["hcd_model_type"] = "new_rogers"
 
         ## inflate errors
-        # we multiply cov by inflate square
+        self.cov_factor = {
+            "z": np.arange(self.z_min, self.z_max + 1e-3, 0.2),
+        }
+        # multiply cov by cov_factor**2
+
         if "DESIY1" in P1D_type:
-            if (name_variation is not None) and (
-                "no_inflate" in name_variation
-            ):
-                inflate = 1.0
-
-            self.cov_factor = {
-                "z": np.arange(self.z_min, self.z_max + 1e-3, 0.2),
-            }
-            self.cov_factor["val"] = (
-                np.ones(len(self.cov_factor["z"])) * inflate
-            )
-            ##
-
-        ## modify emulator error
+            inf_stat = 1.05
+            inf_syst = 1
+            inf_emu = 1
+            inf_full = 1
+        if (name_variation is not None) and ("no_inflate" in name_variation):
+            inf_stat = 1
         if (name_variation is not None) and ("no_emu_cov" in name_variation):
-            self.emu_cov_factor = 1e-20
-        else:
-            self.emu_cov_factor = 1
+            inf_emu = 0
+        self.cov_factor["val_stat"] = (
+            np.ones(len(self.cov_factor["z"])) * inf_stat
+        )
+        self.cov_factor["val_syst"] = (
+            np.ones(len(self.cov_factor["z"])) * inf_syst
+        )
+        self.cov_factor["val_emu"] = (
+            np.ones(len(self.cov_factor["z"])) * inf_emu
+        )
+        self.cov_factor["val_full"] = (
+            np.ones(len(self.cov_factor["z"])) * inf_full
+        )
 
         props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
         props_cont = [
@@ -650,8 +654,8 @@ class Args:
             "s_Lya_SiII",
             "f_SiIIa_SiIIb",
             "s_SiIIa_SiIIb",
-            # "f_SiIIa_SiIII",
-            # "f_SiIIb_SiIII",
+            "f_SiIIa_SiIII",
+            "f_SiIIb_SiIII",
             "HCD_damp1",
             "HCD_damp2",
             "HCD_damp3",
@@ -669,26 +673,7 @@ class Args:
             self.fid_syst["n_R_coeff"] = 1
             self.fid_syst["R_coeff_ztype"] = "pivot"
 
-            if name_variation is None:
-                baseline_prop = [
-                    "tau_eff",
-                    "sigT_kms",
-                    "gamma",
-                    "kF_kms",
-                    "f_Lya_SiIII",
-                    "s_Lya_SiIII",
-                    "f_Lya_SiII",
-                    "s_Lya_SiII",
-                    "f_SiIIa_SiIIb",
-                    "s_SiIIa_SiIIb",
-                    # "f_SiIIa_SiIII",
-                    # "f_SiIIb_SiIII",
-                    "HCD_damp1",
-                    "HCD_damp2",
-                    "HCD_damp3",
-                    "HCD_damp4",
-                ]
-            elif name_variation == "Metals_Ma2025":
+            if name_variation == "Metals_Ma2025":
                 baseline_prop = [
                     "tau_eff",
                     "sigT_kms",
@@ -707,10 +692,44 @@ class Args:
                     "HCD_damp3",
                     "HCD_damp4",
                 ]
+            elif name_variation == "metal_thin":
+                baseline_prop = [
+                    "tau_eff",
+                    "sigT_kms",
+                    "gamma",
+                    "kF_kms",
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
             else:
-                raise ValueError(
-                    "name_variation not implemented", name_variation
-                )
+                baseline_prop = [
+                    "tau_eff",
+                    "sigT_kms",
+                    "gamma",
+                    "kF_kms",
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
 
             for prop in props_igm:
                 if prop in baseline_prop:
@@ -750,8 +769,8 @@ class Args:
                 "s_Lya_SiII",
                 "f_SiIIa_SiIIb",
                 "s_SiIIa_SiIIb",
-                # "f_SiIIa_SiIII",
-                # "f_SiIIb_SiIII",
+                "f_SiIIa_SiIII",
+                "f_SiIIb_SiIII",
                 "HCD_damp1",
                 "HCD_damp2",
                 "HCD_damp3",
@@ -798,15 +817,14 @@ class Args:
             else:
                 fname = "nyx_ic_global_red.npy"
             self.file_ic = os.path.join(self.path_data, "data", "ics", fname)
+            if ic_global == False:
+                self.file_ic = None
 
             if (name_variation is not None) and (
                 name_variation.startswith("sim_")
             ):
                 self.file_ic = None
             ##
-
-            # for prop in props_cont:
-            #     self.fid_cont["z_max"][prop] = 5
 
             if name_variation == "metal_trad":
                 baseline_prop = [
@@ -831,8 +849,8 @@ class Args:
                     "s_Lya_SiII",
                     # "f_SiIIa_SiIIb",
                     # "s_SiIIa_SiIIb",
-                    # "f_SiIIa_SiIII",
-                    # "f_SiIIb_SiIII",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
                     "HCD_damp1",
                     "HCD_damp2",
                     "HCD_damp3",
@@ -846,8 +864,8 @@ class Args:
                     # "s_Lya_SiII",
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
-                    # "f_SiIIa_SiIII",
-                    # "f_SiIIb_SiIII",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
                     "HCD_damp1",
                     "HCD_damp2",
                     "HCD_damp3",
@@ -861,8 +879,8 @@ class Args:
                     "s_Lya_SiII",
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
-                    "f_SiIIa_SiIII",
-                    "f_SiIIb_SiIII",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
                     "HCD_damp1",
                     "HCD_damp2",
                     "HCD_damp3",
@@ -891,8 +909,8 @@ class Args:
                     "s_Lya_SiII",
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
-                    # "f_SiIIa_SiIII",
-                    # "f_SiIIb_SiIII",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
                     # "HCD_damp1",
                     # "HCD_damp2",
                     "HCD_damp3",
@@ -906,8 +924,8 @@ class Args:
                     "s_Lya_SiII",
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
-                    # "f_SiIIa_SiIII",
-                    # "f_SiIIb_SiIII",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
                     "HCD_damp1",
                     "HCD_damp2",
                     "HCD_damp3",
@@ -922,8 +940,8 @@ class Args:
                     "s_Lya_SiII",
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
-                    # "f_SiIIa_SiIII",
-                    # "f_SiIIb_SiIII",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
                     "HCD_damp1",
                     # "HCD_damp2",
                     # "HCD_damp3",
@@ -937,8 +955,8 @@ class Args:
                     "s_Lya_SiII",
                     "f_SiIIa_SiIIb",
                     "s_SiIIa_SiIIb",
-                    # "f_SiIIa_SiIII",
-                    # "f_SiIIb_SiIII",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
                     "HCD_damp1",
                     "HCD_damp2",
                     "HCD_damp3",
@@ -952,8 +970,8 @@ class Args:
                 "s_Lya_SiII",
                 "f_SiIIa_SiIIb",
                 "s_SiIIa_SiIIb",
-                # "f_SiIIa_SiIII",
-                # "f_SiIIb_SiIII",
+                "f_SiIIa_SiIII",
+                "f_SiIIb_SiIII",
                 "HCD_damp1",
                 "HCD_damp2",
                 "HCD_damp3",

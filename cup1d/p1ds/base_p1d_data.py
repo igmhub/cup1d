@@ -15,6 +15,7 @@ def _drop_zbins(
     full_zs=None,
     full_Pk_kms=None,
     full_cov_kms=None,
+    full_cov_stat_kms=None,
     Pksmooth_kms=None,
     cov_stat=None,
     kmin_in=None,
@@ -68,6 +69,7 @@ def _drop_zbins(
         full_zs = full_zs[ind]
         full_Pk_kms = full_Pk_kms[ind]
         full_cov_kms = full_cov_kms[ind, :][:, ind]
+        full_cov_stat_kms = full_cov_stat_kms[ind, :][:, ind]
 
     return (
         z_out,
@@ -77,6 +79,7 @@ def _drop_zbins(
         full_zs,
         full_Pk_kms,
         full_cov_kms,
+        full_cov_stat_kms,
         Pksmooth_out,
         cov_stat_out,
         kmin_out,
@@ -100,6 +103,7 @@ class BaseDataP1D(object):
         full_zs=None,
         full_Pk_kms=None,
         full_cov_kms=None,
+        full_cov_stat_kms=None,
         Pksmooth_kms=None,
         cov_stat=None,
         k_kms_min=None,
@@ -133,6 +137,7 @@ class BaseDataP1D(object):
             full_zs=full_zs,
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=full_cov_kms,
+            full_cov_stat_kms=full_cov_stat_kms,
             Pksmooth_kms=Pksmooth_kms,
             cov_stat=cov_stat,
             kmin_in=k_kms_min,
@@ -147,6 +152,7 @@ class BaseDataP1D(object):
             self.full_zs,
             self.full_Pk_kms,
             self.full_cov_Pk_kms,
+            self.full_cov_stat_Pk_kms,
             self.Pksmooth_kms,
             self.covstat_Pk_kms,
             self.k_kms_min,

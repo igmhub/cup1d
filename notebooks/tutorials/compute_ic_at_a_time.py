@@ -38,8 +38,10 @@ emulator_label = "CH24_mpgcen_gpr"
 # emulator_label = "CH24_nyxcen_gpr"
 
 # emu_cov_type = "block"
-emu_cov_type = "diagonal"
+# emu_cov_type = "diagonal"
+emu_cov_type = "full"
 # name_variation = "Ma2025"
+name_variation = "no_inflate"
 
 args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
 args.set_baseline(
@@ -117,8 +119,8 @@ plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize
 
 
 fname = os.path.join(
-    # os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_at_a_time.npy"
-    os.path.dirname(get_path_repo("cup1d")), "data", "ics", "nyx_ic_at_a_time.npy"
+    os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_at_a_time.npy"
+    # os.path.dirname(get_path_repo("cup1d")), "data", "ics", "nyx_ic_at_a_time.npy"
 )
 dir_out = {
     "z":pip.fitter.like.data.z,
@@ -129,14 +131,11 @@ dir_out = {
 }
 np.save(fname, dir_out)
 
-# +
-# for ii in range(len(out_mle_cube)):
-#     print(out_mle_cube[ii][-1])
-# -
-
+# inflate 5%
 from cup1d.optimize.show_results import print_results
 print_results(pip.fitter.like, out_chi2, out_mle_cube)
 
+# no inflate
 from cup1d.optimize.show_results import print_results
 print_results(pip.fitter.like, out_chi2, out_mle_cube)
 

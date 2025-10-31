@@ -129,7 +129,6 @@ class Pipeline(object):
             extra_data=data["extra_P1Ds"],
             free_param_names=free_parameters,
             cov_factor=args.cov_factor,
-            emu_cov_factor=args.emu_cov_factor,
             emu_cov_type=args.emu_cov_type,
             args=args,
         )

@@ -58,6 +58,8 @@ from cup1d.pipeline.set_archive import set_archive
 
 # %%
 
+# %%
+
 # base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 # folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
 
@@ -337,7 +339,6 @@ name_variation = None
 # name_variation = "no_res"
 # name_variation = "HCD0"
 # name_variation = "kF_kms"
-# name_variation = "metal_thin"
 # name_variation = "Gaikwad21"
 # name_variation = "Gaikwad21T"
 # name_variation = "Turner24"
@@ -345,9 +346,12 @@ name_variation = None
 # name_variation = "data_syst_diag"
 
 # emu_cov_type = "block"
-emu_cov_type = "diagonal"
-name_variation = "Metals_Ma2025"
+# emu_cov_type = "diagonal"
+emu_cov_type = "full"
+# name_variation = "Metals_Ma2025"
 # name_variation = "HCD_BOSS"
+
+name_variation = "more_igm"
 
 emulator_label="CH24_mpgcen_gpr"
 # emulator_label="CH24_nyxcen_gpr"
@@ -364,127 +368,14 @@ pip = Pipeline(args, out_folder=args.out_folder)
 
 
 # %%
-cov_emu = pip.fitter.like.emu_full_cov_Pk_kms.copy()
-cov_stat_sys = pip.fitter.like.full_cov_Pk_kms - cov_emu
-full_cov = pip.fitter.like.full_cov_Pk_kms.copy()
-full_cov2 = cov_emu * 4 + cov_stat_sys
-full_cov_diag = cov_stat_sys + np.eye(cov_stat_sys.shape[0]) * np.diag(cov_emu)
-full_cov_diag2 = cov_stat_sys + np.eye(cov_stat_sys.shape[0]) * np.diag(cov_emu) * 4
-
-# %%
-ein_emu, _ = np.linalg.eig(cov_emu)
-ein_stat_sys, _ = np.linalg.eig(cov_stat_sys)
-ein_full, _ = np.linalg.eig(full_cov)
-ein_full2, _ = np.linalg.eig(full_cov2)
-ein_cov_diag, _ = np.linalg.eig(full_cov_diag)
-
-# %%
-bins = np.linspace(-2.3, 3, 30)
-# print(bins)
-plt.hist(np.log10(ein_full), bins=bins, alpha=0.5, label="stat + syst + emu");
-plt.hist(np.log10(ein_stat_sys), bins=bins, alpha=0.5, label="stat + syst");
-plt.hist(np.log10(ein_cov_diag), bins=bins, alpha=0.5, label="stat + syst + diag(emu)");
-plt.legend()
-
-# %%
-det_emu = np.linalg.det(cov_emu)
-det_sat_sys = np.linalg.det(cov_stat_sys)
-det_full = np.linalg.det(full_cov)
-det_full2 = np.linalg.det(full_cov2)
-det_cov_diag = np.linalg.det(full_cov_diag)
-
-# %%
-print(det_emu)
-print(det_sat_sys)
-print(det_full)
-print(det_cov_diag)
-
-# %%
-cond_emu = np.linalg.cond(cov_emu)
-cond_sat_sys = np.linalg.cond(cov_stat_sys)
-cond_full = np.linalg.cond(full_cov)
-cond_full2 = np.linalg.cond(full_cov2)
-cond_cov_diag = np.linalg.cond(full_cov_diag)
-
-# %%
-print(cond_emu)
-print(cond_sat_sys)
-print(cond_full)
-print(cond_cov_diag)
-
-# %%
-inv_emu = np.linalg.inv(cov_emu)
-inv_sat_sys = np.linalg.inv(cov_stat_sys)
-inv_full = np.linalg.inv(full_cov)
-inv_full2 = np.linalg.inv(full_cov2)
-inv_cov_diag = np.linalg.inv(full_cov_diag)
-inv_cov_diag2 = np.linalg.inv(full_cov_diag2)
-
-# %%
-pinv_emu = np.linalg.pinv(cov_emu)
-pinv_sat_sys = np.linalg.pinv(cov_stat_sys)
-pinv_full = np.linalg.pinv(full_cov)
-pinv_full2 = np.linalg.pinv(full_cov2)
-pinv_cov_diag = np.linalg.pinv(full_cov_diag)
+##
+0.5446328398055156 no inflate
+20.114723582864716 stat * 1.05
+2.113826391570677 emu * 2
 
 
 # %%
-def correlation_from_covariance(covariance):
-    v = np.sqrt(np.diag(covariance))
-    outer_v = np.outer(v, v)
-    correlation = covariance / outer_v
-    correlation[covariance == 0] = 0
-    return correlation
-
-
-# %%
-
-# %%
-pre_emu = correlation_from_covariance(inv_emu)
-pre_sat_sys = correlation_from_covariance(inv_sat_sys)
-pre_full = correlation_from_covariance(inv_full)
-pre_full2 = correlation_from_covariance(inv_full2)
-pre_cov_diag = correlation_from_covariance(inv_cov_diag)
-
-# %%
-ppre_emu = correlation_from_covariance(pinv_emu)
-ppre_sat_sys = correlation_from_covariance(pinv_sat_sys)
-ppre_full = correlation_from_covariance(pinv_full)
-ppre_full2 = correlation_from_covariance(pinv_full2)
-ppre_cov_diag = correlation_from_covariance(pinv_cov_diag)
-
-# %%
-# plt.imshow(pre_emu)
-plt.imshow(ppre_emu)
-plt.colorbar()
-
-# %%
-# plt.imshow(pre_sat_sys)
-plt.imshow(ppre_sat_sys)
-plt.colorbar()
-
-# %%
-# plt.imshow(pre_full)
-plt.imshow(pre_cov_diag)
-plt.colorbar()
-
-# %%
-plt.plot(np.diag(inv_full2)/np.diag(inv_full), label="stat + syst + emu * 4")
-# plt.plot(np.diag(inv_sat_sys)/np.diag(inv_full))
-plt.plot(np.diag(inv_cov_diag)/np.diag(inv_full), label="stat + syst + diag(emu)")
-plt.plot(np.diag(inv_cov_diag2)/np.diag(inv_full), ":", label="stat + syst + diag(emu) * 4")
-plt.legend()
-plt.xlabel("element diag")
-plt.ylabel("diag(x)/diag(stat + syst + emu)")
-
-# %%
-plt.plot(np.diag(full_cov2)/np.diag(full_cov), label="stat + syst + emu * 4")
-# plt.plot(np.diag(inv_sat_sys)/np.diag(inv_full))
-plt.plot(np.diag(full_cov_diag)/np.diag(full_cov), label="stat + syst + diag(emu)")
-plt.plot(np.diag(full_cov_diag2)/np.diag(full_cov), ":", label="stat + syst + diag(emu) * 4")
-plt.legend()
-plt.xlabel("element diag")
-plt.ylabel("diag(x)/diag(stat + syst + emu)")
+pip.fitter.like.plot_p1d(p0, print_chi2=False)
 
 # %%
 
@@ -507,6 +398,28 @@ free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
 
 # %%
+p0 = np.array([6.52990018e-01, 4.61790398e-01, 6.95749190e-01, 1.43816919e-01,
+       1.63401068e-02, 5.90879424e-04, 6.93851139e-03, 7.02583072e-01,
+       7.85391366e-01, 3.49554924e-01, 9.99342829e-01, 1.05153800e-01,
+       4.74777622e-01, 2.31243684e-04, 1.41440277e-02, 1.13242014e-01,
+       2.20531022e-01, 6.22366560e-01, 4.61007967e-01, 4.30003656e-01,
+       5.77670152e-01, 5.66698598e-01, 6.53271017e-01, 2.88243386e-01,
+       7.81489479e-01, 4.90749459e-01, 5.71115531e-01, 6.70996653e-01,
+       5.92218515e-01, 7.14987668e-01, 8.30535104e-01, 8.66703983e-01,
+       1.78057125e-01, 2.12937764e-01, 6.20034388e-01, 6.29611474e-01,
+       3.40272775e-01, 4.31775261e-01, 3.32318445e-01, 4.93283610e-01,
+       5.56071146e-01, 5.33291151e-01, 6.54861792e-01, 6.87850023e-01,
+       8.82508089e-01, 8.37654595e-01, 5.11488482e-01, 9.77237363e-01,
+       9.79128500e-01])
+
+# %%
+
+# p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+free_params = pip.fitter.like.parameters_from_sampling_point(p0)
+pip.fitter.like.get_chi2(p0)
+
+# %%
+pip.fitter.like.plot_p1d(p0, print_chi2=False)
 
 # %%
 # base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
@@ -540,41 +453,35 @@ pip.fitter.like.get_chi2(p0)
 pip.run_minimizer(p0, restart=True)
 
 # %%
+# fname = os.path.join(
+#     os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_global_red.npy"
+# )
+# pip.save_global_ic(fname)
+
+# %%
 p0 = pip.fitter.mle_cube
 # p0 = data_best["mle_cube"].copy()
 pip.fitter.like.get_chi2(p0)
 
 # %%
-new baseline, emu diagonal, no 5%, no opt thin, geom IGM
-Passed out: 588.729654770444 (+37, 4 params less), 91
-Almost out of bounds:
-tau_eff_3 0.01525322049937576 -0.21413998755240043
-gamma_0 0.9988588852833431 1.2642916038691219
-gamma_3 7.277174836702373e-05 0.7636913741791961
-kF_kms_0 0.016400906053116643 0.8210684569387425
-kF_kms_3 0.96978692450308 1.2816956091087834
-R_coeff_7 0.9995119157015389 0.019980476628061555
-R_coeff_10 0.9600913519364411 0.018403654077457646
-Delta2_star 0.40793
-n_star -2.27768
-
-
-new baseline, emu diagonal, no 5%, no opt thin, lin IGM
-Passed out: 586.339000087996
-Almost out of bounds:
-tau_eff_3 0.0004793877378067514 -0.22071364914121383
-gamma_0 0.9859609687718103 1.257827056674585
-gamma_3 0.00023703338688466557 0.763773703531654
-kF_kms_0 0.017705398759685742 0.8216987208075481
-R_coeff_7 0.9971686113140668 0.01988674445256267
-R_coeff_10 1.0 0.02
-Delta2_star 0.43053
-n_star -2.26356
 
 new baseline, 
-586.4304163703927
-Delta2_star 0.42289
-n_star -2.27332
+657.150798756201
+Delta2_star 0.41149
+n_star -2.27902
+
+
+# more IGM
+Passed out: 651.5682708477701
+Almost out of bounds:
+tau_eff_5 0.045854758542617946 -0.20052374060822498
+sigT_kms_0 0.9827076629938714 1.264841714808149
+sigT_kms_3 0.04868179627048502 0.8176241022979758
+gamma_0 0.9934064910938973 1.2615588167922809
+R_coeff_9 0.9733900210670736 0.07574240337073178
+Delta2_star 0.42736
+n_star -2.29324
+alpha_star -0.21803
 
 # %%
 # pip.fitter.mle
@@ -583,10 +490,7 @@ n_star -2.27332
 # pip.fitter.like.theory.model_cont.metal_models["Si_add"].coeffs
 
 # %%
-1.0832499884936857e-05 * 100
-
-# %%
-# pip.fitter.like.plot_p1d(p0, print_chi2=False)
+pip.fitter.like.plot_p1d(p0, print_chi2=False)
 # pip.fitter.like.plot_cov_to_pk(fname="figs/nyx_err2p1d_qmle3")
 
 # %%

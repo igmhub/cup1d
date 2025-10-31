@@ -61,7 +61,7 @@ class Resolution(Contaminant):
 
         # priors for all coefficients
         if flat_priors is None:
-            flat_priors = {"R_coeff": [[-0.5, 0.5], [-0.05, 0.05]]}
+            flat_priors = {"R_coeff": [[-0.5, 0.5], [-0.1, 0.1]]}
 
         # z dependence and output type of coefficients
         if prop_coeffs is None:
