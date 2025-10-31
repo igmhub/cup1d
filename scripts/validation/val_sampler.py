@@ -50,6 +50,7 @@ def main():
         apply_smoothing=True,
         add_noise=False,
         seed_noise=0,
+        emu_cov_type="full",
     )
 
     args.set_baseline(
