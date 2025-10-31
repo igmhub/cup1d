@@ -390,6 +390,8 @@ class Pipeline(object):
         out_dict = {}
         vals = np.array(list(self.fitter.mle.values()))
         for jj, p in enumerate(self.fitter.like.free_params):
+            if (p.name == "As") or (p.name == "ns"):
+                continue
             pname, iistr = split_string(p.name)
             ii = int(iistr)
             if pname in self.fitter.like.args.fid_igm:
