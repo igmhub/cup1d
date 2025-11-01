@@ -37,7 +37,7 @@ def main():
 
     if name_variation == "emu_diag":
         name_variation = None
-        emu_cov_type = "diag"
+        emu_cov_type = "diagonal"
     elif name_variation == "emu_block":
         name_variation = None
         emu_cov_type = "block"

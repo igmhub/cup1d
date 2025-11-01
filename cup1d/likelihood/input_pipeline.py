@@ -532,7 +532,6 @@ class Args:
         self.fid_cosmo_label = fid_cosmo_label
         self.name_variation = name_variation
         ##
-        self.set_out_folder(name_variation)
 
         if mcmc_conf == "test":
             self.mcmc["explore"] = True
@@ -558,6 +557,23 @@ class Args:
 
         # reset parameters
         self.set_params_zero()
+
+        if self.emu_cov_type != "full":
+            if name_variation is not None:
+                raise ValueError(
+                    "name_variation "
+                    + name_variation
+                    + " not implemented with emu_cov_type "
+                    + self.emu_cov_type
+                )
+            if self.emu_cov_type == "diagonal":
+                self.name_variation = "emu_diag"
+            elif self.emu_cov_type == "block":
+                self.name_variation = "emu_block"
+            else:
+                raise ValueError(
+                    "emu_cov_type " + self.emu_cov_type + " not implemented"
+                )
 
         ## set cosmology
         if (name_variation is not None) and (name_variation == "zmin"):
@@ -662,6 +678,8 @@ class Args:
             "HCD_damp4",
             "HCD_const",
         ]
+
+        self.set_out_folder(self.name_variation)
 
         # z at a time
         #############
