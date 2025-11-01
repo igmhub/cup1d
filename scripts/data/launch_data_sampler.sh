@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH -A desi
 #SBATCH -q regular
-#SBATCH -t 03:00:00
+#SBATCH -t 07:00:00
 #SBATCH --constraint=cpu
 #SBATCH --nodes=1
 #SBATCH -J p1d
 #SBATCH -o logs/p1d.%j.out
 #SBATCH -e logs/p1d.%j.err
-#SBATCH --array=0-22   # number of variations minus 1
+#SBATCH --array=0-0   # number of variations minus 1
 
 echo "Job started at: $(date)"
 
@@ -17,29 +17,29 @@ mkdir -p logs
 
 # Define variations
 variations=(
-    "None"
+    # "None"
     "nyx"
-    "DESIY1_QMLE"
-    "DESIY1_FFT3_dir"
-    "zmin"
-    "zmax"
-    "no_inflate"
-    "no_emu_cov"
-    "emu_diag"
-    "emu_block"
-    "cosmo"
-    "cosmo_low"
-    "cosmo_high"
-    "data_syst_diag"
-    "metal_trad"
-    "metal_si2"
-    "metal_thin"
-    "metal_deco"
-    "more_igm"
-    "DLAs"
-    "HCD0"
-    "Metals_Ma2025"
-    "HCD_BOSS"
+    # "DESIY1_QMLE"
+    # "DESIY1_FFT3_dir"
+    # "zmin"
+    # "zmax"
+    # "no_inflate"
+    # "no_emu_cov"
+    # "emu_diag"
+    # "emu_block"
+    # "cosmo"
+    # "cosmo_low"
+    # "cosmo_high"
+    # "data_syst_diag"
+    # "metal_trad"
+    # "metal_si2"
+    # "metal_thin"
+    # "metal_deco"
+    # "more_igm"
+    # "DLAs"
+    # "HCD0"
+    # "Metals_Ma2025"
+    # "HCD_BOSS"
     #############
     # "DESIY1_FFT_dir"
     # "less_igm"

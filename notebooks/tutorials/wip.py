@@ -160,12 +160,14 @@ emulator_label = "CH24_mpgcen_gpr"
 # emulator_label = "CH24_nyxcen_gpr"
 
 
-data_label = "mock_DESIY1_QMLE3"
+# data_label = "mock_DESIY1_QMLE3"
 # data_label = "nyx_central"
 # data_label = "nyx_seed"
 # data_label = "nyx_cgan_base"
 # data_label = "accel2"
 # data_label = "sherwood"
+
+data_label = "mpg_central"
 
 if data_label == "mpg_central":
     zmin=2.25
@@ -177,9 +179,7 @@ else:
     zmin=2.2
     zmax=4.2
 
-zmin=2.25
-zmax=4.25
-
+cov_label="DESIY1_QMLE3"
 true_cosmo_label = data_label
 fid_cosmo_label = data_label
 name_variation= "sim_" + data_label
@@ -187,77 +187,32 @@ name_variation= "sim_" + data_label
 # name_variation= "sim_" + data_label + "_igm0"
 fit_type = "global_opt"
 
+name_variation = None
+
 args = Args(
-    data_label=data_label, 
-    cov_label="DESIY1_QMLE3", 
+    data_label=data_label,
+    cov_label=cov_label,
     emulator_label=emulator_label,
-    true_cosmo_label=true_cosmo_label,
+    true_cosmo_label=data_label,
     apply_smoothing=True,
-    # add_noise=True,
-    # seed_noise=0,
+    add_noise=False,
+    seed_noise=0,
+    emu_cov_type="full",
 )
+
 args.set_baseline(
-    fit_type=fit_type, 
-    fix_cosmo=False, 
-    P1D_type="DESIY1_QMLE3",
-    fid_cosmo_label=fid_cosmo_label,
+    fit_type=fit_type,
+    fix_cosmo=False,
+    fid_cosmo_label=data_label,
+    P1D_type=cov_label,
     name_variation=name_variation,
     z_min=zmin,
     z_max=zmax,
-    mcmc_conf="test"
+    mcmc_conf="explore",
 )
 
 # %% [markdown]
 # ### Mocks
-
-# %%
-emulator_label = "CH24_mpgcen_gpr"
-# emulator_label = "CH24_nyxcen_gpr"
-
-
-data_label = "mpg_central"
-# data_label = "nyx_central"
-# data_label = "nyx_seed"
-# data_label = "nyx_cgan_base"
-# data_label = "accel2"
-# data_label = "sherwood"
-
-if data_label == "mpg_central":
-    zmin=2.25
-    zmax=4.25
-elif data_label == "nyx_central":
-    zmin=2.2
-    zmax=4.2
-else:
-    zmin=2.2
-    zmax=4.2
-
-true_cosmo_label = data_label
-fid_cosmo_label = data_label
-name_variation= "sim_" + data_label
-# name_variation= "sim_" + data_label + "_igm"
-# name_variation= "sim_" + data_label + "_igm0"
-fit_type = "global_opt"
-
-args = Args(
-    data_label=data_label, 
-    cov_label="DESIY1_QMLE3", 
-    emulator_label=emulator_label,
-    true_cosmo_label=true_cosmo_label,
-    apply_smoothing=True,
-    # add_noise=True,
-    # seed_noise=0,
-)
-args.set_baseline(
-    fit_type=fit_type, 
-    fix_cosmo=False, 
-    P1D_type="DESIY1_QMLE3",
-    fid_cosmo_label=fid_cosmo_label,
-    name_variation=name_variation,
-    z_min=zmin,
-    z_max=zmax,
-    mcmc_conf="test"
-)
 
 # %%
 name_variation = "sim_1"
@@ -269,6 +224,59 @@ if (name_variation is not None) and name_variation.startswith("sim_"):
 # archive_mock = set_archive(training_set=nyx_training_set)
 # pip = Pipeline(args, archive=archive_mock)
 pip = Pipeline(args)
+
+# %%
+from cup1d.pipeline.set_p1d import set_P1D
+from cup1d.pipeline.set_emulator import set_emulator
+from cup1d.pipeline.set_theory import set_theory
+from cup1d.pipeline.set_like_params import set_free_like_parameters
+from cup1d.likelihood.likelihood import Likelihood
+from cup1d.p1ds import data_DESIY1
+
+# %%
+emulator = set_emulator(emulator_label)
+free_parameters = set_free_like_parameters(
+    args, emulator_label=emulator.emulator_label
+)
+true_theory = set_theory(
+    args, emulator, free_parameters, fid_or_true="true", use_hull=False
+)
+
+# %%
+data = data_DESIY1.P1D_DESIY1(
+        data_label=cov_label
+    )
+
+# %%
+data = set_P1D(args, theory=true_theory)
+
+# %%
+theory = set_theory(
+    args,
+    emulator,
+    free_parameters,
+    fid_or_true="fid",
+    use_hull=False,
+    zs=data.z,
+)
+
+
+# %%
+
+# %%
+
+like = Likelihood(
+    data,
+    theory,
+    free_param_names=free_parameters,
+    cov_factor=args.cov_factor,
+    emu_cov_type=args.emu_cov_type,
+    args=args,
+)
+
+# %%
+
+# %%
 
 # %%
 p0 = pip.fitter.like.sampling_point_from_parameters()
@@ -351,7 +359,8 @@ emu_cov_type = "full"
 # name_variation = "Metals_Ma2025"
 # name_variation = "HCD_BOSS"
 
-name_variation = "more_igm"
+# name_variation = "more_igm"
+name_variation = None
 
 emulator_label="CH24_mpgcen_gpr"
 # emulator_label="CH24_nyxcen_gpr"
@@ -414,7 +423,7 @@ p0 = np.array([6.52990018e-01, 4.61790398e-01, 6.95749190e-01, 1.43816919e-01,
 
 # %%
 
-# p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+p0 = pip.fitter.like.sampling_point_from_parameters().copy()
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
 
@@ -453,10 +462,10 @@ pip.fitter.like.get_chi2(p0)
 pip.run_minimizer(p0, restart=True)
 
 # %%
-# fname = os.path.join(
-#     os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_global_red.npy"
-# )
-# pip.save_global_ic(fname)
+fname = os.path.join(
+    os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_global_red.npy"
+)
+pip.save_global_ic(fname)
 
 # %%
 p0 = pip.fitter.mle_cube
@@ -470,18 +479,6 @@ new baseline,
 Delta2_star 0.41149
 n_star -2.27902
 
-
-# more IGM
-Passed out: 651.5682708477701
-Almost out of bounds:
-tau_eff_5 0.045854758542617946 -0.20052374060822498
-sigT_kms_0 0.9827076629938714 1.264841714808149
-sigT_kms_3 0.04868179627048502 0.8176241022979758
-gamma_0 0.9934064910938973 1.2615588167922809
-R_coeff_9 0.9733900210670736 0.07574240337073178
-Delta2_star 0.42736
-n_star -2.29324
-alpha_star -0.21803
 
 # %%
 # pip.fitter.mle
