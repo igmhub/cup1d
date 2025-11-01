@@ -46,7 +46,7 @@ class Resolution(Contaminant):
         prop_coeffs=None,
         free_param_names=None,
         z_0=3.0,
-        z_max_res=3.8,
+        z_max_res=10,
         fid_vals=None,
         flat_priors=None,
         null_vals=None,

@@ -112,6 +112,7 @@ class Gadget_P1D(BaseMockP1D):
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=full_cov_kms,
             full_cov_stat_kms=full_cov_stat_kms,
+            cov_stat=cov_stat,
             add_noise=add_noise,
             seed=seed,
             z_min=z_min,
