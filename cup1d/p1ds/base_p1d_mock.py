@@ -19,6 +19,8 @@ class BaseMockP1D(BaseDataP1D):
         full_zs=None,
         full_Pk_kms=None,
         full_cov_kms=None,
+        full_cov_stat_kms=None,
+        cov_stat=None,
         add_noise=False,
         seed=0,
         z_min=0,
@@ -48,6 +50,8 @@ class BaseMockP1D(BaseDataP1D):
             full_zs=full_zs,
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=full_cov_kms,
+            full_cov_stat_kms=full_cov_stat_kms,
+            cov_stat=cov_stat,
         )
 
     def get_Pk_iz_perturbed(self, Pk_kms, cov_Pk_kms, nsamples=1, seed=0):

@@ -68,6 +68,7 @@ class Gadget_P1D(BaseMockP1D):
             k_kms,
             Pk_kms,
             cov,
+            cov_stat,
             full_zs,
             full_Pk_kms,
             full_cov_kms,
@@ -99,7 +100,7 @@ class Gadget_P1D(BaseMockP1D):
                 + cont_all["cont_add_metals"][iz]
             ) * syst_total[iz]
             full_Pk_kms.append(Pk_kms[iz])
-        full_Pk_kms = np.array(full_Pk_kms)
+        full_Pk_kms = np.concatenate(full_Pk_kms)
 
         # setup base class
         super().__init__(
@@ -110,6 +111,7 @@ class Gadget_P1D(BaseMockP1D):
             full_zs=full_zs,
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=full_cov_kms,
+            full_cov_stat_kms=full_cov_stat_kms,
             add_noise=add_noise,
             seed=seed,
             z_min=z_min,
@@ -233,16 +235,17 @@ class Gadget_P1D(BaseMockP1D):
             sim_p1d_kms = interp_sim_Mpc(data_k_Mpc) * self.dkms_dMpc[iz]
 
             # append redshift, p1d and covar
-            zs.append(z)
+            zs.append(data.z[iz_data])
             Pk_kms.append(sim_p1d_kms)
             # # Now get covariance from the nearest z bin in data
-            cov.append(data.cov[iz_data][Ncull:, Ncull:])
-            cov_stat.append(data.cov_stat[iz_data][Ncull:, Ncull:])
+            cov.append(data.cov_Pk_kms[iz_data][Ncull:, Ncull:])
+            cov_stat.append(data.covstat_Pk_kms[iz_data][Ncull:, Ncull:])
 
         full_k_kms = np.concatenate(k_kms)
         full_zs = []
         for ii in range(len(k_kms)):
             full_zs.append(np.ones(len(k_kms[ii])) * zs[ii])
+        full_zs = np.concatenate(full_zs)
         full_Pk_kms = np.concatenate(Pk_kms)
 
         full_cov_kms = np.zeros((len(full_Pk_kms), len(full_Pk_kms)))
@@ -255,14 +258,15 @@ class Gadget_P1D(BaseMockP1D):
                 j1 = ind1[
                     np.argmin(abs(full_k_kms[i1] - data.full_k_kms[ind1]))
                 ]
-                full_cov_kms[i0, i1] = data.full_cov_kms[j0, j1]
-                full_cov_stat_kms[i0, i1] = data.full_cov_stat_kms[j0, j1]
+                full_cov_kms[i0, i1] = data.full_cov_Pk_kms[j0, j1]
+                full_cov_stat_kms[i0, i1] = data.full_cov_stat_Pk_kms[j0, j1]
 
         return (
             zs,
             k_kms,
             Pk_kms,
             cov,
+            cov_stat,
             full_zs,
             full_Pk_kms,
             full_cov_kms,
