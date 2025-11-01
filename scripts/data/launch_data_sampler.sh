@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH -A desi
 #SBATCH -q regular
-#SBATCH -t 07:00:00
+#SBATCH -t 03:00:00
 #SBATCH --constraint=cpu
 #SBATCH --nodes=1
 #SBATCH -J p1d
 #SBATCH -o logs/p1d.%j.out
 #SBATCH -e logs/p1d.%j.err
-#SBATCH --array=0-0   # number of variations minus 1
+#SBATCH --array=0-1   # number of variations minus 1
 
 echo "Job started at: $(date)"
 
@@ -18,15 +18,15 @@ mkdir -p logs
 # Define variations
 variations=(
     # "None"
-    "nyx"
+    # "nyx"
     # "DESIY1_QMLE"
     # "DESIY1_FFT3_dir"
     # "zmin"
     # "zmax"
     # "no_inflate"
     # "no_emu_cov"
-    # "emu_diag"
-    # "emu_block"
+    "emu_diag"
+    "emu_block"
     # "cosmo"
     # "cosmo_low"
     # "cosmo_high"
