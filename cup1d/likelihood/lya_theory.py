@@ -734,21 +734,21 @@ class Theory(object):
             like_params=like_params,
             remove=remove,
         )
-        print(
-            "mult_cont_total",
-            np.concatenate(cont_all["cont_mul_metals"]).min(),
-            np.concatenate(cont_all["cont_mul_metals"]).max(),
-        )
-        print(
-            "add_cont_total",
-            np.concatenate(cont_all["cont_add_metals"]).min(),
-            np.concatenate(cont_all["cont_add_metals"]).max(),
-        )
-        print(
-            "HCD",
-            np.concatenate(cont_all["cont_HCD"]).min(),
-            np.concatenate(cont_all["cont_HCD"]).max(),
-        )
+        # print(
+        #     "mult_cont_total",
+        #     np.concatenate(cont_all["cont_mul_metals"]).min(),
+        #     np.concatenate(cont_all["cont_mul_metals"]).max(),
+        # )
+        # print(
+        #     "add_cont_total",
+        #     np.concatenate(cont_all["cont_add_metals"]).min(),
+        #     np.concatenate(cont_all["cont_add_metals"]).max(),
+        # )
+        # print(
+        #     "HCD",
+        #     np.concatenate(cont_all["cont_HCD"]).min(),
+        #     np.concatenate(cont_all["cont_HCD"]).max(),
+        # )
         # print(
         #     "syst_total",
         #     np.concatenate(syst_total).min(),

@@ -327,7 +327,7 @@ class Args:
                 self.fid_cont[key] = (
                     np.zeros(len(self.fid_cont[key + "_znodes"])) + use_val
                 )
-            print(key, self.fid_cont[key])
+            # print(key, self.fid_cont[key])
 
         for key in self.syst_params.keys():
             if self.fid_syst["n_" + key] == 0:
