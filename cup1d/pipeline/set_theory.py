@@ -8,7 +8,12 @@ from cup1d.likelihood.cosmologies import set_cosmo
 
 
 def set_theory(
-    args, emulator, free_parameters, use_hull=True, fid_or_true="fid", zs=None
+    args,
+    emulator,
+    free_parameters,
+    use_hull=True,
+    fid_or_true="fid",
+    zs=None,
 ):
     """Set theory"""
 

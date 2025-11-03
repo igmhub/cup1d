@@ -56,9 +56,6 @@ class Resolution(Contaminant):
 
         list_coeffs = ["R_coeff"]
 
-        # maximum redshift to apply correction
-        self.z_max_res = z_max_res
-
         # priors for all coefficients
         if flat_priors is None:
             flat_priors = {"R_coeff": [[-0.5, 0.5], [-0.1, 0.1]]}
@@ -100,16 +97,13 @@ class Resolution(Contaminant):
 
         cont = []
         for iz in range(len(z)):
-            if z[iz] > self.z_max_res:
-                res = np.ones_like(k_kms[iz])
-            else:
-                res = (
-                    1
-                    + 2
-                    * vals["R_coeff"][iz]
-                    * get_Rz_Naim(z[iz]) ** 2
-                    * k_kms[iz] ** 2
-                )
+            res = (
+                1
+                + 2
+                * vals["R_coeff"][iz]
+                * get_Rz_Naim(z[iz]) ** 2
+                * k_kms[iz] ** 2
+            )
             cont.append(res)
 
         if len(z) == 1:

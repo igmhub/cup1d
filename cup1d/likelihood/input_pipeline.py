@@ -251,7 +251,7 @@ class Args:
     #     if (name_variation is not None) and (name_variation.startswith("sim_")):
     #         self.ic_from_file = None
 
-    def set_fiducial(self, name_variation=None, fit_type=None, val_null=-20):
+    def set_fiducial(self, name_variation=None, fit_type=None, val_null=-10):
         null_vals_params = {
             "tau_eff": 0,
             "sigT_kms": 1,
@@ -298,11 +298,6 @@ class Args:
             "R_coeff": 0.0,
         }
 
-        if (fit_type is not None) and (fit_type == "global_igm"):
-            fid_vals_igm = null_vals_params
-            fid_vals_conts = null_vals_params
-            fid_vals_syst = null_vals_params
-
         for key in self.igm_params:
             if self.fid_igm["n_" + key] == 0:
                 self.fid_igm[key + "_fixed"] = True
@@ -332,6 +327,7 @@ class Args:
                 self.fid_cont[key] = (
                     np.zeros(len(self.fid_cont[key + "_znodes"])) + use_val
                 )
+            print(key, self.fid_cont[key])
 
         for key in self.syst_params.keys():
             if self.fid_syst["n_" + key] == 0:

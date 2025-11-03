@@ -734,16 +734,33 @@ class Theory(object):
             like_params=like_params,
             remove=remove,
         )
-        # print("mult_cont_total", mult_cont_total)
-        # print("add_cont_total", add_cont_total)
-        # print("syst_total", syst_total)
+        print(
+            "mult_cont_total",
+            np.concatenate(cont_all["cont_mul_metals"]).min(),
+            np.concatenate(cont_all["cont_mul_metals"]).max(),
+        )
+        print(
+            "add_cont_total",
+            np.concatenate(cont_all["cont_add_metals"]).min(),
+            np.concatenate(cont_all["cont_add_metals"]).max(),
+        )
+        print(
+            "HCD",
+            np.concatenate(cont_all["cont_HCD"]).min(),
+            np.concatenate(cont_all["cont_HCD"]).max(),
+        )
+        # print(
+        #     "syst_total",
+        #     np.concatenate(syst_total).min(),
+        #     np.concatenate(syst_total).max(),
+        # )
 
         # if len(cont_all["cont_HCD"]) != len(z):
         # print(len(zs))
         # print(len(cont_all["cont_HCD"]))
         # print(len(cont_all["cont_mul_metals"]))
-        # print(len(cont_all["IC_corr"]))
-        # print(len(p1d_kms))
+        # # print(len(cont_all["IC_corr"]))
+        # # print(len(p1d_kms))
         # print(len(cont_all["cont_add_metals"]))
         # print(len(syst_total))
         p1d_cont_kms = []

@@ -246,6 +246,21 @@ class SiMult(Contaminant):
             # deviations of ra3 from optically-thin limit
             _ra3 = ra3 * f_SiIIa_SiIII
 
+            # print(
+            #     "z",
+            #     z[iz],
+            #     "aSiIII",
+            #     vals["f_Lya_SiIII"][iz],
+            #     "aSiII",
+            #     vals["f_Lya_SiII"][iz],
+            # )
+            # print(
+            #     "f_SiIIa_SiIII",
+            #     vals["f_SiIIa_SiIII"][iz],
+            #     "G_SiII_SiIII",
+            #     vals["f_SiIIb_SiIII"][iz],
+            # )
+
             # print(G_SiII_SiIII)
             # print(_ra3 / rb3)
 
@@ -315,6 +330,13 @@ class SiMult(Contaminant):
                     * np.cos(self.dv["SiIIb_SiIIa"] * k_kms[iz])
                 )
             )
+
+            # print("C0", C0.min(), C0.max())
+            # print("CSiIII_Lya", CSiIII_Lya.min(), CSiIII_Lya.max())
+            # print("CSiII_Lya", CSiII_Lya.min(), CSiII_Lya.max())
+            # print("Cam", Cam.min(), Cam.max())
+            # print("Cmm", Cmm.min(), Cmm.max())
+            # print("Cm", Cm.min(), Cm.max())
 
             metal_corr.append(1 + C0 + Cam + Cmm + Cm)
 

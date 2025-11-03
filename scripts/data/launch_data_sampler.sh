@@ -17,7 +17,7 @@ mkdir -p logs
 
 # Define variations
 variations=(
-    # "None"
+    "None"
     # "nyx"
     # "DESIY1_QMLE"
     # "DESIY1_FFT3_dir"
@@ -25,8 +25,8 @@ variations=(
     # "zmax"
     # "no_inflate"
     # "no_emu_cov"
-    "emu_diag"
-    "emu_block"
+    # "emu_diag"
+    # "emu_block"
     # "cosmo"
     # "cosmo_low"
     # "cosmo_high"
