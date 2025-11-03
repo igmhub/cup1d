@@ -211,11 +211,15 @@ class Gadget_P1D(BaseMockP1D):
         Pk_kms = []
         cov = []
         cov_stat = []
-        zs = []
+        zs_native = []
+        zs_cov = []
+
         for iz in range(len(z_sim)):
             z = z_sim[iz]
-            iz_data = np.argmin(abs(data.z - z))
+            iz_data = np.argmin(np.abs(data.z - z))
+            # print(z, data.z[iz_data])
 
+            # interpolate native k to cov k
             Ncull = np.sum(data.k_kms[iz_data] < k_min_kms)
             _k_kms = data.k_kms[iz_data][Ncull:]
             k_kms.append(_k_kms)
@@ -236,26 +240,30 @@ class Gadget_P1D(BaseMockP1D):
             sim_p1d_kms = interp_sim_Mpc(data_k_Mpc) * self.dkms_dMpc[iz]
 
             # append redshift, p1d and covar
-            zs.append(data.z[iz_data])
+            zs_native.append(z)
+            zs_cov.append(data.z[iz_data])
             Pk_kms.append(sim_p1d_kms)
             # # Now get covariance from the nearest z bin in data
             cov.append(data.cov_Pk_kms[iz_data][Ncull:, Ncull:])
             cov_stat.append(data.covstat_Pk_kms[iz_data][Ncull:, Ncull:])
 
         full_k_kms = np.concatenate(k_kms)
-        full_zs = []
+        full_zs_native = []
+        full_zs_cov = []
         for ii in range(len(k_kms)):
-            full_zs.append(np.ones(len(k_kms[ii])) * zs[ii])
-        full_zs = np.concatenate(full_zs)
+            full_zs_native.append(np.ones(len(k_kms[ii])) * zs_native[ii])
+            full_zs_cov.append(np.ones(len(k_kms[ii])) * zs_cov[ii])
+        full_zs_native = np.concatenate(full_zs_native)
+        full_zs_cov = np.concatenate(full_zs_cov)
         full_Pk_kms = np.concatenate(Pk_kms)
 
         full_cov_kms = np.zeros((len(full_Pk_kms), len(full_Pk_kms)))
         full_cov_stat_kms = np.zeros((len(full_Pk_kms), len(full_Pk_kms)))
         for i0 in range(len(full_Pk_kms)):
-            ind0 = np.argwhere(full_zs[i0] == data.full_zs)[:, 0]
+            ind0 = np.argwhere(full_zs_cov[i0] == data.full_zs)[:, 0]
             j0 = ind0[np.argmin(abs(full_k_kms[i0] - data.full_k_kms[ind0]))]
             for i1 in range(len(full_Pk_kms)):
-                ind1 = np.argwhere(full_zs[i1] == data.full_zs)[:, 0]
+                ind1 = np.argwhere(full_zs_cov[i1] == data.full_zs)[:, 0]
                 j1 = ind1[
                     np.argmin(abs(full_k_kms[i1] - data.full_k_kms[ind1]))
                 ]
@@ -263,12 +271,12 @@ class Gadget_P1D(BaseMockP1D):
                 full_cov_stat_kms[i0, i1] = data.full_cov_stat_Pk_kms[j0, j1]
 
         return (
-            zs,
+            zs_native,
             k_kms,
             Pk_kms,
             cov,
             cov_stat,
-            full_zs,
+            full_zs_native,
             full_Pk_kms,
             full_cov_kms,
             full_cov_stat_kms,

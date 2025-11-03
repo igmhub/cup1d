@@ -19,10 +19,10 @@ def main():
 
     emu = "mpg"
     # emu = "nyx"
-    # fit_type = "global_igm"
     fit_type = "global_opt"
     mcmc_conf = "explore"
     path_data = "jjchaves"
+    cov_label = "DESIY1_QMLE3"
 
     # baseline
     if sys.argv[1].endswith("igm") | sys.argv[1].endswith("igm0"):
@@ -38,8 +38,6 @@ def main():
     else:
         zmin = 2.2
         zmax = 4.2
-
-    cov_label = "DESIY1_QMLE3"
 
     args = Args(
         data_label=data_label,

@@ -25,8 +25,6 @@ class Nyx_P1D(BaseMockP1D):
         apply_smoothing=True,
         input_sim="nyx_central",
         data_cov_label="Chabanier2019",
-        cov_fname=None,
-        data_cov_factor=1.0,
         add_syst=True,
         add_noise=False,
         seed=0,
@@ -45,10 +43,8 @@ class Nyx_P1D(BaseMockP1D):
 
         # covariance matrix settings
         self.add_syst = add_syst
-        self.data_cov_factor = data_cov_factor
         self.data_cov_label = data_cov_label
         self.input_sim = input_sim
-        self.cov_fname = cov_fname
 
         if apply_smoothing:
             self.testing_data = super().set_smoothing_Mpc(
@@ -66,7 +62,17 @@ class Nyx_P1D(BaseMockP1D):
 
         # setup P1D from mock with k values from data_cov_label
         # as well as covariance matrix
-        zs, k_kms, Pk_kms, cov = self._load_p1d(theory, path_data=path_data)
+        (
+            zs,
+            k_kms,
+            Pk_kms,
+            cov,
+            cov_stat,
+            full_zs,
+            full_Pk_kms,
+            full_cov_kms,
+            full_cov_stat_kms,
+        ) = self._load_p1d(theory, path_data=path_data)
 
         # set theory (just to save truth)
         zs = np.array(zs)
@@ -82,6 +88,7 @@ class Nyx_P1D(BaseMockP1D):
         # print("mult", mult_cont_total)
         # print("add", add_cont_total)
 
+        full_Pk_kms = []
         for iz, z in enumerate(zs):
             # Pcont = (mul_metal * HCD * IC_corr * Pemu + add_metal) * syst
             Pk_kms[iz] = (
@@ -91,6 +98,8 @@ class Nyx_P1D(BaseMockP1D):
                 * Pk_kms[iz]
                 + cont_all["cont_add_metals"][iz]
             ) * syst_total[iz]
+            full_Pk_kms.append(Pk_kms[iz])
+        full_Pk_kms = np.concatenate(full_Pk_kms)
 
         # setup base class
         super().__init__(
@@ -98,6 +107,11 @@ class Nyx_P1D(BaseMockP1D):
             k_kms,
             Pk_kms,
             cov,
+            full_zs=full_zs,
+            full_Pk_kms=full_Pk_kms,
+            full_cov_kms=full_cov_kms,
+            full_cov_stat_kms=full_cov_stat_kms,
+            cov_stat=cov_stat,
             add_noise=add_noise,
             seed=seed,
             z_min=z_min,
@@ -186,12 +200,16 @@ class Nyx_P1D(BaseMockP1D):
         k_kms = []
         Pk_kms = []
         cov = []
-        zs = []
-        # Set P1D and covariance for each redshift (from low-z to high-z)
+        cov_stat = []
+        zs_native = []
+        zs_cov = []
+
         for iz in range(len(z_sim)):
             z = z_sim[iz]
-            iz_data = np.argmin(abs(data.z - z))
+            iz_data = np.argmin(np.abs(data.z - z))
+            # print(z, data.z[iz_data])
 
+            # interpolate native k to cov k
             Ncull = np.sum(data.k_kms[iz_data] < k_min_kms)
             _k_kms = data.k_kms[iz_data][Ncull:]
             k_kms.append(_k_kms)
@@ -212,13 +230,44 @@ class Nyx_P1D(BaseMockP1D):
             sim_p1d_kms = interp_sim_Mpc(data_k_Mpc) * self.dkms_dMpc[iz]
 
             # append redshift, p1d and covar
-            zs.append(z)
+            zs_native.append(z)
+            zs_cov.append(data.z[iz_data])
             Pk_kms.append(sim_p1d_kms)
+            # # Now get covariance from the nearest z bin in data
+            cov.append(data.cov_Pk_kms[iz_data][Ncull:, Ncull:])
+            cov_stat.append(data.covstat_Pk_kms[iz_data][Ncull:, Ncull:])
 
-            # Now get covariance from the nearest z bin in data
-            cov_mat = data.get_cov_iz(iz_data)
-            # Cull low k cov data and multiply by input factor
-            cov_mat = self.data_cov_factor * cov_mat[Ncull:, Ncull:]
-            cov.append(cov_mat)
+        full_k_kms = np.concatenate(k_kms)
+        full_zs_native = []
+        full_zs_cov = []
+        for ii in range(len(k_kms)):
+            full_zs_native.append(np.ones(len(k_kms[ii])) * zs_native[ii])
+            full_zs_cov.append(np.ones(len(k_kms[ii])) * zs_cov[ii])
+        full_zs_native = np.concatenate(full_zs_native)
+        full_zs_cov = np.concatenate(full_zs_cov)
+        full_Pk_kms = np.concatenate(Pk_kms)
 
-        return zs, k_kms, Pk_kms, cov
+        full_cov_kms = np.zeros((len(full_Pk_kms), len(full_Pk_kms)))
+        full_cov_stat_kms = np.zeros((len(full_Pk_kms), len(full_Pk_kms)))
+        for i0 in range(len(full_Pk_kms)):
+            ind0 = np.argwhere(full_zs_cov[i0] == data.full_zs)[:, 0]
+            j0 = ind0[np.argmin(abs(full_k_kms[i0] - data.full_k_kms[ind0]))]
+            for i1 in range(len(full_Pk_kms)):
+                ind1 = np.argwhere(full_zs_cov[i1] == data.full_zs)[:, 0]
+                j1 = ind1[
+                    np.argmin(abs(full_k_kms[i1] - data.full_k_kms[ind1]))
+                ]
+                full_cov_kms[i0, i1] = data.full_cov_Pk_kms[j0, j1]
+                full_cov_stat_kms[i0, i1] = data.full_cov_stat_Pk_kms[j0, j1]
+
+        return (
+            zs_native,
+            k_kms,
+            Pk_kms,
+            cov,
+            cov_stat,
+            full_zs_native,
+            full_Pk_kms,
+            full_cov_kms,
+            full_cov_stat_kms,
+        )
