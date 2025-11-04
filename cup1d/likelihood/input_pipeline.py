@@ -547,7 +547,7 @@ class Args:
             self.mcmc["explore"] = True
             self.mcmc["parallel"] = True
             self.mcmc["n_burn_in"] = 1500
-            self.mcmc["n_steps"] = 3000
+            self.mcmc["n_steps"] = 4000
             self.mcmc["n_walkers"] = 10
             self.mcmc["thin"] = 20
 
