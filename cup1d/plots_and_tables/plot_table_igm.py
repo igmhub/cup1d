@@ -30,10 +30,10 @@ def plot_table_igm(
     save_fig=None,
     data_label="DESIY1_QMLE3",
     name_variation=None,
+    chain="1",
 ):
-    if name_variation is None:
-        emulator_label = "CH24_mpgcen_gpr"
-    elif name_variation == "nyx":
+    emulator_label = "CH24_mpgcen_gpr"
+    if name_variation == "nyx":
         emulator_label = "CH24_nyxcen_gpr"
 
     args = Args(data_label=data_label, emulator_label=emulator_label)
@@ -44,8 +44,19 @@ def plot_table_igm(
         name_variation=name_variation,
     )
     pip = Pipeline(args, out_folder=args.out_folder)
+    if name_variation is None:
+        name_variation = "global_opt"
 
-    folder = data_label + "/global_opt/" + emulator_label + "/chain_1/"
+    folder = (
+        data_label
+        + "/"
+        + name_variation
+        + "/"
+        + emulator_label
+        + "/chain_"
+        + chain
+        + "/"
+    )
     print("Read data from: " + base + folder)
 
     data = np.load(

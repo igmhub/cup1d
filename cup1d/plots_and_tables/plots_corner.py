@@ -83,11 +83,11 @@ def plots_chain(
         folder_in, truth, nburn_extra=nburn_extra
     )
 
-    # corr_compressed(dat, labels, priors, folder_out=folder_out)
-    # get_summary(folder_out)
+    corr_compressed(dat, labels, priors, folder_out=folder_out)
+    # get_summary(folder_out, lnprob)
     # plot_res(dat, folder_out=folder_out)
-    # if 1 > 0:
-    #     return
+    if 1 > 0:
+        return
 
     try:
         plot_lnprob(lnprob, folder_out, ftsize)
@@ -127,7 +127,7 @@ def plots_chain(
         print("Could not plot res")
 
     try:
-        get_summary(folder_out)
+        get_summary(folder_out, lnprob)
     except:
         print("Could not get summary")
 
@@ -161,7 +161,7 @@ def plot_res(dat, folder_out=None, ftsize=20):
     return
 
 
-def get_summary(folder_out):
+def get_summary(folder_out, lnprob):
     dict_out = {}
 
     data = np.load(
@@ -179,7 +179,7 @@ def get_summary(folder_out):
     dict_out["chi2"] = -2 * np.max(
         [
             data["fitter"]["lnprob_mle"],
-            np.load(os.path.join(folder_out, "lnprob.npy")).max(),
+            lnprob.max(),
         ]
     )
     dict_out["prob_chi2"] = chi2_scipy.sf(dict_out["chi2"], dict_out["ndeg"])
@@ -400,11 +400,12 @@ def corr_compressed(
                         lab_use[lab] = ii
         else:
             lab_use = {
-                "tau_eff_3": 5,
+                "tau_eff_1": 2,
                 # "f_SiIIa_SiIIb_0": 24,
                 # "f_SiIIa_SiIIb_1": 25,
                 # "s_SiIIa_SiIIb_1": 27,
-                "HCD_damp1_0": 30,
+                "HCD_damp1_0": 34,
+                "HCD_damp1_1": 35,
             }
 
         if key in ["tau", "sigT_kms", "gamma"]:

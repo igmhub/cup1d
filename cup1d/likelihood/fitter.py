@@ -300,7 +300,7 @@ class Fitter(object):
         mask_pars=False,
         restart=False,
         neval=1000,
-        chi2_tol=0.25,
+        chi2_tol=0.1,
     ):
         """Minimizer"""
 

@@ -174,14 +174,18 @@ def table_variations(base):
             "Cov: w/o emu err",
             "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_1/",
         ],
-        # "no_inflate_no_emu_cov": [
-        #     "Cov: w/o emu, 5\% err",
-        #     "DESIY1_QMLE3/no_inflate_no_emu_cov/CH24_mpgcen_gpr/chain_1/",
-        # ],
-        # "DESIY1_QMLE3_nyx": [
-        #     "Emulator: lace-lyssa",
-        #     "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_1/",
-        # ],
+        "emu_diag": [
+            "Cov: emu diag",
+            "DESIY1_QMLE3/emu_diag/CH24_mpgcen_gpr/chain_2/",
+        ],
+        "emu_block": [
+            "Cov: emu block diag",
+            "DESIY1_QMLE3/emu_block/CH24_mpgcen_gpr/chain_2/",
+        ],
+        "DESIY1_QMLE3_nyx": [
+            "Emulator: lace-lyssa",
+            "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_3/",
+        ],
         "cosmo": [
             "Cosmo: $\omega_0\omega_a$CDM",
             "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/",
@@ -198,10 +202,6 @@ def table_variations(base):
             "IGM: $n_z=8$",
             "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_1/",
         ],
-        # "hcd_z": [
-        #     "HCD: $n_z=2$",
-        #     "DESIY1_QMLE3/hcd_z/CH24_mpgcen_gpr/chain_1/",
-        # ],
         "hcd0": [
             "HCD: w/ $f_{\\mathrm{const}}^{\\mathrm{HCD}}$",
             "DESIY1_QMLE3/HCD0/CH24_mpgcen_gpr/chain_1/",
@@ -214,10 +214,6 @@ def table_variations(base):
             "HCD: BOSS",
             "DESIY1_QMLE3/HCD_BOSS/CH24_mpgcen_gpr/chain_1/",
         ],
-        # "metals_z": [
-        #     "Metals: $n_z=2$",
-        #     "DESIY1_QMLE3/metals_z/CH24_mpgcen_gpr/chain_1/",
-        # ],
         "metal_thin": [
             "Metals: opt thin",
             "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_1/",
@@ -238,10 +234,6 @@ def table_variations(base):
             "Metals: Ma+2025",
             "DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr/chain_1/",
         ],
-        # "no_res": [
-        #     "Model: no resolution",
-        #     "DESIY1_QMLE3/no_res/CH24_mpgcen_gpr/chain_1/",
-        # ],
     }
 
     fid_vals = {}
