@@ -35,6 +35,10 @@ def plot_table_igm(
     emulator_label = "CH24_mpgcen_gpr"
     if name_variation == "nyx":
         emulator_label = "CH24_nyxcen_gpr"
+        name_variation = None
+        tit = "lace-lyssa"
+    else:
+        tit = "lace-mpg"
 
     args = Args(data_label=data_label, emulator_label=emulator_label)
     args.set_baseline(
@@ -75,9 +79,12 @@ def plot_table_igm(
         ftsize=20,
         chain_uformat=chain,
         save_directory=save_fig,
+        title=tit,
     )
 
     z, mF, T0, gamma = tab_out
+    # print(z)
+    # print(mF)
 
     print(r"\begin{tabular}{cccc}")
     print(r"$z$ & $\bar{F}$ & $T_0[K]/10^4$ & $\gamma$ \\")

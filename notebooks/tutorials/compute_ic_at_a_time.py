@@ -67,7 +67,7 @@ out_mle_cube = []
 out_chi2 = []
 out_pnames = []
 # for ii in range(len(pip.fitter.like.data.z)):
-for ii in range(1):
+for ii in range(9,10):
     zmask = np.array([pip.fitter.like.data.z[ii]])
 
     pip = Pipeline(args, out_folder=None)

@@ -137,7 +137,7 @@ cmb = planck_chains.get_planck_2018(
 # thresholds = [2.30,6.17,11.8]
 thresholds = [2.30, 6.18]
 # thresholds = [2.30]
-coeff_mult = 0.5 # to get log-like, not to plot Eq. 1, https://arxiv.org/abs/2303.00746
+# coeff_mult = 0.5 # to get log-like, not to plot Eq. 1, https://arxiv.org/abs/2303.00746
 coeff_mult = 1
 neff_grid, DL2_grid = np.mgrid[-2.4:-2.2:200j, 0.2:0.65:200j]
 chi2_Mc2005=coeff_mult * marg_lya_like.gaussian_chi2_McDonald2005(neff_grid, DL2_grid)
@@ -202,7 +202,7 @@ import matplotlib.lines as mlines
 
 # %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 dat_mpg = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 dat_blob = np.load(folder + "blobs.npy")
 
@@ -378,11 +378,13 @@ ax.set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
 ax.set_ylabel(r"$n_\star$", fontsize=fontsize)
 ax_NS.set_xlabel(r"$n_\star$", fontsize=fontsize)
 
+
+# ax.grid()
+
 for ax in g.subplots[-1]:  # last row of panels
     for label in ax.get_xticklabels():
         label.set_rotation(45)
         label.set_ha('right')
-
 
 plt.tight_layout()
 plt.savefig("figs/star_literature.png")

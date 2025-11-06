@@ -61,7 +61,7 @@ from cup1d.pipeline.set_archive import set_archive
 # %%
 
 # base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-# folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+# folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 
 # from cup1d.plots_and_tables.table_nuisance import table_nuisance
 # table_nuisance(base + folder)
@@ -70,12 +70,15 @@ from cup1d.pipeline.set_archive import set_archive
 # base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 # table_variations(base)
 
-# save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
 
-# from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
-# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-# plot_table_igm(base, name_variation=None, save_fig=save_fig)
-# better from more IGM variation?
+from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
+plot_table_igm(base, name_variation=None, save_fig=save_fig, chain="7")
+# save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/test/"
+# plot_table_igm(base, name_variation="nyx", save_fig=save_fig, chain="3")
+
+# "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_3/"
 
 # %%
 from cup1d.plots_and_tables.plots_corner import plots_chain
@@ -123,13 +126,17 @@ variations = {
     # "sim_nyx_central": ["Val: nyx-central simulation", "DESIY1_QMLE3/sim_nyx_central/CH24_mpgcen_gpr/chain_1/"],
     # "sim_sherwood": ["Val: sherwood simulation", "DESIY1_QMLE3/sim_sherwood/CH24_mpgcen_gpr/chain_1/"],
 }
+
 variations = {
-    "DESIY1_QMLE3_mpg": ["Fiducial", "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"],
+    "DESIY1_QMLE3_mpg": ["Fiducial", "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"],
 }
 
 for ii, var in enumerate(variations):
     folder = os.path.join(base, variations[var][1])
     plots_chain(folder)
+
+# %%
+30/25
 
 # %%
 
@@ -183,11 +190,10 @@ cov_label="DESIY1_QMLE3"
 true_cosmo_label = data_label
 fid_cosmo_label = data_label
 name_variation= "sim_" + data_label
-# name_variation= "sim_" + data_label + "_igm"
-# name_variation= "sim_" + data_label + "_igm0"
+name_variation= "sim_" + data_label + "_igm"
+name_variation= "sim_" + data_label + "_igm0"
 fit_type = "global_opt"
-
-name_variation = None
+# name_variation = None
 
 args = Args(
     data_label=data_label,
@@ -211,13 +217,10 @@ args.set_baseline(
     mcmc_conf="explore",
 )
 
+# %%
+
 # %% [markdown]
 # ### Mocks
-
-# %%
-name_variation = "sim_1"
-if (name_variation is not None) and name_variation.startswith("sim_"):
-    print(name_variation)
 
 # %%
 # nyx_training_set = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
@@ -226,53 +229,31 @@ if (name_variation is not None) and name_variation.startswith("sim_"):
 pip = Pipeline(args)
 
 # %%
-from cup1d.pipeline.set_p1d import set_P1D
-from cup1d.pipeline.set_emulator import set_emulator
-from cup1d.pipeline.set_theory import set_theory
-from cup1d.pipeline.set_like_params import set_free_like_parameters
-from cup1d.likelihood.likelihood import Likelihood
-from cup1d.p1ds import data_DESIY1
+# cov0 = pip.fitter.like.full_cov_Pk_kms.copy()
+# kms0 = pip.fitter.like.data.full_k_kms.copy()
+# zz0 = pip.fitter.like.data.full_zs.copy()
+
+# cov1 = pip.fitter.like.full_cov_Pk_kms.copy()
+# kms1 = pip.fitter.like.data.full_k_kms.copy()
+# zz1 = pip.fitter.like.data.full_zs.copy()
+
+# print(cov0.shape)
+# print(cov1.shape)
+# zz = np.unique(zz0)
+# for iz in range(len(zz)):
+#     col = "C"+str(iz)
+#     ind0 = np.argwhere(zz0 == zz[iz])[:,0]
+#     plt.plot(kms0[ind0], np.diag(cov0)[ind0], col, label=np.round(zz[iz], 2), alpha=0.5)
+
+# zz = np.unique(zz1)
+# for iz in range(len(zz)):  
+#     col = "C"+str(iz)  
+#     ind1 = np.argwhere(zz1 == zz[iz])[:,0]
+#     plt.plot(kms1[ind1], np.diag(cov1)[ind1], col+"--", label=np.round(zz[iz], 2))
+# plt.legend()
+# plt.yscale("log")
 
 # %%
-emulator = set_emulator(emulator_label)
-free_parameters = set_free_like_parameters(
-    args, emulator_label=emulator.emulator_label
-)
-true_theory = set_theory(
-    args, emulator, free_parameters, fid_or_true="true", use_hull=False
-)
-
-# %%
-data = data_DESIY1.P1D_DESIY1(
-        data_label=cov_label
-    )
-
-# %%
-data = set_P1D(args, theory=true_theory)
-
-# %%
-theory = set_theory(
-    args,
-    emulator,
-    free_parameters,
-    fid_or_true="fid",
-    use_hull=False,
-    zs=data.z,
-)
-
-
-# %%
-
-# %%
-
-like = Likelihood(
-    data,
-    theory,
-    free_param_names=free_parameters,
-    cov_factor=args.cov_factor,
-    emu_cov_type=args.emu_cov_type,
-    args=args,
-)
 
 # %%
 
@@ -280,14 +261,23 @@ like = Likelihood(
 
 # %%
 p0 = pip.fitter.like.sampling_point_from_parameters()
-pip.fitter.like.get_chi2(p0)
-
-# %%
-for par in pip.fitter.like.free_params:
+# p0[:] = 0.5
+free_params = pip.fitter.like.parameters_from_sampling_point(p0)
+for par in free_params:
     print(par.name, par.value, par.min_value, par.max_value)
 
 # %%
-pip.fitter.like.plot_p1d()
+
+# %%
+
+pip.fitter.like.get_chi2(p0)
+
+# %%
+# for par in pip.fitter.like.free_params:
+#     print(par.name, par.value, par.min_value, par.max_value)
+
+# %%
+pip.fitter.like.plot_p1d(p0)
 
 # %%
 pip.run_minimizer(p0, restart=True)
@@ -337,7 +327,7 @@ variations = [
 data_label = "DESIY1_QMLE3"
 # data_label = "DESIY1_QMLE"
 # data_label = "DESIY1_FFT3_dir"
-name_variation = None
+# name_variation = None
 # name_variation = "no_inflate"
 # name_variation = "no_emu_cov"
 # name_variation = "no_inflate_no_emu_cov"
@@ -355,15 +345,21 @@ name_variation = None
 
 # emu_cov_type = "block"
 # emu_cov_type = "diagonal"
-emu_cov_type = "full"
 # name_variation = "Metals_Ma2025"
 # name_variation = "HCD_BOSS"
 
 # name_variation = "more_igm"
+
 name_variation = None
+emu_cov_type = "full"
+# emu_cov_type = "block"
+# emu_cov_type = "diagonal"
+
 
 emulator_label="CH24_mpgcen_gpr"
 # emulator_label="CH24_nyxcen_gpr"
+# name_variation = "cosmo_h74"
+name_variation = "cosmo_mnu"
 
 args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
 args.set_baseline(
@@ -377,11 +373,16 @@ pip = Pipeline(args, out_folder=args.out_folder)
 
 
 # %%
-##
-0.5446328398055156 no inflate
-20.114723582864716 stat * 1.05
-2.113826391570677 emu * 2
+for ii, par in enumerate(pip.fitter.like.free_params):
+    print(ii, par.name, par.value, par.min_value, par.max_value)
 
+# %%
+
+# %%
+
+p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+free_params = pip.fitter.like.parameters_from_sampling_point(p0)
+pip.fitter.like.get_chi2(p0)
 
 # %%
 pip.fitter.like.plot_p1d(p0, print_chi2=False)
@@ -400,26 +401,11 @@ pip.fitter.like.get_chi2(p0)
 data_lab = "DESIY1_QMLE3"
 fit_type = "global_opt"
 emu = "mpg"
-folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/chain_1/"
+folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/chain_7/"
 data = np.load(folder + "fitter_results.npy", allow_pickle=True).item()
 p0 = data["fitter"]["mle_cube"]
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
-
-# %%
-p0 = np.array([6.52990018e-01, 4.61790398e-01, 6.95749190e-01, 1.43816919e-01,
-       1.63401068e-02, 5.90879424e-04, 6.93851139e-03, 7.02583072e-01,
-       7.85391366e-01, 3.49554924e-01, 9.99342829e-01, 1.05153800e-01,
-       4.74777622e-01, 2.31243684e-04, 1.41440277e-02, 1.13242014e-01,
-       2.20531022e-01, 6.22366560e-01, 4.61007967e-01, 4.30003656e-01,
-       5.77670152e-01, 5.66698598e-01, 6.53271017e-01, 2.88243386e-01,
-       7.81489479e-01, 4.90749459e-01, 5.71115531e-01, 6.70996653e-01,
-       5.92218515e-01, 7.14987668e-01, 8.30535104e-01, 8.66703983e-01,
-       1.78057125e-01, 2.12937764e-01, 6.20034388e-01, 6.29611474e-01,
-       3.40272775e-01, 4.31775261e-01, 3.32318445e-01, 4.93283610e-01,
-       5.56071146e-01, 5.33291151e-01, 6.54861792e-01, 6.87850023e-01,
-       8.82508089e-01, 8.37654595e-01, 5.11488482e-01, 9.77237363e-01,
-       9.79128500e-01])
 
 # %%
 
@@ -431,12 +417,12 @@ pip.fitter.like.get_chi2(p0)
 pip.fitter.like.plot_p1d(p0, print_chi2=False)
 
 # %%
-# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-# folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
-# chain = np.load(base + folder + "chain.npy")
-# pip.fitter.like.plot_metal_cont_mult(chain=chain, save_directory="figs")
-# pip.fitter.like.plot_metal_cont_add(free_params=free_params, chain=chain, save_directory="figs")
-# pip.fitter.like.plot_hcd_cont(p0=p0, chain=chain, save_directory="figs")
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
+chain = np.load(base + folder + "chain.npy")
+pip.fitter.like.plot_metal_cont_mult(chain=chain, save_directory="figs")
+pip.fitter.like.plot_metal_cont_add(free_params=free_params, chain=chain, save_directory="figs")
+pip.fitter.like.plot_hcd_cont(p0=p0, chain=chain, save_directory="figs")
 
 
 # %%

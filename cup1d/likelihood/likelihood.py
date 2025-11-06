@@ -2466,6 +2466,7 @@ class Likelihood(object):
         lab_fid="mpg-central",
         ftsize=18,
         nelem=20000,
+        title="",
     ):
         """Plot IGM histories"""
 
@@ -2480,31 +2481,44 @@ class Likelihood(object):
 
         zs = np.linspace(self.data.z.min(), self.data.z.max(), 100)
         p0 = self.sampling_point_from_parameters()
-        p0[:] = 0.5
-        fid_params = self.parameters_from_sampling_point(p0)
-        pars_fid = {}
-        pars_fid["z"] = zs
-        pars_fid["tau_eff"] = self.theory.model_igm.models[
-            "F_model"
-        ].get_tau_eff(zs, like_params=fid_params)
-        pars_fid["mF"] = self.theory.model_igm.models["F_model"].get_mean_flux(
-            zs, like_params=fid_params
-        )
-        pars_fid["gamma"] = self.theory.model_igm.models["T_model"].get_gamma(
-            zs, like_params=fid_params
-        )
-        pars_fid["sigT_kms"] = self.theory.model_igm.models[
-            "T_model"
-        ].get_sigT_kms(zs, like_params=fid_params)
-        pars_fid["T0"] = (
-            self.theory.model_igm.models["T_model"].get_T0(
+
+        for ii in range(3):
+            if ii == 0:
+                p0[:] = 0.5
+            elif ii == 1:
+                p0[:] = 0
+            elif ii == 2:
+                p0[:] = 1
+            fid_params = self.parameters_from_sampling_point(p0)
+            pars = {}
+            pars["z"] = zs
+            pars["tau_eff"] = self.theory.model_igm.models[
+                "F_model"
+            ].get_tau_eff(zs, like_params=fid_params)
+            pars["mF"] = self.theory.model_igm.models["F_model"].get_mean_flux(
                 zs, like_params=fid_params
             )
-            / 1e4
-        )
-        pars_fid["kF_kms"] = self.theory.model_igm.models["P_model"].get_kF_kms(
-            zs, like_params=fid_params
-        )
+            pars["gamma"] = self.theory.model_igm.models["T_model"].get_gamma(
+                zs, like_params=fid_params
+            )
+            pars["sigT_kms"] = self.theory.model_igm.models[
+                "T_model"
+            ].get_sigT_kms(zs, like_params=fid_params)
+            pars["T0"] = (
+                self.theory.model_igm.models["T_model"].get_T0(
+                    zs, like_params=fid_params
+                )
+                / 1e4
+            )
+            pars["kF_kms"] = self.theory.model_igm.models["P_model"].get_kF_kms(
+                zs, like_params=fid_params
+            )
+            if ii == 0:
+                pars_fid = pars.copy()
+            elif ii == 1:
+                pars_min = pars.copy()
+            elif ii == 2:
+                pars_max = pars.copy()
 
         chain = None
         if chain_uformat is not None:
@@ -2581,6 +2595,8 @@ class Likelihood(object):
             tab_out.append(
                 np.percentile(pars_chain2["gamma"], [16, 50, 84], axis=0)
             )
+            # print(np.percentile(pars_chain2["mF"], [16, 50, 84], axis=0))
+            # print(np.percentile(pars_chain["mF"], [16, 50, 84], axis=0))
             pars_chain2 = 0
 
         if free_params is not None:
@@ -2622,7 +2638,13 @@ class Likelihood(object):
                 r"$k_F$ [km/s]",
             ]
         elif plot_type == "tau_sigT":
-            fig, ax = plt.subplots(3, 1, figsize=(8, 6), sharex=True)
+            fig, ax = plt.subplots(
+                3,
+                1,
+                figsize=(8, 10),
+                sharex=True,
+                gridspec_kw={"height_ratios": [3, 1, 1]},
+            )
             # arr_labs = ["tau_eff", "sigT_kms", "gamma"]
             # latex_labs = [
             #     r"$\tau_\mathrm{eff}$",
@@ -2632,7 +2654,8 @@ class Likelihood(object):
             arr_labs = ["mF", "T0", "gamma"]
             nexp_mF = 1
             latex_labs = [
-                r"$(1+z)\bar{F}$",
+                # r"$(1+z)\bar{F}$",
+                r"$\bar{F}$",
                 r"$T_0[K]/10^4$",
                 r"$\gamma$",
             ]
@@ -2673,23 +2696,45 @@ class Likelihood(object):
                             color="C1",
                             alpha=alpha,
                             label=lab,
+                            s=10,
                         )
 
             if plot_fid:
-                _ = pars_fid[arr_labs[ii]] != 0
-                if arr_labs[ii] == "mF":
-                    norm = (1 + pars_fid["z"][_]) ** nexp_mF
-                else:
-                    norm = 1
+                for kk in range(3):
+                    if kk == 0:
+                        pars = pars_fid.copy()
+                        label = lab_fid
+                        lsk = "-"
+                        alpha = 0.5
+                        lw = 1.5
+                    elif kk == 1:
+                        pars = pars_min.copy()
+                        label = None
+                        lsk = "-"
+                        alpha = 0.3
+                        lw = 1
+                    elif kk == 2:
+                        pars = pars_max.copy()
+                        label = None
+                        lsk = "-"
+                        alpha = 0.3
+                        lw = 1
 
-                ax[ii].plot(
-                    pars_fid["z"][_],
-                    norm * pars_fid[arr_labs[ii]][_],
-                    "C3-",
-                    label=lab_fid,
-                    alpha=0.75,
-                    lw=2,
-                )
+                    _ = pars[arr_labs[ii]] != 0
+                    if arr_labs[ii] == "mF":
+                        # norm = (1 + pars["z"][_]) ** nexp_mF
+                        norm = 1
+                    else:
+                        norm = 1
+
+                    ax[ii].plot(
+                        pars["z"][_],
+                        norm * pars[arr_labs[ii]][_],
+                        "C3" + lsk,
+                        label=label,
+                        alpha=alpha,
+                        lw=lw,
+                    )
 
             if chain is not None:
                 ax[ii].fill_between(
@@ -2714,7 +2759,8 @@ class Likelihood(object):
             if free_params is not None:
                 _ = pars_test[arr_labs[ii]] != 0
                 if arr_labs[ii] == "mF":
-                    norm = (1 + pars_test["z"][_]) ** nexp_mF
+                    # norm = (1 + pars_test["z"][_]) ** nexp_mF
+                    norm = 1
                 else:
                     norm = 1
 
@@ -2740,7 +2786,8 @@ class Likelihood(object):
                         pars_test[arr_labs[ii]][_],
                     )
                     if arr_labs[ii] == "mF":
-                        norm = (1 + self.args.fid_igm[lab]) ** nexp_mF
+                        # norm = (1 + self.args.fid_igm[lab]) ** nexp_mF
+                        norm = 1
                     else:
                         norm = 1
                     ax[ii].scatter(
@@ -2751,7 +2798,8 @@ class Likelihood(object):
                     )
 
             if arr_labs[ii] == "mF":
-                norm = (1 + gal21["z"]) ** nexp_mF
+                # norm = (1 + gal21["z"]) ** nexp_mF
+                norm = 1
                 ax[ii].errorbar(
                     gal21["z"],
                     norm * gal21["mF"],
@@ -2762,7 +2810,8 @@ class Likelihood(object):
                     alpha=0.75,
                     lw=2,
                 )
-                norm = (1 + tu24["z"]) ** nexp_mF
+                # norm = (1 + tu24["z"]) ** nexp_mF
+                norm = 1
                 ax[ii].errorbar(
                     tu24["z"],
                     norm * tu24["mF"],
@@ -2800,7 +2849,7 @@ class Likelihood(object):
             if ii == 0:
                 if arr_labs[ii] != "mF":
                     ax[ii].set_yscale("log")
-                ax[ii].legend(fontsize=ftsize - 4, loc="lower left", ncol=2)
+                ax[ii].legend(fontsize=ftsize, loc="lower left", ncol=1)
 
             if (ii == 2) | (ii == len(arr_labs) - 1):
                 ax[ii].set_xlabel(r"$z$", fontsize=ftsize)
@@ -2810,6 +2859,7 @@ class Likelihood(object):
             ax[ii].yaxis.set_major_locator(MaxNLocator(nbins=3, prune=None))
 
         # ax[0].set_ylim(0.09)
+        fig.suptitle(title, fontsize=ftsize + 2)
         plt.tight_layout()
 
         if save_directory is not None:

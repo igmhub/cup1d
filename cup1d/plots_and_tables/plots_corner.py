@@ -83,11 +83,11 @@ def plots_chain(
         folder_in, truth, nburn_extra=nburn_extra
     )
 
-    corr_compressed(dat, labels, priors, folder_out=folder_out)
-    # get_summary(folder_out, lnprob)
-    # plot_res(dat, folder_out=folder_out)
-    if 1 > 0:
-        return
+    # corr_compressed(dat, labels, priors, folder_out=folder_out)
+    # # get_summary(folder_out, lnprob)
+    # # plot_res(dat, folder_out=folder_out)
+    # if 1 > 0:
+    #     return
 
     try:
         plot_lnprob(lnprob, folder_out, ftsize)

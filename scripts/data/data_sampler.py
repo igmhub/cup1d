@@ -34,6 +34,13 @@ def main():
     elif name_variation == "DESIY1_FFT_dir":
         name_variation = None
         data_label = "DESIY1_FFT_dir"
+    elif name_variation.startswith("nyx"):
+        if name_variation == "nyx_cosmo_high":
+            name_variation = "cosmo_high"
+            emu = "nyx"
+        elif name_variation == "nyx_cosmo_low":
+            name_variation = "cosmo_low"
+            emu = "nyx"
 
     if name_variation == "emu_diag":
         name_variation = None
@@ -58,9 +65,9 @@ def main():
         fix_cosmo=False,
         P1D_type=data_label,
         name_variation=name_variation,
-        # mcmc_conf="explore",
+        mcmc_conf="explore",
         # mcmc_conf="test",
-        mcmc_conf="full",
+        # mcmc_conf="full", # only for central chain
     )
     pip = Pipeline(args, out_folder=args.out_folder)
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()

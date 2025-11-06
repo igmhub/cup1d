@@ -69,12 +69,12 @@ cmb = planck_chains.get_planck_2018(
     linP_tag=None
 )
 
-cmb_tau = planck_chains.get_planck_2018(
-    model='base',
-    data='plikHM_TTTEEE_lowl_linP',
-    root_dir=root_dir,
-    linP_tag=None
-)
+# cmb_tau = planck_chains.get_planck_2018(
+#     model='base',
+#     data='plikHM_TTTEEE_lowl_linP',
+#     root_dir=root_dir,
+#     linP_tag=None
+# )
 
 cmb_nrun = planck_chains.get_planck_2018(
     model='base_nrun',
@@ -104,26 +104,27 @@ cmb_nnu = planck_chains.get_planck_2018(
     linP_tag=None
 )
 
+# cmb_omega_k = planck_chains.get_planck_2018(
+#     model='base_omegak',
+#     data='plikHM_TTTEEE_lowl_lowE_linP',
+#     root_dir=root_dir,
+#     linP_tag=None
+# )
+
+# cmb_w_wa = planck_chains.get_planck_2018(
+#     model='base_w_wa',
+#     data='plikHM_TTTEEE_lowl_lowE_BAO_linP',
+#     root_dir=root_dir,
+#     linP_tag=None
+# )
+
+
 # cmb_r = planck_chains.get_planck_2018(
 #     model='base_r',
 #     data='plikHM_TTTEEE_lowl_lowE_linP',
 #     root_dir=root_dir,
 #     linP_tag=None
 # )
-
-cmb_omega_k = planck_chains.get_planck_2018(
-    model='base_omegak',
-    data='plikHM_TTTEEE_lowl_lowE_linP',
-    root_dir=root_dir,
-    linP_tag=None
-)
-
-cmb_w_wa = planck_chains.get_planck_2018(
-    model='base_w_wa',
-    data='plikHM_TTTEEE_lowl_lowE_BAO_linP',
-    root_dir=root_dir,
-    linP_tag=None
-)
 
 
 # cmb_nrun_nnu_w_mnu = planck_chains.get_planck_2018(
@@ -144,7 +145,7 @@ cmb_w_wa = planck_chains.get_planck_2018(
 # out_dict = np.load(file, allow_pickle=True).item()
 
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 
 dat_mpg = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 sum_mpg = np.load(folder + "summary.npy", allow_pickle=True).item()
@@ -161,6 +162,7 @@ corr = np.corrcoef(blobs["Delta2_star"].reshape(-1), blobs["n_star"].reshape(-1)
 # per_ds = np.percentile(blobs["Delta2_star"].reshape(-1), [16, 50, 84])
 # per_ns = np.percentile(blobs["n_star"].reshape(-1), [16, 50, 84])
 r = corr[0, 1]
+r
 
 # %%
 desi_dr1 = {
@@ -301,7 +303,9 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
     for ii in range(1):
         new_samples=chain_type['samples'].copy()
         p=new_samples.getParams()
-        new_loglike = 0.5 * gaussian_chi2_mock_DESI(
+
+        # log unnormalised weights
+        logw = 0.5 * gaussian_chi2_mock_DESI(
             p.linP_n_star, 
             p.linP_DL2_star, 
             true_neff=desi_dr1["n_star"], 
@@ -310,7 +314,17 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
             DL2_err=desi_dr1["Delta2_star_err"],
             r=desi_dr1["r"]
         )
-        new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
+        
+        # # numerical stabilisation: subtract max
+        # logw -= logw.max()
+        # w_unnorm = np.exp(logw)      # safe: values won't overflow
+        # w = w_unnorm / w_unnorm.sum()  # normalised weights
+        
+        # # effective sample size (ESS)
+        # ess = 1.0 / np.sum(w**2)
+        # print("ESS", ess)
+        
+        new_samples.reweightAddingLogLikes(logw) #re-weight cut_samples to account for the new likelihood
         samples_DESI.append(new_samples)
         labels_DESI.append(r"Planck 2018 + DESI DR1")
     

@@ -102,6 +102,34 @@ def set_cosmo(
             pivot_scalar=0.05,
             w=-1,
         )
+    elif cosmo_label == "Planck18_h74":
+        cosmo = camb_cosmo.get_cosmology(
+            H0=74.00,
+            mnu=0.0,
+            omch2=0.119,
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
+    elif cosmo_label == "Planck18_mnu03":
+        # at fixed omh2
+        omnuh2 = 0.00322433285312557  # for mnu 0.3 eV
+        cosmo = camb_cosmo.get_cosmology(
+            H0=60.00,
+            mnu=0.3,
+            omch2=0.119 - omnuh2,
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
     elif cosmo_label == "DESIDR2_ACT":
         # ACT https://arxiv.org/pdf/2503.14452, Table 5 (P-ACT)
         # omch2 = 0.1193
@@ -152,19 +180,6 @@ def set_cosmo(
             omk=0.0,
             As=2.26e-09,
             ns=0.982,
-            nrun=0.0,
-            pivot_scalar=0.05,
-            w=-1,
-        )
-    elif cosmo_label == "Planck18_h74":
-        cosmo = camb_cosmo.get_cosmology(
-            H0=74,
-            mnu=0.0,
-            omch2=0.119,
-            ombh2=0.0224,
-            omk=0.0,
-            As=2.105e-09,
-            ns=0.9665,
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,

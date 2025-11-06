@@ -79,9 +79,9 @@ pip.fitter.like.plot_p1d(
 # +
 data_label = "DESIY1_QMLE3"
 name_variation = None
-# emulator_label = "CH24_mpgcen_gpr"
-emulator_label = "CH24_nyxcen_gpr"
-name_variation = "no_inflate"
+emulator_label = "CH24_mpgcen_gpr"
+# emulator_label = "CH24_nyxcen_gpr"
+# name_variation = "no_inflate"
 
 args = Args(data_label=data_label, emulator_label=emulator_label)
 args.set_baseline(
@@ -105,8 +105,8 @@ nyx 643.902238250646
 
 p0 = pip.fitter.mle_cube
 
-pname = None
-# pname = "figs/residual_full_global"
+# pname = None
+pname = "figs/residual_full_global"
 pip.fitter.like.plot_p1d(
     p0,
     residuals=True,
@@ -119,8 +119,8 @@ pip.fitter.like.plot_p1d(
 )
 
 fname = os.path.join(
-    # os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_global_red.npy"
-    os.path.dirname(get_path_repo("cup1d")), "data", "ics", "nyx_ic_global_red.npy"
+    os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_global_red.npy"
+    # os.path.dirname(get_path_repo("cup1d")), "data", "ics", "nyx_ic_global_red.npy"
 )
 pip.save_global_ic(fname)
 
