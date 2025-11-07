@@ -46,8 +46,9 @@ def table_nuisance(folder_variation):
     # Asymmetric errors
     err_minus = p50 - p16
     err_plus = p84 - p50
+    err_mid = 0.5 * (err_plus + err_minus)
 
-    imin = 20
+    imin = 18
     n = len(labels) - imin
     half = (n + 1) // 2  # split index
     for ii in range(half):
@@ -60,6 +61,23 @@ def table_nuisance(folder_variation):
                 right_value = format_value_with_error(
                     p50[i + half], err_plus[i + half], err_minus[i + half]
                 )
+                print(
+                    f"{left_label:<10} & {left_value:<20} & {right_label:<10} & {right_value} \\\\"
+                )
+            else:
+                # Odd number of parameters
+                print(f"{left_label:<10} & {left_value:<20} & & \\\\")
+
+    print("")
+    print("")
+    for ii in range(half):
+        i = ii + imin
+        left_label = param_dict[labels[i]]
+        left_value = p50[i] / err_mid[i]
+        if i > 1:
+            if i + half < n + imin:
+                right_label = param_dict[labels[i + half]]
+                right_value = p50[i + half] / err_mid[i + half]
                 print(
                     f"{left_label:<10} & {left_value:<20} & {right_label:<10} & {right_value} \\\\"
                 )

@@ -60,25 +60,32 @@ from cup1d.pipeline.set_archive import set_archive
 
 # %%
 
-# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-# folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 
-# from cup1d.plots_and_tables.table_nuisance import table_nuisance
-# table_nuisance(base + folder)
+from cup1d.plots_and_tables.table_nuisance import table_nuisance
+table_nuisance(base + folder)
 
 # from cup1d.plots_and_tables.table_variations import table_variations
 # base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 # table_variations(base)
 
 
-from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
-plot_table_igm(base, name_variation=None, save_fig=save_fig, chain="7")
+# from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
+# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+# save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
+# plot_table_igm(base, name_variation=None, save_fig=save_fig, chain="7")
 # save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/test/"
 # plot_table_igm(base, name_variation="nyx", save_fig=save_fig, chain="3")
 
-# "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_3/"
+
+# %%
+4400/1216 -1
+
+# %%
+5800/1216 -1
+
+# %%
 
 # %%
 from cup1d.plots_and_tables.plots_corner import plots_chain
@@ -359,7 +366,7 @@ emu_cov_type = "full"
 emulator_label="CH24_mpgcen_gpr"
 # emulator_label="CH24_nyxcen_gpr"
 # name_variation = "cosmo_h74"
-name_variation = "cosmo_mnu"
+name_variation = "cosmo"
 
 args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
 args.set_baseline(
@@ -371,6 +378,21 @@ args.set_baseline(
 
 pip = Pipeline(args, out_folder=args.out_folder)
 
+
+# %%
+rats = pip.fitter.like.theory.model_cont.metal_models["Si_mult"].rat
+
+# %%
+rats["SiIIa_SiIII"]/rats["SiIIb_SiIII"]
+
+# %%
+(2.29 - 1)/0.5/(0.6 + 0.49)
+
+# %%
+1.42 * 0.48
+
+# %%
+0.80 * 0.48
 
 # %%
 for ii, par in enumerate(pip.fitter.like.free_params):

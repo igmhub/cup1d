@@ -39,7 +39,7 @@ def format_last(val):
     return f"{val:.2f}"
 
 
-def make_latex_table(table, color_threshold=0.5, color="red"):
+def make_latex_table(table, color_threshold=0.3, color="red"):
     """
     Print aligned LaTeX rows from `table`.
     Each row: [name, x1, x1p, x1m, x2, x2p, x2m, val3, val4, val5]
@@ -143,7 +143,7 @@ def table_variations(base):
     variations = {
         "DESIY1_QMLE3_mpg": [
             "Fiducial",
-            "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/",
         ],
         "zmax": [
             "Data: $z \\leq 3.4$",
@@ -190,12 +190,20 @@ def table_variations(base):
             "Cosmo: $\omega_0\omega_a$CDM",
             "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/",
         ],
+        "cosmo_h74": [
+            "Cosmo: $h=0.74$",
+            "DESIY1_QMLE3/cosmo_h74/CH24_mpgcen_gpr/chain_1/",
+        ],
+        "cosmo_mnu": [
+            r"Cosmo: $\sum m_\nu=0.3$ eV",
+            "DESIY1_QMLE3/cosmo_mnu/CH24_mpgcen_gpr/chain_2/",
+        ],
         "cosmo_high": [
-            "Cosmo: high $\Omega_\mathrm{M}h^2$",
+            "Cosmo: high $\Omega_\mathrm{cdm}h^2$",
             "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_1/",
         ],
         "cosmo_low": [
-            "Cosmo: low $\Omega_\mathrm{M}h^2$",
+            "Cosmo: low $\Omega_\mathrm{cdm}h^2$",
             "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/",
         ],
         "more_igm": [

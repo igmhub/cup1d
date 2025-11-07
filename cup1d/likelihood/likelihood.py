@@ -2467,6 +2467,7 @@ class Likelihood(object):
         ftsize=18,
         nelem=20000,
         title="",
+        pre_xylims=True,
     ):
         """Plot IGM histories"""
 
@@ -2858,7 +2859,10 @@ class Likelihood(object):
             ax[ii].tick_params(axis="both", which="minor", labelsize=ftsize - 2)
             ax[ii].yaxis.set_major_locator(MaxNLocator(nbins=3, prune=None))
 
-        # ax[0].set_ylim(0.09)
+        if pre_xylims:
+            ax[0].set_ylim(0.35, 0.9)
+            ax[1].set_ylim(0.0, 3.2)
+            ax[2].set_ylim(0.8, 2.2)
         fig.suptitle(title, fontsize=ftsize + 2)
         plt.tight_layout()
 

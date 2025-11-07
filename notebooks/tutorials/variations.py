@@ -342,6 +342,16 @@ dat_cosmo_low = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo_low_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
+folder = base + "DESIY1_QMLE3/cosmo_h74/CH24_mpgcen_gpr/chain_1/"
+dat_cosmo_h74 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/cosmo_h74/CH24_mpgcen_gpr/chain_1/"
+dat_cosmo_h74_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/cosmo_mnu/CH24_mpgcen_gpr/chain_2/"
+dat_cosmo_mnu = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+folder = base + "DESIY1_QMLE3/cosmo_mnu/CH24_mpgcen_gpr/chain_2/"
+dat_cosmo_mnu_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
+
 ## ingredients
 
 folder = base + "DESIY1_QMLE3/DLAs/CH24_mpgcen_gpr/chain_1/"
@@ -466,6 +476,8 @@ dict_trans = {
     "cosmo": "Cosmo: $\omega_0\omega_a$CDM",  # different fiducial cosmo
     "cosmo_low": "Cosmo: low $\Omega_\mathrm{cdm}h^2$",  # different fiducial cosmo
     "cosmo_high": "Cosmo: high $\Omega_\mathrm{cdm}h^2$",  # different fiducial cosmo
+    "cosmo_h74": "Cosmo: $h=0.74$",  # different fiducial cosmo
+    "cosmo_mnu": r"Cosmo: $\sum m_\nu=0.3$ eV", # different fiducial cosmo
     
     "more_igm": "IGM: $n_z=8$",  # 6 params for IGM evolution
     
@@ -503,10 +515,12 @@ fname = [
     "emu",
     "val_sims",
     "val_sims_model",
+    "cosmo2",
+    "cosmo_Asns2",
     # "test",
 ]
 
-for image in range(11):
+for image in range(15):
 
     # if image in [3, 4, 5]:
     #     ftsize = 26
@@ -527,11 +541,11 @@ for image in range(11):
         variations = ["DESIY1_QMLE3_mpg", "emu_block", "emu_diag", "no_emu_cov"]
         dats = [dat_mpg, dat_emu_block, dat_emu_diag, dat_no_emu_cov]
     elif image == 4:
-        variations = ["DESIY1_QMLE3_mpg", "cosmo", "cosmo_low", "cosmo_high"]
-        dats = [dat_mpg, dat_cosmo, dat_cosmo_low, dat_cosmo_high]
+        variations = ["DESIY1_QMLE3_mpg", "cosmo", "cosmo_h74", "cosmo_mnu"]
+        dats = [dat_mpg, dat_cosmo, dat_cosmo_h74, dat_cosmo_mnu]
     elif image == 5:
-        variations = ["DESIY1_QMLE3_mpg", "cosmo", "cosmo_low", "cosmo_high"]
-        dats = [dat_mpg_Asns, dat_cosmo_Asns, dat_cosmo_low_Asns, dat_cosmo_high_Asns]
+        variations = ["DESIY1_QMLE3_mpg", "cosmo", "cosmo_h74", "cosmo_mnu"]
+        dats = [dat_mpg_Asns, dat_cosmo_Asns, dat_cosmo_h74_Asns, dat_cosmo_mnu_Asns]
         factx = 1e9
     elif image == 6:
         variations = ["DESIY1_QMLE3_mpg", "metal_deco", "metal_thin", "metal_si2"]
@@ -554,6 +568,13 @@ for image in range(11):
     elif image == 12:
         variations = ["sim_mpg_central_all", "sim_mpg_central_igm", "sim_mpg_central_igm0"]
         dats = [dat_mpg_sim, dat_mpg_igm, dat_mpg_igm0]
+    elif image == 13:
+        variations = ["DESIY1_QMLE3_mpg", "cosmo_low", "cosmo_high"]
+        dats = [dat_mpg, dat_cosmo_low, dat_cosmo_high]
+    elif image == 14:
+        variations = ["DESIY1_QMLE3_mpg", "cosmo_low", "cosmo_high"]
+        dats = [dat_mpg_Asns, dat_cosmo_low_Asns, dat_cosmo_high_Asns]
+        factx = 1e9
     else:
         continue
 
@@ -629,19 +650,20 @@ for image in range(11):
     dx = ylim[1] - ylim[0]
     ax.set_ylim(ylim[0] - dx*0.05, ylim[1] + dx*0.05)
     
-    if fname[image] != "cosmo_Asns":
-        ax.set_xlabel(r"$\Delta(\Delta^2_\star)$", fontsize=ftsize+2)
-        ax.set_ylabel(r"$\Delta(n_\star)$", fontsize=ftsize+2)
+    if fname[image].startswith("cosmo_Asns"):
+        ax.set_xlabel(r"$\Delta A_s[\times 10^{-9}]$", fontsize=ftsize+2)
+        ax.set_ylabel(r"$\Delta n_s$", fontsize=ftsize+2)
     else:
-        ax.set_xlabel(r"$\Delta(A_s)[\times 10^{-9}]$", fontsize=ftsize+2)
-        ax.set_ylabel(r"$\Delta(n_s)$", fontsize=ftsize+2)
+        ax.set_xlabel(r"$\Delta(\Delta^2_\star)$", fontsize=ftsize+2)
+        ax.set_ylabel(r"$\Delta n_\star$", fontsize=ftsize+2)
     ax.tick_params(
         axis="both", which="major", labelsize=ftsize - 2
     )
     ax.axhline(color="k", ls=":")
     ax.axvline(color="k", ls=":")
-    
-    if fname[image] in ["cosmo", "cosmo_Asns", "metals_ing", "model_ing_no",  "DLAs"]:
+
+     
+    if fname[image] in ["cosmo", "cosmo_Asns","cosmo2", "cosmo_Asns2","metals_ing", "model_ing_no",  "DLAs"]:
         ymin, ymax = plt.ylim()
         yrange = ymax - ymin
         ax.set_ylim(ymin, ymax + 0.2 * yrange)

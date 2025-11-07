@@ -183,18 +183,18 @@ lw = [3, 2]
 cmb_all = [
     cmb, 
     # cmb_tau, 
-    # cmb_mnu, 
+    cmb_mnu, 
     cmb_nnu, 
     cmb_nrun, 
-    # cmb_nrun_nrunrun
+    cmb_nrun_nrunrun
 ]
 cmb_labs = [
-    r"Planck 2018: $\Lambda$CDM", 
+    r"Planck+18: $\Lambda$CDM", 
     # r"Planck+18 $\Lambda$CDM (no lowE)",
-    # r"Planck+18 $\sum m_\nu$",
-    r"Planck 2018: $N_\mathrm{eff}$",
-    r"Planck 2018: $\alpha_\mathrm{s}$",
-    # r"Planck+18 $\alpha_\mathrm{s}$, $\mathrm{d} \alpha_\mathrm{s} / \mathrm{d}\log k$"
+    r"Planck+18: $\sum m_\nu$",
+    r"Planck+18: $N_\mathrm{eff}$",
+    r"Planck+18: $\alpha_\mathrm{s}$",
+    r"Planck+18: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$"
 ]
 
 g = plots.getSinglePlotter(width_inch=10)
@@ -209,12 +209,12 @@ for ii, icmb in enumerate(cmb_all):
         lwu = 3
     else:
         filled = False
-        lwu = 3
+        lwu = 2
     g.plot_2d(
         new_samples, 
         ['linP_DL2_star', 'linP_n_star'], 
         colors=["C"+str(ii+1)], 
-        lws=lwu, 
+        lws=2, 
         alphas=[0.8, 0.5],
         filled=filled,
     )
@@ -296,7 +296,7 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
         "tau": r"$\tau$",
         "mnu": r"$\sum m_\nu$",
         "nrun": r"$\alpha_\mathrm{s}$",
-        "nrunrun": r"$\mathrm{d} \alpha_\mathrm{s} / \mathrm{d}\log k$"
+        "nrunrun": r"$\beta_\mathrm{s}$"
     }
     samples_DESI=[]
     labels_DESI=[]
@@ -342,6 +342,7 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
         [chain_type['samples'],samples_DESI[0]],
         arr_plot,
         legend_labels=["Planck 2018",labels_DESI[0]],
+        legend_loc='upper right',
         colors=["C0", "C1"],
         filled=True,
         lws=[3,3],
@@ -407,10 +408,40 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
             label.set_rotation(45)
             label.set_ha('right')
 
+    if param_name == "nnu":
+        g.subplots[-1, -1].axvline(3.046, ls="--", color = "black")
+        g.subplots[-1, 0].axhline(3.046, ls="--", color = "black")
+        g.subplots[-1, 1].axhline(3.046, ls="--", color = "black")
+    elif param_name == "mnu":
+        g.subplots[-1, -1].axvline(0.06, ls="--", color = "black")
+        g.subplots[-1, 0].axhline(0.06, ls="--", color = "black")
+        g.subplots[-1, 1].axhline(0.06, ls="--", color = "black")
+        g.subplots[-1, -1].axvline(0.1, ls="--", color = "black")
+        g.subplots[-1, 0].axhline(0.1, ls="--", color = "black")
+        g.subplots[-1, 1].axhline(0.1, ls="--", color = "black")
+        g.subplots[-1, -1].set_xlim(0.01, 0.4)
+    elif param_name == "nrun":
+        g.subplots[-1, -1].axvline(0., ls="--", color = "black")
+        g.subplots[-1, 0].axhline(0., ls="--", color = "black")
+        g.subplots[-1, 1].axhline(0., ls="--", color = "black")
+    elif param_name == "nrunrun":
+        g.subplots[-1, -1].axvline(0., ls="--", color = "black")
+        g.subplots[-1, 0].axhline(0., ls="--", color = "black")
+        g.subplots[-1, 1].axhline(0., ls="--", color = "black")
+        g.subplots[-1, 2].axhline(0., ls="--", color = "black")
+        g.subplots[-1, 2].axvline(0., ls="--", color = "black")
+        g.subplots[-2, 0].axhline(0., ls="--", color = "black")
+        g.subplots[-2, 1].axhline(0., ls="--", color = "black")
+        g.subplots[-2, 2].axvline(0., ls="--", color = "black")
+
         
     plt.tight_layout()
     plt.savefig("figs/import_"+param_name+".png", bbox_inches="tight")
     plt.savefig("figs/import_"+param_name+".pdf", bbox_inches="tight")
+
+# %%
+
+plot_combine(cmb_nrun_nrunrun, desi_dr1, "nrunrun")
 
 # %%
 
@@ -425,11 +456,12 @@ plot_combine(cmb_nrun, desi_dr1, "nrun")
 plot_combine(cmb_mnu, desi_dr1, "mnu")
 
 # %%
+
+# %%
 # plot_combine(cmb_tau, desi_dr1, "tau")
 # plot_combine(cmb_mnu, desi_dr1, "mnu")
 # plot_combine(cmb_nnu, desi_dr1, "nnu")
 # plot_combine(cmb_nrun, desi_dr1, "nrun")
-# plot_combine(cmb_nrun_nrunrun, desi_dr1, "nrunrun")
 
 # %%
 1-46/67
