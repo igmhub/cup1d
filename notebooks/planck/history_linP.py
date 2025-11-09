@@ -29,8 +29,7 @@ from getdist import plots,loadMCSamples
 import matplotlib.pyplot as plt
 from cup1d.planck import planck_chains
 from cup1d.likelihood import marg_lya_like
-# because of black magic, getdist needs this strange order of imports
-# %matplotlib inline
+
 from cup1d.utils.utils import get_path_repo
 
 
@@ -46,21 +45,6 @@ rcParams["font.family"] = "STIXGeneral"
 # These chains are already provided in cup1d, form different CMB releases. All chains have free neutrino mass.
 
 # %% jupyter={"outputs_hidden": false}
-# model='base_mnu'
-model='base'
-# WMAP9
-# wmap9=planck_chains.get_planck_2013(model=model,data='WMAP')
-# wmap9['label']='WMAP 9'
-# # Planck 2013
-# planck2013=planck_chains.get_planck_2013(model=model)
-# planck2013['label']='Planck 2013'
-# # Planck 2015
-# planck2015=planck_chains.get_planck_2015(model=model)
-# planck2015['label']='Planck 2015'
-# Planck 2018
-# planck2018=planck_chains.get_planck_2018(model=model)
-# planck2018['label']='Planck 2018'
-
 root_dir=os.path.join(get_path_repo("cup1d"), "data", "planck_linP_chains")
 cmb = planck_chains.get_planck_2018(
     model='base',
@@ -71,144 +55,65 @@ cmb = planck_chains.get_planck_2018(
 
 
 # %%
-# # put everything together to pass to getdist
-# analyses=[wmap9,planck2013,planck2015,planck2018]
-# samples=[analysis['samples'] for analysis in analyses]
-# labels=[analysis['label'] for analysis in analyses]
-
-# %%
-
-# params=['w', 'wa']
-# g = plots.getSubplotPlotter(width_inch=14)
-# g.settings.axes_fontsize = 12
-# g.settings.legend_fontsize = 16
-# g.triangle_plot(cmbw['samples'],params)
-
-# %% jupyter={"outputs_hidden": false}
-# # plot traditional parameters
-# params=['omegach2','omegabh2','mnu','H0','tau','logA','ns']
-# g = plots.getSubplotPlotter(width_inch=14)
-# g.settings.axes_fontsize = 12
-# g.settings.legend_fontsize = 16
-# g.triangle_plot(samples,params,legend_labels=labels)
-
-# %% [markdown]
-# ### Plot linear power parameters
-
-# %% jupyter={"outputs_hidden": false}
-# # plot traditional parameters
-# params=['linP_DL2_star','linP_n_star','linP_alpha_star','linP_f_star','linP_g_star']
-# g = plots.getSubplotPlotter(width_inch=14)
-# g.settings.axes_fontsize = 12
-# g.settings.legend_fontsize = 16
-# g.triangle_plot(samples,params,legend_labels=labels)
-
-# %% jupyter={"outputs_hidden": false}
-# # plot traditional parameters (including now Omega_m and m_nu)
-# params=['linP_DL2_star','linP_n_star','linP_alpha_star','linP_f_star','linP_g_star','omegam','mnu']
-# g = plots.getSubplotPlotter(width_inch=14)
-# g.settings.axes_fontsize = 12
-# g.settings.legend_fontsize = 16
-# g.triangle_plot(samples,params,legend_labels=labels)
-
-# %% [markdown]
-# ### Plot linear power parameters from chain and from Lya likelihoods
-
-# %%
-# fit_type = "global_opt"
-# data_lab = "DESIY1_QMLE3"
-# emu = "mpg"
-# file = "../tutorials/out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
-# out_dict = np.load(file, allow_pickle=True).item()
-
-# %%
-# true_DL2=0.35
-# true_neff=-2.3
-
-# neff_err =out_dict["err_n_star"]
-# DL2_err =out_dict["err_Delta2_star"]
-# r = out_dict["rho"]
-
-# DL2_err = 0.056
-# neff_err = 0.022
-# r=-0.134
-
-# create grid (note j in number of elements, crazy python)
-# thresholds = [2.30,6.17,11.8]
 thresholds = [2.30, 6.18]
 # thresholds = [2.30]
 # coeff_mult = 0.5 # to get log-like, not to plot Eq. 1, https://arxiv.org/abs/2303.00746
-coeff_mult = 1
 neff_grid, DL2_grid = np.mgrid[-2.4:-2.2:200j, 0.2:0.65:200j]
-chi2_Mc2005=coeff_mult * marg_lya_like.gaussian_chi2_McDonald2005(neff_grid, DL2_grid)
-chi2_PD2015=coeff_mult * marg_lya_like.gaussian_chi2_PalanqueDelabrouille2015(neff_grid, DL2_grid)
-chi2_Ch2019=coeff_mult * marg_lya_like.gaussian_chi2_Chabanier2019(neff_grid, DL2_grid)
-chi2_Wa2024=coeff_mult * marg_lya_like.gaussian_chi2_Walther2024(neff_grid, DL2_grid, ana_type="priors")
-chi2_Wa2024_np=coeff_mult * marg_lya_like.gaussian_chi2_Walther2024(neff_grid, DL2_grid, ana_type="no_priors")
+chi2_Mc2005 = marg_lya_like.gaussian_chi2_McDonald2005(neff_grid, DL2_grid)
+chi2_PD2015 = marg_lya_like.gaussian_chi2_PalanqueDelabrouille2015(neff_grid, DL2_grid)
+chi2_Ch2019 = marg_lya_like.gaussian_chi2_Chabanier2019(neff_grid, DL2_grid)
+chi2_Wa2024 = marg_lya_like.gaussian_chi2_Walther2024(neff_grid, DL2_grid, ana_type="priors")
+# chi2_Wa2024_np=coeff_mult * marg_lya_like.gaussian_chi2_Walther2024(neff_grid, DL2_grid, ana_type="no_priors")
 
-
-# chi2_desi = marg_lya_like.gaussian_chi2(neff_grid, DL2_grid, out_dict["ycen_2d"], out_dict["xcen_2d"], out_dict["err_n_star"], out_dict["err_Delta2_star"], out_dict["rho"])
-# chi2_desi = marg_lya_like.gaussian_chi2(neff_grid, DL2_grid, true_neff, true_DL2, )
-
-# %%
-# CS = plt.contour(DL2_grid, neff_grid,chi2_Ch2019,levels=thresholds,colors='C3')
-# plt.xlim(0.25, 0.45)
-# plt.ylim(-2.45, -2.25)
-
-# xcen, ycen, xerr, yerr = print_err(CS)
-# pdf = stats.norm.pdf(x_D2S, xcen, xerr)
-# ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C3')
-# pdf = stats.norm.pdf(x_NS, ycen, yerr)
-# ax_NS.plot(x_NS, pdf/pdf.max(),color='C3')
-
-# %%
-# plt.contour(DL2_grid, neff_grid,chi2_desi,levels=thresholds[:2],colors='C0')
-# plt.xlim(0.4, 0.63)
-# plt.ylim(-2.34, -2.2)
-
-# %%
-def print_err(ell):
-    # ell is a QuadContourSet from plt.contour or corner
-    paths = ell.get_paths()
-    if not paths:
-        raise ValueError("No paths found in contour set")
-    
-    # take the first contour path
-    ver = paths[0].vertices
-    xcen = ver[:, 0].mean()
-    ycen = ver[:, 1].mean()
-    xerr = 0.5 * (ver[:, 0].max() - ver[:, 0].min())
-    yerr = 0.5 * (ver[:, 1].max() - ver[:, 1].min())
-
-    print(np.round(xerr, 3), np.round(yerr, 3))
-    return xcen, ycen, xerr, yerr
-
-# %%
-
-# g = plots.getSinglePlotter(width_inch=8)
-# g.plot_2d(cmb, ['linP_n_star', 'linP_DL2_star'],lims=[-2.4,-2.25, 0.2,0.5])
-
-
-# g = plots.getSubplotPlotter(width_inch=8)
-# g.settings.axes_fontsize = 10
-# g.settings.legend_fontsize = 14
-# g.triangle_plot([cmb['samples']],
-#                 ['linP_n_star', 'linP_DL2_star'],
-#                 legend_labels=[r'$\Lambda$CDM'])
 
 # %%
 import scipy.stats as stats
 import matplotlib.lines as mlines
 
 # %%
+base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 dat_mpg = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 dat_blob = np.load(folder + "blobs.npy")
+sum_mpg = np.load(folder + "summary.npy", allow_pickle=True).item()
 
-# %%
 delta2_star = dat_blob["Delta2_star"].reshape(-1)
 n_star = dat_blob["n_star"].reshape(-1)
+
+ds = delta2_star
+ns = n_star
+
+per_ds = np.percentile(ds, [5, 16, 50, 84, 95])
+per_ns = np.percentile(ns, [5, 16, 50, 84, 95])
+_ = (ds > per_ds[0]) & (ds < per_ds[-1]) & (ns > per_ns[0]) & (ns < per_ns[-1])
+corr = np.corrcoef(ds[_], ns[_])
+# corr = np.corrcoef(ds, ns)
+r = corr[0, 1]
+r
+
+# %%
+fake_blinding = {
+    'Delta2_star': sum_mpg["delta2_star_16_50_84"][1]-np.median(cmb["samples"]["linP_DL2_star"]),
+     'n_star': sum_mpg["n_star_16_50_84"][1]-np.median(cmb["samples"]["linP_n_star"]),
+}
+# real_blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
+
+# blinding = real_blinding
+blinding = fake_blinding
+
+# %%
+desi_dr1 = {
+    "Delta2_star":sum_mpg["delta2_star_16_50_84"][1] - blinding["Delta2_star"],
+    "n_star":sum_mpg["n_star_16_50_84"][1] - blinding["n_star"],
+    "r":r,
+    "Delta2_star_err":sum_mpg['delta2_star_err'],
+    "n_star_err":sum_mpg["n_star_err"],
+}
+
+# %%
+
+# %%
 
 # %%
 from scipy.stats import gaussian_kde
@@ -234,14 +139,6 @@ x_ns = np.linspace(hist_ns_x.min(), hist_ns_x.max(), 200)
 y_ns = kde_ns(x_ns)
 y_ns /= y_ns.max()
 
-# %%
-
-true_cosmo = {
-    'Delta2_star': delta2_star.mean()-np.median(cmb["samples"]["linP_DL2_star"]),
-     'n_star': n_star.mean()-np.median(cmb["samples"]["linP_n_star"]),
-}
-
-
 # %% jupyter={"outputs_hidden": false}
 labs = ['DESI-DR1 (this work)', 'SDSS (McDonald+05)', 'BOSS\n(Palanque-Delabrouille+15)', 'eBOSS (Chabanier+19)', 'eBOSS + {$\\bar{F}, \\Omega_m, H_0$} priors\n(Walther+24)']
 cmap = plt.colormaps["Blues"]
@@ -250,18 +147,12 @@ lw = [3, 2]
 col = [0.7, 0.3]
 alpha=[0.7, 0.7]
 
-# specify CMB chain to plot
-# cmb=wmap9
-# g = plots.getSinglePlotter(width_inch=8)
-# g.plot_2d(cmb, ['linP_n_star', 'linP_DL2_star'],lims=[-2.4,-2.25, 0.2,0.5])
-# g.plot_2d(cmb['samples'], ['linP_n_star', 'linP_DL2_star'],lims=[-2.4,-2.25,0.2,0.5])
-#g.plot_2d(planck2018_mnu_BAO['samples'], ['linP_n_star', 'linP_DL2_star'],lims=[-2.4,-2.25,0.2,0.5])
-
 g = plots.getSubplotPlotter(width_inch=10)
 g.settings.num_plot_contours = 2
-
 g.settings.axes_fontsize = fontsize-6
 g.settings.legend_fontsize = fontsize-6
+
+# from Planck
 g.triangle_plot(
     [cmb['samples']],
     ['linP_DL2_star', 'linP_n_star'],
@@ -277,79 +168,43 @@ ax_D2S = g.subplots[0, 0]
 x_D2S = np.linspace(0.2, 0.55, 500)
 x_NS = np.linspace(-2.4, -2.2, 500)
 
+# from literature
 
-CS = ax.contour(DL2_grid, neff_grid,chi2_Mc2005,levels=thresholds,colors='C1', linewidths=lw, alpha=alpha[0])
-xcen, ycen, xerr, yerr = print_err(CS)
-pdf = stats.norm.pdf(x_D2S, xcen, xerr)
-ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C1', lw=lw[0], alpha=alpha[0])
-pdf = stats.norm.pdf(x_NS, ycen, yerr)
-ax_NS.plot(x_NS, pdf/pdf.max(),color='C1', lw=lw[0], alpha=alpha[0])
+chi2_list = [chi2_Mc2005, chi2_PD2015, chi2_Ch2019, chi2_Wa2024]
+for ii, _chi2 in enumerate(chi2_list):
+    color = "C" + str(ii + 1)
+    CS = ax.contour(DL2_grid, neff_grid, _chi2["chi2"], levels=thresholds,colors=color, linewidths=lw, alpha=alpha[0])
+    pdf = stats.norm.pdf(x_D2S, _chi2["Delta2_star"], _chi2["Delta2_star_err"])
+    ax_D2S.plot(x_D2S, pdf/pdf.max(),color=color, lw=lw[0], alpha=alpha[0])
+    pdf = stats.norm.pdf(x_NS, _chi2["n_star"], _chi2["n_star_err"])
+    ax_NS.plot(x_NS, pdf/pdf.max(),color=color, lw=lw[0], alpha=alpha[0])
 
-CS = ax.contour(DL2_grid, neff_grid,chi2_PD2015,levels=thresholds,colors='C2', linewidths=lw, alphas=alpha[0])
-xcen, ycen, xerr, yerr = print_err(CS)
-pdf = stats.norm.pdf(x_D2S, xcen, xerr)
-ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C2', lw=lw[0], alpha=alpha[0])
-pdf = stats.norm.pdf(x_NS, ycen, yerr)
-ax_NS.plot(x_NS, pdf/pdf.max(),color='C2', lw=lw[0], alpha=alpha[0])
-
-CS = ax.contour(DL2_grid, neff_grid,chi2_Ch2019,levels=thresholds,colors='C3', linewidths=lw, alphas=alpha[0])
-xcen, ycen, xerr, yerr = print_err(CS)
-pdf = stats.norm.pdf(x_D2S, xcen, xerr)
-ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C3', lw=lw[0], alpha=alpha[0])
-pdf = stats.norm.pdf(x_NS, ycen, yerr)
-ax_NS.plot(x_NS, pdf/pdf.max(),color='C3', lw=lw[0], alpha=alpha[0])
-
-CS = ax.contour(DL2_grid, neff_grid,chi2_Wa2024,levels=thresholds,colors='C4', linewidths=lw, alphas=alpha[0])
-xcen, ycen, xerr, yerr = print_err(CS)
-pdf = stats.norm.pdf(x_D2S, xcen, xerr)
-ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C4', lw=lw[0], alpha=alpha[0])
-pdf = stats.norm.pdf(x_NS, ycen, yerr)
-ax_NS.plot(x_NS, pdf/pdf.max(),color='C4', lw=lw[0], alpha=alpha[0])
-
-####
-
+#### From DESI-DR1
 for inum, num in enumerate([0.68, 0.95]):
     if inum == 0:
         label="This work"
     else:
         label=None
     for jj in range(len(dat_mpg[num])):
-        x = dat_mpg[num][jj][0] - true_cosmo["Delta2_star"]
-        y = dat_mpg[num][jj][1] - true_cosmo["n_star"]
+        x = dat_mpg[num][jj][0] - blinding["Delta2_star"]
+        y = dat_mpg[num][jj][1] - blinding["n_star"]
         ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=alpha[inum])
         ax.fill(x, y, color=cmap(col[inum]), alpha=alpha[inum])
 
-ax_D2S.plot(x_d2s- true_cosmo["Delta2_star"], y_d2s, color=cmap(col[0]), lw=lw[0])
-ax_NS.plot(x_ns- true_cosmo["n_star"], y_ns, color=cmap(col[0]), lw=lw[0])
-
-# CS = ax.contour(DL2_grid, neff_grid,chi2_Wa2024_np,levels=thresholds,colors='C5')
-# xcen, ycen, xerr, yerr = print_err(CS)
-# pdf = stats.norm.pdf(x_D2S, xcen, xerr)
-# ax_D2S.plot(x_D2S, pdf/pdf.max(),color='C5')
-# pdf = stats.norm.pdf(x_NS, ycen, yerr)
-# ax_NS.plot(x_NS, pdf/pdf.max(),color='C5')
+ax_D2S.plot(x_d2s - blinding["Delta2_star"], y_d2s, color=cmap(col[0]), lw=lw[0])
+ax_NS.plot(x_ns - blinding["n_star"], y_ns, color=cmap(col[0]), lw=lw[0])
 
 
-# CS = ax.contour(neff_grid,DL2_grid,chi2_desi,levels=thresholds[:2],colors='C4')
-# xcen, ycen, xerr, yerr = print_err(CS)
-# pdf = stats.norm.pdf(x_D2S, ycen, yerr)
-# ax_D2S.plot(x_D2S, pdf/pdf.max())
-# pdf = stats.norm.pdf(x_NS, xcen, xerr)
-# ax_NS.plot(x_NS, pdf/pdf.max())
+# format plot
 
-# plt.axhline(y=1,color='C0',label=cmb['label'])
 for ii in range(len(labs)):
     ax.axhline(y=1,color='C'+str(ii),label=labs[ii])
 
 ax.set_ylim(-2.39, -2.24)
 ax.set_xlim(0.23, 0.52)
 
-# plt.title(r'Linear power constraints at ($z=3$, $k_p=0.009$ s/km)')
-# plt.grid()  
 
-# ax.legend()
-
- # $\Lambda$CDM
+ # Legend
 handles = []
 handles.append(mlines.Line2D([], [], color='black', label=r'Planck+18', lw=3))
 for ii in range(len(labs)):
@@ -378,7 +233,6 @@ ax.set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
 ax.set_ylabel(r"$n_\star$", fontsize=fontsize)
 ax_NS.set_xlabel(r"$n_\star$", fontsize=fontsize)
 
-
 # ax.grid()
 
 for ax in g.subplots[-1]:  # last row of panels
@@ -391,18 +245,5 @@ plt.savefig("figs/star_literature.png")
 plt.savefig("figs/star_literature.pdf", bbox_inches="tight")
 
 # %%
-
-# %%
-
-# CS = plt.contour(DL2_grid, neff_grid, chi2_Ch2019, levels=thresholds[:2],colors='C0')
-# print_err(CS)
-
-# # plt.ylim(-2.41, -2.29)
-# # plt.ylim(-2.4, -2.25)
-# plt.ylim(-2.35, -2.33)
-# # plt.xlim(0.14, 0.44)
-# # plt.xlim(0.20, 0.40)
-# plt.xlim(0.28, 0.36)
-# plt.grid()
 
 # %%

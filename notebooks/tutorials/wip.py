@@ -366,7 +366,7 @@ emu_cov_type = "full"
 emulator_label="CH24_mpgcen_gpr"
 # emulator_label="CH24_nyxcen_gpr"
 # name_variation = "cosmo_h74"
-name_variation = "cosmo"
+# name_variation = "cosmo"
 
 args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
 args.set_baseline(
@@ -380,19 +380,7 @@ pip = Pipeline(args, out_folder=args.out_folder)
 
 
 # %%
-rats = pip.fitter.like.theory.model_cont.metal_models["Si_mult"].rat
-
-# %%
-rats["SiIIa_SiIII"]/rats["SiIIb_SiIII"]
-
-# %%
-(2.29 - 1)/0.5/(0.6 + 0.49)
-
-# %%
-1.42 * 0.48
-
-# %%
-0.80 * 0.48
+# np.save("blinding.npy", pip.fitter.like.blind)
 
 # %%
 for ii, par in enumerate(pip.fitter.like.free_params):

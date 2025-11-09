@@ -28,8 +28,6 @@ import matplotlib.pyplot as plt
 from cup1d.planck import planck_chains
 from cup1d.planck import add_linP_params
 from cup1d.likelihood import marg_lya_like
-# because of black magic, getdist needs this strange order of imports
-# %matplotlib inline
 from cup1d.utils.utils import get_path_repo
 
 from matplotlib import rcParams
@@ -39,24 +37,6 @@ rcParams["font.family"] = "STIXGeneral"
 
 # %% [markdown]
 # ### Read an extended Planck chains and plot linear power parameters
-#
-# Planck 2018 with free neutrino mass, already provided in cup1d
-
-# %%
-# add_BAO=True
-# if add_BAO:
-#     planck_data='plikHM_TTTEEE_lowl_lowE_BAO'
-#     planck_label='Planck 2018 + BAO'
-#     plot_label='Planck_BAO_LyaDESI_mnu'
-# else:
-#     planck_data='plikHM_TTTEEE_lowl_lowE'
-#     planck_label='Planck 2018'
-#     plot_label='Planck_LyaDESI_mnu'
-# # model with massive neutrinos
-# model='base_mnu'
-# planck2018=planck_chains.get_planck_2018(model=model,data=planck_data)
-
-# %%
 
 # %%
 
@@ -135,39 +115,42 @@ cmb_nnu = planck_chains.get_planck_2018(
 # )
 
 # %%
-# cmb["samples"].getParamSampleDict(0).keys()
-
-# %%
-# fit_type = "global_opt"
-# data_lab = "DESIY1_QMLE3"
-# emu = "mpg"
-# file = "../tutorials/out_pl/"+ data_lab + "_" + emu + "_" + fit_type + ".npy"
-# out_dict = np.load(file, allow_pickle=True).item()
+base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
 
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 
 dat_mpg = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 sum_mpg = np.load(folder + "summary.npy", allow_pickle=True).item()
-true_cosmo = {
+
+blobs = np.load(folder + "blobs.npy")
+ds = blobs["Delta2_star"].reshape(-1)
+ns = blobs["n_star"].reshape(-1)
+
+per_ds = np.percentile(ds, [5, 16, 50, 84, 95])
+per_ns = np.percentile(ns, [5, 16, 50, 84, 95])
+_ = (ds > per_ds[0]) & (ds < per_ds[-1]) & (ns > per_ns[0]) & (ns < per_ns[-1])
+corr = np.corrcoef(ds[_], ns[_])
+# corr = np.corrcoef(ds, ns)
+r = corr[0, 1]
+
+# %% [markdown]
+# ### Prepare unblinding
+
+# %%
+fake_blinding = {
     'Delta2_star': sum_mpg["delta2_star_16_50_84"][1]-np.median(cmb["samples"]["linP_DL2_star"]),
      'n_star': sum_mpg["n_star_16_50_84"][1]-np.median(cmb["samples"]["linP_n_star"]),
 }
-true_cosmo
+# real_blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
 
-# %%
-
-blobs = np.load(folder + "blobs.npy")
-corr = np.corrcoef(blobs["Delta2_star"].reshape(-1), blobs["n_star"].reshape(-1))
-# per_ds = np.percentile(blobs["Delta2_star"].reshape(-1), [16, 50, 84])
-# per_ns = np.percentile(blobs["n_star"].reshape(-1), [16, 50, 84])
-r = corr[0, 1]
-r
+# blinding = real_blinding
+blinding = fake_blinding
 
 # %%
 desi_dr1 = {
-    "Delta2_star":sum_mpg["delta2_star_16_50_84"][1] - true_cosmo["Delta2_star"],
-    "n_star":sum_mpg["n_star_16_50_84"][1] - true_cosmo["n_star"],
+    "Delta2_star":sum_mpg["delta2_star_16_50_84"][1] - blinding["Delta2_star"],
+    "n_star":sum_mpg["n_star_16_50_84"][1] - blinding["n_star"],
     "r":r,
     "Delta2_star_err":sum_mpg['delta2_star_err'],
     "n_star_err":sum_mpg["n_star_err"],
@@ -228,8 +211,8 @@ for inum, num in enumerate([0.68, 0.95]):
     else:
         label=None
     for jj in range(len(dat_mpg[num])):
-        x = dat_mpg[num][jj][0] - true_cosmo["Delta2_star"]
-        y = dat_mpg[num][jj][1] - true_cosmo["n_star"]
+        x = dat_mpg[num][jj][0] - blinding["Delta2_star"]
+        y = dat_mpg[num][jj][1] - blinding["n_star"]
         ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
         ax.fill(x, y, color=cmap(col[inum]), alpha=0.5)
 
@@ -245,27 +228,13 @@ ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
 ax.tick_params(axis="both", which="major", labelsize=ftsize)
 
 plt.legend(fontsize=ftsize, loc="upper left", ncol=2)
-# plt.tight_layout()
+plt.tight_layout()
 
 plt.savefig("figs/star_planck_mine.png", bbox_inches='tight')
 plt.savefig("figs/star_planck_mine.pdf", bbox_inches='tight')
 
 
 # %%
-
-# %%
-
-# %%
-# from matplotlib import colormaps
-
-# %%
-# # plot also neutrino mass (for nuLCDM)
-# g = plots.getSubplotPlotter(width_inch=10)
-# g.settings.axes_fontsize = 10
-# g.settings.legend_fontsize = 14
-# g.triangle_plot(planck2018['samples'],
-#                 ['linP_DL2_star','linP_n_star','linP_alpha_star','linP_f_star','linP_g_star','omegam','mnu'],
-#                 legend_labels=[planck_label])
 
 # %% [markdown]
 # ### Add mock DESI Lya likelihood
@@ -277,12 +246,6 @@ def gaussian_chi2_mock_DESI(neff, DL2, true_DL2=0.35, true_neff=-2.3, DL2_err=0.
     """Compute Gaussian Delta chi^2 for a particular point(s) (neff,DL2),
     using a mock measurement from DESI (complete made up at this point).
     """
-    # # DL2 = k^3 P(k) / (2 pi^2), at z=3
-    # DL2_err=0.003
-    # # neff = effective slope at kp = 0.009 s/km, i.e., d ln P / dln k
-    # neff_err=0.002
-    # # correlation coefficient
-    # r=0.55
     return marg_lya_like.gaussian_chi2(neff, DL2, true_neff, true_DL2, neff_err, DL2_err, r)
 
 
@@ -440,64 +403,50 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
     plt.savefig("figs/import_"+param_name+".pdf", bbox_inches="tight")
 
 # %%
+plot_combine(cmb_mnu, desi_dr1, "mnu")
 
+# %%
+plot_combine(cmb_nrun, desi_dr1, "nrun")
+
+# %%
 plot_combine(cmb_nrun_nrunrun, desi_dr1, "nrunrun")
 
 # %%
-
 plot_combine(cmb_nnu, desi_dr1, "nnu")
 
 # %%
 
-plot_combine(cmb_nrun, desi_dr1, "nrun")
-
 # %%
-
-plot_combine(cmb_mnu, desi_dr1, "mnu")
 
 # %%
 
 # %%
-# plot_combine(cmb_tau, desi_dr1, "tau")
-# plot_combine(cmb_mnu, desi_dr1, "mnu")
-# plot_combine(cmb_nnu, desi_dr1, "nnu")
-# plot_combine(cmb_nrun, desi_dr1, "nrun")
-
-# %%
-1-46/67
-
-# %%
-1-16/19
 
 # %%
 
 # %%
 
 # %%
-# true_DL2=0.35
-# true_neff=-2.3
-
-# DL2_err = 0.06
-# neff_err = 0.02
-# r=-0.134
-# coeff_mult = 2.3
-
-# chi2_desi = marg_lya_like.gaussian_chi2(neff, DL2, true_neff, true_DL2, neff_err, DL2_err, r)
 
 # %%
-# {'x0': 0.443151934816415,
-#  'y0': -2.2830673979023928,
-#  'a': 0.05671364141407182,
-#  'b': 0.02081226136234671,
-#  'theta': -0.13448802462450818}
 
 # %%
-# true_DL2=0.35
-# true_neff=-2.3
-# chi2_desi = marg_lya_like.gaussian_chi2(neff_grid, DL2_grid, true_neff, true_DL2, out_dict["err_n_star"], out_dict["err_Delta2_star"], out_dict["rho"])
 
 # %%
-new_loglike.shape
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
+# %%
 
 # %% [markdown]
 # #### Almost no constraints on As, ns

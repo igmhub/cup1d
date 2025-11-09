@@ -26,7 +26,17 @@ def gaussian_chi2_McDonald2005(neff, DL2):
     neff_err = 0.055
     # correlation coefficient
     r = 0.6
-    return gaussian_chi2(neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r)
+    results = {
+        "Delta2_star": DL2_val,
+        "Delta2_star_err": DL2_err,
+        "n_star": neff_val,
+        "n_star_err": neff_err,
+        "r": r,
+        "chi2": gaussian_chi2(
+            neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r
+        ),
+    }
+    return results
 
 
 def gaussian_chi2_Chabanier2019(neff, DL2):
@@ -42,7 +52,17 @@ def gaussian_chi2_Chabanier2019(neff, DL2):
     neff_err = 0.0060
     # correlation coefficient
     r = 0.512
-    return gaussian_chi2(neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r)
+    results = {
+        "Delta2_star": DL2_val,
+        "Delta2_star_err": DL2_err,
+        "n_star": neff_val,
+        "n_star_err": neff_err,
+        "r": r,
+        "chi2": gaussian_chi2(
+            neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r
+        ),
+    }
+    return results
 
 
 def gaussian_chi2_PalanqueDelabrouille2015(neff, DL2):
@@ -57,7 +77,17 @@ def gaussian_chi2_PalanqueDelabrouille2015(neff, DL2):
     neff_err = 0.01
     # correlation coefficient (no idea from where)
     r = 0.55
-    return gaussian_chi2(neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r)
+    results = {
+        "Delta2_star": DL2_val,
+        "Delta2_star_err": DL2_err,
+        "n_star": neff_val,
+        "n_star_err": neff_err,
+        "r": r,
+        "chi2": gaussian_chi2(
+            neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r
+        ),
+    }
+    return results
 
 
 def gaussian_chi2_Walther2024(neff, DL2, ana_type="priors"):
@@ -86,4 +116,14 @@ def gaussian_chi2_Walther2024(neff, DL2, ana_type="priors"):
         r = 0.55
         print("no prior")
 
-    return gaussian_chi2(neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r)
+    results = {
+        "Delta2_star": DL2_val,
+        "Delta2_star_err": DL2_err,
+        "n_star": neff_val,
+        "n_star_err": neff_err,
+        "r": r,
+        "chi2": gaussian_chi2(
+            neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r
+        ),
+    }
+    return results
