@@ -65,9 +65,9 @@ def main():
         fix_cosmo=False,
         P1D_type=data_label,
         name_variation=name_variation,
-        mcmc_conf="explore",
         # mcmc_conf="test",
-        # mcmc_conf="full", # only for central chain
+        mcmc_conf="explore",  # variations
+        # mcmc_conf="full", # baseline
     )
     pip = Pipeline(args, out_folder=args.out_folder)
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
