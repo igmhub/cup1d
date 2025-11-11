@@ -133,6 +133,7 @@ _ = (ds > per_ds[0]) & (ds < per_ds[-1]) & (ns > per_ns[0]) & (ns < per_ns[-1])
 corr = np.corrcoef(ds[_], ns[_])
 # corr = np.corrcoef(ds, ns)
 r = corr[0, 1]
+r
 
 # %% [markdown]
 # ### Prepare unblinding
@@ -142,10 +143,10 @@ fake_blinding = {
     'Delta2_star': sum_mpg["delta2_star_16_50_84"][1]-np.median(cmb["samples"]["linP_DL2_star"]),
      'n_star': sum_mpg["n_star_16_50_84"][1]-np.median(cmb["samples"]["linP_n_star"]),
 }
-# real_blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
+real_blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
 
-# blinding = real_blinding
-blinding = fake_blinding
+blinding = real_blinding
+# blinding = fake_blinding
 
 # %%
 desi_dr1 = {
@@ -403,13 +404,26 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
     plt.savefig("figs/import_"+param_name+".pdf", bbox_inches="tight")
 
 # %%
+np.round(100*(1-0.205/0.257), 2)
+
+# %%
 plot_combine(cmb_mnu, desi_dr1, "mnu")
+
+# %%
+np.round(100*(1-0.0046/0.0067), 2)
 
 # %%
 plot_combine(cmb_nrun, desi_dr1, "nrun")
 
 # %%
+print(np.round(100*(1-0.0049/0.010), 2))
+np.round(100*(1-0.0050/0.013), 2)
+
+# %%
 plot_combine(cmb_nrun_nrunrun, desi_dr1, "nrunrun")
+
+# %%
+np.round(100*(1-0.16/0.19), 2)
 
 # %%
 plot_combine(cmb_nnu, desi_dr1, "nnu")

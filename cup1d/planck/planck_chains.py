@@ -125,3 +125,41 @@ def get_planck_2018(
     return get_planck_results(
         2018, model=model, data=data, root_dir=root_dir, linP_tag=linP_tag
     )
+
+
+def get_cobaya(
+    root_dir=None,
+    model="base_mnu",
+    data="desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing",
+    linP_tag="zlinP",
+):
+    """Load results from Planck, for a given data release and data combination.
+    Inputs:
+        - release (integer): 2013, 2015 or 2018
+        - model (string): cosmo model, e.g., base, base_mnu...
+        - data (string): data combination, e.g., plikHM_TT_lowl_lowE
+        - root_dir (string): path to folder with Planck chains
+        - linP_tag (string): label identifying linear power columns
+    Outputs:
+        - dictionary with relevant information
+    """
+
+    from cobaya.yaml import yaml_load_file
+    from cobaya import load_samples
+
+    if linP_tag is not None:
+        folder = os.path.join(root_dir, model, data, linP_tag + "/")
+    else:
+        folder = os.path.join(root_dir, model, data + "/")
+
+    info_from_yaml = yaml_load_file(folder + "chain.input.yaml")
+    info_from_yaml["output"] = folder + "chain"
+
+    gd_sample = load_samples(info_from_yaml["output"], to_getdist=True)
+
+    analysis = {}
+    analysis["samples"] = gd_sample
+    # analysis["samples"] = load_samples(analysis["dir_name"] + "chain.1.txt")
+    analysis["parameters"] = analysis["samples"].getParams()
+
+    return analysis

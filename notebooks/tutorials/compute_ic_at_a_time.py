@@ -67,7 +67,7 @@ out_mle_cube = []
 out_chi2 = []
 out_pnames = []
 # for ii in range(len(pip.fitter.like.data.z)):
-for ii in range(9,10):
+for ii in range(1):
     zmask = np.array([pip.fitter.like.data.z[ii]])
 
     pip = Pipeline(args, out_folder=None)
@@ -109,9 +109,6 @@ plotter = Plotter(pip.fitter, save_directory=diru, zmask=zmask)
 # +
 
 plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize=20)
-# +
-
-# plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize=20)
 # -
 
 

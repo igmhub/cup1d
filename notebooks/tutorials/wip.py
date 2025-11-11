@@ -380,7 +380,16 @@ pip = Pipeline(args, out_folder=args.out_folder)
 
 
 # %%
-# np.save("blinding.npy", pip.fitter.like.blind)
+np.save("blinding.npy", pip.fitter.like.blind)
+
+# %%
+
+# %%
+
+# %%
+
+# pip.fitter.like.plot_cov_to_pk(fname="figs/err2p1d_qmle3")
+pip.fitter.like.plot_cov_to_pk(use_pk_smooth=False, fname="figs/err2p1d_qmle3")
 
 # %%
 for ii, par in enumerate(pip.fitter.like.free_params):

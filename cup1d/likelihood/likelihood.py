@@ -2921,6 +2921,13 @@ class Likelihood(object):
         for ii in range(len(self.cov_Pk_kms)):
             cov_stat = np.diag(self.data.covstat_Pk_kms[ii])
             cov_syst = np.diag(self.data.cov_Pk_kms[ii]) - cov_stat
+
+            ind = np.argmin(np.abs(self.cov_factor["z"] - self.data.z[ii]))
+            # inflate errors stat
+            cov_stat = cov_stat * self.cov_factor["val_stat"][ind] ** 2
+            # inflate errors syst
+            cov_syst = cov_syst * self.cov_factor["val_syst"][ind] ** 2
+
             cov_emu = np.diag(self.cov_emu_Pk_kms[ii])
             cov_tot = np.diag(self.cov_Pk_kms[ii])
             if use_pk_smooth:

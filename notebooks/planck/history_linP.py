@@ -25,7 +25,7 @@
 # %autoreload 2
 import numpy as np
 import os
-from getdist import plots,loadMCSamples
+from getdist import plots
 import matplotlib.pyplot as plt
 from cup1d.planck import planck_chains
 from cup1d.likelihood import marg_lya_like
@@ -38,6 +38,56 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 # rcParams["text.usetex"] = True
+
+# %%
+
+base = "/home/jchaves/Proyectos/projects/lya/cup1d/data/planck_linP_chains/crisjagq"
+model = "base_mnu"
+data = "desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing"
+
+cmb = planck_chains.get_cobaya(base, model, data, linP_tag=None)
+
+# %%
+
+# %%
+folder = "/home/jchaves/Proyectos/projects/lya/cup1d/data/planck_linP_chains/crisjagq/base_mnu/desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP/base_mnu_desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP"
+res = loadMCSamples(folder)
+
+# %%
+print(res.paramNames)
+
+# %%
+res["logA"]
+
+# %%
+res["linP_DL2_star"]
+
+# %%
+res["linP_DL2_star2"]
+
+# %%
+planck_chains.load_samples(base + "/" + model + "/" + data + "_linP")
+
+# %%
+
+cmb = planck_chains.get_cobaya(base, model, data)
+
+# %%
+fontsize = 14
+g = plots.getSubplotPlotter(width_inch=10)
+g.settings.num_plot_contours = 2
+g.settings.axes_fontsize = fontsize-6
+g.settings.legend_fontsize = fontsize-6
+
+# from Planck
+g.triangle_plot(
+    [cmb['samples']],
+    ['As', 'ns', "mnu"],
+)
+
+# %%
+
+# %%
 
 # %% [markdown]
 # ### Read extended CMB chains from historical releases
@@ -97,10 +147,10 @@ fake_blinding = {
     'Delta2_star': sum_mpg["delta2_star_16_50_84"][1]-np.median(cmb["samples"]["linP_DL2_star"]),
      'n_star': sum_mpg["n_star_16_50_84"][1]-np.median(cmb["samples"]["linP_n_star"]),
 }
-# real_blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
+real_blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
 
-# blinding = real_blinding
-blinding = fake_blinding
+blinding = real_blinding
+# blinding = fake_blinding
 
 # %%
 desi_dr1 = {

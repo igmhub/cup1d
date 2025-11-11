@@ -225,7 +225,8 @@ from cup1d.likelihood.cosmologies import set_cosmo
 from cup1d.likelihood import CAMB_model
 import matplotlib.cm as cm
 
-
+base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
+blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
 
 # +
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
@@ -287,59 +288,56 @@ sum_nyx = np.load(folder + "summary.npy", allow_pickle=True).item()
 
 ## data
 
-folder = base + "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_2/"
 dat_fft3 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_2/"
 dat_qmle = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 sum_qmle = np.load(folder + "summary.npy", allow_pickle=True).item()
 
-# folder = base + "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_1/"
-# dat_fft = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-
-folder = base + "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_2/"
 dat_zmax = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_2/"
 dat_zmin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 ## cov
 
-folder = base + "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_2/"
 dat_no_inflate = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_2/"
 dat_no_emu_cov = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/emu_diag/CH24_mpgcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/emu_diag/CH24_mpgcen_gpr/chain_3/"
 dat_emu_diag = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/emu_block/CH24_mpgcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/emu_block/CH24_mpgcen_gpr/chain_3/"
 dat_emu_block = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/data_syst_diag/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/data_syst_diag/CH24_mpgcen_gpr/chain_2/"
 dat_syst_diag = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 ## IGM
 
-folder = base + "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_2/"
 dat_more_igm = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 ## cosmo
 
-folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_3/"
 dat_cosmo = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_3/"
 dat_cosmo_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"
 dat_cosmo_high = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"
 dat_cosmo_high_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"
 dat_cosmo_low = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"
 dat_cosmo_low_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/cosmo_h74/CH24_mpgcen_gpr/chain_1/"
@@ -354,31 +352,34 @@ dat_cosmo_mnu_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True)
 
 ## ingredients
 
-folder = base + "DESIY1_QMLE3/DLAs/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/DLAs/CH24_mpgcen_gpr/chain_2/"
 dat_dlas = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/HCD0/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/HCD0/CH24_mpgcen_gpr/chain_2/"
 dat_HCD0 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/HCD_BOSS/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/HCD_BOSS/CH24_mpgcen_gpr/chain_2/"
 dat_HCD_BOSS = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_2/"
 dat_metal_deco = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_2/"
 dat_metal_si2 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_2/"
 dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_2/"
 dat_metal_thin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr/chain_2/"
 dat_Metals_Ma2025 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 ## no more
+
+# folder = base + "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_1/"
+# dat_fft = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 # folder = base + "DESIY1_QMLE3/Turner24/CH24_mpgcen_gpr/chain_1/"
 # dat_turner = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
@@ -520,7 +521,7 @@ fname = [
     # "test",
 ]
 
-for image in range(15):
+for image in range(10, 13):
 
     # if image in [3, 4, 5]:
     #     ftsize = 26
@@ -609,21 +610,22 @@ for image in range(15):
             ds_diff = dict_diff["xcen"]
             ns_diff = dict_diff["ycen"]
 
-        # if (ii == 0):
-        #     if variations[1] == "DESIY1_QMLE3_nyx":
-        #         new_boundary = boundary2.copy()
-        #         new_boundary[:,0] -= ds_diff
-        #         new_boundary[:,1] -= ns_diff
-        #         patch = return_patch_priors(new_boundary, col="0.3")
-        #         ax.add_patch(patch)
-        #         ax.fill(new_boundary[:, 0], new_boundary[:, 1], "white")
-        #         ax.scatter(sim_dat2[:,0] - ds_diff, sim_dat2[:,1] - ns_diff, color="C1")
-        #     new_boundary = boundary.copy()
-        #     new_boundary[:,0] -= ds_diff
-        #     new_boundary[:,1] -= ns_diff
-        #     patch = return_patch_priors(new_boundary)
-        #     ax.add_patch(patch)
-        #     ax.fill(new_boundary[:, 0], new_boundary[:, 1], "white")
+        if var.startswith("sim_") == False:
+            if (ii == 0):
+                if variations[1] == "DESIY1_QMLE3_nyx":
+                    new_boundary = boundary2.copy()
+                    new_boundary[:,0] = new_boundary[:,0] - ds_diff + blinding["Delta2_star"]
+                    new_boundary[:,1] = new_boundary[:,1] - ns_diff + blinding["n_star"]
+                    patch = return_patch_priors(new_boundary, col="0.3")
+                    ax.add_patch(patch)
+                    ax.fill(new_boundary[:, 0], new_boundary[:, 1], "white")
+                new_boundary = boundary.copy()
+                new_boundary[:,0] = new_boundary[:,0] - ds_diff + blinding["Delta2_star"]
+                new_boundary[:,1] = new_boundary[:,1] - ns_diff + blinding["n_star"]
+                patch = return_patch_priors(new_boundary)
+                ax.add_patch(patch)
+                ax.fill(new_boundary[:, 0], new_boundary[:, 1], "white")
+                
 
         for inum, num in enumerate([0.68, 0.95]):
             if inum == 0:
@@ -644,6 +646,20 @@ for image in range(15):
                     ylim[0] = y.min()
                 if y.max() > ylim[1]:
                     ylim[1] = y.max()
+
+
+    # if variations[1] == "DESIY1_QMLE3_nyx":
+    #     ax.scatter(
+    #         sim_dat2[:,0] - ds_diff + blinding["Delta2_star"], 
+    #         sim_dat2[:,1] - ns_diff + blinding["n_star"], 
+    #         color="C1"
+    #     )
+
+    # ax.scatter(
+    #     sim_dat[:,0] - ds_diff + blinding["Delta2_star"], 
+    #     sim_dat[:,1] - ns_diff + blinding["n_star"], 
+    #     color="C0"
+    # )
 
     dx = xlim[1] - xlim[0]
     ax.set_xlim(xlim[0] - dx*0.05, xlim[1] + dx*0.05)
