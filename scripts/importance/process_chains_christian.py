@@ -4,7 +4,6 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
 from mpi4py import MPI
-from getdist import plots
 from cup1d.planck import planck_chains
 from cup1d.planck import add_linP_params
 from cup1d.utils.utils import get_path_repo
@@ -31,8 +30,8 @@ def main():
         )
 
         samples = cmb["samples"]
-        # thinning = 4000
-        # samples.thin(thinning)
+        thinning = 4000
+        samples.thin(thinning)
         Nsamp, Npar = samples.samples.shape
         print(Nsamp, Npar, flush=True)
         params = []
