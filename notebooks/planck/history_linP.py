@@ -41,49 +41,31 @@ rcParams["font.family"] = "STIXGeneral"
 
 # %%
 
-base = "/home/jchaves/Proyectos/projects/lya/cup1d/data/planck_linP_chains/crisjagq"
-model = "base_mnu"
-data = "desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing"
+# base = "/home/jchaves/Proyectos/projects/lya/cup1d/data/planck_linP_chains/crisjagq"
+# model = "base_mnu"
+# data = "desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing"
 
-cmb = planck_chains.get_cobaya(base, model, data, linP_tag=None)
-
-# %%
-
-# %%
-folder = "/home/jchaves/Proyectos/projects/lya/cup1d/data/planck_linP_chains/crisjagq/base_mnu/desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP/base_mnu_desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP"
-res = loadMCSamples(folder)
-
-# %%
-print(res.paramNames)
-
-# %%
-res["logA"]
-
-# %%
-res["linP_DL2_star"]
-
-# %%
-res["linP_DL2_star2"]
-
-# %%
-planck_chains.load_samples(base + "/" + model + "/" + data + "_linP")
+# cmb = planck_chains.get_cobaya(base, model, data, linP_tag=None)
 
 # %%
 
-cmb = planck_chains.get_cobaya(base, model, data)
+# %%
+# folder = "/home/jchaves/Proyectos/projects/lya/cup1d/data/planck_linP_chains/crisjagq/base_mnu/desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP/base_mnu_desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP"
+# cmb = {} 
+# cmb["samples"] = loadMCSamples(folder)
 
 # %%
-fontsize = 14
-g = plots.getSubplotPlotter(width_inch=10)
-g.settings.num_plot_contours = 2
-g.settings.axes_fontsize = fontsize-6
-g.settings.legend_fontsize = fontsize-6
+# fontsize = 14
+# g = plots.getSubplotPlotter(width_inch=10)
+# g.settings.num_plot_contours = 2
+# g.settings.axes_fontsize = fontsize-6
+# g.settings.legend_fontsize = fontsize-6
 
-# from Planck
-g.triangle_plot(
-    [cmb['samples']],
-    ['As', 'ns', "mnu"],
-)
+# # from Planck
+# g.triangle_plot(
+#     [cmb["samples"]],
+#     ["linP_DL2_star", "linP_n_star", "linP_DL2_star2", "linP_n_star2","mnu"],
+# )
 
 # %%
 
@@ -153,6 +135,18 @@ blinding = real_blinding
 # blinding = fake_blinding
 
 # %%
+dict_out = {
+    "Delta2_star":ds - blinding["Delta2_star"],
+    "n_star":ns - blinding["n_star"],
+}
+np.save("final_desi-dr1.npy", dict_out)
+
+# %%
+
+dict_out = np.load("final_desi-dr1.npy", allow_pickle=True).item()
+dict_out.keys()
+
+# %%
 desi_dr1 = {
     "Delta2_star":sum_mpg["delta2_star_16_50_84"][1] - blinding["Delta2_star"],
     "n_star":sum_mpg["n_star_16_50_84"][1] - blinding["n_star"],
@@ -162,6 +156,7 @@ desi_dr1 = {
 }
 
 # %%
+desi_dr1
 
 # %%
 
@@ -189,8 +184,18 @@ x_ns = np.linspace(hist_ns_x.min(), hist_ns_x.max(), 200)
 y_ns = kde_ns(x_ns)
 y_ns /= y_ns.max()
 
+# %%
+from cup1d.likelihood.cosmologies import set_cosmo
+mpg_all = set_cosmo("mpg_0", return_all=True)
+
 # %% jupyter={"outputs_hidden": false}
-labs = ['DESI-DR1 (this work)', 'SDSS (McDonald+05)', 'BOSS\n(Palanque-Delabrouille+15)', 'eBOSS (Chabanier+19)', 'eBOSS + {$\\bar{F}, \\Omega_m, H_0$} priors\n(Walther+24)']
+labs = [
+    'DESI-DR1 (this work)', 
+    'SDSS (McDonald+05)', 
+    'BOSS\n(Palanque-Delabrouille+15)', 
+    'eBOSS (Chabanier+19)', 
+    'eBOSS + {$\\bar{F}, \\Omega_m, H_0$} priors\n(Walther+24)'
+]
 cmap = plt.colormaps["Blues"]
 fontsize = 26
 lw = [3, 2]
@@ -245,6 +250,11 @@ ax_D2S.plot(x_d2s - blinding["Delta2_star"], y_d2s, color=cmap(col[0]), lw=lw[0]
 ax_NS.plot(x_ns - blinding["n_star"], y_ns, color=cmap(col[0]), lw=lw[0])
 
 
+for lab in mpg_all:
+    if lab[-1].isdigit() | (lab == "mpg_central"):
+        _cosmo = mpg_all[lab]
+        ax.scatter(_cosmo["star_params"]['Delta2_star'], _cosmo["star_params"]['n_star'], color="C0")
+
 # format plot
 
 for ii in range(len(labs)):
@@ -289,6 +299,7 @@ for ax in g.subplots[-1]:  # last row of panels
     for label in ax.get_xticklabels():
         label.set_rotation(45)
         label.set_ha('right')
+
 
 plt.tight_layout()
 plt.savefig("figs/star_literature.png")

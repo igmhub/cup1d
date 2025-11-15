@@ -147,40 +147,40 @@ def table_variations(base):
         ],
         "zmax": [
             "Data: $z \\leq 3.4$",
-            "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/zmax/CH24_mpgcen_gpr/chain_2/",
         ],
         "zmin": [
             "Data: $z \\geq 2.6$",
-            "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/zmin/CH24_mpgcen_gpr/chain_2/",
         ],
         "DESIY1_QMLE_mpg": [
             "Data: w/ low SNR",
-            "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_2/",
         ],
         "DESIY1_FFT3_dir_mpg": [
             "Data: FFT",
-            "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_2/",
         ],
         # "DESIY1_FFT_dir_mpg": ["Data: FFT w/ low SNR", "DESIY1_FFT_dir/global_opt/CH24_mpgcen_gpr/chain_1/"],
         "dat_syst_diag": [
             "Cov: uncorr syst",
-            "DESIY1_QMLE3/data_syst_diag/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/data_syst_diag/CH24_mpgcen_gpr/chain_2/",
         ],
         "no_inflate": [
             "Cov: w/o 5\% err",
-            "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_2/",
         ],
         "no_emu_cov": [
             "Cov: w/o emu err",
-            "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/no_emu_cov/CH24_mpgcen_gpr/chain_2/",
         ],
         "emu_diag": [
             "Cov: emu diag",
-            "DESIY1_QMLE3/emu_diag/CH24_mpgcen_gpr/chain_2/",
+            "DESIY1_QMLE3/emu_diag/CH24_mpgcen_gpr/chain_3/",
         ],
         "emu_block": [
             "Cov: emu block diag",
-            "DESIY1_QMLE3/emu_block/CH24_mpgcen_gpr/chain_2/",
+            "DESIY1_QMLE3/emu_block/CH24_mpgcen_gpr/chain_3/",
         ],
         "DESIY1_QMLE3_nyx": [
             "Emulator: lace-lyssa",
@@ -188,7 +188,7 @@ def table_variations(base):
         ],
         "cosmo": [
             "Cosmo: $\omega_0\omega_a$CDM",
-            "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_3/",
         ],
         "cosmo_h74": [
             "Cosmo: $h=0.74$",
@@ -200,47 +200,47 @@ def table_variations(base):
         ],
         "cosmo_high": [
             "Cosmo: high $\Omega_\mathrm{cdm}h^2$",
-            "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/",
         ],
         "cosmo_low": [
             "Cosmo: low $\Omega_\mathrm{cdm}h^2$",
-            "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/",
         ],
         "more_igm": [
             "IGM: $n_z=8$",
-            "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_2/",
         ],
         "hcd0": [
             "HCD: w/ $f_{\\mathrm{const}}^{\\mathrm{HCD}}$",
-            "DESIY1_QMLE3/HCD0/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/HCD0/CH24_mpgcen_gpr/chain_2/",
         ],
         "dlas": [
             "HCD: only DLAs",
-            "DESIY1_QMLE3/DLAs/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/DLAs/CH24_mpgcen_gpr/chain_2/",
         ],
         "HCD_BOSS": [
             "HCD: BOSS",
-            "DESIY1_QMLE3/HCD_BOSS/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/HCD_BOSS/CH24_mpgcen_gpr/chain_2/",
         ],
         "metal_thin": [
             "Metals: opt thin",
-            "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_2/",
         ],
         "metal_deco": [
             "Metals: no H-Si decorr",
-            "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr/chain_2/",
         ],
         "metal_si2": [
             "Metals: no SiII-SiII",
-            "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr/chain_2/",
         ],
         "metal_trad": [
             "Metals: BOSS",
-            "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/metal_trad/CH24_mpgcen_gpr/chain_2/",
         ],
         "Metals_Ma2025": [
             "Metals: Ma+2025",
-            "DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr/chain_1/",
+            "DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr/chain_2/",
         ],
     }
 

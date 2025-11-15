@@ -276,7 +276,7 @@ print(sum_nyx["n_star_err"]/sum_mpg["n_star_err"])
 # +
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 
-folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
+folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 dat_mpg = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 sum_mpg = np.load(folder + "summary.npy", allow_pickle=True).item()
 dat_mpg_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
@@ -521,7 +521,7 @@ fname = [
     # "test",
 ]
 
-for image in range(10, 13):
+for image in range(15):
 
     # if image in [3, 4, 5]:
     #     ftsize = 26
@@ -701,6 +701,18 @@ for image in range(10, 13):
     plt.savefig("figs/vars/variations_"+fname[image]+".pdf")
     plt.savefig("figs/vars/variations_"+fname[image]+".png")
 # -
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # from matplotlib.patches import Ellipse

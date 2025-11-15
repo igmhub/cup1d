@@ -60,15 +60,15 @@ from cup1d.pipeline.set_archive import set_archive
 
 # %%
 
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
-
-from cup1d.plots_and_tables.table_nuisance import table_nuisance
-table_nuisance(base + folder)
-
-# from cup1d.plots_and_tables.table_variations import table_variations
 # base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-# table_variations(base)
+# folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
+
+# from cup1d.plots_and_tables.table_nuisance import table_nuisance
+# table_nuisance(base + folder)
+
+from cup1d.plots_and_tables.table_variations import table_variations
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+table_variations(base)
 
 
 # from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
@@ -380,9 +380,10 @@ pip = Pipeline(args, out_folder=args.out_folder)
 
 
 # %%
-np.save("blinding.npy", pip.fitter.like.blind)
+# np.save("blinding.npy", pip.fitter.like.blind)
 
 # %%
+pip.fitter.like.data.k_kms[-1]
 
 # %%
 

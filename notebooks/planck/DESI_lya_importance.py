@@ -23,7 +23,7 @@
 # %autoreload 2
 import numpy as np
 import os
-from getdist import plots,loadMCSamples
+from getdist import plots, loadMCSamples
 import matplotlib.pyplot as plt
 from cup1d.planck import planck_chains
 from cup1d.planck import add_linP_params
@@ -41,6 +41,10 @@ rcParams["font.family"] = "STIXGeneral"
 # %%
 
 root_dir=os.path.join(get_path_repo("cup1d"), "data", "planck_linP_chains")
+
+folder = root_dir + "/crisjagq/base_mnu/desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP/base_mnu_desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP"
+cmb_mnu2 = {} 
+cmb_mnu2["samples"] = loadMCSamples(folder)
 
 cmb = planck_chains.get_planck_2018(
     model='base',
@@ -158,6 +162,181 @@ desi_dr1 = {
 }
 
 # %%
+ds -= blinding["Delta2_star"]
+ns -= blinding["n_star"]
+
+# %% [markdown]
+# #### Get pk from cmb chains
+
+# %%
+from lace.cosmo import camb_cosmo
+
+def get_pk(icmb, nn=100):
+    
+    ind = np.random.permutation(np.arange(len(icmb['samples'][0])))[:nn]
+    for ii in range(nn):
+        if ii % 10 == 0:
+            print(ii)
+        pars_median = icmb['samples'].getParamSampleDict(ii)
+        _cosmo = camb_cosmo.get_cosmology_from_dictionary(pars_median)
+        k_kms, zs_out, _P_kms = camb_cosmo.get_linP_kms(_cosmo)
+        if ii == 0:
+            P_kms = np.zeros((nn, k_kms[0].shape[0]))
+        P_kms[ii] = _P_kms[0]
+    return k_kms[0], P_kms
+
+
+run_code = False
+
+if run_code:
+    for ii in range(len(cmb_all)):
+        k_kms, P_kms = get_pk(cmb_all[ii], nn=500)
+
+# %%
+
+# %%
+ftsize = 22
+kp_kms = 0.009
+fact = kp_kms**3 / (2 * np.pi**2)
+hatch =  ["", "", "/", "", "/", ""]
+
+
+_ds = cmb['samples'][cmb['samples'].index['linP_DL2_star']]
+_ns = cmb['samples'][cmb['samples'].index['linP_n_star']]
+# p16, p50, p84 = np.percentile(vals, [16, 50, 84])
+# A_fid, sigma_A = np.median(np.log(_ds/fact)), np.std(np.log(_ds/fact))
+# B_fid, sigma_B = np.median(_ns), np.std(_ns)
+# rho = np.corrcoef(_ds, _ns)[0][1]
+
+x = np.geomspace(0.5 * kp_kms, 2 * kp_kms, 200)
+y_samp_fid = np.median(np.log(_ds/fact)[:,None] + _ns[:,None] * np.log(x[None,:]/kp_kms), axis=0)
+
+cmb_all = [
+    cmb, 
+    # cmb_tau, 
+    cmb_mnu, 
+    cmb_nnu, 
+    cmb_nrun, 
+    cmb_nrun_nrunrun,
+]
+cmb_labs = [
+    r"PR3: $\Lambda$CDM", 
+    # r"Planck+18 $\Lambda$CDM (no lowE)",
+    r"PR3: $\sum m_\nu$",
+    r"PR3: $N_\mathrm{eff}$",
+    r"PR3: $\alpha_\mathrm{s}$",
+    r"PR3: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
+]
+
+# icmb = cmb
+# pars_median = {}
+# for par in icmb['samples'].index:
+#     pars_median[par] = np.median(icmb['samples'][icmb['samples'].index[par]])
+# i_best = cmb['samples'].loglikes.argmax()
+# pars_median = cmb['samples'].getParamSampleDict(i_best)
+# _cosmo = camb_cosmo.get_cosmology_from_dictionary(pars_median)
+# k_kms, zs_out, P_kms = camb_cosmo.get_linP_kms(_cosmo)
+
+fig, ax = plt.subplots(3, 1, figsize=(10, 12), sharex=True, sharey=True)
+
+for ii in range(len(cmb_all)):
+# for ii in range(5):
+
+    if ii == 0:
+        nn = 20000
+        ind = np.random.permutation(np.arange(len(ds)))[:nn]
+        A_samp = np.log(ds[ind]/fact)
+        B_samp = ns[ind]
+        
+        # x-grid and sampled lines
+        # x = np.geomspace(0.001, 0.04, 200)
+        x = np.geomspace(0.5 * kp_kms, 2 * kp_kms, 200)
+        y_samp = np.exp(A_samp[:,None] + B_samp[:,None] * np.log(x[None,:]/kp_kms))/np.exp(y_samp_fid)
+        
+        # mean and percentiles
+        y_med = np.median(y_samp, axis=0)
+        y_p16 = np.percentile(y_samp, 16, axis=0)
+        y_p84 = np.percentile(y_samp, 84, axis=0)
+        # y_err = np.std(y_samp)
+        
+        # plot
+
+        for kk in range(3):
+            if kk == 0:
+                lab = r"DESI-Ly$\alpha$"
+            else:
+                lab = None
+            ax[kk].scatter(
+                kp_kms, 
+                np.median(np.exp(A_samp)/np.exp(A_fid)), 
+                # np.std(np.exp(A_samp)/np.exp(A_fid)),
+                # marker="o", 
+                color="C0"
+            )
+            # ax[kk].plot(x, y_med, color="C0")
+            ax[kk].fill_between(x, y_p16, y_p84, alpha=0.3, label=lab, color="C0")
+    
+        P_kms = np.load("P_kms_" + str(ii) + ".npy")
+        y16, ynorm, y84 = np.percentile(P_kms, [16, 50, 84], axis=0)
+        fid_k_kms = 10**np.arange(-5.888706504390846, -0.41158524967118454, 0.0054826)
+        ax[0].fill_between(fid_k_kms, y16/ynorm, y84/ynorm, alpha=0.2, color="C1", label=cmb_labs[ii])
+        ax[0].plot(fid_k_kms, ynorm/ynorm, lw=2, color="C1")
+    else:
+        if ii < 3:
+            kk = 1
+        else:
+            kk = 2
+        # icmb = cmb_all[ii]
+        # pars_median = {}
+        # for par in icmb['samples'].index:
+        #     pars_median[par] = np.median(icmb['samples'][icmb['samples'].index[par]])
+        # i_best = icmb['samples'].loglikes.argmax()
+        # pars_median = icmb['samples'].getParamSampleDict(i_best)
+        # _cosmo = camb_cosmo.get_cosmology_from_dictionary(pars_median)
+        # k_kms, zs_out, P_kms = camb_cosmo.get_linP_kms(_cosmo)
+        P_kms = np.load("P_kms_" + str(ii) + ".npy")
+        y16, y50, y84 = np.percentile(P_kms, [16, 50, 84], axis=0)
+        ax[kk].fill_between(fid_k_kms, y16/ynorm, y84/ynorm, alpha=0.2, color="C"+str(ii+1), label=cmb_labs[ii], hatch=hatch[ii+1])
+        ax[kk].plot(fid_k_kms, y50/ynorm, lw=2, color="C"+str(ii+1))
+
+for kk in range(3):
+    ax[kk].axhline(1, ls=":", color="k", alpha=0.5)
+    ax[kk].set_xlim(1.5e-5, 0.06)
+    ax[kk].set_ylim(0.85, 1.2)
+    ax[kk].set_xscale("log")
+    # plt.yscale("log")
+    ax[kk].legend(fontsize=ftsize, loc="upper left")
+    ax[kk].tick_params(axis="both", which="major", labelsize=ftsize)
+    
+    x1, x2 = 0.00125, 0.04
+    ax[kk].plot([x1, x2], [0.92, 0.92], lw=2, color="k")
+    ax[kk].text(5e-3, 0.87, r"Ly$\alpha$ $P_\mathrm{1D}$", fontsize=ftsize)
+    x1, x2 = 2.85e-5, 0.0025
+    ax[kk].plot([x1, x2], [0.93, 0.93], lw=2, color="k")
+    ax[kk].text(1.2e-4, 0.87, r"CMB T&E", fontsize=ftsize)
+    
+
+    
+fig.supylabel("$P_\mathrm{lin}(k, z=3)/P^\mathrm{\Lambda CDM}_\mathrm{lin}(k, z=3)$", fontsize=ftsize)
+ax[2].set_xlabel(r"$k\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize)
+plt.tick_params()
+plt.savefig("figs/Plin_extra.pdf", bbox_inches="tight")
+plt.savefig("figs/Plin_extra.png", bbox_inches="tight")
+
+# %%
+# desi_dr12 = {
+#     "Delta2_star":0.664,
+#     "n_star":-2.474,
+#     "r":-0.002,
+#     "Delta2_star_err":0.056,
+#     "n_star_err":0.019,
+# }
+
+# %%
+
+# %%
+
+# %%
 
 # %%
 ftsize = 26
@@ -170,15 +349,15 @@ cmb_all = [
     cmb_mnu, 
     cmb_nnu, 
     cmb_nrun, 
-    cmb_nrun_nrunrun
+    cmb_nrun_nrunrun,
 ]
 cmb_labs = [
-    r"Planck+18: $\Lambda$CDM", 
+    r"PR3: $\Lambda$CDM", 
     # r"Planck+18 $\Lambda$CDM (no lowE)",
-    r"Planck+18: $\sum m_\nu$",
-    r"Planck+18: $N_\mathrm{eff}$",
-    r"Planck+18: $\alpha_\mathrm{s}$",
-    r"Planck+18: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$"
+    r"PR3: $\sum m_\nu$",
+    r"PR3: $N_\mathrm{eff}$",
+    r"PR3: $\alpha_\mathrm{s}$",
+    r"PR3: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
 ]
 
 g = plots.getSinglePlotter(width_inch=10)
@@ -208,7 +387,7 @@ ax = g.subplots[0,0]
 
 for inum, num in enumerate([0.68, 0.95]):
     if inum == 0:
-        label="This work"
+        label=r"DESI-Ly$\alpha$ (this work)"
     else:
         label=None
     for jj in range(len(dat_mpg[num])):
@@ -262,10 +441,13 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
         "nrun": r"$\alpha_\mathrm{s}$",
         "nrunrun": r"$\beta_\mathrm{s}$"
     }
+    all_chains = []
+    all_labels = []
     samples_DESI=[]
     labels_DESI=[]
-    for ii in range(1):
-        new_samples=chain_type['samples'].copy()
+    colors = []
+    for ii in range(len(chain_type)):
+        new_samples=chain_type[ii]['samples'].copy()
         p=new_samples.getParams()
 
         # log unnormalised weights
@@ -290,7 +472,20 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
         
         new_samples.reweightAddingLogLikes(logw) #re-weight cut_samples to account for the new likelihood
         samples_DESI.append(new_samples)
-        labels_DESI.append(r"Planck 2018 + DESI DR1")
+        if ii == 0:
+            all_chains.append(chain_type[ii]['samples'])
+            all_labels.append("Planck")
+            colors.append("C0")
+            labels_DESI.append(r"Planck + DESI-Ly$\alpha$")
+        elif ii == 1:
+            labels_DESI.append(
+                r"Planck + ACT + SPT + "
+                "\n"
+                r"DESI-BAO + DESI-Ly$\alpha$"
+            )
+        colors.append("C"+str(ii + 1))
+        all_chains.append(new_samples)
+        all_labels.append(labels_DESI[ii])
     
     g = plots.getSubplotPlotter(width_inch=8)
     g.settings.axes_fontsize = fontsize
@@ -302,35 +497,34 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
         arr_plot = ['linP_DL2_star','linP_n_star', param_name]
 
     
+    mm = len(all_labels)
+    
     g.triangle_plot(
-        [chain_type['samples'],samples_DESI[0]],
+        all_chains,
         arr_plot,
-        legend_labels=["Planck 2018",labels_DESI[0]],
+        legend_labels=all_labels,
         legend_loc='upper right',
-        colors=["C0", "C1"],
+        colors=colors,
         filled=True,
-        lws=[3,3],
-        alphas=[0.8, 0.8],
-        line_args=[
-            {"color": "C0", "lw": 3, "alpha": 0.8},
-            {"color": "C1", "lw": 3, "alpha": 0.8},
-        ],
+        lws=[3] * mm,
+        alphas=[0.8] * mm,
+        line_args=[{"color": f"C{i}", "lw": 3, "alpha": 0.8} for i in range(mm)],
     )
 
-    if param_name == "mnu":
-        print("1 sigma", param_name, chain_type['samples'].getInlineLatex(param_name,limit=1))
-        print("1 sigma", param_name, samples_DESI[0].getInlineLatex(param_name,limit=1))
-        print("2 sigma", param_name, chain_type['samples'].getInlineLatex(param_name,limit=2))
-        print("2 sigma", param_name, samples_DESI[0].getInlineLatex(param_name,limit=2))
-    else:
-        if (param_name != "nrunrun"): 
-            print(chain_type['samples'].getInlineLatex(param_name, limit=1))
-            print(samples_DESI[0].getInlineLatex(param_name, limit=1))
-        else:
-            print("nrun", chain_type['samples'].getInlineLatex("nrun", limit=1))
-            print("nrun", samples_DESI[0].getInlineLatex("nrun", limit=1))
-            print(param_name, chain_type['samples'].getInlineLatex(param_name, limit=1))
-            print(param_name, samples_DESI[0].getInlineLatex(param_name, limit=1))
+    # if param_name == "mnu":
+    #     for ii in range(mm):
+    #         print(all_labels[ii])
+    #         print("1 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=1))
+    #         print("2 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=2))
+    # else:
+    #     if (param_name != "nrunrun"): 
+    #         print(chain_type['samples'].getInlineLatex(param_name, limit=1))
+    #         print(samples_DESI[0].getInlineLatex(param_name, limit=1))
+    #     else:
+    #         print("nrun", chain_type['samples'].getInlineLatex("nrun", limit=1))
+    #         print("nrun", samples_DESI[0].getInlineLatex("nrun", limit=1))
+    #         print(param_name, chain_type['samples'].getInlineLatex(param_name, limit=1))
+    #         print(param_name, samples_DESI[0].getInlineLatex(param_name, limit=1))
             
 
     if (param_name != "nrunrun"): 
@@ -377,13 +571,15 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
         g.subplots[-1, 0].axhline(3.046, ls="--", color = "black")
         g.subplots[-1, 1].axhline(3.046, ls="--", color = "black")
     elif param_name == "mnu":
+        pass
         g.subplots[-1, -1].axvline(0.06, ls="--", color = "black")
         g.subplots[-1, 0].axhline(0.06, ls="--", color = "black")
         g.subplots[-1, 1].axhline(0.06, ls="--", color = "black")
         g.subplots[-1, -1].axvline(0.1, ls="--", color = "black")
         g.subplots[-1, 0].axhline(0.1, ls="--", color = "black")
         g.subplots[-1, 1].axhline(0.1, ls="--", color = "black")
-        g.subplots[-1, -1].set_xlim(0.01, 0.4)
+        # g.subplots[-1, -1].set_xlim(0.01, 0.4)
+        g.subplots[-1, -1].set_xlim(0., 0.4)
     elif param_name == "nrun":
         g.subplots[-1, -1].axvline(0., ls="--", color = "black")
         g.subplots[-1, 0].axhline(0., ls="--", color = "black")
@@ -404,10 +600,8 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
     plt.savefig("figs/import_"+param_name+".pdf", bbox_inches="tight")
 
 # %%
-np.round(100*(1-0.205/0.257), 2)
-
-# %%
-plot_combine(cmb_mnu, desi_dr1, "mnu")
+chains = [cmb_mnu, cmb_mnu2]
+plot_combine(chains, desi_dr1, "mnu")
 
 # %%
 np.round(100*(1-0.0046/0.0067), 2)

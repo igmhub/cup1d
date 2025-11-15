@@ -49,7 +49,8 @@ def main():
         _params = comm.recv(source=0, tag=rank * 3)
 
     _Nsamp = len(_params)
-    linP_entries = np.zeros((_Nsamp, 4))
+    linP_entries = np.zeros((_Nsamp, 2))
+    # linP_entries = np.zeros((_Nsamp, 4))
     for ii in range(_Nsamp):
         # get point from original chain
         # compute linear power parameters (n_star, f_star, etc.)
@@ -57,17 +58,17 @@ def main():
             _params[ii], z_star=3.0, kp_kms=0.009, camb_kmax_Mpc_fast=1.5
         )
 
-        linP_params2 = add_linP_params.get_linP_params(
-            _params[ii],
-            z_star=3.0,
-            kp_kms=0.023,
-            camb_kmax_Mpc_fast=10.0,
-        )
+        # linP_params2 = add_linP_params.get_linP_params(
+        #     _params[ii],
+        #     z_star=3.0,
+        #     kp_kms=0.023,
+        #     camb_kmax_Mpc_fast=10.0,
+        # )
 
         linP_entries[ii, 0] = linP_params1["Delta2_star"]
         linP_entries[ii, 1] = linP_params1["n_star"]
-        linP_entries[ii, 2] = linP_params2["Delta2_star"]
-        linP_entries[ii, 3] = linP_params2["n_star"]
+        # linP_entries[ii, 2] = linP_params2["Delta2_star"]
+        # linP_entries[ii, 3] = linP_params2["n_star"]
 
         if (rank == 0) and (ii % 10 == 0):
             print("sample point", ii, "out of", _Nsamp, flush=True)
@@ -76,19 +77,19 @@ def main():
     if rank == 0:
         linP_DL2_star = np.zeros(Nsamp)
         linP_n_star = np.zeros(Nsamp)
-        linP_DL2_star2 = np.zeros(Nsamp)
-        linP_n_star2 = np.zeros(Nsamp)
+        # linP_DL2_star2 = np.zeros(Nsamp)
+        # linP_n_star2 = np.zeros(Nsamp)
 
         linP_DL2_star[ind_ranks[0]] = linP_entries[:, 0]
         linP_n_star[ind_ranks[0]] = linP_entries[:, 1]
-        linP_DL2_star2[ind_ranks[0]] = linP_entries[:, 2]
-        linP_n_star2[ind_ranks[0]] = linP_entries[:, 3]
+        # linP_DL2_star2[ind_ranks[0]] = linP_entries[:, 2]
+        # linP_n_star2[ind_ranks[0]] = linP_entries[:, 3]
         for irank in range(1, size):
             _linP_entries = comm.recv(source=irank, tag=irank * 5)
             linP_DL2_star[ind_ranks[irank]] = _linP_entries[:, 0]
             linP_n_star[ind_ranks[irank]] = _linP_entries[:, 1]
-            linP_DL2_star2[ind_ranks[irank]] = _linP_entries[:, 2]
-            linP_n_star2[ind_ranks[irank]] = _linP_entries[:, 3]
+            # linP_DL2_star2[ind_ranks[irank]] = _linP_entries[:, 2]
+            # linP_n_star2[ind_ranks[irank]] = _linP_entries[:, 3]
     else:
         comm.send(linP_entries, dest=0, tag=rank * 5)
 
@@ -99,14 +100,14 @@ def main():
         samples.addDerived(
             linP_n_star, "linP_n_star", label="Ly\\alpha \\, n_\\ast"
         )
-        samples.addDerived(
-            linP_DL2_star2,
-            "linP_DL2_star2",
-            label="Ly\\alpha \\, \\Delta_\\ast2",
-        )
-        samples.addDerived(
-            linP_n_star2, "linP_n_star2", label="Ly\\alpha \\, n_\\ast2"
-        )
+        # samples.addDerived(
+        #     linP_DL2_star2,
+        #     "linP_DL2_star2",
+        #     label="Ly\\alpha \\, \\Delta_\\ast2",
+        # )
+        # samples.addDerived(
+        #     linP_n_star2, "linP_n_star2", label="Ly\\alpha \\, n_\\ast2"
+        # )
 
         new_root = os.path.join(
             root_dir,
