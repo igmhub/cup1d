@@ -36,9 +36,16 @@ def plot_table_igm(
     if name_variation == "nyx":
         emulator_label = "CH24_nyxcen_gpr"
         name_variation = None
-        tit = "lace-lyssa"
+        tit = None
+        lab_fid = "lyssa-central"
+        variation_label = "lace-lyssa"
+        plot_more_igm = False
     else:
-        tit = "lace-mpg"
+        tit = None
+        lab_fid = "mpg-central"
+        variation_label = "Baseline"
+        plot_more_igm = True
+    print(variation_label)
 
     args = Args(data_label=data_label, emulator_label=emulator_label)
     args.set_baseline(
@@ -80,9 +87,13 @@ def plot_table_igm(
         chain_uformat=chain,
         save_directory=save_fig,
         title=tit,
+        plot_more_igm=plot_more_igm,
+        lab_fid=lab_fid,
+        variation_label=variation_label,
     )
 
     z, mF, T0, gamma = tab_out
+    # np.save("more_igm_data.npy", {"z": z, "mF": mF, "T0": T0, "gamma": gamma})
     # print(z)
     # print(mF)
 

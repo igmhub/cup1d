@@ -39,7 +39,9 @@ def format_last(val):
     return f"{val:.2f}"
 
 
-def make_latex_table(table, color_threshold=0.3, color="red"):
+def make_latex_table(
+    table, color_threshold=[0.9655, 2.2957], colors=["yellow", "red"]
+):
     """
     Print aligned LaTeX rows from `table`.
     Each row: [name, x1, x1p, x1m, x2, x2p, x2m, val3, val4, val5]
@@ -75,7 +77,15 @@ def make_latex_table(table, color_threshold=0.3, color="red"):
         name, p1, p2, s3, s4, s5, val3num = r
 
         # decide if coloring is needed
-        colorize = float(val3num) < color_threshold
+        if float(val3num) > color_threshold[0]:
+            colorize = True
+            if float(val3num) > color_threshold[1]:
+                color = colors[1]
+            else:
+                color = colors[0]
+        else:
+            colorize = False
+        colorize = False
 
         if colorize:
             # no padding
@@ -247,10 +257,13 @@ def table_variations(base):
     fid_vals = {}
 
     table = []
-    # blobs = np.load(os.path.join(base, variations["DESIY1_QMLE3_mpg"][1], "blobs.npy"))
-    # corr_fid= np.corrcoef(blobs["Delta2_star"].reshape(-1), blobs["n_star"].reshape(-1))[1,0]
-    # blobs = 0
-    corr_fid = 0.186
+    blobs = np.load(
+        os.path.join(base, variations["DESIY1_QMLE3_mpg"][1], "blobs.npy")
+    )
+    corr_fid = np.corrcoef(
+        blobs["Delta2_star"].reshape(-1), blobs["n_star"].reshape(-1)
+    )[1, 0]
+    blobs = 0
 
     for ii, var in enumerate(variations):
         folder = os.path.join(base, variations[var][1])
@@ -297,7 +310,8 @@ def table_variations(base):
             )
         )
         # print(var, consist)
-        row.append(chi2_scipy.sf(consist, 2))
+        # row.append(chi2_scipy.sf(consist, 2))
+        row.append(consist)
 
         row.append(data["chi2"])
         row.append(data["prob_chi2"])

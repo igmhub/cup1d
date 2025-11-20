@@ -19,8 +19,10 @@ variations=(
     "mpg_central"
     "mpg_central_igm"
     "mpg_central_igm0"
-    "nyx_central"
-    "sherwood"
+    # "nyx_central"
+    # "sherwood"
+    "mpg_seed"
+    "nyx_seed"
 )
 
 source /global/homes/j/jjchaves/miniconda3/bin/activate lace

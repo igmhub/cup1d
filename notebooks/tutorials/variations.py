@@ -34,7 +34,7 @@ rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
 # +
-cont = np.array([0, 1, 2, 3, 4, 5])
+cont = np.array([0, 0.3, 0.5, 1, 2, 3])
 prob_levels = np.zeros(len(cont))
 chi2_levels = np.zeros(len(cont))
 
@@ -458,7 +458,7 @@ ftsize = 28
 cmaps = ["Blues", "Oranges", "Greens", "Reds", "Purples"]
 
 dict_trans = {
-    "DESIY1_QMLE3_mpg":"Fiducial", 
+    "DESIY1_QMLE3_mpg":"Baseline", 
     
     "DESIY1_QMLE_mpg":"Data: w/ low SNR", 
     "DESIY1_FFT3_dir_mpg": "Data: FFT",

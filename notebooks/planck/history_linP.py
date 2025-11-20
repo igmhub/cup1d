@@ -266,7 +266,7 @@ ax.set_xlim(0.23, 0.52)
 
  # Legend
 handles = []
-handles.append(mlines.Line2D([], [], color='black', label=r'Planck+18', lw=3))
+handles.append(mlines.Line2D([], [], color='black', label=r'$\mathit{Planck}$ T&E: $\Lambda$CDM', lw=3))
 for ii in range(len(labs)):
     handles.append(mlines.Line2D([], [], color='C'+str(ii), label=labs[ii], lw=3))
     

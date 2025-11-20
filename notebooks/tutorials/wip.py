@@ -57,6 +57,13 @@ from cup1d.pipeline.set_archive import set_archive
 
 
 # %%
+# zzs = np.array([2, 2.44, 3.01, 3.49, 4.43])
+# alphas = np.array([0.106, 0.149, 0.218, 0.27, 0.366])
+
+# ((1 + zzs)/3)**-3.55 * alphas
+
+# %%
+1/53.e-5
 
 # %%
 
@@ -66,17 +73,18 @@ from cup1d.pipeline.set_archive import set_archive
 # from cup1d.plots_and_tables.table_nuisance import table_nuisance
 # table_nuisance(base + folder)
 
-from cup1d.plots_and_tables.table_variations import table_variations
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-table_variations(base)
-
-
-# from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
+# from cup1d.plots_and_tables.table_variations import table_variations
 # base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-# save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
-# plot_table_igm(base, name_variation=None, save_fig=save_fig, chain="7")
+# table_variations(base)
+
+
+from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
+plot_table_igm(base, name_variation=None, save_fig=save_fig, chain="7")
 # save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/test/"
 # plot_table_igm(base, name_variation="nyx", save_fig=save_fig, chain="3")
+# plot_table_igm(base, name_variation="more_igm", save_fig=save_fig, chain="2")
 
 
 # %%
@@ -182,10 +190,12 @@ emulator_label = "CH24_mpgcen_gpr"
 # data_label = "sherwood"
 
 data_label = "mpg_central"
+# data_label = "mpg_seed"
+data_label = "nyx_seed"
 
 if data_label == "mpg_central":
-    zmin=2.25
-    zmax=4.25
+    zmin=2.2
+    zmax=4.2
 elif data_label == "nyx_central":
     zmin=2.2
     zmax=4.2
@@ -197,8 +207,8 @@ cov_label="DESIY1_QMLE3"
 true_cosmo_label = data_label
 fid_cosmo_label = data_label
 name_variation= "sim_" + data_label
-name_variation= "sim_" + data_label + "_igm"
-name_variation= "sim_" + data_label + "_igm0"
+# name_variation= "sim_" + data_label + "_igm"
+# name_variation= "sim_" + data_label + "_igm0"
 fit_type = "global_opt"
 # name_variation = None
 
@@ -225,6 +235,18 @@ args.set_baseline(
 )
 
 # %%
+name_variation
+
+# %%
+
+# %%
+
+# archive_mock = set_archive(training_set="Pedersen21")
+# dat = archive_mock.get_testing_data("mpg_central")
+
+# %%
+
+# %%
 
 # %% [markdown]
 # ### Mocks
@@ -234,6 +256,9 @@ args.set_baseline(
 # archive_mock = set_archive(training_set=nyx_training_set)
 # pip = Pipeline(args, archive=archive_mock)
 pip = Pipeline(args)
+
+# %%
+pip.fitter.like.plot_p1d()
 
 # %%
 # cov0 = pip.fitter.like.full_cov_Pk_kms.copy()
@@ -274,6 +299,8 @@ for par in free_params:
     print(par.name, par.value, par.min_value, par.max_value)
 
 # %%
+p0[18:] = 0
+p0[-11:] = 0.5
 
 # %%
 

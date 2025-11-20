@@ -102,8 +102,8 @@ class Args:
     apply_smoothing: bool = False
     cov_label: str = "Chabanier2019"
     cov_label_hires: str = "Karacayli2022"
-    nyx_training_set: str = "models_Nyx_Mar2025_with_CGAN_val_3axes"
-    # nyx_training_set: str = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
+    # nyx_training_set: str = "models_Nyx_Mar2025_with_CGAN_val_3axes"
+    nyx_training_set: str = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
     cov_syst_type: str = "red"
     z_star: float = 3
     kp_kms: float = 0.009

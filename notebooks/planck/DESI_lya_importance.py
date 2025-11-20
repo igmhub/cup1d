@@ -53,13 +53,6 @@ cmb = planck_chains.get_planck_2018(
     linP_tag=None
 )
 
-# cmb_tau = planck_chains.get_planck_2018(
-#     model='base',
-#     data='plikHM_TTTEEE_lowl_linP',
-#     root_dir=root_dir,
-#     linP_tag=None
-# )
-
 cmb_nrun = planck_chains.get_planck_2018(
     model='base_nrun',
     data='plikHM_TTTEEE_lowl_lowE_linP',
@@ -87,6 +80,15 @@ cmb_nnu = planck_chains.get_planck_2018(
     root_dir=root_dir,
     linP_tag=None
 )
+
+
+# cmb_tau = planck_chains.get_planck_2018(
+#     model='base',
+#     data='plikHM_TTTEEE_lowl_linP',
+#     root_dir=root_dir,
+#     linP_tag=None
+# )
+
 
 # cmb_omega_k = planck_chains.get_planck_2018(
 #     model='base_omegak',
@@ -131,13 +133,44 @@ blobs = np.load(folder + "blobs.npy")
 ds = blobs["Delta2_star"].reshape(-1)
 ns = blobs["n_star"].reshape(-1)
 
-per_ds = np.percentile(ds, [5, 16, 50, 84, 95])
-per_ns = np.percentile(ns, [5, 16, 50, 84, 95])
-_ = (ds > per_ds[0]) & (ds < per_ds[-1]) & (ns > per_ns[0]) & (ns < per_ns[-1])
-corr = np.corrcoef(ds[_], ns[_])
-# corr = np.corrcoef(ds, ns)
+# per_ds = np.percentile(ds, [5, 16, 50, 84, 95])
+# per_ns = np.percentile(ns, [5, 16, 50, 84, 95])
+# _ = (ds > per_ds[0]) & (ds < per_ds[-1]) & (ns > per_ns[0]) & (ns < per_ns[-1])
+# corr = np.corrcoef(ds[_], ns[_])
+corr = np.corrcoef(ds, ns)
 r = corr[0, 1]
 r
+
+# %%
+# def subsample_correlations(ds, ns, A=2, nrepeat=2000, seed=0):
+#     """
+#     subsample without replacement: select n//A indices per repeat by permutation.
+#     If the chain has weights, warn and use weighted bootstrap instead.
+#     method: 'pearson' or 'spearman'
+#     winsorize_frac: fraction to winsorize for Pearson (e.g. 0.05), or None.
+#     Returns: array of correlation estimates (length nrepeat)
+#     """
+#     rng = np.random.default_rng(seed)
+#     n = len(ds)
+#     subsz = max(2, n // A)   # ensure at least 2
+#     corr_vals = np.empty(nrepeat)
+#     # Unweighted: do permutation + take first subsz (no repeats inside each subsample)
+#     for i in range(nrepeat):
+#         idx = rng.permutation(n)[:subsz]
+#         xs = ds[idx]
+#         ys = ns[idx]
+#         corr_vals[i] = np.corrcoef(xs, ys)[0, 1]
+#     return corr_vals
+
+# corr_samps = subsample_correlations(ds, ns, nrepeat=100, A=2)
+# percen = np.percentile(corr_samps, [16, 50, 84])
+# print(np.round(percen[1], 4), np.round(percen[1]-percen[0], 4), np.round(percen[2]-percen[1], 4))
+
+# %%
+# from corner import corner
+# corner(np.array([ds[_], ns[_]]).T);
+
+# %%
 
 # %% [markdown]
 # ### Prepare unblinding
@@ -160,6 +193,9 @@ desi_dr1 = {
     "Delta2_star_err":sum_mpg['delta2_star_err'],
     "n_star_err":sum_mpg["n_star_err"],
 }
+
+# %%
+desi_dr1
 
 # %%
 ds -= blinding["Delta2_star"]
@@ -204,7 +240,7 @@ hatch =  ["", "", "/", "", "/", ""]
 _ds = cmb['samples'][cmb['samples'].index['linP_DL2_star']]
 _ns = cmb['samples'][cmb['samples'].index['linP_n_star']]
 # p16, p50, p84 = np.percentile(vals, [16, 50, 84])
-# A_fid, sigma_A = np.median(np.log(_ds/fact)), np.std(np.log(_ds/fact))
+A_fid, sigma_A = np.median(np.log(_ds/fact)), np.std(np.log(_ds/fact))
 # B_fid, sigma_B = np.median(_ns), np.std(_ns)
 # rho = np.corrcoef(_ds, _ns)[0][1]
 
@@ -220,12 +256,12 @@ cmb_all = [
     cmb_nrun_nrunrun,
 ]
 cmb_labs = [
-    r"PR3: $\Lambda$CDM", 
+    r"$\mathit{Planck}$ T&E: $\Lambda$CDM", 
     # r"Planck+18 $\Lambda$CDM (no lowE)",
-    r"PR3: $\sum m_\nu$",
-    r"PR3: $N_\mathrm{eff}$",
-    r"PR3: $\alpha_\mathrm{s}$",
-    r"PR3: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
+    r"$\mathit{Planck}$ T&E: $\sum m_\nu$",
+    r"$\mathit{Planck}$ T&E: $N_\mathrm{eff}$",
+    r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}$",
+    r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
 ]
 
 # icmb = cmb
@@ -352,12 +388,12 @@ cmb_all = [
     cmb_nrun_nrunrun,
 ]
 cmb_labs = [
-    r"PR3: $\Lambda$CDM", 
+    r"$\mathit{Planck}$ T&E: $\Lambda$CDM", 
     # r"Planck+18 $\Lambda$CDM (no lowE)",
-    r"PR3: $\sum m_\nu$",
-    r"PR3: $N_\mathrm{eff}$",
-    r"PR3: $\alpha_\mathrm{s}$",
-    r"PR3: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
+    r"$\mathit{Planck}$ T&E: $\sum m_\nu$",
+    r"$\mathit{Planck}$ T&E: $N_\mathrm{eff}$",
+    r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}$",
+    r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
 ]
 
 g = plots.getSinglePlotter(width_inch=10)
@@ -387,7 +423,7 @@ ax = g.subplots[0,0]
 
 for inum, num in enumerate([0.68, 0.95]):
     if inum == 0:
-        label=r"DESI-Ly$\alpha$ (this work)"
+        label=r"DESI-Ly$\alpha$"
     else:
         label=None
     for jj in range(len(dat_mpg[num])):
@@ -407,7 +443,7 @@ ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
 ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
 ax.tick_params(axis="both", which="major", labelsize=ftsize)
 
-plt.legend(fontsize=ftsize, loc="upper left", ncol=2)
+plt.legend(fontsize=ftsize-1, loc="upper left", ncol=2)
 plt.tight_layout()
 
 plt.savefig("figs/star_planck_mine.png", bbox_inches='tight')
@@ -432,6 +468,7 @@ def gaussian_chi2_mock_DESI(neff, DL2, true_DL2=0.35, true_neff=-2.3, DL2_err=0.
 # %%
 from matplotlib.ticker import MaxNLocator
 from matplotlib.ticker import FormatStrFormatter
+from getdist.mcsamples import MCSamples
 
 def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
     latex_param = {
@@ -443,12 +480,32 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
     }
     all_chains = []
     all_labels = []
-    samples_DESI=[]
+    # samples_DESI=[]
     labels_DESI=[]
     colors = []
     for ii in range(len(chain_type)):
-        new_samples=chain_type[ii]['samples'].copy()
-        p=new_samples.getParams()
+        # overwrite, but no idea how to make a deep copy
+        new_samples = chain_type[ii]['samples'].copy()
+
+        # print before weighting
+        # if param_name == "mnu":
+        #     print("2 sigma", param_name, new_samples.getInlineLatex(param_name, limit=2))
+        # else:
+        #     percen = np.percentile(new_samples[param_name], [16, 50, 84])
+        #     print(
+        #         np.round(percen[1], 4), 
+        #         np.round(percen[1]-percen[0], 4),
+        #         np.round(percen[2]-percen[1], 4)
+        #     )
+        #     if (param_name == "nrunrun"): 
+        #         percen = np.percentile(new_samples["nrun"], [16, 50, 84])
+        #         print(
+        #             np.round(percen[1], 4), 
+        #             np.round(percen[1]-percen[0], 4),
+        #             np.round(percen[2]-percen[1], 4)
+        #         )
+        
+        p = new_samples.getParams()
 
         # log unnormalised weights
         logw = 0.5 * gaussian_chi2_mock_DESI(
@@ -471,21 +528,31 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
         # print("ESS", ess)
         
         new_samples.reweightAddingLogLikes(logw) #re-weight cut_samples to account for the new likelihood
-        samples_DESI.append(new_samples)
+        
+        # samples_DESI.append(new_samples)
         if ii == 0:
             all_chains.append(chain_type[ii]['samples'])
-            all_labels.append("Planck")
+            all_labels.append(r"$\mathit{Planck}$ T&E")
             colors.append("C0")
-            labels_DESI.append(r"Planck + DESI-Ly$\alpha$")
+            labels_DESI.append(r"$\mathit{Planck}$ T&E + DESI-Ly$\alpha$")
         elif ii == 1:
             labels_DESI.append(
-                r"Planck + ACT + SPT + "
+                r"CMB-SPA + DESI-BAO"
                 "\n"
-                r"DESI-BAO + DESI-Ly$\alpha$"
+                r"+ DESI-Ly$\alpha$"
             )
         colors.append("C"+str(ii + 1))
         all_chains.append(new_samples)
         all_labels.append(labels_DESI[ii])
+
+    for ii in range(len(all_chains)):
+        # print after weighting
+        if param_name == "mnu":
+            print("2 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=2))
+        else:
+            print("1 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=1))
+            if (param_name == "nrunrun"): 
+                print("1 sigma", "nrun", all_chains[ii].getInlineLatex("nrun", limit=1))
     
     g = plots.getSubplotPlotter(width_inch=8)
     g.settings.axes_fontsize = fontsize
@@ -510,21 +577,6 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
         alphas=[0.8] * mm,
         line_args=[{"color": f"C{i}", "lw": 3, "alpha": 0.8} for i in range(mm)],
     )
-
-    # if param_name == "mnu":
-    #     for ii in range(mm):
-    #         print(all_labels[ii])
-    #         print("1 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=1))
-    #         print("2 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=2))
-    # else:
-    #     if (param_name != "nrunrun"): 
-    #         print(chain_type['samples'].getInlineLatex(param_name, limit=1))
-    #         print(samples_DESI[0].getInlineLatex(param_name, limit=1))
-    #     else:
-    #         print("nrun", chain_type['samples'].getInlineLatex("nrun", limit=1))
-    #         print("nrun", samples_DESI[0].getInlineLatex("nrun", limit=1))
-    #         print(param_name, chain_type['samples'].getInlineLatex(param_name, limit=1))
-    #         print(param_name, samples_DESI[0].getInlineLatex(param_name, limit=1))
             
 
     if (param_name != "nrunrun"): 
@@ -600,6 +652,18 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
     plt.savefig("figs/import_"+param_name+".pdf", bbox_inches="tight")
 
 # %%
+cmb_mnu = planck_chains.get_planck_2018(
+    model='base_mnu',
+    data='plikHM_TTTEEE_lowl_lowE_linP',
+    root_dir=root_dir,
+    linP_tag=None
+)
+
+root_dir=os.path.join(get_path_repo("cup1d"), "data", "planck_linP_chains")
+folder = root_dir + "/crisjagq/base_mnu/desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP/base_mnu_desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP"
+cmb_mnu2 = {} 
+cmb_mnu2["samples"] = loadMCSamples(folder)
+
 chains = [cmb_mnu, cmb_mnu2]
 plot_combine(chains, desi_dr1, "mnu")
 
@@ -607,20 +671,45 @@ plot_combine(chains, desi_dr1, "mnu")
 np.round(100*(1-0.0046/0.0067), 2)
 
 # %%
-plot_combine(cmb_nrun, desi_dr1, "nrun")
+cmb_nrun = planck_chains.get_planck_2018(
+    model='base_nrun',
+    data='plikHM_TTTEEE_lowl_lowE_linP',
+    root_dir=root_dir,
+    linP_tag=None
+)
+
+chains = [cmb_nrun]
+plot_combine(chains, desi_dr1, "nrun")
 
 # %%
 print(np.round(100*(1-0.0049/0.010), 2))
 np.round(100*(1-0.0050/0.013), 2)
 
 # %%
-plot_combine(cmb_nrun_nrunrun, desi_dr1, "nrunrun")
+
+cmb_nrun_nrunrun = planck_chains.get_planck_2018(
+    model='base_nrun_nrunrun',
+    data='plikHM_TTTEEE_lowl_lowE_linP',
+    root_dir=root_dir,
+    linP_tag=None
+)
+
+
+plot_combine([cmb_nrun_nrunrun], desi_dr1, "nrunrun")
 
 # %%
 np.round(100*(1-0.16/0.19), 2)
 
 # %%
-plot_combine(cmb_nnu, desi_dr1, "nnu")
+
+cmb_nnu = planck_chains.get_planck_2018(
+    model='base_nnu',
+    data='plikHM_TTTEEE_lowl_lowE_linP',
+    root_dir=root_dir,
+    linP_tag=None
+)
+
+plot_combine([cmb_nnu], desi_dr1, "nnu")
 
 # %%
 

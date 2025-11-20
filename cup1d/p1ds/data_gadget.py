@@ -2,9 +2,9 @@ import os
 import sys
 
 import numpy as np
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, RegularGridInterpolator
 
-# from lace.cosmo import camb_cosmo
+from lace.cosmo import camb_cosmo
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 from cup1d.p1ds import (
     data_PD2013,
@@ -32,6 +32,7 @@ class Gadget_P1D(BaseMockP1D):
         z_min=0,
         z_max=10,
         path_data=None,
+        interp_to_cov=False,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
         - testing_data: p1d measurements from Gadget sims
@@ -40,6 +41,8 @@ class Gadget_P1D(BaseMockP1D):
         - data_cov_label: P1D covariance to use (Chabanier2019 or PD2013)
         - data_cov_factor: multiply covariance by this factor
         - add_syst: Include systematic estimates in covariance matrices
+        - interp_to_cov: if true, interpolate simulations results to the redshifts
+            and scales of the covariance matrix. if not, the other way around
         """
 
         # covariance matrix settings
@@ -61,8 +64,10 @@ class Gadget_P1D(BaseMockP1D):
             dkms_dMpc.append(testing_data[ii]["dkms_dMpc"])
         self.dkms_dMpc = np.array(dkms_dMpc)
 
-        # setup P1D from mock with k values from data_cov_label
-        # as well as covariance matrix
+        if interp_to_cov:
+            prepare_mock = self._load_p1d_to_cov
+        else:
+            prepare_mock = self._load_p1d
         (
             zs,
             k_kms,
@@ -73,7 +78,7 @@ class Gadget_P1D(BaseMockP1D):
             full_Pk_kms,
             full_cov_kms,
             full_cov_stat_kms,
-        ) = self._load_p1d(theory, path_data=path_data)
+        ) = prepare_mock(theory, path_data=path_data)
 
         # set theory (just to save truth)
         zs = np.array(zs)
@@ -179,6 +184,94 @@ class Gadget_P1D(BaseMockP1D):
     #         ]
 
     def _load_p1d(self, theory, path_data=None):
+        """Interpolate data to the redshifts and scales of the covariance matrix"""
+        # figure out dataset to mimic
+        if self.data_cov_label == "Chabanier2019":
+            data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)
+        elif self.data_cov_label == "PD2013":
+            data = data_PD2013.P1D_PD2013(add_syst=self.add_syst)
+        elif self.data_cov_label == "QMLE_Ohio":
+            data = data_QMLE_Ohio.P1D_QMLE_Ohio()
+        elif self.data_cov_label == "Karacayli2022":
+            data = data_Karacayli2022.P1D_Karacayli2022()
+        elif self.data_cov_label.startswith("DESIY1"):
+            data = data_DESIY1.P1D_DESIY1(
+                data_label=self.data_cov_label, path_data=path_data
+            )
+        else:
+            raise ValueError("Unknown data_cov_label", self.data_cov_label)
+
+        # set interpolator
+        z_sim = []
+        k_Mpc_sim = []
+        p1d_Mpc_sim = []
+        for sim in self.testing_data:
+            z_sim.append(sim["z"])
+            # select only data within 10 Mpc
+            _ = (sim["k_Mpc"] > 0) & (sim["k_Mpc"] < 10)
+            k_Mpc_sim.append(sim["k_Mpc"][_])
+            p1d_Mpc_sim.append(sim["p1d_Mpc"][_])
+        z_sim = np.array(z_sim)
+        k_Mpc_sim = np.array(k_Mpc_sim)
+        p1d_Mpc_sim = np.array(p1d_Mpc_sim)
+
+        theory.set_fid_cosmo(z_sim)
+
+        interp = RegularGridInterpolator(
+            (z_sim, k_Mpc_sim[0]), np.log(p1d_Mpc_sim)
+        )
+
+        zs = data.z
+        k_kms = []
+        Pk_kms = []
+        cov = []
+        cov_stat = []
+        full_zs = []
+        for ii, _k_kms in enumerate(data.k_kms):
+            dkms_dMpc = theory.fid_cosmo["cosmo"].dkms_dMpc(zs[ii])
+            # convert Mpc to km/s
+            data_k_Mpc = _k_kms * dkms_dMpc
+            # cutting scales too large for the simulation
+            _ = data_k_Mpc >= k_Mpc_sim[0].min()
+            Pk_Mpc = np.exp(interp((zs[ii], data_k_Mpc[_])))
+            # convert Mpc to km/s
+            k_kms.append(_k_kms[_])
+            Pk_kms.append(Pk_Mpc * dkms_dMpc)
+            cov.append(data.cov_Pk_kms[ii][_][:, _])
+            cov_stat.append(data.covstat_Pk_kms[ii][_][:, _])
+            full_zs.append(zs[ii] * np.ones(len(_k_kms[_])))
+        full_zs = np.concatenate(full_zs)
+        full_k_kms = np.concatenate(k_kms)
+        full_Pk_kms = np.concatenate(Pk_kms)
+
+        # remove scales not used from cov matrix
+        full_cov_kms = np.zeros((len(full_Pk_kms), len(full_Pk_kms)))
+        full_cov_stat_kms = np.zeros((len(full_Pk_kms), len(full_Pk_kms)))
+        for i0 in range(len(full_Pk_kms)):
+            ind0 = np.argwhere(full_zs[i0] == data.full_zs)[:, 0]
+            j0 = ind0[np.argmin(abs(full_k_kms[i0] - data.full_k_kms[ind0]))]
+            for i1 in range(len(full_Pk_kms)):
+                ind1 = np.argwhere(full_zs[i1] == data.full_zs)[:, 0]
+                j1 = ind1[
+                    np.argmin(abs(full_k_kms[i1] - data.full_k_kms[ind1]))
+                ]
+                full_cov_kms[i0, i1] = data.full_cov_Pk_kms[j0, j1]
+                full_cov_stat_kms[i0, i1] = data.full_cov_stat_Pk_kms[j0, j1]
+
+        return (
+            zs,
+            k_kms,
+            Pk_kms,
+            cov,
+            cov_stat,
+            full_zs,
+            full_Pk_kms,
+            full_cov_kms,
+            full_cov_stat_kms,
+        )
+
+    def _load_p1d_to_cov(self, theory, path_data=None):
+        """Interpolate cov matrix to the redshifts of the data, data to scales of cov matrix"""
         # figure out dataset to mimic
         if self.data_cov_label == "Chabanier2019":
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)

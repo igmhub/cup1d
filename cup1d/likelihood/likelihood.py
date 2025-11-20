@@ -2468,6 +2468,8 @@ class Likelihood(object):
         nelem=20000,
         title="",
         pre_xylims=True,
+        plot_more_igm=False,
+        variation_label="baseline",
     ):
         """Plot IGM histories"""
 
@@ -2700,44 +2702,9 @@ class Likelihood(object):
                             s=10,
                         )
 
-            if plot_fid:
-                for kk in range(3):
-                    if kk == 0:
-                        pars = pars_fid.copy()
-                        label = lab_fid
-                        lsk = "-"
-                        alpha = 0.5
-                        lw = 1.5
-                    elif kk == 1:
-                        pars = pars_min.copy()
-                        label = None
-                        lsk = "-"
-                        alpha = 0.3
-                        lw = 1
-                    elif kk == 2:
-                        pars = pars_max.copy()
-                        label = None
-                        lsk = "-"
-                        alpha = 0.3
-                        lw = 1
-
-                    _ = pars[arr_labs[ii]] != 0
-                    if arr_labs[ii] == "mF":
-                        # norm = (1 + pars["z"][_]) ** nexp_mF
-                        norm = 1
-                    else:
-                        norm = 1
-
-                    ax[ii].plot(
-                        pars["z"][_],
-                        norm * pars[arr_labs[ii]][_],
-                        "C3" + lsk,
-                        label=label,
-                        alpha=alpha,
-                        lw=lw,
-                    )
-
             if chain is not None:
+                _ = pars_fid[arr_labs[ii]] != 0
+                norm = 1
                 ax[ii].fill_between(
                     pars_fid["z"][_],
                     norm
@@ -2769,7 +2736,7 @@ class Likelihood(object):
                     pars_test["z"][_],
                     norm * pars_test[arr_labs[ii]][_],
                     "C0:",
-                    label="This study",
+                    label=variation_label,
                     alpha=1,
                     lw=3,
                 )
@@ -2846,6 +2813,62 @@ class Likelihood(object):
                     lw=2,
                 )
 
+        if plot_more_igm:
+            more_igm = np.load("more_igm_data.npy", allow_pickle=True).item()
+            ax[0].plot(
+                more_igm["z"],
+                more_igm["mF"][1],
+                "C5--",
+                alpha=0.5,
+                lw=3,
+                label=r"IGM $n_z=8$",
+            )
+            ax[1].plot(
+                more_igm["z"], more_igm["T0"][1], "C5--", alpha=0.5, lw=3
+            )
+            ax[2].plot(
+                more_igm["z"], more_igm["gamma"][1], "C5--", alpha=0.5, lw=3
+            )
+
+        if plot_fid:
+            for ii in range(len(arr_labs)):
+                for kk in range(3):
+                    if kk == 0:
+                        pars = pars_fid.copy()
+                        label = lab_fid
+                        lsk = "-"
+                        alpha = 0.5
+                        lw = 1.5
+                    elif kk == 1:
+                        pars = pars_min.copy()
+                        label = None
+                        lsk = "-"
+                        alpha = 0.3
+                        lw = 1
+                    elif kk == 2:
+                        pars = pars_max.copy()
+                        label = None
+                        lsk = "-"
+                        alpha = 0.3
+                        lw = 1
+
+                    _ = pars[arr_labs[ii]] != 0
+                    if arr_labs[ii] == "mF":
+                        # norm = (1 + pars["z"][_]) ** nexp_mF
+                        norm = 1
+                    else:
+                        norm = 1
+
+                    ax[ii].plot(
+                        pars["z"][_],
+                        norm * pars[arr_labs[ii]][_],
+                        "C3" + lsk,
+                        label=label,
+                        alpha=alpha,
+                        lw=lw,
+                    )
+
+        for ii in range(len(arr_labs)):
             ax[ii].set_ylabel(latex_labs[ii], fontsize=ftsize)
             if ii == 0:
                 if arr_labs[ii] != "mF":
