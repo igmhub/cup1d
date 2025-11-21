@@ -130,7 +130,7 @@ def get_planck_2018(
 def get_cobaya(
     root_dir=None,
     model="base_mnu",
-    data="desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing",
+    data="DESI_CMB-SPA",
     linP_tag="zlinP",
 ):
     """Load results from Planck, for a given data release and data combination.
@@ -152,8 +152,9 @@ def get_cobaya(
     else:
         folder = os.path.join(root_dir, model, data + "/")
 
-    info_from_yaml = yaml_load_file(folder + "chain.input.yaml")
-    info_from_yaml["output"] = folder + "chain"
+    name_chain = model + "_" + data
+    info_from_yaml = yaml_load_file(folder + name_chain + ".input.yaml")
+    info_from_yaml["output"] = folder + name_chain
 
     gd_sample = load_samples(info_from_yaml["output"], to_getdist=True)
 
