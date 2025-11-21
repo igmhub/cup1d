@@ -19,9 +19,10 @@ def main():
     # key_models = ["base_mnu", "base_nnu", "base_nrun", "base_nrunrun"]
     key_model = sys.argv[1]
 
-    print(key_model, flush=True)
+    print(rank, flush=True)
 
     if rank == 0:
+        print(key_model, flush=True)
         cmb = planck_chains.get_cobaya(
             root_dir=root_dir,
             model=key_model,
