@@ -1,4 +1,4 @@
-import os
+import os, sys
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
@@ -14,23 +14,24 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    key_model = "base_mnu"
-    key_data = "desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing"
+    root_dir = "/pscratch/sd/j/jjchaves/data/cmbspa_linP_chains/"
+    key_data = "DESI_CMB-SPA"
+    # key_models = ["base_mnu", "base_nnu", "base_nrun", "base_nrunrun"]
+    key_model = sys.argv[1]
 
-    root_dir = os.path.join(
-        get_path_repo("cup1d"), "data", "planck_linP_chains", "crisjagq"
-    )
+    print(key_model, flush=True)
 
     if rank == 0:
         cmb = planck_chains.get_cobaya(
             root_dir=root_dir,
             model=key_model,
             data=key_data,
+            lite=True,
             linP_tag=None,
         )
 
         samples = cmb["samples"]
-        # thinning = 4000
+        thinning = 4000
         # samples.thin(thinning)
         Nsamp, Npar = samples.samples.shape
         print(Nsamp, Npar, flush=True)

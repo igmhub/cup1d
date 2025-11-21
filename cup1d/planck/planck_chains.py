@@ -132,6 +132,7 @@ def get_cobaya(
     model="base_mnu",
     data="DESI_CMB-SPA",
     linP_tag="zlinP",
+    lite=False,
 ):
     """Load results from Planck, for a given data release and data combination.
     Inputs:
@@ -153,6 +154,8 @@ def get_cobaya(
         folder = os.path.join(root_dir, model, data + "/")
 
     name_chain = model + "_" + data
+    if lite:
+        name_chain += "-lite"
     info_from_yaml = yaml_load_file(folder + name_chain + ".input.yaml")
     info_from_yaml["output"] = folder + name_chain
 
