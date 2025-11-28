@@ -57,6 +57,46 @@ from cup1d.pipeline.set_archive import set_archive
 
 
 # %%
+# from cup1d.planck import planck_chains
+# from getdist import plots
+
+# %%
+# root_dir = "/home/jchaves/Proyectos/projects/lya/cup1d/data/cmbspa_linP_chains/"
+# # root_dir = "/pscratch/sd/j/jjchaves/data/cmbspa_linP_chains/"
+# key_model = "base_mnu"
+# key_data = "DESI_CMB-SPA"
+# key_models = ["base_mnu", "base_nnu", "base_nrun", "base_nrunrun"]
+
+# new_samples = []
+# for key_model in key_models:
+#     cmb_lite = planck_chains.get_cobaya(
+#         root_dir=root_dir,
+#         model=key_model,
+#         data=key_data,
+#         lite=True,
+#         linP_tag=None,
+#     )
+#     new_samples.append(cmb_lite["samples"])
+
+# arr_plot = ['As','ns', "mnu"]
+
+# g = plots.getSinglePlotter(width_inch=10)
+# g.settings.num_plot_contours = 2
+
+# for ii in range(len(new_samples)):
+#     print(key_models[ii])
+#     g.plot_2d(
+#         new_samples[ii], 
+#         ['H0', 'ns'], 
+#         colors=["C"+str(ii)], 
+#         lws=2, 
+#         alphas=[0.8, 0.5],
+#         filled=False,
+#         label=key_models[ii]
+#     )
+# plt.legend()
+
+# %%
 # zzs = np.array([2, 2.44, 3.01, 3.49, 4.43])
 # alphas = np.array([0.106, 0.149, 0.218, 0.27, 0.366])
 

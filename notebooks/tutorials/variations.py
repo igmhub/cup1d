@@ -230,20 +230,22 @@ blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
 
 # +
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
-folder = base + "sim_mpg_central/CH24_mpgcen_gpr/chain_2/"
+folder = base + "sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
 dat_mpg_sim = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 sum_mpg_sim = np.load(folder + "summary.npy", allow_pickle=True).item()
 
-folder = base + "sim_mpg_central_igm/CH24_mpgcen_gpr/chain_1/"
+folder = base + "sim_mpg_seed/CH24_mpgcen_gpr/chain_3/"
+dat_mpgseed_sim = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+sum_mpgseed_sim = np.load(folder + "summary.npy", allow_pickle=True).item()
+
+folder = base + "sim_mpg_central_igm/CH24_mpgcen_gpr/chain_2/"
 dat_mpg_igm = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 sum_mpg_igm = np.load(folder + "summary.npy", allow_pickle=True).item()
 
-folder = base + "sim_mpg_central_igm0/CH24_mpgcen_gpr/chain_1/"
+folder = base + "sim_mpg_central_igm0/CH24_mpgcen_gpr/chain_2/"
 dat_mpg_igm0 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 sum_mpg_igm0 = np.load(folder + "summary.npy", allow_pickle=True).item()
 
-# folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
-# dat_nyx_sim = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
 dat_nyx_sim = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
@@ -254,8 +256,8 @@ dat_sherwood = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 print(sum_mpg_sim["delta2_star_err"]/sum_mpg_igm["delta2_star_err"])
 print(sum_mpg_sim["n_star_err"]/sum_mpg_igm["n_star_err"])
 
-print(sum_mpg_sim["delta2_star_err"]/sum_mpg_igm0["delta2_star_err"])
-print(sum_mpg_sim["n_star_err"]/sum_mpg_igm0["n_star_err"])
+print(sum_mpg_igm["delta2_star_err"]/sum_mpg_igm0["delta2_star_err"])
+print(sum_mpg_igm["n_star_err"]/sum_mpg_igm0["n_star_err"])
 
 # +
 
@@ -484,16 +486,17 @@ dict_trans = {
     
     "DLAs": "HCD: only DLAs",  # no LLS, sub-DLA
     "HCD0": "HCD: w/ $f_\\mathrm{const}^\\mathrm{HCD}$", # w/ constant term
-    "HCD_BOSS": "HCD: BOSS",
+    "HCD_BOSS": "HCD: simple",
     
     "metal_si2": "Metals: no SiII-SiII",  # no SiII-SiII cont
     "metal_deco": "Metals: no H-Si decorr",  # no decorrelation metals
     "metal_thin": "Metals: opt thin",  # no desviation from optically-thin limit ERROR
     
-    "metal_trad": "Metals: BOSS",  # 2 params for metals like eBOSS
+    "metal_trad": "Metals: simple",  # 2 params for metals like eBOSS
     "Metals_Ma2025": "Metals: Ma+2025",
 
     "sim_mpg_central": "mpg-central", 
+    "sim_mpg_seed": "mpg-seed",
     "sim_mpg_central_all": "Model: cosmo, IGM, cont, syst", 
     "sim_mpg_central_igm": "Model: cosmo, IGM",
     "sim_mpg_central_igm0": "Model: cosmo", 
@@ -521,7 +524,7 @@ fname = [
     # "test",
 ]
 
-for image in range(15):
+for image in range(6,9 ):
 
     # if image in [3, 4, 5]:
     #     ftsize = 26
@@ -564,8 +567,8 @@ for image in range(15):
         variations = ["DESIY1_QMLE3_mpg", "DESIY1_QMLE3_nyx"]
         dats = [dat_mpg, dat_nyx]
     elif image == 11:
-        variations = ["sim_mpg_central", "sim_nyx_central", "sim_sherwood"]
-        dats = [dat_mpg_sim, dat_nyx_sim, dat_sherwood]
+        variations = ["sim_mpg_central", "sim_mpg_seed", "sim_nyx_central", "sim_sherwood"]
+        dats = [dat_mpg_sim, dat_mpgseed_sim, dat_nyx_sim, dat_sherwood]
     elif image == 12:
         variations = ["sim_mpg_central_all", "sim_mpg_central_igm", "sim_mpg_central_igm0"]
         dats = [dat_mpg_sim, dat_mpg_igm, dat_mpg_igm0]
@@ -695,8 +698,12 @@ for image in range(15):
     # if variations[1] == "DESIY1_QMLE3_nyx":
     #     ax.scatter(sim_dat2[:,0] - ds_diff, sim_dat2[:,1] - ns_diff, color="C1")
     # ax.scatter(sim_dat[:,0] - ds_diff, sim_dat[:,1] - ns_diff, color="C0")
+    if fname[image] == "val_sims":
+        ncol = 2
+    else:
+        ncol = 1
     
-    plt.legend(fontsize=ftsize-6, loc=loc, ncol=1)
+    plt.legend(fontsize=ftsize-6, loc=loc, ncol=ncol)
     plt.tight_layout()
     plt.savefig("figs/vars/variations_"+fname[image]+".pdf")
     plt.savefig("figs/vars/variations_"+fname[image]+".png")

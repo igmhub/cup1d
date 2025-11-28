@@ -40,11 +40,13 @@ rcParams["font.family"] = "STIXGeneral"
 
 # %%
 
+# %%
+
 root_dir=os.path.join(get_path_repo("cup1d"), "data", "planck_linP_chains")
 
-folder = root_dir + "/crisjagq/base_mnu/desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP/base_mnu_desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP"
-cmb_mnu2 = {} 
-cmb_mnu2["samples"] = loadMCSamples(folder)
+# folder = root_dir + "/crisjagq/base_mnu/desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP/base_mnu_desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP"
+# cmb_mnu2 = {} 
+# cmb_mnu2["samples"] = loadMCSamples(folder)
 
 cmb = planck_chains.get_planck_2018(
     model='base',
@@ -79,6 +81,23 @@ cmb_nnu = planck_chains.get_planck_2018(
     data='plikHM_TTTEEE_lowl_lowE_linP',
     root_dir=root_dir,
     linP_tag=None
+)
+
+
+cmbspa_mnu = planck_chains.get_spa(
+    model="base_mnu", data='DESI_CMB-SPA',
+)
+
+cmbspa_nnu = planck_chains.get_spa(
+    model="base_nnu", data='DESI_CMB-SPA',
+)
+
+cmbspa_nrun = planck_chains.get_spa(
+    model="base_nrun", data='DESI_CMB-SPA',
+)
+
+cmbspa_nrun_nrunrun = planck_chains.get_spa(
+    model="base_nrunrun", data='DESI_CMB-SPA',
 )
 
 
@@ -229,8 +248,6 @@ if run_code:
         k_kms, P_kms = get_pk(cmb_all[ii], nn=500)
 
 # %%
-
-# %%
 ftsize = 22
 kp_kms = 0.009
 fact = kp_kms**3 / (2 * np.pi**2)
@@ -286,8 +303,10 @@ for ii in range(len(cmb_all)):
         
         # x-grid and sampled lines
         # x = np.geomspace(0.001, 0.04, 200)
+        
         x = np.geomspace(0.5 * kp_kms, 2 * kp_kms, 200)
-        y_samp = np.exp(A_samp[:,None] + B_samp[:,None] * np.log(x[None,:]/kp_kms))/np.exp(y_samp_fid)
+        # y_samp = np.exp(A_samp[:,None] + B_samp[:,None] * np.log(x[None,:]/kp_kms))/np.exp(y_samp_fid)
+        y_samp = np.exp(np.median(A_samp) + B_samp[:,None] * np.log(x[None,:]/kp_kms))/np.exp(y_samp_fid)
         
         # mean and percentiles
         y_med = np.median(y_samp, axis=0)
@@ -299,15 +318,16 @@ for ii in range(len(cmb_all)):
 
         for kk in range(3):
             if kk == 0:
-                lab = r"DESI-Ly$\alpha$"
+                lab = r"DESI $P_\mathrm{1D}$"
             else:
                 lab = None
-            ax[kk].scatter(
+            ax[kk].errorbar(
                 kp_kms, 
                 np.median(np.exp(A_samp)/np.exp(A_fid)), 
-                # np.std(np.exp(A_samp)/np.exp(A_fid)),
-                # marker="o", 
-                color="C0"
+                np.std(np.exp(A_samp)/np.exp(A_fid)),
+                marker="o", 
+                color="C0",
+                elinewidth=2
             )
             # ax[kk].plot(x, y_med, color="C0")
             ax[kk].fill_between(x, y_p16, y_p84, alpha=0.3, label=lab, color="C0")
@@ -369,10 +389,7 @@ plt.savefig("figs/Plin_extra.png", bbox_inches="tight")
 # }
 
 # %%
-
-# %%
-
-# %%
+# cmb["samples"].index
 
 # %%
 ftsize = 26
@@ -423,7 +440,7 @@ ax = g.subplots[0,0]
 
 for inum, num in enumerate([0.68, 0.95]):
     if inum == 0:
-        label=r"DESI-Ly$\alpha$"
+        label=r"DESI $P_\mathrm{1D}$"
     else:
         label=None
     for jj in range(len(dat_mpg[num])):
@@ -470,7 +487,7 @@ from matplotlib.ticker import MaxNLocator
 from matplotlib.ticker import FormatStrFormatter
 from getdist.mcsamples import MCSamples
 
-def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
+def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_samp=False):
     latex_param = {
         "nnu": r"$N_\mathrm{eff}$",
         "tau": r"$\tau$",
@@ -483,6 +500,7 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
     # samples_DESI=[]
     labels_DESI=[]
     colors = []
+    ii0 = 0
     for ii in range(len(chain_type)):
         # overwrite, but no idea how to make a deep copy
         new_samples = chain_type[ii]['samples'].copy()
@@ -532,16 +550,31 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
         # samples_DESI.append(new_samples)
         if ii == 0:
             all_chains.append(chain_type[ii]['samples'])
-            all_labels.append(r"$\mathit{Planck}$ T&E")
-            colors.append("C0")
-            labels_DESI.append(r"$\mathit{Planck}$ T&E + DESI-Ly$\alpha$")
+            colors.append("C"+str(ii0))
+            ii0 += 1
+            if alt:
+                all_labels.append(r"CMB-SPA + DESI BAO")
+                labels_DESI.append(
+                    r"CMB-SPA + DESI BAO"
+                    "\n"
+                    r"+ DESI $P_\mathrm{1D}$"
+                )
+            else:
+                all_labels.append(r"$\mathit{Planck}$ T&E")
+                labels_DESI.append(r"$\mathit{Planck}$ T&E + DESI $P_\mathrm{1D}$")
         elif ii == 1:
+            if all_samp:
+                all_chains.append(chain_type[ii]['samples'])
+                colors.append("C"+str(ii0))
+                ii0 += 1
+                all_labels.append(r"CMB-SPA + DESI BAO")
             labels_DESI.append(
-                r"CMB-SPA + DESI-BAO"
+                r"CMB-SPA + DESI BAO"
                 "\n"
-                r"+ DESI-Ly$\alpha$"
+                r"+ DESI $P_\mathrm{1D}$"
             )
-        colors.append("C"+str(ii + 1))
+        colors.append("C"+str(ii0))
+        ii0 += 1
         all_chains.append(new_samples)
         all_labels.append(labels_DESI[ii])
 
@@ -622,6 +655,11 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
         g.subplots[-1, -1].axvline(3.046, ls="--", color = "black")
         g.subplots[-1, 0].axhline(3.046, ls="--", color = "black")
         g.subplots[-1, 1].axhline(3.046, ls="--", color = "black")
+        # if alt:
+        g.subplots[-1, 0].set_xlim(0.32, 0.39)
+        g.subplots[-1, 1].set_xlim(-2.32, -2.275)
+        g.subplots[-1, -1].set_xlim(3.046 - 0.45, 3.046 + 0.45)
+        
     elif param_name == "mnu":
         pass
         g.subplots[-1, -1].axvline(0.06, ls="--", color = "black")
@@ -630,12 +668,24 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
         g.subplots[-1, -1].axvline(0.1, ls="--", color = "black")
         g.subplots[-1, 0].axhline(0.1, ls="--", color = "black")
         g.subplots[-1, 1].axhline(0.1, ls="--", color = "black")
+        
         # g.subplots[-1, -1].set_xlim(0.01, 0.4)
-        g.subplots[-1, -1].set_xlim(0., 0.4)
+        if alt:
+            g.subplots[-1, -1].set_xlim(0., 0.08)
+        else:
+            g.subplots[-1, 0].set_xlim(0.31, 0.385)
+            g.subplots[-1, 1].set_xlim(-2.31, -2.285)
+            g.subplots[-1, -1].set_xlim(0., 0.35)
+            # g.subplots[-1, -1].set_xscale("log")
     elif param_name == "nrun":
         g.subplots[-1, -1].axvline(0., ls="--", color = "black")
         g.subplots[-1, 0].axhline(0., ls="--", color = "black")
         g.subplots[-1, 1].axhline(0., ls="--", color = "black")
+        
+        g.subplots[0, 0].set_xlim(0.32, 0.38)
+        g.subplots[1, 1].set_xlim(-2.35, -2.25)
+        g.subplots[-1, -1].set_xlim(-0.02, 0.02)
+
     elif param_name == "nrunrun":
         g.subplots[-1, -1].axvline(0., ls="--", color = "black")
         g.subplots[-1, 0].axhline(0., ls="--", color = "black")
@@ -645,11 +695,21 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24):
         g.subplots[-2, 0].axhline(0., ls="--", color = "black")
         g.subplots[-2, 1].axhline(0., ls="--", color = "black")
         g.subplots[-2, 2].axvline(0., ls="--", color = "black")
-
+        
+        g.subplots[-2, -2].set_xlim(-0.03, 0.03)
+        g.subplots[-1, -1].set_xlim(-0.03, 0.04)
+        
+        g.subplots[0, 0].set_xlim(0.305, 0.405)
+        g.subplots[1, 1].set_xlim(-2.41, -2.17)
+        
         
     plt.tight_layout()
-    plt.savefig("figs/import_"+param_name+".png", bbox_inches="tight")
-    plt.savefig("figs/import_"+param_name+".pdf", bbox_inches="tight")
+    if alt:
+        plt.savefig("figs/import_"+param_name+"_noP.png", bbox_inches="tight")
+        plt.savefig("figs/import_"+param_name+"_noP.pdf", bbox_inches="tight")
+    else:
+        plt.savefig("figs/import_"+param_name+".png", bbox_inches="tight")
+        plt.savefig("figs/import_"+param_name+".pdf", bbox_inches="tight")
 
 # %%
 cmb_mnu = planck_chains.get_planck_2018(
@@ -659,13 +719,39 @@ cmb_mnu = planck_chains.get_planck_2018(
     linP_tag=None
 )
 
-root_dir=os.path.join(get_path_repo("cup1d"), "data", "planck_linP_chains")
-folder = root_dir + "/crisjagq/base_mnu/desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP/base_mnu_desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP"
-cmb_mnu2 = {} 
-cmb_mnu2["samples"] = loadMCSamples(folder)
+# root_dir=os.path.join(get_path_repo("cup1d"), "data", "planck_linP_chains")
+# folder = root_dir + "/crisjagq/base_mnu/desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP/base_mnu_desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP"
+# cmbspa_mnu = {} 
+# cmbspa_mnu["samples"] = loadMCSamples(folder)
 
-chains = [cmb_mnu, cmb_mnu2]
-plot_combine(chains, desi_dr1, "mnu")
+cmbspa_mnu = planck_chains.get_spa(
+    model="base_mnu", data='DESI_CMB-SPA',
+)
+
+# trad
+# chains = [cmb_mnu, cmbspa_mnu]
+# plot_combine(chains, desi_dr1, "mnu")
+
+# alt
+# cmbspa_mnu = planck_chains.get_spa(
+#     model="base_mnu", data='DESI_CMB-SPA',
+# )
+# chains = [cmbspa_mnu]
+# plot_combine(chains, desi_dr1, "mnu", alt=True)
+
+
+chains = [cmb_mnu, cmbspa_mnu]
+plot_combine(chains, desi_dr1, "mnu", all_samp=True)
+
+
+# %%
+
+# %%
+2 sigma mnu \Sigma m_\nu < 0.257
+2 sigma mnu \Sigma m_\nu < 0.205
+
+2 sigma mnu \sum m_\nu < 0.0551
+2 sigma mnu \sum m_\nu < 0.0537
 
 # %%
 np.round(100*(1-0.0046/0.0067), 2)
@@ -678,8 +764,51 @@ cmb_nrun = planck_chains.get_planck_2018(
     linP_tag=None
 )
 
-chains = [cmb_nrun]
-plot_combine(chains, desi_dr1, "nrun")
+
+cmbspa_nrun = planck_chains.get_spa(
+    model="base_nrun", data='DESI_CMB-SPA',
+)
+
+# trad
+# chains = [cmb_nrun, cmbspa_nrun]
+# plot_combine(chains, desi_dr1, "nrun")
+
+
+# alt
+# cmbspa_nrun = planck_chains.get_spa(
+#     model="base_nrun", data='DESI_CMB-SPA',
+# )
+# chains = [cmbspa_nrun]
+# plot_combine(chains, desi_dr1, "nrun", alt=True)
+
+
+chains = [cmb_nrun, cmbspa_nrun]
+plot_combine(chains, desi_dr1, "nrun", all_samp=True)
+
+# %%
+41/52-1
+
+# %%
+52 * (1-0.21)
+
+# %%
+46/52-1
+
+# %%
+41/46-1
+
+# %%
+10/12-1
+
+# %%
+537/551-1
+
+# %%
+1 sigma nrun n_{\rm run} = -0.0055\pm 0.0067
+1 sigma nrun n_{\rm run} = -0.0033\pm 0.0046
+
+1 sigma nrun n_{\rm run} = 0.0042\pm 0.0052
+1 sigma nrun n_{\rm run} = 0.0014\pm 0.0041
 
 # %%
 print(np.round(100*(1-0.0049/0.010), 2))
@@ -687,15 +816,48 @@ np.round(100*(1-0.0050/0.013), 2)
 
 # %%
 
-cmb_nrun_nrunrun = planck_chains.get_planck_2018(
+cmb_nrunrun = planck_chains.get_planck_2018(
     model='base_nrun_nrunrun',
     data='plikHM_TTTEEE_lowl_lowE_linP',
     root_dir=root_dir,
     linP_tag=None
 )
 
+cmbspa_nrunrun = planck_chains.get_spa(
+    model="base_nrunrun", data='DESI_CMB-SPA',
+)
 
-plot_combine([cmb_nrun_nrunrun], desi_dr1, "nrunrun")
+# trad
+# plot_combine([cmb_nrunrun, cmbspa_nrunrun], desi_dr1, "nrunrun")
+
+# alt
+# cmbspa_nrunrun = planck_chains.get_spa(
+#     model="base_nrunrun", data='DESI_CMB-SPA',
+# )
+# plot_combine([cmbspa_nrunrun], desi_dr1, "nrunrun", alt=True)
+
+
+plot_combine([cmb_nrunrun, cmbspa_nrunrun], desi_dr1, "nrunrun", all_samp=True)
+
+# %%
+0.0048/0.0091-1
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+1 sigma nrunrun n_{\rm run, run} = 0.012\pm 0.013
+1 sigma nrun n_{\rm run} = 0.001\pm 0.010
+1 sigma nrunrun n_{\rm run, run} = 0.0041\pm 0.0049
+1 sigma nrun n_{\rm run} = -0.0047\pm 0.0049
+
+1 sigma nrunrun n_{\rm run, run} = 0.0110\pm 0.0091
+1 sigma nrun n_{\rm run} = 0.0075\pm 0.0058
+1 sigma nrunrun n_{\rm run, run} = -0.0006\pm 0.0048
+1 sigma nrun n_{\rm run} = 0.0016\pm 0.0045
 
 # %%
 np.round(100*(1-0.16/0.19), 2)
@@ -709,11 +871,34 @@ cmb_nnu = planck_chains.get_planck_2018(
     linP_tag=None
 )
 
-plot_combine([cmb_nnu], desi_dr1, "nnu")
+cmbspa_nnu = planck_chains.get_spa(
+    model="base_nnu", data='DESI_CMB-SPA',
+)
+
+# trad
+# plot_combine([cmb_nnu, cmbspa_nnu], desi_dr1, "nnu")
+
+# alt
+# cmbspa_nnu = planck_chains.get_spa(
+#     model="base_nnu", data='DESI_CMB-SPA',
+# )
+# plot_combine([cmbspa_nnu], desi_dr1, "nnu", alt=True)
+
+plot_combine([cmb_nnu, cmbspa_nnu], desi_dr1, "nnu", all_samp=True)
 
 # %%
+0.32, 0.39
+-2.315, -2.275
 
 # %%
+1 sigma nnu N_{eff} = 2.92\pm 0.19
+1 sigma nnu N_{eff} = 2.96\pm 0.16
+
+1 sigma nnu N_\mathrm{eff} = 3.03\pm 0.12
+1 sigma nnu N_\mathrm{eff} = 3.02\pm 0.10
+
+# %%
+3.046
 
 # %%
 

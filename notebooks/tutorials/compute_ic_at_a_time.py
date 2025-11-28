@@ -109,7 +109,11 @@ plotter = Plotter(pip.fitter, save_directory=diru, zmask=zmask)
 # +
 
 plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize=20)
+# +
+
+plotter.plot_illustrate_contaminants_each(out_mle_cube[0].copy(), zmask, fontsize=20)
 # -
+
 
 
 

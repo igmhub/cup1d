@@ -3,6 +3,17 @@ from getdist import loadMCSamples
 import cup1d
 
 
+def spa_chains_dir(root_dir):
+    if root_dir is None:
+        root_dir = os.path.join(
+            os.path.dirname(cup1d.__path__[0]),
+            "data",
+            "cmbspa_linP_chains",
+        )
+    print("root_dir", root_dir)
+    return root_dir
+
+
 def planck_chains_dir(release, root_dir):
     """Given a Planck data release (year, integer), return the full path
     to the folder where the chains are stored.
@@ -125,6 +136,59 @@ def get_planck_2018(
     return get_planck_results(
         2018, model=model, data=data, root_dir=root_dir, linP_tag=linP_tag
     )
+
+
+def get_spa_results(model, data, root_dir, linP_tag, release="d1"):
+    """Load results from Planck, for a given data release and data combination.
+    Inputs:
+        - release (integer): 2013, 2015 or 2018
+        - model (string): cosmo model, e.g., base, base_mnu...
+        - data (string): data combination, e.g., plikHM_TT_lowl_lowE
+        - root_dir (string): path to folder with Planck chains
+        - linP_tag (string): label identifying linear power columns
+    Outputs:
+        - dictionary with relevant information
+    """
+
+    analysis = {}
+    analysis["release"] = release
+    analysis["release_dir"] = spa_chains_dir(root_dir=root_dir) + "/"
+    # specify analysis and chain name
+    analysis["model"] = model
+    analysis["data"] = data
+    analysis["dir_name"] = (
+        analysis["release_dir"] + analysis["model"] + "/" + analysis["data"]
+    )
+    # specify linear power parameters added (if any)
+    analysis["linP_tag"] = linP_tag
+
+    if linP_tag is None:
+        analysis["dir_name"] += "/"
+        analysis["chain_name"] = analysis["model"] + "_" + analysis["data"]
+    else:
+        analysis["dir_name"] += "_" + linP_tag + "/"
+        analysis["chain_name"] = (
+            analysis["model"]
+            + "_"
+            + analysis["data"]
+            + "_"
+            + analysis["linP_tag"]
+        )
+    # load and store chains read from file
+    analysis["samples"] = load_samples(
+        analysis["dir_name"] + analysis["chain_name"]
+    )
+    analysis["parameters"] = analysis["samples"].getParams()
+
+    return analysis
+
+
+def get_spa(
+    model="base_mnu", data="DESI_CMB-SPA", root_dir=None, linP_tag="linP"
+):
+    """Load results from Planck 2018 chain.
+    - linP_tag identifies chains with added linear parameters."""
+    return get_spa_results(model, data, root_dir, linP_tag)
 
 
 def get_cobaya(

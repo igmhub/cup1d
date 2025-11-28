@@ -1516,24 +1516,27 @@ class Plotter(object):
         ]
 
         labels = [
-            ["Model(IGM)", "HCD"],
+            ["Residual w/o ..., HCD terms", "HCD term"],
             [
-                "Model(IGM+HCD)",
-                r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$",
+                "Residual w/o ..., "
+                + r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$ terms",
+                r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$ term",
             ],
             [
-                "Model(...+" + r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$" + ")",
-                r"$\mathrm{SiII}-\mathrm{SiII}$",
+                "Residual w/o ..., " + r"$\mathrm{SiII}-\mathrm{SiII}$ terms",
+                r"$\mathrm{SiII}-\mathrm{SiII}$ term",
             ],
             [
-                "Model(...+" + r"$\mathrm{SiII}-\mathrm{SiII}$" + ")",
-                r"$\mathrm{Ly}\alpha-\mathrm{SiII}$",
+                "Residual w/o ..., "
+                + r"$\mathrm{Ly}\alpha-\mathrm{SiII}$"
+                + " terms",
+                r"$\mathrm{Ly}\alpha-\mathrm{SiII}$ term",
             ],
             [
-                "Model(...+" + r"$\mathrm{Ly}\alpha-\mathrm{SiII}$" + ")",
-                r"$\mathrm{SiII}-\mathrm{SiIII}$",
+                "Residual w/o " + r"$\mathrm{SiII}-\mathrm{SiIII}$" + " term",
+                r"$\mathrm{SiII}-\mathrm{SiIII}$ term",
             ],
-            ["Full Model", None],
+            ["Residual", None],
         ]
 
         contaminants = []
@@ -1591,10 +1594,12 @@ class Plotter(object):
             nax + naxres,
             2,
             sharex=True,
-            # sharey="row",
+            sharey="row",
             figsize=(12, (nax + naxres) * 2.5),
         )
         ax = ax.reshape(-1)
+
+        ax = ax[::-1]
 
         for ii in range(len(emu_p1d)):
             ax[ii].errorbar(
@@ -1614,7 +1619,7 @@ class Plotter(object):
                     label=labels[ii][1],
                 )
                 ax[ii].text(
-                    0.05,
+                    0.75,
                     0.07,
                     r"$\chi^2=$" + str(np.round(chi2_all[ii], 1)),
                     fontsize=fontsize - 2,
@@ -1622,7 +1627,7 @@ class Plotter(object):
                 )
             else:
                 ax[ii].text(
-                    0.05,
+                    0.75,
                     0.07,
                     r"$\chi^2=$" + str(np.round(chi2_all[-1], 1)),
                     fontsize=fontsize - 2,
@@ -1643,10 +1648,10 @@ class Plotter(object):
             #     fontsize=fontsize - 4,
             # )
             ax[ii].legend(loc="upper right", fontsize=fontsize - 4)
-        ax[-2].set_xlabel(
+        ax[0].set_xlabel(
             r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize
         )
-        ax[-1].set_xlabel(
+        ax[1].set_xlabel(
             r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize
         )
         # fig.suptitle(r"$z=$" + str(zmask[0]), fontsize=fontsize + 2)
@@ -1684,57 +1689,107 @@ class Plotter(object):
                 _data_k_kms.append(self.fitter.like.data.k_kms[iz])
                 _data_Pk_kms.append(self.fitter.like.data.Pk_kms[iz])
                 _data_ePk_kms.append(
-                    np.sqrt(np.diag(self.fitter.like.data.cov_Pk_kms[iz]))
+                    np.sqrt(np.diag(self.fitter.like.cov_Pk_kms[iz]))
                 )
-                _data_icov_kms.append(
-                    np.linalg.inv(self.fitter.like.data.cov_Pk_kms[iz])
-                )
+                _data_icov_kms.append(self.fitter.like.icov_Pk_kms[iz])
         _data_z = np.array(_data_z)
 
-        best_fit = self.fitter.like.get_p1d_kms(_data_z, _data_k_kms, values)
-
         each_contaminants = [
-            ["DLA"],
-            ["SiIII_Lya"],
-            ["SiIIa_Lya", "SiIIb_Lya", "SiIIc_Lya"],
-            ["SiIII_SiIIa", "SiIII_SiIIb", "SiIII_SiIIc"],
-            ["SiIIb_SiIIa"],
-            [None],
+            [
+                "DLA",
+                "SiIII_Lya",
+                "SiIIa_Lya",
+                "SiIIb_Lya",
+                "SiIII_SiIIa",
+                "SiIII_SiIIb",
+                "SiIIb_SiIIa",
+            ],
+            [
+                "DLA",
+                "SiIII_Lya",
+                "SiIIa_Lya",
+                "SiIIb_Lya",
+                # "SiIII_SiIIa",
+                # "SiIII_SiIIb",
+                "SiIIb_SiIIa",
+            ],
+            [
+                "DLA",
+                "SiIII_Lya",
+                "SiIIa_Lya",
+                "SiIIb_Lya",
+                "SiIII_SiIIa",
+                "SiIII_SiIIb",
+                # "SiIIb_SiIIa",
+            ],
+            [
+                "DLA",
+                "SiIII_Lya",
+                # "SiIIa_Lya",
+                # "SiIIb_Lya",
+                "SiIII_SiIIa",
+                "SiIII_SiIIb",
+                "SiIIb_SiIIa",
+            ],
+            [
+                # "DLA",
+                "SiIII_Lya",
+                "SiIIa_Lya",
+                "SiIIb_Lya",
+                "SiIII_SiIIa",
+                "SiIII_SiIIb",
+                "SiIIb_SiIIa",
+            ],
+            [
+                "DLA",
+                # "SiIII_Lya",
+                "SiIIa_Lya",
+                "SiIIb_Lya",
+                "SiIII_SiIIa",
+                "SiIII_SiIIb",
+                "SiIIb_SiIIa",
+            ],
         ]
 
         labels = [
-            "IGM",
-            "DLA",
-            "Lya_SiIII",
-            "Lya_SiII",
-            "SiII_SiIII",
-            # "SiII_SiII",
-            "",
+            ["Residual", None],
+            [
+                "Residual w/o " + r"$\mathrm{SiII}-\mathrm{SiIII}$" + " term",
+                r"$\mathrm{SiII}-\mathrm{SiIII}$ term",
+            ],
+            [
+                "Residual w/o " + r"$\mathrm{SiII}-\mathrm{SiII}$ term",
+                r"$\mathrm{SiII}-\mathrm{SiII}$ term",
+            ],
+            [
+                "Residual w/o "
+                + r"$\mathrm{Ly}\alpha-\mathrm{SiII}$"
+                + " term",
+                r"$\mathrm{Ly}\alpha-\mathrm{SiII}$ term",
+            ],
+            ["Residual w/o HCD term", "HCD term"],
+            [
+                "Residual w/o " + r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$ term",
+                r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$ term",
+            ],
         ]
 
         contaminants = []
         for conts in each_contaminants:
-            cont = np.ones_like(_data_k_kms)
-            like_params = self.fitter.like.free_params.copy()
-            for ii, par in enumerate(like_params):
-                par.value = par.value_from_cube(values[ii])
+            _values = values.copy()
 
             if "DLA" not in conts:
                 for ii in range(4):
-                    key = "HCD_damp" + str(ii + 1) + "_0"
-                    try:
-                        ind = np.argwhere(
-                            np.array(self.fitter.like.free_param_names) == key
-                        )[0, 0]
-                        like_params[ind].value = -10.5
-                    except:
-                        pass
-            _cont = (
-                self.fitter.like.theory.model_cont.hcd_model.get_contamination(
-                    zmask, _data_k_kms, like_params=like_params
-                )
-            )
-            cont *= _cont
+                    for jj in range(11):
+                        key = "HCD_damp" + str(ii + 1) + "_" + str(jj)
+                        try:
+                            ind = np.argwhere(
+                                np.array(self.fitter.like.free_param_names)
+                                == key
+                            )[0, 0]
+                            _values[ind] = -11.5
+                        except:
+                            pass
 
             remove = {
                 "SiIII_Lya": 0,
@@ -1754,41 +1809,18 @@ class Plotter(object):
                 except:
                     pass
 
-            mF = self.fitter.like.theory.model_igm.F_model.get_mean_flux(zmask)
-            _cont = self.fitter.like.theory.model_cont.metal_models[
-                "Si_mult"
-            ].get_contamination(
-                zmask, _data_k_kms, mF, like_params=like_params, remove=remove
+            cont = self.fitter.like.get_p1d_kms(
+                zs=zmask, values=_values, remove=remove
             )
-            cont *= _cont
 
-            if "SiIIb_SiIIa" in conts:
-                _cont = self.fitter.like.theory.model_cont.metal_models[
-                    "Si_add"
-                ].get_contamination(
-                    zmask,
-                    _data_k_kms,
-                    mF,
-                    like_params=like_params,
-                    remove=remove,
-                )
-                cont += _cont
-
-            contaminants.append(cont)
-
-        # all_contaminants = [["DLA", "Si"], ["DLA"], ["Si"], [None]]
-
-        each_cont = []
-        for ii in range(len(each_contaminants)):
-            each_cont.append(contaminants[ii])
+            contaminants.append(cont[0])
 
         chi2_all = []
         emu_p1d = []
         # id_use = [0, 2, 3]
         for ii in range(len(each_contaminants)):
-            _model = best_fit[0][0] / contaminants[ii]
-            emu_p1d.append(_model)
-            diff = _data_Pk_kms[0] - _model
+            emu_p1d.append(contaminants[ii])
+            diff = _data_Pk_kms[0] - contaminants[ii]
             chi2_all.append(np.dot(np.dot(_data_icov_kms[0], diff[0]), diff[0]))
 
         nax = len(emu_p1d) // 2
@@ -1797,53 +1829,40 @@ class Plotter(object):
             nax + naxres,
             2,
             sharex=True,
-            # sharey="row",
-            figsize=(12, (nax + naxres) * 2.5),
+            sharey="row",
+            figsize=(12, (nax + naxres) * 3),
         )
         ax = ax.reshape(-1)
 
         for ii in range(len(emu_p1d)):
-            if ii == 0:
-                lab = labels[ii]
-            else:
-                lab = "(...) + " + labels[ii]
             ax[ii].errorbar(
                 _data_k_kms[0],
-                _data_Pk_kms[0] / emu_p1d[ii][0],
+                _data_Pk_kms[0] / emu_p1d[ii][0] - 1,
                 _data_ePk_kms[0] / emu_p1d[ii][0],
+                # _data_Pk_kms[0] - emu_p1d[ii][0],
+                # _data_ePk_kms[0],
                 color="C0",
                 ls=":",
                 marker=".",
-                # label="Data + " + lab,
+                label=labels[ii][0],
             )
-            if ii != len(emu_p1d) - 1:
+            if ii != 0:
                 ax[ii].plot(
                     _data_k_kms[0],
-                    each_cont[ii][0],
+                    emu_p1d[0][0] / emu_p1d[ii][0] - 1,
                     "C1-",
-                    label=labels[ii + 1],
+                    label=labels[ii][1],
                 )
-                ax[ii].text(
-                    0.05,
-                    0.1,
-                    r"$\Delta\chi^2=$"
-                    + str(np.round(chi2_all[-1] - chi2_all[ii], 1)),
-                    fontsize=fontsize - 2,
-                    transform=ax[ii].transAxes,
-                )
-            else:
-                ax[ii].text(
-                    0.05,
-                    0.1,
-                    r"$\chi^2=$" + str(np.round(chi2_all[-1], 1)),
-                    fontsize=fontsize - 2,
-                    transform=ax[ii].transAxes,
-                )
-            ax[ii].axhline(1, color="k", ls=":", alpha=0.5)
-
-            ax[ii].tick_params(
-                axis="both", which="major", labelsize=fontsize - 2
+            ax[ii].text(
+                0.75,
+                0.07,
+                r"$\chi^2=$" + str(np.round(chi2_all[ii], 1)),
+                fontsize=fontsize - 2,
+                transform=ax[ii].transAxes,
             )
+            ax[ii].axhline(0, color="k", ls=":", alpha=0.5)
+
+            ax[ii].tick_params(axis="both", which="major", labelsize=fontsize)
             # _handles, _labels = ax[ii].get_legend_handles_labels()
             # if ii != len(emu_p1d) - 1:
             #     order = [1, 0]
@@ -1855,23 +1874,29 @@ class Plotter(object):
             #     loc="upper right",
             #     fontsize=fontsize - 4,
             # )
-            ax[ii].legend(loc="upper right", fontsize=fontsize - 2)
-        ax[-2].set_xlabel(r"$k_\parallel$ [s/km]", fontsize=fontsize)
-        ax[-1].set_xlabel(r"$k_\parallel$ [s/km]", fontsize=fontsize)
+            ax[ii].legend(loc="upper right", fontsize=fontsize - 4)
+        ax[-2].set_xlabel(
+            r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize
+        )
+        ax[-1].set_xlabel(
+            r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize
+        )
         # fig.suptitle(r"$z=$" + str(zmask[0]), fontsize=fontsize + 2)
         if naxres == 1:
             ax[-1].axis("off")
 
         fig.supylabel(
             # r"$P_{\rm 1D}/P_{\rm 1D}^{\rm model}-1$",
-            r"Ratio",
+            r"Residual",
             x=0.01,
-            fontsize=fontsize + 2,
+            fontsize=fontsize,
         )
         plt.tight_layout()
 
         # ax[0].set_ylim(-1.05*max_min, 1.05*max_min)
-        # ax[0].set_ylim(-0.2, 0.2)
+        ax[0].set_ylim(-0.12, 0.18)
+        ax[2].set_ylim(-0.12, 0.18)
+        ax[-1].set_ylim(-0.16, 0.28)
 
         if self.save_directory is not None:
             name = self.save_directory + "/cont_illustrate_each" + str(zmask[0])
