@@ -102,6 +102,18 @@ for ii in range(1):
 
 pip.fitter.like.get_chi2(pip.fitter.mle_cube, zmask=zmask)
 
+chi2_z22 = {
+    "full": 29.34193443427515,
+    "no HCD": 50.562410331579215,
+    "no SiII-SiIII": 40.0704405056536,
+    "no SiII-SiII": 58.36565506912524,
+    "no Lya-SiII": 75.86759701563147,
+    "no Lya-SiIII": 661.8034659063873,
+    "no cont": 764.4559241510051,
+}
+for key in chi2_z22:
+    print(key, np.round(chi2_z22[key] - chi2_z22["full"], 1))
+
 diru = 'figs'
 # diru=None
 plotter = Plotter(pip.fitter, save_directory=diru, zmask=zmask)
@@ -111,7 +123,7 @@ plotter = Plotter(pip.fitter, save_directory=diru, zmask=zmask)
 plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize=20)
 # +
 
-plotter.plot_illustrate_contaminants_each(out_mle_cube[0].copy(), zmask, fontsize=20)
+plotter.plot_illustrate_contaminants_each(out_mle_cube[0].copy(), zmask, fontsize=22)
 # -
 
 

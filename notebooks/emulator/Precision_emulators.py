@@ -108,10 +108,14 @@ for ii in range(nsam):
     p1d_Mpc_sm[ii] = norm * np.exp(emulator.func_poly(k_fit, *popt))
 
 # %%
+from matplotlib.ticker import FormatStrFormatter
+
+# %%
 fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 24
 
-for ii in range(1, nsam):
+# for ii in range(nsam-2, 0, -1):
+for ii in range(0, nsam-2):
     lab = r"$z=$"+str(np.round(sim_test[ii]['z'], 2))
     if p1d_Mpc_emu[ii][0] != 0:
         ax.plot(k_Mpc, p1d_Mpc_sm[ii]/p1d_Mpc_emu[ii]-1, lw=2, label=lab)
@@ -120,7 +124,7 @@ ax.axhline(ls=":", color="k")
 ax.axhline(0.01, ls="--", color="k")
 ax.axhline(-0.01, ls="--", color="k")
     
-plt.legend()
+plt.legend(loc="upper left")
 ax.set_xscale("log")
 ax.set_xlabel(r"$k_\parallel\,\left[\mathrm{Mpc}^{-1}\right]$", fontsize=ftsize)
 # plt.ylim(-0.03, 0.03)
@@ -131,12 +135,14 @@ ax.tick_params(
     axis="both", which="major", labelsize=ftsize - 2
 )
 
+ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+
 plt.legend(fontsize=ftsize-5, ncol=3)
 plt.tight_layout()
-plt.savefig("figs/mpg_seed.pdf")
-plt.savefig("figs/mpg_seed.png")
-# plt.savefig("figs/nyx_seed.pdf")
-# plt.savefig("figs/nyx_seed.png")
+# plt.savefig("figs/mpg_seed.pdf")
+# plt.savefig("figs/mpg_seed.png")
+plt.savefig("figs/nyx_seed.pdf")
+plt.savefig("figs/nyx_seed.png")
 
 # %%
 
@@ -181,9 +187,8 @@ ftsize = 24
 cols = ["C1", "C0", "C0", "C1"]
 percents = np.percentile(p1d_Mpc_sim/p1d_Mpc_sm-1, [5, 16, 84, 95], axis=0)
 
-ax.fill_between(k_Mpc, percents[1], percents[2], label="16-84th percentiles", color=cols[1], alpha=0.4)
 ax.fill_between(k_Mpc, percents[0], percents[-1], label="5-95th percentiles", color=cols[0], alpha=0.4)
-ax.fill_between(k_Mpc, percents[1], percents[2], color=cols[1], alpha=0.4)
+ax.fill_between(k_Mpc, percents[1], percents[2], label="16-84th percentiles", color=cols[1], alpha=0.4)
 
 ax.axhline(ls=":", color="k")
 ax.axhline(0.01, ls="--", color="k")
@@ -199,6 +204,8 @@ ax.set_ylabel(r"$P_\mathrm{1D}^\mathrm{sim}/P_\mathrm{1D}^\mathrm{smooth}-1$", f
 ax.tick_params(
     axis="both", which="major", labelsize=ftsize - 2
 )
+
+ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
 
 plt.legend(fontsize=ftsize-2, ncol=1)
 plt.tight_layout()
@@ -278,9 +285,8 @@ rel_diff = (p1d_Mpc_emu/p1d_Mpc_sm-1).reshape(-1, p1d_Mpc_emu.shape[-1])
 _ = p1d_Mpc_emu.reshape(-1, p1d_Mpc_emu.shape[-1])[:,0] != 0
 percents = np.percentile(rel_diff[_, :], [5, 16, 84, 95], axis=0)
 
-ax.fill_between(k_Mpc, percents[1], percents[2], label="16-84th percentiles", color=cols[1], alpha=0.4)
 ax.fill_between(k_Mpc, percents[0], percents[-1], label="5-95th percentiles", color=cols[0], alpha=0.4)
-ax.fill_between(k_Mpc, percents[1], percents[2], color=cols[1], alpha=0.4)
+ax.fill_between(k_Mpc, percents[1], percents[2], label="16-84th percentiles", color=cols[1], alpha=0.4)
 
 ax.axhline(ls=":", color="k")
 ax.axhline(0.01, ls="--", color="k")
@@ -296,6 +302,7 @@ ax.tick_params(
     axis="both", which="major", labelsize=ftsize - 2
 )
 
+ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
 
 # plt.ylim(-0.1, 0.1)
 
@@ -307,78 +314,5 @@ plt.savefig("figs/nyx_l1o.pdf")
 plt.savefig("figs/nyx_l1o.png")
 
 # %%
-
-# %% [markdown]
-# ### OLD
-
-# %%
-# our modules
-from lace.cosmo import camb_cosmo
-from lace.cosmo import fit_linP
-from lace.emulator import nn_emulator
-from lace.emulator import gp_emulator
-
-# %% [markdown]
-# ### Load LaCE emulator
-
-# %% [markdown]
-# ### Specify cosmological model
-#
-# cosmo object will wrap a CAMB results object, and offer useful functionality.
-
-# %%
-cosmo=camb_cosmo.get_cosmology(H0=67,ns=0.96)
-
-# %% [markdown]
-# ### Compute linear power parameters at the redshift of interest
-
-# %%
-z=3.0
-test_params=fit_linP.get_linP_Mpc_zs(cosmo,zs=[z],kp_Mpc=emulator.archive.kp_Mpc)[0]
-for key,value in test_params.items():
-    print(key,'=',value)
-
-# %% [markdown]
-# ### Specify IGM parameters at the redshift
-#
-# We need to choose a value of mean flux (mF), thermal broadening scale (sigT_Mpc), TDR slope gamma and filtering length (kF_Mpc).
-#
-# We will choose values that are well sampled in the archive.
-
-# %%
-dz=0.1
-zmask=[ (training_data[i]['z']<z+dz) & (training_data[i]['z']>z-dz) for i in range(Na)]
-
-# %%
-test_params
-
-# %%
-for param in emu_params:
-    if param in ['Delta2_p','n_p']: 
-        continue
-    test_params[param]=np.mean([ training_data[i][param] for i in range(Na) if zmask[i] ])
-    print(param+' = {:.3f}'.format(test_params[param]))
-
-# %% [markdown]
-# ### Ask emulator to predict P1D
-
-# %%
-# specify wavenumbers to emulate (in velocity units)
-k_kms=np.logspace(np.log10(0.002),np.log10(0.02),num=20)
-# use test cosmology to translate to comoving units
-dkms_dMpc=camb_cosmo.dkms_dMpc(cosmo,z)
-print('1 Mpc = {:.2f} km/s at z = {}'.format(dkms_dMpc,z))
-k_Mpc=k_kms*dkms_dMpc
-
-# %%
-# emulate P1D in comoving units
-p1d_Mpc=emulator.emulate_p1d_Mpc(model=test_params,k_Mpc=k_Mpc)
-# use test cosmology to translate back to velocity units
-p1d_kms=p1d_Mpc*dkms_dMpc
-
-# %%
-plt.loglog(k_kms,k_kms*p1d_kms)
-plt.xlabel('k [s/km]')
-plt.ylabel('k P(k)')
 
 # %%

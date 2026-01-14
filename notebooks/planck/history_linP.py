@@ -194,7 +194,7 @@ labs = [
     'SDSS (McDonald+05)', 
     'BOSS\n(Palanque-Delabrouille+15)', 
     'eBOSS (Chabanier+19)', 
-    'eBOSS + {$\\bar{F}, \\Omega_m, H_0$} priors\n(Walther+24)'
+    'eBOSS + {$\\bar{F}, \\Omega_\\mathrm{m}, H_0$} priors\n(Walther+24)'
 ]
 cmap = plt.colormaps["Blues"]
 fontsize = 26
@@ -226,13 +226,15 @@ x_NS = np.linspace(-2.4, -2.2, 500)
 # from literature
 
 chi2_list = [chi2_Mc2005, chi2_PD2015, chi2_Ch2019, chi2_Wa2024]
+colors = ["C1", "C2", "C3", "C4"]
+lss = [":", "-.", "--", "--"]
 for ii, _chi2 in enumerate(chi2_list):
-    color = "C" + str(ii + 1)
-    CS = ax.contour(DL2_grid, neff_grid, _chi2["chi2"], levels=thresholds,colors=color, linewidths=lw, alpha=alpha[0])
+    color = colors[ii]
+    CS = ax.contour(DL2_grid, neff_grid, _chi2["chi2"], levels=thresholds, colors=color, linewidths=lw, alpha=alpha[0], linestyles = lss[ii])
     pdf = stats.norm.pdf(x_D2S, _chi2["Delta2_star"], _chi2["Delta2_star_err"])
-    ax_D2S.plot(x_D2S, pdf/pdf.max(),color=color, lw=lw[0], alpha=alpha[0])
+    ax_D2S.plot(x_D2S, pdf/pdf.max(),color=color, lw=lw[0], alpha=alpha[0], ls = lss[ii])
     pdf = stats.norm.pdf(x_NS, _chi2["n_star"], _chi2["n_star_err"])
-    ax_NS.plot(x_NS, pdf/pdf.max(),color=color, lw=lw[0], alpha=alpha[0])
+    ax_NS.plot(x_NS, pdf/pdf.max(),color=color, lw=lw[0], alpha=alpha[0], ls = lss[ii])
 
 #### From DESI-DR1
 for inum, num in enumerate([0.68, 0.95]):
@@ -267,8 +269,9 @@ ax.set_xlim(0.23, 0.52)
  # Legend
 handles = []
 handles.append(mlines.Line2D([], [], color='black', label=r'$\mathit{Planck}$ T&E: $\Lambda$CDM', lw=3))
-for ii in range(len(labs)):
-    handles.append(mlines.Line2D([], [], color='C'+str(ii), label=labs[ii], lw=3))
+handles.append(mlines.Line2D([], [], color="C0", label=labs[0], lw=3, ls = "-"))
+for ii in range(len(labs)-1):
+    handles.append(mlines.Line2D([], [], color=colors[ii], label=labs[ii+1], lw=3, ls = lss[ii]))
     
 g.subplots[1, 1].legend(
     handles=handles, 

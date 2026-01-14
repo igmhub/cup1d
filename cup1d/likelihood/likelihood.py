@@ -2958,31 +2958,35 @@ class Likelihood(object):
             else:
                 pk = self.data.Pk_kms[ii].copy()
 
-            if ii == 0:
-                lab = r"$x$ = Stat"
-            else:
-                lab = None
-            ax[ii].plot(self.data.k_kms[ii], np.sqrt(cov_stat) / pk, label=lab)
-            if ii == 1:
-                lab = r"$x$ = Syst"
-            else:
-                lab = None
-            ax[ii].plot(self.data.k_kms[ii], np.sqrt(cov_syst) / pk, label=lab)
-            if ii == 2:
-                lab = r"$x$ = Emu"
-            else:
-                lab = None
-            ax[ii].plot(self.data.k_kms[ii], np.sqrt(cov_emu) / pk, label=lab)
-            if ii == 3:
-                lab = r"$x$ = Total"
-            else:
-                lab = None
-            ax[ii].plot(self.data.k_kms[ii], np.sqrt(cov_tot) / pk, label=lab)
+            ax[ii].plot(
+                self.data.k_kms[ii],
+                np.sqrt(cov_stat) / pk,
+                ls="-",
+                lw=3,
+            )
+            ax[ii].plot(
+                self.data.k_kms[ii],
+                np.sqrt(cov_syst) / pk,
+                ls=":",
+                lw=3,
+            )
+            ax[ii].plot(
+                self.data.k_kms[ii],
+                np.sqrt(cov_emu) / pk,
+                ls="--",
+                lw=3,
+            )
+            ax[ii].plot(
+                self.data.k_kms[ii],
+                np.sqrt(cov_tot) / pk,
+                ls="-.",
+                lw=3,
+            )
             ax[ii].text(
+                0.05,
                 0.95,
-                0.2,
                 "z=" + str(self.data.z[ii]),
-                ha="right",
+                ha="left",
                 va="top",
                 transform=ax[ii].transAxes,
                 fontsize=ftsize,
@@ -2992,8 +2996,17 @@ class Likelihood(object):
             for ii in range(len(self.cov_Pk_kms), len(ax)):
                 ax[ii].axis("off")
 
+        labs = ["stat", "syst", "emu", "total"]
+        lss = ["-", ":", "--", "-."]
         for ii in range(4):
-            ax[ii].legend(fontsize=ftsize - 2, loc="upper right")
+            ax[-1].plot(
+                [0, 0],
+                [0, 0],
+                label=r"$\sigma_x = \sigma_\mathrm{" + labs[ii] + "}$",
+                ls=lss[ii],
+                lw=3,
+            )
+        ax[-1].legend(fontsize=ftsize, loc="upper left")
         fig.supxlabel(
             r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize + 2
         )

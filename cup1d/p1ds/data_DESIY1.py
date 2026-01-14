@@ -224,6 +224,7 @@ class P1D_DESIY1(BaseDataP1D):
         cov_syst_type="red",
         path_data=None,
         variation=None,
+        data_bias=1.0,
     ):
         """Read measured P1D from file.
         - full_cov: for now, no covariance between redshift bins
@@ -238,6 +239,7 @@ class P1D_DESIY1(BaseDataP1D):
             p1d_fname=p1d_fname,
             cov_syst_type=cov_syst_type,
             variation=variation,
+            data_bias=data_bias,
         )
         (
             zs,
@@ -282,8 +284,11 @@ def read_from_file(
     max_cov=1e3,
     cov_syst_type="red",
     variation=None,
+    data_bias=1.0,
 ):
     """Read file containing P1D"""
+
+    # we correct both the stat cov matrix and p1d for data bias
 
     # folder storing P1D measurement
     try:
@@ -319,7 +324,9 @@ def read_from_file(
         if hdu[iuse].header["EXTNAME"] == "P1D_BLIND":
             blinding = True
 
-    cov_stat_raw = hdu[dict_with_keys["COVARIANCE_STAT"]].data.copy()
+    cov_stat_raw = (
+        hdu[dict_with_keys["COVARIANCE_STAT"]].data.copy() * data_bias**2
+    )
     cov_syst_raw = compute_cov(
         hdu[dict_with_keys["SYSTEMATICS"]].data,
         type_measurement=type_measurement,
@@ -332,12 +339,12 @@ def read_from_file(
     k_kms_raw = hdu[iuse].data["K"]
     k_kms_min_raw = hdu[iuse].data["K1"]
     k_kms_max_raw = hdu[iuse].data["K2"]
-    Pk_kms_raw = hdu[iuse].data["PLYA"]
+    Pk_kms_raw = hdu[iuse].data["PLYA"] * data_bias
     diag_cov_raw = np.diag(cov_raw)
 
     # smooth Pk, for adding emulator error
     if type_measurement == "QMLE":
-        Pksmooth_kms_raw = hdu[iuse].data["PSMOOTH"]
+        Pksmooth_kms_raw = hdu[iuse].data["PSMOOTH"] * data_bias
     elif type_measurement == "FFT":
         p1d_fname_qmle = os.path.join(
             os.path.dirname(p1d_fname),
@@ -346,7 +353,7 @@ def read_from_file(
         _ = fits.open(p1d_fname_qmle)
         ksmooth_kms_raw = _[1].data["K"]
         zsmooth = _[1].data["Z"]
-        Pksmooth_kms_raw = _[1].data["PSMOOTH"]
+        Pksmooth_kms_raw = _[1].data["PSMOOTH"] * data_bias
 
     z_unique = np.unique(zs_raw)
     mask_raw = np.zeros(len(k_kms_raw), dtype=bool)

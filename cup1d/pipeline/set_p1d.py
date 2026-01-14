@@ -167,6 +167,7 @@ def set_P1D(args, archive=None, theory=None):
             cov_syst_type=args.cov_syst_type,
             path_data=args.path_data,
             variation=args.name_variation,
+            data_bias=args.data_bias,
         )
     else:
         raise ValueError(f"data_label {data_label} not implemented")

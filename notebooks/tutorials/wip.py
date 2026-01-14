@@ -103,29 +103,31 @@ from cup1d.pipeline.set_archive import set_archive
 # ((1 + zzs)/3)**-3.55 * alphas
 
 # %%
-1/53.e-5
 
-# %%
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
+folder = "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_1/"
 
-# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-# folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
-
-# from cup1d.plots_and_tables.table_nuisance import table_nuisance
-# table_nuisance(base + folder)
+from cup1d.plots_and_tables.table_nuisance import table_nuisance
+table_nuisance(base + folder)
 
 # from cup1d.plots_and_tables.table_variations import table_variations
 # base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 # table_variations(base)
 
 
-from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
-plot_table_igm(base, name_variation=None, save_fig=save_fig, chain="7")
+# from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
+# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+# save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
+# plot_table_igm(base, name_variation=None, save_fig=save_fig, chain="7")
 # save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/test/"
 # plot_table_igm(base, name_variation="nyx", save_fig=save_fig, chain="3")
 # plot_table_igm(base, name_variation="more_igm", save_fig=save_fig, chain="2")
 
+
+# %%
+
+# %%
 
 # %%
 4400/1216 -1
@@ -227,11 +229,11 @@ emulator_label = "CH24_mpgcen_gpr"
 # data_label = "nyx_seed"
 # data_label = "nyx_cgan_base"
 # data_label = "accel2"
-# data_label = "sherwood"
+data_label = "sherwood"
 
-data_label = "mpg_central"
+# data_label = "mpg_central"
 # data_label = "mpg_seed"
-data_label = "nyx_seed"
+# data_label = "nyx_seed"
 
 if data_label == "mpg_central":
     zmin=2.2
@@ -299,6 +301,19 @@ pip = Pipeline(args)
 
 # %%
 pip.fitter.like.plot_p1d()
+
+# %%
+dict_out = {
+    "k_kms": pip.fitter.like.data.k_kms,
+    "Pk_kms": pip.fitter.like.data.Pk_kms,
+    "cov_Pk_kms": pip.fitter.like.data.cov_Pk_kms,
+    "z": pip.fitter.like.data.z,
+}
+np.save("smooth_" + data_label + ".npy", dict_out)
+
+# %%
+data = np.load("smooth_" + data_label + ".npy", allow_pickle=True).item()
+data.keys()
 
 # %%
 # cov0 = pip.fitter.like.full_cov_Pk_kms.copy()
@@ -423,8 +438,14 @@ data_label = "DESIY1_QMLE3"
 # name_variation = "HCD_BOSS"
 
 # name_variation = "more_igm"
+# name_variation = "LLS_nz4"
+name_variation = "IGM_priors"
+# name_variation = "bias_eBOSS"
 
-name_variation = None
+###
+# name_variation = None
+###
+
 emu_cov_type = "full"
 # emu_cov_type = "block"
 # emu_cov_type = "diagonal"
@@ -447,17 +468,44 @@ pip = Pipeline(args, out_folder=args.out_folder)
 
 
 # %%
+# pip.fitter.like.plot_correlation_matrix()
+
+# %%
 # np.save("blinding.npy", pip.fitter.like.blind)
 
 # %%
-pip.fitter.like.data.k_kms[-1]
+# Pk_kms0 = pip.fitter.like.data.Pk_kms.copy()
+Pk_kms1 = pip.fitter.like.data.Pk_kms.copy()
+
+# %%
+err_Pk_kms = pip.fitter.like.cov_Pk_kms.copy()
+
+# %%
+kk = pip.fitter.like.data.k_kms.copy()
+
+# %%
+res = np.zeros((11, 2))
+fig, ax = plt.subplots(11, 1, sharex=True, figsize=(8, 15))
+for ii in range(len(kk)):
+    ax[ii].errorbar(kk[ii], Pk_kms0[ii]/Pk_kms1[ii]-1, np.sqrt(np.diag(err_Pk_kms[ii]))/Pk_kms1[ii])
+    ax[ii].plot(kk[ii], kk[ii][:]*0, ":")
+    res[ii, 0] = np.median(Pk_kms0[ii]/Pk_kms1[ii]-1)
+    res[ii, 1] = np.mean(np.sqrt(np.diag(err_Pk_kms[ii]))/Pk_kms1[ii])
+fig.supylabel("Residual")
+fig.supxlabel(r"$k_\parallel$")
+plt.tight_layout()
+plt.savefig("qmle_res_p1d.png")
+
+# %%
+plt.errorbar(pip.fitter.like.data.z, res[:,0], res[:,1])
+plt.plot(pip.fitter.like.data.z, pip.fitter.like.data.z[:] * 0)
 
 # %%
 
 # %%
 
 # pip.fitter.like.plot_cov_to_pk(fname="figs/err2p1d_qmle3")
-pip.fitter.like.plot_cov_to_pk(use_pk_smooth=False, fname="figs/err2p1d_qmle3")
+# pip.fitter.like.plot_cov_to_pk(use_pk_smooth=False, fname="figs/err2p1d_qmle3")
 
 # %%
 for ii, par in enumerate(pip.fitter.like.free_params):
@@ -487,12 +535,28 @@ pip.fitter.like.get_chi2(p0)
 # %%
 data_lab = "DESIY1_QMLE3"
 fit_type = "global_opt"
+# fit_type = "emu_diag"
+# fit_type = "emu_block"
 emu = "mpg"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/chain_3/"
 folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/chain_7/"
 data = np.load(folder + "fitter_results.npy", allow_pickle=True).item()
 p0 = data["fitter"]["mle_cube"]
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
+
+# %%
+# data["fitter"]["mle"]
+
+# %%
+pip.fitter.like.plot_p1d(
+    p0, 
+    residuals=True, 
+    plot_panels=True, 
+    print_chi2=False, 
+    fix_cosmo=False, 
+    plot_fname=None
+)
 
 # %%
 

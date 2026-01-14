@@ -1752,25 +1752,25 @@ class Plotter(object):
         ]
 
         labels = [
-            ["Residual", None],
+            ["Residual w/ all terms", None],
             [
                 "Residual w/o " + r"$\mathrm{SiII}-\mathrm{SiIII}$" + " term",
-                r"$\mathrm{SiII}-\mathrm{SiIII}$ term",
+                r"$\mathrm{SiII}-\mathrm{SiIII}$ term (2 params)",
             ],
             [
                 "Residual w/o " + r"$\mathrm{SiII}-\mathrm{SiII}$ term",
-                r"$\mathrm{SiII}-\mathrm{SiII}$ term",
+                r"$\mathrm{SiII}-\mathrm{SiII}$ term (2 params)",
             ],
             [
                 "Residual w/o "
                 + r"$\mathrm{Ly}\alpha-\mathrm{SiII}$"
                 + " term",
-                r"$\mathrm{Ly}\alpha-\mathrm{SiII}$ term",
+                r"$\mathrm{Ly}\alpha-\mathrm{SiII}$ term (2 params)",
             ],
-            ["Residual w/o HCD term", "HCD term"],
+            ["Residual w/o HCD term", "HCD term (4 params)"],
             [
                 "Residual w/o " + r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$ term",
-                r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$ term",
+                r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$ term (2 params)",
             ],
         ]
 

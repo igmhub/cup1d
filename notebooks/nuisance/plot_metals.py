@@ -141,19 +141,31 @@ for ii in range(len(ax)):
 # for ii in range(2, 3):
 
     if ii < 3:
+        # coeffs = {
+        #     "f_Lya_SiIII": [0, -4],
+        #     "s_Lya_SiIII": [0, 5],
+        #     "f_Lya_SiII": [0, -3.5],
+        #     "s_Lya_SiII": [0, 5],
+        #     "f_SiIIa_SiIII": [0, 1],
+        #     "f_SiIIb_SiIII": [0, 1],
+        # }
         coeffs = {
-            "f_Lya_SiIII": [0, -4],
-            "s_Lya_SiIII": [0, 5],
-            "f_Lya_SiII": [0, -3.5],
-            "s_Lya_SiII": [0, 5],
-            "f_SiIIa_SiIII": [0, 1],
-            "f_SiIIb_SiIII": [0, 1],
+            "f_Lya_SiIII": [0, -4.17],
+            "s_Lya_SiIII": [0, 4.90],
+            "f_Lya_SiII": [0, -3.66],
+            "s_Lya_SiII": [0, 5.65],
+            "f_SiIIa_SiIII": [0, 0.84],
+            "f_SiIIb_SiIII": [0, 0.59],
         }
         met_model = si_mult.SiMult(coeffs = coeffs)
     else:
+        # coeffs = {
+        #     "f_SiIIa_SiIIb": [0, -1],
+        #     "s_SiIIa_SiIIb": [0, 4.5],
+        # }
         coeffs = {
-            "f_SiIIa_SiIIb": [0, -1],
-            "s_SiIIa_SiIIb": [0, 4.5],
+            "f_SiIIa_SiIIb": [0, 0.40],
+            "s_SiIIa_SiIIb": [0, 4.43],
         }
         met_model = si_add.SiAdd(coeffs = coeffs)
 
@@ -188,3 +200,12 @@ for val in vals:
 1/90
 
 # %%
+
+ '$f^\\mathrm{HCD}_{{\\rm LLS}_0}$': -1.26972353839923,
+ '$f^\\mathrm{HCD}_{{\\rm LLS}_1}$': -1.2399946104079138,
+ '$f^\\mathrm{HCD}_{{\\rm sub-DLA}_0}$': -9.167807803887731,
+ '$f^\\mathrm{HCD}_{{\\rm sub-DLA}_1}$': -3.114029121360594,
+ '$f^\\mathrm{HCD}_{{\\rm small DLA}_0}$': -5.115888890687746,
+ '$f^\\mathrm{HCD}_{{\\rm small DLA}_1}$': -5.530119419372345,
+ '$f^\\mathrm{HCD}_{{\\rm large DLA}_0}$': -4.688801235071705,
+ '$f^\\mathrm{HCD}_{{\\rm large DLA}_1}$': -4.502944905689939,

@@ -14,6 +14,7 @@ class Args:
     """
 
     data_label: str = "DESIY1_QMLE3"
+    data_bias: float = 1
     data_label_hires: str | None = None
     z_min: float = 0
     z_max: float = 10
@@ -49,7 +50,7 @@ class Args:
     )
     true_igm: dict = field(
         default_factory=lambda: {
-            "priors": "hc",
+            "priors": 1.0,
             "label_mF": "mpg_central",
             "label_T": "mpg_central",
             "label_kF": "mpg_central",
@@ -61,7 +62,7 @@ class Args:
     )
     fid_igm: dict = field(
         default_factory=lambda: {
-            "priors": "hc",
+            "priors": 1.0,
             "label_mF": "mpg_central",
             "label_T": "mpg_central",
             "label_kF": "mpg_central",
@@ -571,7 +572,7 @@ class Args:
                     "emu_cov_type " + self.emu_cov_type + " not implemented"
                 )
 
-        ## set cosmology
+        ## set redshift range
         if (name_variation is not None) and (name_variation == "zmin"):
             self.z_min = 2.6
         if (name_variation is not None) and (name_variation == "zmax"):
@@ -605,6 +606,10 @@ class Args:
             sim_fid = "nyx_central"
         else:
             sim_fid = "mpg_central"
+
+        if (name_variation is not None) and (name_variation == "IGM_priors"):
+            self.fid_igm["priors"] = 1.1
+
         self.fid_igm["label_mF"] = sim_fid
         self.fid_igm["label_T"] = sim_fid
         self.fid_igm["label_kF"] = sim_fid
@@ -649,6 +654,7 @@ class Args:
             inf_stat = 1
         if (name_variation is not None) and ("no_emu_cov" in name_variation):
             inf_emu = 0
+
         self.cov_factor["val_stat"] = (
             np.ones(len(self.cov_factor["z"])) * inf_stat
         )
@@ -661,6 +667,13 @@ class Args:
         self.cov_factor["val_full"] = (
             np.ones(len(self.cov_factor["z"])) * inf_full
         )
+        ##
+
+        ## bias in the results?
+        if (name_variation is not None) and (name_variation == "bias_eBOSS"):
+            self.data_bias = 0.95
+        else:
+            self.data_bias = 1.0
 
         props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
         props_cont = [
@@ -1058,6 +1071,10 @@ class Args:
 
             ## set contaminants
             nodes = np.geomspace(self.z_min, self.z_max, 2)
+            if (name_variation is not None) and (name_variation == "LLS_nz4"):
+                nodes_LLS = np.geomspace(self.z_min, self.z_max, 4)
+            else:
+                nodes_LLS = nodes
 
             for prop in props_cont:
                 if prop not in baseline_prop:
@@ -1065,7 +1082,10 @@ class Args:
                     continue
 
                 if prop in zvar:
-                    self.fid_cont[prop + "_znodes"] = nodes
+                    if prop == "HCD_damp1":
+                        self.fid_cont[prop + "_znodes"] = nodes_LLS
+                    else:
+                        self.fid_cont[prop + "_znodes"] = nodes
                 else:
                     self.fid_cont[prop + "_znodes"] = np.array([3.0])
 

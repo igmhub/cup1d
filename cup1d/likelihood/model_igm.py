@@ -50,9 +50,9 @@ class IGM(object):
                             prop_coeffs[key3] = "pivot"
 
         if "priors" in pars_igm:
-            type_priors = pars_igm["priors"]
+            fact_priors = pars_igm["priors"]
         else:
-            type_priors = "hc"
+            fact_priors = 1.0
 
         fid_igm = self.get_igm(
             sim_igm_mF=self.fid_sim_igm_mF,
@@ -60,7 +60,7 @@ class IGM(object):
             sim_igm_kF=self.fid_sim_igm_kF,
         )
 
-        self.set_priors(fid_igm, prop_coeffs, type_priors=type_priors)
+        self.set_priors(fid_igm, prop_coeffs, fact_priors=fact_priors)
 
         self.models = {
             "F_model": F_model,
@@ -240,19 +240,14 @@ class IGM(object):
 
         return igms_return
 
-    def set_priors(self, fid_igm, prop_coeffs, type_priors="hc", z_pivot=3):
+    def set_priors(
+        self, fid_igm, prop_coeffs, fact_priors=1.0, z_pivot=3, percent=95
+    ):
         """Set priors for all IGM models
 
         This is only important for giving the minimizer and the sampler a uniform
         prior that it is not too broad. The metric below takes care of the real priors
         """
-
-        if type_priors == "hc":
-            percent = 95
-        elif type_priors == "data":
-            percent = 68
-        else:
-            raise ValueError("type_priors must be 'hc' or 'data'")
 
         self.priors = {}
         for par in fid_igm:
@@ -350,13 +345,14 @@ class IGM(object):
                 y1 = y0_cen / np.log((1 + z.max()) / (1 + z_pivot))
                 self.priors[par] = [
                     [-y1 * 2, y1 * 2],
-                    [-y0_min * 1.05, y0_max * 1.05],
+                    [-y0_min * 1.05 * fact_priors, y0_max * 1.05 * fact_priors],
                 ]
             elif otype == "const":
                 y1 = y0_cen / ((1 + z.max()) / (1 + z_pivot))
+                fact = fact_priors - 1
                 self.priors[par] = [
                     [-y1 * 2, y1 * 2],
-                    [y0_min * 0.95, y0_max * 1.05],
+                    [y0_min * 0.95 * (1 - fact), y0_max * 1.05 * (1 + fact)],
                 ]
 
     # def set_metric(self, emu_igm_params, tol_factor=95):

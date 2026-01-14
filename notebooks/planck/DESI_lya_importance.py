@@ -116,12 +116,12 @@ cmbspa_nrun_nrunrun = planck_chains.get_spa(
 #     linP_tag=None
 # )
 
-# cmb_w_wa = planck_chains.get_planck_2018(
-#     model='base_w_wa',
-#     data='plikHM_TTTEEE_lowl_lowE_BAO_linP',
-#     root_dir=root_dir,
-#     linP_tag=None
-# )
+cmb_w_wa = planck_chains.get_planck_2018(
+    model='base_w_wa',
+    data='plikHM_TTTEEE_lowl_lowE_BAO_linP',
+    root_dir=root_dir,
+    linP_tag=None
+)
 
 
 # cmb_r = planck_chains.get_planck_2018(
@@ -219,6 +219,13 @@ desi_dr1
 # %%
 ds -= blinding["Delta2_star"]
 ns -= blinding["n_star"]
+
+# %%
+desi_dr1
+
+# %%
+
+# %%
 
 # %% [markdown]
 # #### Get pk from cmb chains
@@ -352,8 +359,10 @@ for ii in range(len(cmb_all)):
         # k_kms, zs_out, P_kms = camb_cosmo.get_linP_kms(_cosmo)
         P_kms = np.load("P_kms_" + str(ii) + ".npy")
         y16, y50, y84 = np.percentile(P_kms, [16, 50, 84], axis=0)
-        ax[kk].fill_between(fid_k_kms, y16/ynorm, y84/ynorm, alpha=0.2, color="C"+str(ii+1), label=cmb_labs[ii], hatch=hatch[ii+1])
-        ax[kk].plot(fid_k_kms, y50/ynorm, lw=2, color="C"+str(ii+1))
+        colors = ["C1", "C2", "C6", "C5", "C7"]
+        lss= ["--", "-", "--", "-", "--"]
+        ax[kk].fill_between(fid_k_kms, y16/ynorm, y84/ynorm, alpha=0.2, color=colors[ii], label=cmb_labs[ii], hatch=hatch[ii+1])
+        ax[kk].plot(fid_k_kms, y50/ynorm, lw=2, color=colors[ii], ls=lss[ii])
 
 for kk in range(3):
     ax[kk].axhline(1, ls=":", color="k", alpha=0.5)
@@ -389,53 +398,50 @@ plt.savefig("figs/Plin_extra.png", bbox_inches="tight")
 # }
 
 # %%
-# cmb["samples"].index
-
-# %%
 ftsize = 26
 cmap = plt.colormaps["Blues"]
 col = [0.7, 0.3]
 lw = [3, 2]
-cmb_all = [
-    cmb, 
-    # cmb_tau, 
-    cmb_mnu, 
-    cmb_nnu, 
-    cmb_nrun, 
-    cmb_nrun_nrunrun,
-]
-cmb_labs = [
-    r"$\mathit{Planck}$ T&E: $\Lambda$CDM", 
-    # r"Planck+18 $\Lambda$CDM (no lowE)",
-    r"$\mathit{Planck}$ T&E: $\sum m_\nu$",
-    r"$\mathit{Planck}$ T&E: $N_\mathrm{eff}$",
-    r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}$",
-    r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
-]
+# cmb_all = [
+#     cmb, 
+#     # cmb_tau, 
+#     cmb_mnu, 
+#     cmb_nnu, 
+#     cmb_nrun, 
+#     cmb_nrun_nrunrun,
+# ]
+# cmb_labs = [
+#     r"$\mathit{Planck}$ T&E: $\Lambda$CDM", 
+#     # r"Planck+18 $\Lambda$CDM (no lowE)",
+#     r"$\mathit{Planck}$ T&E: $\sum m_\nu$",
+#     r"$\mathit{Planck}$ T&E: $N_\mathrm{eff}$",
+#     r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}$",
+#     r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
+# ]
 
-g = plots.getSinglePlotter(width_inch=10)
-g.settings.num_plot_contours = 2
+# g = plots.getSinglePlotter(width_inch=10)
+# g.settings.num_plot_contours = 2
 
-for ii, icmb in enumerate(cmb_all):
+# for ii, icmb in enumerate(cmb_all):
 
-    new_samples=icmb['samples'].copy()
+#     new_samples=icmb['samples'].copy()
     
-    if ii == 0:
-        filled = False
-        lwu = 3
-    else:
-        filled = False
-        lwu = 2
-    g.plot_2d(
-        new_samples, 
-        ['linP_DL2_star', 'linP_n_star'], 
-        colors=["C"+str(ii+1)], 
-        lws=2, 
-        alphas=[0.8, 0.5],
-        filled=filled,
-    )
+#     if ii == 0:
+#         filled = False
+#         lwu = 3
+#     else:
+#         filled = False
+#         lwu = 2
+#     g.plot_2d(
+#         new_samples, 
+#         ['linP_DL2_star', 'linP_n_star'], 
+#         colors=["C"+str(ii+1)], 
+#         lws=2, 
+#         alphas=[0.8, 0.5],
+#         filled=filled,
+#     )
 
-ax = g.subplots[0,0]
+fig, ax = plt.subplots(figsize=(8,6))
 
 
 for inum, num in enumerate([0.68, 0.95]):
@@ -450,17 +456,118 @@ for inum, num in enumerate([0.68, 0.95]):
         ax.fill(x, y, color=cmap(col[inum]), alpha=0.5)
 
 # ax.axhline(y=1,color='k',lw=lw,label=r"DESI-DR1 Ly$\alpha$ (this work)")
-for ii, icmb in enumerate(cmb_all):
-    ax.axhline(y=1,color="C"+str(ii+1),lw=lw[0],label=cmb_labs[ii])    
+# for ii, icmb in enumerate(cmb_all):
+#     ax.axhline(y=1,color="C"+str(ii+1),lw=lw[0],label=cmb_labs[ii])    
 
 
-ax.set_xlim(0.25, 0.45)
-ax.set_ylim(-2.36, -2.24)
+# ax.set_xlim(0.25, 0.45)
+# ax.set_ylim(-2.36, -2.24)
 ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
 ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
 ax.tick_params(axis="both", which="major", labelsize=ftsize)
 
 plt.legend(fontsize=ftsize-1, loc="upper left", ncol=2)
+plt.tight_layout()
+
+plt.savefig("figs/only_desi.png", bbox_inches='tight')
+plt.savefig("figs/only_desi.pdf", bbox_inches='tight')
+
+# %%
+# cmb["samples"].index
+import matplotlib.lines as mlines
+
+# %%
+ftsize = 26
+cmap = plt.colormaps["Blues"]
+col = [0.7, 0.3]
+lw = [3, 2]
+cmb_all = [
+    cmb, 
+    cmb_mnu, 
+    cmb_nnu, 
+    cmb_nrun, 
+    cmb_nrun_nrunrun,
+    cmb_w_wa,
+]
+cmb_labs = [
+    r"$\mathit{Planck}$ T&E: $\Lambda$CDM", 
+    r"$\mathit{Planck}$ T&E: $\sum m_\nu$",
+    r"$\mathit{Planck}$ T&E: $N_\mathrm{eff}$",
+    r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}$",
+    r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
+    r"$\mathit{Planck}$ T&E: $\omega_0\omega_a$CDM", 
+]
+
+g = plots.getSinglePlotter(width_inch=10)
+g.settings.num_plot_contours = 2
+
+colors = ["C1", "C2", "C6", "C5", "C7", "black"]
+for ii, icmb in enumerate(cmb_all):
+
+    new_samples=icmb['samples'].copy()
+    
+    if ii == 0:
+        filled = False
+        lwu = 3
+    else:
+        filled = False
+        lwu = 2
+    g.plot_2d(
+        new_samples, 
+        ['linP_DL2_star', 'linP_n_star'], 
+        colors=[colors[ii]], 
+        lws=lw, 
+        alphas=[0.8, 0.5],
+        filled=filled,
+    )
+
+##########
+
+ax = g.subplots[0,0]
+
+
+lss = ["--", "-", "--", "-", "--", "-", "--"]
+for ii in range(len(ax.collections)):
+    ax.collections[ii].set_linestyle(lss[ii])
+
+for inum, num in enumerate([0.68, 0.95]):
+    if inum == 0:
+        label=r"DESI $P_\mathrm{1D}$"
+    else:
+        label=None
+    for jj in range(len(dat_mpg[num])):
+        x = dat_mpg[num][jj][0] - blinding["Delta2_star"]
+        y = dat_mpg[num][jj][1] - blinding["n_star"]
+        ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
+        ax.fill(x, y, color=cmap(col[inum]), alpha=0.5)
+
+# ax.axhline(y=1,color='k',lw=lw,label=r"DESI-DR1 Ly$\alpha$ (this work)")
+for ii, icmb in enumerate(cmb_all):
+    ax.axhline(y=1,color=colors[ii],lw=lw[0],label=cmb_labs[ii])    
+
+
+ax.set_xlim(0.25, 0.45)
+ax.set_ylim(-2.35, -2.23)
+ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
+ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
+ax.tick_params(axis="both", which="major", labelsize=ftsize)
+
+
+ # Legend
+handles = []
+handles.append(mlines.Line2D([], [], color="C0", label=r"DESI $P_\mathrm{1D}$", lw=3, ls = "-"))
+for ii in range(len(cmb_labs)):
+    handles.append(mlines.Line2D([], [], color=colors[ii], label=cmb_labs[ii], lw=3, ls = lss[ii]))
+
+# .legend(
+#     handles=handles, 
+#     bbox_to_anchor=(1, 2),
+#     loc='upper right', 
+#     borderaxespad=0.,
+#     fontsize=fontsize-6
+# )
+
+plt.legend(handles=handles, fontsize=ftsize-3, loc="upper left", ncol=2)
 plt.tight_layout()
 
 plt.savefig("figs/star_planck_mine.png", bbox_inches='tight')
@@ -499,7 +606,9 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
     all_labels = []
     # samples_DESI=[]
     labels_DESI=[]
-    colors = []
+    # colors = []
+    colors = ["C4", "C2", "C1", "C0"]
+    lss = [":", "-.", "--", "-"]
     ii0 = 0
     for ii in range(len(chain_type)):
         # overwrite, but no idea how to make a deep copy
@@ -550,7 +659,7 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         # samples_DESI.append(new_samples)
         if ii == 0:
             all_chains.append(chain_type[ii]['samples'])
-            colors.append("C"+str(ii0))
+            # colors.append("C"+str(ii0))
             ii0 += 1
             if alt:
                 all_labels.append(r"CMB-SPA + DESI BAO")
@@ -565,7 +674,7 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         elif ii == 1:
             if all_samp:
                 all_chains.append(chain_type[ii]['samples'])
-                colors.append("C"+str(ii0))
+                # colors.append("C"+str(ii0))
                 ii0 += 1
                 all_labels.append(r"CMB-SPA + DESI BAO")
             labels_DESI.append(
@@ -573,7 +682,7 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
                 "\n"
                 r"+ DESI $P_\mathrm{1D}$"
             )
-        colors.append("C"+str(ii0))
+        # colors.append("C"+str(ii0))
         ii0 += 1
         all_chains.append(new_samples)
         all_labels.append(labels_DESI[ii])
@@ -583,7 +692,10 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         if param_name == "mnu":
             print("2 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=2))
         else:
-            print("1 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=1))
+            if param_name == "nnu":
+                print("1 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=1, err_sig_figs=3))
+            else:
+                print("1 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=1))
             if (param_name == "nrunrun"): 
                 print("1 sigma", "nrun", all_chains[ii].getInlineLatex("nrun", limit=1))
     
@@ -608,9 +720,19 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         filled=True,
         lws=[3] * mm,
         alphas=[0.8] * mm,
-        line_args=[{"color": f"C{i}", "lw": 3, "alpha": 0.8} for i in range(mm)],
+        line_args=[{"ls":lss[i], "color": colors[i], "lw": 3, "alpha": 0.8} for i in range(mm)],
     )
-            
+
+    lss2 = [":", ":", "-.", "-.", "--", "--", "-", "-"]
+    for ii in range(len(g.subplots[1,0].collections)):
+        g.subplots[1,0].collections[ii].set_linestyle(lss2[ii])
+        g.subplots[2,0].collections[ii].set_linestyle(lss2[ii])
+        g.subplots[2,1].collections[ii].set_linestyle(lss2[ii])
+        if (param_name == "nrunrun"): 
+            g.subplots[3,0].collections[ii].set_linestyle(lss2[ii])
+            g.subplots[3,1].collections[ii].set_linestyle(lss2[ii])
+            g.subplots[3,2].collections[ii].set_linestyle(lss2[ii])
+    
 
     if (param_name != "nrunrun"): 
         ndim = 3
@@ -828,7 +950,7 @@ cmbspa_nrunrun = planck_chains.get_spa(
 )
 
 # trad
-# plot_combine([cmb_nrunrun, cmbspa_nrunrun], desi_dr1, "nrunrun")
+# plot_combine([cmb_nrunrun], desi_dr1, "nrunrun")
 
 # alt
 # cmbspa_nrunrun = planck_chains.get_spa(
@@ -901,6 +1023,7 @@ plot_combine([cmb_nnu, cmbspa_nnu], desi_dr1, "nnu", all_samp=True)
 3.046
 
 # %%
+0.105/0.124-1
 
 # %%
 
@@ -1036,9 +1159,12 @@ plt.savefig("figs/import_tau.pdf")
 # #### No constraints on w0, wa
 
 # %%
+desi_dr1
+
+# %%
 samples_DESI=[]
-true_DL2=[0.33,0.35,0.37]
-true_neff=[-2.295,-2.30,-2.305]
+# true_DL2=[0.33,0.35,0.37]
+# true_neff=[-2.295,-2.30,-2.305]
 # DL2_err = 0.056
 # neff_err = 0.022
 # r=-0.134
@@ -1046,37 +1172,41 @@ true_neff=[-2.295,-2.30,-2.305]
 # DL2_err = 0.043
 # neff_err = 0.025
 # r=0.1
-DL2_err = sum_mpg['delta2_star_err']
-neff_err = sum_mpg['n_star_err']
+# true_DL2 = desi_dr1['Delta2_star']
+# true_neff = desi_dr1['n_star']
+true_DL2 = 0.35
+true_neff = -2.3
+DL2_err = desi_dr1['Delta2_star_err']
+neff_err = desi_dr1['n_star_err'] 
 coeff_mult = 0.5
 
 chain_type = cmb_w_wa
 
 
 labels_DESI=[]
-for ii in range(len(true_DL2)):
+for ii in range(1):
     new_samples=chain_type['samples'].copy()
     p=new_samples.getParams()
     new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
         p.linP_n_star, 
         p.linP_DL2_star, 
-        true_DL2=true_DL2[ii],
-        true_neff=true_neff[ii],
+        true_DL2=true_DL2,
+        true_neff=true_neff,
         neff_err=neff_err,
         DL2_err=DL2_err,
         r=r
     )
     new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
     samples_DESI.append(new_samples)
-    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2[ii], true_neff[ii]))
+    labels_DESI.append(r'+ DESI Ly$\alpha \,(\Delta^2_\ast = ${} $n_\ast = ${})'.format(true_DL2, true_neff))
 
 
 g = plots.getSubplotPlotter(width_inch=16)
 g.settings.axes_fontsize = 10
 g.settings.legend_fontsize = 14
-g.triangle_plot([chain_type['samples'],samples_DESI[0],samples_DESI[1],samples_DESI[2]],
+g.triangle_plot([chain_type['samples'],samples_DESI[0]],
                 ['linP_DL2_star','linP_n_star','w','wa'],
-                legend_labels=['Planck 2018 + SDSS',labels_DESI[0],labels_DESI[1],labels_DESI[2]])
+                legend_labels=['Planck 2018 + SDSS',labels_DESI[0]])
 
 # %% [markdown]
 # ### Almost no constraints on omega_k

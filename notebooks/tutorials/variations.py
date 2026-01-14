@@ -453,11 +453,13 @@ def return_patch_priors(boundary, col="0.5"):
 # +
 
 ls = ["-", "--"]
+hatchs = ["", "/", "\\", "|"]
+lss = ["-", "--", ":", "-."]
 
 lw = [3, 2]
 col = [0.7, 0.3]
 ftsize = 28
-cmaps = ["Blues", "Oranges", "Greens", "Reds", "Purples"]
+cmaps = ["Blues", "Oranges", "Greens", "Purples"]
 
 dict_trans = {
     "DESIY1_QMLE3_mpg":"Baseline", 
@@ -524,7 +526,7 @@ fname = [
     # "test",
 ]
 
-for image in range(6,9 ):
+for image in range(0, 15):
 
     # if image in [3, 4, 5]:
     #     ftsize = 26
@@ -638,8 +640,8 @@ for image in range(6,9 ):
             for jj in range(len(dat[num])):
                 x = (dat[num][jj][0] - ds_diff) * factx
                 y = dat[num][jj][1] - ns_diff
-                ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
-                ax.fill(x, y, color=cmap(col[inum]), alpha=0.5)
+                ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75, ls=lss[ii])
+                ax.fill(x, y, color=cmap(col[inum]), alpha=0.3, hatch=hatchs[ii])
 
                 if x.min() < xlim[0]:
                     xlim[0] = x.min()
