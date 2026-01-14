@@ -11,8 +11,8 @@ from cup1d.utils.utils import get_path_repo
 def main():
     path_data = "jjchaves"
     variations = [
-        None,
-        "nyx",
+        # None,
+        # "nyx",
         # "DESIY1_QMLE",
         # "DESIY1_FFT3_dir",
         # "DESIY1_FFT_dir",
@@ -34,7 +34,10 @@ def main():
         # "hcd_z",  # 2 params for z ev hcd
         # "zmin",  # low z cut
         # "zmax",  # high z cut
-        # "DLAs"
+        # "DLAs", # eBOSS DLA model
+        "LLS_nz4",  # 4 params for LLS
+        "IGM_priors",  # 10% broader IGM priors
+        "bias_eBOSS",  # 0.95 x DESI, bias with eBOSS results
     ]
 
     for ivar in range(len(variations)):
