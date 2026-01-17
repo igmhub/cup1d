@@ -106,20 +106,20 @@ from cup1d.pipeline.set_archive import set_archive
 
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
-folder = "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_1/"
+# folder = "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_1/"
 
-from cup1d.plots_and_tables.table_nuisance import table_nuisance
-table_nuisance(base + folder)
+# from cup1d.plots_and_tables.table_nuisance import table_nuisance
+# table_nuisance(base + folder)
 
 # from cup1d.plots_and_tables.table_variations import table_variations
 # base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 # table_variations(base)
 
 
-# from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
-# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-# save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
-# plot_table_igm(base, name_variation=None, save_fig=save_fig, chain="7")
+from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
+base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
+plot_table_igm(base, name_variation=None, save_fig=save_fig, chain="7")
 # save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/test/"
 # plot_table_igm(base, name_variation="nyx", save_fig=save_fig, chain="3")
 # plot_table_igm(base, name_variation="more_igm", save_fig=save_fig, chain="2")
@@ -439,11 +439,11 @@ data_label = "DESIY1_QMLE3"
 
 # name_variation = "more_igm"
 # name_variation = "LLS_nz4"
-name_variation = "IGM_priors"
+# name_variation = "IGM_priors"
 # name_variation = "bias_eBOSS"
 
 ###
-# name_variation = None
+name_variation = None
 ###
 
 emu_cov_type = "full"
@@ -534,28 +534,39 @@ pip.fitter.like.get_chi2(p0)
 
 # %%
 data_lab = "DESIY1_QMLE3"
+# data_lab = "DESIY1_FFT3_dir"
 fit_type = "global_opt"
 # fit_type = "emu_diag"
 # fit_type = "emu_block"
 emu = "mpg"
 # folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/chain_3/"
 folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/chain_7/"
+# folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/chain_2/"
 data = np.load(folder + "fitter_results.npy", allow_pickle=True).item()
 p0 = data["fitter"]["mle_cube"]
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
 
 # %%
-# data["fitter"]["mle"]
+ylims
 
 # %%
+ylims=np.array([
+    [0.85, 1.15],
+    [0.85, 1.15],
+    [0.7, 1.3],
+    [0., 2.0],
+])
+
 pip.fitter.like.plot_p1d(
     p0, 
     residuals=True, 
     plot_panels=True, 
     print_chi2=False, 
-    fix_cosmo=False, 
-    plot_fname=None
+    fix_cosmo=False,
+    ylims=ylims, 
+    # plot_fname=None,
+    plot_fname="figs/residual_fid_opt_global"
 )
 
 # %%

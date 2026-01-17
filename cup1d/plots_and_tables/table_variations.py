@@ -192,6 +192,10 @@ def table_variations(base):
             "Cov: emu block diag",
             "DESIY1_QMLE3/emu_block/CH24_mpgcen_gpr/chain_3/",
         ],
+        "bias_eBOSS": [
+            "Syst: 5% eBOSS",
+            "DESIY1_QMLE3/bias_eBOSS/CH24_mpgcen_gpr/chain_2/",
+        ],
         "DESIY1_QMLE3_nyx": [
             "Emulator: lace-lyssa",
             "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_3/",
@@ -217,8 +221,16 @@ def table_variations(base):
             "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/",
         ],
         "more_igm": [
-            "IGM: $n_z=8$",
+            "IGM: $n_z=6$",
             "DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr/chain_2/",
+        ],
+        "IGM_priors": [
+            "IGM: larger priors",
+            "DESIY1_QMLE3/IGM_priors/CH24_mpgcen_gpr/chain_2/",
+        ],
+        "LLS_nz4": [
+            "HCD: LLS $n_z=4$",
+            "DESIY1_QMLE3/LLS_nz4/CH24_mpgcen_gpr/chain_2/",
         ],
         "hcd0": [
             "HCD: w/ $f_{\\mathrm{const}}^{\\mathrm{HCD}}$",

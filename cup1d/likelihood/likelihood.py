@@ -1137,6 +1137,7 @@ class Likelihood(object):
         fix_cosmo=False,
         n_param_glob_full=16,
         chi2_nozcov=False,
+        ylims=None,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
@@ -1462,7 +1463,9 @@ class Likelihood(object):
                         )
                     else:
                         label = (
-                            r"$\chi^2=$"
+                            r"$z=$"
+                            + str(np.round(z, 2))
+                            + r", $\chi^2=$"
                             + str(np.round(chi2_all[ii, iz], 2))
                             + r", $n_\mathrm{data}$="
                             + str(ndeg)
@@ -1553,7 +1556,8 @@ class Likelihood(object):
                     ymax = max(ymax, max(p1d_data * k_kms / np.pi))
 
                 if residuals & plot_panels:
-                    axs.legend(loc="upper right", fontsize=fontsize - 4)
+                    if print_chi2:
+                        axs.legend(loc="upper right", fontsize=fontsize - 4)
                     ymin = 1 - min((p1d_data - p1d_err) / p1d_theory + yshift)
                     ymax = 1 - max((p1d_data + p1d_err) / p1d_theory + yshift)
                     y2plot = 1.05 * np.max([np.abs(ymin), np.abs(ymax)])
@@ -1616,6 +1620,12 @@ class Likelihood(object):
                     r"$k_\parallel \, P_{\rm 1D}(z, k_\parallel) / \pi$",
                     fontsize=fontsize,
                 )
+
+        if ylims is not None:
+            ax[0].set_ylim(ylims[0, 0], ylims[0, 1])
+            ax[3].set_ylim(ylims[1, 0], ylims[1, 1])
+            ax[6].set_ylim(ylims[2, 0], ylims[2, 1])
+            ax[9].set_ylim(ylims[3, 0], ylims[3, 1])
 
         fig.supxlabel(
             r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize
@@ -2821,7 +2831,7 @@ class Likelihood(object):
                 "C5--",
                 alpha=0.5,
                 lw=3,
-                label=r"IGM $n_z=8$",
+                label=r"IGM $n_z=6$",
             )
             ax[1].plot(
                 more_igm["z"], more_igm["T0"][1], "C5--", alpha=0.5, lw=3

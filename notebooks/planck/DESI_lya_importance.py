@@ -495,7 +495,7 @@ cmb_labs = [
     r"$\mathit{Planck}$ T&E: $N_\mathrm{eff}$",
     r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}$",
     r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
-    r"$\mathit{Planck}$ T&E: $\omega_0\omega_a$CDM", 
+    r"$\mathit{Planck}$ T&E + BAO:"+"\n"+r"$\omega_0\omega_a$CDM", 
 ]
 
 g = plots.getSinglePlotter(width_inch=10)
@@ -526,7 +526,7 @@ for ii, icmb in enumerate(cmb_all):
 ax = g.subplots[0,0]
 
 
-lss = ["--", "-", "--", "-", "--", "-", "--"]
+lss = ["--", "-", "--", "-", "--", ":", ":"]
 for ii in range(len(ax.collections)):
     ax.collections[ii].set_linestyle(lss[ii])
 
@@ -876,6 +876,12 @@ plot_combine(chains, desi_dr1, "mnu", all_samp=True)
 2 sigma mnu \sum m_\nu < 0.0537
 
 # %%
+0.257/0.205
+
+# %%
+0.0551/0.0537
+
+# %%
 np.round(100*(1-0.0046/0.0067), 2)
 
 # %%
@@ -908,24 +914,6 @@ chains = [cmb_nrun, cmbspa_nrun]
 plot_combine(chains, desi_dr1, "nrun", all_samp=True)
 
 # %%
-41/52-1
-
-# %%
-52 * (1-0.21)
-
-# %%
-46/52-1
-
-# %%
-41/46-1
-
-# %%
-10/12-1
-
-# %%
-537/551-1
-
-# %%
 1 sigma nrun n_{\rm run} = -0.0055\pm 0.0067
 1 sigma nrun n_{\rm run} = -0.0033\pm 0.0046
 
@@ -933,8 +921,15 @@ plot_combine(chains, desi_dr1, "nrun", all_samp=True)
 1 sigma nrun n_{\rm run} = 0.0014\pm 0.0041
 
 # %%
-print(np.round(100*(1-0.0049/0.010), 2))
-np.round(100*(1-0.0050/0.013), 2)
+0.0067/0.0046
+
+# %%
+0.0052/0.0041
+
+# %%
+0.0052/0.0046
+
+# %%
 
 # %%
 
@@ -962,15 +957,6 @@ cmbspa_nrunrun = planck_chains.get_spa(
 plot_combine([cmb_nrunrun, cmbspa_nrunrun], desi_dr1, "nrunrun", all_samp=True)
 
 # %%
-0.0048/0.0091-1
-
-# %%
-
-# %%
-
-# %%
-
-# %%
 1 sigma nrunrun n_{\rm run, run} = 0.012\pm 0.013
 1 sigma nrun n_{\rm run} = 0.001\pm 0.010
 1 sigma nrunrun n_{\rm run, run} = 0.0041\pm 0.0049
@@ -982,7 +968,20 @@ plot_combine([cmb_nrunrun, cmbspa_nrunrun], desi_dr1, "nrunrun", all_samp=True)
 1 sigma nrun n_{\rm run} = 0.0016\pm 0.0045
 
 # %%
-np.round(100*(1-0.16/0.19), 2)
+0.013/0.0049
+
+# %%
+0.0091/0.0048
+
+# %%
+
+# %%
+0.010/0.0049
+
+# %%
+0.0058/0.0045
+
+# %%
 
 # %%
 
@@ -1009,21 +1008,23 @@ cmbspa_nnu = planck_chains.get_spa(
 plot_combine([cmb_nnu, cmbspa_nnu], desi_dr1, "nnu", all_samp=True)
 
 # %%
-0.32, 0.39
--2.315, -2.275
+1 sigma nnu N_{eff} = 2.918\pm 0.187
+1 sigma nnu N_{eff} = 2.964\pm 0.160
+1 sigma nnu N_\mathrm{eff} = 3.026\pm 0.124
+1 sigma nnu N_\mathrm{eff} = 3.021\pm 0.105
 
 # %%
-1 sigma nnu N_{eff} = 2.92\pm 0.19
-1 sigma nnu N_{eff} = 2.96\pm 0.16
+0.187/0.160
 
-1 sigma nnu N_\mathrm{eff} = 3.03\pm 0.12
-1 sigma nnu N_\mathrm{eff} = 3.02\pm 0.10
+# %%
+0.124/0.105
+
+# %%
+
+# %%
 
 # %%
 3.046
-
-# %%
-0.105/0.124-1
 
 # %%
 

@@ -646,7 +646,8 @@ class Args:
         # multiply cov by cov_factor**2
 
         if "DESIY1" in P1D_type:
-            inf_stat = 1.05
+            inf_stat = 1.05  # needed to get a good fit with QMLE
+            # inf_stat = 1.18 # needed to get a good fit with FFT
             inf_syst = 1
             inf_emu = 1
             inf_full = 1

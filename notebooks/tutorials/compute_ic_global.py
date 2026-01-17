@@ -34,7 +34,7 @@ data_label = "DESIY1_QMLE3"
 name_variation = None
 emulator_label = "CH24_mpgcen_gpr"
 # emulator_label = "CH24_nyxcen_gpr"
-# name_variation = "no_inflate"
+name_variation = "no_inflate"
 
 args = Args(data_label=data_label, emulator_label=emulator_label)
 args.set_baseline(
@@ -59,17 +59,25 @@ pip.fitter.like.get_chi2(p0, zmask=[2.2])
 # +
 n_param_glob_full = 17
 
+ylims=np.array([
+    [0.85, 1.15],
+    [0.85, 1.15],
+    [0.7, 1.3],
+    [0., 2.0],
+])
+
 pname = None
-# pname = "figs/residual_full_global"
+pname = "figs/residual_full_global"
 pip.fitter.like.plot_p1d(
     p0,
     residuals=True,
     plot_panels=True,
     glob_full=True,
     n_param_glob_full=n_param_glob_full,
-    fontsize=18,
+    # fontsize=18,
     chi2_nozcov=True,
     plot_fname=pname,
+    ylims=ylims
 )
 # -
 
