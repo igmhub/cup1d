@@ -594,7 +594,7 @@ from matplotlib.ticker import MaxNLocator
 from matplotlib.ticker import FormatStrFormatter
 from getdist.mcsamples import MCSamples
 
-def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_samp=False):
+def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_samp=False, asns=False):
     latex_param = {
         "nnu": r"$N_\mathrm{eff}$",
         "tau": r"$\tau$",
@@ -704,9 +704,15 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
     g.settings.legend_fontsize = fontsize
 
     if param_name == "nrunrun":
-        arr_plot = ['linP_DL2_star','linP_n_star', "nrun", param_name]
+        if asns:
+            arr_plot = ['logA','ns', "nrun", param_name]
+        else:
+            arr_plot = ['linP_DL2_star','linP_n_star', "nrun", param_name]
     else:
-        arr_plot = ['linP_DL2_star','linP_n_star', param_name]
+        if asns:
+            arr_plot = ['logA','ns', param_name]
+        else:
+            arr_plot = ['linP_DL2_star','linP_n_star', param_name]
 
     
     mm = len(all_labels)
@@ -753,10 +759,15 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         g.subplots[jj, 0].yaxis.set_major_locator(MaxNLocator(nbins=3))
         g.subplots[jj, 0].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
 
-        
-    g.subplots[-1, 0].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
-    g.subplots[-1, 1].set_xlabel(r"$n_\star$", fontsize=fontsize)
-    g.subplots[1, 0].set_ylabel(r"$n_\star$", fontsize=fontsize)
+
+    if asns:
+        g.subplots[-1, 0].set_xlabel(r"$\log(10^{10} A_\mathrm{s})$", fontsize=fontsize)
+        g.subplots[-1, 1].set_xlabel(r"$n_\mathrm{s}$", fontsize=fontsize)
+        g.subplots[1, 0].set_ylabel(r"$n_\mathrm{s}$", fontsize=fontsize)
+    else:
+        g.subplots[-1, 0].set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
+        g.subplots[-1, 1].set_xlabel(r"$n_\star$", fontsize=fontsize)
+        g.subplots[1, 0].set_ylabel(r"$n_\star$", fontsize=fontsize)
 
     if (param_name != "nrunrun"): 
         g.subplots[-1, 2].set_xlabel(latex_param[param_name], fontsize=fontsize)
@@ -803,10 +814,13 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         g.subplots[-1, -1].axvline(0., ls="--", color = "black")
         g.subplots[-1, 0].axhline(0., ls="--", color = "black")
         g.subplots[-1, 1].axhline(0., ls="--", color = "black")
-        
-        g.subplots[0, 0].set_xlim(0.32, 0.38)
-        g.subplots[1, 1].set_xlim(-2.35, -2.25)
+
         g.subplots[-1, -1].set_xlim(-0.02, 0.02)
+        if asns == False:
+            g.subplots[0, 0].set_xlim(0.32, 0.38)
+            g.subplots[1, 1].set_xlim(-2.35, -2.25)
+        else:
+            g.subplots[0, 0].set_xlim(3.005, 3.10)
 
     elif param_name == "nrunrun":
         g.subplots[-1, -1].axvline(0., ls="--", color = "black")
@@ -819,19 +833,28 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         g.subplots[-2, 2].axvline(0., ls="--", color = "black")
         
         g.subplots[-2, -2].set_xlim(-0.03, 0.03)
-        g.subplots[-1, -1].set_xlim(-0.03, 0.04)
-        
-        g.subplots[0, 0].set_xlim(0.305, 0.405)
-        g.subplots[1, 1].set_xlim(-2.41, -2.17)
+        g.subplots[-1, -1].set_xlim(-0.04, 0.04)
+        if asns == False:
+            g.subplots[0, 0].set_xlim(0.305, 0.405)
+            g.subplots[1, 1].set_xlim(-2.41, -2.17)
+        # else:
         
         
     plt.tight_layout()
-    if alt:
-        plt.savefig("figs/import_"+param_name+"_noP.png", bbox_inches="tight")
-        plt.savefig("figs/import_"+param_name+"_noP.pdf", bbox_inches="tight")
+
+    if asns:
+        tag = "asns"
     else:
-        plt.savefig("figs/import_"+param_name+".png", bbox_inches="tight")
-        plt.savefig("figs/import_"+param_name+".pdf", bbox_inches="tight")
+        tag = ""
+    if alt:
+        plt.savefig("figs/import_"+param_name+tag+"_noP.png", bbox_inches="tight")
+        plt.savefig("figs/import_"+param_name+tag+"_noP.pdf", bbox_inches="tight")
+    else:
+        plt.savefig("figs/import_"+param_name+tag+".png", bbox_inches="tight")
+        plt.savefig("figs/import_"+param_name+tag+".pdf", bbox_inches="tight")
+
+# %%
+np.log(2.1e-9 * 1e10)
 
 # %%
 cmb_mnu = planck_chains.get_planck_2018(
@@ -911,7 +934,8 @@ cmbspa_nrun = planck_chains.get_spa(
 
 
 chains = [cmb_nrun, cmbspa_nrun]
-plot_combine(chains, desi_dr1, "nrun", all_samp=True)
+# plot_combine(chains, desi_dr1, "nrun", all_samp=True)
+plot_combine(chains, desi_dr1, "nrun", all_samp=True, asns=True)
 
 # %%
 1 sigma nrun n_{\rm run} = -0.0055\pm 0.0067
@@ -955,6 +979,7 @@ cmbspa_nrunrun = planck_chains.get_spa(
 
 
 plot_combine([cmb_nrunrun, cmbspa_nrunrun], desi_dr1, "nrunrun", all_samp=True)
+# plot_combine([cmb_nrunrun, cmbspa_nrunrun], desi_dr1, "nrunrun", all_samp=True, asns=True)
 
 # %%
 1 sigma nrunrun n_{\rm run, run} = 0.012\pm 0.013
