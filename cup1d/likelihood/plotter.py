@@ -1676,7 +1676,9 @@ class Plotter(object):
         else:
             plt.show()
 
-    def plot_illustrate_contaminants_each(self, values, zmask, fontsize=18):
+    def plot_illustrate_contaminants_each(
+        self, values, zmask, fontsize=18, store_data=False
+    ):
         _data_z = []
         _data_k_kms = []
         _data_Pk_kms = []
@@ -1834,7 +1836,23 @@ class Plotter(object):
         )
         ax = ax.reshape(-1)
 
+        if store_data:
+            out_data = {}
+
         for ii in range(len(emu_p1d)):
+            if store_data:
+                out_data["x"] = _data_k_kms[0]
+                out_data["y" + str(ii) + "_blue"] = (
+                    _data_Pk_kms[0] / emu_p1d[ii][0] - 1
+                )
+                out_data["yerr" + str(ii) + "_blue"] = (
+                    _data_ePk_kms[0] / emu_p1d[ii][0]
+                )
+                if ii != 0:
+                    out_data["y" + str(ii) + "_orange"] = (
+                        emu_p1d[0][0] / emu_p1d[ii][0] - 1
+                    )
+
             ax[ii].errorbar(
                 _data_k_kms[0],
                 _data_Pk_kms[0] / emu_p1d[ii][0] - 1,
@@ -1904,6 +1922,9 @@ class Plotter(object):
             plt.savefig(name + ".png")
         else:
             plt.show()
+
+        if store_data:
+            return out_data
 
     def plot_illustrate_contaminants2(
         self, values, zmask, fontsize=18, lines_use=None

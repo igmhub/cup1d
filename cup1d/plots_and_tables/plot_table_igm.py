@@ -31,6 +31,7 @@ def plot_table_igm(
     data_label="DESIY1_QMLE3",
     name_variation=None,
     chain="1",
+    store_data=False,
 ):
     emulator_label = "CH24_mpgcen_gpr"
     if name_variation == "nyx":
@@ -78,7 +79,7 @@ def plot_table_igm(
 
     chain = np.load(base + folder + "chain.npy")
 
-    tab_out = pip.fitter.like.plot_igm(
+    out = pip.fitter.like.plot_igm(
         free_params=free_params,
         plot_fid=True,
         plot_type="tau_sigT",
@@ -90,9 +91,10 @@ def plot_table_igm(
         plot_more_igm=plot_more_igm,
         lab_fid=lab_fid,
         variation_label=variation_label,
+        store_data=store_data,
     )
 
-    z, mF, T0, gamma = tab_out
+    z, mF, T0, gamma = out["tab_out"]
     # np.save("more_igm_data.npy", {"z": z, "mF": mF, "T0": T0, "gamma": gamma})
     # print(z)
     # print(mF)
@@ -110,4 +112,5 @@ def plot_table_igm(
 
     print(r"\end{tabular}")
 
-    return
+    if store_data:
+        return out["out_data"]

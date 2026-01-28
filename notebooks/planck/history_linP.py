@@ -99,6 +99,67 @@ chi2_Wa2024 = marg_lya_like.gaussian_chi2_Walther2024(neff_grid, DL2_grid, ana_t
 
 
 # %%
+np.mean(cmb["samples"]['linP_DL2_star'])
+
+# %%
+import cup1d, os
+import numpy as np
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+store_data = {
+    "black":{
+        "x": np.mean(cmb["samples"]['linP_DL2_star']),
+        "xerr": np.std(cmb["samples"]['linP_DL2_star']),
+        "y": np.mean(cmb["samples"]['linP_n_star']),
+        "yerr": np.std(cmb["samples"]['linP_n_star']),
+        "r": np.corrcoef(
+                cmb["samples"]['linP_DL2_star'], 
+                cmb["samples"]['linP_n_star']
+            )[0,1],
+    },
+    "blue":{
+        "x": 0.379,
+        "xerr": 0.032,
+        "y": -2.309,
+        "yerr": 0.019,
+        "r":-0.1738,
+    },
+    "orange":{
+        "x": 0.47,
+        "xerr": 0.06,
+        "y": -2.3,
+        "yerr": 0.055,
+        "r":0.6,
+    },
+    "green":{
+        "x": 0.32,
+        "xerr": 0.03,
+        "y": -2.36,
+        "yerr": 0.01,
+        "r":0.55,
+    },
+    "red":{
+        "x": 0.310,
+        "xerr": 0.020,
+        "y": -2.340,
+        "yerr": 0.006,
+        "r":0.512,
+    },
+    "purple":{
+        "x": 0.388,
+        "xerr": 0.045,
+        "y": -2.2978,
+        "yerr": 0.0067,
+        "r":0.632,
+    },
+}
+fname = os.path.join(path_out, "fig_18.npy")
+np.save(fname, store_data)
+
+# %%
+store_data
+
+# %%
 import scipy.stats as stats
 import matplotlib.lines as mlines
 

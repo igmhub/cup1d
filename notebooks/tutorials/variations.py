@@ -248,9 +248,41 @@ sum_mpg_igm0 = np.load(folder + "summary.npy", allow_pickle=True).item()
 
 folder = base + "sim_nyx_central/CH24_mpgcen_gpr/chain_2/"
 dat_nyx_sim = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+sum_nyx_sim = np.load(folder + "summary.npy", allow_pickle=True).item()
 
 folder = base + "sim_sherwood/CH24_mpgcen_gpr/chain_1/"
 dat_sherwood = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+sum_sherwood = np.load(folder + "summary.npy", allow_pickle=True).item()
+# -
+
+store_data = {}
+store_data["mpg-central"] = sum_mpg_sim
+store_data["mpg-seed"] = sum_mpgseed_sim
+store_data["lyssa-central"] = sum_nyx_sim
+store_data["sherwood"] = sum_sherwood
+
+# +
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_10a.npy")
+np.save(fname, store_data)
+# -
+
+store_data = {}
+store_data["blue"] = sum_mpg_sim
+store_data["orange"] = sum_mpg_igm
+store_data["green"] = sum_mpg_igm0
+
+# +
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_10b.npy")
+np.save(fname, store_data)
+# -
+
+
 
 # +
 print(sum_mpg_sim["delta2_star_err"]/sum_mpg_igm["delta2_star_err"])

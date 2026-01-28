@@ -1138,9 +1138,13 @@ class Likelihood(object):
         n_param_glob_full=16,
         chi2_nozcov=False,
         ylims=None,
+        store_data=False,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
+
+        if store_data:
+            out_data = {}
 
         if (zmask is not None) | (plot_realizations == False):
             n_perturb = 0
@@ -1418,6 +1422,11 @@ class Likelihood(object):
                     axs.tick_params(
                         axis="both", which="major", labelsize=fontsize
                     )
+
+                    if store_data:
+                        out_data["x" + str(iz)] = k_kms
+                        out_data["y" + str(iz)] = p1d_data / p1d_theory + yshift
+                        out_data["yerr" + str(iz)] = p1d_err / p1d_theory
                     # shift data in y axis for clarity
                     axs.errorbar(
                         k_kms,
@@ -1647,6 +1656,8 @@ class Likelihood(object):
 
         if return_all:
             return out
+        elif store_data:
+            return out_data
         else:
             return
 
@@ -1903,7 +1914,11 @@ class Likelihood(object):
         save_directory=None,
         ftsize=24,
         nelem=5000,
+        store_data=False,
     ):
+        if store_data:
+            out_data = {}
+
         if chain is not None:
             if len(chain.shape) == 3:
                 chain_use = chain.reshape(-1, chain.shape[-1])
@@ -1975,6 +1990,10 @@ class Likelihood(object):
                     )
                 hcd_cont = np.percentile(all_hcd_cont, [16, 50, 84], axis=0)
 
+                if store_data:
+                    out_data["x"] = k_kms_inter
+                    out_data["y" + str(ii)] = hcd_cont
+
                 ax.plot(
                     k_kms_inter,
                     hcd_cont[1],
@@ -2008,6 +2027,9 @@ class Likelihood(object):
         else:
             plt.show()
 
+        if store_data:
+            return out_data
+
     def plot_metal_cont_add(
         self,
         free_params=None,
@@ -2015,7 +2037,11 @@ class Likelihood(object):
         save_directory=None,
         ftsize=24,
         nelem=5000,
+        store_data=False,
     ):
+        if store_data:
+            out_data = {}
+
         if chain is not None:
             if len(chain.shape) == 3:
                 chain_use = chain.reshape(-1, chain.shape[-1])
@@ -2078,6 +2104,10 @@ class Likelihood(object):
                     all_si_add_cont, [16, 50, 84], axis=0
                 )
 
+                if store_data:
+                    out_data["x"] = k_kms_inter
+                    out_data["y" + str(ii)] = si_add_cont
+
                 ax.plot(
                     k_kms_inter,
                     si_add_cont[1],
@@ -2116,6 +2146,9 @@ class Likelihood(object):
         else:
             plt.show()
 
+        if store_data:
+            return out_data
+
     def plot_metal_cont_mult(
         self,
         free_params=None,
@@ -2124,8 +2157,12 @@ class Likelihood(object):
         save_directory=None,
         ftsize=24,
         nelem=5000,
+        store_data=False,
     ):
         """Plot metallicity contours"""
+
+        if store_data:
+            out_data = {}
 
         if chain is not None:
             if len(chain.shape) == 3:
@@ -2376,6 +2413,13 @@ class Likelihood(object):
             per_si23 = np.percentile(si_mult_cont_Si23, [16, 50, 84], axis=0)
             per_siall = np.percentile(si_mult_cont_all, [16, 50, 84], axis=0)
 
+            if store_data:
+                out_data["x"] = k_kms_inter
+                out_data["y_blue"] = per_siIII
+                out_data["y_orange"] = per_siII
+                out_data["y_green"] = per_si23
+                out_data["y_red"] = per_siall
+
             fig, ax = plt.subplots(4, figsize=(8, 6), sharey=True, sharex=True)
             ax[0].plot(
                 k_kms_inter,
@@ -2464,6 +2508,9 @@ class Likelihood(object):
         else:
             plt.show()
 
+        if store_data:
+            return out_data
+
     def plot_igm(
         self,
         cloud=False,
@@ -2480,6 +2527,7 @@ class Likelihood(object):
         pre_xylims=True,
         plot_more_igm=False,
         variation_label="baseline",
+        store_data=False,
     ):
         """Plot IGM histories"""
 
@@ -2494,6 +2542,11 @@ class Likelihood(object):
 
         zs = np.linspace(self.data.z.min(), self.data.z.max(), 100)
         p0 = self.sampling_point_from_parameters()
+
+        out = {}
+        out["tab_out"] = []
+        if store_data:
+            out["out_data"] = {}
 
         for ii in range(3):
             if ii == 0:
@@ -2597,15 +2650,14 @@ class Likelihood(object):
                     / 1e4
                 )
 
-            tab_out = []
-            tab_out.append(zs2)
-            tab_out.append(
+            out["tab_out"].append(zs2)
+            out["tab_out"].append(
                 np.percentile(pars_chain2["mF"], [16, 50, 84], axis=0)
             )
-            tab_out.append(
+            out["tab_out"].append(
                 np.percentile(pars_chain2["T0"], [16, 50, 84], axis=0)
             )
-            tab_out.append(
+            out["tab_out"].append(
                 np.percentile(pars_chain2["gamma"], [16, 50, 84], axis=0)
             )
             # print(np.percentile(pars_chain2["mF"], [16, 50, 84], axis=0))
@@ -2734,6 +2786,16 @@ class Likelihood(object):
                     alpha=0.5,
                 )
 
+                if store_data:
+                    out["out_data"]["x" + str(ii) + "_blue_areas"] = pars_fid[
+                        "z"
+                    ][_]
+                    out["out_data"][
+                        "y" + str(ii) + "_blue_areas"
+                    ] = np.percentile(
+                        pars_chain[arr_labs[ii]][:, _], [5, 16, 84, 95], axis=0
+                    )
+
             if free_params is not None:
                 _ = pars_test[arr_labs[ii]] != 0
                 if arr_labs[ii] == "mF":
@@ -2750,6 +2812,14 @@ class Likelihood(object):
                     alpha=1,
                     lw=3,
                 )
+
+                if store_data:
+                    out["out_data"]["x" + str(ii) + "_blue_dotted"] = pars_test[
+                        "z"
+                    ][_]
+                    out["out_data"]["y" + str(ii) + "_blue_dotted"] = pars_test[
+                        arr_labs[ii]
+                    ][_]
 
                 if arr_labs[ii] == "mF":
                     lab = "tau_eff_znodes"
@@ -2775,6 +2845,12 @@ class Likelihood(object):
                         color="C0",
                     )
 
+                    if store_data:
+                        out["out_data"][
+                            "x" + str(ii) + "_blue_dots"
+                        ] = self.args.fid_igm[lab]
+                        out["out_data"]["y" + str(ii) + "_blue_dots"] = yy
+
             if arr_labs[ii] == "mF":
                 # norm = (1 + gal21["z"]) ** nexp_mF
                 norm = 1
@@ -2788,6 +2864,14 @@ class Likelihood(object):
                     alpha=0.75,
                     lw=2,
                 )
+                if store_data:
+                    out["out_data"]["x" + str(ii) + "_gal21"] = gal21["z"]
+                    out["out_data"]["y" + str(ii) + "_gal21"] = (
+                        norm * gal21["mF"]
+                    )
+                    out["out_data"]["yerr" + str(ii) + "_gal21"] = (
+                        norm * gal21["mF_err"]
+                    )
                 # norm = (1 + tu24["z"]) ** nexp_mF
                 norm = 1
                 ax[ii].errorbar(
@@ -2800,6 +2884,14 @@ class Likelihood(object):
                     alpha=0.75,
                     lw=2,
                 )
+                if store_data:
+                    out["out_data"]["x" + str(ii) + "_tur24"] = tu24["z"]
+                    out["out_data"]["y" + str(ii) + "_tur24"] = (
+                        norm * tu24["mF"]
+                    )
+                    out["out_data"]["yerr" + str(ii) + "_tur24"] = (
+                        norm * tu24["mF_err"]
+                    )
             elif arr_labs[ii] == "T0":
                 ax[ii].errorbar(
                     gal21["z"],
@@ -2811,6 +2903,14 @@ class Likelihood(object):
                     alpha=0.75,
                     lw=2,
                 )
+                if store_data:
+                    out["out_data"]["x" + str(ii) + "_gal21"] = gal21["z"]
+                    out["out_data"]["y" + str(ii) + "_gal21"] = (
+                        norm * gal21["T0"]
+                    )
+                    out["out_data"]["yerr" + str(ii) + "_gal21"] = (
+                        norm * gal21["T0_err"]
+                    )
             elif arr_labs[ii] == "gamma":
                 ax[ii].errorbar(
                     gal21["z"],
@@ -2822,6 +2922,15 @@ class Likelihood(object):
                     alpha=0.75,
                     lw=2,
                 )
+
+                if store_data:
+                    out["out_data"]["x" + str(ii) + "_gal21"] = gal21["z"]
+                    out["out_data"]["y" + str(ii) + "_gal21"] = (
+                        norm * gal21["gamma"]
+                    )
+                    out["out_data"]["yerr" + str(ii) + "_gal21"] = (
+                        norm * gal21["gamma_err"]
+                    )
 
         if plot_more_igm:
             more_igm = np.load("more_igm_data.npy", allow_pickle=True).item()
@@ -2839,6 +2948,12 @@ class Likelihood(object):
             ax[2].plot(
                 more_igm["z"], more_igm["gamma"][1], "C5--", alpha=0.5, lw=3
             )
+
+            if store_data:
+                out["out_data"]["x_brown"] = more_igm["z"]
+                out["out_data"]["y0_brown"] = more_igm["mF"][1]
+                out["out_data"]["y1_brown"] = more_igm["T0"][1]
+                out["out_data"]["y2_brown"] = more_igm["gamma"][1]
 
         if plot_fid:
             for ii in range(len(arr_labs)):
@@ -2878,6 +2993,12 @@ class Likelihood(object):
                         lw=lw,
                     )
 
+                    if store_data:
+                        out["out_data"]["x" + str(ii) + "_red"] = pars["z"][_]
+                        out["out_data"]["y" + str(ii) + "_red"] = (
+                            norm * pars[arr_labs[ii]][_]
+                        )
+
         for ii in range(len(arr_labs)):
             ax[ii].set_ylabel(latex_labs[ii], fontsize=ftsize)
             if ii == 0:
@@ -2906,7 +3027,7 @@ class Likelihood(object):
         else:
             plt.show()
 
-        return tab_out
+        return out
 
     def plot_cov_terms(self, save_directory=None):
         npanels = int(np.round(np.sqrt(len(self.cov_Pk_kms))))
@@ -2944,13 +3065,18 @@ class Likelihood(object):
         else:
             plt.show()
 
-    def plot_cov_to_pk(self, use_pk_smooth=True, fname=None, ftsize=18):
+    def plot_cov_to_pk(
+        self, use_pk_smooth=True, fname=None, ftsize=18, store_data=False
+    ):
         npanels = int(np.round(np.sqrt(len(self.cov_Pk_kms))))
 
         fig, ax = plt.subplots(
             npanels + 1, npanels, sharex=True, sharey="row", figsize=(10, 8)
         )
         ax = ax.reshape(-1)
+
+        if store_data:
+            out_data = {}
         for ii in range(len(self.cov_Pk_kms)):
             cov_stat = np.diag(self.data.covstat_Pk_kms[ii])
             cov_syst = np.diag(self.data.cov_Pk_kms[ii]) - cov_stat
@@ -2967,6 +3093,13 @@ class Likelihood(object):
                 pk = self.data.Pksmooth_kms[ii].copy()
             else:
                 pk = self.data.Pk_kms[ii].copy()
+
+            if store_data:
+                out_data["x" + str(ii)] = self.data.k_kms[ii]
+                out_data["y" + str(ii) + "_blue"] = np.sqrt(cov_stat) / pk
+                out_data["y" + str(ii) + "_orange"] = np.sqrt(cov_syst) / pk
+                out_data["y" + str(ii) + "_green"] = np.sqrt(cov_emu) / pk
+                out_data["y" + str(ii) + "_red"] = np.sqrt(cov_tot) / pk
 
             ax[ii].plot(
                 self.data.k_kms[ii],
@@ -3030,6 +3163,9 @@ class Likelihood(object):
             plt.savefig(fname + ".png")
         else:
             plt.show()
+
+        if store_data:
+            return out_data
 
     def plot_correlation_matrix(self, save_directory=None):
         def correlation_from_covariance(covariance):

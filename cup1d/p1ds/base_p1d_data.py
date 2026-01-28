@@ -206,6 +206,7 @@ class BaseDataP1D(object):
         fname=None,
         cov_ext=None,
         ftsize=18,
+        store_data=False,
     ):
         """Plot P1D mesurement. If use_dimensionless, plot k*P(k)/pi."""
 
@@ -215,6 +216,9 @@ class BaseDataP1D(object):
 
         rcParams["mathtext.fontset"] = "stix"
         rcParams["font.family"] = "STIXGeneral"
+
+        if store_data:
+            out_data = {}
 
         fig, ax = plt.subplots(figsize=(8, 6))
 
@@ -230,6 +234,12 @@ class BaseDataP1D(object):
                 fact = k_kms / np.pi
             else:
                 fact = 1.0
+
+            if store_data:
+                out_data["x" + str(ii)] = k_kms
+                out_data["y" + str(ii)] = fact * Pk_kms
+                out_data["err" + str(ii)] = fact * err_Pk_kms
+
             ax.errorbar(
                 k_kms,
                 fact * Pk_kms,
@@ -259,3 +269,6 @@ class BaseDataP1D(object):
             plt.savefig(fname + ".png")
         else:
             plt.show()
+
+        if store_data:
+            return out_data

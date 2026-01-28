@@ -254,12 +254,16 @@ if run_code:
     for ii in range(len(cmb_all)):
         k_kms, P_kms = get_pk(cmb_all[ii], nn=500)
 
+# %% [markdown]
+# ### Fig. 22
+
 # %%
 ftsize = 22
 kp_kms = 0.009
 fact = kp_kms**3 / (2 * np.pi**2)
 hatch =  ["", "", "/", "", "/", ""]
 
+store_data = {}
 
 _ds = cmb['samples'][cmb['samples'].index['linP_DL2_star']]
 _ns = cmb['samples'][cmb['samples'].index['linP_n_star']]
@@ -338,12 +342,25 @@ for ii in range(len(cmb_all)):
             )
             # ax[kk].plot(x, y_med, color="C0")
             ax[kk].fill_between(x, y_p16, y_p84, alpha=0.3, label=lab, color="C0")
+
+            store_data["x_C0"] = kp_kms
+            store_data["y_C0"] = np.median(np.exp(A_samp)/np.exp(A_fid))
+            store_data["yerr_C0"] = np.std(np.exp(A_samp)/np.exp(A_fid))
+            store_data["y_C0_shaded_low"] = y_p16
+            store_data["y_C0_shaded_high"] = y_p84
+            
     
         P_kms = np.load("P_kms_" + str(ii) + ".npy")
         y16, ynorm, y84 = np.percentile(P_kms, [16, 50, 84], axis=0)
         fid_k_kms = 10**np.arange(-5.888706504390846, -0.41158524967118454, 0.0054826)
         ax[0].fill_between(fid_k_kms, y16/ynorm, y84/ynorm, alpha=0.2, color="C1", label=cmb_labs[ii])
         ax[0].plot(fid_k_kms, ynorm/ynorm, lw=2, color="C1")
+        
+        store_data["x_C1"] = fid_k_kms
+        store_data["y_C1"] = ynorm/ynorm
+        store_data["y_C1_shaded_low"] = y16/ynorm
+        store_data["y_C1_shaded_high"] = y84/ynorm
+        
     else:
         if ii < 3:
             kk = 1
@@ -363,6 +380,12 @@ for ii in range(len(cmb_all)):
         lss= ["--", "-", "--", "-", "--"]
         ax[kk].fill_between(fid_k_kms, y16/ynorm, y84/ynorm, alpha=0.2, color=colors[ii], label=cmb_labs[ii], hatch=hatch[ii+1])
         ax[kk].plot(fid_k_kms, y50/ynorm, lw=2, color=colors[ii], ls=lss[ii])
+
+        
+        store_data["x_" + colors[ii]] = fid_k_kms
+        store_data["y_" + colors[ii]] = y50/ynorm
+        store_data["y_" + colors[ii] + "_shaded_low"] = y16/ynorm
+        store_data["y_" + colors[ii] + "_shaded_high"] = y84/ynorm
 
 for kk in range(3):
     ax[kk].axhline(1, ls=":", color="k", alpha=0.5)
@@ -387,6 +410,13 @@ ax[2].set_xlabel(r"$k\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize)
 plt.tick_params()
 plt.savefig("figs/Plin_extra.pdf", bbox_inches="tight")
 plt.savefig("figs/Plin_extra.png", bbox_inches="tight")
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_22.npy")
+np.save(fname, store_data)
 
 # %%
 # desi_dr12 = {
@@ -570,11 +600,52 @@ for ii in range(len(cmb_labs)):
 plt.legend(handles=handles, fontsize=ftsize-3, loc="upper left", ncol=2)
 plt.tight_layout()
 
-plt.savefig("figs/star_planck_mine.png", bbox_inches='tight')
-plt.savefig("figs/star_planck_mine.pdf", bbox_inches='tight')
-
+# plt.savefig("figs/star_planck_mine.png", bbox_inches='tight')
+# plt.savefig("figs/star_planck_mine.pdf", bbox_inches='tight')
 
 # %%
+import cup1d, os
+import numpy as np
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+store_data = {
+    "blue":{
+        "x": 0.379,
+        "xerr": 0.032,
+        "y": -2.309,
+        "yerr": 0.019,
+        "r":-0.1738,
+    },
+}
+
+cmb_all = [
+    cmb, 
+    cmb_mnu, 
+    cmb_nnu, 
+    cmb_nrun, 
+    cmb_nrun_nrunrun,
+    cmb_w_wa,
+]
+colors = ["orange", "green", "pink", "brown", "gray", "black"]
+
+for ii in range(len(colors)):
+    store_data[colors[ii]] = {
+        "x": np.mean(cmb_all[ii]["samples"]['linP_DL2_star']),
+        "xerr": np.std(cmb_all[ii]["samples"]['linP_DL2_star']),
+        "y": np.mean(cmb_all[ii]["samples"]['linP_n_star']),
+        "yerr": np.std(cmb_all[ii]["samples"]['linP_n_star']),
+        "r": np.corrcoef(
+                cmb_all[ii]["samples"]['linP_DL2_star'], 
+                cmb_all[ii]["samples"]['linP_n_star']
+            )[0,1],
+    }
+
+fname = os.path.join(path_out, "fig_21.npy")
+np.save(fname, store_data)
+
+# %%
+store_data
+
 
 # %% [markdown]
 # ### Add mock DESI Lya likelihood
@@ -688,6 +759,10 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         all_labels.append(labels_DESI[ii])
 
     for ii in range(len(all_chains)):
+        print("Sample", ii) 
+        if asns:
+            print("1 sigma", 'logA', all_chains[ii].getInlineLatex('logA', limit=1))
+            print("1 sigma", 'ns', all_chains[ii].getInlineLatex('ns', limit=1))
         # print after weighting
         if param_name == "mnu":
             print("2 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=2))
@@ -705,7 +780,7 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
 
     if param_name == "nrunrun":
         if asns:
-            arr_plot = ['logA','ns', "nrun", param_name]
+            arr_plot = ['logA', 'ns', "nrun", param_name]
         else:
             arr_plot = ['linP_DL2_star','linP_n_star', "nrun", param_name]
     else:
@@ -978,8 +1053,11 @@ cmbspa_nrunrun = planck_chains.get_spa(
 # plot_combine([cmbspa_nrunrun], desi_dr1, "nrunrun", alt=True)
 
 
-plot_combine([cmb_nrunrun, cmbspa_nrunrun], desi_dr1, "nrunrun", all_samp=True)
-# plot_combine([cmb_nrunrun, cmbspa_nrunrun], desi_dr1, "nrunrun", all_samp=True, asns=True)
+# plot_combine([cmb_nrunrun, cmbspa_nrunrun], desi_dr1, "nrunrun", all_samp=True)
+plot_combine([cmb_nrunrun, cmbspa_nrunrun], desi_dr1, "nrunrun", all_samp=True, asns=True)
+
+# %%
+40/36
 
 # %%
 1 sigma nrunrun n_{\rm run, run} = 0.012\pm 0.013

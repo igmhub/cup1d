@@ -121,11 +121,15 @@ plotter = Plotter(pip.fitter, save_directory=diru, zmask=zmask)
 # +
 
 plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize=20)
-# +
-
-plotter.plot_illustrate_contaminants_each(out_mle_cube[0].copy(), zmask, fontsize=22)
 # -
+store_data = plotter.plot_illustrate_contaminants_each(out_mle_cube[0].copy(), zmask, fontsize=22, store_data=True)
+# +
+import cup1d, os
 
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_7.npy")
+np.save(fname, store_data)
+# -
 
 
 

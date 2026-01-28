@@ -57,6 +57,8 @@ pip.fitter.like.get_chi2(p0, zmask=[2.2])
 17 * 11
 
 # +
+# Fig. 8
+
 n_param_glob_full = 17
 
 ylims=np.array([
@@ -68,7 +70,7 @@ ylims=np.array([
 
 pname = None
 pname = "figs/residual_full_global"
-pip.fitter.like.plot_p1d(
+out_data = pip.fitter.like.plot_p1d(
     p0,
     residuals=True,
     plot_panels=True,
@@ -77,8 +79,16 @@ pip.fitter.like.plot_p1d(
     # fontsize=18,
     chi2_nozcov=True,
     plot_fname=pname,
-    ylims=ylims
+    ylims=ylims,
+    store_data=True
 )
+
+# +
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_8.npy")
+np.save(fname, out_data)
 # -
 
 $z$ & $\chi^2$ & ndeg & prob\ \hline

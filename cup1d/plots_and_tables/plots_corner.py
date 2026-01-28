@@ -42,8 +42,10 @@ def prepare_data(folder_in, truth=[0, 0], nburn_extra=0):
     nelem = (chain.shape[0] - nburn_extra) * chain.shape[1]
     ndim = chain.shape[-1]
     dat = np.zeros((nelem, ndim))
-    dat[:, 0] = blobs["Delta2_star"][nburn_extra:, :].reshape(-1) - truth[0]
-    dat[:, 1] = blobs["n_star"][nburn_extra:, :].reshape(-1) - truth[1]
+    dat[:, 0] = (
+        blobs["Delta2_star"][nburn_extra:, :].reshape(-1) - truth["Delta2_star"]
+    )
+    dat[:, 1] = blobs["n_star"][nburn_extra:, :].reshape(-1) - truth["n_star"]
     if ndim > 2:
         dat[:, 2:] = chain[nburn_extra:, :, 2:].reshape(-1, ndim - 2)
     dat_Asns = chain[nburn_extra:, :, :2].reshape(-1, 2)
@@ -70,11 +72,18 @@ def prepare_data(folder_in, truth=[0, 0], nburn_extra=0):
 
 
 def plots_chain(
-    folder_in, folder_out=None, nburn_extra=0, ftsize=20, truth=[0, 0]
+    folder_in,
+    folder_out=None,
+    nburn_extra=0,
+    ftsize=20,
+    truth=[0, 0],
+    store_data=False,
 ):
     """
     Plot the chains
     """
+
+    out_data = {}
 
     if folder_out is None:
         folder_out = folder_in
@@ -83,19 +92,15 @@ def plots_chain(
         folder_in, truth, nburn_extra=nburn_extra
     )
 
-    # corr_compressed(dat, labels, priors, folder_out=folder_out)
-    # # get_summary(folder_out, lnprob)
-    # # plot_res(dat, folder_out=folder_out)
-    # if 1 > 0:
-    #     return
-
     try:
         plot_lnprob(lnprob, folder_out, ftsize)
     except:
         print("Could not plot lnprob")
 
     try:
-        corr_compressed(dat, labels, priors, folder_out=folder_out)
+        out_data = corr_compressed(
+            dat, labels, priors, folder_out=folder_out, store_data=store_data
+        )
     except:
         print("Could not plot corr_compressed")
 
@@ -122,7 +127,7 @@ def plots_chain(
         print("Could not save contours")
 
     try:
-        plot_res(dat, folder_out=folder_out)
+        out_data = plot_res(dat, folder_out=folder_out, store_data=store_data)
     except:
         print("Could not plot res")
 
@@ -133,12 +138,19 @@ def plots_chain(
 
     # corner_chain(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
 
+    if store_data:
+        return out_data
 
-def plot_res(dat, folder_out=None, ftsize=20):
+
+def plot_res(dat, folder_out=None, ftsize=20, store_data=False):
+    store_data = {}
     zz = np.arange(2.2, 4.201, 0.2)
     # res_params = chain[..., -11:].reshape(-1, 11)
     res = np.percentile(dat[:, -11:], [16, 50, 84], axis=0)
     fig, ax = plt.subplots(figsize=(8, 6))
+
+    store_data["x"] = zz
+    store_data["y"] = res
 
     ax.plot(zz, res[1])
     ax.fill_between(zz, res[0], res[2], alpha=0.2)
@@ -158,7 +170,8 @@ def plot_res(dat, folder_out=None, ftsize=20):
 
     plt.close()
 
-    return
+    if store_data:
+        return store_data
 
 
 def get_summary(folder_out, lnprob):
@@ -366,7 +379,9 @@ def corr_compressed(
     truth=[0, 0],
     sigmas=2,
     threshold=1e-4,
+    store_data=False,
 ):
+    store_data = {}
     print("plotting corr_compressed")
     # labels = fdict["like"]["free_param_names"]
     frange = 0.1
@@ -430,6 +445,17 @@ def corr_compressed(
                 pp = np.exp(pp)
                 if lab.startswith("s_"):
                     pp = 1 / pp
+
+            if key == "mix":
+                store_data["x_0_" + str(ii) + "_cen"] = pp.mean()
+                store_data["x_0_" + str(ii) + "_std"] = pp.std()
+                store_data["y_0_" + str(ii) + "_cen"] = dat[:, 0].mean()
+                store_data["y_0_" + str(ii) + "_std"] = dat[:, 0].std()
+
+                store_data["x_1_" + str(ii) + "_cen"] = pp.mean()
+                store_data["x_1_" + str(ii) + "_std"] = pp.std()
+                store_data["y_1_" + str(ii) + "_cen"] = dat[:, 1].mean()
+                store_data["y_1_" + str(ii) + "_std"] = dat[:, 1].std()
 
             x, y, h, levels = get_contours(
                 pp, dat[:, 0], sigmas=sigmas, threshold=threshold
@@ -581,7 +607,7 @@ def corr_compressed(
             )
         plt.close()
 
-    return
+    return store_data
 
 
 def plot_corr(dat, labs, ftsize=20, folder_out=None, threshold=0.35):

@@ -89,9 +89,13 @@ for metal_label in metals:
 # plt.plot(k_kms, np.cos(dv1 * k_kms) + np.cos(dv2 * k_kms))
 # # plt.plot(k_kms, np.cos(dv1 * k_kms) + np.cos(dv2 * k_kms) + np.cos(dv3 * k_kms))
 
-# %%
+# %% [markdown]
+# ### Fig. 5
 
 # %%
+out_data = {}
+
+
 k_kms = np.linspace(1e-3, 0.04, 1000)
 labs = [r"Ly$\alpha$-SiIII", r"Ly$\alpha$-SiII", "SiIII-SiII", "SiII-SiII"]
 # ls = ["-", ":", "-.", "--"]
@@ -172,6 +176,9 @@ for ii in range(len(ax)):
     cont = met_model.get_contamination(z=np.array([3]), k_kms=[k_kms], mF=mF, remove=remove[ii])
     ax[ii].plot(k_kms, cont[0], label=labs[ii], ls="-", lw=1.5)
 
+    out_data["x"] = k_kms
+    out_data["y"+str(ii)] = cont[0]
+
     ax[ii].tick_params(axis="both", which="major", labelsize=ftsize-2)
     ax[ii].legend(fontsize=ftsize-2, loc="upper right")
     if ii < 3:
@@ -183,10 +190,18 @@ fig.supxlabel(r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
 fig.supylabel("Metal contamination", fontsize=ftsize)
 
 
-
 plt.tight_layout()
 plt.savefig("metal_contamination.png")
 plt.savefig("metal_contamination.pdf")
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_5.npy")
+np.save(fname, out_data)
+
+# %%
 
 # %%
 vals = [-4, 5, -3.5, 5, 1, 1, -1, 4.5]

@@ -32,7 +32,10 @@ rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
 # %% [markdown]
-# ### Load emulator and data
+# ## Load emulator and data
+
+# %% [markdown]
+# ### Load lace-mpg
 
 # %%
 archive = gadget_archive.GadgetArchive(postproc="Cabayol23")
@@ -46,7 +49,8 @@ train = False
 emulator_label = "CH24_mpgcen_gpr"
 emulator = GPEmulator(emulator_label=emulator_label, archive=archive, train=train, drop_sim=None)
 
-# %%
+# %% [markdown]
+# ### Load lace-lyssa
 
 # %%
 archive = nyx_archive.NyxArchive(nyx_version="models_Nyx_Sept2025_include_Nyx_fid_rseed")
@@ -71,7 +75,7 @@ emulator = GPEmulator(emulator_label=emulator_label, archive=archive, train=trai
 kmax_Mpc = emulator.kmax_Mpc
 kmax_Mpc_use = 4
 
-# sim_test = central
+# sim_test = central.copy()
 sim_test = seed.copy()
 
 _k_Mpc = sim_test[0]['k_Mpc']
@@ -111,6 +115,8 @@ for ii in range(nsam):
 from matplotlib.ticker import FormatStrFormatter
 
 # %%
+store_data = {}
+
 fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 24
 
@@ -119,6 +125,9 @@ for ii in range(0, nsam-2):
     lab = r"$z=$"+str(np.round(sim_test[ii]['z'], 2))
     if p1d_Mpc_emu[ii][0] != 0:
         ax.plot(k_Mpc, p1d_Mpc_sm[ii]/p1d_Mpc_emu[ii]-1, lw=2, label=lab)
+        
+        store_data["x"] = k_Mpc
+        store_data["y"+str(ii)] = p1d_Mpc_sm[ii]/p1d_Mpc_emu[ii]-1
 
 ax.axhline(ls=":", color="k")
 ax.axhline(0.01, ls="--", color="k")
@@ -141,8 +150,22 @@ plt.legend(fontsize=ftsize-5, ncol=3)
 plt.tight_layout()
 # plt.savefig("figs/mpg_seed.pdf")
 # plt.savefig("figs/mpg_seed.png")
-plt.savefig("figs/nyx_seed.pdf")
-plt.savefig("figs/nyx_seed.png")
+# plt.savefig("figs/nyx_seed.pdf")
+# plt.savefig("figs/nyx_seed.png")
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_4a.npy")
+np.save(fname, store_data)
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_B2a.npy")
+np.save(fname, store_data)
 
 # %%
 
@@ -182,6 +205,9 @@ for ii in range(nsam):
     p1d_Mpc_sm[ii] = norm * np.exp(emulator.func_poly(k_fit, *popt))
 
 # %%
+store_data = {}
+
+
 fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 24
 cols = ["C1", "C0", "C0", "C1"]
@@ -189,6 +215,9 @@ percents = np.percentile(p1d_Mpc_sim/p1d_Mpc_sm-1, [5, 16, 84, 95], axis=0)
 
 ax.fill_between(k_Mpc, percents[0], percents[-1], label="5-95th percentiles", color=cols[0], alpha=0.4)
 ax.fill_between(k_Mpc, percents[1], percents[2], label="16-84th percentiles", color=cols[1], alpha=0.4)
+
+store_data["x"] = k_Mpc
+store_data["y"] = percents
 
 ax.axhline(ls=":", color="k")
 ax.axhline(0.01, ls="--", color="k")
@@ -211,8 +240,22 @@ plt.legend(fontsize=ftsize-2, ncol=1)
 plt.tight_layout()
 # plt.savefig("figs/mpg_smooth.pdf")
 # plt.savefig("figs/mpg_smooth.png")
-plt.savefig("figs/nyx_smooth.pdf")
-plt.savefig("figs/nyx_smooth.png")
+# plt.savefig("figs/nyx_smooth.pdf")
+# plt.savefig("figs/nyx_smooth.png")
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_3a.npy")
+np.save(fname, store_data)
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_B1b.npy")
+np.save(fname, store_data)
 
 # %% [markdown]
 # ### L1O
@@ -273,6 +316,9 @@ for jj, isim in enumerate(archive.list_sim_cube):
 
 
 # %%
+store_data = {}
+
+
 fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 24
 
@@ -287,6 +333,9 @@ percents = np.percentile(rel_diff[_, :], [5, 16, 84, 95], axis=0)
 
 ax.fill_between(k_Mpc, percents[0], percents[-1], label="5-95th percentiles", color=cols[0], alpha=0.4)
 ax.fill_between(k_Mpc, percents[1], percents[2], label="16-84th percentiles", color=cols[1], alpha=0.4)
+
+store_data["x"] = k_Mpc
+store_data["y"] = percents
 
 ax.axhline(ls=":", color="k")
 ax.axhline(0.01, ls="--", color="k")
@@ -310,9 +359,21 @@ plt.legend(fontsize=ftsize-2, ncol=1)
 plt.tight_layout()
 # plt.savefig("figs/mpg_l1o.pdf")
 # plt.savefig("figs/mpg_l1o.png")
-plt.savefig("figs/nyx_l1o.pdf")
-plt.savefig("figs/nyx_l1o.png")
+# plt.savefig("figs/nyx_l1o.pdf")
+# plt.savefig("figs/nyx_l1o.png")
 
 # %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_4b.npy")
+np.save(fname, store_data)
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_B2b.npy")
+np.save(fname, store_data)
 
 # %%

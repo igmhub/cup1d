@@ -104,8 +104,8 @@ from cup1d.pipeline.set_archive import set_archive
 
 # %%
 
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
+# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+# folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 # folder = "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_1/"
 
 # from cup1d.plots_and_tables.table_nuisance import table_nuisance
@@ -116,18 +116,33 @@ folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 # table_variations(base)
 
 
-from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
-plot_table_igm(base, name_variation=None, save_fig=save_fig, chain="7")
+# from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
+# base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+# # save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/"
+# # store_data = plot_table_igm(base, name_variation=None, save_fig=save_fig, chain="7", store_data=True)
 # save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/test/"
-# plot_table_igm(base, name_variation="nyx", save_fig=save_fig, chain="3")
+# store_data = plot_table_igm(base, name_variation="nyx", save_fig=save_fig, chain="3", store_data=True)
 # plot_table_igm(base, name_variation="more_igm", save_fig=save_fig, chain="2")
 
 
 # %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_19.npy")
+np.save(fname, store_data)
 
 # %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_C1.npy")
+np.save(fname, store_data)
+
+# %%
+
+# %%
+fig 17, 20d, A1, A2, A3
 
 # %%
 4400/1216 -1
@@ -139,6 +154,14 @@ plot_table_igm(base, name_variation=None, save_fig=save_fig, chain="7")
 
 # %%
 from cup1d.plots_and_tables.plots_corner import plots_chain
+
+# %%
+base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
+real_blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
+
+
+# %%
+real_blinding
 
 # %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
@@ -190,10 +213,98 @@ variations = {
 
 for ii, var in enumerate(variations):
     folder = os.path.join(base, variations[var][1])
-    plots_chain(folder)
+    store_data = plots_chain(folder, store_data=True, truth=real_blinding)
 
 # %%
-30/25
+store_data
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_20d.npy")
+np.save(fname, store_data)
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_17.npy")
+np.save(fname, store_data)
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+import cup1d, os
+import numpy as np
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+store_data = {
+    "figs11_to_16":"check out the first two columns of Table 5",
+}
+fname = os.path.join(path_out, "fig_11_to_16.npy")
+np.save(fname, store_data)
+
+# %%
+
+# %%
+import cup1d, os
+import numpy as np
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+store_data = {
+    "figs23_24":"Table 6",
+}
+fname = os.path.join(path_out, "fig_23_24.npy")
+np.save(fname, store_data)
+
+# %%
+import cup1d, os
+import numpy as np
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+store_data = {
+    "blue":{
+        "mu":-0.026,
+        "sigma":0.203
+    },
+    "orange":{
+        "A":-0.047,
+        "B":0.198
+    },
+}
+fname = os.path.join(path_out, "fig_25.npy")
+np.save(fname, store_data)
+
+# %%
+import cup1d, os
+import numpy as np
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+store_data = {
+    "fig_D1":"Table D1",
+}
+fname = os.path.join(path_out, "fig_D1.npy")
+np.save(fname, store_data)
+
+# %%
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "other_figures.npy")
+store_data = {
+    "figs11_to_16":"first two columns of Table 5",
+    "fig18":"likelihoods in https://github.com/igmhub/cobaya_lya_p1d or check out corresponding papers",
+    "figs23_24":"Table 6",
+    "figD1": "Table D1",
+}
+np.save(fname, store_data)
 
 # %%
 
@@ -468,6 +579,36 @@ pip = Pipeline(args, out_folder=args.out_folder)
 
 
 # %%
+
+# %%
+# Fig. 1
+store_data = pip.fitter.like.data.plot_p1d(store_data=True)
+
+
+# %%
+
+import cup1d
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_1.npy")
+np.save(fname, store_data)
+
+# %%
+# Fig. 2
+store_data = pip.fitter.like.plot_cov_to_pk(use_pk_smooth=False, store_data=True)
+
+# %%
+
+import cup1d
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_2.npy")
+np.save(fname, store_data)
+
+# %%
+
+
+
+
+# %%
 # pip.fitter.like.plot_correlation_matrix()
 
 # %%
@@ -548,9 +689,6 @@ free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
 
 # %%
-ylims
-
-# %%
 ylims=np.array([
     [0.85, 1.15],
     [0.85, 1.15],
@@ -558,7 +696,7 @@ ylims=np.array([
     [0., 2.0],
 ])
 
-pip.fitter.like.plot_p1d(
+out_data = pip.fitter.like.plot_p1d(
     p0, 
     residuals=True, 
     plot_panels=True, 
@@ -566,8 +704,16 @@ pip.fitter.like.plot_p1d(
     fix_cosmo=False,
     ylims=ylims, 
     # plot_fname=None,
-    plot_fname="figs/residual_fid_opt_global"
+    plot_fname="figs/residual_fid_opt_global",
+    store_data=True
 )
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_9.npy")
+np.save(fname, out_data)
 
 # %%
 
@@ -579,13 +725,55 @@ pip.fitter.like.get_chi2(p0)
 pip.fitter.like.plot_p1d(p0, print_chi2=False)
 
 # %%
+XXX
+
+# %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 folder = "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 chain = np.load(base + folder + "chain.npy")
-pip.fitter.like.plot_metal_cont_mult(chain=chain, save_directory="figs")
-pip.fitter.like.plot_metal_cont_add(free_params=free_params, chain=chain, save_directory="figs")
-pip.fitter.like.plot_hcd_cont(p0=p0, chain=chain, save_directory="figs")
 
+
+# %%
+# Fig. 20a
+out_data = pip.fitter.like.plot_metal_cont_mult(chain=chain, save_directory="figs", store_data=True)
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_20a.npy")
+np.save(fname, out_data)
+
+# %%
+# Fig. 20b
+out_data = pip.fitter.like.plot_metal_cont_add(free_params=free_params, chain=chain, save_directory="figs", store_data=True)
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_20b.npy")
+np.save(fname, out_data)
+
+# %%
+# Fig. 20c
+out_data = pip.fitter.like.plot_hcd_cont(p0=p0, chain=chain, save_directory="figs", store_data=True)
+
+# %%
+# out_data
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_20c.npy")
+np.save(fname, out_data)
+
+# %%
+
+# %%
+
+# %%
 
 # %%
 # std_mpg = np.sqrt(np.diag(pip.fitter.like.emu_full_cov_Pk_kms)).copy()
