@@ -13,11 +13,11 @@ def set_p1d_filename(data_label="QMLE3", path_data=None):
     if path_data is None:
         path_data = os.path.dirname(get_path_repo("cup1d"))
 
-    path_in_challenge = os.path.join(path_data, "data", "in_DESI_DR1")
+    path_data = os.path.join(path_data, "data", "in_DESI_DR1")
 
     if data_label.endswith("QMLE3"):
         p1d_fname = os.path.join(
-            path_in_challenge,
+            path_data,
             "qmle_measurement",
             "DataProducts",
             "v3",
@@ -25,7 +25,7 @@ def set_p1d_filename(data_label="QMLE3", path_data=None):
         )
     elif data_label.endswith("QMLE"):
         p1d_fname = os.path.join(
-            path_in_challenge,
+            path_data,
             "qmle_measurement",
             "DataProducts",
             "v3",
@@ -33,25 +33,25 @@ def set_p1d_filename(data_label="QMLE3", path_data=None):
         )
     elif data_label.endswith("FFT_dir"):
         p1d_fname = os.path.join(
-            path_in_challenge,
+            path_data,
             "fft_measurement",
             "p1d_fft_y1_measurement_kms_v8_directmetalsubtraction.fits",
         )
     elif data_label.endswith("FFT"):
         p1d_fname = os.path.join(
-            path_in_challenge,
+            path_data,
             "fft_measurement",
             "p1d_fft_y1_measurement_kms_v8_baseline.fits",
         )
     elif data_label.endswith("FFT3_dir"):
         p1d_fname = os.path.join(
-            path_in_challenge,
+            path_data,
             "fft_measurement",
             "p1d_fft_y1_measurement_kms_v8_nocrossexp_snr3noweights_directmetalsubtraction.fits",
         )
     elif data_label.endswith("FFT3"):
         p1d_fname = os.path.join(
-            path_in_challenge,
+            path_data,
             "fft_measurement",
             "p1d_fft_y1_measurement_kms_v8_nocrossexp_snr3noweights.fits",
         )
@@ -223,6 +223,7 @@ class P1D_DESIY1(BaseDataP1D):
         z_max=10.0,
         cov_syst_type="red",
         path_data=None,
+        p1d_fname=None,
         variation=None,
         data_bias=1.0,
     ):
@@ -231,8 +232,10 @@ class P1D_DESIY1(BaseDataP1D):
         - z_min: z=2.0 bin is not recommended by Karacayli2024
         - z_max: maximum redshift to include"""
 
-        # print(path_data)
-        p1d_fname = set_p1d_filename(data_label=data_label, path_data=path_data)
+        if p1d_fname is None:
+            p1d_fname = set_p1d_filename(
+                data_label=data_label, path_data=path_data
+            )
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         res = read_from_file(

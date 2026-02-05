@@ -117,7 +117,6 @@ class Args:
     vary_alphas: bool = False
     prior_Gauss_rms: float | None = None
     emu_cov_type: str = "full"
-    file_ic: str | None = None
     mcmc: dict = field(
         default_factory=lambda: {
             "explore": False,
@@ -130,7 +129,10 @@ class Args:
     )
     out_folder: str | None = "."
     Gauss_priors: dict | None = None
-    path_data: str = "cup1d"
+    system: str | None = None
+    path_out: str | None = None
+    p1d_fname: str | None = None
+    pre_defined: str | None = None
 
     def __post_init__(self, val_null=-20):
         """Initialize some parameters"""
@@ -156,12 +158,26 @@ class Args:
             else:
                 self.true_cont[key + "_otype"] = "exp"
 
-        if self.path_data == "jjchaves":
+        if self.system == "nersc":
             self.path_data = os.path.join(
                 os.sep, "pscratch", "sd", "j", "jjchaves"
             )
-        elif self.path_data == "cup1d":
+        elif self.system == "cup1d":
             self.path_data = os.path.dirname(get_path_repo("cup1d"))
+        else:
+            self.path_data = None
+
+        if self.path_out is None:
+            if self.system == "cup1d":
+                self.path_out = os.path.join(
+                    self.path_data, "data", "out_DESI_DR1"
+                )
+        else:
+            self.path_out = "."
+
+        if (self.system == "nersc") or (self.system == "cup1d"):
+            print("Using: path_data ", self.path_data)
+            self.path_ic = os.path.join(self.path_data, "data", "ics")
 
         # # and others
         # self.true_cont["n_sn"] = 0
@@ -169,6 +185,28 @@ class Args:
 
         # self.true_cont["n_agn"] = 0
         # self.true_cont["AGN"] = [0, -5.5]
+
+        if self.pre_defined == "CM2026":
+            # Baseline model from Chaves-Montero+2026
+            # This option overrides some parameters
+            self.data_label = "DESIY1_QMLE3"
+            print("Using: data_label ", self.data_label)
+            self.emulator_label = "CH24_mpgcen_gpr"
+            print("Using: emulator_label ", self.emulator_label)
+            self.emu_cov_type = "full"
+            print("Using: emu_cov_type ", self.emu_cov_type)
+            self.set_baseline(
+                fit_type="global_opt",
+                fix_cosmo=False,
+                P1D_type=self.data_label,
+                name_variation=None,
+            )
+
+            if (self.p1d_fname is None) and (self.path_data is None):
+                print(
+                    "Need to specify either p1d_fname of the target file or path_data."
+                    + "If you are in nersc, plese specify path_data='nersc'"
+                )
 
     def check_emulator_label(self):
         avail_emulator_label = [
@@ -476,25 +514,18 @@ class Args:
                         self.fid_cont[key][-1] + 0.1
                     )
 
-    def set_out_folder(self, name_variation):
-        if name_variation is None:
-            self.out_folder = os.path.join(
-                self.path_data,
-                "data",
-                "out_DESI_DR1",
-                self.P1D_type,
-                self.fit_type,
-                self.emulator_label,
-            )
+    def set_out_folder(self):
+        if self.name_variation is None:
+            tag = self.fit_type
         else:
-            self.out_folder = os.path.join(
-                self.path_data,
-                "data",
-                "out_DESI_DR1",
-                self.P1D_type,
-                name_variation,
-                self.emulator_label,
-            )
+            tag = self.name_variation
+
+        self.out_folder = os.path.join(
+            self.path_out,
+            self.P1D_type,
+            tag,
+            self.emulator_label,
+        )
 
     def set_baseline(
         self,
@@ -693,7 +724,7 @@ class Args:
             "HCD_const",
         ]
 
-        self.set_out_folder(self.name_variation)
+        self.set_out_folder()
 
         # z at a time
         #############
@@ -785,7 +816,7 @@ class Args:
                 fname = "mpg_ic_at_a_time.npy"
             else:
                 fname = "nyx_ic_at_a_time.npy"
-            self.file_ic = os.path.join(self.path_data, "data", "ics", fname)
+            self.file_ic = os.path.join(self.path_ic, fname)
 
             # for prop in props_cont:
             #     self.fid_cont["z_max"][prop] = 5
@@ -848,7 +879,7 @@ class Args:
                 fname = "mpg_ic_global_red.npy"
             else:
                 fname = "nyx_ic_global_red.npy"
-            self.file_ic = os.path.join(self.path_data, "data", "ics", fname)
+            self.file_ic = os.path.join(self.path_ic, fname)
             if ic_global == False:
                 self.file_ic = None
 
