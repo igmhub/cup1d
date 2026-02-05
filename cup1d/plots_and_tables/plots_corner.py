@@ -21,7 +21,9 @@ rcParams["font.family"] = "STIXGeneral"
 from cup1d.utils.various_dicts import param_dict
 
 
-def prepare_data(folder_in, truth=[0, 0], nburn_extra=0):
+def prepare_data(
+    folder_in, truth={"Delta2_star": 0, "n_star": 0}, nburn_extra=0
+):
     fdict = np.load(
         os.path.join(folder_in, "fitter_results.npy"), allow_pickle=True
     ).item()

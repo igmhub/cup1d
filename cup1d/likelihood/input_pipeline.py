@@ -131,6 +131,7 @@ class Args:
     Gauss_priors: dict | None = None
     system: str | None = None
     path_out: str | None = None
+    path_ic: str | None = None
     p1d_fname: str | None = None
     pre_defined: str | None = None
 
@@ -158,26 +159,11 @@ class Args:
             else:
                 self.true_cont[key + "_otype"] = "exp"
 
-        if self.system == "nersc":
-            self.path_data = os.path.join(
-                os.sep, "pscratch", "sd", "j", "jjchaves"
-            )
-        elif self.system == "cup1d":
-            self.path_data = os.path.dirname(get_path_repo("cup1d"))
-        else:
-            self.path_data = None
-
         if self.path_out is None:
-            if self.system == "cup1d":
-                self.path_out = os.path.join(
-                    self.path_data, "data", "out_DESI_DR1"
-                )
-        else:
             self.path_out = "."
 
-        if (self.system == "nersc") or (self.system == "cup1d"):
-            print("Using: path_data ", self.path_data)
-            self.path_ic = os.path.join(self.path_data, "data", "ics")
+        if self.path_ic is None:
+            self.path_ic = os.path.join(get_path_repo("cup1d"), "data", "ics")
 
         # # and others
         # self.true_cont["n_sn"] = 0
@@ -201,12 +187,6 @@ class Args:
                 P1D_type=self.data_label,
                 name_variation=None,
             )
-
-            if (self.p1d_fname is None) and (self.path_data is None):
-                print(
-                    "Need to specify either p1d_fname of the target file or path_data."
-                    + "If you are in nersc, plese specify path_data='nersc'"
-                )
 
     def check_emulator_label(self):
         avail_emulator_label = [

@@ -165,7 +165,6 @@ def set_P1D(args, archive=None, theory=None):
             z_min=args.z_min,
             z_max=args.z_max,
             cov_syst_type=args.cov_syst_type,
-            path_data=args.path_data,
             p1d_fname=args.p1d_fname,
             variation=args.name_variation,
             data_bias=args.data_bias,

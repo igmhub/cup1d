@@ -7,54 +7,47 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 from cup1d.utils.utils import get_path_repo
 
 
-def set_p1d_filename(data_label="QMLE3", path_data=None):
+def set_p1d_filename(data_label="QMLE3"):
     """Set path to DESI DR1 P1D file"""
 
-    if path_data is None:
-        path_data = os.path.dirname(get_path_repo("cup1d"))
-
-    path_data = os.path.join(path_data, "data", "in_DESI_DR1")
+    path_data = os.path.join(get_path_repo("cup1d"), "data", "p1d_measurements")
 
     if data_label.endswith("QMLE3"):
         p1d_fname = os.path.join(
             path_data,
-            "qmle_measurement",
-            "DataProducts",
-            "v3",
+            "Karacayli2025",
             "desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits",
         )
     elif data_label.endswith("QMLE"):
         p1d_fname = os.path.join(
             path_data,
-            "qmle_measurement",
-            "DataProducts",
-            "v3",
+            "Karacayli2025",
             "desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits",
         )
     elif data_label.endswith("FFT_dir"):
         p1d_fname = os.path.join(
             path_data,
-            "fft_measurement",
+            "Ravoux2025",
             "p1d_fft_y1_measurement_kms_v8_directmetalsubtraction.fits",
         )
-    elif data_label.endswith("FFT"):
-        p1d_fname = os.path.join(
-            path_data,
-            "fft_measurement",
-            "p1d_fft_y1_measurement_kms_v8_baseline.fits",
-        )
+    # elif data_label.endswith("FFT"):
+    #     p1d_fname = os.path.join(
+    #         path_data,
+    #         "fft_measurement",
+    #         "p1d_fft_y1_measurement_kms_v8_baseline.fits",
+    #     )
     elif data_label.endswith("FFT3_dir"):
         p1d_fname = os.path.join(
             path_data,
-            "fft_measurement",
+            "Ravoux2025",
             "p1d_fft_y1_measurement_kms_v8_nocrossexp_snr3noweights_directmetalsubtraction.fits",
         )
-    elif data_label.endswith("FFT3"):
-        p1d_fname = os.path.join(
-            path_data,
-            "fft_measurement",
-            "p1d_fft_y1_measurement_kms_v8_nocrossexp_snr3noweights.fits",
-        )
+    # elif data_label.endswith("FFT3"):
+    #     p1d_fname = os.path.join(
+    #         path_data,
+    #         "fft_measurement",
+    #         "p1d_fft_y1_measurement_kms_v8_nocrossexp_snr3noweights.fits",
+    #     )
     else:
         raise ValueError(
             "data_label " + data_label + " not implemented for DESI_DR1"
@@ -222,7 +215,6 @@ class P1D_DESIY1(BaseDataP1D):
         z_min=0.0,
         z_max=10.0,
         cov_syst_type="red",
-        path_data=None,
         p1d_fname=None,
         variation=None,
         data_bias=1.0,
@@ -233,9 +225,9 @@ class P1D_DESIY1(BaseDataP1D):
         - z_max: maximum redshift to include"""
 
         if p1d_fname is None:
-            p1d_fname = set_p1d_filename(
-                data_label=data_label, path_data=path_data
-            )
+            p1d_fname = set_p1d_filename(data_label=data_label)
+        else:
+            print("Reading P1D measurements from", p1d_fname)
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         res = read_from_file(
@@ -349,11 +341,10 @@ def read_from_file(
     if type_measurement == "QMLE":
         Pksmooth_kms_raw = hdu[iuse].data["PSMOOTH"] * data_bias
     elif type_measurement == "FFT":
-        p1d_fname_qmle = os.path.join(
-            os.path.dirname(p1d_fname),
-            "desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v2.fits",
-        )
-        _ = fits.open(p1d_fname_qmle)
+        # We do not have smoothed P1D for FFT, get it from QMLE.
+        # We need to change this in the future, computing our own smooth version
+        # It is only used for the emulator errors, so it is not that important.
+        _ = fits.open(set_p1d_filename(data_label="QMLE"))
         ksmooth_kms_raw = _[1].data["K"]
         zsmooth = _[1].data["Z"]
         Pksmooth_kms_raw = _[1].data["PSMOOTH"] * data_bias
