@@ -7,6 +7,7 @@ from cup1d.pipeline.set_theory import set_theory
 from cup1d.pipeline.set_emulator import set_emulator
 from cup1d.pipeline.set_like_params import set_free_like_parameters
 from cup1d.pipeline.set_p1d import set_P1D
+from cup1d.likelihood.input_pipeline import Args
 
 from cup1d.likelihood.likelihood import Likelihood
 from cup1d.likelihood.fitter import Fitter
@@ -48,10 +49,22 @@ def get_grid_large(nelem):
 class Pipeline(object):
     """Full pipeline for extracting cosmology from P1D using sampler"""
 
-    def __init__(self, args, make_plots=False, out_folder=None, archive=None):
+    def __init__(
+        self,
+        args=None,
+        make_plots=False,
+        out_folder=None,
+        archive=None,
+        system="local",
+    ):
         """Set pipeline"""
 
-        self.out_folder = out_folder
+        if args == None:
+            # set default args to Chaves-Montero+26 analysis
+            args = Args(pre_defined="CM2026", system=system)
+
+        if out_folder is None:
+            self.out_folder = args.out_folder
 
         ## MPI stuff
         comm = MPI.COMM_WORLD
