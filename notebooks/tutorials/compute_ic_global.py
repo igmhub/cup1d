@@ -82,14 +82,9 @@ out_data = pip.fitter.like.plot_p1d(
     ylims=ylims,
     store_data=True
 )
-
-# +
-import cup1d, os
-
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_8.npy")
-np.save(fname, out_data)
 # -
+
+
 
 $z$ & $\chi^2$ & ndeg & prob\ \hline
 2.2 & 29.34 & 32 & 60.18 \\

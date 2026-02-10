@@ -139,4 +139,3 @@ import cup1d, os
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_B1b.npy")
 np.save(fname, store_data)
-# -

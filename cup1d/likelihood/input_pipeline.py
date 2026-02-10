@@ -133,6 +133,7 @@ class Args:
     path_ic: str | None = None
     p1d_fname: str | None = None
     pre_defined: str | None = None
+    file_ic: str | None = None
 
     def __post_init__(self, val_null=-20):
         """Initialize some parameters"""
