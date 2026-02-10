@@ -15,6 +15,8 @@
 
 # %% [markdown]
 # # Precision emulators
+#
+# Notebook to check the precision of the different emulators. Should it be in lace?
 
 # %%
 # %matplotlib inline
@@ -25,6 +27,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from lace.archive import gadget_archive, nyx_archive
 from lace.emulator.gp_emulator_multi import GPEmulator
+from matplotlib.ticker import FormatStrFormatter
 
 from matplotlib import rcParams
 
@@ -112,7 +115,6 @@ for ii in range(nsam):
     p1d_Mpc_sm[ii] = norm * np.exp(emulator.func_poly(k_fit, *popt))
 
 # %%
-from matplotlib.ticker import FormatStrFormatter
 
 # %%
 store_data = {}
@@ -243,20 +245,6 @@ plt.tight_layout()
 # plt.savefig("figs/nyx_smooth.pdf")
 # plt.savefig("figs/nyx_smooth.png")
 
-# %%
-import cup1d, os
-
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_3a.npy")
-np.save(fname, store_data)
-
-# %%
-import cup1d, os
-
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_B1b.npy")
-np.save(fname, store_data)
-
 # %% [markdown]
 # ### L1O
 
@@ -361,19 +349,5 @@ plt.tight_layout()
 # plt.savefig("figs/mpg_l1o.png")
 # plt.savefig("figs/nyx_l1o.pdf")
 # plt.savefig("figs/nyx_l1o.png")
-
-# %%
-import cup1d, os
-
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_4b.npy")
-np.save(fname, store_data)
-
-# %%
-import cup1d, os
-
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_B2b.npy")
-np.save(fname, store_data)
 
 # %%
