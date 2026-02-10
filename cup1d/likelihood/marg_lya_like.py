@@ -127,3 +127,28 @@ def gaussian_chi2_Walther2024(neff, DL2, ana_type="priors"):
         ),
     }
     return results
+
+
+def gaussian_chi2_ChavesMontero2026(neff, DL2):
+    """Compute Gaussian Delta chi^2 for a particular point(s) (neff,DL2),
+    using the measurement from Chaves-Montero et al. (2026).
+    """
+    # DL2 = k^3 P(k) / (2 pi^2), at z=3
+    DL2_val = 0.379
+    DL2_err = 0.032
+    # neff = effective slope at kp = 0.009 s/km, i.e., d ln P / dln k
+    neff_val = -2.309
+    neff_err = 0.019
+    # correlation coefficient
+    r = -0.1738
+    results = {
+        "Delta2_star": DL2_val,
+        "Delta2_star_err": DL2_err,
+        "n_star": neff_val,
+        "n_star_err": neff_err,
+        "r": r,
+        "chi2": gaussian_chi2(
+            neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r
+        ),
+    }
+    return results

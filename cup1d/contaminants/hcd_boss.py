@@ -1,5 +1,5 @@
 import numpy as np
-from cup1d.nuisance.base_contaminants import Contaminant
+from cup1d.contaminants.base_contaminants import Contaminant
 
 
 def fun_cont(damp, k):

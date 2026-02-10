@@ -16,7 +16,6 @@ from cup1d.utils.utils import get_path_repo
 
 from cup1d.utils.various_dicts import conv_strings
 
-
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from matplotlib import rcParams

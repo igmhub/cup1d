@@ -1,26 +1,19 @@
-import os, time, emcee, json
-
-import scipy.stats
+import os
+import time
+import emcee
+from scipy.stats.truncnorm import rvs as scipy_rvs
 import numpy as np
-from warnings import warn
-
 from pyDOE2 import lhs
-import copy
 from mpi4py import MPI
 
 # our own modules
-import cup1d, lace
-from lace.cosmo import camb_cosmo
 from cup1d.utils.utils import create_print_function, purge_chains
-
+from cup1d.utils.utils import get_path_repo
 from cup1d.utils.various_dicts import (
     param_dict,
-    metal_lines_latex,
     param_dict_rev,
-    cosmo_params,
     blob_strings,
     blob_strings_orig,
-    conv_strings,
 )
 
 
@@ -777,7 +770,7 @@ class Fitter(object):
         Runs in the range [0,1] with a rms specified on initialisation"""
 
         rms = self.like.prior_Gauss_rms
-        values = scipy.stats.truncnorm.rvs(
+        values = scipy_rvs(
             (0.0 - mean) / rms,
             (1.0 - mean) / rms,
             scale=rms,
@@ -879,8 +872,9 @@ class Fitter(object):
         if rootdir:
             chain_location = rootdir
         else:
-            repo = os.path.dirname(cup1d.__path__[0])
-            chain_location = os.path.join(repo, "data", "chains")
+            chain_location = os.path.join(
+                get_path_repo("cup1d"), "data", "chains"
+            )
         if subfolder:
             # If there is one, check if it exists, if not make it
             subfolder_dir = os.path.join(chain_location, subfolder)

@@ -8,7 +8,6 @@ from cup1d.pipeline.set_emulator import set_emulator
 from cup1d.pipeline.set_like_params import set_free_like_parameters
 from cup1d.pipeline.set_p1d import set_P1D
 from cup1d.likelihood.input_pipeline import Args
-
 from cup1d.likelihood.likelihood import Likelihood
 from cup1d.likelihood.fitter import Fitter
 from cup1d.likelihood.plotter import Plotter

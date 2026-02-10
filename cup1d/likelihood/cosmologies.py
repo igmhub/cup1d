@@ -1,8 +1,7 @@
 import os
 import numpy as np
-
-import lace
 from lace.cosmo import camb_cosmo
+from cup1d.utils.utils import get_path_repo
 
 
 def get_cosmology_from_label(cosmo_label="default"):
@@ -43,12 +42,17 @@ def set_cosmo(
     """
     if (cosmo_label[:3] == "mpg") | (cosmo_label[:3] == "nyx"):
         if cosmo_label[:3] == "mpg":
-            repo = os.path.dirname(lace.__path__[0]) + "/"
-            fname = repo + ("data/sim_suites/Australia20/mpg_emu_cosmo.npy")
+            fname = os.path.join(
+                get_path_repo("lace"),
+                "data",
+                "sim_suites",
+                "Australia20",
+                "mpg_emu_cosmo.npy",
+            )
             get_cosmo = camb_cosmo.get_cosmology_from_dictionary
         elif cosmo_label[:3] == "nyx":
-            fname = (
-                os.environ["NYX_PATH"] + "nyx_emu_cosmo_" + nyx_version + ".npy"
+            fname = os.path.join(
+                os.environ["NYX_PATH"], "nyx_emu_cosmo_" + nyx_version + ".npy"
             )
             get_cosmo = camb_cosmo.get_Nyx_cosmology
 

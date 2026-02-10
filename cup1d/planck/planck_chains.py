@@ -1,14 +1,12 @@
 import os
 from getdist import loadMCSamples
-import cup1d
+from cup1d.utils.utils import get_path_repo
 
 
 def spa_chains_dir(root_dir):
     if root_dir is None:
         root_dir = os.path.join(
-            os.path.dirname(cup1d.__path__[0]),
-            "data",
-            "cmbspa_linP_chains",
+            get_path_repo("cup1d"), "data", "cmbspa_linP_chains"
         )
     print("root_dir", root_dir)
     return root_dir
@@ -21,9 +19,7 @@ def planck_chains_dir(release, root_dir):
 
     if root_dir is None:
         root_dir = os.path.join(
-            os.path.dirname(cup1d.__path__[0]),
-            "data",
-            "planck_linP_chains",
+            get_path_repo("cup1d"), "data", "planck_linP_chains"
         )
     print("root_dir", root_dir)
     if release == 2013:

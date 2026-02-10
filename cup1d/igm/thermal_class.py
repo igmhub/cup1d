@@ -1,10 +1,9 @@
 import numpy as np
-import os
-import lace
-from cup1d.nuisance.base_igm import IGM_model
+from cup1d.igm.base_igm import IGM_model
+from lace.cosmo import thermal_broadening
 
 
-class Pressure(IGM_model):
+class Thermal(IGM_model):
     def __init__(
         self,
         coeffs=None,
@@ -16,7 +15,7 @@ class Pressure(IGM_model):
         flat_priors=None,
         Gauss_priors=None,
     ):
-        list_coeffs = ["kF_kms"]
+        list_coeffs = ["sigT_kms", "gamma"]
 
         if prop_coeffs is None:
             prop_coeffs = {}
@@ -27,7 +26,7 @@ class Pressure(IGM_model):
         if flat_priors is None:
             flat_priors = {}
             for coeff in list_coeffs:
-                flat_priors[coeff] = [[-1, 1], [-1.2, 1.2]]
+                flat_priors[coeff] = [[-1, 1], [-1.25, 1.25]]
 
         for coeff in list_coeffs:
             if coeff not in fid_vals:
@@ -50,9 +49,25 @@ class Pressure(IGM_model):
             fid_igm=fid_igm,
         )
 
-    def get_kF_kms(self, z, like_params=[], name_par="kF_kms"):
-        """Effective optical depth at the input redshift"""
+    def get_sigT_kms(self, z, like_params=[], name_par="sigT_kms"):
+        """sigT_kms at the input redshift"""
 
-        kF_kms = self.get_value(name_par, z, like_params=like_params)
-        kF_kms *= self.fid_interp[name_par](z)
-        return kF_kms
+        sigT_kms = self.get_value(name_par, z, like_params=like_params)
+        sigT_kms *= self.fid_interp[name_par](z)
+        return sigT_kms
+
+    def get_T0(self, z, like_params=[], name_par="sigT_kms"):
+        """T_0 at the input redshift"""
+
+        sigT_kms = self.get_sigT_kms(
+            z, like_params=like_params, name_par=name_par
+        )
+        T0 = thermal_broadening.T0_from_broadening_kms(sigT_kms)
+        return T0
+
+    def get_gamma(self, z, like_params=[], name_par="gamma"):
+        """gamma at the input redshift"""
+
+        gamma = self.get_value(name_par, z, like_params=like_params)
+        gamma *= self.fid_interp[name_par](z)
+        return gamma

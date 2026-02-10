@@ -1,11 +1,10 @@
 import numpy as np
 import copy
 import os
-import cup1d
-from cup1d.likelihood import likelihood_parameter
-from scipy.interpolate import interp1d
-from cup1d.utils.utils import get_discrete_cmap
 from matplotlib import pyplot as plt
+from scipy.interpolate import interp1d
+from cup1d.likelihood import likelihood_parameter
+from cup1d.utils.utils import get_discrete_cmap, get_path_repo
 
 
 class AGN_Model(object):
@@ -282,8 +281,8 @@ class AGN_Model(object):
 
 
 def _load_agn_file():
-    agn_corr_filename = (
-        os.path.dirname(cup1d.__path__[0]) + "/data/nuisance/AGN_corr.dat"
+    agn_corr_filename = os.path.join(
+        get_path_repo("cup1d"), "data", "nuisance", "AGN_corr.dat"
     )
     NzAGN = 9
     datafile = open(agn_corr_filename, "r")

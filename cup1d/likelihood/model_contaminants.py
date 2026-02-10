@@ -1,11 +1,7 @@
 import numpy as np
 
-from cup1d.nuisance import (
-    metal_model_class,
-    metal_metal_model_class,
+from cup1d.contaminants import (
     hcd_model_McDonald2005,
-    hcd_model_Rogers2017,
-    hcd_model_class,
     hcd_model_rogers_class,
     hcd_boss,
     si_mult,
@@ -109,46 +105,14 @@ class Contaminants(object):
                 Gauss_priors=Gauss_priors,
             )
 
-        # for metal_line in self.metal_add:
-        #     if metal_line == "Si_add":
-        #         continue
-        #     create_model = True
-        #     try:
-        #         self.metal_models[metal_line] = metal_models[metal_line]
-        #     except:
-        #         self.metal_models[
-        #             metal_line
-        #         ] = metal_metal_model_class.MetalModel(
-        #             metal_label=metal_line,
-        #             free_param_names=free_param_names,
-        #             fid_vals=fid_vals,
-        #             prop_coeffs=prop_coeffs,
-        #             z_max=z_max,
-        #             flat_priors=flat_priors,
-        #             Gauss_priors=Gauss_priors,
-        #         )
-
         # setup HCD model
         if hcd_model:
             self.hcd_model = hcd_model
         else:
-            if pars_cont["hcd_model_type"] == "Rogers2017":
-                self.hcd_model = hcd_model_Rogers2017.HCD_Model_Rogers2017(
-                    free_param_names=free_param_names,
-                    fid_A_damp=pars_cont["A_damp1"],
-                    fid_A_scale=pars_cont["A_scale1"],
-                )
-            elif pars_cont["hcd_model_type"] == "McDonald2005":
+            if pars_cont["hcd_model_type"] == "McDonald2005":
                 self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
                     free_param_names=free_param_names,
                     fid_A_damp=pars_cont["A_damp1"],
-                )
-            elif pars_cont["hcd_model_type"] == "new":
-                self.hcd_model = hcd_model_class.HCD_Model(
-                    free_param_names=free_param_names,
-                    fid_vals=pars_cont,
-                    flat_priors=flat_priors,
-                    Gauss_priors=Gauss_priors,
                 )
             elif pars_cont["hcd_model_type"] == "new_rogers":
                 self.hcd_model = hcd_model_rogers_class.HCD_Model_Rogers(

@@ -1,6 +1,6 @@
 import numpy as np
 
-from cup1d.nuisance import resolution_class
+from cup1d.contaminants import resolution_class
 
 
 class Systematics(object):

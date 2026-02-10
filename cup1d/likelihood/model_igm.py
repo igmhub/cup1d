@@ -1,10 +1,10 @@
 import os
-import lace
 import numpy as np
-from cup1d.nuisance.mean_flux_class import MeanFlux
-from cup1d.nuisance.pressure_class import Pressure
-from cup1d.nuisance.thermal_class import Thermal
+from cup1d.igm.mean_flux_class import MeanFlux
+from cup1d.igm.pressure_class import Pressure
+from cup1d.igm.thermal_class import Thermal
 from cup1d.utils.utils import is_number_string
+from cup1d.utils.utils import get_path_repo
 
 
 class IGM(object):
@@ -103,9 +103,12 @@ class IGM(object):
     def get_igm(self, sim_igm_mF=None, sim_igm_T=None, sim_igm_kF=None):
         """Load IGM history"""
 
-        repo = os.path.dirname(lace.__path__[0])
         fname = os.path.join(
-            repo, "data", "sim_suites", "Australia20", "IGM_histories.npy"
+            get_path_repo("lace"),
+            "data",
+            "sim_suites",
+            "Australia20",
+            "IGM_histories.npy",
         )
         try:
             self.igm_hist_mpg = np.load(fname, allow_pickle=True).item()

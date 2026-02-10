@@ -1,15 +1,9 @@
 import numpy as np
-import copy
-import matplotlib.pyplot as plt
 from lace.cosmo import camb_cosmo
-from lace.cosmo import fit_linP
-from lace.emulator import gp_emulator
-
 from cup1d.likelihood import CAMB_model
 from cup1d.likelihood.model_contaminants import Contaminants
 from cup1d.likelihood.model_systematics import Systematics
 from cup1d.likelihood.model_igm import IGM
-from cup1d.likelihood.cosmologies import set_cosmo
 from cup1d.utils.utils_sims import get_training_hc
 from cup1d.utils.hull import Hull
 from cup1d.utils.utils import is_number_string
@@ -861,6 +855,8 @@ class Theory(object):
     ):
         """Emulate and plot P1D in velocity units, for all redshift bins,
         as a function of input likelihood parameters"""
+
+        import matplotlib.pyplot as plt
 
         if self.zs_hires is None:
             fig, ax = plt.subplots(1, 1, figsize=(8, 6))

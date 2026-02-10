@@ -1,9 +1,5 @@
 import numpy as np
-import copy
-import os
 from cup1d.likelihood import likelihood_parameter
-from cup1d.utils.utils import get_discrete_cmap
-from matplotlib import pyplot as plt
 
 
 class HCD_Model_McDonald2005(object):
@@ -147,6 +143,8 @@ class HCD_Model_McDonald2005(object):
         smooth_k=False,
     ):
         """Plot the contamination model"""
+
+        from matplotlib import pyplot as plt
 
         # plot for fiducial value
         if ln_A_damp_coeff is None:

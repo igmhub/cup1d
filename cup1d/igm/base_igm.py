@@ -1,8 +1,9 @@
-import warnings
 import numpy as np
-from scipy.interpolate import make_smoothing_spline
-from scipy.interpolate import make_interp_spline
-from scipy.interpolate import interp1d
+from scipy.interpolate import (
+    make_smoothing_spline,
+    make_interp_spline,
+    interp1d,
+)
 from cup1d.likelihood import likelihood_parameter
 
 
