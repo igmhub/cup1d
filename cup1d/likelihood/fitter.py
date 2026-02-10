@@ -1,7 +1,8 @@
 import os
 import time
 import emcee
-from scipy.stats.truncnorm import rvs as scipy_rvs
+from scipy.stats import truncnorm
+from scipy.optimize import minimize, dual_annealing
 import numpy as np
 from pyDOE2 import lhs
 from mpi4py import MPI
@@ -357,7 +358,7 @@ class Fitter(object):
                     pini[pini <= 0] = 0.05
                     pini[pini >= 1] = 0.95
 
-                    res = scipy.optimize.minimize(
+                    res = minimize(
                         _log_func_minimize,
                         pini,
                         method="Nelder-Mead",
@@ -390,7 +391,7 @@ class Fitter(object):
             start1 = time.time()
             pini = mle_cube.copy()
 
-            res = scipy.optimize.minimize(
+            res = minimize(
                 _log_func_minimize,
                 pini,
                 method="Nelder-Mead",
@@ -522,7 +523,7 @@ class Fitter(object):
         print("Starting DA minimization", flush=True)
 
         start = time.time()
-        res = scipy.optimize.dual_annealing(
+        res = dual_annealing(
             _log_func_minimize,
             maxiter=10000,
             x0=mle_cube,
@@ -770,7 +771,7 @@ class Fitter(object):
         Runs in the range [0,1] with a rms specified on initialisation"""
 
         rms = self.like.prior_Gauss_rms
-        values = scipy_rvs(
+        values = truncnorm.rvs(
             (0.0 - mean) / rms,
             (1.0 - mean) / rms,
             scale=rms,

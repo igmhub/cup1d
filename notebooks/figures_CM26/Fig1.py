@@ -22,8 +22,6 @@
 # %autoreload 2
 
 import os
-import cup1d
-# from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
 # -
 

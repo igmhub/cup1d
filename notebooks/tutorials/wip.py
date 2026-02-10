@@ -240,7 +240,7 @@ args.set_baseline(
     name_variation=name_variation, 
 )
 
-pip = Pipeline(args, out_folder=args.out_folder)
+pip = Pipeline(args)
 
 
 # %%
@@ -300,6 +300,7 @@ chain = np.load(base + folder + "chain.npy")
 
 
 # %%
+pip.run_minimizer(p0)
 
 # %%
 
