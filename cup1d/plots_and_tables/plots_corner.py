@@ -78,7 +78,7 @@ def plots_chain(
     folder_out=None,
     nburn_extra=0,
     ftsize=20,
-    truth=[0, 0],
+    truth={"Delta2_star": 0, "n_star": 0},
     store_data=False,
 ):
     """
@@ -378,7 +378,6 @@ def corr_compressed(
     priors,
     folder_out=None,
     ftsize=20,
-    truth=[0, 0],
     sigmas=2,
     threshold=1e-4,
     store_data=False,
