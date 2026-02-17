@@ -64,6 +64,8 @@ class Pipeline(object):
 
         if out_folder is None:
             self.out_folder = args.out_folder
+        else:
+            self.out_folder = out_folder
 
         ## MPI stuff
         comm = MPI.COMM_WORLD

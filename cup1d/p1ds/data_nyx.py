@@ -30,7 +30,7 @@ class Nyx_P1D(BaseMockP1D):
         seed=0,
         z_min=0,
         z_max=10,
-        path_data=None,
+        p1d_fname=None,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
         - testing_data: p1d measurements from Nyx sims
@@ -72,7 +72,7 @@ class Nyx_P1D(BaseMockP1D):
             full_Pk_kms,
             full_cov_kms,
             full_cov_stat_kms,
-        ) = self._load_p1d(theory, path_data=path_data)
+        ) = self._load_p1d(theory, p1d_fname=p1d_fname)
 
         # set theory (just to save truth)
         zs = np.array(zs)
@@ -168,7 +168,7 @@ class Nyx_P1D(BaseMockP1D):
     #             -1 - ii
     #         ]
 
-    def _load_p1d(self, theory, path_data=None):
+    def _load_p1d(self, theory, p1d_fname=None):
         # figure out dataset to mimic
         if self.data_cov_label == "Chabanier2019":
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)
@@ -180,7 +180,7 @@ class Nyx_P1D(BaseMockP1D):
             data = data_Karacayli2022.P1D_Karacayli2022()
         elif self.data_cov_label.startswith("DESIY1"):
             data = data_DESIY1.P1D_DESIY1(
-                data_label=self.data_cov_label, path_data=path_data
+                data_label=self.data_cov_label, p1d_fname=p1d_fname
             )
         else:
             raise ValueError("Unknown data_cov_label", self.data_cov_label)

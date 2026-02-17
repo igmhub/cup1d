@@ -38,7 +38,6 @@ def main():
         data_label=data_label,
         cov_label=cov_label,
         emulator_label="CH24_" + emu + "cen_gpr",
-        path_data=path_data,
         true_cosmo_label=data_label,
         apply_smoothing=True,
         add_noise=False,
@@ -56,7 +55,20 @@ def main():
         z_max=zmax,
         mcmc_conf=mcmc_conf,
     )
-    pip = Pipeline(args, out_folder=args.out_folder)
+
+    if data_label == "accel2":
+        if path_data == "jjchaves":
+            args.path_data = (
+                "/home/jchaves/Proyectos/projects/lya/data/accel2/frontier_grid"
+            )
+        elif path_data == "nersc":
+            args.path_data = "/global/cfs/cdirs/desi/users/ravouxco/accel2/shared_files/frontier_grid"
+        else:
+            raise ValueError(
+                "path_data not defined for data_label = " + data_label
+            )
+
+    pip = Pipeline(args)
 
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 

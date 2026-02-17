@@ -1,6 +1,7 @@
 from cup1d.p1ds import (
     data_gadget,
     data_nyx,
+    data_accel2,
     data_eBOSS_mock,
     data_Chabanier2019,
     data_Karacayli2022,
@@ -71,35 +72,38 @@ def set_P1D(args, archive=None, theory=None):
                 # archive_mock = set_archive(training_set="Pedersen21")
             elif data_label.startswith("nyx"):
                 archive_mock = set_archive(training_set=args.nyx_training_set)
-            elif (data_label == "accel2") | (data_label == "sherwood"):
+            elif data_label == "sherwood":
                 archive_mock = set_archive(training_set=args.nyx_training_set)
+            elif data_label == "accel2":
+                archive_mock = None
             else:
                 raise ValueError("data_label", data_label, "not implemented")
 
-        if data_label not in archive_mock.list_sim:
-            raise ValueError(
-                data_label + " not available in archive ",
-                archive_mock.list_sim,
-            )
+        if data_label != "accel2":
+            if data_label not in archive_mock.list_sim:
+                raise ValueError(
+                    data_label + " not available in archive ",
+                    archive_mock.list_sim,
+                )
         ##
 
         # get P1Ds from archive
-        print
-        p1d_ideal = archive_mock.get_testing_data(data_label)
-        if len(p1d_ideal) == 0:
-            raise ValueError("Could not set P1D data for", data_label)
+        if data_label != "accel2":
+            p1d_ideal = archive_mock.get_testing_data(data_label)
+            if len(p1d_ideal) == 0:
+                raise ValueError("Could not set P1D data for", data_label)
+            else:
+                archive_mock = None
         else:
-            archive_mock = None
+            p1d_ideal = None
 
         ## set P1Ds in kms
         if data_label.startswith("mpg"):
             set_p1d_from_mock = data_gadget.Gadget_P1D
-        elif (
-            data_label.startswith("nyx")
-            | (data_label == "accel2")
-            | (data_label == "sherwood")
-        ):
+        elif data_label.startswith("nyx") | (data_label == "sherwood"):
             set_p1d_from_mock = data_nyx.Nyx_P1D
+        elif data_label == "accel2":
+            set_p1d_from_mock = data_accel2.Accel2_P1D
         else:
             raise ValueError("data_label", data_label, "not implemented")
 
@@ -114,6 +118,7 @@ def set_P1D(args, archive=None, theory=None):
             z_min=args.z_min,
             z_max=args.z_max,
             path_data=args.path_data,
+            p1d_fname=args.p1d_fname,
         )
     elif data_label.startswith("mock"):
         data = mock_data.Mock_P1D(

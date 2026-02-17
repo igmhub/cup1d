@@ -1,0 +1,226 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.16.1
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
+
+# %% [markdown]
+# # Fig 5
+#
+# Illustrative example of metal contamination
+
+# %%
+# %matplotlib inline
+# %load_ext autoreload
+# %autoreload 2
+import numpy as np
+## Set default plot size, as normally its a bit too small
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rcParams['savefig.dpi'] = 120
+mpl.rcParams['figure.dpi'] = 120
+from cup1d.contaminants import si_add, si_mult
+
+
+from matplotlib import rcParams
+
+rcParams["mathtext.fontset"] = "stix"
+rcParams["font.family"] = "STIXGeneral"
+
+# %% [markdown]
+# ### dv all metals
+
+# %%
+c_kms = 299792.458
+metals = ["SiIIa_SiIIb", "Lya_SiIII", "SiIIb_SiIII",  
+          "SiIIa_SiIII", "Lya_SiIIb", "Lya_SiIIa", 
+          "CIVa_CIVb", "MgIIa-MgIIb", "Lya_SiIIc", "SiIIc_SiIII"
+         ]
+
+for metal_label in metals:
+
+    if metal_label == "Lya_SiIII":
+        lambda_rest = [1206.52, 1215.67]
+    elif metal_label == "Lya_SiIIb":
+        lambda_rest = [1193.28, 1215.67]
+    elif metal_label == "Lya_SiIIa":
+        lambda_rest = [1190.42, 1215.67]
+    elif metal_label == "SiIIa_SiIIb":
+        lambda_rest = [1190.42, 1193.28]  # SiIIa-SiIIb
+    elif metal_label == "SiIIa_SiIII":
+        lambda_rest = [1190.42, 1206.52]  # SiIIa-SiIII
+    elif metal_label == "SiIIb_SiIII":
+        lambda_rest = [1193.28, 1206.52]  # SiIIb-SiIII
+    elif metal_label == "CIVa_CIVb":
+        lambda_rest = [1548.20, 1550.78]  # CIV-CIV
+    elif metal_label == "MgIIa-MgIIb":
+        lambda_rest = [2795.53, 2802.70]  # MgII-MgII
+    elif metal_label == "SiIIc_SiIII":
+        lambda_rest = [1206.51, 1260.42]
+    elif metal_label == "Lya_SiIIc":
+        lambda_rest = [1215.67, 1260.42]
+    else:
+        print("NO", metal_label)
+
+    dv = np.log(lambda_rest[1]/lambda_rest[0]) * c_kms
+    # z=3
+    # dk = 1 / dv * c_kms / np.mean(lambda_rest) / (1+z)
+    # dk = 1/lambda_rest[0] / (np.exp(dv/c_kms)-1)
+    print(metal_label, np.round(dv, 2), np.round(2 * np.pi/dv, 4))
+
+# %%
+# # dv1 = 6292.397594858781 
+# # dv2 = 5573.0060260298
+# # dv3 = 10837.387518476446
+# dv1 = 3305.5345694089347 
+# dv2 = 4024.926138237914
+# plt.plot(k_kms, np.cos(dv1 * k_kms))
+# plt.plot(k_kms, np.cos(dv2 * k_kms))
+# # # plt.plot(k_kms, np.cos(dv3 * k_kms))
+# plt.plot(k_kms, np.cos(dv1 * k_kms) + np.cos(dv2 * k_kms))
+# # plt.plot(k_kms, np.cos(dv1 * k_kms) + np.cos(dv2 * k_kms) + np.cos(dv3 * k_kms))
+
+# %% [markdown]
+# ### Fig. 5
+
+# %%
+out_data = {}
+
+
+k_kms = np.linspace(1e-3, 0.04, 1000)
+labs = [r"Ly$\alpha$-SiIII", r"Ly$\alpha$-SiII", "SiIII-SiII", "SiII-SiII"]
+# ls = ["-", ":", "-.", "--"]
+vals = [0.11, 0.06, 0.03, 0.03]
+
+fig, ax = plt.subplots(2, 2, figsize=(8, 6))
+ax = ax.reshape(-1)
+ftsize = 20
+
+remove = [
+    {
+        "SiIII_Lya": 1,
+        "SiIIa_Lya": 0,
+        "SiIIb_Lya": 0,
+        "SiIII_SiIIa": 0,
+        "SiIII_SiIIb": 0,
+    },
+    {
+        "SiIII_Lya": 0,
+        "SiIIa_Lya": 1,
+        "SiIIb_Lya": 1,
+        # "SiIIc_Lya": 1,
+        "SiIII_SiIIa": 0,
+        "SiIII_SiIIb": 0,
+    },
+    {
+        "SiIII_Lya": 0,
+        "SiIIa_Lya": 0,
+        "SiIIb_Lya": 0,
+        "SiIII_SiIIa": 1,
+        "SiIII_SiIIb": 1,
+        # "SiIII_SiIIc": 1,
+    },
+    {
+        # "SiIIc_SiIIb": 1,
+        # "SiIIc_SiIIa": 1,
+        # "SiIIacbc": 1,
+        # "SiIIacab": 1,
+        # "SiIIbcab": 1,
+    }
+]
+          
+
+mF = np.array([0.75])
+
+for ii in range(len(ax)):
+# for ii in range(2, 3):
+
+    if ii < 3:
+        # coeffs = {
+        #     "f_Lya_SiIII": [0, -4],
+        #     "s_Lya_SiIII": [0, 5],
+        #     "f_Lya_SiII": [0, -3.5],
+        #     "s_Lya_SiII": [0, 5],
+        #     "f_SiIIa_SiIII": [0, 1],
+        #     "f_SiIIb_SiIII": [0, 1],
+        # }
+        coeffs = {
+            "f_Lya_SiIII": [0, -4.17],
+            "s_Lya_SiIII": [0, 4.90],
+            "f_Lya_SiII": [0, -3.66],
+            "s_Lya_SiII": [0, 5.65],
+            "f_SiIIa_SiIII": [0, 0.84],
+            "f_SiIIb_SiIII": [0, 0.59],
+        }
+        met_model = si_mult.SiMult(coeffs = coeffs)
+    else:
+        # coeffs = {
+        #     "f_SiIIa_SiIIb": [0, -1],
+        #     "s_SiIIa_SiIIb": [0, 4.5],
+        # }
+        coeffs = {
+            "f_SiIIa_SiIIb": [0, 0.40],
+            "s_SiIIa_SiIIb": [0, 4.43],
+        }
+        met_model = si_add.SiAdd(coeffs = coeffs)
+
+    cont = met_model.get_contamination(z=np.array([3]), k_kms=[k_kms], mF=mF, remove=remove[ii])
+    ax[ii].plot(k_kms, cont[0], label=labs[ii], ls="-", lw=1.5)
+
+    out_data["x"] = k_kms
+    out_data["y"+str(ii)] = cont[0]
+
+    ax[ii].tick_params(axis="both", which="major", labelsize=ftsize-2)
+    ax[ii].legend(fontsize=ftsize-2, loc="upper right")
+    if ii < 3:
+        ax[ii].axhline(1, color="k", ls=":")
+    else:
+        ax[ii].axhline(0, color="k", ls=":")
+
+fig.supxlabel(r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
+fig.supylabel("Metal contamination", fontsize=ftsize)
+
+
+plt.tight_layout()
+# plt.savefig("figs/metal_contamination.png")
+# plt.savefig("figs/metal_contamination.pdf")
+
+# %%
+import cup1d, os
+
+path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
+fname = os.path.join(path_out, "fig_5.npy")
+np.save(fname, out_data)
+
+# %%
+
+# %%
+vals = [-4, 5, -3.5, 5, 1, 1, -1, 4.5]
+for val in vals:
+    print(np.exp(val))
+
+# %%
+1/148.4131591025766
+
+# %%
+1/90
+
+# %%
+
+ '$f^\\mathrm{HCD}_{{\\rm LLS}_0}$': -1.26972353839923,
+ '$f^\\mathrm{HCD}_{{\\rm LLS}_1}$': -1.2399946104079138,
+ '$f^\\mathrm{HCD}_{{\\rm sub-DLA}_0}$': -9.167807803887731,
+ '$f^\\mathrm{HCD}_{{\\rm sub-DLA}_1}$': -3.114029121360594,
+ '$f^\\mathrm{HCD}_{{\\rm small DLA}_0}$': -5.115888890687746,
+ '$f^\\mathrm{HCD}_{{\\rm small DLA}_1}$': -5.530119419372345,
+ '$f^\\mathrm{HCD}_{{\\rm large DLA}_0}$': -4.688801235071705,
+ '$f^\\mathrm{HCD}_{{\\rm large DLA}_1}$': -4.502944905689939,

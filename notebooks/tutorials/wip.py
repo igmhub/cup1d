@@ -56,6 +56,44 @@ from scipy.stats import chi2 as chi2_scipy
 from cup1d.pipeline.set_archive import set_archive
 
 
+# %%
+# Name, Box Mpc, Resolution kpc; h=67.5
+# MP-Gadget, 67.5, 87.9 # our suite
+# l160_r25, 237, 37 # baseline
+# l160_r50, 237, 74 # baseline, lower res 
+# l320_r50, 474, 74 # bigger box, lower res
+
+# l160_r25 and l160_r50 change in resolution
+# l160_r50 and l320_r50 change in boxside
+
+folder = "/home/jchaves/Proyectos/projects/lya/data/accel2/frontier_grid"
+sim_label = "l160_r25"
+
+
+out_dict = load_data(folder, sim_label)
+
+# load all axes, compute average of p1d and p3d
+
+# P1D and P3D averages for fitting Arinyo parameters
+# P1D average for generating mock z = 2, 2.6, 3, 3.6, 4, 5 (z=5 not validated?)
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+out_dict.keys()
+
+# %%
+
+# %%
+
+# %%
+
+# %%
+
 # %% [markdown]
 # ### Fisher forecast analysis
 
@@ -127,6 +165,65 @@ args.set_baseline(
 # ### Mock analysis
 
 # %%
+emulator_label = "CH24_mpgcen_gpr"
+# emulator_label = "CH24_nyxcen_gpr"
+
+
+# data_label = "mock_DESIY1_QMLE3"
+# data_label = "nyx_central"
+# data_label = "nyx_seed"
+# data_label = "nyx_cgan_base"
+data_label = "accel2"
+# data_label = "sherwood"
+
+# data_label = "mpg_central"
+# data_label = "mpg_seed"
+# data_label = "nyx_seed"
+
+if data_label == "mpg_central":
+    zmin=2.2
+    zmax=4.2
+elif data_label == "nyx_central":
+    zmin=2.2
+    zmax=4.2
+else:
+    zmin=2.2
+    zmax=4.2
+
+cov_label="DESIY1_QMLE3"
+true_cosmo_label = data_label
+fid_cosmo_label = data_label
+name_variation= "sim_" + data_label
+# name_variation= "sim_" + data_label + "_igm"
+# name_variation= "sim_" + data_label + "_igm0"
+fit_type = "global_opt"
+# name_variation = None
+
+args = Args(
+    data_label=data_label,
+    cov_label=cov_label,
+    emulator_label=emulator_label,
+    true_cosmo_label=data_label,
+    apply_smoothing=True,
+    add_noise=False,
+    seed_noise=0,
+    emu_cov_type="full",
+)
+
+args.path_data = "/home/jchaves/Proyectos/projects/lya/data/accel2/frontier_grid"
+
+args.set_baseline(
+    fit_type=fit_type,
+    fix_cosmo=False,
+    fid_cosmo_label=data_label,
+    P1D_type=cov_label,
+    name_variation=name_variation,
+    z_min=zmin,
+    z_max=zmax,
+    mcmc_conf="explore",
+)
+
+
 # nyx_training_set = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
 # archive_mock = set_archive(training_set=nyx_training_set)
 # pip = Pipeline(args, archive=archive_mock)
@@ -149,7 +246,7 @@ pip.fitter.like.plot_p1d()
 
 # %%
 p0 = pip.fitter.like.sampling_point_from_parameters()
-# p0[:] = 0.5
+p0[:] = 0.5
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 for par in free_params:
     print(par.name, par.value, par.min_value, par.max_value)
@@ -159,6 +256,16 @@ pip.fitter.like.plot_p1d(p0)
 
 # %%
 pip.run_minimizer(p0, restart=True)
+
+# %%
+
+# %%
+pip.fitter.like.plot_p1d(pip.fitter.mle_cube)
+
+# %%
+# pip.fitter.mle
+
+# %%
 
 # %% [markdown]
 # ### Data analysis
