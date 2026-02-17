@@ -19,7 +19,8 @@ def main():
 
     emu = "mpg"
     fit_type = "global_opt"
-    mcmc_conf = "explore"
+    # mcmc_conf = "explore"
+    mcmc_conf = "test"
     # path_data = "jjchaves"
     path_data = "nersc"
     cov_label = "DESIY1_QMLE3"
