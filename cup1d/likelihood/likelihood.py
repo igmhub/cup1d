@@ -753,6 +753,7 @@ class Likelihood(object):
         return_emu_params=False,
         apply_hull=True,
         remove=None,
+        no_contaminants=False,
     ):
         """Compute theoretical prediction for 1D P(k)"""
 
@@ -786,6 +787,7 @@ class Likelihood(object):
             return_emu_params=return_emu_params,
             apply_hull=apply_hull,
             remove=remove,
+            no_contaminants=no_contaminants,
         )
 
         if results is None:
@@ -1138,6 +1140,7 @@ class Likelihood(object):
         chi2_nozcov=False,
         ylims=None,
         store_data=False,
+        no_contaminants=False,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""
@@ -1164,7 +1167,11 @@ class Likelihood(object):
         # z at time fits or full fit
         if z_at_time is False:
             _res = self.get_p1d_kms(
-                _data_z, _data_k_kms, values, return_covar=return_covar
+                _data_z,
+                _data_k_kms,
+                values,
+                return_covar=return_covar,
+                no_contaminants=no_contaminants,
             )
             if _res is None:
                 return print("Prior out of range")
@@ -1201,6 +1208,7 @@ class Likelihood(object):
                     _data_k_kms[iz],
                     values[iz],
                     return_covar=return_covar,
+                    no_contaminants=no_contaminants,
                 )
                 _ = np.argwhere(values[iz] != 0)[:, 0]
                 # print(iz, len(_data_k_kms[iz]), len(_))
@@ -1231,6 +1239,7 @@ class Likelihood(object):
                 self.extra_data.k_kms,
                 values,
                 return_covar=return_covar,
+                no_contaminants=no_contaminants,
             )
             if _res is None:
                 return print("Prior out of range")

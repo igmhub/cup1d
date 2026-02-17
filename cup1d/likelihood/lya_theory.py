@@ -618,6 +618,7 @@ class Theory(object):
         apply_hull=True,
         hires=False,
         remove=None,
+        no_contaminants=False,
     ):
         """Emulate P1D in velocity units, for all redshift bins,
         as a function of input likelihood parameters.
@@ -760,13 +761,17 @@ class Theory(object):
         p1d_cont_kms = []
         for iz, z in enumerate(zs):
             # Pcont = (mul_metal * HCD * IC_corr * Pemu + add_metal) * syst
-            _p1d_cont_kms = (
-                cont_all["cont_HCD"][iz]
-                * cont_all["cont_mul_metals"][iz]
-                * cont_all["IC_corr"][iz]
-                * p1d_kms[iz]
-                + cont_all["cont_add_metals"][iz]
-            ) * syst_total[iz]
+
+            if no_contaminants:
+                _p1d_cont_kms = p1d_kms[iz]
+            else:
+                _p1d_cont_kms = (
+                    cont_all["cont_HCD"][iz]
+                    * cont_all["cont_mul_metals"][iz]
+                    * cont_all["IC_corr"][iz]
+                    * p1d_kms[iz]
+                    + cont_all["cont_add_metals"][iz]
+                ) * syst_total[iz]
 
             # essentially the same results as using the previous expression
             # Pcont = (mul_metal * IC_corr * Pemu + add_metal) * HCD * syst
