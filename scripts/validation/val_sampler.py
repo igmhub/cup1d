@@ -20,7 +20,8 @@ def main():
     emu = "mpg"
     fit_type = "global_opt"
     mcmc_conf = "explore"
-    path_data = "jjchaves"
+    # path_data = "jjchaves"
+    path_data = "nersc"
     cov_label = "DESIY1_QMLE3"
 
     # baseline
