@@ -51,6 +51,9 @@ def load_data(folder, sim_label="l160_r25", hh=0.675, kmax=10):
             _ = dat[:, 0] < kmax
             if (ii == 0) & (iz == 0):
                 k1d = dat[_, 0] * hh  # the beginning of the bin!
+                # defined at the beginning of the bin, now center (equal bins)
+                k1d += 0.5 * (k1d[1] - k1d[0])
+
                 nmod1d = dat[_, 1]
                 p1d_all = np.zeros((len(labs_z), k1d.shape[0], 3))
                 p1d = np.zeros((len(labs_z), k1d.shape[0]))
@@ -74,6 +77,15 @@ def load_data(folder, sim_label="l160_r25", hh=0.675, kmax=10):
 
             k3d_uni = np.unique(u_k3d)
             mu3d_uni = np.unique(u_mu3d)
+
+            # defined at the beginning of the bin, now center (equal bins)
+            diffk = 0.5 * (k3d_uni[1] - k3d_uni[0])
+            diffmu = 0.5 * (mu3d_uni[1] - mu3d_uni[0])
+
+            u_k3d += diffk
+            k3d_uni += diffk
+            u_mu3d += diffmu
+            mu3d_uni += diffmu
 
             k3d = np.zeros((k3d_uni.shape[0], mu3d_uni.shape[0]))
             mu3d = np.zeros_like(k3d)
