@@ -618,7 +618,7 @@ class Theory(object):
         apply_hull=True,
         hires=False,
         remove=None,
-        no_contaminants=False,
+        return_contaminants=False,
     ):
         """Emulate P1D in velocity units, for all redshift bins,
         as a function of input likelihood parameters.
@@ -758,22 +758,32 @@ class Theory(object):
         # # print(len(p1d_kms))
         # print(len(cont_all["cont_add_metals"]))
         # print(len(syst_total))
+
+        terms = []
         p1d_cont_kms = []
         for iz, z in enumerate(zs):
-            # Pcont = (mul_metal * HCD * IC_corr * Pemu + add_metal) * syst
+            terms.append(
+                {
+                    "z": z,
+                    "k_kms": k_kms[iz],
+                    "p1d_emu_kms": p1d_kms[iz],
+                    "C_res": syst_total[iz],
+                    "C_mul_metals": cont_all["cont_mul_metals"][iz],
+                    "C_add_metals": cont_all["cont_add_metals"][iz],
+                    "C_HCD": cont_all["cont_HCD"][iz],
+                    "p1d_tot_kms": "[(C_mul_metals * C_HCD * p1d_emu_kms + C_add_metals) * C_res]",
+                }
+            )
+            # Pcont = (mul_metal * HCD * IC_corr * Plya + add_metal) * syst
+            _p1d_cont_kms = (
+                cont_all["cont_HCD"][iz]
+                * cont_all["cont_mul_metals"][iz]
+                * cont_all["IC_corr"][iz]
+                * p1d_kms[iz]
+                + cont_all["cont_add_metals"][iz]
+            ) * syst_total[iz]
 
-            if no_contaminants:
-                _p1d_cont_kms = p1d_kms[iz]
-            else:
-                _p1d_cont_kms = (
-                    cont_all["cont_HCD"][iz]
-                    * cont_all["cont_mul_metals"][iz]
-                    * cont_all["IC_corr"][iz]
-                    * p1d_kms[iz]
-                    + cont_all["cont_add_metals"][iz]
-                ) * syst_total[iz]
-
-            # essentially the same results as using the previous expression
+            # essentially the same results as using the following expression
             # Pcont = (mul_metal * IC_corr * Pemu + add_metal) * HCD * syst
             # _p1d_cont_kms = (
             #     (
@@ -786,7 +796,6 @@ class Theory(object):
             #     * syst_total[iz]
             # )
             p1d_cont_kms.append(_p1d_cont_kms)
-        # print(p1d_cont_kms[0])
 
         # decide what to return, and return it
         out = [p1d_cont_kms]
@@ -796,6 +805,8 @@ class Theory(object):
             out.append(blob)
         if return_emu_params:
             out.append(emu_call)
+        if return_contaminants:
+            out.append(terms)
 
         if len(out) == 1:
             return out[0]
