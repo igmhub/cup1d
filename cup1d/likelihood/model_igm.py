@@ -119,7 +119,13 @@ class IGM(object):
                 + r" script save_mpg_IGM.py"
             )
 
-        fname = os.path.join(os.environ["NYX_PATH"], "IGM_histories.npy")
+        try:
+            fname = os.path.join(os.environ["NYX_PATH"], "IGM_histories.npy")
+        except:
+            raise ValueError(
+                "NYX_PATH not set, please set it as explained in the README of the repo"
+            )
+
         try:
             self.igm_hist_nyx = np.load(fname, allow_pickle=True).item()
         except:
@@ -243,9 +249,7 @@ class IGM(object):
 
         return igms_return
 
-    def set_priors(
-        self, fid_igm, prop_coeffs, fact_priors=1.0, z_pivot=3, percent=95
-    ):
+    def set_priors(self, fid_igm, prop_coeffs, fact_priors=1.0, z_pivot=3, percent=95):
         """Set priors for all IGM models
 
         This is only important for giving the minimizer and the sampler a uniform
@@ -254,9 +258,7 @@ class IGM(object):
 
         self.priors = {}
         for par in fid_igm:
-            if (par == "val_scaling") | (
-                par.endswith("_z") | par.endswith("_suite")
-            ):
+            if (par == "val_scaling") | (par.endswith("_z") | par.endswith("_suite")):
                 continue
 
             if (par == "mF") | (par == "tau_eff"):
@@ -318,9 +320,7 @@ class IGM(object):
                 continue
 
             if otype == "exp":
-                y0_max = np.abs(
-                    np.log(np.percentile(np.abs(res_div[_, 0]), percent))
-                )
+                y0_max = np.abs(np.log(np.percentile(np.abs(res_div[_, 0]), percent)))
             elif otype == "const":
                 y0_max = np.percentile(res_div[_, 0], percent)
             else:
