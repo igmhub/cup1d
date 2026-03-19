@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -37,8 +37,6 @@ rcParams["font.family"] = "STIXGeneral"
 
 # %% [markdown]
 # ### Read an extended Planck chains and plot linear power parameters
-
-# %%
 
 # %%
 
@@ -433,15 +431,15 @@ cmap = plt.colormaps["Blues"]
 col = [0.7, 0.3]
 lw = [3, 2]
 # cmb_all = [
-#     cmb, 
-#     # cmb_tau, 
-#     cmb_mnu, 
-#     cmb_nnu, 
-#     cmb_nrun, 
+#     cmb,
+#     # cmb_tau,
+#     cmb_mnu,
+#     cmb_nnu,
+#     cmb_nrun,
 #     cmb_nrun_nrunrun,
 # ]
 # cmb_labs = [
-#     r"$\mathit{Planck}$ T&E: $\Lambda$CDM", 
+#     r"$\mathit{Planck}$ T&E: $\Lambda$CDM",
 #     # r"Planck+18 $\Lambda$CDM (no lowE)",
 #     r"$\mathit{Planck}$ T&E: $\sum m_\nu$",
 #     r"$\mathit{Planck}$ T&E: $N_\mathrm{eff}$",
@@ -455,7 +453,7 @@ lw = [3, 2]
 # for ii, icmb in enumerate(cmb_all):
 
 #     new_samples=icmb['samples'].copy()
-    
+
 #     if ii == 0:
 #         filled = False
 #         lwu = 3
@@ -463,22 +461,22 @@ lw = [3, 2]
 #         filled = False
 #         lwu = 2
 #     g.plot_2d(
-#         new_samples, 
-#         ['linP_DL2_star', 'linP_n_star'], 
-#         colors=["C"+str(ii+1)], 
-#         lws=2, 
+#         new_samples,
+#         ['linP_DL2_star', 'linP_n_star'],
+#         colors=["C"+str(ii+1)],
+#         lws=2,
 #         alphas=[0.8, 0.5],
 #         filled=filled,
 #     )
 
-fig, ax = plt.subplots(figsize=(8,6))
+fig, ax = plt.subplots(figsize=(8, 6))
 
 
 for inum, num in enumerate([0.68, 0.95]):
     if inum == 0:
-        label=r"DESI $P_\mathrm{1D}$"
+        label = r"DESI $P_\mathrm{1D}$"
     else:
-        label=None
+        label = None
     for jj in range(len(dat_mpg[num])):
         x = dat_mpg[num][jj][0] - blinding["Delta2_star"]
         y = dat_mpg[num][jj][1] - blinding["n_star"]
@@ -487,7 +485,7 @@ for inum, num in enumerate([0.68, 0.95]):
 
 # ax.axhline(y=1,color='k',lw=lw,label=r"DESI-DR1 Ly$\alpha$ (this work)")
 # for ii, icmb in enumerate(cmb_all):
-#     ax.axhline(y=1,color="C"+str(ii+1),lw=lw[0],label=cmb_labs[ii])    
+#     ax.axhline(y=1,color="C"+str(ii+1),lw=lw[0],label=cmb_labs[ii])
 
 
 # ax.set_xlim(0.25, 0.45)
@@ -496,11 +494,11 @@ ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
 ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
 ax.tick_params(axis="both", which="major", labelsize=ftsize)
 
-plt.legend(fontsize=ftsize-1, loc="upper left", ncol=2)
+plt.legend(fontsize=ftsize - 1, loc="upper left", ncol=2)
 plt.tight_layout()
 
-plt.savefig("figs/only_desi.png", bbox_inches='tight')
-plt.savefig("figs/only_desi.pdf", bbox_inches='tight')
+plt.savefig("figs/only_desi.png", bbox_inches="tight")
+plt.savefig("figs/only_desi.pdf", bbox_inches="tight")
 
 # %%
 # cmb["samples"].index
