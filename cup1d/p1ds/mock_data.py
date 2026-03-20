@@ -104,7 +104,7 @@ class Mock_P1D(BaseMockP1D):
             k_kms=data_from_obs.k_kms,
             Pk_kms=Pk_kms,
             cov_Pk_kms=data_from_obs.cov_Pk_kms,
-            cov_stat=data_from_obs.cov_Pk_kms,
+            cov_stat=data_from_obs.covstat_Pk_kms,
             add_noise=add_noise,
             seed=seed,
             z_min=z_min,
@@ -112,5 +112,5 @@ class Mock_P1D(BaseMockP1D):
             full_zs=data_from_obs.full_zs,
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=data_from_obs.full_cov_Pk_kms,
-            full_cov_stat_kms=data_from_obs.full_cov_Pk_kms,
+            full_cov_stat_kms=data_from_obs.full_cov_stat_Pk_kms,
         )

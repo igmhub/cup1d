@@ -31,12 +31,19 @@ from cup1d.likelihood.input_pipeline import Args
 # ## Load Mock P1D measurements and set likelihood
 #
 # The mock measurements are created with the emulator
+#
+# Sampler configuration:
+# - "test": just to check that everything is work
+# - "explore": standard setting to get a good chain
 
 # %%
 data_label = "mock_DESIY1_QMLE3"
 cov_label = "DESIY1_QMLE3"
 fit_type = "global_opt"
 name_variation = "no_contaminants"
+
+# mcmc_conf = "explore"
+mcmc_conf = "test"
 
 args = Args(data_label=data_label, cov_label=cov_label)
 
@@ -45,7 +52,7 @@ args.set_baseline(
     fit_type=fit_type,
     P1D_type=cov_label,
     name_variation=name_variation,
-    mcmc_conf="explore",
+    mcmc_conf=mcmc_conf,
 )
 
 pip = Pipeline(args)
@@ -173,5 +180,35 @@ print(new_Delta2_star, new_n_star)
 # %%
 # as expected, 10% larger value of the new parameter
 new_Delta2_star/ini_Delta2_star
+
+# %% [markdown]
+# ### Run fitter
+
+# %%
+run_fitter = False
+
+if run_fitter:
+    p0 = pip.fitter.like.sampling_point_from_parameters()
+    pip.run_minimizer(p0, restart=True)
+    pip.fitter.like.plot_p1d(pip.fitter.mle_cube)
+
+# %% [markdown]
+# ### Run sampler
+
+# %%
+run_sampler = True
+
+if run_sampler:
+    p0 = pip.fitter.like.sampling_point_from_parameters()
+    pip.run_sampler(p0)
+
+# %%
+Delta2_star = pip.fitter.blobs["Delta2_star"].reshape(-1)
+n_star = pip.fitter.blobs["n_star"].reshape(-1)
+
+# %%
+plt.scatter(Delta2_star, n_star)
+plt.ylabel("$n_\mathrm{star}$")
+plt.xlabel("$\Delta^2_\mathrm{star}$")
 
 # %%
