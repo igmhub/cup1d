@@ -28,7 +28,9 @@ from cup1d.likelihood.input_pipeline import Args
 
 
 # %% [markdown]
-# ## Load P1D measurements and set likelihood
+# ## Load Mock P1D measurements and set likelihood
+#
+# The mock measurements are created with the emulator
 
 # %%
 data_label = "mock_DESIY1_QMLE3"
@@ -49,7 +51,7 @@ args.set_baseline(
 pip = Pipeline(args)
 
 # %% [markdown]
-# ## Plot P1D data 
+# ## Plot Mock P1D data 
 
 # %%
 pip.fitter.like.plot_p1d()
