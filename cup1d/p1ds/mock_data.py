@@ -24,7 +24,6 @@ class Mock_P1D(BaseMockP1D):
     def __init__(
         self,
         theory,
-        true_cosmo,
         data_label="Chabanier2019",
         z_min=0,
         z_max=10,
@@ -64,18 +63,8 @@ class Mock_P1D(BaseMockP1D):
             data_from_obs = data_Chabanier2019.read_from_file()
         # elif data_label == "Karacayli2024":
         #     data_from_obs = data_Karacayli2024.read_from_file()
-        elif data_label == "DESIY1":
-            if p1d_fname is None:
-                raise ValueError(
-                    "Must provide p1d_fname if loading DESI_Y1 data"
-                )
-            else:
-                data_from_obs = data_DESIY1.read_from_file(
-                    p1d_fname=p1d_fname,
-                    z_min=z_min,
-                    z_max=z_max,
-                    path_data=path_data,
-                )
+        elif "DESIY1" in data_label:
+            data_from_obs = data_DESIY1.P1D_DESIY1(data_label=data_label)
         elif data_label == "challenge_DESIY1":
             if p1d_fname is None:
                 raise ValueError(
@@ -84,7 +73,6 @@ class Mock_P1D(BaseMockP1D):
             else:
                 data_from_obs = challenge_DESIY1.P1D_challenge_DESIY1(
                     theory,
-                    true_cosmo,
                     p1d_fname=p1d_fname,
                     z_min=z_min,
                     z_max=z_max,
@@ -107,7 +95,7 @@ class Mock_P1D(BaseMockP1D):
         # evaluate theory at k_kms, for all redshifts. get Pk_kms from emulator
         zs = np.array(data_from_obs.z)
         theory.model_igm.set_fid_igm(zs)
-        theory.set_fid_cosmo(zs, input_cosmo=true_cosmo)
+        theory.set_fid_cosmo(zs)
         Pk_kms = theory.get_p1d_kms(zs, data_from_obs.k_kms, return_blob=False)
         full_Pk_kms = np.concatenate(np.array(Pk_kms, dtype=object)).reshape(-1)
 
@@ -116,6 +104,7 @@ class Mock_P1D(BaseMockP1D):
             k_kms=data_from_obs.k_kms,
             Pk_kms=Pk_kms,
             cov_Pk_kms=data_from_obs.cov_Pk_kms,
+            cov_stat=data_from_obs.cov_Pk_kms,
             add_noise=add_noise,
             seed=seed,
             z_min=z_min,
@@ -123,5 +112,5 @@ class Mock_P1D(BaseMockP1D):
             full_zs=data_from_obs.full_zs,
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=data_from_obs.full_cov_Pk_kms,
-            theory=theory,
+            full_cov_stat_kms=data_from_obs.full_cov_Pk_kms,
         )

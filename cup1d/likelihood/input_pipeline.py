@@ -370,9 +370,7 @@ class Args:
                 [-1, 1],
                 [val_null - 0.5, -2],
             ]
-        elif (name_variation is not None) and (
-            name_variation == "Metals_Ma2025"
-        ):
+        elif (name_variation is not None) and (name_variation == "Metals_Ma2025"):
             self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
                 [-1, 1],
                 [-6, 2],
@@ -399,9 +397,7 @@ class Args:
                 [-1, 1],
                 [val_null - 0.5, -2],
             ]
-        elif (name_variation is not None) and (
-            name_variation == "Metals_Ma2025"
-        ):
+        elif (name_variation is not None) and (name_variation == "Metals_Ma2025"):
             self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
                 [-1, 1],
                 [-6, 2],
@@ -469,10 +465,7 @@ class Args:
 
         for key in self.fid_cont:
             if key in self.fid_cont["flat_priors"]:
-                if (
-                    self.fid_cont[key][-1]
-                    < self.fid_cont["flat_priors"][key][-1][0]
-                ):
+                if self.fid_cont[key][-1] < self.fid_cont["flat_priors"][key][-1][0]:
                     print(
                         key,
                         self.fid_cont["flat_priors"][key][-1][0],
@@ -481,10 +474,7 @@ class Args:
                     self.fid_cont["flat_priors"][key][-1][0] = (
                         self.fid_cont[key][-1] - 0.1
                     )
-                if (
-                    self.fid_cont[key][-1]
-                    > self.fid_cont["flat_priors"][key][-1][1]
-                ):
+                if self.fid_cont[key][-1] > self.fid_cont["flat_priors"][key][-1][1]:
                     print(
                         key,
                         self.fid_cont["flat_priors"][key][-1][1],
@@ -667,18 +657,10 @@ class Args:
         if (name_variation is not None) and ("no_emu_cov" in name_variation):
             inf_emu = 0
 
-        self.cov_factor["val_stat"] = (
-            np.ones(len(self.cov_factor["z"])) * inf_stat
-        )
-        self.cov_factor["val_syst"] = (
-            np.ones(len(self.cov_factor["z"])) * inf_syst
-        )
-        self.cov_factor["val_emu"] = (
-            np.ones(len(self.cov_factor["z"])) * inf_emu
-        )
-        self.cov_factor["val_full"] = (
-            np.ones(len(self.cov_factor["z"])) * inf_full
-        )
+        self.cov_factor["val_stat"] = np.ones(len(self.cov_factor["z"])) * inf_stat
+        self.cov_factor["val_syst"] = np.ones(len(self.cov_factor["z"])) * inf_syst
+        self.cov_factor["val_emu"] = np.ones(len(self.cov_factor["z"])) * inf_emu
+        self.cov_factor["val_full"] = np.ones(len(self.cov_factor["z"])) * inf_full
         ##
 
         ## bias in the results?
@@ -863,9 +845,9 @@ class Args:
             if ic_global == False:
                 self.file_ic = None
 
-            if (name_variation is not None) and (
-                name_variation.startswith("sim_")
-            ):
+            if (name_variation is not None) and (name_variation.startswith("sim_")):
+                self.file_ic = None
+            elif (name_variation is not None) and (name_variation == "no_contaminants"):
                 self.file_ic = None
             ##
 
@@ -990,6 +972,21 @@ class Args:
                     # "HCD_damp3",
                     # "HCD_damp4",
                 ]
+            elif name_variation == "no_contaminants":
+                baseline_prop = [
+                    # "f_Lya_SiIII",
+                    # "s_Lya_SiIII",
+                    # "f_Lya_SiII",
+                    # "s_Lya_SiII",
+                    # "f_SiIIa_SiIIb",
+                    # "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    # "HCD_damp1",
+                    # "HCD_damp2",
+                    # "HCD_damp3",
+                    # "HCD_damp4",
+                ]
             else:
                 baseline_prop = [
                     "f_Lya_SiIII",
@@ -1031,9 +1028,7 @@ class Args:
 
             if (name_variation is not None) and (name_variation == "Gaikwad21"):
                 self.fid_igm["tau_eff_znodes"] = []
-            elif (name_variation is not None) and (
-                name_variation == "Turner24"
-            ):
+            elif (name_variation is not None) and (name_variation == "Turner24"):
                 self.fid_igm["tau_eff_znodes"] = np.array([3.0])
             else:
                 self.fid_igm["tau_eff_znodes"] = np.geomspace(
@@ -1044,8 +1039,7 @@ class Args:
                 # )
 
             if (name_variation is not None) and (
-                (name_variation == "Gaikwad21")
-                | (name_variation == "Gaikwad21T")
+                (name_variation == "Gaikwad21") | (name_variation == "Gaikwad21T")
             ):
                 self.fid_igm["sigT_kms_znodes"] = []
                 self.fid_igm["gamma_znodes"] = []
@@ -1057,9 +1051,7 @@ class Args:
                     self.z_min, self.z_max, nz_igm
                 )
 
-            self.fid_igm["kF_kms_znodes"] = np.geomspace(
-                self.z_min, self.z_max, nz_igm
-            )
+            self.fid_igm["kF_kms_znodes"] = np.geomspace(self.z_min, self.z_max, nz_igm)
             # self.fid_igm["sigT_kms_znodes"] = np.linspace(
             #     self.z_min, self.z_max, nz_igm
             # )
@@ -1101,9 +1093,7 @@ class Args:
                 else:
                     self.fid_cont[prop + "_znodes"] = np.array([3.0])
 
-                self.fid_cont["n_" + prop] = len(
-                    self.fid_cont[prop + "_znodes"]
-                )
+                self.fid_cont["n_" + prop] = len(self.fid_cont[prop + "_znodes"])
                 if self.fid_cont["n_" + prop] <= 1:
                     self.fid_cont[prop + "_ztype"] = "pivot"
                 else:
@@ -1111,21 +1101,19 @@ class Args:
             ##
 
             ## set systematic
-            if name_variation == "no_res":
+            if (name_variation == "no_res") | (name_variation == "no_contaminants"):
                 self.fid_syst["R_coeff_znodes"] = []
             else:
-                self.fid_syst["R_coeff_znodes"] = np.arange(
-                    2.2, 4.2 + 1e-5, 0.2
-                )
+                self.fid_syst["R_coeff_znodes"] = np.arange(2.2, 4.2 + 1e-5, 0.2)
 
             if name_variation == "zmin":
-                self.fid_syst["R_coeff_znodes"] = self.fid_syst[
-                    "R_coeff_znodes"
-                ][self.fid_syst["R_coeff_znodes"] >= self.z_min]
+                self.fid_syst["R_coeff_znodes"] = self.fid_syst["R_coeff_znodes"][
+                    self.fid_syst["R_coeff_znodes"] >= self.z_min
+                ]
             elif name_variation == "zmax":
-                self.fid_syst["R_coeff_znodes"] = self.fid_syst[
-                    "R_coeff_znodes"
-                ][self.fid_syst["R_coeff_znodes"] <= self.z_max]
+                self.fid_syst["R_coeff_znodes"] = self.fid_syst["R_coeff_znodes"][
+                    self.fid_syst["R_coeff_znodes"] <= self.z_max
+                ]
             self.fid_syst["n_R_coeff"] = len(self.fid_syst["R_coeff_znodes"])
             self.fid_syst["R_coeff_ztype"] = "interp_lin"
 
@@ -1174,9 +1162,7 @@ class Args:
             self.fid_igm["sigT_kms_znodes"] = np.geomspace(
                 self.z_min, self.z_max, nz_igm
             )
-            self.fid_igm["gamma_znodes"] = np.geomspace(
-                self.z_min, self.z_max, nz_igm
-            )
+            self.fid_igm["gamma_znodes"] = np.geomspace(self.z_min, self.z_max, nz_igm)
             self.fid_igm["kF_kms_znodes"] = []
 
             for prop in props_igm:
@@ -1200,9 +1186,7 @@ class Args:
                 else:
                     self.fid_cont[prop + "_znodes"] = np.array([3.0])
 
-                self.fid_cont["n_" + prop] = len(
-                    self.fid_cont[prop + "_znodes"]
-                )
+                self.fid_cont["n_" + prop] = len(self.fid_cont[prop + "_znodes"])
                 if self.fid_cont["n_" + prop] <= 1:
                     self.fid_cont[prop + "_ztype"] = "pivot"
                 else:

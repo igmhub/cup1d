@@ -2,7 +2,6 @@ from cup1d.p1ds import (
     data_gadget,
     data_nyx,
     data_accel2,
-    data_eBOSS_mock,
     data_Chabanier2019,
     data_Karacayli2022,
     data_Karacayli2024,
@@ -14,7 +13,6 @@ from cup1d.p1ds import (
 )
 
 from cup1d.pipeline.set_archive import set_archive
-from cup1d.pipeline.set_theory import set_theory
 
 
 def set_P1D(args, archive=None, theory=None):
@@ -128,10 +126,8 @@ def set_P1D(args, archive=None, theory=None):
             seed=args.seed_noise,
             z_min=args.z_min,
             z_max=args.z_max,
-            cov_only_diag=args.cov_syst_type,
-            path_data=args.path_data,
+            path_data=args.p1d_fname,
         )
-
     elif data_label == "challenge_DESIY1":
         data = challenge_DESIY1.P1D_challenge_DESIY1(
             theory,
@@ -141,26 +137,15 @@ def set_P1D(args, archive=None, theory=None):
         )
 
     elif data_label == "Chabanier2019":
-        data = data_Chabanier2019.P1D_Chabanier2019(
-            z_min=args.z_min, z_max=args.z_max
-        )
+        data = data_Chabanier2019.P1D_Chabanier2019(z_min=args.z_min, z_max=args.z_max)
     elif data_label == "Ravoux2023":
-        data = data_Ravoux2023.P1D_Ravoux2023(
-            z_min=args.z_min, z_max=args.z_max
-        )
+        data = data_Ravoux2023.P1D_Ravoux2023(z_min=args.z_min, z_max=args.z_max)
     elif data_label == "Karacayli2024":
-        data = data_Karacayli2024.P1D_Karacayli2024(
-            z_min=args.z_min, z_max=args.z_max
-        )
+        data = data_Karacayli2024.P1D_Karacayli2024(z_min=args.z_min, z_max=args.z_max)
     elif data_label == "Karacayli2022":
-        data = data_Karacayli2022.P1D_Karacayli2022(
-            z_min=args.z_min, z_max=args.z_max
-        )
+        data = data_Karacayli2022.P1D_Karacayli2022(z_min=args.z_min, z_max=args.z_max)
     elif data_label == "challenge_v0":
-        file = (
-            os.environ["CHALLENGE_PATH"]
-            + "fiducial_lym1d_p1d_qmleformat_IC.txt"
-        )
+        file = os.environ["CHALLENGE_PATH"] + "fiducial_lym1d_p1d_qmleformat_IC.txt"
         data = data_QMLE_Ohio.P1D_QMLE_Ohio(
             filename=file, z_min=args.z_min, z_max=args.z_max
         )
