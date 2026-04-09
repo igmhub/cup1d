@@ -68,6 +68,7 @@ def set_cosmo(
             raise ValueError(f"Cosmo not found in {fname} for {cosmo_label}")
 
     elif cosmo_label == "Planck18":
+        # Tab 2 of https://arxiv.org/abs/1807.06209, TT,TE,EE+lowE+lensing+BAO
         cosmo = camb_cosmo.get_cosmology(
             H0=67.66,
             mnu=0.0,
@@ -93,11 +94,67 @@ def set_cosmo(
             pivot_scalar=0.05,
             w=-1,
         )
+    elif cosmo_label == "Planck18_high3s_omh2":
+        err_omch2 = 0.0009
+        cosmo = camb_cosmo.get_cosmology(
+            H0=67.66,
+            mnu=0.0,
+            omch2=0.119 + err_omch2 * 3,  # 3 sigma higher
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
+    elif cosmo_label == "Planck18_high1s_omh2":
+        err_omch2 = 0.0009
+        cosmo = camb_cosmo.get_cosmology(
+            H0=67.66,
+            mnu=0.0,
+            omch2=0.119 + err_omch2,  # 1 sigma higher
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
     elif cosmo_label == "Planck18_low_omh2":
         cosmo = camb_cosmo.get_cosmology(
             H0=67.66,
             mnu=0.0,
             omch2=0.1071,  # 10% smaller
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
+    elif cosmo_label == "Planck18_low3s_omh2":
+        err_omch2 = 0.0009
+        cosmo = camb_cosmo.get_cosmology(
+            H0=67.66,
+            mnu=0.0,
+            omch2=0.119 - err_omch2 * 3,  # 3 sigma lower
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
+    elif cosmo_label == "Planck18_low1s_omh2":
+        err_omch2 = 0.0009
+        cosmo = camb_cosmo.get_cosmology(
+            H0=67.66,
+            mnu=0.0,
+            omch2=0.119 - err_omch2,  # 1 sigma lower
             ombh2=0.0224,
             omk=0.0,
             As=2.105e-09,
@@ -120,12 +177,43 @@ def set_cosmo(
             w=-1,
         )
     elif cosmo_label == "Planck18_mnu03":
-        # at fixed omh2
+        # at fixed omh2, vary omch2
         omnuh2 = 0.00322433285312557  # for mnu 0.3 eV
         cosmo = camb_cosmo.get_cosmology(
-            H0=60.00,
+            H0=67.66,
             mnu=0.3,
             omch2=0.119 - omnuh2,
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
+    elif cosmo_label == "Planck18_mnu03_varh":
+        ## at fixed Om, for that, vary h
+        # define cosmology first to get omnuh2
+        cosmo = camb_cosmo.get_cosmology(
+            H0=67.66,
+            mnu=0.3,
+            omch2=0.119,
+            ombh2=0.0224,
+            omk=0.0,
+            As=2.105e-09,
+            ns=0.9665,
+            nrun=0.0,
+            pivot_scalar=0.05,
+            w=-1,
+        )
+        OmegaM_planck = (cosmo.omch2 + cosmo.ombh2) / cosmo.h**2
+        omh2_nu = cosmo.omch2 + cosmo.ombh2 + cosmo.omnuh2
+        h_nu = np.sqrt(omh2_nu / OmegaM_planck)
+
+        cosmo = camb_cosmo.get_cosmology(
+            H0=h_nu * 100,
+            mnu=0.3,
+            omch2=0.119,
             ombh2=0.0224,
             omk=0.0,
             As=2.105e-09,

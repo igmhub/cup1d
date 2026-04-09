@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
@@ -77,23 +77,6 @@ out_dict = load_data(folder, sim_label)
 # P1D and P3D averages for fitting Arinyo parameters
 # P1D average for generating mock z = 2, 2.6, 3, 3.6, 4, 5 (z=5 not validated?)
 
-# %%
-
-# %%
-
-# %%
-
-# %%
-out_dict.keys()
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
 # %% [markdown]
 # ### Fisher forecast analysis
 
@@ -158,8 +141,6 @@ args.set_baseline(
 
 # archive_mock = set_archive(training_set="Pedersen21")
 # dat = archive_mock.get_testing_data("mpg_central")
-
-# %%
 
 # %% [markdown]
 # ### Mock analysis
@@ -355,6 +336,9 @@ for ii, par in enumerate(pip.fitter.like.free_params):
     print(ii, par.name, par.value, par.min_value, par.max_value)
 
 # %%
+plt.plot(pip.fitter.like.data.full_cov_stat_Pk_kms[100])
+plt.plot(-pip.fitter.like.data.full_cov_stat_Pk_kms[100], alpha=0.5)
+plt.yscale("log")
 
 # %%
 

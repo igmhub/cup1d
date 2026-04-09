@@ -8,7 +8,7 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
@@ -193,10 +193,10 @@ r
 # ### Prepare unblinding
 
 # %%
-fake_blinding = {
-    'Delta2_star': sum_mpg["delta2_star_16_50_84"][1]-np.median(cmb["samples"]["linP_DL2_star"]),
-     'n_star': sum_mpg["n_star_16_50_84"][1]-np.median(cmb["samples"]["linP_n_star"]),
-}
+# fake_blinding = {
+#     'Delta2_star': sum_mpg["delta2_star_16_50_84"][1]-np.median(cmb["samples"]["linP_DL2_star"]),
+#      'n_star': sum_mpg["n_star_16_50_84"][1]-np.median(cmb["samples"]["linP_n_star"]),
+# }
 real_blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
 
 blinding = real_blinding
@@ -217,6 +217,9 @@ desi_dr1
 # %%
 ds -= blinding["Delta2_star"]
 ns -= blinding["n_star"]
+
+# %%
+blinding["Delta2_star"]
 
 # %%
 desi_dr1
@@ -509,97 +512,108 @@ ftsize = 26
 cmap = plt.colormaps["Blues"]
 col = [0.7, 0.3]
 lw = [3, 2]
-cmb_all = [
-    cmb, 
-    cmb_mnu, 
-    cmb_nnu, 
-    cmb_nrun, 
+
+
+cmb_use_all = [
+    cmb,
+    cmb_mnu,
+    cmb_nnu,
+    cmb_nrun,
     cmb_nrun_nrunrun,
     cmb_w_wa,
 ]
-cmb_labs = [
-    r"$\mathit{Planck}$ T&E: $\Lambda$CDM", 
+
+cmb_labs_all = [
+    r"$\mathit{Planck}$ T&E: $\Lambda$CDM",
     r"$\mathit{Planck}$ T&E: $\sum m_\nu$",
     r"$\mathit{Planck}$ T&E: $N_\mathrm{eff}$",
     r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}$",
     r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
-    r"$\mathit{Planck}$ T&E + BAO:"+"\n"+r"$\omega_0\omega_a$CDM", 
+    r"$\mathit{Planck}$ T&E + BAO:" + "\n" + r"$\omega_0\omega_a$CDM",
 ]
 
-g = plots.getSinglePlotter(width_inch=10)
-g.settings.num_plot_contours = 2
+cmb_all = []
+cmb_labs = []
+for isam in range(6):
 
-colors = ["C1", "C2", "C6", "C5", "C7", "black"]
-for ii, icmb in enumerate(cmb_all):
+    cmb_all.append(cmb_use_all[isam].copy())
+    cmb_labs.append(cmb_labs_all[isam])
 
-    new_samples=icmb['samples'].copy()
-    
-    if ii == 0:
-        filled = False
-        lwu = 3
-    else:
-        filled = False
-        lwu = 2
-    g.plot_2d(
-        new_samples, 
-        ['linP_DL2_star', 'linP_n_star'], 
-        colors=[colors[ii]], 
-        lws=lw, 
-        alphas=[0.8, 0.5],
-        filled=filled,
+    g = plots.getSinglePlotter(width_inch=10)
+    g.settings.num_plot_contours = 2
+
+    colors = ["C1", "C2", "C6", "C5", "C7", "black"]
+    for ii, icmb in enumerate(cmb_all):
+
+        new_samples = icmb["samples"].copy()
+
+        if ii == 0:
+            filled = False
+            lwu = 3
+        else:
+            filled = False
+            lwu = 2
+        g.plot_2d(
+            new_samples,
+            ["linP_DL2_star", "linP_n_star"],
+            colors=[colors[ii]],
+            lws=lw,
+            alphas=[0.8, 0.5],
+            filled=filled,
+        )
+
+    ##########
+
+    ax = g.subplots[0, 0]
+
+    lss = ["--", "-", "--", "-", "--", ":", ":"]
+    for ii in range(len(ax.collections)):
+        ax.collections[ii].set_linestyle(lss[ii])
+
+    for inum, num in enumerate([0.68, 0.95]):
+        if inum == 0:
+            label = r"DESI $P_\mathrm{1D}$"
+        else:
+            label = None
+        for jj in range(len(dat_mpg[num])):
+            # x = dat_mpg[num][jj][0] - blinding["Delta2_star"]
+            # y = dat_mpg[num][jj][1] - blinding["n_star"]
+            x = dat_mpg[num][jj][0]
+            y = dat_mpg[num][jj][1]
+            ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
+            ax.fill(x, y, color=cmap(col[inum]), alpha=0.5)
+
+    # ax.axhline(y=1,color='k',lw=lw,label=r"DESI-DR1 Ly$\alpha$ (this work)")
+    for ii, icmb in enumerate(cmb_all):
+        ax.axhline(y=1, color=colors[ii], lw=lw[0], label=cmb_labs[ii])
+
+    ax.set_xlim(0.25, 0.45)
+    ax.set_ylim(-2.35, -2.23)
+    ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
+    ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
+    ax.tick_params(axis="both", which="major", labelsize=ftsize)
+
+    # Legend
+    handles = []
+    handles.append(
+        mlines.Line2D([], [], color="C0", label=r"DESI $P_\mathrm{1D}$", lw=3, ls="-")
     )
+    for ii in range(len(cmb_labs)):
+        handles.append(
+            mlines.Line2D(
+                [], [], color=colors[ii], label=cmb_labs[ii], lw=3, ls=lss[ii]
+            )
+        )
 
-##########
+    plt.legend(handles=handles, fontsize=ftsize - 3, loc="upper left", ncol=2)
+    plt.tight_layout()
 
-ax = g.subplots[0,0]
+    plt.savefig("figs/star_planck_mine" + str(isam) + ".png", bbox_inches="tight")
+    plt.savefig("figs/star_planck_mine" + str(isam) + ".pdf", bbox_inches="tight")
 
+# %%
 
-lss = ["--", "-", "--", "-", "--", ":", ":"]
-for ii in range(len(ax.collections)):
-    ax.collections[ii].set_linestyle(lss[ii])
-
-for inum, num in enumerate([0.68, 0.95]):
-    if inum == 0:
-        label=r"DESI $P_\mathrm{1D}$"
-    else:
-        label=None
-    for jj in range(len(dat_mpg[num])):
-        x = dat_mpg[num][jj][0] - blinding["Delta2_star"]
-        y = dat_mpg[num][jj][1] - blinding["n_star"]
-        ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
-        ax.fill(x, y, color=cmap(col[inum]), alpha=0.5)
-
-# ax.axhline(y=1,color='k',lw=lw,label=r"DESI-DR1 Ly$\alpha$ (this work)")
-for ii, icmb in enumerate(cmb_all):
-    ax.axhline(y=1,color=colors[ii],lw=lw[0],label=cmb_labs[ii])    
-
-
-ax.set_xlim(0.25, 0.45)
-ax.set_ylim(-2.35, -2.23)
-ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
-ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
-ax.tick_params(axis="both", which="major", labelsize=ftsize)
-
-
- # Legend
-handles = []
-handles.append(mlines.Line2D([], [], color="C0", label=r"DESI $P_\mathrm{1D}$", lw=3, ls = "-"))
-for ii in range(len(cmb_labs)):
-    handles.append(mlines.Line2D([], [], color=colors[ii], label=cmb_labs[ii], lw=3, ls = lss[ii]))
-
-# .legend(
-#     handles=handles, 
-#     bbox_to_anchor=(1, 2),
-#     loc='upper right', 
-#     borderaxespad=0.,
-#     fontsize=fontsize-6
-# )
-
-plt.legend(handles=handles, fontsize=ftsize-3, loc="upper left", ncol=2)
-plt.tight_layout()
-
-# plt.savefig("figs/star_planck_mine.png", bbox_inches='tight')
-# plt.savefig("figs/star_planck_mine.pdf", bbox_inches='tight')
+# %%
 
 # %%
 import cup1d, os

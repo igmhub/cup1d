@@ -591,6 +591,12 @@ class Args:
             self.fid_cosmo_label = "Planck18_h74"
         elif (name_variation is not None) and (name_variation == "cosmo_mnu"):
             self.fid_cosmo_label = "Planck18_mnu03"
+        elif (name_variation is not None) and (name_variation == "cosmo_mnu_varh"):
+            self.fid_cosmo_label = "Planck18_mnu03_varh"
+        elif (name_variation is not None) and (name_variation == "cosmo_low_3sig"):
+            self.fid_cosmo_label = "Planck18_low3s_omh2"
+        elif (name_variation is not None) and (name_variation == "cosmo_high_3sig"):
+            self.fid_cosmo_label = "Planck18_high3s_omh2"
         ##
 
         ## set ic correction for lyssa emu
