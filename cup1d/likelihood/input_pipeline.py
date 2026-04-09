@@ -662,6 +662,8 @@ class Args:
             inf_stat = 1
         if (name_variation is not None) and ("no_emu_cov" in name_variation):
             inf_emu = 0
+        if (name_variation is not None) and ("infl_emu_cov" in name_variation):
+            inf_emu = 1.25
 
         self.cov_factor["val_stat"] = np.ones(len(self.cov_factor["z"])) * inf_stat
         self.cov_factor["val_syst"] = np.ones(len(self.cov_factor["z"])) * inf_syst

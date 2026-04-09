@@ -318,7 +318,11 @@ emu_cov_type = "full"
 emulator_label="CH24_mpgcen_gpr"
 # emulator_label="CH24_nyxcen_gpr"
 # name_variation = "cosmo_h74"
-# name_variation = "cosmo"
+# name_variation = "cosmo_mnu_varh"
+# name_variation = "cosmo_low_3sig"
+# name_variation = "cosmo_high_3sig"
+name_variation = "infl_emu_cov"
+
 
 args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
 args.set_baseline(
@@ -336,9 +340,9 @@ for ii, par in enumerate(pip.fitter.like.free_params):
     print(ii, par.name, par.value, par.min_value, par.max_value)
 
 # %%
-plt.plot(pip.fitter.like.data.full_cov_stat_Pk_kms[100])
-plt.plot(-pip.fitter.like.data.full_cov_stat_Pk_kms[100], alpha=0.5)
-plt.yscale("log")
+# plt.plot(pip.fitter.like.data.full_cov_stat_Pk_kms[100])
+# plt.plot(-pip.fitter.like.data.full_cov_stat_Pk_kms[100], alpha=0.5)
+# plt.yscale("log")
 
 # %%
 
@@ -361,12 +365,6 @@ folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+
 # folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/chain_2/"
 data = np.load(folder + "fitter_results.npy", allow_pickle=True).item()
 p0 = data["fitter"]["mle_cube"]
-free_params = pip.fitter.like.parameters_from_sampling_point(p0)
-pip.fitter.like.get_chi2(p0)
-
-# %%
-
-p0 = pip.fitter.like.sampling_point_from_parameters().copy()
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
 

@@ -7,7 +7,7 @@
 #SBATCH -J p1d
 #SBATCH -o logs/p1d.%j.out
 #SBATCH -e logs/p1d.%j.err
-#SBATCH --array=0-2   # number of variations minus 1
+#SBATCH --array=0-0   # number of variations minus 1
 
 echo "Job started at: $(date)"
 
@@ -46,9 +46,10 @@ variations=(
     # "IGM_priors"
     # "bias_eBOSS"
     #############
-    "cosmo_mnu_varh"
-    "cosmo_low_3sig"
-    "cosmo_high_3sig"
+    # "cosmo_mnu_varh"
+    # "cosmo_low_3sig"
+    # "cosmo_high_3sig"
+    "infl_emu_cov"
     #############
     # "DESIY1_FFT_dir"
     # "less_igm"
