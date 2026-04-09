@@ -76,9 +76,7 @@ def main():
     pip.run_sampler()
 
     if rank == 0:
-        plots_chain(
-            pip.fitter.save_directory, folder_out=pip.fitter.save_directory
-        )
+        plots_chain(pip.fitter.save_directory, folder_out=pip.fitter.save_directory)
 
 
 if __name__ == "__main__":
