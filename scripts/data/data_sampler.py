@@ -20,7 +20,7 @@ def main():
     emu = "mpg"
     data_label = "DESIY1_QMLE3"
     name_variation = sys.argv[1]
-    path_data = "jjchaves"
+    path_out = "/pscratch/sd/j/jjchaves/data/out_DESI_DR1/"
 
     if name_variation == "nyx":
         name_variation = None
@@ -57,7 +57,7 @@ def main():
     args = Args(
         data_label=data_label,
         emulator_label="CH24_" + emu + "cen_gpr",
-        path_data=path_data,
+        path_out=path_out,
         emu_cov_type=emu_cov_type,
     )
     args.set_baseline(
@@ -69,6 +69,7 @@ def main():
         mcmc_conf="explore",  # variations
         # mcmc_conf="full", # baseline
     )
+
     pip = Pipeline(args, out_folder=args.out_folder)
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 
