@@ -321,7 +321,9 @@ emulator_label="CH24_mpgcen_gpr"
 # name_variation = "cosmo_mnu_varh"
 # name_variation = "cosmo_low_3sig"
 # name_variation = "cosmo_high_3sig"
-name_variation = "infl_emu_cov"
+# name_variation = "infl_emu_cov"
+
+name_variation = "Metals_Ma2025"
 
 
 args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
@@ -338,6 +340,20 @@ pip = Pipeline(args)
 # %%
 for ii, par in enumerate(pip.fitter.like.free_params):
     print(ii, par.name, par.value, par.min_value, par.max_value)
+
+# %%
+p0[18:26] = np.array(
+    [
+        0.1,
+        0.1,
+        0.3,
+        0.3,
+        0.66,
+        0.70,
+        0.52,
+        0.52,
+    ]
+)
 
 # %%
 # plt.plot(pip.fitter.like.data.full_cov_stat_Pk_kms[100])
@@ -392,6 +408,12 @@ chain = np.load(base + folder + "chain.npy")
 pip.run_minimizer(p0)
 
 # %%
+p0 = pip.fitter.mle_cube
+
+# %%
+
+# %%
+pip.fitter.like.plot_p1d(p0, print_chi2=False)
 
 # %%
 

@@ -72,6 +72,7 @@ def main():
 
     pip = Pipeline(args, out_folder=args.out_folder)
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
+    print(input_pars)
 
     pip.run_minimizer(input_pars, restart=True)
     pip.run_sampler()

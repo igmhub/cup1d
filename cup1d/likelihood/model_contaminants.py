@@ -5,7 +5,7 @@ from cup1d.contaminants import (
     hcd_model_rogers_class,
     hcd_boss,
     si_mult,
-    si_vid,
+    si_vid_final,
     si_add,
     SN_model,
     AGN_model,
@@ -74,7 +74,7 @@ class Contaminants(object):
         except:
             if pars_cont["metal_model_type"] == "SiVid":
                 # Ma+2025 2509.08613
-                self.metal_models[key] = si_vid.SiVid(
+                self.metal_models[key] = si_vid_final.SiVid(
                     free_param_names=free_param_names,
                     fid_vals=fid_vals,
                     prop_coeffs=prop_coeffs,
@@ -171,9 +171,7 @@ class Contaminants(object):
 
     #     return dict_out
 
-    def get_contamination(
-        self, z, k_kms, mF, M_of_z, like_params=[], remove=None
-    ):
+    def get_contamination(self, z, k_kms, mF, M_of_z, like_params=[], remove=None):
         # include multiplicative metal contamination
         cont_all = {}
 
@@ -225,9 +223,7 @@ class Contaminants(object):
             cont_all["cont_HCD"] = []
             for iz in range(len(z)):
                 if type(cont) != int:
-                    cont_all["cont_HCD"].append(
-                        np.ones_like(k_kms[iz]) * cont[iz]
-                    )
+                    cont_all["cont_HCD"].append(np.ones_like(k_kms[iz]) * cont[iz])
                 else:
                     cont_all["cont_HCD"].append(np.ones_like(k_kms[iz]) * cont)
 

@@ -1,21 +1,22 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Variations
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
@@ -33,7 +34,7 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-# +
+# %%
 cont = np.array([0, 0.3, 0.5, 1, 2, 3])
 prob_levels = np.zeros(len(cont))
 chi2_levels = np.zeros(len(cont))
@@ -47,10 +48,11 @@ for ii in range(len(cont)):
 
 print(prob_levels)
 print(chi2_levels)
-# -
 
+# %% [markdown]
 # ### Set priors
 
+# %%
 from lace.cosmo import camb_cosmo
 from cup1d.likelihood import CAMB_model
 def rescale_star(fid_cosmo, new_cosmo, kp_Mpc, ks_Mpc=0.05):
@@ -81,7 +83,7 @@ def rescale_star(fid_cosmo, new_cosmo, kp_Mpc, ks_Mpc=0.05):
     return out_star
 
 
-# +
+# %%
 cosmo_camb = camb_cosmo.get_cosmology(
     H0=67.66,
     mnu=0.0,
@@ -118,7 +120,7 @@ fid_cosmo = {
     "alpha_star":results_camb["alpha_star"],
 }
 
-# +
+# %%
 nn = 50
 As = np.linspace(1.026970414602751e-09, 3.4382747625135757e-09, nn)
 ns = np.linspace(0.6922930599534987, 1.2746555165892985, nn)
@@ -153,7 +155,7 @@ for ii in range(nn):
 res_fit = res_fit.reshape(-1, 2)
 res_fit2 = res_fit2.reshape(-1, 2)
 
-# +
+# %%
 import alphashape
 from shapely.geometry import Polygon, MultiPolygon
 alpha = 1.0
@@ -184,14 +186,15 @@ elif isinstance(alpha_shape2, MultiPolygon):
 # hull_points = res_fit[hull.vertices]
 # hull_points = np.append(hull_points, hull_points[:1, :])
 # hull_points = hull_points.reshape(-1, 2)
-# -
 
+# %%
 from cup1d.likelihood.cosmologies import set_cosmo
 
+# %%
 mpg_all = set_cosmo("mpg_0", return_all=True)
 nyx_all = set_cosmo("nyx_0", return_all=True)
 
-# +
+# %%
 # plt.scatter(res_fit[:,0], res_fit[:,1], alpha=0.1)
 sim_dat = np.zeros((31, 2))
 ii = 0
@@ -217,18 +220,25 @@ for lab in nyx_all:
 plt.plot(boundary[:,0], boundary[:,1], "C0")
 # plt.scatter(res_fit2[:,0], res_fit2[:,1], alpha=0.1)
 plt.plot(boundary2[:,0], boundary2[:,1], "C1")
-# -
 
+# %% [markdown]
 # #### Contours from chains
 
+# %%
 from cup1d.likelihood.cosmologies import set_cosmo
 from cup1d.likelihood import CAMB_model
 import matplotlib.cm as cm
 
+# %%
 base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
 blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
 
-# +
+# %%
+blinding = {'Delta2_star': 0,
+ 'n_star': 0.,
+ 'alpha_star': 0.}
+
+# %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
 folder = base + "sim_mpg_central/CH24_mpgcen_gpr/chain_3/"
 dat_mpg_sim = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
@@ -253,65 +263,81 @@ sum_nyx_sim = np.load(folder + "summary.npy", allow_pickle=True).item()
 folder = base + "sim_sherwood/CH24_mpgcen_gpr/chain_1/"
 dat_sherwood = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 sum_sherwood = np.load(folder + "summary.npy", allow_pickle=True).item()
-# -
 
+# %%
 store_data = {}
 store_data["mpg-central"] = sum_mpg_sim
 store_data["mpg-seed"] = sum_mpgseed_sim
 store_data["lyssa-central"] = sum_nyx_sim
 store_data["sherwood"] = sum_sherwood
 
-# +
+# %%
 import cup1d, os
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_10a.npy")
 np.save(fname, store_data)
-# -
 
+# %%
 store_data = {}
 store_data["blue"] = sum_mpg_sim
 store_data["orange"] = sum_mpg_igm
 store_data["green"] = sum_mpg_igm0
 
-# +
+# %%
 import cup1d, os
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_10b.npy")
 np.save(fname, store_data)
-# -
+# %%
 
 
-
-# +
+# %%
 print(sum_mpg_sim["delta2_star_err"]/sum_mpg_igm["delta2_star_err"])
 print(sum_mpg_sim["n_star_err"]/sum_mpg_igm["n_star_err"])
 
 print(sum_mpg_igm["delta2_star_err"]/sum_mpg_igm0["delta2_star_err"])
 print(sum_mpg_igm["n_star_err"]/sum_mpg_igm0["n_star_err"])
 
-# +
+# %%
 
 print(1-sum_qmle["delta2_star_err"]/sum_mpg["delta2_star_err"])
 print(1-sum_qmle["n_star_err"]/sum_mpg["n_star_err"])
 
-# +
+# %%
 
 print(sum_nyx["delta2_star_err"]/sum_mpg["delta2_star_err"])
 print(sum_nyx["n_star_err"]/sum_mpg["n_star_err"])
-# +
+# %%
+dat_mpg[0.68][0][0] 
+
+# %%
+blinding
+
+# %%
+dat_mpg[0.68][0][0]
+
+# %%
 
 # folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_5/"
 # dat_mpg2 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 # sum_mpg2 = np.load(folder + "summary.npy", allow_pickle=True).item()
 # # log2 = np.load(folder + "lnprob.npy")
 
-# +
+# %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 
 folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 dat_mpg = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+# reintroduce blinding
+
+labs_bum = ["Delta2_star", "n_star", "alpha_star"]
+for ii in [0.68, 0.95]:
+    for jj in range(2):
+        t = list(dat_mpg[ii][0])                 # tuple → list
+        t[jj] += blinding[labs_bum[jj]]          # modify element
+        dat_mpg[ii][0] = tuple(t)                # assign back
 sum_mpg = np.load(folder + "summary.npy", allow_pickle=True).item()
 dat_mpg_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
@@ -349,6 +375,9 @@ dat_emu_diag = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 folder = base + "DESIY1_QMLE3/emu_block/CH24_mpgcen_gpr/chain_3/"
 dat_emu_block = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
+folder = base + "DESIY1_QMLE3/infl_emu_cov/CH24_mpgcen_gpr/chain_2/"
+dat_emu_infl = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
 folder = base + "DESIY1_QMLE3/data_syst_diag/CH24_mpgcen_gpr/chain_2/"
 dat_syst_diag = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
@@ -364,14 +393,24 @@ dat_cosmo = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 folder = base + "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_3/"
 dat_cosmo_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"
+# folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"
+# dat_cosmo_high = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+# folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"
+# dat_cosmo_high_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
+
+# folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"
+# dat_cosmo_low = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+# folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"
+# dat_cosmo_low_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/cosmo_high_3sig/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo_high = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-folder = base + "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/cosmo_high_3sig/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo_high_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/cosmo_low_3sig/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo_low = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-folder = base + "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/cosmo_low_3sig/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo_low_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/cosmo_h74/CH24_mpgcen_gpr/chain_1/"
@@ -379,9 +418,14 @@ dat_cosmo_h74 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 folder = base + "DESIY1_QMLE3/cosmo_h74/CH24_mpgcen_gpr/chain_1/"
 dat_cosmo_h74_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/cosmo_mnu/CH24_mpgcen_gpr/chain_2/"
+# folder = base + "DESIY1_QMLE3/cosmo_mnu/CH24_mpgcen_gpr/chain_2/"
+# dat_cosmo_mnu = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+# folder = base + "DESIY1_QMLE3/cosmo_mnu/CH24_mpgcen_gpr/chain_2/"
+# dat_cosmo_mnu_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
+
+folder = base + "DESIY1_QMLE3/cosmo_mnu_varh/CH24_mpgcen_gpr/chain_2/"
 dat_cosmo_mnu = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
-folder = base + "DESIY1_QMLE3/cosmo_mnu/CH24_mpgcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/cosmo_mnu_varh/CH24_mpgcen_gpr/chain_2/"
 dat_cosmo_mnu_Asns = np.load(folder + "line_sigmas_Asns.npy", allow_pickle=True).item()
 
 ## ingredients
@@ -409,6 +453,9 @@ dat_metal_thin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 folder = base + "DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr/chain_2/"
 dat_Metals_Ma2025 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+
+# dat_emu_infl
 
 ## no more
 
@@ -444,7 +491,7 @@ dat_Metals_Ma2025 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item(
 # folder = base + "DESIY1_QMLE3/kF_kms/CH24_mpgcen_gpr/chain_2/"
 # dat_kF = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-# +
+# %%
 from cup1d.likelihood.cosmologies import set_cosmo
 from cup1d.likelihood import CAMB_model
 import matplotlib.cm as cm
@@ -482,7 +529,10 @@ def return_patch_priors(boundary, col="0.5"):
     return patch
 
 
-# +
+# %%
+blinding
+
+# %%
 
 ls = ["-", "--"]
 hatchs = ["", "/", "\\", "|"]
@@ -558,7 +608,7 @@ fname = [
     # "test",
 ]
 
-for image in range(0, 15):
+for image in range(3, 4):
 
     # if image in [3, 4, 5]:
     #     ftsize = 26
@@ -741,25 +791,25 @@ for image in range(0, 15):
     plt.tight_layout()
     plt.savefig("figs/vars/variations_"+fname[image]+".pdf")
     plt.savefig("figs/vars/variations_"+fname[image]+".png")
-# -
+# %%
 
+# %%
 
+# %%
 
+# %%
 
+# %%
 
+# %%
 
+# %%
 
-
-
-
-
-
-
-
+# %% [markdown]
 # from matplotlib.patches import Ellipse
 
 
-# +
+# %%
 fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 20
 ls = ["-", "--"]
@@ -874,6 +924,5 @@ plt.legend(fontsize=ftsize-2, loc="upper right")
 plt.tight_layout()
 # plt.savefig("figs/validation_2d.pdf")
 # plt.savefig("figs/validation_2d.png")
-# -
-
+# %%
 

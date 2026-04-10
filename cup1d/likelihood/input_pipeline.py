@@ -370,37 +370,21 @@ class Args:
                 [-1, 1],
                 [val_null - 0.5, -2],
             ]
-        elif (name_variation is not None) and (name_variation == "Metals_Ma2025"):
-            self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
-                [-1, 1],
-                [-6, 2],
-            ]
         else:
             self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
                 [-1, 1],
                 [-6, -2],
             ]
 
-        if (name_variation is not None) and (name_variation == "Metals_Ma2025"):
-            self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
-                [-1, 1],
-                [-20, 6],
-            ]
-        else:
-            self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
-                [-1, 1],
-                [2, 7],
-            ]
+        self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
+            [-1, 1],
+            [2, 7],
+        ]
 
         if (name_variation is not None) and (name_variation.startswith("sim_")):
             self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
                 [-1, 1],
                 [val_null - 0.5, -2],
-            ]
-        elif (name_variation is not None) and (name_variation == "Metals_Ma2025"):
-            self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
-                [-1, 1],
-                [-6, 2],
             ]
         else:
             self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
@@ -715,7 +699,7 @@ class Args:
                     "f_Lya_SiIII",
                     "s_Lya_SiIII",
                     "f_Lya_SiII",
-                    # "s_Lya_SiII",
+                    "s_Lya_SiII",
                     # "f_SiIIa_SiIIb",
                     # "s_SiIIa_SiIIb",
                     # "f_SiIIa_SiIII",
@@ -924,7 +908,7 @@ class Args:
                     "f_Lya_SiIII",
                     "s_Lya_SiIII",
                     "f_Lya_SiII",
-                    # "s_Lya_SiII",
+                    "s_Lya_SiII",
                     # "f_SiIIa_SiIIb",
                     # "s_SiIIa_SiIIb",
                     # "f_SiIIa_SiIII",

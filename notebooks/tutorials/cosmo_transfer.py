@@ -29,10 +29,10 @@ from lace.cosmo import camb_cosmo
 cosmo_planck = set_cosmo("Planck18")
 # cosmo_2 = set_cosmo("DESIDR2_ACT")
 # cosmo_2 = set_cosmo("Planck18_h74")
-cosmo_2 = set_cosmo("Planck18_high3s_omh2")
+# cosmo_2 = set_cosmo("Planck18_high3s_omh2")
 # cosmo_2 = set_cosmo("Planck18_mnu03")
-# cosmo_3 = set_cosmo("Planck18_mnu03_varh")
-cosmo_3 = set_cosmo("Planck18_high_omh2")
+cosmo_2 = set_cosmo("Planck18_mnu03_varh")
+cosmo_3 = set_cosmo("Planck18_high3s_omh2")
 # DESIDR2_ACT
 # Planck18_h74
 # Planck18_mnu03

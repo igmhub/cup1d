@@ -39,9 +39,7 @@ def format_last(val):
     return f"{val:.2f}"
 
 
-def make_latex_table(
-    table, color_threshold=[0.9655, 2.2957], colors=["yellow", "red"]
-):
+def make_latex_table(table, color_threshold=[0.9655, 2.2957], colors=["yellow", "red"]):
     """
     Print aligned LaTeX rows from `table`.
     Each row: [name, x1, x1p, x1m, x2, x2p, x2m, val3, val4, val5]
@@ -192,8 +190,12 @@ def table_variations(base):
             "Cov: emu block diag",
             "DESIY1_QMLE3/emu_block/CH24_mpgcen_gpr/chain_3/",
         ],
+        "emu_infl": [
+            "Cov: emu infl 25\%",
+            "DESIY1_QMLE3/infl_emu_cov/CH24_mpgcen_gpr/chain_2/",
+        ],
         "bias_eBOSS": [
-            "Syst: 5% eBOSS",
+            "Syst: 5\% eBOSS",
             "DESIY1_QMLE3/bias_eBOSS/CH24_mpgcen_gpr/chain_2/",
         ],
         "DESIY1_QMLE3_nyx": [
@@ -210,15 +212,15 @@ def table_variations(base):
         ],
         "cosmo_mnu": [
             r"Cosmo: $\sum m_\nu=0.3$ eV",
-            "DESIY1_QMLE3/cosmo_mnu/CH24_mpgcen_gpr/chain_2/",
+            "DESIY1_QMLE3/cosmo_mnu_varh/CH24_mpgcen_gpr/chain_2/",
         ],
         "cosmo_high": [
             "Cosmo: high $\Omega_\mathrm{cdm}h^2$",
-            "DESIY1_QMLE3/cosmo_high/CH24_mpgcen_gpr/chain_2/",
+            "DESIY1_QMLE3/cosmo_high_3sig/CH24_mpgcen_gpr/chain_1/",
         ],
         "cosmo_low": [
             "Cosmo: low $\Omega_\mathrm{cdm}h^2$",
-            "DESIY1_QMLE3/cosmo_low/CH24_mpgcen_gpr/chain_2/",
+            "DESIY1_QMLE3/cosmo_low_3sig/CH24_mpgcen_gpr/chain_1/",
         ],
         "more_igm": [
             "IGM: $n_z=6$",
@@ -269,31 +271,35 @@ def table_variations(base):
     fid_vals = {}
 
     table = []
-    blobs = np.load(
-        os.path.join(base, variations["DESIY1_QMLE3_mpg"][1], "blobs.npy")
-    )
+    blobs = np.load(os.path.join(base, variations["DESIY1_QMLE3_mpg"][1], "blobs.npy"))
     corr_fid = np.corrcoef(
         blobs["Delta2_star"].reshape(-1), blobs["n_star"].reshape(-1)
     )[1, 0]
     blobs = 0
+
+    base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
+    blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
 
     for ii, var in enumerate(variations):
         folder = os.path.join(base, variations[var][1])
         # print(var, np.load(folder + "lnprob.npy").shape)
         # print(var,variations[var][1])
         # plots_chain(folder)
-        data = np.load(
-            os.path.join(folder, "summary.npy"), allow_pickle=True
-        ).item()
+        data = np.load(os.path.join(folder, "summary.npy"), allow_pickle=True).item()
         delta2_star = data["delta2_star_16_50_84"][1]
         n_star = data["n_star_16_50_84"][1]
         if ii == 0:
             fid_vals["delta2_star"] = delta2_star
-            fid_vals["delta2_star_2dcen"] = data["delta2_star_2dcen"]
+            fid_vals["delta2_star_2dcen"] = (
+                data["delta2_star_2dcen"] + blinding["Delta2_star"]
+            )
             fid_vals["delta2_star_err"] = data["delta2_star_err"]
             fid_vals["n_star"] = n_star
-            fid_vals["nstar_2dcen"] = data["nstar_2dcen"]
+            fid_vals["nstar_2dcen"] = data["nstar_2dcen"] + blinding["n_star"]
             fid_vals["n_star_err"] = data["n_star_err"]
+            print(fid_vals["delta2_star"], fid_vals["n_star"])
+            print(fid_vals["delta2_star_2dcen"], fid_vals["nstar_2dcen"])
+            print(blinding)
 
         row = []
         row.append(variations[var][0])
@@ -321,6 +327,8 @@ def table_variations(base):
                 + diffy**2 / erry**2
             )
         )
+        if ii == 0:
+            consist = 0
         # print(var, consist)
         # row.append(chi2_scipy.sf(consist, 2))
         row.append(consist)

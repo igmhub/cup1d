@@ -164,9 +164,7 @@ class SiVid(Contaminant):
 
         vals = {}
         for key in self.list_coeffs:
-            vals[key] = np.atleast_1d(
-                self.get_value(key, z, like_params=like_params)
-            )
+            vals[key] = np.atleast_1d(self.get_value(key, z, like_params=like_params))
             if key in self.null_vals:
                 if self.prop_coeffs[key + "_otype"] == "const":
                     null = self.null_vals[key]
@@ -206,11 +204,14 @@ class SiVid(Contaminant):
             # k-dependent damping of Lya-SiIII
             # Eq. 18 from Ma+2026 https://arxiv.org/abs/2509.08613
 
-            PSiIII = vals["f_Lya_SiIII"][iz] * np.exp(
-                vals["s_Lya_SiIII"][iz] * k_kms[iz]
+            PSiIII = (
+                vals["f_Lya_SiIII"][iz]
+                / (1 - mF[iz])
+                * np.exp(vals["s_Lya_SiIII"][iz] * k_kms[iz])
             )
             PLya_SiIII = (
                 vals["f_Lya_SiII"][iz]
+                / (1 - mF[iz])
                 * np.cos(self.dv["SiIII_Lya"] * k_kms[iz])
                 * np.exp(-vals["s_Lya_SiII"][iz] * k_kms[iz])
             )

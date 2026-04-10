@@ -41,7 +41,7 @@ variations=(
     # "metal_deco"
     # "metal_si2"
     # "metal_trad"
-    # "Metals_Ma2025"
+    "Metals_Ma2025"
     # "LLS_nz4"
     # "IGM_priors"
     # "bias_eBOSS"
@@ -49,7 +49,7 @@ variations=(
     # "cosmo_mnu_varh"
     # "cosmo_low_3sig"
     # "cosmo_high_3sig"
-    "infl_emu_cov"
+    # "infl_emu_cov"
     #############
     # "DESIY1_FFT_dir"
     # "less_igm"

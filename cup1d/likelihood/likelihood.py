@@ -189,9 +189,7 @@ class Likelihood(object):
         """Set the blinding parameters"""
         blind_prior = {"Delta2_star": 0.05, "n_star": 0.01, "alpha_star": 0.005}
         if self.data.apply_blinding:
-            seed = int.from_bytes(
-                self.data.blinding.encode("utf-8"), byteorder="big"
-            )
+            seed = int.from_bytes(self.data.blinding.encode("utf-8"), byteorder="big")
             rng = np.random.default_rng(seed)
         self.blind = {}
         for key in blind_prior:
@@ -276,9 +274,7 @@ class Likelihood(object):
 
         # get emulator error
         filename = "l1O_cov_" + self.theory.emulator.emulator_label + ".npy"
-        full_path = os.path.join(
-            get_path_repo("lace"), "data", "covariance", filename
-        )
+        full_path = os.path.join(get_path_repo("lace"), "data", "covariance", filename)
         emu_cov = np.load(full_path, allow_pickle=True).item()
         # contains:
         # dict_save["zz"] = zz
@@ -355,9 +351,7 @@ class Likelihood(object):
                 # find closest z in cov
                 ind0 = np.argmin(np.abs(emu_cov["zz_zk"] - data.z[ii]))
                 # get cov from closest z
-                ind = np.argwhere(emu_cov["zz_zk"] == emu_cov["zz_zk"][ind0])[
-                    :, 0
-                ]
+                ind = np.argwhere(emu_cov["zz_zk"] == emu_cov["zz_zk"][ind0])[:, 0]
                 # block diagonal for that redshift
                 _emu_cov = emu_cov["cov_zk"][ind, :][:, ind]
                 _k_Mpc = emu_cov["k_Mpc_zk"][ind]
@@ -404,9 +398,7 @@ class Likelihood(object):
                 cov_stat = data.full_cov_stat_Pk_kms.copy()
                 cov_syst = data.full_cov_Pk_kms - cov_stat
                 for i0 in range(cov_stat.shape[0]):
-                    ind0 = np.argmin(
-                        np.abs(self.cov_factor["z"] - data.full_zs[i0])
-                    )
+                    ind0 = np.argmin(np.abs(self.cov_factor["z"] - data.full_zs[i0]))
                     for i1 in range(cov_stat.shape[0]):
                         ind1 = np.argmin(
                             np.abs(self.cov_factor["z"] - data.full_zs[i1])
@@ -444,16 +436,12 @@ class Likelihood(object):
                         full_k_kms0 = data.full_k_kms[i0] * dkms_dMpc
 
                         # find closest z in cov
-                        ind0 = np.argmin(
-                            np.abs(emu_cov["zz_zk"] - data.full_zs[i0])
-                        )
-                        ind = np.argwhere(
-                            emu_cov["zz_zk"] == emu_cov["zz_zk"][ind0]
-                        )[:, 0]
+                        ind0 = np.argmin(np.abs(emu_cov["zz_zk"] - data.full_zs[i0]))
+                        ind = np.argwhere(emu_cov["zz_zk"] == emu_cov["zz_zk"][ind0])[
+                            :, 0
+                        ]
                         # find closest k for such z
-                        ind1 = np.argmin(
-                            np.abs(emu_cov["k_Mpc_zk"] - full_k_kms0)
-                        )
+                        ind1 = np.argmin(np.abs(emu_cov["k_Mpc_zk"] - full_k_kms0))
                         # closest index in z and k
                         j0 = ind[ind1]
 
@@ -463,9 +451,9 @@ class Likelihood(object):
                         )
 
                         for i1 in range(cov.shape[0]):
-                            dkms_dMpc = self.theory.fid_cosmo[
-                                "cosmo"
-                            ].dkms_dMpc(data.full_zs[i1])
+                            dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
+                                data.full_zs[i1]
+                            )
                             full_k_kms1 = data.full_k_kms[i1] * dkms_dMpc
 
                             # find closest z in cov
@@ -476,9 +464,7 @@ class Likelihood(object):
                                 emu_cov["zz_zk"] == emu_cov["zz_zk"][ind0]
                             )[:, 0]
                             # find closest k for such z
-                            ind1 = np.argmin(
-                                np.abs(emu_cov["k_Mpc_zk"] - full_k_kms1)
-                            )
+                            ind1 = np.argmin(np.abs(emu_cov["k_Mpc_zk"] - full_k_kms1))
                             # closest index in z and k
                             j1 = ind[ind1]
 
@@ -499,9 +485,7 @@ class Likelihood(object):
 
                 # inflate errors full
                 for i0 in range(cov.shape[0]):
-                    ind0 = np.argmin(
-                        np.abs(self.cov_factor["z"] - data.full_zs[i0])
-                    )
+                    ind0 = np.argmin(np.abs(self.cov_factor["z"] - data.full_zs[i0]))
                     fact0 = self.cov_factor["val_full"][ind0]
 
                     for i1 in range(cov.shape[0]):
@@ -614,9 +598,7 @@ class Likelihood(object):
             elif like_param.name == "nrun":
                 cosmo_dict["nrun"] = like_param.value
 
-        assert (
-            len(cosmo_dict) > 0
-        ), "No cosmology parameters found in sampling space"
+        assert len(cosmo_dict) > 0, "No cosmology parameters found in sampling space"
 
         return cosmo_dict
 
@@ -675,31 +657,25 @@ class Likelihood(object):
                 if equal_IGM:
                     if "tau" in par.name:
                         self.truth["like_params"][par.name] = 1
-                        self.truth["like_params_cube"][
-                            par.name
-                        ] = par.get_value_in_cube(
-                            self.truth["like_params"][par.name]
+                        self.truth["like_params_cube"][par.name] = (
+                            par.get_value_in_cube(self.truth["like_params"][par.name])
                         )
                     else:
                         self.truth["like_params"][par.name] = 0
-                        self.truth["like_params_cube"][
-                            par.name
-                        ] = par.get_value_in_cube(
-                            self.truth["like_params"][par.name]
+                        self.truth["like_params_cube"][par.name] = (
+                            par.get_value_in_cube(self.truth["like_params"][par.name])
                         )
                 else:
                     self.truth["like_params"][par.name] = np.infty
                     self.truth["like_params_cube"][par.name] = np.infty
             elif (par.name == "As") | (par.name == "ns") | (par.name == "nrun"):
-                self.truth["like_params"][par.name] = self.truth["cosmo"][
-                    par.name
+                self.truth["like_params"][par.name] = self.truth["cosmo"][par.name]
+                self.truth["like_params_cube"][par.name] = par.get_value_in_cube(
+                    self.truth["like_params"][par.name]
+                )
+                self.truth["like_params"][pname2[par.name]] = self.truth["linP"][
+                    pname2[par.name]
                 ]
-                self.truth["like_params_cube"][
-                    par.name
-                ] = par.get_value_in_cube(self.truth["like_params"][par.name])
-                self.truth["like_params"][pname2[par.name]] = self.truth[
-                    "linP"
-                ][pname2[par.name]]
             # else:
             #     if par.name not in self.truth["cont"]:
             #         print("could not find {} in truth".format(par.name))
@@ -910,9 +886,7 @@ class Likelihood(object):
             if zmask is not None:
                 _res = []
                 for iz in range(len(self.extra_data.z)):
-                    ind = np.argwhere(
-                        np.abs(zmask - self.extra_data.z[iz]) < 1e-3
-                    )
+                    ind = np.argwhere(np.abs(zmask - self.extra_data.z[iz]) < 1e-3)
                     if len(ind) == 0:
                         _res.append(0)
                     else:
@@ -973,9 +947,7 @@ class Likelihood(object):
                 if ignore_log_det_cov:
                     log_like_all[ii, iz] = -0.5 * chi2_z
                 else:
-                    log_det_cov = np.log(
-                        np.abs(1 / np.linalg.det(icov_Pk_kms[iz]))
-                    )
+                    log_det_cov = np.log(np.abs(1 / np.linalg.det(icov_Pk_kms[iz])))
                     log_like_all[ii, iz] = -0.5 * (chi2_z + log_det_cov)
 
             if (full_icov_Pk_kms is None) | (zmask is not None):
@@ -987,9 +959,7 @@ class Likelihood(object):
                 if ignore_log_det_cov:
                     log_like += -0.5 * chi2_all
                 else:
-                    log_det_cov = np.log(
-                        np.abs(1 / np.linalg.det(full_icov_Pk_kms))
-                    )
+                    log_det_cov = np.log(np.abs(1 / np.linalg.det(full_icov_Pk_kms)))
                     log_like += -0.5 * (chi2_all + log_det_cov)
 
         # something went wrong
@@ -1101,17 +1071,13 @@ class Likelihood(object):
 
         return -1.0 * self.log_prob(values, zmask=zmask)
 
-    def maximise_posterior(
-        self, initial_values=None, method="nelder-mead", tol=1e-4
-    ):
+    def maximise_posterior(self, initial_values=None, method="nelder-mead", tol=1e-4):
         """Run scipy minimizer to find maximum of posterior"""
 
         if not initial_values:
             initial_values = np.ones(len(self.free_params)) * 0.5
 
-        return minimize(
-            self.minus_log_prob, x0=initial_values, method=method, tol=tol
-        )
+        return minimize(self.minus_log_prob, x0=initial_values, method=method, tol=tol)
 
     def plot_p1d(
         self,
@@ -1184,9 +1150,7 @@ class Likelihood(object):
                 emu_p1d = emu_p1d[0]
 
             # the sum of chi2_all may be different from chi2 due to covariance
-            chi2, chi2_all = self.get_chi2(
-                values=values, return_all=True, zmask=zmask
-            )
+            chi2, chi2_all = self.get_chi2(values=values, return_all=True, zmask=zmask)
 
             if chi2_nozcov:
                 chi2 = np.sum(chi2_all)
@@ -1418,9 +1382,7 @@ class Likelihood(object):
                     except:
                         pass
 
-                    axs.tick_params(
-                        axis="both", which="major", labelsize=fontsize
-                    )
+                    axs.tick_params(axis="both", which="major", labelsize=fontsize)
 
                     if store_data:
                         out_data["x" + str(iz)] = k_kms
@@ -1635,9 +1597,7 @@ class Likelihood(object):
             ax[6].set_ylim(ylims[2, 0], ylims[2, 1])
             ax[9].set_ylim(ylims[3, 0], ylims[3, 1])
 
-        fig.supxlabel(
-            r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize
-        )
+        fig.supxlabel(r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize)
         fig.supylabel(
             r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$",
             fontsize=fontsize,
@@ -1689,18 +1649,14 @@ class Likelihood(object):
 
         # z at time fits or full fit
         if z_at_time is False:
-            _res = self.get_p1d_kms(
-                _data_z, _data_k_kms, values, return_covar=False
-            )
+            _res = self.get_p1d_kms(_data_z, _data_k_kms, values, return_covar=False)
             if _res is None:
                 if self.rank == 0:
                     return print("Prior out of range")
             emu_p1d = _res
 
             # the sum of chi2_all may be different from chi2 due to covariance
-            chi2, chi2_all = self.get_chi2(
-                values=values, return_all=True, zmask=zmask
-            )
+            chi2, chi2_all = self.get_chi2(values=values, return_all=True, zmask=zmask)
         else:
             emu_p1d = []
             for iz in range(len(_data_z)):
@@ -1792,9 +1748,7 @@ class Likelihood(object):
 
             dme = (p1d_data - p1d_theory) / p1d_err
 
-            ax[iz].tick_params(
-                axis="both", which="major", labelsize=fontsize - 4
-            )
+            ax[iz].tick_params(axis="both", which="major", labelsize=fontsize - 4)
             ax[iz].hist(
                 dme,
                 label="z=" + str(np.round(z, 2)),
@@ -1923,9 +1877,7 @@ class Likelihood(object):
                 chain_use = chain.reshape(-1, chain.shape[-1])
             else:
                 chain_use = chain.copy()
-            ind = np.random.permutation(np.arange(0, chain_use.shape[0]))[
-                :nelem
-            ]
+            ind = np.random.permutation(np.arange(0, chain_use.shape[0]))[:nelem]
             chain_use = chain_use[ind]
 
         ind = np.argwhere(self.data.z == zstar)[0][0]
@@ -1970,9 +1922,7 @@ class Likelihood(object):
                 all_hcd_cont = np.zeros((nelem, len(k_kms_inter)))
 
                 for jj in range(nelem):
-                    free_params = self.parameters_from_sampling_point(
-                        chain_use[jj]
-                    )
+                    free_params = self.parameters_from_sampling_point(chain_use[jj])
                     for par in free_params:
                         if ii + 1 <= 4:
                             if "HCD_damp" in par.name:
@@ -1980,12 +1930,12 @@ class Likelihood(object):
                                     pass
                                 else:
                                     par.value = -20
-                    all_hcd_cont[
-                        jj, :
-                    ] = self.theory.model_cont.hcd_model.get_contamination(
-                        z=np.array([zstar]),
-                        k_kms=[k_kms_inter],
-                        like_params=free_params,
+                    all_hcd_cont[jj, :] = (
+                        self.theory.model_cont.hcd_model.get_contamination(
+                            z=np.array([zstar]),
+                            k_kms=[k_kms_inter],
+                            like_params=free_params,
+                        )
                     )
                 hcd_cont = np.percentile(all_hcd_cont, [16, 50, 84], axis=0)
 
@@ -2011,9 +1961,7 @@ class Likelihood(object):
                 )
         ax.axhline(1, color="k", ls=":", lw=2)
         ax.set_ylabel(r"$C_\mathrm{HCD}$", fontsize=ftsize)
-        ax.set_xlabel(
-            r"$k_\parallel\, [\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize
-        )
+        ax.set_xlabel(r"$k_\parallel\, [\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize)
         ax.tick_params(axis="both", which="major", labelsize=ftsize)
         ax.legend(fontsize=ftsize - 2)
 
@@ -2046,9 +1994,7 @@ class Likelihood(object):
                 chain_use = chain.reshape(-1, chain.shape[-1])
             else:
                 chain_use = chain.copy()
-            ind = np.random.permutation(np.arange(0, chain_use.shape[0]))[
-                :nelem
-            ]
+            ind = np.random.permutation(np.arange(0, chain_use.shape[0]))[:nelem]
             chain_use = chain_use[ind]
 
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -2084,12 +2030,8 @@ class Likelihood(object):
             else:
                 all_si_add_cont = np.zeros((nelem, len(k_kms_inter)))
                 for jj in range(nelem):
-                    free_params = self.parameters_from_sampling_point(
-                        chain_use[jj]
-                    )
-                    all_si_add_cont[
-                        jj, :
-                    ] = self.theory.model_cont.metal_models[
+                    free_params = self.parameters_from_sampling_point(chain_use[jj])
+                    all_si_add_cont[jj, :] = self.theory.model_cont.metal_models[
                         "Si_add"
                     ].get_contamination(
                         z=np.array([zstar]),
@@ -2099,9 +2041,7 @@ class Likelihood(object):
                     )[
                         0
                     ]
-                si_add_cont = np.percentile(
-                    all_si_add_cont, [16, 50, 84], axis=0
-                )
+                si_add_cont = np.percentile(all_si_add_cont, [16, 50, 84], axis=0)
 
                 if store_data:
                     out_data["x"] = k_kms_inter
@@ -2131,9 +2071,7 @@ class Likelihood(object):
             r"$C_\mathrm{SiII-SiII}\,[\mathrm{km}\,\mathrm{s}^{-1}]$",
             fontsize=ftsize,
         )
-        ax.set_xlabel(
-            r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize
-        )
+        ax.set_xlabel(r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
         ax.set_ylim(-0.2, 3)
 
         plt.tight_layout()
@@ -2168,9 +2106,7 @@ class Likelihood(object):
                 chain_use = chain.reshape(-1, chain.shape[-1])
             else:
                 chain_use = chain.copy()
-            ind = np.random.permutation(np.arange(0, chain_use.shape[0]))[
-                :nelem
-            ]
+            ind = np.random.permutation(np.arange(0, chain_use.shape[0]))[:nelem]
             chain_use = chain_use[ind]
 
         ind = np.argwhere(self.data.z == zstar)[0][0]
@@ -2557,18 +2493,18 @@ class Likelihood(object):
             fid_params = self.parameters_from_sampling_point(p0)
             pars = {}
             pars["z"] = zs
-            pars["tau_eff"] = self.theory.model_igm.models[
-                "F_model"
-            ].get_tau_eff(zs, like_params=fid_params)
+            pars["tau_eff"] = self.theory.model_igm.models["F_model"].get_tau_eff(
+                zs, like_params=fid_params
+            )
             pars["mF"] = self.theory.model_igm.models["F_model"].get_mean_flux(
                 zs, like_params=fid_params
             )
             pars["gamma"] = self.theory.model_igm.models["T_model"].get_gamma(
                 zs, like_params=fid_params
             )
-            pars["sigT_kms"] = self.theory.model_igm.models[
-                "T_model"
-            ].get_sigT_kms(zs, like_params=fid_params)
+            pars["sigT_kms"] = self.theory.model_igm.models["T_model"].get_sigT_kms(
+                zs, like_params=fid_params
+            )
             pars["T0"] = (
                 self.theory.model_igm.models["T_model"].get_T0(
                     zs, like_params=fid_params
@@ -2670,15 +2606,15 @@ class Likelihood(object):
                 zs = self.data.z
             pars_test = {}
             pars_test["z"] = zs
-            pars_test["tau_eff"] = self.theory.model_igm.models[
-                "F_model"
-            ].get_tau_eff(zs, like_params=free_params)
-            pars_test["mF"] = self.theory.model_igm.models[
-                "F_model"
-            ].get_mean_flux(zs, like_params=free_params)
-            pars_test["gamma"] = self.theory.model_igm.models[
-                "T_model"
-            ].get_gamma(zs, like_params=free_params)
+            pars_test["tau_eff"] = self.theory.model_igm.models["F_model"].get_tau_eff(
+                zs, like_params=free_params
+            )
+            pars_test["mF"] = self.theory.model_igm.models["F_model"].get_mean_flux(
+                zs, like_params=free_params
+            )
+            pars_test["gamma"] = self.theory.model_igm.models["T_model"].get_gamma(
+                zs, like_params=free_params
+            )
             pars_test["sigT_kms"] = self.theory.model_igm.models[
                 "T_model"
             ].get_sigT_kms(zs, like_params=free_params)
@@ -2688,9 +2624,9 @@ class Likelihood(object):
                 )
                 / 1e4
             )
-            pars_test["kF_kms"] = self.theory.model_igm.models[
-                "P_model"
-            ].get_kF_kms(zs, like_params=free_params)
+            pars_test["kF_kms"] = self.theory.model_igm.models["P_model"].get_kF_kms(
+                zs, like_params=free_params
+            )
 
         if plot_type == "all":
             fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
@@ -2768,30 +2704,22 @@ class Likelihood(object):
                 norm = 1
                 ax[ii].fill_between(
                     pars_fid["z"][_],
-                    norm
-                    * np.percentile(pars_chain[arr_labs[ii]][:, _], 5, axis=0),
-                    norm
-                    * np.percentile(pars_chain[arr_labs[ii]][:, _], 95, axis=0),
+                    norm * np.percentile(pars_chain[arr_labs[ii]][:, _], 5, axis=0),
+                    norm * np.percentile(pars_chain[arr_labs[ii]][:, _], 95, axis=0),
                     color="lightblue",
                     alpha=0.5,
                 )
                 ax[ii].fill_between(
                     pars_fid["z"][_],
-                    norm
-                    * np.percentile(pars_chain[arr_labs[ii]][:, _], 16, axis=0),
-                    norm
-                    * np.percentile(pars_chain[arr_labs[ii]][:, _], 84, axis=0),
+                    norm * np.percentile(pars_chain[arr_labs[ii]][:, _], 16, axis=0),
+                    norm * np.percentile(pars_chain[arr_labs[ii]][:, _], 84, axis=0),
                     color="C0",
                     alpha=0.5,
                 )
 
                 if store_data:
-                    out["out_data"]["x" + str(ii) + "_blue_areas"] = pars_fid[
-                        "z"
-                    ][_]
-                    out["out_data"][
-                        "y" + str(ii) + "_blue_areas"
-                    ] = np.percentile(
+                    out["out_data"]["x" + str(ii) + "_blue_areas"] = pars_fid["z"][_]
+                    out["out_data"]["y" + str(ii) + "_blue_areas"] = np.percentile(
                         pars_chain[arr_labs[ii]][:, _], [5, 16, 84, 95], axis=0
                     )
 
@@ -2813,9 +2741,7 @@ class Likelihood(object):
                 )
 
                 if store_data:
-                    out["out_data"]["x" + str(ii) + "_blue_dotted"] = pars_test[
-                        "z"
-                    ][_]
+                    out["out_data"]["x" + str(ii) + "_blue_dotted"] = pars_test["z"][_]
                     out["out_data"]["y" + str(ii) + "_blue_dotted"] = pars_test[
                         arr_labs[ii]
                     ][_]
@@ -2845,9 +2771,9 @@ class Likelihood(object):
                     )
 
                     if store_data:
-                        out["out_data"][
-                            "x" + str(ii) + "_blue_dots"
-                        ] = self.args.fid_igm[lab]
+                        out["out_data"]["x" + str(ii) + "_blue_dots"] = (
+                            self.args.fid_igm[lab]
+                        )
                         out["out_data"]["y" + str(ii) + "_blue_dots"] = yy
 
             if arr_labs[ii] == "mF":
@@ -2865,9 +2791,7 @@ class Likelihood(object):
                 )
                 if store_data:
                     out["out_data"]["x" + str(ii) + "_gal21"] = gal21["z"]
-                    out["out_data"]["y" + str(ii) + "_gal21"] = (
-                        norm * gal21["mF"]
-                    )
+                    out["out_data"]["y" + str(ii) + "_gal21"] = norm * gal21["mF"]
                     out["out_data"]["yerr" + str(ii) + "_gal21"] = (
                         norm * gal21["mF_err"]
                     )
@@ -2885,12 +2809,8 @@ class Likelihood(object):
                 )
                 if store_data:
                     out["out_data"]["x" + str(ii) + "_tur24"] = tu24["z"]
-                    out["out_data"]["y" + str(ii) + "_tur24"] = (
-                        norm * tu24["mF"]
-                    )
-                    out["out_data"]["yerr" + str(ii) + "_tur24"] = (
-                        norm * tu24["mF_err"]
-                    )
+                    out["out_data"]["y" + str(ii) + "_tur24"] = norm * tu24["mF"]
+                    out["out_data"]["yerr" + str(ii) + "_tur24"] = norm * tu24["mF_err"]
             elif arr_labs[ii] == "T0":
                 ax[ii].errorbar(
                     gal21["z"],
@@ -2904,9 +2824,7 @@ class Likelihood(object):
                 )
                 if store_data:
                     out["out_data"]["x" + str(ii) + "_gal21"] = gal21["z"]
-                    out["out_data"]["y" + str(ii) + "_gal21"] = (
-                        norm * gal21["T0"]
-                    )
+                    out["out_data"]["y" + str(ii) + "_gal21"] = norm * gal21["T0"]
                     out["out_data"]["yerr" + str(ii) + "_gal21"] = (
                         norm * gal21["T0_err"]
                     )
@@ -2924,9 +2842,7 @@ class Likelihood(object):
 
                 if store_data:
                     out["out_data"]["x" + str(ii) + "_gal21"] = gal21["z"]
-                    out["out_data"]["y" + str(ii) + "_gal21"] = (
-                        norm * gal21["gamma"]
-                    )
+                    out["out_data"]["y" + str(ii) + "_gal21"] = norm * gal21["gamma"]
                     out["out_data"]["yerr" + str(ii) + "_gal21"] = (
                         norm * gal21["gamma_err"]
                     )
@@ -2941,12 +2857,8 @@ class Likelihood(object):
                 lw=3,
                 label=r"IGM $n_z=6$",
             )
-            ax[1].plot(
-                more_igm["z"], more_igm["T0"][1], "C5--", alpha=0.5, lw=3
-            )
-            ax[2].plot(
-                more_igm["z"], more_igm["gamma"][1], "C5--", alpha=0.5, lw=3
-            )
+            ax[1].plot(more_igm["z"], more_igm["T0"][1], "C5--", alpha=0.5, lw=3)
+            ax[2].plot(more_igm["z"], more_igm["gamma"][1], "C5--", alpha=0.5, lw=3)
 
             if store_data:
                 out["out_data"]["x_brown"] = more_igm["z"]
@@ -3039,15 +2951,9 @@ class Likelihood(object):
             cov_syst = np.diag(self.data.cov_Pk_kms[ii]) - cov_stat
             cov_emu = np.diag(self.cov_emu_Pk_kms[ii])
             cov_tot = np.diag(self.cov_Pk_kms[ii])
-            ax[ii].plot(
-                self.data.k_kms[ii], cov_stat / cov_tot, label=r"$x$ = Stat"
-            )
-            ax[ii].plot(
-                self.data.k_kms[ii], cov_syst / cov_tot, label=r"$x$ = Syst"
-            )
-            ax[ii].plot(
-                self.data.k_kms[ii], cov_emu / cov_tot, label=r"$x$ = Emu"
-            )
+            ax[ii].plot(self.data.k_kms[ii], cov_stat / cov_tot, label=r"$x$ = Stat")
+            ax[ii].plot(self.data.k_kms[ii], cov_syst / cov_tot, label=r"$x$ = Syst")
+            ax[ii].plot(self.data.k_kms[ii], cov_emu / cov_tot, label=r"$x$ = Emu")
             ax[ii].text(0.0, 0.1, "z=" + str(self.data.z[ii]))
         if len(ax) > len(self.cov_Pk_kms):
             for ii in range(len(self.cov_Pk_kms), len(ax)):
@@ -3227,9 +3133,7 @@ class Likelihood(object):
             iz = np.argmin(np.abs(dir_out["z"] - znode))
             # print(iz, znode, dir_out["z"][iz])
             # print(dir_out["pnames"][iz], pname + "_0")
-            iname = np.argwhere(
-                np.array(dir_out["pnames"][iz]) == (pname + "_0")
-            )[0, 0]
+            iname = np.argwhere(np.array(dir_out["pnames"][iz]) == (pname + "_0"))[0, 0]
             p.value = list(dir_out["mle"][iz].values())[iname]
 
             if verbose and (self.rank == 0):
@@ -3253,9 +3157,7 @@ class Likelihood(object):
         self.theory.model_igm.models["T_model"].reset_coeffs(
             free_params, rank=self.rank
         )
-        self.theory.model_cont.hcd_model.reset_coeffs(
-            free_params, rank=self.rank
-        )
+        self.theory.model_cont.hcd_model.reset_coeffs(free_params, rank=self.rank)
         self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(
             free_params, rank=self.rank
         )
@@ -3286,22 +3188,11 @@ class Likelihood(object):
                 isfixed = self.args.fid_syst[pname + "_fixed"]
             else:
                 raise ValueError(
-                    pname
-                    + "_znodes not found in either fid_igm, fid_cont, or fid_syst"
+                    pname + "_znodes not found in either fid_igm, fid_cont, or fid_syst"
                 )
 
             p.fixed = isfixed
 
-            # if (pname not in dir_out) and (pname == "kF_kms"):
-            #     p.value = 1
-            # elif (pname not in dir_out) and (pname == "HCD_const"):
-            #     p.value = 0
-            # elif (pname not in dir_out) and (pname == "HCD_damp2"):
-            #     p.value = -4.5
-            # elif (pname not in dir_out) and (pname == "HCD_damp3"):
-            #     p.value = -5.3
-            # elif (pname not in dir_out) and (pname == "R_coeff"):
-            #     p.value = 0
             if (pname not in dir_out) and (pname == "HCD_const"):
                 p.value = 0
             else:
@@ -3324,21 +3215,30 @@ class Likelihood(object):
                 )
 
         # reset the coefficients of the models
-        self.theory.model_igm.models["F_model"].reset_coeffs(
-            free_params, rank=self.rank
-        )
-        self.theory.model_igm.models["T_model"].reset_coeffs(
-            free_params, rank=self.rank
-        )
-        self.theory.model_cont.hcd_model.reset_coeffs(
-            free_params, rank=self.rank
-        )
-        self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(
-            free_params, rank=self.rank
-        )
-        self.theory.model_cont.metal_models["Si_add"].reset_coeffs(
-            free_params, rank=self.rank
-        )
+        # self.theory.model_igm.models["F_model"].reset_coeffs(
+        #     free_params, rank=self.rank
+        # )
+        # self.theory.model_igm.models["T_model"].reset_coeffs(
+        #     free_params, rank=self.rank
+        # )
+        for model in self.theory.model_igm.models:
+            self.theory.model_igm.models[model].reset_coeffs(
+                free_params, rank=self.rank
+            )
+
+        self.theory.model_cont.hcd_model.reset_coeffs(free_params, rank=self.rank)
+
+        # self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(
+        #     free_params, rank=self.rank
+        # )
+        # self.theory.model_cont.metal_models["Si_add"].reset_coeffs(
+        #     free_params, rank=self.rank
+        # )
+
+        for model in self.theory.model_cont.metal_models:
+            self.theory.model_cont.metal_models[model].reset_coeffs(
+                free_params, rank=self.rank
+            )
 
 
 def others_igm():
@@ -3379,15 +3279,10 @@ def others_igm():
     )
 
     T0 = (
-        np.array(
-            [9500, 11000, 12750, 13500, 14750, 14750, 12750, 11250, 10250, 9250]
-        )
+        np.array([9500, 11000, 12750, 13500, 14750, 14750, 12750, 11250, 10250, 9250])
         / 1e4
     )
-    dT0 = (
-        np.array([1393, 1028, 1132, 1390, 1341, 1322, 1493, 1125, 1070, 876])
-        / 1e4
-    )
+    dT0 = np.array([1393, 1028, 1132, 1390, 1341, 1322, 1493, 1125, 1070, 876]) / 1e4
 
     # gamma and its uncertainty
     gamma = np.array(
