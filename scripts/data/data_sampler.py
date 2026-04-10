@@ -72,7 +72,20 @@ def main():
 
     pip = Pipeline(args, out_folder=args.out_folder)
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
-    print(input_pars)
+
+    if name_variation == "Metals_Ma2025":
+        input_pars[18:26] = np.array(
+            [
+                0.1,
+                0.1,
+                0.3,
+                0.3,
+                0.66,
+                0.70,
+                0.52,
+                0.52,
+            ]
+        )
 
     pip.run_minimizer(input_pars, restart=True)
     pip.run_sampler()
