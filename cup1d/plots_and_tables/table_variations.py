@@ -1,15 +1,14 @@
+"""Print LaTeX rows for analysis-variation summary tables."""
+
 import os
 import math
+
 import numpy as np
 from scipy.stats import chi2 as chi2_scipy
 
 
 def match_precision(x, xp, xm, sig=2):
-    """
-    Return LaTeX string "$x^{+xp}_{-xm}$" with x and errors rounded so that
-    errors have `sig` significant figures.
-    If x is positive, add LaTeX thin space prefix for alignment: '\;\;\,'.
-    """
+    """Return a LaTeX value with asymmetric errors rounded to ``sig`` figures."""
     err = max(abs(xp), abs(xm))
     if err == 0:
         s = f"${x:.3f}$"
@@ -40,14 +39,7 @@ def format_last(val):
 
 
 def make_latex_table(table, color_threshold=[0.9655, 2.2957], colors=["yellow", "red"]):
-    """
-    Print aligned LaTeX rows from `table`.
-    Each row: [name, x1, x1p, x1m, x2, x2p, x2m, val3, val4, val5]
-    - columns 2 & 3: $value^{+err}_{-err}$; positive values get '\;\;\,' padding
-    - column 4 (val3) -> formatted as .2f, triggers coloring if < color_threshold
-    - column 5 (val4) -> formatted as .1f
-    - column 6 (val5) -> .4f or scientific if <1e-3
-    """
+    """Print aligned LaTeX rows from a prepared variation table."""
     rows_plain = []
     for row in table:
         name = str(row[0])
@@ -132,6 +124,7 @@ def format_column(
     one_decimal=False,
     two_decimals=False,
 ):
+    """Format a numeric column with consistent width."""
     formatted = []
     for val in values:
         if one_decimal:
@@ -148,6 +141,7 @@ def format_column(
 
 
 def table_variations(base):
+    """Load variation chains under ``base`` and print a summary table."""
     variations = {
         "DESIY1_QMLE3_mpg": [
             "Fiducial",

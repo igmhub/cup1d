@@ -1,8 +1,10 @@
+"""Likelihood parameter representation and cube transforms."""
+
 import numpy as np
 
 
 class LikelihoodParameter(object):
-    """Base class for likelihood parameter"""
+    """One scalar likelihood parameter with bounds and optional Gaussian prior."""
 
     def __init__(
         self,
@@ -13,13 +15,13 @@ class LikelihoodParameter(object):
         Gauss_priors_width=None,
         fixed=False,
     ):
-        """Base class for parameter used in likelihood"""
+        """Create a bounded likelihood parameter."""
         self.name = name
         self.min_value = min_value
         self.max_value = max_value
         self.value = value
         self.Gauss_priors_width = Gauss_priors_width
-        self.fixed = False
+        self.fixed = fixed
         return
 
     def value_in_cube(self):
@@ -38,8 +40,8 @@ class LikelihoodParameter(object):
         return
 
     def set_without_cube(self, value):
-        """Set parameter value without cube"""
-        ## Check to make sure parameter is within min/max
+        """Set the physical parameter value directly."""
+        # Check to make sure parameter is within min/max
         assert self.min_value < value < self.max_value, (
             "Parameter name: %s" % self.name
         )
@@ -56,12 +58,12 @@ class LikelihoodParameter(object):
         return info
 
     def value_from_cube(self, x):
-        """Given the value in range (xmin,xmax), return absolute value"""
+        """Map a unit-cube value to the physical parameter range."""
 
         return self.min_value + x * (self.max_value - self.min_value)
 
     def err_from_cube(self, err):
-        """Return scaled covariance"""
+        """Map a unit-cube error to the physical parameter range."""
 
         return err * (self.max_value - self.min_value)
 

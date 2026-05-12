@@ -1,5 +1,9 @@
+"""Helpers for simulation training data and chain conversion."""
+
 import os
+
 import numpy as np
+
 from cup1d.utils.utils import is_number_string
 from cup1d.utils.utils import get_path_repo
 
@@ -9,51 +13,23 @@ def get_training_hc(
     emu_params=None,
     nyx_version="models_Nyx_Mar2025_with_CGAN_val_3axes",
 ):
-    """
-    Loads and processes the training data for the emulator, including cosmological and IGM parameters.
+    """Load emulator training hypercube points from simulation summaries.
 
-    This function reads the relevant cosmological and IGM history files for the specified simulation suite
-    (`mpg` or `nyx`), extracts the parameters needed for the emulator, and organizes them into a structure
-    suitable for training. It returns the parameters used for training, the associated data points, and the raw
-    cosmological and IGM data.
-
-    Parameters:
-    -----------
+    Parameters
+    ----------
     sim_suite : str
-        The simulation suite to use, either "mpg" or "nyx". Determines which files are loaded and processed.
+        Simulation suite, either ``"mpg"`` or ``"nyx"``.
+    emu_params : list[str] or None, optional
+        Cosmological emulator parameters. If omitted, defaults are chosen from
+        ``sim_suite``.
+    nyx_version : str, optional
+        Nyx cosmology-summary version used when ``sim_suite == "nyx"``.
 
-    emu_params : list of str, optional, default=None
-        A list of parameters to use for the cosmological emulator. If not provided, default parameters are
-        selected based on the simulation suite. Possible values are `["Delta2_p", "n_p"]` for "mpg" and
-        `["Delta2_p", "n_p", "alpha_p"]` for "nyx".
-
-    nyx_version : str, optional, default="Jul2024"
-        The version of the NYX simulation to use. Only used if `sim_suite` is "nyx".
-
-    Returns:
-    --------
-    hc_params : list of str
-        The list of parameters used for training the emulator, combining both cosmological and IGM parameters.
-
-    hc_points : numpy.ndarray
-        A 2D array where each row represents a set of values for the cosmological and IGM parameters used for training.
-
-    cosmo_all : list of dict
-        The raw cosmological data loaded from the emulator files. This includes the simulation parameters and labels.
-
-    igm_all : dict
-        The raw IGM history data loaded from the IGM history files. This includes the IGM parameters for each simulation.
-
-    Raises:
+    Returns
     -------
-    ValueError
-        If the simulation suite is not recognized or if any of the required files are missing.
-
-    Notes:
-    -----
-    - The function expects specific files for "mpg" and "nyx" simulations (cosmological and IGM history data).
-      If any of these files are not found, it will raise a `ValueError` with a suggestion on how to generate them.
-    - The cosmological parameters and IGM parameters are extracted and returned in a format suitable for training an emulator.
+    tuple
+        ``(hc_params, hc_points, cosmo_all, igm_all)`` where ``hc_points`` is a
+        two-dimensional array of training points.
     """
 
     # get name of files storing cosmo and igm
@@ -76,7 +52,7 @@ def get_training_hc(
     # read cosmo
     try:
         cosmo_all = np.load(cosmo_fname, allow_pickle=True).item()
-    except:
+    except FileNotFoundError:
         script_fname = os.path.join(
             get_path_repo("lace"),
             "script",
@@ -90,7 +66,7 @@ def get_training_hc(
     # read igm
     try:
         igm_all = np.load(igm_fname, allow_pickle=True).item()
-    except:
+    except FileNotFoundError:
         script_fname = os.path.join(
             get_path_repo("lace"),
             "script",
@@ -123,7 +99,7 @@ def get_training_hc(
     sim_label_cosmo = ["_".join(s.split("_")[:2]) for s in igm_all.keys()]
     for ii, sim_label in enumerate(igm_all):
         # only use simulations in the training set
-        if (is_number_string(sim_label[-1]) == False) | (
+        if (is_number_string(sim_label[-1]) is False) | (
             sim_label_cosmo[ii] == "accel2"
         ):
             continue
@@ -148,18 +124,17 @@ def get_training_hc(
 
 
 def load_chains_for_cosmopower(fname):
-    """
-    Load chains from a file.
+    """Convert a saved cup1d chain into a Cosmopower training DataFrame.
 
-    Parameters:
-    -----------
-    path : str
+    Parameters
+    ----------
+    fname : str
         The path to the file containing the chains.
 
-    Returns:
-    --------
-    chains : numpy.ndarray
-        The loaded chains.
+    Returns
+    -------
+    pandas.DataFrame
+        Chain samples with cosmology and derived linear-power columns.
     """
 
     import pandas as pd

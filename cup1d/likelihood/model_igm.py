@@ -1,5 +1,9 @@
+"""Container for IGM nuisance models and fiducial histories."""
+
 import os
+
 import numpy as np
+
 from cup1d.igm.mean_flux_class import MeanFlux
 from cup1d.igm.pressure_class import Pressure
 from cup1d.igm.thermal_class import Thermal
@@ -8,7 +12,7 @@ from cup1d.utils.utils import get_path_repo
 
 
 class IGM(object):
-    """Contains all IGM models"""
+    """Bundle mean-flux, thermal, and pressure IGM models."""
 
     def __init__(
         self,
@@ -18,6 +22,7 @@ class IGM(object):
         T_model=None,
         P_model=None,
     ):
+        """Build IGM models from a parameter dictionary."""
         # set simulation from which we get fiducial IGM history
         for key in ["mF", "T", "kF"]:
             lab = "label_" + key
@@ -87,6 +92,7 @@ class IGM(object):
                 )
 
     def set_fid_igm(self, zs):
+        """Evaluate fiducial IGM histories on redshift grid ``zs``."""
         self.fid_igm = {}
         self.fid_igm["z"] = zs
         for key in self.models:
@@ -101,7 +107,7 @@ class IGM(object):
                     self.fid_igm[key] = self.models[key].get_kF_kms(zs)
 
     def get_igm(self, sim_igm_mF=None, sim_igm_T=None, sim_igm_kF=None):
-        """Load IGM history"""
+        """Load and combine fiducial IGM histories from MPG, Nyx, or data fits."""
 
         fname = os.path.join(
             get_path_repo("lace"),
@@ -112,7 +118,7 @@ class IGM(object):
         )
         try:
             self.igm_hist_mpg = np.load(fname, allow_pickle=True).item()
-        except:
+        except FileNotFoundError:
             raise ValueError(
                 fname
                 + " not found. You can produce it using LaCE"
@@ -121,14 +127,14 @@ class IGM(object):
 
         try:
             fname = os.path.join(os.environ["NYX_PATH"], "IGM_histories.npy")
-        except:
+        except KeyError:
             raise ValueError(
                 "NYX_PATH not set, please set it as explained in the README of the repo"
             )
 
         try:
             self.igm_hist_nyx = np.load(fname, allow_pickle=True).item()
-        except:
+        except FileNotFoundError:
             raise ValueError(
                 fname
                 + " not found. You can produce it using LaCE"
@@ -146,7 +152,7 @@ class IGM(object):
             elif sim_igm in self.igm_hist_nyx:
                 igm_hist = self.igm_hist_nyx
             elif sim_igm == "kF_both":
-                # I dumb model that goes through both lace and nyx
+                # Simple model that bridges the LaCE and Nyx filtering scales.
                 res_fit = np.array([0.00078134, 0.00028125, 0.15766722])
                 zz = np.linspace(1.8, 6, 100)
                 igms_return["kF_kms" + "_z"] = zz
@@ -214,7 +220,7 @@ class IGM(object):
                 igms_return["gamma"] = gamma
                 continue
             else:
-                ValueError("sim_igm must be 'mpg' or 'nyx'")
+                raise ValueError("sim_igm must be 'mpg' or 'nyx'")
 
             if sim_igm not in igm_hist:
                 igm_return = igm_hist[sim_igm + "_0"]
@@ -250,10 +256,10 @@ class IGM(object):
         return igms_return
 
     def set_priors(self, fid_igm, prop_coeffs, fact_priors=1.0, z_pivot=3, percent=95):
-        """Set priors for all IGM models
+        """Set broad flat priors for all IGM models.
 
         This is only important for giving the minimizer and the sampler a uniform
-        prior that it is not too broad. The metric below takes care of the real priors
+        prior that it is not too broad. The metric below takes care of the real priors.
         """
 
         self.priors = {}
@@ -283,16 +289,16 @@ class IGM(object):
             elif emu_suite.startswith("nyx"):
                 all_igm = self.igm_hist_nyx
             else:
-                ValueError("sim_igm must be 'mpg' or 'nyx'")
+                raise ValueError("sim_igm must be 'mpg' or 'nyx'")
 
             res_div = np.zeros((len(all_igm), 2))
             for ii, sim in enumerate(all_igm):
-                if (sim in ["accel2"]) | (np.char.isnumeric(sim[-1]) == False):
+                if (sim in ["accel2"]) | (not np.char.isnumeric(sim[-1])):
                     continue
 
                 string_split = sim.split("_")
                 sim_label = string_split[0] + "_" + string_split[1]
-                if is_number_string(sim_label[-1]) == False:
+                if not is_number_string(sim_label[-1]):
                     continue
 
                 try:
@@ -301,7 +307,7 @@ class IGM(object):
                         & (fid_igm[par] != 0)
                         & (all_igm[sim][par] != 0)
                     )[:, 0]
-                except:
+                except (KeyError, ValueError):
                     continue
                 if len(_) == 0:
                     continue

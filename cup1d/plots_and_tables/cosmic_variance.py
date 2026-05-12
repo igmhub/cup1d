@@ -1,9 +1,13 @@
+"""Plot simple cosmic-variance comparisons between simulation seeds."""
+
 import numpy as np
 import matplotlib.pyplot as plt
+
 from cup1d.pipeline.set_archive import set_archive
 
 
 def plot_cosmic_variance():
+    """Create the Nyx/MPG central-vs-seed cosmic-variance diagnostic plot."""
     nyx_training_set = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
     archive_mock = set_archive(training_set=nyx_training_set)
     central = archive_mock.get_testing_data("nyx_central")

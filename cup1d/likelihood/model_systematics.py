@@ -1,14 +1,17 @@
+"""Systematic-effect model container."""
+
 import numpy as np
 
 from cup1d.contaminants import resolution_class
 
 
 class Systematics(object):
-    """Contains all IGM models"""
+    """Container for multiplicative systematic corrections."""
 
     def __init__(
         self, free_param_names=None, resolution_model=None, pars_syst=None
     ):
+        """Build the systematics model collection."""
         self.pars_syst = pars_syst
 
         if "flat_priors" in pars_syst:
@@ -69,6 +72,7 @@ class Systematics(object):
     #     return dict_out
 
     def get_contamination(self, z, k_kms, like_params=[]):
+        """Return the multiplicative systematic correction."""
         # include multiplicative resolution correction
         cont = self.resolution_model.get_contamination(
             z=z, k_kms=k_kms, like_params=like_params

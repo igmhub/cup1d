@@ -1,9 +1,13 @@
+"""Print LaTeX rows for nuisance-parameter constraints."""
+
 import numpy as np
+
 from cup1d.plots_and_tables.plots_corner import prepare_data
 from cup1d.utils.various_dicts import param_dict
 
 
 def format_value_with_error(m, ep, em):
+    """Return a LaTeX value with asymmetric errors."""
     if ep == 0 or em == 0 or np.isnan(ep) or np.isnan(em):
         return f"${m:.2f}^{{+{ep:.2f}}}_{{-{em:.2f}}}$"
 
@@ -24,6 +28,7 @@ def format_value_with_error(m, ep, em):
 
 
 def table_nuisance(folder_variation):
+    """Print nuisance-parameter summary rows for one chain folder."""
     labels, lnprob, dat, priors, dat_Asns = prepare_data(folder_variation)
 
     dat = dat.reshape(-1, dat.shape[-1])

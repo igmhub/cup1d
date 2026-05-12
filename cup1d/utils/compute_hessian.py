@@ -1,27 +1,22 @@
-"""
-For convenience, we decided to use the inverse of the Hessian in order to get a first estimation of the error without doing the $\chi^2$ scan. We estimate it as follows.
-
-\begin{itemize}
-    \item I compute the the Hessian using finite differences. I am using the following expression for the diagonal elements
-    \begin{equation}
-        H[i, i] = [f(p + h) + f(p - h) - 2 * f(p)] / h^2
-    \end{equation}
-    and for the off-diagonal
-    \begin{equation}
-    H[i, j] = [f(p + h_x + h_y) + f(p - h_x - h_y) - f(p - h_x + h_y) - f(p + h_x - h_y)] / (4 * h^2)
-    \end{equation}
-
-    \item I then take the inverse of the matrix.
-
-    \item The last step is that, since we are sampling $A_s$ and $n_s$ internally, I need to propagate errors into $\Delta^2_\star$ and $n_\star$.
-"""
-
+"""Finite-difference Hessian utilities."""
 
 import numpy as np
 
 
 def get_hessian(func, p0, hh=1e-4):
+    """Estimate the Hessian of ``func`` around ``p0`` using central differences.
+
+    Parameters
+    ----------
+    func : callable
+        Scalar-valued function evaluated on parameter vectors.
+    p0 : array-like
+        Expansion point.
+    hh : float, optional
+        Finite-difference step for every parameter.
+    """
     def mod_elem(nelem, ind, val):
+        """Return a one-hot offset vector."""
         xx = np.zeros(nelem)
         xx[ind] = val
         return xx

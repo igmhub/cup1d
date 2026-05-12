@@ -1,11 +1,10 @@
+"""Gaussian marginalized Lyman-alpha constraints in star-parameter space."""
+
 import numpy as np
 
 
 def gaussian_chi2(neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r):
-    """Given central values and errors for Delta_L^2 and n_eff, and its
-    cross-correlation coefficient r, compute Gaussian delta chi^2 at
-    points (neff,DL2).
-    """
+    """Compute Gaussian delta chi-square for correlated ``n_eff`` and ``DL2``."""
     chi2 = (
         (DL2 - DL2_val) ** 2 / DL2_err**2
         + (neff - neff_val) ** 2 / neff_err**2

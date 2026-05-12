@@ -1,4 +1,6 @@
-## Dictionary to convert likelihood parameters into latex strings
+"""Shared labels and plotting dictionaries for likelihood outputs."""
+
+# Dictionary to convert likelihood parameters into latex strings.
 param_dict = {
     "Delta2_p": r"$\Delta^2_p$",
     "mF": r"$F$",

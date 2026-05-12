@@ -1,3 +1,5 @@
+"""Factory for likelihood theory objects."""
+
 import numpy as np
 
 from cup1d.likelihood.lya_theory import Theory
@@ -15,7 +17,23 @@ def set_theory(
     fid_or_true="fid",
     zs=None,
 ):
-    """Set theory"""
+    """Build the theory object used by the likelihood pipeline.
+
+    Parameters
+    ----------
+    args : cup1d.likelihood.input_pipeline.Args
+        Pipeline configuration containing fiducial/true model settings.
+    emulator : object
+        P1D emulator used by :class:`cup1d.likelihood.lya_theory.Theory`.
+    free_parameters : list[str]
+        Likelihood parameter names that should be varied.
+    use_hull : bool, optional
+        Whether to enforce emulator convex-hull checks.
+    fid_or_true : {"fid", "true"}, optional
+        Select fiducial or true model dictionaries from ``args``.
+    zs : array-like or None, optional
+        Redshift grid used to initialize fiducial cosmology and IGM values.
+    """
 
     if fid_or_true == "fid":
         pars_igm = args.fid_igm
@@ -27,6 +45,8 @@ def set_theory(
         pars_cont = args.true_cont
         pars_syst = args.true_syst
         cosmo_label = args.true_cosmo_label
+    else:
+        raise ValueError("fid_or_true must be 'fid' or 'true'")
 
     # set igm model
     model_igm = IGM(free_param_names=free_parameters, pars_igm=pars_igm)

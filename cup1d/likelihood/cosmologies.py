@@ -1,10 +1,15 @@
+"""Named cosmology helpers used by the likelihood pipeline."""
+
 import os
+
 import numpy as np
 from lace.cosmo import camb_cosmo
+
 from cup1d.utils.utils import get_path_repo
 
 
 def get_cosmology_from_label(cosmo_label="default"):
+    """Return a small set of hard-coded CAMB cosmology variations."""
     if cosmo_label == "default":
         return camb_cosmo.get_cosmology()
     elif cosmo_label == "low_omch2":
@@ -30,15 +35,21 @@ def set_cosmo(
     return_all=False,
     nyx_version="models_Nyx_Mar2025_with_CGAN_val_3axes",
 ):
-    """Set fiducial cosmology
+    """Return a CAMB cosmology for a simulation or named analysis label.
 
     Parameters
     ----------
     cosmo_label : str
+        Simulation label or named cosmology variation.
+    return_all : bool, optional
+        If supported by a branch, return all loaded cosmology metadata.
+    nyx_version : str, optional
+        Nyx cosmology file suffix used for Nyx simulation labels.
 
     Returns
     -------
-    cosmo : object
+    object
+        CAMB cosmology object.
     """
     if (cosmo_label[:3] == "mpg") | (cosmo_label[:3] == "nyx"):
         if cosmo_label[:3] == "mpg":

@@ -1,9 +1,15 @@
+"""Load Planck, CMB-SPA, and Cobaya chains as GetDist samples."""
+
 import os
+import subprocess
+
 from getdist import loadMCSamples
+
 from cup1d.utils.utils import get_path_repo
 
 
 def spa_chains_dir(root_dir):
+    """Return the root directory that stores CMB-SPA linear-power chains."""
     if root_dir is None:
         root_dir = os.path.join(
             get_path_repo("cup1d"), "data", "cmbspa_linP_chains"
@@ -13,9 +19,7 @@ def spa_chains_dir(root_dir):
 
 
 def planck_chains_dir(release, root_dir):
-    """Given a Planck data release (year, integer), return the full path
-    to the folder where the chains are stored.
-    If no root_dir is passed, use environmental variable PLANCK_CHAINS."""
+    """Return the chain directory for a Planck release."""
 
     if root_dir is None:
         root_dir = os.path.join(
@@ -33,7 +37,7 @@ def planck_chains_dir(release, root_dir):
 
 
 def load_samples(file_root):
-    """Check that input chain exist, at least in zipped format, and read them."""
+    """Load a GetDist chain, unzipping ``.txt.gz`` chain files if needed."""
 
     print("loading", file_root)
 
@@ -42,8 +46,7 @@ def load_samples(file_root):
     except IOError:
         if os.path.exists(file_root + ".txt.gz"):
             print("unzip chain", file_root)
-            cmd = "gzip -dk " + file_root + ".txt.gz"
-            os.system(cmd)
+            subprocess.run(["gzip", "-dk", file_root + ".txt.gz"], check=True)
             samples = loadMCSamples(file_root)
         else:
             raise IOError("No chains found (not even zipped): " + file_root)
@@ -52,16 +55,7 @@ def load_samples(file_root):
 
 
 def get_planck_results(release, model, data, root_dir, linP_tag):
-    """Load results from Planck, for a given data release and data combination.
-    Inputs:
-        - release (integer): 2013, 2015 or 2018
-        - model (string): cosmo model, e.g., base, base_mnu...
-        - data (string): data combination, e.g., plikHM_TT_lowl_lowE
-        - root_dir (string): path to folder with Planck chains
-        - linP_tag (string): label identifying linear power columns
-    Outputs:
-        - dictionary with relevant information
-    """
+    """Load Planck chains for one release, model, and data combination."""
 
     analysis = {}
     analysis["release"] = release
@@ -106,7 +100,7 @@ def get_planck_2013(
     root_dir=None,
     linP_tag="zlinP",
 ):
-    """Load results from Planck 2013 chain"""
+    """Load a Planck 2013 chain."""
     return get_planck_results(
         2013, model=model, data=data, root_dir=root_dir, linP_tag=linP_tag
     )
@@ -115,7 +109,7 @@ def get_planck_2013(
 def get_planck_2015(
     model="base_mnu", data="plikHM_TT_lowTEB", root_dir=None, linP_tag="zlinP"
 ):
-    """Load results from Planck 2015 chain"""
+    """Load a Planck 2015 chain."""
     return get_planck_results(
         2015, model=model, data=data, root_dir=root_dir, linP_tag=linP_tag
     )
@@ -127,24 +121,14 @@ def get_planck_2018(
     root_dir=None,
     linP_tag="zlinP",
 ):
-    """Load results from Planck 2018 chain.
-    - linP_tag identifies chains with added linear parameters."""
+    """Load a Planck 2018 chain."""
     return get_planck_results(
         2018, model=model, data=data, root_dir=root_dir, linP_tag=linP_tag
     )
 
 
 def get_spa_results(model, data, root_dir, linP_tag, release="d1"):
-    """Load results from Planck, for a given data release and data combination.
-    Inputs:
-        - release (integer): 2013, 2015 or 2018
-        - model (string): cosmo model, e.g., base, base_mnu...
-        - data (string): data combination, e.g., plikHM_TT_lowl_lowE
-        - root_dir (string): path to folder with Planck chains
-        - linP_tag (string): label identifying linear power columns
-    Outputs:
-        - dictionary with relevant information
-    """
+    """Load CMB-SPA chains for one model and data combination."""
 
     analysis = {}
     analysis["release"] = release
@@ -182,8 +166,7 @@ def get_spa_results(model, data, root_dir, linP_tag, release="d1"):
 def get_spa(
     model="base_mnu", data="DESI_CMB-SPA", root_dir=None, linP_tag="linP"
 ):
-    """Load results from Planck 2018 chain.
-    - linP_tag identifies chains with added linear parameters."""
+    """Load the default CMB-SPA chain."""
     return get_spa_results(model, data, root_dir, linP_tag)
 
 
@@ -194,16 +177,7 @@ def get_cobaya(
     linP_tag="zlinP",
     lite=False,
 ):
-    """Load results from Planck, for a given data release and data combination.
-    Inputs:
-        - release (integer): 2013, 2015 or 2018
-        - model (string): cosmo model, e.g., base, base_mnu...
-        - data (string): data combination, e.g., plikHM_TT_lowl_lowE
-        - root_dir (string): path to folder with Planck chains
-        - linP_tag (string): label identifying linear power columns
-    Outputs:
-        - dictionary with relevant information
-    """
+    """Load a Cobaya chain and convert it to GetDist samples."""
 
     from cobaya.yaml import yaml_load_file
     from cobaya import load_samples

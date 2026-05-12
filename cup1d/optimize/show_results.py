@@ -1,9 +1,12 @@
+"""Small reporting helpers for optimization outputs."""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import chi2 as chi2_scipy
 
 
 def get_parameters(par, z, like, mle_cube):
+    """Evaluate a fitted nuisance parameter at redshift ``z``."""
     like_params = like.parameters_from_sampling_point(mle_cube)
 
     models = [
@@ -25,6 +28,7 @@ def get_parameters(par, z, like, mle_cube):
 
 
 def reformat_cube(args, data, emulator, out_mle_cube, weak_priors=None):
+    """Reformat per-redshift best-fit cubes onto a shared parameter ordering."""
     from cup1d.likelihood.pipeline import set_like
 
     ii = 0
@@ -84,6 +88,7 @@ def reformat_cube(args, data, emulator, out_mle_cube, weak_priors=None):
 
 
 def print_results(like, out_chi2, out_mle_cube):
+    """Print per-redshift and total chi-square summary rows."""
     ndeg_all = 0
     props = []
     chi2_all = 0

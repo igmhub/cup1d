@@ -1,3 +1,5 @@
+"""Fit and draw two-dimensional Gaussian-style ellipses."""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
@@ -30,10 +32,7 @@ def rho_from_axes(a, b, theta):
 
 
 def fit_ellipse(x, y, npts=200):
-    """
-    Fit an ellipse to scattered (x, y) points, ignoring NaNs.
-    Returns parametric fit (xfit, yfit).
-    """
+    """Fit an ellipse to scattered ``(x, y)`` points, ignoring NaNs."""
     # remove NaNs
     mask = ~(np.isnan(x) | np.isnan(y))
     x, y = x[mask], y[mask]
@@ -97,6 +96,7 @@ def plot_ellipse(
     color="C1",
     label="ellipse",
 ):
+    """Draw a 68 percent covariance ellipse on ``ax``."""
     # Covariance matrix
     cov = np.array(
         [

@@ -1,5 +1,8 @@
-import numpy as np
+"""Convex-hull helpers for emulator training domains."""
+
 import os
+
+import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
 
@@ -7,30 +10,12 @@ from cup1d.utils.utils import get_path_repo
 
 
 def in_hull(hull, p):
+    """Return whether points ``p`` satisfy all stored hull half-spaces."""
     return np.all(hull.eq @ p.T + hull.eq2[:, : p.shape[0]] <= hull.tol, 0)
 
 
 class Hull(object):
-    """
-    A class for computing and working with the convex hull of a dataset, with optional scaling.
-
-    This class computes the convex hull of a given dataset, optionally scaling the data before
-    calculating the hull. The data is first centered by subtracting the mean of the dataset, then scaled
-    by a specified factor (`extra_factor`). The convex hull is then computed on the transformed data.
-    The class also provides a method to check if a point is inside the computed convex hull.
-
-    Attributes:
-    -----------
-    hull : scipy.spatial.ConvexHull
-        A `ConvexHull` object that contains the vertices, simplices, and other information about the convex hull
-        of the scaled dataset.
-
-    Methods:
-    --------
-    in_hull(point):
-        Checks if a given point lies inside the computed convex hull.
-
-    """
+    """Compute and query emulator-domain convex hulls."""
 
     def __init__(
         self,
@@ -45,36 +30,14 @@ class Hull(object):
         tol=1e-12,
         multi_dim=False,
     ):
-        """
-        Initializes the Hull object by computing the convex hull of a given dataset with an optional scaling factor.
+        """Build, load, or save convex hulls for emulator training data.
 
-        This method centers the provided dataset by subtracting its mean and then scales it by a specified factor
-        (`extra_factor`). The convex hull of the scaled dataset is computed and stored as a `ConvexHull` object.
-        The convex hull is stored as an attribute of the class, allowing for further operations such as checking
-        if a point is inside the hull.
-
-        Parameters:
-        -----------
+        Parameters
+        ----------
         data_hull : numpy.ndarray
-            A 2D array of shape (n_samples, n_features) representing the dataset for which the convex hull is to be computed.
-            Each row corresponds to a data point, and each column represents a feature (dimension).
-
+            Training points used to construct the hull.
         extra_factor : float, optional, default=1.05
-            A scaling factor applied to the centered dataset before computing the convex hull.
-            A value greater than 1.0 expands the dataset, while a value less than 1.0 contracts it.
-            The default value is 1.05, slightly expanding the data.
-
-        Returns:
-        --------
-        None
-            This is the constructor of the `Hull` class, so it does not return any value. The resulting `ConvexHull` object
-            is stored as an attribute `self.hull`.
-
-        Notes:
-        -----
-        - The dataset is centered by subtracting the mean of the data along each feature (dimension).
-        - The convex hull is computed using the scaled dataset, and the resulting `ConvexHull` object contains
-          the vertices, simplices, and other details about the convex hull.
+            Scaling factor applied around the data mean before hull creation.
         """
 
         self.nz = len(zs)
@@ -100,9 +63,9 @@ class Hull(object):
                 "kF_Mpc",
             ]
 
-        if multi_dim == True:
+        if multi_dim is True:
             self.hull = None
-            if recompute == False:
+            if recompute is False:
                 if suite == "mpg":
                     self.hull = self.load_hull(suite, mpg_version=mpg_version)
                 elif suite == "nyx":
@@ -119,6 +82,7 @@ class Hull(object):
             self.hulls = self.set_hulls(data_hull, extra_factor=extra_factor)
 
     def set_hulls(self, points, extra_factor=1.0):
+        """Build all pairwise two-dimensional hulls."""
         int_factor = extra_factor - 0.01
 
         hulls = []
@@ -139,7 +103,7 @@ class Hull(object):
                 ).T
                 hull.tol = self.tol
 
-                mask = in_hull(hull, ext_data) == False
+                mask = ~in_hull(hull, ext_data)
                 data_for_hull = ext_data[mask]
 
                 hull_2d = ConvexHull(data_for_hull)
@@ -155,16 +119,18 @@ class Hull(object):
         return hulls
 
     def in_hulls(self, p):
+        """Return whether all rows in ``p`` lie within every pairwise hull."""
         for jj in range(len(self.hulls)):
             res = in_hull(
                 self.hulls[jj], p[:, [self.hulls[jj].dim0, self.hulls[jj].dim1]]
             )
-            if res.all() == False:
+            if not res.all():
                 return False
 
         return True
 
     def set_hull(self, data_hull, extra_factor=1.050):
+        """Build one multi-dimensional convex hull."""
         int_factor = extra_factor - 1e-3
         mean = data_hull.mean(axis=0)
         int_data = int_factor * (data_hull - mean) + mean
@@ -173,38 +139,20 @@ class Hull(object):
 
         data_for_hull = []
         for ii in range(ext_data.shape[0]):
-            if self._in_hull(hull, ext_data[ii]) == False:
+            if not self._in_hull(hull, ext_data[ii]):
                 data_for_hull.append(ext_data[ii])
         data_for_hull = np.vstack(data_for_hull)
 
         return ConvexHull(data_for_hull)
 
     def _in_hull(self, hull, point):
-        """
-        Check if a point is inside the convex hull.
-
-        Parameters:
-        -----------
-        point : array-like
-            The point to check, expected to be of shape (n_features,) where n_features is the number of features
-            (dimensions) of the dataset.
-
-        Returns:
-        --------
-        bool
-            True if the point is inside the convex hull, False otherwise.
-
-        Notes:
-        -----
-        This method uses the plane equations of the convex hull (derived from its faces) to determine if the point
-        lies within the convex hull. The convex hull is considered to enclose all points whose projections
-        onto the faces of the hull satisfy the inequality defined by the hull's equations.
-        """
+        """Return whether one point is inside a SciPy convex hull."""
         return np.all(
             np.dot(hull.equations[:, :-1], point) + hull.equations[:, -1] <= 0
         )
 
     def save_hull(self, suite, mpg_version="Cabayol23", nyx_version="Jul2024"):
+        """Save the current multi-dimensional hull to disk."""
         if suite == "nyx":
             folder = os.environ["NYX_PATH"]
             fname = os.path.join(folder, "hull_Nyx23_" + nyx_version + ".npy")
@@ -215,6 +163,7 @@ class Hull(object):
         np.save(fname, vars(self.hull))
 
     def load_hull(self, suite, mpg_version="Cabayol23", nyx_version="Jul2024"):
+        """Load a saved multi-dimensional hull, if available."""
         if suite == "nyx":
             folder = os.environ["NYX_PATH"]
             fname = os.path.join(folder, "hull_Nyx23_" + nyx_version + ".npy")
@@ -235,6 +184,7 @@ class Hull(object):
         return hull
 
     def plot_hull(self, points, test_points=None):
+        """Plot pairwise projections of hull training points."""
         # Visualization: Project onto all 2D pairs of dimensions
         n_dimensions = points.shape[1]
         fig, axes = plt.subplots(

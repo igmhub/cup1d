@@ -1,16 +1,19 @@
+"""CAMB-backed cosmology model used by the Lyman-alpha theory layer."""
+
 import numpy as np
 from lace.cosmo import camb_cosmo
 from lace.cosmo import fit_linP
+
 from cup1d.likelihood import likelihood_parameter
 
 
 class CAMBModel(object):
-    """Interface between CAMB object and Theory"""
+    """Interface between a CAMB cosmology object and :class:`Theory`."""
 
     def __init__(
         self, zs, cosmo=None, z_star=3.0, kp_kms=0.009, fast_camb=True
     ):
-        """Setup from CAMB object and list of redshifts"""
+        """Set up from a CAMB cosmology object and a list of redshifts."""
 
         # list of redshifts at which we evaluate linear power
         self.zs = zs
@@ -32,7 +35,7 @@ class CAMBModel(object):
         self.cached_linP_params = None
 
     def get_likelihood_parameters(self, cosmo_priors=None):
-        """Return a list of likelihood parameters"""
+        """Return cosmological likelihood parameters."""
 
         # should clarify role of min/max given that these are also
         # set in the likelihood
@@ -117,8 +120,7 @@ class CAMBModel(object):
         return params
 
     def get_camb_results(self):
-        """Check if we have called CAMB.get_results yet, to save time.
-        It returns a CAMB.results object."""
+        """Return cached CAMB results, computing them if needed."""
 
         if self.cached_camb_results is None:
             self.cached_camb_results = camb_cosmo.get_camb_results(
@@ -128,8 +130,7 @@ class CAMBModel(object):
         return self.cached_camb_results
 
     def get_linP_Mpc(self):
-        """Check if we have already computed linP_Mpc, to save time.
-        It returns (k_Mpc, zs, linP_Mpc)."""
+        """Return cached ``(k_Mpc, zs, linP_Mpc)`` arrays."""
 
         if self.cached_linP_Mpc is None:
             camb_results = self.get_camb_results()
@@ -140,7 +141,7 @@ class CAMBModel(object):
         return self.cached_linP_Mpc
 
     def get_linP_params(self):
-        """Linear power parameters at (z_star,kp_kms) for this cosmology"""
+        """Return linear-power parameters at ``(z_star, kp_kms)``."""
 
         if self.cached_linP_params is None:
             self.cached_linP_params = fit_linP.parameterize_cosmology_kms(
@@ -154,8 +155,7 @@ class CAMBModel(object):
         return self.cached_linP_params
 
     def get_linP_Mpc_params(self, kp_Mpc):
-        """Get linear power parameters to call emulator, at each z.
-        Amplitude, slope and running around pivot point kp_Mpc."""
+        """Return emulator linear-power parameters around ``kp_Mpc``."""
 
         ## Get the P(k) at each z
         k_Mpc, z, pk_Mpc = self.get_linP_Mpc()
@@ -186,7 +186,7 @@ class CAMBModel(object):
         return linP_params
 
     def dkms_dMpc(self, z):
-        """Return H(z)/(1+z) to convert Mpc to km/s"""
+        """Return ``H(z)/(1+z)`` to convert Mpc to km/s."""
 
         # get CAMB results objects (might be cached already)
         camb_results = self.get_camb_results()
@@ -194,7 +194,7 @@ class CAMBModel(object):
         return H_z / (1 + z)
 
     def get_M_of_zs(self):
-        """Return M(z)=H(z)/(1+z) for each z"""
+        """Return ``M(z)=H(z)/(1+z)`` for every model redshift."""
 
         M_of_zs = []
         for z in self.zs:
@@ -203,7 +203,7 @@ class CAMBModel(object):
         return M_of_zs
 
     def get_new_model(self, zs, like_params):
-        """For an arbitrary list of like_params, return a new CAMBModel"""
+        """Return a new :class:`CAMBModel` updated from likelihood parameters."""
 
         # store a dictionary with parameters set to input values
         camb_param_dict = {}

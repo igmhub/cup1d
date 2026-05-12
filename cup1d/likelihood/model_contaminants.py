@@ -1,3 +1,5 @@
+"""Container for contaminant nuisance models."""
+
 import numpy as np
 
 from cup1d.contaminants import (
@@ -13,7 +15,7 @@ from cup1d.contaminants import (
 
 
 class Contaminants(object):
-    """Contains all IGM models"""
+    """Bundle metal, HCD, and optional feedback contaminant models."""
 
     def __init__(
         self,
@@ -25,6 +27,7 @@ class Contaminants(object):
         pars_cont=None,
         ic_correction=None,
     ):
+        """Build contaminant models from a parameter dictionary."""
         self.pars_cont = pars_cont
         self.ic_correction = ic_correction
 
@@ -71,7 +74,7 @@ class Contaminants(object):
         key = "Si_mult"
         try:
             self.metal_models[key] = metal_models[key]
-        except:
+        except (TypeError, KeyError):
             if pars_cont["metal_model_type"] == "SiVid":
                 # Ma+2025 2509.08613
                 self.metal_models[key] = si_vid_final.SiVid(
@@ -95,7 +98,7 @@ class Contaminants(object):
         key = "Si_add"
         try:
             self.metal_models[key] = metal_models[key]
-        except:
+        except (TypeError, KeyError):
             self.metal_models[key] = si_add.SiAdd(
                 free_param_names=free_param_names,
                 fid_vals=fid_vals,
@@ -172,6 +175,7 @@ class Contaminants(object):
     #     return dict_out
 
     def get_contamination(self, z, k_kms, mF, M_of_z, like_params=[], remove=None):
+        """Return all contaminant corrections needed by the likelihood."""
         # include multiplicative metal contamination
         cont_all = {}
 
@@ -308,6 +312,7 @@ class Contaminants(object):
 
 
 def ref_nyx_ic_correction(k_kms, z):
+    """Return the reference Nyx initial-condition correction."""
     # This is the function fitted from the comparison of two Nyx runs,
     # one with 2lpt (single fluid) IC and the other one with monofonic (2 fluid)
     # - The high k points and z evolution are well determined

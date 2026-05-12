@@ -1,5 +1,6 @@
+"""Dataclass configuration for high-level cup1d pipeline runs."""
+
 import os
-import numpy as np
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -8,9 +9,7 @@ from cup1d.utils.utils import get_path_repo
 
 @dataclass
 class Args:
-    """
-    Class to store input arguments
-    """
+    """Container for pipeline, data, emulator, and sampler options."""
 
     data_label: str = "DESIY1_QMLE3"
     data_bias: float = 1
@@ -136,7 +135,7 @@ class Args:
     file_ic: str | None = None
 
     def __post_init__(self, val_null=-20):
-        """Initialize some parameters"""
+        """Populate derived defaults and predefined analysis configurations."""
         self.check_emulator_label()
         if "nyx" in self.emulator_label:
             self.training_set = "models_Nyx_Mar2025_with_CGAN_val_3axes"
