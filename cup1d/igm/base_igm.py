@@ -1,27 +1,66 @@
+"""Intergalactic Medium (IGM) modeling module.
+
+This module provides classes for modeling the IGM properties including
+temperature, pressure, and mean flux evolution.
+
+"""
+
+from __future__ import annotations
+
 import numpy as np
+import numpy.typing as npt
 from scipy.interpolate import (
     make_smoothing_spline,
     make_interp_spline,
     interp1d,
 )
 from cup1d.likelihood import likelihood_parameter
+from typing import Optional, List, Dict, Any, Tuple, Union
+
+
+# Type aliases
+Array1D = npt.NDArray[np.float64]
+Array2D = npt.NDArray[np.float64]
+Float = Union[float, int]
 
 
 class IGM_model(object):
-    """New model for HCD contamination"""
+    """New model for HCD contamination.
+
+    Parameters
+    ----------
+    coeffs : Optional[Dict[str, float]], optional
+        Coefficient dictionary.
+    list_coeffs : Optional[List[str]], optional
+        List of coefficient names.
+    prop_coeffs : Optional[Dict[str, Any]], optional
+        Coefficient properties.
+    free_param_names : Optional[List[str]], optional
+        List of free parameter names.
+    z_0 : float, optional
+        Pivot redshift.
+    fid_igm : Optional[Dict[str, Array1D]], optional
+        Fiducial IGM parameters.
+    fid_vals : Optional[Dict[str, Array1D]], optional
+        Fiducial values.
+    flat_priors : Optional[Dict[str, Tuple[float, float]]], optional
+        Flat prior bounds.
+    Gauss_priors : Optional[Dict[str, float]], optional
+        Gaussian prior widths.
+    """
 
     def __init__(
         self,
-        coeffs=None,
-        list_coeffs=None,
-        prop_coeffs=None,
-        free_param_names=None,
-        z_0=3.0,
-        fid_igm=None,
-        fid_vals=None,
-        flat_priors=None,
-        Gauss_priors=None,
-    ):
+        coeffs: Optional[Dict[str, float]] = None,
+        list_coeffs: Optional[List[str]] = None,
+        prop_coeffs: Optional[Dict[str, Any]] = None,
+        free_param_names: Optional[List[str]] = None,
+        z_0: float = 3.0,
+        fid_igm: Optional[Dict[str, Array1D]] = None,
+        fid_vals: Optional[Dict[str, Array1D]] = None,
+        flat_priors: Optional[Dict[str, Tuple[float, float]]] = None,
+        Gauss_priors: Optional[Dict[str, float]] = None,
+    ) -> None:
         # store input data
         self.list_coeffs = list_coeffs
         self.z_0 = z_0
@@ -44,20 +83,14 @@ class IGM_model(object):
 
             if prop_coeffs[key + "_ztype"].startswith("interp"):
                 try:
-                    self.prop_coeffs[key + "_znodes"] = prop_coeffs[
-                        key + "_znodes"
-                    ]
+                    self.prop_coeffs[key + "_znodes"] = prop_coeffs[key + "_znodes"]
                 except KeyError:
-                    raise ValueError(
-                        "must specify znodes in prop_coeffs for:", key
-                    )
+                    raise ValueError("must specify znodes in prop_coeffs for:", key)
 
         self.coeffs = {}
         if coeffs is not None:
             if free_param_names is not None:
-                raise ValueError(
-                    "can not specify both coeffs and free_param_names"
-                )
+                raise ValueError("can not specify both coeffs and free_param_names")
             for key in self.list_coeffs:
                 # set coeffs
                 if key in coeffs:
@@ -66,16 +99,12 @@ class IGM_model(object):
                     raise ("Coeff not specified:", key)
         else:
             if free_param_names is None:
-                raise ValueError(
-                    "must specify either coeffs or free_param_names"
-                )
+                raise ValueError("must specify either coeffs or free_param_names")
 
             # figure out number of HCD free params
             self.n_pars = {}
             for key in self.list_coeffs:
-                self.n_pars[key] = len(
-                    [p for p in free_param_names if key + "_" in p]
-                )
+                self.n_pars[key] = len([p for p in free_param_names if key + "_" in p])
                 if self.n_pars[key] == 0:
                     npar = 1
                 else:
@@ -99,14 +128,30 @@ class IGM_model(object):
 
     def process_igm(
         self,
-        fid_igm,
-        name_coeff,
-        order_extra=2,
-        smoothing=True,
-        zmin=1.9,
-        zmax=5.5,
-    ):
-        """Post-process IGM from simulation"""
+        fid_igm: Dict[str, Array1D],
+        name_coeff: str,
+        order_extra: int = 2,
+        smoothing: bool = True,
+        zmin: float = 1.9,
+        zmax: float = 5.5,
+    ) -> None:
+        """Post-process IGM from simulation.
+
+        Parameters
+        ----------
+        fid_igm : Dict[str, Array1D]
+            Fiducial IGM parameters dictionary.
+        name_coeff : str
+            Name of the coefficient to process.
+        order_extra : int, optional
+            Polynomial order for fitting.
+        smoothing : bool, optional
+            Whether to apply smoothing.
+        zmin : float, optional
+            Minimum redshift for extrapolation.
+        zmax : float, optional
+            Maximum redshift for extrapolation.
+        """
 
         mask = (
             (fid_igm[name_coeff + "_z"] != 0)
@@ -161,9 +206,7 @@ class IGM_model(object):
                 vhigh = np.exp(vhigh)
 
             if np.min(fid_igm[name_coeff + "_z"]) > zmin:
-                fid_vals = np.concatenate(
-                    [vlow, fid_igm[name_coeff][mask_znonzero]]
-                )
+                fid_vals = np.concatenate([vlow, fid_igm[name_coeff][mask_znonzero]])
             else:
                 fid_vals = fid_igm[name_coeff][mask_znonzero]
             if np.max(fid_igm[name_coeff + "_z"]) < zmax:
@@ -181,9 +224,8 @@ class IGM_model(object):
             z_to_inter[ind], fid_vals[ind], kind="cubic"
         )
 
-    def set_params(self):
-        """Setup likelihood parameters in the HCD model"""
-
+    def set_params(self) -> None:
+        """Setup likelihood parameters in the HCD model."""
         self.params = {}
 
         for key in self.list_coeffs:
@@ -232,8 +274,14 @@ class IGM_model(object):
                 )
                 self.params[name] = par
 
-    def get_Nparam(self):
-        """Number of parameters in the model"""
+    def get_Nparam(self) -> int:
+        """Number of parameters in the model.
+
+        Returns
+        -------
+        int
+            Number of parameters.
+        """
         n_params = len(self.params)
         n_coeffs = 0
         for coeff in self.coeffs:
@@ -242,7 +290,7 @@ class IGM_model(object):
             raise ValueError("mismatch between number of params and coeffs")
         return n_params
 
-    def get_value(self, name, z, like_params=[]):
+    def get_value(self, name: str, z: float, like_params: List = None) -> float:
         coeff = self.get_coeff(name, like_params=like_params)
 
         if self.prop_coeffs[name + "_ztype"] == "pivot":
@@ -260,9 +308,7 @@ class IGM_model(object):
                 )
                 ln_out = f_out(z)
             elif self.prop_coeffs[name + "_ztype"].endswith("_smspl"):
-                f_out = make_smoothing_spline(
-                    self.prop_coeffs[name + "_znodes"], coeff
-                )
+                f_out = make_smoothing_spline(self.prop_coeffs[name + "_znodes"], coeff)
                 ln_out = f_out(z)
             else:
                 raise ValueError(
@@ -383,9 +429,7 @@ class IGM_model(object):
                 elif key == "kF_kms":
                     vals = self.get_kF_kms(z, like_params=like_params)
                 else:
-                    raise ValueError(
-                        "key must be tau_eff, gamma, sigT_kms, or kF_kms"
-                    )
+                    raise ValueError("key must be tau_eff, gamma, sigT_kms, or kF_kms")
                 coeffs_out[key] = self.get_coeff(key, like_params=like_params)
             else:
                 vals = []
@@ -396,19 +440,13 @@ class IGM_model(object):
                             self.get_tau_eff(z[jj], like_params=like_params[jj])
                         )
                     elif key == "gamma":
-                        vals.append(
-                            self.get_gamma(z[jj], like_params=like_params[jj])
-                        )
+                        vals.append(self.get_gamma(z[jj], like_params=like_params[jj]))
                     elif key == "sigT_kms":
                         vals.append(
-                            self.get_sigT_kms(
-                                z[jj], like_params=like_params[jj]
-                            )
+                            self.get_sigT_kms(z[jj], like_params=like_params[jj])
                         )
                     elif key == "kF_kms":
-                        vals.append(
-                            self.get_kF_kms(z[jj], like_params=like_params[jj])
-                        )
+                        vals.append(self.get_kF_kms(z[jj], like_params=like_params[jj]))
                     else:
                         raise ValueError(
                             "key must be tau_eff, gamma, sigT_kms, or kF_kms"

@@ -411,8 +411,6 @@ pip.run_minimizer(p0)
 p0 = pip.fitter.mle_cube
 
 # %%
-
-# %%
 pip.fitter.like.plot_p1d(p0, print_chi2=False)
 
 # %%

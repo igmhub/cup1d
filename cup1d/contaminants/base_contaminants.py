@@ -1,24 +1,64 @@
+"""Contaminant modeling for the Lyman-alpha forest.
+
+This module provides classes for modeling metal-line contaminants
+and HCD systems in the Lyman-alpha forest.
+
+"""
+
+from __future__ import annotations
+
 import numpy as np
+import numpy.typing as npt
 from scipy.interpolate import make_smoothing_spline, make_interp_spline
 from cup1d.likelihood import likelihood_parameter
+from typing import Optional, List, Dict, Any, Tuple, Union
+
+
+# Type aliases
+Array1D = npt.NDArray[np.float64]
+Float = Union[float, int]
 
 
 class Contaminant(object):
-    """New model for HCD contamination"""
+    """New model for HCD contamination.
+
+    Parameters
+    ----------
+    coeffs : Optional[Dict[str, float]], optional
+        Coefficient dictionary.
+    list_coeffs : Optional[List[str]], optional
+        List of coefficient names.
+    prop_coeffs : Optional[Dict[str, Any]], optional
+        Coefficient properties.
+    free_param_names : Optional[List[str]], optional
+        List of free parameter names.
+    z_0 : float, optional
+        Pivot redshift.
+    fid_vals : Optional[Dict[str, Array1D]], optional
+        Fiducial values.
+    null_vals : Optional[Dict[str, float]], optional
+        Null values for baseline.
+    z_max : Optional[float], optional
+        Maximum redshift.
+    flat_priors : Optional[Dict[str, Tuple[float, float]]], optional
+        Flat prior bounds.
+    Gauss_priors : Optional[Dict[str, float]], optional
+        Gaussian prior widths.
+    """
 
     def __init__(
         self,
-        coeffs=None,
-        list_coeffs=None,
-        prop_coeffs=None,
-        free_param_names=None,
-        z_0=3.0,
-        fid_vals=None,
-        null_vals=None,
-        z_max=None,
-        flat_priors=None,
-        Gauss_priors=None,
-    ):
+        coeffs: Optional[Dict[str, float]] = None,
+        list_coeffs: Optional[List[str]] = None,
+        prop_coeffs: Optional[Dict[str, Any]] = None,
+        free_param_names: Optional[List[str]] = None,
+        z_0: float = 3.0,
+        fid_vals: Optional[Dict[str, Array1D]] = None,
+        null_vals: Optional[Dict[str, float]] = None,
+        z_max: Optional[float] = None,
+        flat_priors: Optional[Dict[str, Tuple[float, float]]] = None,
+        Gauss_priors: Optional[Dict[str, float]] = None,
+    ) -> None:
         # store input data
         self.list_coeffs = list_coeffs
         self.z_0 = z_0
@@ -42,18 +82,14 @@ class Contaminant(object):
 
             if prop_coeffs[key + "_ztype"].startswith("interp"):
                 try:
-                    self.prop_coeffs[key + "_znodes"] = prop_coeffs[
-                        key + "_znodes"
-                    ]
+                    self.prop_coeffs[key + "_znodes"] = prop_coeffs[key + "_znodes"]
                 except KeyError:
                     raise ValueError("must specify zs in prop_coeffs for:", key)
 
         self.coeffs = {}
         if coeffs is not None:
             if free_param_names is not None:
-                raise ValueError(
-                    "can not specify both coeffs and free_param_names"
-                )
+                raise ValueError("can not specify both coeffs and free_param_names")
             for key in self.list_coeffs:
                 # set coeffs
                 if key in coeffs:
@@ -62,16 +98,12 @@ class Contaminant(object):
                     raise ("Coeff not specified:", key)
         else:
             if free_param_names is None:
-                raise ValueError(
-                    "must specify either coeffs or free_param_names"
-                )
+                raise ValueError("must specify either coeffs or free_param_names")
 
             # figure out number of HCD free params
             self.n_pars = {}
             for key in self.list_coeffs:
-                self.n_pars[key] = len(
-                    [p for p in free_param_names if key + "_" in p]
-                )
+                self.n_pars[key] = len([p for p in free_param_names if key + "_" in p])
                 if self.n_pars[key] == 0:
                     npar = 1
                 else:
@@ -92,9 +124,8 @@ class Contaminant(object):
 
         self.set_params()
 
-    def set_params(self):
-        """Setup likelihood parameters in the HCD model"""
-
+    def set_params(self) -> None:
+        """Setup likelihood parameters in the HCD model."""
         self.params = {}
 
         for key in self.list_coeffs:
@@ -174,9 +205,7 @@ class Contaminant(object):
                 )
                 ln_out = f_out(z)
             elif self.prop_coeffs[name + "_ztype"].endswith("_smspl"):
-                f_out = make_smoothing_spline(
-                    self.prop_coeffs[name + "_znodes"], coeff
-                )
+                f_out = make_smoothing_spline(self.prop_coeffs[name + "_znodes"], coeff)
                 ln_out = f_out(z)
             else:
                 raise ValueError(
@@ -306,9 +335,7 @@ class Contaminant(object):
                 vals = []
                 coeffs_out[key] = []
                 for jj in range(len(z)):
-                    vals.append(
-                        self.get_value(key, z[jj], like_params=like_params[jj])
-                    )
+                    vals.append(self.get_value(key, z[jj], like_params=like_params[jj]))
                     coeffs_out[key].append(
                         self.get_coeff(key, like_params=like_params[jj])[0]
                     )

@@ -1,27 +1,82 @@
-import os, sys
+"""P1D data loading module.
+
+This module provides classes for loading 1D power spectrum measurements
+from various simulations and observations.
+
+"""
+
+from __future__ import annotations
+
+import os
+import sys
 import numpy as np
+import numpy.typing as npt
 from warnings import warn
+from typing import Optional, List, Dict, Any, Tuple, Union
 
 from cup1d.utils.utils import get_path_repo
 
 
+# Type aliases
+Array1D = npt.NDArray[np.float64]
+Array2D = npt.NDArray[np.float64]
+Float = Union[float, int]
+
+
 def _drop_zbins(
-    z_in,
-    k_in,
-    Pk_in,
-    cov_in,
-    z_min,
-    z_max,
-    full_zs=None,
-    full_Pk_kms=None,
-    full_cov_kms=None,
-    full_cov_stat_kms=None,
-    Pksmooth_kms=None,
-    cov_stat=None,
-    kmin_in=None,
-    kmax_in=None,
-):
-    """Drop redshift bins below z_min or above z_max"""
+    z_in: Array1D,
+    k_in: List[Array1D],
+    Pk_in: List[Array1D],
+    cov_in: List[Array2D],
+    z_min: float,
+    z_max: float,
+    full_zs: Optional[Array1D] = None,
+    full_Pk_kms: Optional[Array1D] = None,
+    full_cov_kms: Optional[Array2D] = None,
+    full_cov_stat_kms: Optional[Array2D] = None,
+    Pksmooth_kms: Optional[List[Array1D]] = None,
+    cov_stat: Optional[List[Array2D]] = None,
+    kmin_in: Optional[List[Array1D]] = None,
+    kmax_in: Optional[List[Array1D]] = None,
+) -> Tuple:
+    """Drop redshift bins below z_min or above z_max.
+
+    Parameters
+    ----------
+    z_in : Array1D
+        Input redshift values.
+    k_in : List[Array1D]
+        Input wavenumber values.
+    Pk_in : List[Array1D]
+        Input power spectrum values.
+    cov_in : List[Array2D]
+        Input covariance matrices.
+    z_min : float
+        Minimum redshift.
+    z_max : float
+        Maximum redshift.
+    full_zs : Optional[Array1D], optional
+        Full redshift array.
+    full_Pk_kms : Optional[Array1D], optional
+        Full power spectrum.
+    full_cov_kms : Optional[Array2D], optional
+        Full covariance.
+    full_cov_stat_kms : Optional[Array2D], optional
+        Full statistical covariance.
+    Pksmooth_kms : Optional[List[Array1D]], optional
+        Smooth power spectrum.
+    cov_stat : Optional[List[Array2D]], optional
+        Statistical covariance.
+    kmin_in : Optional[List[Array1D]], optional
+        Minimum k values.
+    kmax_in : Optional[List[Array1D]], optional
+        Maximum k values.
+
+    Returns
+    -------
+    Tuple
+        Processed data arrays.
+    """
 
     # k_in center of the kbin
     # kmin_in starting of the kbin
@@ -88,28 +143,59 @@ def _drop_zbins(
 
 
 class BaseDataP1D(object):
-    """Base class to store measurements of the 1D power spectrum"""
+    """Base class to store measurements of the 1D power spectrum.
+
+    Parameters
+    ----------
+    z : Array1D
+        Redshift values.
+    _k_kms : Union[Array1D, List[Array1D]]
+        Wavenumber values in km/s.
+    Pk_kms : List[Array1D]
+        Power spectrum values.
+    cov_Pk_kms : List[Array2D]
+        Covariance matrices.
+    z_min : float, optional
+        Minimum redshift.
+    z_max : float, optional
+        Maximum redshift.
+    full_zs : Optional[Array1D], optional
+        Full redshift array for combined analysis.
+    full_Pk_kms : Optional[Array1D], optional
+        Full power spectrum.
+    full_cov_kms : Optional[Array2D], optional
+        Full covariance matrix.
+    full_cov_stat_kms : Optional[Array2D], optional
+        Full statistical covariance.
+    Pksmooth_kms : Optional[List[Array1D]], optional
+        Smooth power spectrum.
+    cov_stat : Optional[List[Array2D]], optional
+        Statistical covariance.
+    k_kms_min : Optional[List[Array1D]], optional
+        Minimum k values.
+    k_kms_max : Optional[List[Array1D]], optional
+        Maximum k values.
+    """
 
     BASEDIR = os.path.join(get_path_repo("cup1d"), "data", "p1d_measurements")
 
     def __init__(
         self,
-        z,
-        _k_kms,
-        Pk_kms,
-        cov_Pk_kms,
-        z_min=0,
-        z_max=10,
-        full_zs=None,
-        full_Pk_kms=None,
-        full_cov_kms=None,
-        full_cov_stat_kms=None,
-        Pksmooth_kms=None,
-        cov_stat=None,
-        k_kms_min=None,
-        k_kms_max=None,
-    ):
-        """Construct base P1D class, from measured power and covariance"""
+        z: Array1D,
+        _k_kms: Union[Array1D, List[Array1D]],
+        Pk_kms: List[Array1D],
+        cov_Pk_kms: List[Array2D],
+        z_min: float = 0,
+        z_max: float = 10,
+        full_zs: Optional[Array1D] = None,
+        full_Pk_kms: Optional[Array1D] = None,
+        full_cov_kms: Optional[Array2D] = None,
+        full_cov_stat_kms: Optional[Array2D] = None,
+        Pksmooth_kms: Optional[List[Array1D]] = None,
+        cov_stat: Optional[List[Array2D]] = None,
+        k_kms_min: Optional[List[Array1D]] = None,
+        k_kms_max: Optional[List[Array1D]] = None,
+    ) -> None:
 
         ## if multiple z, ensure that k_kms for each redshift
         # more than one z, and k_kms is different for each z
@@ -253,9 +339,7 @@ class BaseDataP1D(object):
             plt.yscale("log", nonpositive="clip")
         if xlog:
             plt.xscale("log")
-        plt.xlabel(
-            r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize
-        )
+        plt.xlabel(r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
         if use_dimensionless:
             plt.ylabel(r"$\mathrm{\pi}^{-1}k_\parallel\,P(k)$", fontsize=ftsize)
         else:

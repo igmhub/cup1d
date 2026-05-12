@@ -264,7 +264,7 @@ def table_variations(base):
         ],
         "Metals_Ma2025": [
             "Metals: Ma+2025",
-            "DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr/chain_2/",
+            "DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr/chain_5/",
         ],
     }
 

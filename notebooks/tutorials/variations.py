@@ -234,9 +234,9 @@ base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/
 blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
 
 # %%
-blinding = {'Delta2_star': 0,
- 'n_star': 0.,
- 'alpha_star': 0.}
+# blinding = {'Delta2_star': 0,
+#  'n_star': 0.,
+#  'alpha_star': 0.}
 
 # %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
@@ -451,7 +451,7 @@ dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 folder = base + "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_2/"
 dat_metal_thin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr/chain_5/"
 dat_Metals_Ma2025 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 
@@ -577,7 +577,7 @@ dict_trans = {
     "metal_thin": "Metals: opt thin",  # no desviation from optically-thin limit ERROR
     
     "metal_trad": "Metals: simple",  # 2 params for metals like eBOSS
-    "Metals_Ma2025": "Metals: Ma+2025",
+    "Metals_Ma2025": "Metals: Ma+2026",
 
     "sim_mpg_central": "mpg-central", 
     "sim_mpg_seed": "mpg-seed",
@@ -608,7 +608,7 @@ fname = [
     # "test",
 ]
 
-for image in range(3, 4):
+for image in range(7, 8):
 
     # if image in [3, 4, 5]:
     #     ftsize = 26

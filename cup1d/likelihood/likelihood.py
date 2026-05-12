@@ -1,4 +1,14 @@
+"""Likelihood module for Lyman-alpha forest analysis.
+
+This module provides the core Likelihood class for Bayesian inference
+of cosmological parameters from Lyman-alpha forest P1D measurements.
+
+"""
+
+from __future__ import annotations
+
 import numpy as np
+import numpy.typing as npt
 import os
 import math
 import copy
@@ -6,6 +16,8 @@ from mpi4py import MPI
 from scipy.stats.distributions import chi2 as chi2_scipy
 from scipy.optimize import minimize
 from scipy.linalg import block_diag
+from typing import Optional, List, Dict, Any, Tuple, Union
+from dataclasses import dataclass
 
 from lace.cosmo import camb_cosmo
 from cup1d.utils.utils import is_number_string
@@ -24,8 +36,36 @@ rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
 
-def get_bin_coverage(xmin_o, xmax_o, xmin_n, xmax_n):
-    """Trick to accelerate rebinning"""
+# Type aliases for clarity
+Array1D = npt.NDArray[np.float64]
+Array2D = npt.NDArray[np.float64]
+Float = Union[float, int]
+
+
+def get_bin_coverage(
+    xmin_o: Array1D,
+    xmax_o: Array1D,
+    xmin_n: Array1D,
+    xmax_n: Array1D,
+) -> Array2D:
+    """Trick to accelerate rebinning.
+
+    Parameters
+    ----------
+    xmin_o : Array1D
+        Original minimum values.
+    xmax_o : Array1D
+        Original maximum values.
+    xmin_n : Array1D
+        New minimum values.
+    xmax_n : Array1D
+        New maximum values.
+
+    Returns
+    -------
+    Array2D
+        Coverage matrix for rebinning.
+    """
     # check out https://stcorp.github.io/harp/doc/html/algorithms/regridding.html
     cover = np.zeros((len(xmin_n), len(xmin_o)))
     for jj in range(len(xmin_n)):
@@ -38,23 +78,51 @@ def get_bin_coverage(xmin_o, xmax_o, xmin_n, xmax_n):
 
 
 class Likelihood(object):
-    """Likelihood class, holds data, theory, and knows about parameters"""
+    """Likelihood class, holds data, theory, and knows about parameters.
+
+    Parameters
+    ----------
+    data : Any
+        Data object containing P1D measurements.
+    theory : Any
+        Theory object providing model predictions.
+    free_param_names : Optional[List[str]], optional
+        List of free parameter names.
+    free_param_limits : Optional[List[Tuple[float, float]]], optional
+        List of (min, max) limits for each free parameter.
+    verbose : bool, optional
+        Whether to print verbose output.
+    cov_factor : float, optional
+        Covariance scaling factor.
+    prior_Gauss_rms : Optional[float], optional
+        Gaussian prior RMS.
+    emu_cov_type : str, optional
+        Emulator covariance type ('block' or 'full').
+    extra_data : Optional[Any], optional
+        Additional P1D data (e.g., from HIRES).
+    min_log_like : float, optional
+        Minimum log-likelihood value.
+    args : Optional[Any], optional
+        Additional arguments.
+    start_from_min : bool, optional
+        Whether to start from minimum.
+    """
 
     def __init__(
         self,
-        data,
-        theory,
-        free_param_names=None,
-        free_param_limits=None,
-        verbose=False,
-        cov_factor=1.0,
-        prior_Gauss_rms=None,
-        emu_cov_type="block",
-        extra_data=None,
-        min_log_like=-1e100,
-        args=None,
-        start_from_min=True,
-    ):
+        data: Any,
+        theory: Any,
+        free_param_names: Optional[List[str]] = None,
+        free_param_limits: Optional[List[Tuple[float, float]]] = None,
+        verbose: bool = False,
+        cov_factor: float = 1.0,
+        prior_Gauss_rms: Optional[float] = None,
+        emu_cov_type: str = "block",
+        extra_data: Optional[Any] = None,
+        min_log_like: float = -1e100,
+        args: Optional[Any] = None,
+        start_from_min: bool = True,
+    ) -> None:
         """Setup likelihood from theory and data. Options:
         - data (required) is the data to model
         - theory (required) instance of lya_theory
@@ -68,17 +136,20 @@ class Likelihood(object):
         - extra_p1d_data: extra P1D data, e.g., from HIRES
         - min_log_like: use this instead of - infinity"""
 
-        self.rank = MPI.COMM_WORLD.Get_rank()
+        # MPI rank for parallel processing
+        self.rank: int = MPI.COMM_WORLD.Get_rank()
 
-        self.verbose = verbose
-        self.prior_Gauss_rms = prior_Gauss_rms
-        self.cov_factor = cov_factor
-        self.emu_cov_type = emu_cov_type
-        self.min_log_like = min_log_like
-        self.data = data
-        self.extra_data = extra_data
-        # we only do this for latter save all relevant after fitting the model
-        self.args = args
+        # Configuration
+        self.verbose: bool = verbose
+        self.prior_Gauss_rms: Optional[float] = prior_Gauss_rms
+        self.cov_factor: Union[float, Dict[str, Any]] = cov_factor
+        self.emu_cov_type: str = emu_cov_type
+        self.min_log_like: float = min_log_like
+
+        # Data
+        self.data: Any = data
+        self.extra_data: Optional[Any] = extra_data
+        self.args: Optional[Any] = args
 
         if self.args.rebin_k != 1:
             self.rebin = {}
@@ -144,9 +215,22 @@ class Likelihood(object):
                 if self.rank == 0:
                     print("No best fit found to set ICs:", args.file_ic)
 
-    def rebinning(self, zs, Pk_kms_finek):
-        """For rebinning Pk predictions"""
-        Pk_kms_origk = []
+    def rebinning(self, zs: Array1D, Pk_kms_finek: List[Array1D]) -> List[Array1D]:
+        """For rebinning Pk predictions.
+
+        Parameters
+        ----------
+        zs : Array1D
+            Redshift values.
+        Pk_kms_finek : List[Array1D]
+            List of power spectra at fine k bins.
+
+        Returns
+        -------
+        List[Array1D]
+            Rebinned power spectra at original k bins.
+        """
+        Pk_kms_origk: List[Array1D] = []
         # _Pk_kms_finek = np.atleast_1d(Pk_kms_finek)
         for iz in range(len(zs)):
             indz = np.argmin(np.abs(self.data.z - zs[iz]))
@@ -160,11 +244,8 @@ class Likelihood(object):
             Pk_kms_origk.append(_Pk_kms)
         return Pk_kms_origk
 
-    def set_Gauss_priors(self):
-        """
-        Sets Gaussian priors on the parameters
-        """
-
+    def set_Gauss_priors(self) -> None:
+        """Sets Gaussian priors on the parameters."""
         self.Gauss_priors = np.ones((len(self.free_params)))
         for ii, par_like in enumerate(self.free_params):
             if self.prior_Gauss_rms is not None:
@@ -185,21 +266,45 @@ class Likelihood(object):
         else:
             self.Gauss_priors = None
 
-    def set_blinding(self):
-        """Set the blinding parameters"""
-        blind_prior = {"Delta2_star": 0.05, "n_star": 0.01, "alpha_star": 0.005}
+    def set_blinding(self) -> None:
+        """Set the blinding parameters."""
+        blind_prior: Dict[str, float] = {
+            "Delta2_star": 0.05,
+            "n_star": 0.01,
+            "alpha_star": 0.005,
+        }
         if self.data.apply_blinding:
             seed = int.from_bytes(self.data.blinding.encode("utf-8"), byteorder="big")
             rng = np.random.default_rng(seed)
-        self.blind = {}
+        self.blind: Dict[str, float] = {}
         for key in blind_prior:
             if self.data.apply_blinding:
                 self.blind[key] = rng.normal(0, blind_prior[key])
             else:
                 self.blind[key] = 0
 
-    def apply_blinding(self, dict_cosmo, conv=False, sample=None):
-        """Apply blinding to the dict_cosmo"""
+    def apply_blinding(
+        self,
+        dict_cosmo: Dict[str, float],
+        conv: bool = False,
+        sample: Optional[str] = None,
+    ) -> Dict[str, float]:
+        """Apply blinding to the dict_cosmo.
+
+        Parameters
+        ----------
+        dict_cosmo : Dict[str, float]
+            Cosmological parameter dictionary.
+        conv : bool, optional
+            Whether to convert parameter names.
+        sample : Optional[str], optional
+            Sample name for logging.
+
+        Returns
+        -------
+        Dict[str, float]
+            Blinded cosmological parameters.
+        """
 
         if self.data.apply_blinding:
             if sample is not None:
@@ -218,8 +323,25 @@ class Likelihood(object):
 
         return dict_cosmo
 
-    def apply_unblinding(self, dict_cosmo, conv=False):
-        """Apply unblinding to the dict_cosmo"""
+    def apply_unblinding(
+        self,
+        dict_cosmo: Dict[str, float],
+        conv: bool = False,
+    ) -> Dict[str, float]:
+        """Apply unblinding to the dict_cosmo.
+
+        Parameters
+        ----------
+        dict_cosmo : Dict[str, float]
+            Blinded cosmological parameter dictionary.
+        conv : bool, optional
+            Whether to convert parameter names.
+
+        Returns
+        -------
+        Dict[str, float]
+            Unblinded cosmological parameters.
+        """
         out_dict = copy.deepcopy(dict_cosmo)
         for key in self.blind:
             if conv:
@@ -230,9 +352,8 @@ class Likelihood(object):
                 out_dict[key2] = dict_cosmo[key2] - self.blind[key]
         return out_dict
 
-    def set_icov(self):
-        """
-        Computes and sets the inverse covariance matrix for the P1 power spectrum data and full power spectrum data.
+    def set_icov(self) -> None:
+        """Computes and sets the inverse covariance matrix for the P1 power spectrum data and full power spectrum data.
 
         This method processes the main dataset (`data`) and any additional dataset (`extra_data`) associated
         with the object. For each dataset:
@@ -506,8 +627,20 @@ class Likelihood(object):
                     self.extra_full_cov_Pk_kms = cov
                     self.extra_emu_full_cov_Pk_kms = full_emu_cov
 
-    def set_free_parameters(self, free_param_names, free_param_limits):
-        """Setup likelihood parameters that we want to vary"""
+    def set_free_parameters(
+        self,
+        free_param_names: Optional[List[str]],
+        free_param_limits: Optional[List[Tuple[float, float]]],
+    ) -> None:
+        """Setup likelihood parameters that we want to vary.
+
+        Parameters
+        ----------
+        free_param_names : Optional[List[str]]
+            List of free parameter names.
+        free_param_limits : Optional[List[Tuple[float, float]]]
+            List of (min, max) limits for each parameter.
+        """
 
         if free_param_limits is not None:
             assert len(free_param_limits) == len(
@@ -549,9 +682,14 @@ class Likelihood(object):
 
         return
 
-    def sampling_point_from_parameters(self):
-        """Translate likelihood parameters to array of values (in cube)"""
+    def sampling_point_from_parameters(self) -> Array1D:
+        """Translate likelihood parameters to array of values (in cube).
 
+        Returns
+        -------
+        Array1D
+            Parameter values in unit cube space.
+        """
         values = np.zeros(len(self.free_params))
         for ii, par in enumerate(self.free_params):
             values[ii] = par.value_in_cube()
@@ -602,8 +740,8 @@ class Likelihood(object):
 
         return cosmo_dict
 
-    def set_truth(self):
-        """Store true cosmology from the simulation used to make mock data"""
+    def set_truth(self) -> None:
+        """Store true cosmology from the simulation used to make mock data."""
 
         # access true cosmology used in mock data
         if hasattr(self.data, "truth") == False:
@@ -687,8 +825,8 @@ class Likelihood(object):
             #         par.name
             #     ] = par.get_value_in_cube(self.truth["cont"][par.name])
 
-    def set_fid(self):
-        """Store fiducial cosmology assumed for the fit"""
+    def set_fid(self) -> None:
+        """Store fiducial cosmology assumed for the fit."""
 
         self.fid = {}
 
@@ -721,16 +859,41 @@ class Likelihood(object):
 
     def get_p1d_kms(
         self,
-        zs=None,
-        _k_kms=None,
-        values=None,
-        return_covar=False,
-        return_blob=False,
-        return_emu_params=False,
-        apply_hull=True,
-        remove=None,
-    ):
-        """Compute theoretical prediction for 1D P(k)"""
+        zs: Optional[Array1D] = None,
+        _k_kms: Optional[List[Array1D]] = None,
+        values: Optional[Array1D] = None,
+        return_covar: bool = False,
+        return_blob: bool = False,
+        return_emu_params: bool = False,
+        apply_hull: bool = True,
+        remove: Optional[str] = None,
+    ) -> Optional[Union[List[Array1D], Tuple]]:
+        """Compute theoretical prediction for 1D P(k).
+
+        Parameters
+        ----------
+        zs : Optional[Array1D], optional
+            Redshift values.
+        _k_kms : Optional[List[Array1D]], optional
+            Wavenumber values in km/s.
+        values : Optional[Array1D], optional
+            Sampling point in unit cube.
+        return_covar : bool, optional
+            Whether to return covariance.
+        return_blob : bool, optional
+            Whether to return blob.
+        return_emu_params : bool, optional
+            Whether to return emulator parameters.
+        apply_hull : bool, optional
+            Whether to apply hull correction.
+        remove : Optional[str], optional
+            Parameter to remove from computation.
+
+        Returns
+        -------
+        Optional[Union[List[Array1D], Tuple]]
+            Power spectrum predictions.
+        """
 
         if _k_kms is None:
             k_kms = self.data.k_kms
@@ -784,10 +947,28 @@ class Likelihood(object):
 
         return out
 
-    def get_chi2(self, values=None, return_all=False, zmask=None):
-        """Compute chi2 using data and theory, without adding
-        emulator covariance"""
+    def get_chi2(
+        self,
+        values: Optional[Array1D] = None,
+        return_all: bool = False,
+        zmask: Optional[Array1D] = None,
+    ) -> Union[float, Tuple[float, List[float]]]:
+        """Compute chi2 using data and theory, without adding emulator covariance.
 
+        Parameters
+        ----------
+        values : Optional[Array1D], optional
+            Sampling point in unit cube.
+        return_all : bool, optional
+            Whether to return all chi2 values.
+        zmask : Optional[Array1D], optional
+            Redshift mask.
+
+        Returns
+        -------
+        Union[float, Tuple[float, List[float]]]
+            Chi2 value(s).
+        """
         log_like, log_like_all = self.get_log_like(
             values, ignore_log_det_cov=True, zmask=zmask
         )
@@ -797,7 +978,19 @@ class Likelihood(object):
         else:
             return -2.0 * log_like
 
-    def get_error(self, p0):
+    def get_error(self, p0: Array1D) -> Tuple[Array1D, Array2D]:
+        """Compute parameter errors from Hessian.
+
+        Parameters
+        ----------
+        p0 : Array1D
+            Initial sampling point.
+
+        Returns
+        -------
+        Tuple[Array1D, Array2D]
+            Errors and covariance matrix.
+        """
         # get hessian to compute errors
         hess = get_hessian(self.minus_log_prob, p0)
         ihess = np.linalg.inv(hess)
@@ -821,13 +1014,29 @@ class Likelihood(object):
 
     def get_log_like(
         self,
-        values=None,
-        ignore_log_det_cov=True,
-        return_blob=False,
-        zmask=None,
-    ):
-        """Compute log(likelihood), including determinant of covariance
-        unless you are setting ignore_log_det_cov=True."""
+        values: Optional[Array1D] = None,
+        ignore_log_det_cov: bool = True,
+        return_blob: bool = False,
+        zmask: Optional[Array1D] = None,
+    ) -> Union[Tuple[float, float], Tuple[float, float, Tuple]]:
+        """Compute log(likelihood), including determinant of covariance unless you are setting ignore_log_det_cov=True.
+
+        Parameters
+        ----------
+        values : Optional[Array1D], optional
+            Sampling point in unit cube.
+        ignore_log_det_cov : bool, optional
+            Whether to ignore log determinant of covariance.
+        return_blob : bool, optional
+            Whether to return blob.
+        zmask : Optional[Array1D], optional
+            Redshift mask.
+
+        Returns
+        -------
+        Union[Tuple[float, float], Tuple[float, float, Tuple]]
+            Log-likelihood value(s).
+        """
 
         # what to return if we are out of priors
         null_out = [-np.inf, -np.inf]
@@ -1046,9 +1255,19 @@ class Likelihood(object):
         out = lnprob, *blob
         return out
 
-    def get_log_prior(self, values):
-        """Compute logarithm of prior"""
+    def get_log_prior(self, values: Array1D) -> float:
+        """Compute logarithm of prior.
 
+        Parameters
+        ----------
+        values : Array1D
+            Sampling point in unit cube.
+
+        Returns
+        -------
+        float
+            Log prior value.
+        """
         assert len(values) == len(self.free_params), "size mismatch"
 
         # Always force parameter to be within range (for now)
@@ -1063,17 +1282,58 @@ class Likelihood(object):
         )
         return log_prior
 
-    def minus_log_prob(self, values, zmask=None, ind_fix=None, pfix=None):
-        """Return minus log_prob (needed to maximise posterior)"""
+    def minus_log_prob(
+        self,
+        values: Array1D,
+        zmask: Optional[Array1D] = None,
+        ind_fix: Optional[Array1D] = None,
+        pfix: Optional[Array1D] = None,
+    ) -> float:
+        """Return minus log_prob (needed to maximise posterior).
 
+        Parameters
+        ----------
+        values : Array1D
+            Sampling point in unit cube.
+        zmask : Optional[Array1D], optional
+            Redshift mask.
+        ind_fix : Optional[Array1D], optional
+            Indices to fix.
+        pfix : Optional[Array1D], optional
+            Fixed parameter values.
+
+        Returns
+        -------
+        float
+            Negative log probability.
+        """
         if ind_fix is not None:
             values[ind_fix] = pfix
 
         return -1.0 * self.log_prob(values, zmask=zmask)
 
-    def maximise_posterior(self, initial_values=None, method="nelder-mead", tol=1e-4):
-        """Run scipy minimizer to find maximum of posterior"""
+    def maximise_posterior(
+        self,
+        initial_values: Optional[Array1D] = None,
+        method: str = "nelder-mead",
+        tol: float = 1e-4,
+    ) -> Any:
+        """Run scipy minimizer to find maximum of posterior.
 
+        Parameters
+        ----------
+        initial_values : Optional[Array1D], optional
+            Initial sampling point.
+        method : str, optional
+            Minimization method.
+        tol : float, optional
+            Tolerance for convergence.
+
+        Returns
+        -------
+        Any
+            Minimization result.
+        """
         if not initial_values:
             initial_values = np.ones(len(self.free_params)) * 0.5
 
