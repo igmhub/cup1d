@@ -203,12 +203,12 @@ class Contaminants:
             else:
                 for iz in range(len(z)):
                     if model_name in self.metal_add:
-                        if type(cont) != int:
+                        if not isinstance(cont, int):
                             cont_all["cont_add_metals"][iz] += cont[iz]
                         else:
                             cont_all["cont_add_metals"][iz] += cont
                     else:
-                        if type(cont) != int:
+                        if not isinstance(cont, int):
                             cont_all["cont_mul_metals"][iz] *= cont[iz]
                         else:
                             cont_all["cont_mul_metals"][iz] *= cont
@@ -224,7 +224,7 @@ class Contaminants:
         else:
             cont_all["cont_HCD"] = []
             for iz in range(len(z)):
-                if type(cont) != int:
+                if not isinstance(cont, int):
                     cont_all["cont_HCD"].append(np.ones_like(k_kms[iz]) * cont[iz])
                 else:
                     cont_all["cont_HCD"].append(np.ones_like(k_kms[iz]) * cont)

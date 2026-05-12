@@ -19,7 +19,7 @@ from cup1d.utils.utils import get_path_repo
 # Type aliases
 Array1D = npt.NDArray[np.float64]
 Array2D = npt.NDArray[np.float64]
-Float = Union[float, int]
+Float = float | int
 
 
 def _drop_zbins(

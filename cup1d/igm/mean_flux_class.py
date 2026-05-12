@@ -16,7 +16,7 @@ from cup1d.igm.base_igm import IGM_model
 
 # Type aliases
 Array1D = npt.NDArray[np.float64]
-Float = Union[float, int]
+Float = float | int
 
 
 class MeanFlux(IGM_model):

@@ -34,7 +34,7 @@ rcParams["font.family"] = "STIXGeneral"
 # Type aliases for clarity
 Array1D = npt.NDArray[np.float64]
 Array2D = npt.NDArray[np.float64]
-Float = Union[float, int]
+Float = float | int
 
 
 def get_bin_coverage(

@@ -22,7 +22,7 @@ from cup1d.likelihood import likelihood_parameter
 # Type aliases
 Array1D = npt.NDArray[np.float64]
 Array2D = npt.NDArray[np.float64]
-Float = Union[float, int]
+Float = float | int
 
 
 class IGM_model:

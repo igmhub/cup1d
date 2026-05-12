@@ -83,7 +83,7 @@ class Systematics:
         else:
             cont_resolution = []
             for iz in range(len(z)):
-                if type(cont) != int:
+                if not isinstance(cont, int):
                     cont_resolution.append(np.ones_like(k_kms[iz]) * cont[iz])
                 else:
                     cont_resolution.append(np.ones_like(k_kms[iz]) * cont)
