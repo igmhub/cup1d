@@ -1,9 +1,12 @@
+"""High-column-density absorber model from McDonald et al. (2005)."""
+
 import numpy as np
+
 from cup1d.likelihood import likelihood_parameter
 
 
 class HCD_Model_McDonald2005(object):
-    """Model HCD contamination following McDonald et al. (2005)."""
+    """Multiplicative HCD correction following McDonald et al. (2005)."""
 
     def __init__(
         self,
@@ -13,6 +16,23 @@ class HCD_Model_McDonald2005(object):
         ln_A_damp_coeff=None,
         free_param_names=None,
     ):
+        """Build the McDonald et al. HCD correction model.
+
+        Parameters
+        ----------
+        z_0 : float, optional
+            Pivot redshift for the polynomial amplitude.
+        fid_A_damp : list[float] or None, optional
+            Fiducial polynomial coefficients for the damping amplitude.
+        null_value : float, optional
+            Log-amplitude threshold below which the correction is disabled.
+        ln_A_damp_coeff : list[float] or None, optional
+            Fixed polynomial coefficients. Mutually exclusive with
+            ``free_param_names``.
+        free_param_names : list[str] or None, optional
+            Likelihood parameter names used to decide how many HCD amplitude
+            coefficients are varied.
+        """
         self.z_0 = z_0
         self.null_value = null_value
         if fid_A_damp is None:
@@ -39,7 +59,7 @@ class HCD_Model_McDonald2005(object):
         self.set_parameters()
 
     def set_parameters(self):
-        """Setup likelihood parameters in the HCD model"""
+        """Create likelihood parameters for the HCD amplitude."""
 
         self.params = []
         Npar = len(self.ln_A_damp_coeff)
@@ -64,12 +84,12 @@ class HCD_Model_McDonald2005(object):
         return
 
     def get_Nparam(self):
-        """Number of parameters in the model"""
+        """Return the number of free HCD parameters."""
         assert len(self.ln_A_damp_coeff) == len(self.params), "size mismatch"
         return len(self.ln_A_damp_coeff)
 
     def get_A_damp(self, z, like_params=[]):
-        """Amplitude of HCD contamination around z_0"""
+        """Evaluate the HCD damping amplitude at redshift ``z``."""
 
         ln_A_damp_coeff = self.get_A_damp_coeffs(like_params=like_params)
         if ln_A_damp_coeff[-1] <= self.null_value:
@@ -81,7 +101,7 @@ class HCD_Model_McDonald2005(object):
         return np.exp(ln_out)
 
     def get_contamination(self, z, k_kms, like_params=[]):
-        """Multiplicative contamination caused by HCDs"""
+        """Return the multiplicative HCD correction at ``z`` and ``k_kms``."""
         A_damp = self.get_A_damp(z, like_params=like_params)
         if A_damp == 0:
             return 1
@@ -92,11 +112,11 @@ class HCD_Model_McDonald2005(object):
         return 1 + A_damp * f_HCD
 
     def get_parameters(self):
-        """Return likelihood parameters for the HCD model"""
+        """Return the HCD likelihood parameters."""
         return self.params
 
     def get_A_damp_coeffs(self, like_params=[]):
-        """Return list of mean flux coefficients"""
+        """Return HCD coefficients, updated from likelihood parameters."""
 
         if like_params:
             ln_A_damp_coeff = self.ln_A_damp_coeff.copy()
@@ -142,7 +162,7 @@ class HCD_Model_McDonald2005(object):
         cmap=None,
         smooth_k=False,
     ):
-        """Plot the contamination model"""
+        """Plot the HCD correction for a set of redshifts and wavenumbers."""
 
         from matplotlib import pyplot as plt
 

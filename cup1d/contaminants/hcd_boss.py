@@ -1,14 +1,18 @@
+"""High-column-density absorber model calibrated on BOSS measurements."""
+
 import numpy as np
+
 from cup1d.contaminants.base_contaminants import Contaminant
 
 
 def fun_cont(damp, k):
+    """Evaluate the Walther et al. (2024) HCD correction shape."""
     # Based on Walther+24, their equation is weird
     return 1 + 1 / (1 - (1 / (15000 * k - 8.9))) * damp
 
 
 class HCD_BOSS(Contaminant):
-    """HCD contamination Eq. 5.2 Walther+24"""
+    """HCD contamination model based on Eq. 5.2 of Walther et al. (2024)."""
 
     def __init__(
         self,
@@ -21,6 +25,11 @@ class HCD_BOSS(Contaminant):
         null_vals=None,
         Gauss_priors=None,
     ):
+        """Build the BOSS HCD correction model.
+
+        Parameters mirror :class:`cup1d.contaminants.Contaminant`. By default,
+        the model exposes one pivot-evolving coefficient, ``HCD_damp1``.
+        """
         # list of all coefficients
         list_coeffs = [
             "HCD_damp1",
@@ -64,7 +73,7 @@ class HCD_BOSS(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, like_params=[]):
-        """Multiplicative contamination caused by HCDs"""
+        """Return the multiplicative HCD correction for each redshift bin."""
 
         vals = {}
         for key in self.list_coeffs:

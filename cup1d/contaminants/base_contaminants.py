@@ -95,7 +95,7 @@ class Contaminant(object):
                 if key in coeffs:
                     self.coeffs[key] = coeffs[key]
                 else:
-                    raise ("Coeff not specified:", key)
+                    raise ValueError(f"Coeff not specified: {key}")
         else:
             if free_param_names is None:
                 raise ValueError("must specify either coeffs or free_param_names")
@@ -177,16 +177,22 @@ class Contaminant(object):
                 self.params[name] = par
 
     def get_Nparam(self):
-        """Number of parameters in the model"""
+        """Return the number of likelihood parameters in the model."""
         n_params = len(self.params)
         n_coeffs = 0
         for coeff in self.coeffs:
-            n_coeffs += len(coeff)
+            n_coeffs += len(self.coeffs[coeff])
         if n_params != n_coeffs:
             raise ValueError("mismatch between number of params and coeffs")
         return n_params
 
     def get_value(self, name, z, like_params=[]):
+        """Evaluate one nuisance coefficient at redshift ``z``.
+
+        The interpolation/evolution mode is controlled by
+        ``prop_coeffs[f"{name}_ztype"]``. Coefficients can be returned directly
+        or exponentiated according to ``prop_coeffs[f"{name}_otype"]``.
+        """
         coeff = self.get_coeff(name, like_params=like_params)
         # print(name, coeff, self.prop_coeffs[name + "_otype"])
 
@@ -235,6 +241,7 @@ class Contaminant(object):
             raise ValueError("prop_coeffs must be const or exp for", name)
 
     def get_parameter(self, name):
+        """Return one likelihood parameter by name."""
         return self.params[name]
 
     def get_parameters(self):
@@ -242,6 +249,7 @@ class Contaminant(object):
         return self.params
 
     def get_coeff(self, name, like_params=[]):
+        """Return coefficients for ``name``, optionally updated from a chain state."""
         if like_params:
             coeff = self.coeffs[name].copy()
             Npar = 0
@@ -274,7 +282,7 @@ class Contaminant(object):
         return coeff
 
     def reset_coeffs(self, like_params, rank=0):
-        """Reset all coefficients to fiducial values"""
+        """Update stored coefficients from a list of likelihood parameters."""
         for name in self.coeffs:
             Npar = 0
             if rank == 0:
@@ -307,7 +315,7 @@ class Contaminant(object):
                 print("new", name, self.coeffs[name])
 
     def plot_parameters(self, z, like_params, folder=None):
-        """Plot likelihood parameters"""
+        """Plot coefficient evolution over redshift."""
 
         from matplotlib import pyplot as plt
 

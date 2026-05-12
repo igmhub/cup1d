@@ -1,18 +1,23 @@
-import numpy as np
-import copy
 import os
+
+import numpy as np
 from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
+
 from cup1d.likelihood import likelihood_parameter
 from cup1d.utils.utils import get_discrete_cmap, get_path_repo
 
 
 class AGN_Model(object):
-    """Model AGN contamination
+    """Multiplicative AGN feedback correction.
 
-    Model Chabanier et al. 2020, Eq. 21 for correction:
+    This model follows the Chabanier et al. (2020) correction
 
-    P1D(AGN) = (1 + beta) * P1D(noAGN)
+    ``P1D(AGN) = (1 + beta) * P1D(noAGN)``
+
+    where the redshift-dependent amplitude is represented as a polynomial in
+    ``log((1 + z) / (1 + z_0))`` and the scale dependence is read from the
+    tabulated AGN correction file.
     """
 
     def __init__(
@@ -23,6 +28,24 @@ class AGN_Model(object):
         ln_AGN_coeff=None,
         free_param_names=None,
     ):
+        """Build the AGN feedback model.
+
+        Parameters
+        ----------
+        z_0 : float, optional
+            Pivot redshift for the polynomial amplitude.
+        fid_value : list[float] or None, optional
+            Fiducial polynomial coefficients. The last entry is the amplitude
+            at ``z_0``.
+        null_value : float, optional
+            Log-amplitude threshold below which the correction is disabled.
+        ln_AGN_coeff : list[float] or None, optional
+            Fixed polynomial coefficients. Mutually exclusive with
+            ``free_param_names``.
+        free_param_names : list[str] or None, optional
+            Likelihood parameter names used to decide how many AGN coefficients
+            are varied.
+        """
         self.z_0 = z_0
         if fid_value is None:
             fid_value = [0, -5]
@@ -51,7 +74,7 @@ class AGN_Model(object):
         self.AGN_z, self.AGN_expansion = _load_agn_file()
 
     def set_parameters(self):
-        """Setup likelihood parameters in the HCD model"""
+        """Create likelihood parameters for the AGN amplitude."""
 
         self.params = []
         Npar = len(self.ln_AGN_coeff)
@@ -74,12 +97,12 @@ class AGN_Model(object):
         return
 
     def get_Nparam(self):
-        """Number of parameters in the model"""
+        """Return the number of free AGN parameters."""
         assert len(self.ln_AGN_coeff) == len(self.params), "size mismatch"
         return len(self.ln_AGN_coeff)
 
     def get_AGN_damp(self, z, like_params=[]):
-        """Amplitude of AGN contamination around z_0"""
+        """Evaluate the AGN correction amplitude at redshift ``z``."""
 
         ln_AGN_coeff = self.get_AGN_coeffs(like_params=like_params)
         if ln_AGN_coeff[-1] <= self.null_value:
@@ -91,7 +114,7 @@ class AGN_Model(object):
         return np.exp(ln_out)
 
     def get_contamination(self, z, k_kms, like_params=[]):
-        """Multiplicative contamination caused by AGNs"""
+        """Return the multiplicative AGN correction at ``z`` and ``k_kms``."""
 
         fAGN = self.get_AGN_damp(z, like_params=like_params)
         if fAGN == 0:
@@ -120,11 +143,11 @@ class AGN_Model(object):
         return 1 + beta
 
     def get_parameters(self):
-        """Return likelihood parameters for the HCD model"""
+        """Return the AGN likelihood parameters."""
         return self.params
 
     def get_AGN_coeffs(self, like_params=[]):
-        """Return list of mean flux coefficients"""
+        """Return AGN coefficients, updated from likelihood parameters."""
 
         if like_params:
             ln_AGN_coeff = self.ln_AGN_coeff.copy()
@@ -171,7 +194,7 @@ class AGN_Model(object):
         zrange=[0, 10],
         name=None,
     ):
-        """Plot the contamination model"""
+        """Plot the AGN correction for a set of redshifts and wavenumbers."""
 
         # plot for fiducial value
         if ln_AGN_coeff is None:
@@ -281,17 +304,17 @@ class AGN_Model(object):
 
 
 def _load_agn_file():
+    """Read the tabulated AGN scale-dependence coefficients."""
     agn_corr_filename = os.path.join(
         get_path_repo("cup1d"), "data", "nuisance", "AGN_corr.dat"
     )
     NzAGN = 9
-    datafile = open(agn_corr_filename, "r")
     AGN_z = np.ndarray(NzAGN, "float")
     AGN_expansion = np.ndarray((NzAGN, 3), "float")
-    for i in range(NzAGN):
-        line = datafile.readline()
-        values = [float(valstring) for valstring in line.split()]
-        AGN_z[i] = values[0]
-        AGN_expansion[i] = values[1:]
-    datafile.close()
+    with open(agn_corr_filename, "r") as datafile:
+        for i in range(NzAGN):
+            line = datafile.readline()
+            values = [float(valstring) for valstring in line.split()]
+            AGN_z[i] = values[0]
+            AGN_expansion[i] = values[1:]
     return AGN_z, AGN_expansion

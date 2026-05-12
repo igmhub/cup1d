@@ -1,18 +1,23 @@
+"""SiIII contamination model following Ma et al. (2026)."""
+
 import numpy as np
+
 from cup1d.contaminants.base_contaminants import Contaminant
 
 
 def vel_diff(lambda1, lambda2):
+    """Return the velocity separation between two rest wavelengths in km/s."""
     c_kms = 299792.458
     return np.abs(np.log(lambda2 / lambda1)) * c_kms
 
 
 def rstrength(lambda1, lambda2, f1, f2):
+    """Return the optically thin relative line strength."""
     return (lambda1 * f1) / (lambda2 * f2)
 
 
 class SiVid(Contaminant):
-    """Model the contamination from Silicon Lya cross-correlations"""
+    """SiIII-Lya correction model based on Ma et al. (2026), Eq. 18."""
 
     def __init__(
         self,
@@ -26,8 +31,11 @@ class SiVid(Contaminant):
         flat_priors=None,
         Gauss_priors=None,
     ):
-        """Model the evolution of a metal contamination (SiII or SiIII).
-        We use a power law around z_0=3."""
+        """Build the Ma et al. SiIII correction.
+
+        The default model evolves the SiIII auto amplitude, the Lya-SiIII
+        cross amplitude, and their damping scales around ``z_0``.
+        """
 
         self.wav = {
             "SiIII": 1206.51,
@@ -155,8 +163,21 @@ class SiVid(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, mF, like_params=[], remove=None):
-        """Multiplicative contamination at a given z and k (in s/km).
-        The mean flux (mF) is used scale it (see McDonald et al. 2006)"""
+        """Return the multiplicative Ma et al. SiIII correction.
+
+        Parameters
+        ----------
+        z : array-like
+            Redshift values, one per entry of ``k_kms``.
+        k_kms : sequence[array-like]
+            Wavenumber arrays in s/km.
+        mF : array-like
+            Mean transmitted flux values used to normalize metal amplitudes.
+        like_params : list, optional
+            Likelihood parameters used to override the fiducial coefficients.
+        remove : dict or None, optional
+            Per-term switches for API compatibility with related models.
+        """
 
         # z = np.atleast_1d(z)
         # k_kms = np.atleast_2d(k_kms)

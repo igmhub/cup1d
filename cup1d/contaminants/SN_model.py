@@ -1,11 +1,12 @@
+"""Supernova feedback correction for the 1D Lyman-alpha power spectrum."""
+
 import numpy as np
-import copy
-import os
+
 from cup1d.likelihood import likelihood_parameter
 
 
 class SN_Model(object):
-    """Model SN contamination following Viel+13"""
+    """Multiplicative supernova feedback model following Viel et al. (2013)."""
 
     def __init__(
         self,
@@ -15,6 +16,24 @@ class SN_Model(object):
         ln_SN_coeff=None,
         free_param_names=None,
     ):
+        """Build the supernova feedback model.
+
+        Parameters
+        ----------
+        z_0 : float, optional
+            Pivot redshift for the polynomial amplitude.
+        fid_value : list[float] or None, optional
+            Fiducial polynomial coefficients. The last entry is the amplitude
+            at ``z_0``.
+        null_value : float, optional
+            Log-amplitude threshold below which the correction is disabled.
+        ln_SN_coeff : list[float] or None, optional
+            Fixed polynomial coefficients. Mutually exclusive with
+            ``free_param_names``.
+        free_param_names : list[str] or None, optional
+            Likelihood parameter names used to decide how many SN coefficients
+            are varied.
+        """
         self.z_0 = z_0
         if fid_value is None:
             fid_value = [0, -4]
@@ -41,7 +60,7 @@ class SN_Model(object):
         self.set_parameters()
 
     def set_parameters(self):
-        """Setup likelihood parameters in the HCD model"""
+        """Create likelihood parameters for the SN amplitude."""
 
         self.params = []
         Npar = len(self.ln_SN_coeff)
@@ -64,12 +83,12 @@ class SN_Model(object):
         return
 
     def get_Nparam(self):
-        """Number of parameters in the model"""
+        """Return the number of free SN parameters."""
         assert len(self.ln_SN_coeff) == len(self.params), "size mismatch"
         return len(self.ln_SN_coeff)
 
     def get_SN_damp(self, z, like_params=[]):
-        """Amplitude of HCD contamination around z_0"""
+        """Evaluate the SN correction amplitude at redshift ``z``."""
 
         ln_SN_coeff = self.get_SN_coeffs(like_params=like_params)
         if ln_SN_coeff[-1] <= self.null_value:
@@ -81,7 +100,7 @@ class SN_Model(object):
             return np.exp(ln_out)
 
     def get_contamination(self, z, k_Mpc, like_params=[]):
-        """Multiplicative contamination caused by SNs"""
+        """Return the multiplicative SN correction at ``z`` and ``k_Mpc``."""
         SN_damp = self.get_SN_damp(z, like_params=like_params)
         if SN_damp == 0:
             return 1
@@ -108,11 +127,11 @@ class SN_Model(object):
             return corSN
 
     def get_parameters(self):
-        """Return likelihood parameters for the HCD model"""
+        """Return the SN likelihood parameters."""
         return self.params
 
     def get_SN_coeffs(self, like_params=[]):
-        """Return list of mean flux coefficients"""
+        """Return SN coefficients, updated from likelihood parameters."""
 
         if like_params:
             ln_SN_coeff = self.ln_SN_coeff.copy()

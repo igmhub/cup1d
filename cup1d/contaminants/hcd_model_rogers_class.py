@@ -1,13 +1,17 @@
+"""High-column-density absorber model following Rogers et al. (2018)."""
+
 import numpy as np
+
 from cup1d.contaminants.base_contaminants import Contaminant
 
 
 def fun_damping(k_kms, a, b):
+    """Evaluate one Rogers et al. damping template."""
     return 1 / (a * np.exp(k_kms * b) - 1) ** 2
 
 
 class HCD_Model_Rogers(Contaminant):
-    """New model for HCD contamination"""
+    """HCD contamination model with four Rogers et al. damping templates."""
 
     def __init__(
         self,
@@ -20,6 +24,11 @@ class HCD_Model_Rogers(Contaminant):
         null_vals=None,
         Gauss_priors=None,
     ):
+        """Build the Rogers HCD correction model.
+
+        Parameters mirror :class:`cup1d.contaminants.Contaminant`. The default
+        model has four positive damping amplitudes and one additive constant.
+        """
         # list of all coefficients
         list_coeffs = [
             "HCD_damp1",
@@ -92,7 +101,7 @@ class HCD_Model_Rogers(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, like_params=[]):
-        """Multiplicative contamination caused by HCDs"""
+        """Return the multiplicative HCD correction for each redshift bin."""
 
         # z = np.atleast_1d(z)
         # k_kms = np.atleast_2d(k_kms)

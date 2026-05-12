@@ -1,8 +1,12 @@
+"""Spectral-resolution nuisance correction."""
+
 import numpy as np
+
 from cup1d.contaminants.base_contaminants import Contaminant
 
 
 def get_Rz(z, k_kms):
+    """Estimate the DESI resolution in km/s from wavelength-dependent fits."""
     # fig 32 https://arxiv.org/abs/2205.10939
     # lambda_AA = np.arange([3523.626, 3993.217, 4413.652, 4752.203, 5019.740, 5243.594, 5522.035, 5767.681, 5996.975, 6226.294, 6471.940, 6783.036])
     # resolution = np.array([2012.821, 2272.247, 2513.575, 2694.570, 2857.466, 2996.229, 3177.225, 3364.253, 3521.116, 3659.879, 3846.908, 4124.434])
@@ -24,6 +28,7 @@ def get_Rz(z, k_kms):
 
 
 def get_Rz_Naim(z):
+    """Estimate the DESI resolution in km/s using the Naim et al. convention."""
     # 4.1 https://arxiv.org/abs/2306.06316
     c_kms = 2.99792458e5
     lya_AA = 1215.67  # angstroms
@@ -35,10 +40,7 @@ def get_Rz_Naim(z):
 
 
 class Resolution(Contaminant):
-    """Use a handful of parameters to model the mean transmitted flux fraction
-    (or mean flux) as a function of redshift.
-     For now, we use a polynomial to describe log(tau_eff) around z_tau.
-    """
+    """Multiplicative correction for uncertainty in spectral resolution."""
 
     def __init__(
         self,
@@ -52,7 +54,11 @@ class Resolution(Contaminant):
         null_vals=None,
         Gauss_priors=None,
     ):
-        """Construct model as a rescaling around a fiducial mean flux"""
+        """Build the resolution correction model.
+
+        The default model exposes a single pivot-evolving coefficient that
+        rescales the quadratic ``k`` dependence induced by resolution errors.
+        """
 
         list_coeffs = ["R_coeff"]
 
@@ -86,7 +92,7 @@ class Resolution(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, like_params=[]):
-        """Multiplicative contamination caused by Resolution"""
+        """Return the multiplicative resolution correction for each redshift."""
 
         vals = {}
         for key in self.list_coeffs:

@@ -4,11 +4,11 @@ Contaminant modeling module for the Lyman-alpha forest.
 
 ## Description
 
-This module provides classes for modeling metal-line contaminants and HCD (Hubble Canvas Dissolution) systems that contaminate Lyman-alpha forest measurements:
+This module provides classes for modeling metals and high column density (HCD) systems that contaminate Lyman-alpha forest measurements:
 
 - **Base Contaminant** (`base_contaminants.py`) - Base class for all contaminants
 - **HCD Models** - Various HCD contamination models
-- **Si IV** - Silicon IV metal line contamination
+- **Si** - Silicon II and III metal line contamination
 - **AGN/Supernova** - AGN and supernova feedback effects
 
 ## Classes
@@ -16,11 +16,14 @@ This module provides classes for modeling metal-line contaminants and HCD (Hubbl
 | Class | Description |
 |-------|-------------|
 | `Contaminant` | Base class for contaminant modeling |
-| `HCDModelRogers` | Rogers et al. (2018) HCD model |
-| `HCDModelMcDonald2005` | McDonald et al. (2005) HCD model |
-| `HCD_BOSS` | BOSS HCD model |
-| `AGNModel` | AGN contamination model |
-| `SNModel` | Supernova feedback model |
+| `HCD_BOSS` | Walther et al. (2024) HCD model (Eq. 5.2) |
+| `HCD_Model_Rogers` | Rogers et al. (2018) HCD model |
+| `HCD_Model_McDonald2005` | McDonald et al. (2005) HCD model |
+| `AGN_Model` | Chabanier et al. (2020), AGN contamination model (Eq. 21) |
+| `SN_Model` | Viel et al. (2013) Supernova feedback model |
+| `SiAdd` | Chaves-Montero et al. (2026) Additive Si contamination |
+| `SiMult` | Chaves-Montero et al. (2026) Multiplicative Si contamination |
+| `SiVid` | Ma et al. (2026) SiIII contamination |
 
 ## Usage
 
@@ -40,8 +43,6 @@ contam = Contaminant(
 
 - [McDonald et al. (2006)](https://ui.adsabs.harvard.edu/abs/2006ApJ...653..815M) - Metal line contaminants
 - [Rogers et al. (2018)](https://ui.adsabs.harvard.edu/abs/2018MNRAS.474.3841R) - HCD modeling
-- [Chabanier et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019MNRAS.489.5787C) - Full contamination model
-- [Onorbe et al. (2019)](https://ui.adsabs.harvard.edu/abs/2019MNRAS.485.4815O) - HCD constraints
 
 ## See Also
 

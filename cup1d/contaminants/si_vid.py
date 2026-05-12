@@ -1,18 +1,23 @@
+"""Compact SiIII contamination model."""
+
 import numpy as np
+
 from cup1d.contaminants.base_contaminants import Contaminant
 
 
 def vel_diff(lambda1, lambda2):
+    """Return the velocity separation between two rest wavelengths in km/s."""
     c_kms = 299792.458
     return np.abs(np.log(lambda2 / lambda1)) * c_kms
 
 
 def rstrength(lambda1, lambda2, f1, f2):
+    """Return the optically thin relative line strength."""
     return (lambda1 * f1) / (lambda2 * f2)
 
 
 class SiVid(Contaminant):
-    """Model the contamination from Silicon Lya cross-correlations"""
+    """Minimal SiIII-Lya correction model used for video-style comparisons."""
 
     def __init__(
         self,
@@ -26,8 +31,11 @@ class SiVid(Contaminant):
         flat_priors=None,
         Gauss_priors=None,
     ):
-        """Model the evolution of a metal contamination (SiII or SiIII).
-        We use a power law around z_0=3."""
+        """Build the compact SiIII correction.
+
+        The default model keeps only the SiIII auto term and the Lya-SiIII
+        cross term, with amplitudes evolved around ``z_0``.
+        """
 
         self.wav = {
             "SiIII": 1206.51,
@@ -155,8 +163,11 @@ class SiVid(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, mF, like_params=[], remove=None):
-        """Multiplicative contamination at a given z and k (in s/km).
-        The mean flux (mF) is used scale it (see McDonald et al. 2006)"""
+        """Return the compact multiplicative SiIII correction.
+
+        Parameters are kept compatible with the other silicon models; ``mF``
+        and ``remove`` are currently unused by this implementation.
+        """
 
         # z = np.atleast_1d(z)
         # k_kms = np.atleast_2d(k_kms)
