@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cup1d.contaminants.SN_model - cup1d API</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside>
+    <h1><a href="index.html">cup1d API</a></h1>
+    <nav><ul><li><a href="cup1d___init__.html">cup1d.__init__</a></li>
+<li><a href="cup1d_contaminants_AGN_model.html">cup1d.contaminants.AGN_model</a></li>
+<li><a href="cup1d_contaminants_SN_model.html">cup1d.contaminants.SN_model</a></li>
+<li><a href="cup1d_contaminants_base_contaminants.html">cup1d.contaminants.base_contaminants</a></li>
+<li><a href="cup1d_contaminants_hcd_boss.html">cup1d.contaminants.hcd_boss</a></li>
+<li><a href="cup1d_contaminants_hcd_model_McDonald2005.html">cup1d.contaminants.hcd_model_McDonald2005</a></li>
+<li><a href="cup1d_contaminants_hcd_model_rogers_class.html">cup1d.contaminants.hcd_model_rogers_class</a></li>
+<li><a href="cup1d_contaminants_resolution_class.html">cup1d.contaminants.resolution_class</a></li>
+<li><a href="cup1d_contaminants_si_add.html">cup1d.contaminants.si_add</a></li>
+<li><a href="cup1d_contaminants_si_mult.html">cup1d.contaminants.si_mult</a></li>
+<li><a href="cup1d_contaminants_si_vid.html">cup1d.contaminants.si_vid</a></li>
+<li><a href="cup1d_contaminants_si_vid_final.html">cup1d.contaminants.si_vid_final</a></li>
+<li><a href="cup1d_igm___init__.html">cup1d.igm.__init__</a></li>
+<li><a href="cup1d_igm_base_igm.html">cup1d.igm.base_igm</a></li>
+<li><a href="cup1d_igm_example_igm.html">cup1d.igm.example_igm</a></li>
+<li><a href="cup1d_igm_mean_flux_class.html">cup1d.igm.mean_flux_class</a></li>
+<li><a href="cup1d_igm_pressure_class.html">cup1d.igm.pressure_class</a></li>
+<li><a href="cup1d_igm_thermal_class.html">cup1d.igm.thermal_class</a></li>
+<li><a href="cup1d_likelihood_CAMB_model.html">cup1d.likelihood.CAMB_model</a></li>
+<li><a href="cup1d_likelihood___init__.html">cup1d.likelihood.__init__</a></li>
+<li><a href="cup1d_likelihood_cosmologies.html">cup1d.likelihood.cosmologies</a></li>
+<li><a href="cup1d_likelihood_fitter.html">cup1d.likelihood.fitter</a></li>
+<li><a href="cup1d_likelihood_getdist_plotter.html">cup1d.likelihood.getdist_plotter</a></li>
+<li><a href="cup1d_likelihood_iminuit_minimizer.html">cup1d.likelihood.iminuit_minimizer</a></li>
+<li><a href="cup1d_likelihood_input_pipeline.html">cup1d.likelihood.input_pipeline</a></li>
+<li><a href="cup1d_likelihood_likelihood.html">cup1d.likelihood.likelihood</a></li>
+<li><a href="cup1d_likelihood_likelihood_parameter.html">cup1d.likelihood.likelihood_parameter</a></li>
+<li><a href="cup1d_likelihood_lya_theory.html">cup1d.likelihood.lya_theory</a></li>
+<li><a href="cup1d_likelihood_marg_lya_like.html">cup1d.likelihood.marg_lya_like</a></li>
+<li><a href="cup1d_likelihood_model_contaminants.html">cup1d.likelihood.model_contaminants</a></li>
+<li><a href="cup1d_likelihood_model_igm.html">cup1d.likelihood.model_igm</a></li>
+<li><a href="cup1d_likelihood_model_systematics.html">cup1d.likelihood.model_systematics</a></li>
+<li><a href="cup1d_likelihood_pipeline.html">cup1d.likelihood.pipeline</a></li>
+<li><a href="cup1d_likelihood_pipeline_z.html">cup1d.likelihood.pipeline_z</a></li>
+<li><a href="cup1d_likelihood_plotter.html">cup1d.likelihood.plotter</a></li>
+<li><a href="cup1d_optimize_baseline_ztime.html">cup1d.optimize.baseline_ztime</a></li>
+<li><a href="cup1d_optimize_plot_params_ztime.html">cup1d.optimize.plot_params_ztime</a></li>
+<li><a href="cup1d_optimize_show_results.html">cup1d.optimize.show_results</a></li>
+<li><a href="cup1d_p1ds___init__.html">cup1d.p1ds.__init__</a></li>
+<li><a href="cup1d_p1ds_base_p1d_data.html">cup1d.p1ds.base_p1d_data</a></li>
+<li><a href="cup1d_p1ds_base_p1d_mock.html">cup1d.p1ds.base_p1d_mock</a></li>
+<li><a href="cup1d_p1ds_challenge_DESIY1.html">cup1d.p1ds.challenge_DESIY1</a></li>
+<li><a href="cup1d_p1ds_data_Chabanier2019.html">cup1d.p1ds.data_Chabanier2019</a></li>
+<li><a href="cup1d_p1ds_data_DESIY1.html">cup1d.p1ds.data_DESIY1</a></li>
+<li><a href="cup1d_p1ds_data_Irsic2017.html">cup1d.p1ds.data_Irsic2017</a></li>
+<li><a href="cup1d_p1ds_data_Karacayli2022.html">cup1d.p1ds.data_Karacayli2022</a></li>
+<li><a href="cup1d_p1ds_data_Karacayli2024.html">cup1d.p1ds.data_Karacayli2024</a></li>
+<li><a href="cup1d_p1ds_data_PD2013.html">cup1d.p1ds.data_PD2013</a></li>
+<li><a href="cup1d_p1ds_data_QMLE_Ohio.html">cup1d.p1ds.data_QMLE_Ohio</a></li>
+<li><a href="cup1d_p1ds_data_Ravoux2023.html">cup1d.p1ds.data_Ravoux2023</a></li>
+<li><a href="cup1d_p1ds_data_Walther2018.html">cup1d.p1ds.data_Walther2018</a></li>
+<li><a href="cup1d_p1ds_data_accel2.html">cup1d.p1ds.data_accel2</a></li>
+<li><a href="cup1d_p1ds_data_eBOSS_mock.html">cup1d.p1ds.data_eBOSS_mock</a></li>
+<li><a href="cup1d_p1ds_data_gadget.html">cup1d.p1ds.data_gadget</a></li>
+<li><a href="cup1d_p1ds_data_nyx.html">cup1d.p1ds.data_nyx</a></li>
+<li><a href="cup1d_p1ds_example_p1d.html">cup1d.p1ds.example_p1d</a></li>
+<li><a href="cup1d_p1ds_mock_data.html">cup1d.p1ds.mock_data</a></li>
+<li><a href="cup1d_pipeline_set_archive.html">cup1d.pipeline.set_archive</a></li>
+<li><a href="cup1d_pipeline_set_emulator.html">cup1d.pipeline.set_emulator</a></li>
+<li><a href="cup1d_pipeline_set_like_params.html">cup1d.pipeline.set_like_params</a></li>
+<li><a href="cup1d_pipeline_set_p1d.html">cup1d.pipeline.set_p1d</a></li>
+<li><a href="cup1d_pipeline_set_theory.html">cup1d.pipeline.set_theory</a></li>
+<li><a href="cup1d_planck___init__.html">cup1d.planck.__init__</a></li>
+<li><a href="cup1d_planck_add_linP_params.html">cup1d.planck.add_linP_params</a></li>
+<li><a href="cup1d_planck_planck_chains.html">cup1d.planck.planck_chains</a></li>
+<li><a href="cup1d_plots_and_tables_cosmic_variance.html">cup1d.plots_and_tables.cosmic_variance</a></li>
+<li><a href="cup1d_plots_and_tables_plot_priors_star.html">cup1d.plots_and_tables.plot_priors_star</a></li>
+<li><a href="cup1d_plots_and_tables_plot_table_igm.html">cup1d.plots_and_tables.plot_table_igm</a></li>
+<li><a href="cup1d_plots_and_tables_plots_corner.html">cup1d.plots_and_tables.plots_corner</a></li>
+<li><a href="cup1d_plots_and_tables_table_nuisance.html">cup1d.plots_and_tables.table_nuisance</a></li>
+<li><a href="cup1d_plots_and_tables_table_variations.html">cup1d.plots_and_tables.table_variations</a></li>
+<li><a href="cup1d_utils___init__.html">cup1d.utils.__init__</a></li>
+<li><a href="cup1d_utils_compute_hessian.html">cup1d.utils.compute_hessian</a></li>
+<li><a href="cup1d_utils_fit_ellipse.html">cup1d.utils.fit_ellipse</a></li>
+<li><a href="cup1d_utils_hull.html">cup1d.utils.hull</a></li>
+<li><a href="cup1d_utils_utils.html">cup1d.utils.utils</a></li>
+<li><a href="cup1d_utils_utils_sims.html">cup1d.utils.utils_sims</a></li>
+<li><a href="cup1d_utils_various_dicts.html">cup1d.utils.various_dicts</a></li></ul></nav>
+  </aside>
+  <main>
+    <p class="path">cup1d/contaminants/SN_model.py</p>
+    <h2>cup1d.contaminants.SN_model</h2>
+    <pre>Supernova feedback correction for the 1D Lyman-alpha power spectrum.</pre>
+    <h3>Functions</h3>
+    <p class="missing">No public functions.</p>
+    <h3>Classes</h3>
+    <section class="classdoc"><h3>SN_Model(object)</h3><pre>Multiplicative supernova feedback model following Viel et al. (2013).</pre><section class="member"><h4>set_parameters</h4><code>set_parameters(self)</code><pre>Create likelihood parameters for the SN amplitude.</pre></section>
+<section class="member"><h4>get_Nparam</h4><code>get_Nparam(self)</code><pre>Return the number of free SN parameters.</pre></section>
+<section class="member"><h4>get_SN_damp</h4><code>get_SN_damp(self, z, like_params = [])</code><pre>Evaluate the SN correction amplitude at redshift ``z``.</pre></section>
+<section class="member"><h4>get_contamination</h4><code>get_contamination(self, z, k_Mpc, like_params = [])</code><pre>Return the multiplicative SN correction at ``z`` and ``k_Mpc``.</pre></section>
+<section class="member"><h4>get_parameters</h4><code>get_parameters(self)</code><pre>Return the SN likelihood parameters.</pre></section>
+<section class="member"><h4>get_SN_coeffs</h4><code>get_SN_coeffs(self, like_params = [])</code><pre>Return SN coefficients, updated from likelihood parameters.</pre></section></section>
+  </main>
+</body>
+</html>

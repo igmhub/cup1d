@@ -56,7 +56,7 @@ def read_from_file(diag_cov, input_sim, kmax_kms=None, old_cov=False):
             + input_sim
             + " not included. Available options: ",
             all_input_sim,
-        )
+        ) from None
     else:
         if input_sim == "nyx_central":
             fname = datadir + "/pk_1d_Nyx_emu_fiducial_mock.out"

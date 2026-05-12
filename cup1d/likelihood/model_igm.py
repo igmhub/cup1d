@@ -122,14 +122,14 @@ class IGM:
                 fname
                 + " not found. You can produce it using LaCE"
                 + r" script save_mpg_IGM.py"
-            )
+            ) from None
 
         try:
             fname = os.path.join(os.environ["NYX_PATH"], "IGM_histories.npy")
         except KeyError:
             raise ValueError(
                 "NYX_PATH not set, please set it as explained in the README of the repo"
-            )
+            ) from None
 
         try:
             self.igm_hist_nyx = np.load(fname, allow_pickle=True).item()
@@ -138,7 +138,7 @@ class IGM:
                 fname
                 + " not found. You can produce it using LaCE"
                 + r" script save_nyx_IGM.py"
-            )
+            ) from None
 
         sim_igms = [sim_igm_mF, sim_igm_T, sim_igm_kF]
 

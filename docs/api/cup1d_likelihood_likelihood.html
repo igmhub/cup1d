@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cup1d.likelihood.likelihood - cup1d API</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside>
+    <h1><a href="index.html">cup1d API</a></h1>
+    <nav><ul><li><a href="cup1d___init__.html">cup1d.__init__</a></li>
+<li><a href="cup1d_contaminants_AGN_model.html">cup1d.contaminants.AGN_model</a></li>
+<li><a href="cup1d_contaminants_SN_model.html">cup1d.contaminants.SN_model</a></li>
+<li><a href="cup1d_contaminants_base_contaminants.html">cup1d.contaminants.base_contaminants</a></li>
+<li><a href="cup1d_contaminants_hcd_boss.html">cup1d.contaminants.hcd_boss</a></li>
+<li><a href="cup1d_contaminants_hcd_model_McDonald2005.html">cup1d.contaminants.hcd_model_McDonald2005</a></li>
+<li><a href="cup1d_contaminants_hcd_model_rogers_class.html">cup1d.contaminants.hcd_model_rogers_class</a></li>
+<li><a href="cup1d_contaminants_resolution_class.html">cup1d.contaminants.resolution_class</a></li>
+<li><a href="cup1d_contaminants_si_add.html">cup1d.contaminants.si_add</a></li>
+<li><a href="cup1d_contaminants_si_mult.html">cup1d.contaminants.si_mult</a></li>
+<li><a href="cup1d_contaminants_si_vid.html">cup1d.contaminants.si_vid</a></li>
+<li><a href="cup1d_contaminants_si_vid_final.html">cup1d.contaminants.si_vid_final</a></li>
+<li><a href="cup1d_igm___init__.html">cup1d.igm.__init__</a></li>
+<li><a href="cup1d_igm_base_igm.html">cup1d.igm.base_igm</a></li>
+<li><a href="cup1d_igm_example_igm.html">cup1d.igm.example_igm</a></li>
+<li><a href="cup1d_igm_mean_flux_class.html">cup1d.igm.mean_flux_class</a></li>
+<li><a href="cup1d_igm_pressure_class.html">cup1d.igm.pressure_class</a></li>
+<li><a href="cup1d_igm_thermal_class.html">cup1d.igm.thermal_class</a></li>
+<li><a href="cup1d_likelihood_CAMB_model.html">cup1d.likelihood.CAMB_model</a></li>
+<li><a href="cup1d_likelihood___init__.html">cup1d.likelihood.__init__</a></li>
+<li><a href="cup1d_likelihood_cosmologies.html">cup1d.likelihood.cosmologies</a></li>
+<li><a href="cup1d_likelihood_fitter.html">cup1d.likelihood.fitter</a></li>
+<li><a href="cup1d_likelihood_getdist_plotter.html">cup1d.likelihood.getdist_plotter</a></li>
+<li><a href="cup1d_likelihood_iminuit_minimizer.html">cup1d.likelihood.iminuit_minimizer</a></li>
+<li><a href="cup1d_likelihood_input_pipeline.html">cup1d.likelihood.input_pipeline</a></li>
+<li><a href="cup1d_likelihood_likelihood.html">cup1d.likelihood.likelihood</a></li>
+<li><a href="cup1d_likelihood_likelihood_parameter.html">cup1d.likelihood.likelihood_parameter</a></li>
+<li><a href="cup1d_likelihood_lya_theory.html">cup1d.likelihood.lya_theory</a></li>
+<li><a href="cup1d_likelihood_marg_lya_like.html">cup1d.likelihood.marg_lya_like</a></li>
+<li><a href="cup1d_likelihood_model_contaminants.html">cup1d.likelihood.model_contaminants</a></li>
+<li><a href="cup1d_likelihood_model_igm.html">cup1d.likelihood.model_igm</a></li>
+<li><a href="cup1d_likelihood_model_systematics.html">cup1d.likelihood.model_systematics</a></li>
+<li><a href="cup1d_likelihood_pipeline.html">cup1d.likelihood.pipeline</a></li>
+<li><a href="cup1d_likelihood_pipeline_z.html">cup1d.likelihood.pipeline_z</a></li>
+<li><a href="cup1d_likelihood_plotter.html">cup1d.likelihood.plotter</a></li>
+<li><a href="cup1d_optimize_baseline_ztime.html">cup1d.optimize.baseline_ztime</a></li>
+<li><a href="cup1d_optimize_plot_params_ztime.html">cup1d.optimize.plot_params_ztime</a></li>
+<li><a href="cup1d_optimize_show_results.html">cup1d.optimize.show_results</a></li>
+<li><a href="cup1d_p1ds___init__.html">cup1d.p1ds.__init__</a></li>
+<li><a href="cup1d_p1ds_base_p1d_data.html">cup1d.p1ds.base_p1d_data</a></li>
+<li><a href="cup1d_p1ds_base_p1d_mock.html">cup1d.p1ds.base_p1d_mock</a></li>
+<li><a href="cup1d_p1ds_challenge_DESIY1.html">cup1d.p1ds.challenge_DESIY1</a></li>
+<li><a href="cup1d_p1ds_data_Chabanier2019.html">cup1d.p1ds.data_Chabanier2019</a></li>
+<li><a href="cup1d_p1ds_data_DESIY1.html">cup1d.p1ds.data_DESIY1</a></li>
+<li><a href="cup1d_p1ds_data_Irsic2017.html">cup1d.p1ds.data_Irsic2017</a></li>
+<li><a href="cup1d_p1ds_data_Karacayli2022.html">cup1d.p1ds.data_Karacayli2022</a></li>
+<li><a href="cup1d_p1ds_data_Karacayli2024.html">cup1d.p1ds.data_Karacayli2024</a></li>
+<li><a href="cup1d_p1ds_data_PD2013.html">cup1d.p1ds.data_PD2013</a></li>
+<li><a href="cup1d_p1ds_data_QMLE_Ohio.html">cup1d.p1ds.data_QMLE_Ohio</a></li>
+<li><a href="cup1d_p1ds_data_Ravoux2023.html">cup1d.p1ds.data_Ravoux2023</a></li>
+<li><a href="cup1d_p1ds_data_Walther2018.html">cup1d.p1ds.data_Walther2018</a></li>
+<li><a href="cup1d_p1ds_data_accel2.html">cup1d.p1ds.data_accel2</a></li>
+<li><a href="cup1d_p1ds_data_eBOSS_mock.html">cup1d.p1ds.data_eBOSS_mock</a></li>
+<li><a href="cup1d_p1ds_data_gadget.html">cup1d.p1ds.data_gadget</a></li>
+<li><a href="cup1d_p1ds_data_nyx.html">cup1d.p1ds.data_nyx</a></li>
+<li><a href="cup1d_p1ds_example_p1d.html">cup1d.p1ds.example_p1d</a></li>
+<li><a href="cup1d_p1ds_mock_data.html">cup1d.p1ds.mock_data</a></li>
+<li><a href="cup1d_pipeline_set_archive.html">cup1d.pipeline.set_archive</a></li>
+<li><a href="cup1d_pipeline_set_emulator.html">cup1d.pipeline.set_emulator</a></li>
+<li><a href="cup1d_pipeline_set_like_params.html">cup1d.pipeline.set_like_params</a></li>
+<li><a href="cup1d_pipeline_set_p1d.html">cup1d.pipeline.set_p1d</a></li>
+<li><a href="cup1d_pipeline_set_theory.html">cup1d.pipeline.set_theory</a></li>
+<li><a href="cup1d_planck___init__.html">cup1d.planck.__init__</a></li>
+<li><a href="cup1d_planck_add_linP_params.html">cup1d.planck.add_linP_params</a></li>
+<li><a href="cup1d_planck_planck_chains.html">cup1d.planck.planck_chains</a></li>
+<li><a href="cup1d_plots_and_tables_cosmic_variance.html">cup1d.plots_and_tables.cosmic_variance</a></li>
+<li><a href="cup1d_plots_and_tables_plot_priors_star.html">cup1d.plots_and_tables.plot_priors_star</a></li>
+<li><a href="cup1d_plots_and_tables_plot_table_igm.html">cup1d.plots_and_tables.plot_table_igm</a></li>
+<li><a href="cup1d_plots_and_tables_plots_corner.html">cup1d.plots_and_tables.plots_corner</a></li>
+<li><a href="cup1d_plots_and_tables_table_nuisance.html">cup1d.plots_and_tables.table_nuisance</a></li>
+<li><a href="cup1d_plots_and_tables_table_variations.html">cup1d.plots_and_tables.table_variations</a></li>
+<li><a href="cup1d_utils___init__.html">cup1d.utils.__init__</a></li>
+<li><a href="cup1d_utils_compute_hessian.html">cup1d.utils.compute_hessian</a></li>
+<li><a href="cup1d_utils_fit_ellipse.html">cup1d.utils.fit_ellipse</a></li>
+<li><a href="cup1d_utils_hull.html">cup1d.utils.hull</a></li>
+<li><a href="cup1d_utils_utils.html">cup1d.utils.utils</a></li>
+<li><a href="cup1d_utils_utils_sims.html">cup1d.utils.utils_sims</a></li>
+<li><a href="cup1d_utils_various_dicts.html">cup1d.utils.various_dicts</a></li></ul></nav>
+  </aside>
+  <main>
+    <p class="path">cup1d/likelihood/likelihood.py</p>
+    <h2>cup1d.likelihood.likelihood</h2>
+    <pre>Likelihood module for Lyman-alpha forest analysis.
+
+This module provides the core Likelihood class for Bayesian inference
+of cosmological parameters from Lyman-alpha forest P1D measurements.</pre>
+    <h3>Functions</h3>
+    <section class="member"><h4>get_bin_coverage</h4><code>get_bin_coverage(xmin_o: Array1D, xmax_o: Array1D, xmin_n: Array1D, xmax_n: Array1D) -&gt; Array2D</code><pre>Trick to accelerate rebinning.
+
+Parameters
+----------
+xmin_o : Array1D
+    Original minimum values.
+xmax_o : Array1D
+    Original maximum values.
+xmin_n : Array1D
+    New minimum values.
+xmax_n : Array1D
+    New maximum values.
+
+Returns
+-------
+Array2D
+    Coverage matrix for rebinning.</pre></section>
+<section class="member"><h4>others_igm</h4><code>others_igm()</code><p class="missing">No docstring yet.</p></section>
+    <h3>Classes</h3>
+    <section class="classdoc"><h3>Likelihood(object)</h3><pre>Likelihood class, holds data, theory, and knows about parameters.
+
+Parameters
+----------
+data : Any
+    Data object containing P1D measurements.
+theory : Any
+    Theory object providing model predictions.
+free_param_names : Optional[List[str]], optional
+    List of free parameter names.
+free_param_limits : Optional[List[Tuple[float, float]]], optional
+    List of (min, max) limits for each free parameter.
+verbose : bool, optional
+    Whether to print verbose output.
+cov_factor : float, optional
+    Covariance scaling factor.
+prior_Gauss_rms : Optional[float], optional
+    Gaussian prior RMS.
+emu_cov_type : str, optional
+    Emulator covariance type (&#x27;block&#x27; or &#x27;full&#x27;).
+extra_data : Optional[Any], optional
+    Additional P1D data (e.g., from HIRES).
+min_log_like : float, optional
+    Minimum log-likelihood value.
+args : Optional[Any], optional
+    Additional arguments.
+start_from_min : bool, optional
+    Whether to start from minimum.</pre><section class="member"><h4>rebinning</h4><code>rebinning(self, zs: Array1D, Pk_kms_finek: List[Array1D]) -&gt; List[Array1D]</code><pre>For rebinning Pk predictions.
+
+Parameters
+----------
+zs : Array1D
+    Redshift values.
+Pk_kms_finek : List[Array1D]
+    List of power spectra at fine k bins.
+
+Returns
+-------
+List[Array1D]
+    Rebinned power spectra at original k bins.</pre></section>
+<section class="member"><h4>set_Gauss_priors</h4><code>set_Gauss_priors(self) -&gt; None</code><pre>Sets Gaussian priors on the parameters.</pre></section>
+<section class="member"><h4>set_blinding</h4><code>set_blinding(self) -&gt; None</code><pre>Set the blinding parameters.</pre></section>
+<section class="member"><h4>apply_blinding</h4><code>apply_blinding(self, dict_cosmo: Dict[str, float], conv: bool = False, sample: Optional[str] = None) -&gt; Dict[str, float]</code><pre>Apply blinding to the dict_cosmo.
+
+Parameters
+----------
+dict_cosmo : Dict[str, float]
+    Cosmological parameter dictionary.
+conv : bool, optional
+    Whether to convert parameter names.
+sample : Optional[str], optional
+    Sample name for logging.
+
+Returns
+-------
+Dict[str, float]
+    Blinded cosmological parameters.</pre></section>
+<section class="member"><h4>apply_unblinding</h4><code>apply_unblinding(self, dict_cosmo: Dict[str, float], conv: bool = False) -&gt; Dict[str, float]</code><pre>Apply unblinding to the dict_cosmo.
+
+Parameters
+----------
+dict_cosmo : Dict[str, float]
+    Blinded cosmological parameter dictionary.
+conv : bool, optional
+    Whether to convert parameter names.
+
+Returns
+-------
+Dict[str, float]
+    Unblinded cosmological parameters.</pre></section>
+<section class="member"><h4>set_icov</h4><code>set_icov(self) -&gt; None</code><pre>Computes and sets the inverse covariance matrix for the P1 power spectrum data and full power spectrum data.
+
+This method processes the main dataset (`data`) and any additional dataset (`extra_data`) associated
+with the object. For each dataset:
+- It computes the inverse covariance matrices for the power spectrum (`Pk_kms`) at different redshifts,
+  incorporating an emulator error factor.
+- It computes the inverse covariance matrix for the full power spectrum data, if available.
+
+The resulting inverse covariance matrices are stored in instance attributes.
+
+Attributes Modified:
+--------------------
+icov_Pk_kms : list of numpy.ndarray
+    List of inverse covariance matrices for the power spectrum of the main dataset at different redshifts.
+
+full_icov_Pk_kms : numpy.ndarray or None
+    Inverse covariance matrix for the full power spectrum of the main dataset.
+    Set to `None` if the full power spectrum is not available.
+
+extra_icov_Pk_kms : list of numpy.ndarray
+    List of inverse covariance matrices for the power spectrum of the additional dataset at different redshifts.
+    Set to `None` if `extra_data` is not provided.
+
+extra_full_icov_Pk_kms : numpy.ndarray or None
+    Inverse covariance matrix for the full power spectrum of the additional dataset.
+    Set to `None` if the full power spectrum is not available or if `extra_data` is not provided.
+
+Notes:
+-----
+- The emulator error is added to the diagonal of the covariance matrix before inverting. The error is
+  computed as `(data.Pk_kms * emu_cov_factor) ** 2`, where `emu_cov_factor` is an attribute of the object.
+- The method iterates over redshift bins (`data.z`) and processes the covariance matrices accordingly.
+- If the dataset (`data` or `extra_data`) is `None`, no processing occurs for that dataset.
+
+Raises:
+-------
+ValueError:
+    If the covariance matrix inversion fails (e.g., due to singularity).</pre></section>
+<section class="member"><h4>set_free_parameters</h4><code>set_free_parameters(self, free_param_names: Optional[List[str]], free_param_limits: Optional[List[Tuple[float, float]]]) -&gt; None</code><pre>Setup likelihood parameters that we want to vary.
+
+Parameters
+----------
+free_param_names : Optional[List[str]]
+    List of free parameter names.
+free_param_limits : Optional[List[Tuple[float, float]]]
+    List of (min, max) limits for each parameter.</pre></section>
+<section class="member"><h4>sampling_point_from_parameters</h4><code>sampling_point_from_parameters(self) -&gt; Array1D</code><pre>Translate likelihood parameters to array of values (in cube).
+
+Returns
+-------
+Array1D
+    Parameter values in unit cube space.</pre></section>
+<section class="member"><h4>parameters_from_sampling_point</h4><code>parameters_from_sampling_point(self, values)</code><pre>Translate input array of values (in cube) to likelihood parameters</pre></section>
+<section class="member"><h4>cosmology_params_from_sampling_point</h4><code>cosmology_params_from_sampling_point(self, values)</code><pre>For a given point in sampling space, return a list of
+cosmology params</pre></section>
+<section class="member"><h4>set_truth</h4><code>set_truth(self) -&gt; None</code><pre>Store true cosmology from the simulation used to make mock data.</pre></section>
+<section class="member"><h4>set_fid</h4><code>set_fid(self) -&gt; None</code><pre>Store fiducial cosmology assumed for the fit.</pre></section>
+<section class="member"><h4>get_p1d_kms</h4><code>get_p1d_kms(self, zs: Optional[Array1D] = None, _k_kms: Optional[List[Array1D]] = None, values: Optional[Array1D] = None, return_covar: bool = False, return_blob: bool = False, return_emu_params: bool = False, apply_hull: bool = True, remove: Optional[str] = None) -&gt; Optional[Union[List[Array1D], Tuple]]</code><pre>Compute theoretical prediction for 1D P(k).
+
+Parameters
+----------
+zs : Optional[Array1D], optional
+    Redshift values.
+_k_kms : Optional[List[Array1D]], optional
+    Wavenumber values in km/s.
+values : Optional[Array1D], optional
+    Sampling point in unit cube.
+return_covar : bool, optional
+    Whether to return covariance.
+return_blob : bool, optional
+    Whether to return blob.
+return_emu_params : bool, optional
+    Whether to return emulator parameters.
+apply_hull : bool, optional
+    Whether to apply hull correction.
+remove : Optional[str], optional
+    Parameter to remove from computation.
+
+Returns
+-------
+Optional[Union[List[Array1D], Tuple]]
+    Power spectrum predictions.</pre></section>
+<section class="member"><h4>get_chi2</h4><code>get_chi2(self, values: Optional[Array1D] = None, return_all: bool = False, zmask: Optional[Array1D] = None) -&gt; Union[float, Tuple[float, List[float]]]</code><pre>Compute chi2 using data and theory, without adding emulator covariance.
+
+Parameters
+----------
+values : Optional[Array1D], optional
+    Sampling point in unit cube.
+return_all : bool, optional
+    Whether to return all chi2 values.
+zmask : Optional[Array1D], optional
+    Redshift mask.
+
+Returns
+-------
+Union[float, Tuple[float, List[float]]]
+    Chi2 value(s).</pre></section>
+<section class="member"><h4>get_error</h4><code>get_error(self, p0: Array1D) -&gt; Tuple[Array1D, Array2D]</code><pre>Compute parameter errors from Hessian.
+
+Parameters
+----------
+p0 : Array1D
+    Initial sampling point.
+
+Returns
+-------
+Tuple[Array1D, Array2D]
+    Errors and covariance matrix.</pre></section>
+<section class="member"><h4>get_log_like</h4><code>get_log_like(self, values: Optional[Array1D] = None, ignore_log_det_cov: bool = True, return_blob: bool = False, zmask: Optional[Array1D] = None) -&gt; Union[Tuple[float, float], Tuple[float, float, Tuple]]</code><pre>Compute log(likelihood), including determinant of covariance unless you are setting ignore_log_det_cov=True.
+
+Parameters
+----------
+values : Optional[Array1D], optional
+    Sampling point in unit cube.
+ignore_log_det_cov : bool, optional
+    Whether to ignore log determinant of covariance.
+return_blob : bool, optional
+    Whether to return blob.
+zmask : Optional[Array1D], optional
+    Redshift mask.
+
+Returns
+-------
+Union[Tuple[float, float], Tuple[float, float, Tuple]]
+    Log-likelihood value(s).</pre></section>
+<section class="member"><h4>regulate_log_like</h4><code>regulate_log_like(self, log_like)</code><pre>Make sure that log_like is not NaN, nor tiny</pre></section>
+<section class="member"><h4>compute_log_prob</h4><code>compute_log_prob(self, values, return_blob = False, ignore_log_det_cov = True, zmask = None)</code><pre>Compute log likelihood plus log priors for input values
+- if return_blob==True, it will return also extra information</pre></section>
+<section class="member"><h4>log_prob</h4><code>log_prob(self, values, ignore_log_det_cov = True, zmask = None)</code><pre>Return log likelihood plus log priors</pre></section>
+<section class="member"><h4>log_prob_and_blobs</h4><code>log_prob_and_blobs(self, values, ignore_log_det_cov = True, zmask = None)</code><pre>Function used by emcee to get both log_prob and extra information</pre></section>
+<section class="member"><h4>get_log_prior</h4><code>get_log_prior(self, values: Array1D) -&gt; float</code><pre>Compute logarithm of prior.
+
+Parameters
+----------
+values : Array1D
+    Sampling point in unit cube.
+
+Returns
+-------
+float
+    Log prior value.</pre></section>
+<section class="member"><h4>minus_log_prob</h4><code>minus_log_prob(self, values: Array1D, zmask: Optional[Array1D] = None, ind_fix: Optional[Array1D] = None, pfix: Optional[Array1D] = None) -&gt; float</code><pre>Return minus log_prob (needed to maximise posterior).
+
+Parameters
+----------
+values : Array1D
+    Sampling point in unit cube.
+zmask : Optional[Array1D], optional
+    Redshift mask.
+ind_fix : Optional[Array1D], optional
+    Indices to fix.
+pfix : Optional[Array1D], optional
+    Fixed parameter values.
+
+Returns
+-------
+float
+    Negative log probability.</pre></section>
+<section class="member"><h4>maximise_posterior</h4><code>maximise_posterior(self, initial_values: Optional[Array1D] = None, method: str = &#x27;nelder-mead&#x27;, tol: float = 0.0001) -&gt; Any</code><pre>Run scipy minimizer to find maximum of posterior.
+
+Parameters
+----------
+initial_values : Optional[Array1D], optional
+    Initial sampling point.
+method : str, optional
+    Minimization method.
+tol : float, optional
+    Tolerance for convergence.
+
+Returns
+-------
+Any
+    Minimization result.</pre></section>
+<section class="member"><h4>plot_p1d</h4><code>plot_p1d(self, values = None, plot_every_iz = 1, residuals = False, plot_fname = None, rand_posterior = None, show = True, return_covar = False, print_ratio = False, print_chi2 = True, return_all = False, collapse = False, plot_realizations = True, zmask = None, n_perturb = 0, plot_panels = False, z_at_time = False, fontsize = 20, glob_full = False, fix_cosmo = False, n_param_glob_full = 16, chi2_nozcov = False, ylims = None, store_data = False)</code><pre>Plot P1D in theory vs data. If plot_every_iz &gt;1,
+plot only few redshift bins</pre></section>
+<section class="member"><h4>plot_p1d_errors</h4><code>plot_p1d_errors(self, values = None, plot_fname = None, show = True, zmask = None, z_at_time = False, fontsize = 16)</code><pre>Plot P1D in theory vs data. If plot_every_iz &gt;1,
+plot only few redshift bins</pre></section>
+<section class="member"><h4>plot_hcd_cont</h4><code>plot_hcd_cont(self, zstar = 3, p0 = None, chain = None, save_directory = None, ftsize = 24, nelem = 5000, store_data = False)</code><p class="missing">No docstring yet.</p></section>
+<section class="member"><h4>plot_metal_cont_add</h4><code>plot_metal_cont_add(self, free_params = None, chain = None, save_directory = None, ftsize = 24, nelem = 5000, store_data = False)</code><p class="missing">No docstring yet.</p></section>
+<section class="member"><h4>plot_metal_cont_mult</h4><code>plot_metal_cont_mult(self, free_params = None, chain = None, zstar = 3, save_directory = None, ftsize = 24, nelem = 5000, store_data = False)</code><pre>Plot metallicity contours</pre></section>
+<section class="member"><h4>plot_igm</h4><code>plot_igm(self, cloud = False, chain_uformat = None, free_params = None, save_directory = None, zmask = None, plot_type = &#x27;all&#x27;, plot_fid = True, lab_fid = &#x27;mpg-central&#x27;, ftsize = 18, nelem = 20000, title = &#x27;&#x27;, pre_xylims = True, plot_more_igm = False, variation_label = &#x27;baseline&#x27;, store_data = False)</code><pre>Plot IGM histories</pre></section>
+<section class="member"><h4>plot_cov_terms</h4><code>plot_cov_terms(self, save_directory = None)</code><p class="missing">No docstring yet.</p></section>
+<section class="member"><h4>plot_cov_to_pk</h4><code>plot_cov_to_pk(self, use_pk_smooth = True, fname = None, ftsize = 18, store_data = False)</code><p class="missing">No docstring yet.</p></section>
+<section class="member"><h4>plot_correlation_matrix</h4><code>plot_correlation_matrix(self, save_directory = None)</code><p class="missing">No docstring yet.</p></section>
+<section class="member"><h4>plot_hull_fid</h4><code>plot_hull_fid(self, like_params = [])</code><p class="missing">No docstring yet.</p></section>
+<section class="member"><h4>set_ic_from_z_at_time</h4><code>set_ic_from_z_at_time(self, fname, verbose = True)</code><pre>Set the initial conditions for the likelihood from a fit</pre></section>
+<section class="member"><h4>set_ic_global</h4><code>set_ic_global(self, fname, verbose = True)</code><pre>Set the initial conditions for the likelihood from a fit</pre></section></section>
+  </main>
+</body>
+</html>

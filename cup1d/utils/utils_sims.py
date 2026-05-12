@@ -60,7 +60,7 @@ def get_training_hc(
         )
         raise ValueError(
             f"{cosmo_fname} not found. You can produce it using {script_fname}"
-        )
+        ) from None
 
     # read igm
     try:
@@ -74,7 +74,7 @@ def get_training_hc(
         )
         raise ValueError(
             f"{igm_fname} not found. You can produce it using {script_fname}"
-        )
+        ) from None
 
     # get input parameters to emulator
     if emu_params is None:

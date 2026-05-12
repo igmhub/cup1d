@@ -49,7 +49,7 @@ def load_samples(file_root):
             subprocess.run(["gzip", "-dk", file_root + ".txt.gz"], check=True)
             samples = loadMCSamples(file_root)
         else:
-            raise OSError("No chains found (not even zipped): " + file_root)
+            raise OSError("No chains found (not even zipped): " + file_root) from None
 
     return samples
 

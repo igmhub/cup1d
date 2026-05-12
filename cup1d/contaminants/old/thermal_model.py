@@ -82,7 +82,7 @@ class ThermalModel:
                     fname
                     + " not found. You can produce it using the LaCE"
                     + r" script save_mpg_IGM.py"
-                )
+                ) from None
             else:
                 fid_igm = igm_hist["mpg_central"]
         self.fid_igm = fid_igm

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cup1d.likelihood.fitter - cup1d API</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside>
+    <h1><a href="index.html">cup1d API</a></h1>
+    <nav><ul><li><a href="cup1d___init__.html">cup1d.__init__</a></li>
+<li><a href="cup1d_contaminants_AGN_model.html">cup1d.contaminants.AGN_model</a></li>
+<li><a href="cup1d_contaminants_SN_model.html">cup1d.contaminants.SN_model</a></li>
+<li><a href="cup1d_contaminants_base_contaminants.html">cup1d.contaminants.base_contaminants</a></li>
+<li><a href="cup1d_contaminants_hcd_boss.html">cup1d.contaminants.hcd_boss</a></li>
+<li><a href="cup1d_contaminants_hcd_model_McDonald2005.html">cup1d.contaminants.hcd_model_McDonald2005</a></li>
+<li><a href="cup1d_contaminants_hcd_model_rogers_class.html">cup1d.contaminants.hcd_model_rogers_class</a></li>
+<li><a href="cup1d_contaminants_resolution_class.html">cup1d.contaminants.resolution_class</a></li>
+<li><a href="cup1d_contaminants_si_add.html">cup1d.contaminants.si_add</a></li>
+<li><a href="cup1d_contaminants_si_mult.html">cup1d.contaminants.si_mult</a></li>
+<li><a href="cup1d_contaminants_si_vid.html">cup1d.contaminants.si_vid</a></li>
+<li><a href="cup1d_contaminants_si_vid_final.html">cup1d.contaminants.si_vid_final</a></li>
+<li><a href="cup1d_igm___init__.html">cup1d.igm.__init__</a></li>
+<li><a href="cup1d_igm_base_igm.html">cup1d.igm.base_igm</a></li>
+<li><a href="cup1d_igm_example_igm.html">cup1d.igm.example_igm</a></li>
+<li><a href="cup1d_igm_mean_flux_class.html">cup1d.igm.mean_flux_class</a></li>
+<li><a href="cup1d_igm_pressure_class.html">cup1d.igm.pressure_class</a></li>
+<li><a href="cup1d_igm_thermal_class.html">cup1d.igm.thermal_class</a></li>
+<li><a href="cup1d_likelihood_CAMB_model.html">cup1d.likelihood.CAMB_model</a></li>
+<li><a href="cup1d_likelihood___init__.html">cup1d.likelihood.__init__</a></li>
+<li><a href="cup1d_likelihood_cosmologies.html">cup1d.likelihood.cosmologies</a></li>
+<li><a href="cup1d_likelihood_fitter.html">cup1d.likelihood.fitter</a></li>
+<li><a href="cup1d_likelihood_getdist_plotter.html">cup1d.likelihood.getdist_plotter</a></li>
+<li><a href="cup1d_likelihood_iminuit_minimizer.html">cup1d.likelihood.iminuit_minimizer</a></li>
+<li><a href="cup1d_likelihood_input_pipeline.html">cup1d.likelihood.input_pipeline</a></li>
+<li><a href="cup1d_likelihood_likelihood.html">cup1d.likelihood.likelihood</a></li>
+<li><a href="cup1d_likelihood_likelihood_parameter.html">cup1d.likelihood.likelihood_parameter</a></li>
+<li><a href="cup1d_likelihood_lya_theory.html">cup1d.likelihood.lya_theory</a></li>
+<li><a href="cup1d_likelihood_marg_lya_like.html">cup1d.likelihood.marg_lya_like</a></li>
+<li><a href="cup1d_likelihood_model_contaminants.html">cup1d.likelihood.model_contaminants</a></li>
+<li><a href="cup1d_likelihood_model_igm.html">cup1d.likelihood.model_igm</a></li>
+<li><a href="cup1d_likelihood_model_systematics.html">cup1d.likelihood.model_systematics</a></li>
+<li><a href="cup1d_likelihood_pipeline.html">cup1d.likelihood.pipeline</a></li>
+<li><a href="cup1d_likelihood_pipeline_z.html">cup1d.likelihood.pipeline_z</a></li>
+<li><a href="cup1d_likelihood_plotter.html">cup1d.likelihood.plotter</a></li>
+<li><a href="cup1d_optimize_baseline_ztime.html">cup1d.optimize.baseline_ztime</a></li>
+<li><a href="cup1d_optimize_plot_params_ztime.html">cup1d.optimize.plot_params_ztime</a></li>
+<li><a href="cup1d_optimize_show_results.html">cup1d.optimize.show_results</a></li>
+<li><a href="cup1d_p1ds___init__.html">cup1d.p1ds.__init__</a></li>
+<li><a href="cup1d_p1ds_base_p1d_data.html">cup1d.p1ds.base_p1d_data</a></li>
+<li><a href="cup1d_p1ds_base_p1d_mock.html">cup1d.p1ds.base_p1d_mock</a></li>
+<li><a href="cup1d_p1ds_challenge_DESIY1.html">cup1d.p1ds.challenge_DESIY1</a></li>
+<li><a href="cup1d_p1ds_data_Chabanier2019.html">cup1d.p1ds.data_Chabanier2019</a></li>
+<li><a href="cup1d_p1ds_data_DESIY1.html">cup1d.p1ds.data_DESIY1</a></li>
+<li><a href="cup1d_p1ds_data_Irsic2017.html">cup1d.p1ds.data_Irsic2017</a></li>
+<li><a href="cup1d_p1ds_data_Karacayli2022.html">cup1d.p1ds.data_Karacayli2022</a></li>
+<li><a href="cup1d_p1ds_data_Karacayli2024.html">cup1d.p1ds.data_Karacayli2024</a></li>
+<li><a href="cup1d_p1ds_data_PD2013.html">cup1d.p1ds.data_PD2013</a></li>
+<li><a href="cup1d_p1ds_data_QMLE_Ohio.html">cup1d.p1ds.data_QMLE_Ohio</a></li>
+<li><a href="cup1d_p1ds_data_Ravoux2023.html">cup1d.p1ds.data_Ravoux2023</a></li>
+<li><a href="cup1d_p1ds_data_Walther2018.html">cup1d.p1ds.data_Walther2018</a></li>
+<li><a href="cup1d_p1ds_data_accel2.html">cup1d.p1ds.data_accel2</a></li>
+<li><a href="cup1d_p1ds_data_eBOSS_mock.html">cup1d.p1ds.data_eBOSS_mock</a></li>
+<li><a href="cup1d_p1ds_data_gadget.html">cup1d.p1ds.data_gadget</a></li>
+<li><a href="cup1d_p1ds_data_nyx.html">cup1d.p1ds.data_nyx</a></li>
+<li><a href="cup1d_p1ds_example_p1d.html">cup1d.p1ds.example_p1d</a></li>
+<li><a href="cup1d_p1ds_mock_data.html">cup1d.p1ds.mock_data</a></li>
+<li><a href="cup1d_pipeline_set_archive.html">cup1d.pipeline.set_archive</a></li>
+<li><a href="cup1d_pipeline_set_emulator.html">cup1d.pipeline.set_emulator</a></li>
+<li><a href="cup1d_pipeline_set_like_params.html">cup1d.pipeline.set_like_params</a></li>
+<li><a href="cup1d_pipeline_set_p1d.html">cup1d.pipeline.set_p1d</a></li>
+<li><a href="cup1d_pipeline_set_theory.html">cup1d.pipeline.set_theory</a></li>
+<li><a href="cup1d_planck___init__.html">cup1d.planck.__init__</a></li>
+<li><a href="cup1d_planck_add_linP_params.html">cup1d.planck.add_linP_params</a></li>
+<li><a href="cup1d_planck_planck_chains.html">cup1d.planck.planck_chains</a></li>
+<li><a href="cup1d_plots_and_tables_cosmic_variance.html">cup1d.plots_and_tables.cosmic_variance</a></li>
+<li><a href="cup1d_plots_and_tables_plot_priors_star.html">cup1d.plots_and_tables.plot_priors_star</a></li>
+<li><a href="cup1d_plots_and_tables_plot_table_igm.html">cup1d.plots_and_tables.plot_table_igm</a></li>
+<li><a href="cup1d_plots_and_tables_plots_corner.html">cup1d.plots_and_tables.plots_corner</a></li>
+<li><a href="cup1d_plots_and_tables_table_nuisance.html">cup1d.plots_and_tables.table_nuisance</a></li>
+<li><a href="cup1d_plots_and_tables_table_variations.html">cup1d.plots_and_tables.table_variations</a></li>
+<li><a href="cup1d_utils___init__.html">cup1d.utils.__init__</a></li>
+<li><a href="cup1d_utils_compute_hessian.html">cup1d.utils.compute_hessian</a></li>
+<li><a href="cup1d_utils_fit_ellipse.html">cup1d.utils.fit_ellipse</a></li>
+<li><a href="cup1d_utils_hull.html">cup1d.utils.hull</a></li>
+<li><a href="cup1d_utils_utils.html">cup1d.utils.utils</a></li>
+<li><a href="cup1d_utils_utils_sims.html">cup1d.utils.utils_sims</a></li>
+<li><a href="cup1d_utils_various_dicts.html">cup1d.utils.various_dicts</a></li></ul></nav>
+  </aside>
+  <main>
+    <p class="path">cup1d/likelihood/fitter.py</p>
+    <h2>cup1d.likelihood.fitter</h2>
+    <p class="missing">No docstring yet.</p>
+    <h3>Functions</h3>
+    <p class="missing">No public functions.</p>
+    <h3>Classes</h3>
+    <section class="classdoc"><h3>Fitter(object)</h3><pre>Wrapper around an emcee sampler for Lyman alpha likelihood</pre><section class="member"><h4>set_truth</h4><code>set_truth(self)</code><pre>Set up dictionary with true values of cosmological
+likelihood parameters for plotting purposes</pre></section>
+<section class="member"><h4>run_sampler</h4><code>run_sampler(self, pini = None, log_func = None, zmask = None, timeout = None, force_timeout = False)</code><pre>Set up sampler, run burn in, run chains,
+return chains
+    - timeout is the time in hours to run the
+      sampler for
+    - force_timeout will continue to run the chains
+      until timeout, regardless of convergence</pre></section>
+<section class="member"><h4>run_minimizer</h4><code>run_minimizer(self, log_func_minimize = None, p0 = None, burn_in = False, zmask = None, mask_pars = False, restart = False, neval = 1000, chi2_tol = 0.1)</code><pre>Minimizer</pre></section>
+<section class="member"><h4>run_minimizer_da</h4><code>run_minimizer_da(self, log_func_minimize = None, p0 = None, zmask = None, mask_pars = None, restart = True)</code><pre>Minimizer using dual annealing</pre></section>
+<section class="member"><h4>run_profile</h4><code>run_profile(self, irank, mle_cosmo_cen, shift_cosmo, input_pars, type_minimizer = &#x27;NM&#x27;, verbose = True)</code><pre>Profile likelihood</pre></section>
+<section class="member"><h4>set_mle</h4><code>set_mle(self, mle_cube, mle_chi2)</code><pre>Set the maximum likelihood solution</pre></section>
+<section class="member"><h4>get_cosmo_err</h4><code>get_cosmo_err(self, fun_minimize)</code><pre>Deprecated
+
+Getting errors from Hessian does not work properly, I tested many methods to get the
+Hessian, including Iminuit, and results very bad</pre></section>
+<section class="member"><h4>get_initial_walkers</h4><code>get_initial_walkers(self, pini = None, rms = 0.01)</code><pre>Setup initial states of walkers in sensible points
+-- initial will set a range within unit volume around the
+   fiducial values to initialise walkers (if no prior is used)</pre></section>
+<section class="member"><h4>get_trunc_norm</h4><code>get_trunc_norm(self, mean, n_samples)</code><pre>Wrapper for scipys truncated normal distribution
+Runs in the range [0,1] with a rms specified on initialisation</pre></section>
+<section class="member"><h4>get_chain</h4><code>get_chain(self, cube = True, extra_nburn = 0, delta_lnprob_cut = None, collapse = True)</code><pre>Figure out whether chain has been read from file, or computed.
+- if cube=True, return values in range [0,1]
+- if delta_lnprob_cut is set, use it to remove low-prob islands</pre></section>
+<section class="member"><h4>get_all_params</h4><code>get_all_params(self, delta_lnprob_cut = None, extra_nburn = 0, collapse = True)</code><pre>Get a merged array of both sampled and derived parameters
+returns a 2D array of all parameters, and an ordered list of
+the LaTeX strings for each.
+    - if delta_lnprob_cut is set, keep only high-prob points</pre></section>
+<section class="member"><h4>get_best_fit</h4><code>get_best_fit(self, delta_lnprob_cut = None, stat_best_fit = &#x27;mean&#x27;)</code><pre>Return an array of best fit values (mean) from the MCMC chain,
+in unit likelihood space.
+    - if delta_lnprob_cut is set, use only high-prob points</pre></section>
+<section class="member"><h4>save_fitter</h4><code>save_fitter(self, save_chains = False)</code><pre>Write flat chain to file</pre></section></section>
+  </main>
+</body>
+</html>
