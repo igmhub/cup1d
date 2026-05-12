@@ -1,7 +1,6 @@
-import os
 import numpy as np
 
-from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_PD2013(BaseDataP1D):
@@ -48,8 +47,8 @@ def read_FFT_from_file(datadir, add_syst=True):
     # store P1D, statistical error, noise power, metal power and systematic
     Pk = np.reshape(inPk, [Nz, Nk])
     Pkstat = np.reshape(inPkstat, [Nz, Nk])
-    Pknoise = np.reshape(inPknoise, [Nz, Nk])
-    Pkmetal = np.reshape(inPkmetal, [Nz, Nk])
+    np.reshape(inPknoise, [Nz, Nk])
+    np.reshape(inPkmetal, [Nz, Nk])
     Pksyst = np.reshape(inPksyst, [Nz, Nk])
 
     # now read correlation matrices and compute covariance matrices
@@ -71,7 +70,7 @@ def read_FFT_from_file(datadir, add_syst=True):
 def read_like_from_file(datadir, add_syst=True):
     """Setup measurement using likelihood approach"""
 
-    p1d_file = datadir + "/table5a.dat"
+    datadir + "/table5a.dat"
     raise ValueError("implement _setup_like to read likelihood P1D")
 
 

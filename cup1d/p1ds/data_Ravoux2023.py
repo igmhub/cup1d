@@ -1,5 +1,5 @@
+
 import numpy as np
-import os
 
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
 

@@ -6,17 +6,15 @@ import time
 import numpy as np
 from mpi4py import MPI
 
-from cup1d.pipeline.set_theory import set_theory
+from cup1d.likelihood.fitter import Fitter
+from cup1d.likelihood.input_pipeline import Args
+from cup1d.likelihood.likelihood import Likelihood
+from cup1d.likelihood.plotter import Plotter
 from cup1d.pipeline.set_emulator import set_emulator
 from cup1d.pipeline.set_like_params import set_free_like_parameters
 from cup1d.pipeline.set_p1d import set_P1D
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.likelihood import Likelihood
-from cup1d.likelihood.fitter import Fitter
-from cup1d.likelihood.plotter import Plotter
-from cup1d.utils.utils import get_path_repo
-from cup1d.utils.utils import create_print_function
-from cup1d.utils.utils import split_string
+from cup1d.pipeline.set_theory import set_theory
+from cup1d.utils.utils import create_print_function, get_path_repo, split_string
 
 
 def get_grid_large(nelem):
@@ -35,7 +33,7 @@ def get_grid_large(nelem):
     for ii, key in enumerate(data_cosmo):
         try:
             int(key[-1])
-        except:
+        except Exception:
             continue
 
         pars[ii, 0] = data_cosmo[key]["star_params"]["Delta2_star"]
@@ -48,7 +46,7 @@ def get_grid_large(nelem):
     return xgrid, ygrid
 
 
-class Pipeline(object):
+class Pipeline:
     """Coordinate emulator setup, data loading, fitting, and plotting."""
 
     def __init__(
@@ -234,7 +232,7 @@ class Pipeline(object):
         size = comm.Get_size()
 
         if rank == 0:
-            start = time.time()
+            time.time()
             self.fprint("----------")
             self.fprint("Running minimizer")
             # start fit from initial values
@@ -287,7 +285,7 @@ class Pipeline(object):
 
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
-        size = comm.Get_size()
+        comm.Get_size()
 
         if rank == 0:
             start = time.time()

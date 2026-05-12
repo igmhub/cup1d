@@ -1,12 +1,13 @@
-import numpy as np
-import copy
 import os
+
 import lace
+import numpy as np
 from scipy.interpolate import interp1d
+
 from cup1d.likelihood import likelihood_parameter
 
 
-class MeanFluxModel(object):
+class MeanFluxModel:
     """Use a handful of parameters to model the mean transmitted flux fraction
     (or mean flux) as a function of redshift.
      For now, we use a polynomial to describe log(tau_eff) around z_tau.
@@ -22,10 +23,12 @@ class MeanFluxModel(object):
         smoothing=False,
         priors=None,
         Gauss_priors=None,
-        fid_value=[0, 0, 0],
+        fid_value=None,
     ):
         """Construct model as a rescaling around a fiducial mean flux"""
 
+        if fid_value is None:
+            fid_value = [0, 0, 0]
         self.z_tau = z_tau
         if ln_tau_coeff:
             assert free_param_names is None
@@ -47,12 +50,12 @@ class MeanFluxModel(object):
             fname = repo + "data/sim_suites/Australia20/IGM_histories.npy"
             try:
                 igm_hist = np.load(fname, allow_pickle=True).item()
-            except:
+            except Exception:
                 raise ValueError(
                     fname
                     + " not found. You can produce it using the LaCE"
                     + r" script save_mpg_IGM.py"
-                )
+                ) from None
             else:
                 fid_igm = igm_hist["mpg_central"]
         self.fid_igm = fid_igm
@@ -63,7 +66,7 @@ class MeanFluxModel(object):
         elif np.sum(mask) != fid_igm["tau_eff"].shape[0]:
             print(
                 "The fiducial value of tau_eff is zero for z: ",
-                fid_igm["z_tau"][mask == False],
+                fid_igm["z_tau"][not mask],
             )
 
         # fit power law to fiducial data to reduce noise
@@ -139,7 +142,7 @@ class MeanFluxModel(object):
         assert len(self.ln_tau_coeff) == len(self.params), "size mismatch"
         return len(self.ln_tau_coeff)
 
-    def power_law_scaling(self, z, like_params=[], over_coeff=None):
+    def power_law_scaling(self, z, like_params=None, over_coeff=None):
         """Power law rescaling around z_tau"""
 
         if over_coeff is not None:
@@ -152,14 +155,14 @@ class MeanFluxModel(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_tau_eff(self, z, like_params=[], over_coeff=None):
+    def get_tau_eff(self, z, like_params=None, over_coeff=None):
         """Effective optical depth at the input redshift"""
         tau_eff = self.power_law_scaling(
             z, like_params=like_params, over_coeff=over_coeff
         ) * self.fid_tau_interp(z)
         return tau_eff
 
-    def get_mean_flux(self, z, like_params=[], over_coeff=None):
+    def get_mean_flux(self, z, like_params=None, over_coeff=None):
         """Mean transmitted flux fraction at the input redshift"""
         tau = self.get_tau_eff(
             z, like_params=like_params, over_coeff=over_coeff
@@ -220,7 +223,7 @@ class MeanFluxModel(object):
         """Return likelihood parameters for the mean flux model"""
         return self.params
 
-    def get_tau_coeffs(self, like_params=[]):
+    def get_tau_coeffs(self, like_params=None):
         """Return list of mean flux coefficients"""
 
         if like_params:

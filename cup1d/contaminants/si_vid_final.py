@@ -162,7 +162,7 @@ class SiVid(Contaminant):
             Gauss_priors=Gauss_priors,
         )
 
-    def get_contamination(self, z, k_kms, mF, like_params=[], remove=None):
+    def get_contamination(self, z, k_kms, mF, like_params=None, remove=None):
         """Return the multiplicative Ma et al. SiIII correction.
 
         Parameters
@@ -197,9 +197,9 @@ class SiVid(Contaminant):
         # for key in vals:
         #     print(key, vals[key])
 
-        ra3 = self.rat["SiIIa_SiIII"]
-        rb3 = self.rat["SiIIb_SiIII"]
-        rc3 = self.rat["SiIIc_SiIII"]
+        self.rat["SiIIa_SiIII"]
+        self.rat["SiIIb_SiIII"]
+        self.rat["SiIIc_SiIII"]
 
         self.off = {
             "SiIII_Lya": 1,

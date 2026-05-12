@@ -1,7 +1,6 @@
 """Helpers for adding linear-power parameters to cosmological samples."""
 
-from lace.cosmo import camb_cosmo
-from lace.cosmo import fit_linP
+from lace.cosmo import camb_cosmo, fit_linP
 
 
 def get_linP_params(

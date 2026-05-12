@@ -1,9 +1,8 @@
-import os
 
-import pandas
 import numpy as np
+import pandas
 
-from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Karacayli2024(BaseDataP1D):
@@ -52,7 +51,7 @@ def read_from_file(diag_cov, kmax_nyq):
     Nk = kbins.size
     Nz = zbins.size
 
-    print("Nz = {} , Nk = {}".format(Nz, Nk))
+    print(f"Nz = {Nz} , Nk = {Nk}")
     Pk = []
     cov = []
     for iz in range(Nz):

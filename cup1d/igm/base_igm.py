@@ -7,16 +7,17 @@ temperature, pressure, and mean flux evolution.
 
 from __future__ import annotations
 
+from typing import Any, Union
+
 import numpy as np
 import numpy.typing as npt
 from scipy.interpolate import (
-    make_smoothing_spline,
-    make_interp_spline,
     interp1d,
+    make_interp_spline,
+    make_smoothing_spline,
 )
-from cup1d.likelihood import likelihood_parameter
-from typing import Optional, List, Dict, Any, Tuple, Union
 
+from cup1d.likelihood import likelihood_parameter
 
 # Type aliases
 Array1D = npt.NDArray[np.float64]
@@ -24,7 +25,7 @@ Array2D = npt.NDArray[np.float64]
 Float = Union[float, int]
 
 
-class IGM_model(object):
+class IGM_model:
     """Base model for redshift-dependent IGM nuisance parameters.
 
     Parameters
@@ -51,15 +52,15 @@ class IGM_model(object):
 
     def __init__(
         self,
-        coeffs: Optional[Dict[str, float]] = None,
-        list_coeffs: Optional[List[str]] = None,
-        prop_coeffs: Optional[Dict[str, Any]] = None,
-        free_param_names: Optional[List[str]] = None,
+        coeffs: dict[str, float] | None = None,
+        list_coeffs: list[str] | None = None,
+        prop_coeffs: dict[str, Any] | None = None,
+        free_param_names: list[str] | None = None,
         z_0: float = 3.0,
-        fid_igm: Optional[Dict[str, Array1D]] = None,
-        fid_vals: Optional[Dict[str, Array1D]] = None,
-        flat_priors: Optional[Dict[str, Tuple[float, float]]] = None,
-        Gauss_priors: Optional[Dict[str, float]] = None,
+        fid_igm: dict[str, Array1D] | None = None,
+        fid_vals: dict[str, Array1D] | None = None,
+        flat_priors: dict[str, tuple[float, float]] | None = None,
+        Gauss_priors: dict[str, float] | None = None,
     ) -> None:
         # store input data
         self.list_coeffs = list_coeffs
@@ -75,17 +76,17 @@ class IGM_model(object):
             try:
                 self.prop_coeffs[key + "_otype"] = prop_coeffs[key + "_otype"]
             except KeyError:
-                raise ValueError("must specify otype in prop_coeffs for:", key)
+                raise ValueError("must specify otype in prop_coeffs for:", key) from None
             try:
                 self.prop_coeffs[key + "_ztype"] = prop_coeffs[key + "_ztype"]
             except KeyError:
-                raise ValueError("must specify ztype in prop_coeffs for:", key)
+                raise ValueError("must specify ztype in prop_coeffs for:", key) from None
 
             if prop_coeffs[key + "_ztype"].startswith("interp"):
                 try:
                     self.prop_coeffs[key + "_znodes"] = prop_coeffs[key + "_znodes"]
                 except KeyError:
-                    raise ValueError("must specify znodes in prop_coeffs for:", key)
+                    raise ValueError("must specify znodes in prop_coeffs for:", key) from None
 
         self.coeffs = {}
         if coeffs is not None:
@@ -128,7 +129,7 @@ class IGM_model(object):
 
     def process_igm(
         self,
-        fid_igm: Dict[str, Array1D],
+        fid_igm: dict[str, Array1D],
         name_coeff: str,
         order_extra: int = 2,
         smoothing: bool = True,
@@ -166,7 +167,7 @@ class IGM_model(object):
                 "The fiducial value of",
                 name_coeff,
                 " is zero for z: ",
-                fid_igm[name_coeff + "_z"][mask == False],
+                fid_igm[name_coeff + "_z"][not mask],
             )
         # print(name_coeff, fid_igm[name_coeff], fid_igm[name_coeff][mask])
 
@@ -290,7 +291,7 @@ class IGM_model(object):
             raise ValueError("mismatch between number of params and coeffs")
         return n_params
 
-    def get_value(self, name: str, z: float, like_params: List = None) -> float:
+    def get_value(self, name: str, z: float, like_params: list = None) -> float:
         """Evaluate one IGM coefficient at redshift ``z``.
 
         The returned value is either the evolved coefficient itself or its
@@ -338,7 +339,7 @@ class IGM_model(object):
         """Return all likelihood parameters."""
         return self.params
 
-    def get_coeff(self, name, like_params=[]):
+    def get_coeff(self, name, like_params=None):
         """Return coefficients for ``name``, optionally updated from parameters."""
         if like_params:
             coeff = self.coeffs[name].copy()
@@ -416,8 +417,8 @@ class IGM_model(object):
             ax = [ax]
 
         try:
-            len_p = len(like_params[0])
-        except:
+            len(like_params[0])
+        except Exception:
             z_at_time = False
         else:
             z_at_time = True

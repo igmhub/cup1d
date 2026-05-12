@@ -72,7 +72,7 @@ class HCD_BOSS(Contaminant):
             Gauss_priors=Gauss_priors,
         )
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Return the multiplicative HCD correction for each redshift bin."""
 
         vals = {}
@@ -91,7 +91,7 @@ class HCD_BOSS(Contaminant):
 
         dla_corr = []
         for iz in range(len(z)):
-            cont = fun_cont(vals[f"HCD_damp1"][iz], k_kms[iz])
+            cont = fun_cont(vals["HCD_damp1"][iz], k_kms[iz])
             dla_corr.append(cont)
 
         if len(z) == 1:

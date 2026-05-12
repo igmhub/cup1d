@@ -5,13 +5,13 @@ import numpy as np
 from cup1d.likelihood import likelihood_parameter
 
 
-class HCD_Model_McDonald2005(object):
+class HCD_Model_McDonald2005:
     """Multiplicative HCD correction following McDonald et al. (2005)."""
 
     def __init__(
         self,
         z_0=3.0,
-        fid_A_damp=[0, -6],
+        fid_A_damp=None,
         null_value=-6,
         ln_A_damp_coeff=None,
         free_param_names=None,
@@ -33,6 +33,8 @@ class HCD_Model_McDonald2005(object):
             Likelihood parameter names used to decide how many HCD amplitude
             coefficients are varied.
         """
+        if fid_A_damp is None:
+            fid_A_damp = [0, -6]
         self.z_0 = z_0
         self.null_value = null_value
         if fid_A_damp is None:
@@ -88,7 +90,7 @@ class HCD_Model_McDonald2005(object):
         assert len(self.ln_A_damp_coeff) == len(self.params), "size mismatch"
         return len(self.ln_A_damp_coeff)
 
-    def get_A_damp(self, z, like_params=[]):
+    def get_A_damp(self, z, like_params=None):
         """Evaluate the HCD damping amplitude at redshift ``z``."""
 
         ln_A_damp_coeff = self.get_A_damp_coeffs(like_params=like_params)
@@ -100,7 +102,7 @@ class HCD_Model_McDonald2005(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Return the multiplicative HCD correction at ``z`` and ``k_kms``."""
         A_damp = self.get_A_damp(z, like_params=like_params)
         if A_damp == 0:
@@ -115,7 +117,7 @@ class HCD_Model_McDonald2005(object):
         """Return the HCD likelihood parameters."""
         return self.params
 
-    def get_A_damp_coeffs(self, like_params=[]):
+    def get_A_damp_coeffs(self, like_params=None):
         """Return HCD coefficients, updated from likelihood parameters."""
 
         if like_params:

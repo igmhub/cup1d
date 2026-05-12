@@ -1,13 +1,12 @@
 """CAMB-backed cosmology model used by the Lyman-alpha theory layer."""
 
 import numpy as np
-from lace.cosmo import camb_cosmo
-from lace.cosmo import fit_linP
+from lace.cosmo import camb_cosmo, fit_linP
 
 from cup1d.likelihood import likelihood_parameter
 
 
-class CAMBModel(object):
+class CAMBModel:
     """Interface between a CAMB cosmology object and :class:`Theory`."""
 
     def __init__(

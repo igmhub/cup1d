@@ -1,6 +1,5 @@
 """Gaussian marginalized Lyman-alpha constraints in star-parameter space."""
 
-import numpy as np
 
 
 def gaussian_chi2(neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r):

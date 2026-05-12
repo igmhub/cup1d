@@ -91,7 +91,7 @@ class Resolution(Contaminant):
             Gauss_priors=Gauss_priors,
         )
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Return the multiplicative resolution correction for each redshift."""
 
         vals = {}

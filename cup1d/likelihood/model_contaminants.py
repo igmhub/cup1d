@@ -3,18 +3,16 @@
 import numpy as np
 
 from cup1d.contaminants import (
+    hcd_boss,
     hcd_model_McDonald2005,
     hcd_model_rogers_class,
-    hcd_boss,
+    si_add,
     si_mult,
     si_vid_final,
-    si_add,
-    SN_model,
-    AGN_model,
 )
 
 
-class Contaminants(object):
+class Contaminants:
     """Bundle metal, HCD, and optional feedback contaminant models."""
 
     def __init__(
@@ -174,7 +172,7 @@ class Contaminants(object):
 
     #     return dict_out
 
-    def get_contamination(self, z, k_kms, mF, M_of_z, like_params=[], remove=None):
+    def get_contamination(self, z, k_kms, mF, M_of_z, like_params=None, remove=None):
         """Return all contaminant corrections needed by the likelihood."""
         # include multiplicative metal contamination
         cont_all = {}

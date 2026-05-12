@@ -1,12 +1,15 @@
 import inspect
-import matplotlib.pyplot as plt
-from corner import corner
-import numpy as np
 import os
+
+import matplotlib.pyplot as plt
+import numpy as np
+from corner import corner
+
+from cup1d.likelihood.fitter import EmceeSampler
 from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
 
 
-class Plotter(object):
+class Plotter:
     def __init__(
         self,
         fitter=None,
@@ -14,8 +17,10 @@ class Plotter(object):
         fname_chain=None,
         zmask=None,
         fname_priors=None,
-        args={},
+        args=None,
     ):
+        if args is None:
+            args = {}
         self.zmask = zmask
         if fitter is not None:
             self.fitter = fitter
@@ -44,7 +49,7 @@ class Plotter(object):
             for param in dict_input:
                 try:
                     setattr(args, param, dict_input[param])
-                except:
+                except Exception:
                     print("Not found in args", param)
                     pass
 
@@ -88,7 +93,9 @@ class Plotter(object):
         else:
             self.fitter.chain_priors = None
 
-    def plots_minimizer(self, zrange=[0, 10], zmask=None):
+    def plots_minimizer(self, zrange=None, zmask=None):
+        if zrange is None:
+            zrange = [0, 10]
         if self.zmask is not None:
             zmask = self.zmask
             zrange = [np.min(zmask) - 0.01, np.max(zmask) + 0.01]
@@ -114,7 +121,7 @@ class Plotter(object):
         plt.close()
 
         # plot cosmology
-        if self.fitter.fix_cosmology == False:
+        if not self.fitter.fix_cosmology:
             self.plot_mle_cosmo()
             plt.close()
 
@@ -159,7 +166,7 @@ class Plotter(object):
         plt.close()
 
         # plot cosmology
-        if self.fitter.fix_cosmology == False:
+        if not self.fitter.fix_cosmology:
             self.plot_corner(only_cosmo=True, only_cosmo_lims=False)
             plt.close()
             self.plot_corner(only_cosmo=True, only_cosmo_lims=True)
@@ -205,7 +212,7 @@ class Plotter(object):
         try:
             data_cosmo = np.load(fname, allow_pickle=True).item()
         except FileNotFoundError:
-            raise ValueError(f"{fname} not found")
+            raise ValueError(f"{fname} not found") from None
 
         labs = []
         delta2_star = np.zeros(len(data_cosmo))
@@ -343,8 +350,8 @@ class Plotter(object):
                     plot all (including derived)
         - if delta_lnprob_cut is set, keep only high-prob points"""
 
-        from chainconsumer import ChainConsumer, Chain, Truth
         import pandas as pd
+        from chainconsumer import Chain, ChainConsumer, Truth
 
         params_plot, strings_plot, _ = self.fitter.get_all_params(
             delta_lnprob_cut=delta_lnprob_cut, extra_nburn=extra_nburn
@@ -387,7 +394,7 @@ class Plotter(object):
             )
         )
 
-        fig = c.plotter.plot(figsize=(12, 12))
+        c.plotter.plot(figsize=(12, 12))
 
         if self.save_directory is not None:
             if only_cosmo:
@@ -422,8 +429,8 @@ class Plotter(object):
             diff = np.max(params_plot, axis=0) - np.min(params_plot, axis=0)
             yesplot = np.array(strings_plot)[diff != 0]
 
-        truth = np.zeros((len(yesplot)))
-        MLE = np.zeros((len(yesplot)))
+        truth = np.zeros(len(yesplot))
+        MLE = np.zeros(len(yesplot))
         chain = np.zeros((params_plot.shape[0], len(yesplot)))
         for ii, par in enumerate(yesplot):
             _ = np.argwhere(np.array(strings_plot) == par)[0, 0]
@@ -462,7 +469,7 @@ class Plotter(object):
                     _ = np.argwhere(
                         np.array(self.fitter.chain_priors_names) == par
                     )[0, 0]
-                except:
+                except Exception:
                     continue
 
                 pars = self.fitter.chain_priors[:, :, _].reshape(-1)
@@ -472,7 +479,7 @@ class Plotter(object):
 
             corner(
                 chain_priors,
-                weights=np.ones((chain_priors.shape[0])) * 1e-10,
+                weights=np.ones(chain_priors.shape[0]) * 1e-10,
                 fig=fig,
                 levels=(0.9999,),
                 plot_datapoints=False,
@@ -721,8 +728,8 @@ class Plotter(object):
             "kF": r"$k_F$",
         }
 
-        truth = np.zeros((len(yesplot)))
-        MLE = np.zeros((len(yesplot)))
+        truth = np.zeros(len(yesplot))
+        MLE = np.zeros(len(yesplot))
         chain = np.zeros((params_plot.shape[0], len(yesplot)))
 
         for ii, par in enumerate(yesplot):
@@ -778,7 +785,7 @@ class Plotter(object):
                     _ = np.argwhere(
                         np.array(self.fitter.chain_priors_names) == par
                     )[0, 0]
-                except:
+                except Exception:
                     print("not found parameter", par)
                     continue
 
@@ -800,7 +807,7 @@ class Plotter(object):
 
             corner(
                 chain_priors,
-                weights=np.ones((chain_priors.shape[0])) * 1e-10,
+                weights=np.ones(chain_priors.shape[0]) * 1e-10,
                 fig=fig,
                 levels=(0.9999,),
                 plot_datapoints=False,
@@ -949,7 +956,7 @@ class Plotter(object):
             values = self.mle_values
 
         if plot_panels:
-            if residuals == False:
+            if not residuals:
                 plot_panels = False
 
         if self.save_directory is not None:
@@ -1126,7 +1133,7 @@ class Plotter(object):
                         file extension (i.e. .pdf, .png etc)
          - if delta_lnprob_cut is set, keep only high-prob points"""
 
-        from chainconsumer import ChainConsumer, Chain, Truth
+        from chainconsumer import ChainConsumer
 
         assert len(chain_files) == len(labels)
 
@@ -1157,7 +1164,7 @@ class Plotter(object):
             serif=serif,
         )
 
-        if plot_params == None:
+        if plot_params is None:
             fig = c.plotter.plot(figsize=(15, 15), truth=truth_dict)
         else:
             ## From plot_param list, build list of parameter
@@ -1171,7 +1178,7 @@ class Plotter(object):
                 truth=truth_dict,
             )
         if save_string:
-            fig.savefig("%s" % save_string)
+            fig.savefig(f"{save_string}")
         fig.show()
 
         return
@@ -1181,10 +1188,12 @@ class Plotter(object):
         plot_every_iz=1,
         smooth_k=False,
         plot_data=False,
-        zrange=[0, 10],
+        zrange=None,
     ):
         """Function to plot the HCD contamination"""
 
+        if zrange is None:
+            zrange = [0, 10]
         if plot_data:
             dict_data = self.mle_results
         else:
@@ -1251,12 +1260,14 @@ class Plotter(object):
         stat_best_fit="mle",
         smooth_k=False,
         plot_data=False,
-        zrange=[0, 10],
+        zrange=None,
         mle_results=None,
         plot_panels=True,
     ):
         """Function to plot metal contamination"""
 
+        if zrange is None:
+            zrange = [0, 10]
         if plot_data:
             if mle_results is not None:
                 dict_data = mle_results
@@ -1339,10 +1350,12 @@ class Plotter(object):
         plot_every_iz=1,
         smooth_k=False,
         plot_data=False,
-        zrange=[0, 10],
+        zrange=None,
     ):
         """Function to plot AGN contamination"""
 
+        if zrange is None:
+            zrange = [0, 10]
         if plot_data:
             dict_data = self.mle_results
         else:
@@ -1386,10 +1399,12 @@ class Plotter(object):
         plot_every_iz=1,
         smooth_k=False,
         plot_data=False,
-        zrange=[0, 10],
+        zrange=None,
     ):
         """Function to plot AGN contamination"""
 
+        if zrange is None:
+            zrange = [0, 10]
         if plot_data:
             dict_data = self.mle_results
         else:
@@ -1553,7 +1568,7 @@ class Plotter(object):
                                 == key
                             )[0, 0]
                             _values[ind] = -11.5
-                        except:
+                        except Exception:
                             pass
 
             remove = {
@@ -1571,7 +1586,7 @@ class Plotter(object):
             for par in conts:
                 try:
                     remove[par] = 1
-                except:
+                except Exception:
                     pass
 
             cont = self.fitter.like.get_p1d_kms(
@@ -1790,7 +1805,7 @@ class Plotter(object):
                                 == key
                             )[0, 0]
                             _values[ind] = -11.5
-                        except:
+                        except Exception:
                             pass
 
             remove = {
@@ -1808,7 +1823,7 @@ class Plotter(object):
             for par in conts:
                 try:
                     remove[par] = 1
-                except:
+                except Exception:
                     pass
 
             cont = self.fitter.like.get_p1d_kms(
@@ -1988,7 +2003,7 @@ class Plotter(object):
                         == "HCD_const_0"
                     )[0, 0]
                     _values[ind] = 1
-                except:
+                except Exception:
                     pass
 
             if "res" in all_contaminants:
@@ -2056,7 +2071,7 @@ class Plotter(object):
                         == "HCD_const_0"
                     )[0, 0]
                     _values[ind] = 1
-                except:
+                except Exception:
                     pass
             if "res" in conts:
                 ind = np.argwhere(
@@ -2182,8 +2197,8 @@ def plot_cov(
 
     try:
         hdu = fits.open(p1d_fname)
-    except:
-        raise ValueError("Cannot read: ", p1d_fname)
+    except Exception:
+        raise ValueError("Cannot read: ", p1d_fname) from None
 
     if "fft" in p1d_fname:
         type_measurement = "FFT"

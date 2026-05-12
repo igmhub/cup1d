@@ -1,4 +1,5 @@
 import numpy as np
+
 from cup1d.nuisance.base_contaminants import Contaminant
 
 
@@ -109,7 +110,7 @@ class MetalModel(Contaminant):
             Gauss_priors=Gauss_priors,
         )
 
-    def get_contamination(self, z, k_kms, mF, like_params=[], remove=None):
+    def get_contamination(self, z, k_kms, mF, like_params=None, remove=None):
         """Additive contamination at a given z and k (in s/km)."""
 
         vals = {}

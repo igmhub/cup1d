@@ -43,13 +43,13 @@ def load_samples(file_root):
 
     try:
         samples = loadMCSamples(file_root)
-    except IOError:
+    except OSError:
         if os.path.exists(file_root + ".txt.gz"):
             print("unzip chain", file_root)
             subprocess.run(["gzip", "-dk", file_root + ".txt.gz"], check=True)
             samples = loadMCSamples(file_root)
         else:
-            raise IOError("No chains found (not even zipped): " + file_root)
+            raise OSError("No chains found (not even zipped): " + file_root)
 
     return samples
 
@@ -179,8 +179,8 @@ def get_cobaya(
 ):
     """Load a Cobaya chain and convert it to GetDist samples."""
 
-    from cobaya.yaml import yaml_load_file
     from cobaya import load_samples
+    from cobaya.yaml import yaml_load_file
 
     if linP_tag is not None:
         folder = os.path.join(root_dir, model, data, linP_tag + "/")

@@ -5,13 +5,13 @@ import numpy as np
 from cup1d.likelihood import likelihood_parameter
 
 
-class SN_Model(object):
+class SN_Model:
     """Multiplicative supernova feedback model following Viel et al. (2013)."""
 
     def __init__(
         self,
         z_0=3.0,
-        fid_value=[0, -4],
+        fid_value=None,
         null_value=-4,
         ln_SN_coeff=None,
         free_param_names=None,
@@ -34,6 +34,8 @@ class SN_Model(object):
             Likelihood parameter names used to decide how many SN coefficients
             are varied.
         """
+        if fid_value is None:
+            fid_value = [0, -4]
         self.z_0 = z_0
         if fid_value is None:
             fid_value = [0, -4]
@@ -87,7 +89,7 @@ class SN_Model(object):
         assert len(self.ln_SN_coeff) == len(self.params), "size mismatch"
         return len(self.ln_SN_coeff)
 
-    def get_SN_damp(self, z, like_params=[]):
+    def get_SN_damp(self, z, like_params=None):
         """Evaluate the SN correction amplitude at redshift ``z``."""
 
         ln_SN_coeff = self.get_SN_coeffs(like_params=like_params)
@@ -99,7 +101,7 @@ class SN_Model(object):
             ln_out = ln_poly(xz)
             return np.exp(ln_out)
 
-    def get_contamination(self, z, k_Mpc, like_params=[]):
+    def get_contamination(self, z, k_Mpc, like_params=None):
         """Return the multiplicative SN correction at ``z`` and ``k_Mpc``."""
         SN_damp = self.get_SN_damp(z, like_params=like_params)
         if SN_damp == 0:
@@ -130,7 +132,7 @@ class SN_Model(object):
         """Return the SN likelihood parameters."""
         return self.params
 
-    def get_SN_coeffs(self, like_params=[]):
+    def get_SN_coeffs(self, like_params=None):
         """Return SN coefficients, updated from likelihood parameters."""
 
         if like_params:

@@ -1,8 +1,8 @@
 """Read MP-Gadget configuration file. File addapted from code by Simeon Bird."""
 
-import numpy as np
-import argparse
+
 import configobj
+import numpy as np
 import validate
 
 # define variables and default values in Gadget
@@ -80,7 +80,7 @@ def _build_cosmology_params_class(config):
     # params['alpha_s'] = config['PrimordialRunning']
     # Set up massive neutrinos
     if omeganu > 0:
-        params["m_ncdm"] = "%.8f,%.8f,%.8f" % (
+        params["m_ncdm"] = "{:.8f},{:.8f},{:.8f}".format(
             config["MNue"],
             config["MNum"],
             config["MNut"],

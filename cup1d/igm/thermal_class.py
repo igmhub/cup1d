@@ -7,12 +7,13 @@ and thermal broadening in the intergalactic medium.
 
 from __future__ import annotations
 
+from typing import Any, Union
+
 import numpy as np
 import numpy.typing as npt
-from cup1d.igm.base_igm import IGM_model
 from lace.cosmo import thermal_broadening
-from typing import Optional, List, Dict, Any, Tuple, Union
 
+from cup1d.igm.base_igm import IGM_model
 
 # Type aliases
 Array1D = npt.NDArray[np.float64]
@@ -44,14 +45,14 @@ class Thermal(IGM_model):
 
     def __init__(
         self,
-        coeffs: Optional[Dict[str, float]] = None,
-        prop_coeffs: Optional[Dict[str, Any]] = None,
-        free_param_names: Optional[List[str]] = None,
+        coeffs: dict[str, float] | None = None,
+        prop_coeffs: dict[str, Any] | None = None,
+        free_param_names: list[str] | None = None,
         z_0: float = 3.0,
-        fid_igm: Optional[Dict[str, Array1D]] = None,
-        fid_vals: Optional[Dict[str, Array1D]] = None,
-        flat_priors: Optional[Dict[str, Tuple[float, float]]] = None,
-        Gauss_priors: Optional[Dict[str, float]] = None,
+        fid_igm: dict[str, Array1D] | None = None,
+        fid_vals: dict[str, Array1D] | None = None,
+        flat_priors: dict[str, tuple[float, float]] | None = None,
+        Gauss_priors: dict[str, float] | None = None,
     ) -> None:
         list_coeffs = ["sigT_kms", "gamma"]
 
@@ -88,7 +89,7 @@ class Thermal(IGM_model):
     def get_sigT_kms(
         self,
         z: float,
-        like_params: List = None,
+        like_params: list = None,
         name_par: str = "sigT_kms",
     ) -> float:
         """sigT_kms at the input redshift.
@@ -114,7 +115,7 @@ class Thermal(IGM_model):
     def get_T0(
         self,
         z: float,
-        like_params: List = None,
+        like_params: list = None,
         name_par: str = "sigT_kms",
     ) -> float:
         """T_0 at the input redshift.
@@ -140,7 +141,7 @@ class Thermal(IGM_model):
     def get_gamma(
         self,
         z: float,
-        like_params: List = None,
+        like_params: list = None,
         name_par: str = "gamma",
     ) -> float:
         """gamma at the input redshift.

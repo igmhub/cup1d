@@ -69,8 +69,8 @@ def set_cosmo(
 
         try:
             data_cosmo = np.load(fname, allow_pickle=True).item()
-        except:
-            raise ValueError(f"{fname} not found")
+        except Exception:
+            raise ValueError(f"{fname} not found") from None
 
         if cosmo_label in data_cosmo.keys():
             # print(data_cosmo[cosmo_label]["cosmo_params"])

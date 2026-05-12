@@ -7,11 +7,10 @@ import numpy as np
 from cup1d.igm.mean_flux_class import MeanFlux
 from cup1d.igm.pressure_class import Pressure
 from cup1d.igm.thermal_class import Thermal
-from cup1d.utils.utils import is_number_string
-from cup1d.utils.utils import get_path_repo
+from cup1d.utils.utils import get_path_repo, is_number_string
 
 
-class IGM(object):
+class IGM:
     """Bundle mean-flux, thermal, and pressure IGM models."""
 
     def __init__(
@@ -183,6 +182,7 @@ class IGM(object):
                 continue
             elif sim_igm == "Gaikwad21":
                 from lace.cosmo.thermal_broadening import thermal_broadening_kms
+
                 from cup1d.likelihood.likelihood import others_igm
 
                 if "T_suite" in igms_return:

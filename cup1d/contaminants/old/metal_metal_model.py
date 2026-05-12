@@ -1,12 +1,12 @@
-import numpy as np
+
 import matplotlib.pyplot as plt
-import copy
-from cup1d.utils.utils import get_discrete_cmap
+import numpy as np
+
 from cup1d.likelihood import likelihood_parameter
-from cup1d.nuisance.mean_flux_model_chunks import split_into_n_chunks
+from cup1d.utils.utils import get_discrete_cmap
 
 
-class MetalModel(object):
+class MetalModel:
     """Model the contamination from Silicon Lya cross-correlations"""
 
     def __init__(
@@ -16,8 +16,8 @@ class MetalModel(object):
         z_X=3.0,
         ln_X_coeff=None,
         ln_A_coeff=None,
-        X_fid_value=[0, -10],
-        A_fid_value=[0, -9],
+        X_fid_value=None,
+        A_fid_value=None,
         Gauss_priors=None,
         X_null_value=-10.5,
         A_null_value=-8.5,
@@ -29,6 +29,10 @@ class MetalModel(object):
         We use a power law around z_X=3."""
 
         # label identifying the metal line
+        if A_fid_value is None:
+            A_fid_value = [0, -9]
+        if X_fid_value is None:
+            X_fid_value = [0, -10]
         self.metal_label = metal_label
         c_kms = 299792.458
         if metal_label == "SiIIa_SiIIb":
@@ -80,24 +84,24 @@ class MetalModel(object):
 
             # set fiducial values
             if self.X_zev_type == "pivot":
-                self.ln_X_coeff = np.zeros((n_X))
+                self.ln_X_coeff = np.zeros(n_X)
                 if n_X == 1:
                     self.ln_X_coeff[0] = X_fid_value[-1]
                 else:
                     for ii in range(n_X):
                         self.ln_X_coeff[ii] = X_fid_value[ii]
             else:
-                self.ln_X_coeff = np.zeros((n_X)) + X_fid_value[-1]
+                self.ln_X_coeff = np.zeros(n_X) + X_fid_value[-1]
 
             if self.A_zev_type == "pivot":
-                self.ln_A_coeff = np.zeros((n_A))
+                self.ln_A_coeff = np.zeros(n_A)
                 if n_A == 1:
                     self.ln_A_coeff[0] = A_fid_value[-1]
                 else:
                     for ii in range(n_A):
                         self.ln_A_coeff[ii] = A_fid_value[ii]
             else:
-                self.ln_A_coeff = np.zeros((n_A)) + A_fid_value[-1]
+                self.ln_A_coeff = np.zeros(n_A) + A_fid_value[-1]
 
         # store list of likelihood parameters (might be fixed or free)
         self.n_X = len(self.ln_X_coeff)
@@ -192,7 +196,7 @@ class MetalModel(object):
         """Return likelihood parameters from the metal model"""
         return self.A_params
 
-    def get_X_coeffs(self, like_params=[]):
+    def get_X_coeffs(self, like_params=None):
         """Return list of coefficients for metal model"""
 
         if like_params:
@@ -230,7 +234,7 @@ class MetalModel(object):
 
         return ln_X_coeff
 
-    def get_A_coeffs(self, like_params=[]):
+    def get_A_coeffs(self, like_params=None):
         """Return list of coefficients for metal model"""
 
         if like_params:
@@ -268,7 +272,7 @@ class MetalModel(object):
 
         return ln_A_coeff
 
-    def get_amplitude(self, z, like_params=[]):
+    def get_amplitude(self, z, like_params=None):
         """Exponent of damping at a given z"""
 
         ln_X_coeff = self.get_X_coeffs(like_params)
@@ -287,7 +291,7 @@ class MetalModel(object):
             else:
                 return np.exp(ln_X_coeff)
 
-    def get_exp_damping(self, z, like_params=[]):
+    def get_exp_damping(self, z, like_params=None):
         """Exponent of damping at a given z"""
 
         ln_A_coeff = self.get_A_coeffs(like_params)
@@ -306,7 +310,7 @@ class MetalModel(object):
             else:
                 return np.exp(ln_A_coeff)
 
-    def get_contamination(self, z, k_kms, mF, like_params=[]):
+    def get_contamination(self, z, k_kms, mF, like_params=None):
         """Multiplicative contamination at a given z and k (in s/km)."""
 
         # Note that this represents "f" in McDonald et al. (2006)
@@ -364,7 +368,7 @@ class MetalModel(object):
         cmap=None,
         smooth_k=False,
         dict_data=None,
-        zrange=[0, 10],
+        zrange=None,
         name=None,
         plot_panels=True,
         func_rebin=None,
@@ -372,6 +376,8 @@ class MetalModel(object):
         """Plot the contamination model"""
 
         # plot for fiducial value
+        if zrange is None:
+            zrange = [0, 10]
         if ln_X_coeff is None:
             ln_X_coeff = self.ln_X_coeff
         if ln_A_coeff is None:
@@ -420,7 +426,7 @@ class MetalModel(object):
             if isinstance(cont, int):
                 cont = np.zeros_like(k_use)
             else:
-                if smooth_k == False:
+                if not smooth_k:
                     cont_data_res = func_rebin([z[ii]], [cont])[0]
 
             ax1.plot(

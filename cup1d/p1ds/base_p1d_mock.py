@@ -1,10 +1,11 @@
-import numpy as np
-import matplotlib.pyplot as plt
 from warnings import warn
 
-from cup1d.p1ds.base_p1d_data import BaseDataP1D
-from lace.utils.smoothing_manager import apply_smoothing
+import matplotlib.pyplot as plt
+import numpy as np
 from lace.cosmo import camb_cosmo
+from lace.utils.smoothing_manager import apply_smoothing
+
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class BaseMockP1D(BaseDataP1D):
@@ -30,7 +31,7 @@ class BaseMockP1D(BaseDataP1D):
         """Construct base P1D class, from measured power and covariance"""
 
         if add_noise:
-            warn("Perturbing data by adding Gaussian noise")
+            warn("Perturbing data by adding Gaussian noise", stacklevel=2)
             Pk_perturb_kms = self.get_Pk_iz_perturbed(
                 Pk_kms, cov_Pk_kms, seed=seed
             )

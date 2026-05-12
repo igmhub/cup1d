@@ -1,7 +1,7 @@
 """Plot simple cosmic-variance comparisons between simulation seeds."""
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 from cup1d.pipeline.set_archive import set_archive
 
@@ -24,7 +24,7 @@ def plot_cosmic_variance():
         (central[0]["p1d_Mpc"] / seed[1]["p1d_Mpc"])[_] - mean1,
         label="nyx-central/nyx-seed-1",
     )
-    std1 = np.std((central[0]["p1d_Mpc"] / seed[1]["p1d_Mpc"])[_] - mean1)
+    np.std((central[0]["p1d_Mpc"] / seed[1]["p1d_Mpc"])[_] - mean1)
 
     _ = (mpg_central[-2]["k_Mpc"] < 2) & (mpg_central[-2]["k_Mpc"] > 0.1)
     mean2 = np.median(
@@ -35,7 +35,7 @@ def plot_cosmic_variance():
         (mpg_central[-2]["p1d_Mpc"] / mpg_seed[-2]["p1d_Mpc"])[_] - mean2,
         label="mpg-central/mpg-seed-1",
     )
-    std2 = np.std(
+    np.std(
         (mpg_central[-2]["p1d_Mpc"] / mpg_seed[-2]["p1d_Mpc"])[_] - mean2
     )
 

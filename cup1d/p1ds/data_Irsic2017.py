@@ -1,4 +1,3 @@
-import os
 import numpy as np
 
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
@@ -39,7 +38,7 @@ def read_from_file(basedir, add_syst, ignore_zcov):
 
     # store P1D, statistical error, noise power, metal power and systematic
     Pk_kms = np.reshape(inPk, [Nz, Nk])
-    Pkstat = np.reshape(inPkstat, [Nz, Nk])
+    np.reshape(inPkstat, [Nz, Nk])
     Pksyst = np.reshape(inPksyst, [Nz, Nk])
 
     # read covariance with statistical uncertainty

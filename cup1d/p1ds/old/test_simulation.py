@@ -1,17 +1,18 @@
 # Deprecated
 
 import json
-import numpy as np
 import os
+
 import lace
-from lace.setup_simulations import read_genic
+import numpy as np
 from lace.cosmo import camb_cosmo, fit_linP, thermal_broadening
+from lace.setup_simulations import read_genic
 from lace.utils import poly_p1d
+
 from cup1d.p1ds import read_gadget
-from cup1d.igm import thermal_model
 
 
-class TestSimulation(object):
+class TestSimulation:
     """Object to store parameters and data for one
     specific test simulation. Used for performing tests
     either on the emulator directly in Mpc or on the sampler
@@ -128,10 +129,10 @@ class TestSimulation(object):
             z = zs[aa]
             ## Load json files
             json_path_plus = (
-                self.fulldir + "/sim_plus/p1d_{}_Ns500_wM0.05.json".format(aa)
+                self.fulldir + f"/sim_plus/p1d_{aa}_Ns500_wM0.05.json"
             )
             json_path_minus = (
-                self.fulldir + "/sim_minus/p1d_{}_Ns500_wM0.05.json".format(aa)
+                self.fulldir + f"/sim_minus/p1d_{aa}_Ns500_wM0.05.json"
             )
 
             with open(json_path_plus) as json_file:

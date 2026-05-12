@@ -9,14 +9,12 @@ optional flattened arrays for analyses with cross-redshift covariance.
 from __future__ import annotations
 
 import os
-import sys
+from typing import Union
+
 import numpy as np
 import numpy.typing as npt
-from warnings import warn
-from typing import Optional, List, Dict, Any, Tuple, Union
 
 from cup1d.utils.utils import get_path_repo
-
 
 # Type aliases
 Array1D = npt.NDArray[np.float64]
@@ -26,20 +24,20 @@ Float = Union[float, int]
 
 def _drop_zbins(
     z_in: Array1D,
-    k_in: List[Array1D],
-    Pk_in: List[Array1D],
-    cov_in: List[Array2D],
+    k_in: list[Array1D],
+    Pk_in: list[Array1D],
+    cov_in: list[Array2D],
     z_min: float,
     z_max: float,
-    full_zs: Optional[Array1D] = None,
-    full_Pk_kms: Optional[Array1D] = None,
-    full_cov_kms: Optional[Array2D] = None,
-    full_cov_stat_kms: Optional[Array2D] = None,
-    Pksmooth_kms: Optional[List[Array1D]] = None,
-    cov_stat: Optional[List[Array2D]] = None,
-    kmin_in: Optional[List[Array1D]] = None,
-    kmax_in: Optional[List[Array1D]] = None,
-) -> Tuple:
+    full_zs: Array1D | None = None,
+    full_Pk_kms: Array1D | None = None,
+    full_cov_kms: Array2D | None = None,
+    full_cov_stat_kms: Array2D | None = None,
+    Pksmooth_kms: list[Array1D] | None = None,
+    cov_stat: list[Array2D] | None = None,
+    kmin_in: list[Array1D] | None = None,
+    kmax_in: list[Array1D] | None = None,
+) -> tuple:
     """Drop redshift bins outside ``[z_min, z_max]`` and trim empty k bins.
 
     Parameters
@@ -144,7 +142,7 @@ def _drop_zbins(
     )
 
 
-class BaseDataP1D(object):
+class BaseDataP1D:
     """Base class to store measurements of the 1D power spectrum.
 
     Parameters
@@ -184,19 +182,19 @@ class BaseDataP1D(object):
     def __init__(
         self,
         z: Array1D,
-        _k_kms: Union[Array1D, List[Array1D]],
-        Pk_kms: List[Array1D],
-        cov_Pk_kms: List[Array2D],
+        _k_kms: Array1D | list[Array1D],
+        Pk_kms: list[Array1D],
+        cov_Pk_kms: list[Array2D],
         z_min: float = 0,
         z_max: float = 10,
-        full_zs: Optional[Array1D] = None,
-        full_Pk_kms: Optional[Array1D] = None,
-        full_cov_kms: Optional[Array2D] = None,
-        full_cov_stat_kms: Optional[Array2D] = None,
-        Pksmooth_kms: Optional[List[Array1D]] = None,
-        cov_stat: Optional[List[Array2D]] = None,
-        k_kms_min: Optional[List[Array1D]] = None,
-        k_kms_max: Optional[List[Array1D]] = None,
+        full_zs: Array1D | None = None,
+        full_Pk_kms: Array1D | None = None,
+        full_cov_kms: Array2D | None = None,
+        full_cov_stat_kms: Array2D | None = None,
+        Pksmooth_kms: list[Array1D] | None = None,
+        cov_stat: list[Array2D] | None = None,
+        k_kms_min: list[Array1D] | None = None,
+        k_kms_max: list[Array1D] | None = None,
     ) -> None:
 
         ## if multiple z, ensure that k_kms for each redshift
@@ -304,8 +302,7 @@ class BaseDataP1D(object):
         """
 
         import matplotlib.pyplot as plt
-        from matplotlib import rcParams
-        from matplotlib import colormaps
+        from matplotlib import colormaps, rcParams
 
         rcParams["mathtext.fontset"] = "stix"
         rcParams["font.family"] = "STIXGeneral"
@@ -337,7 +334,7 @@ class BaseDataP1D(object):
                 k_kms,
                 fact * Pk_kms,
                 yerr=fact * err_Pk_kms,
-                label=r"$z = {}$".format(np.round(self.z[ii], 3)),
+                label=rf"$z = {np.round(self.z[ii], 3)}$",
                 color=colormaps["tab20"].colors[ii],
             )
 

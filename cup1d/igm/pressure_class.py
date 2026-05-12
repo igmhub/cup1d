@@ -58,7 +58,7 @@ class Pressure(IGM_model):
             fid_igm=fid_igm,
         )
 
-    def get_kF_kms(self, z, like_params=[], name_par="kF_kms"):
+    def get_kF_kms(self, z, like_params=None, name_par="kF_kms"):
         """Return the pressure filtering scale at the input redshift."""
 
         kF_kms = self.get_value(name_par, z, like_params=like_params)

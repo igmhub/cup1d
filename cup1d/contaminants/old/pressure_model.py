@@ -1,15 +1,16 @@
-import numpy as np
-import copy
 import os
+
 import lace
+import numpy as np
 from scipy.interpolate import interp1d
+
 from cup1d.likelihood import likelihood_parameter
 
 # lambda_F ~ 80 kpc ~ 0.08 Mpc ~ 0.055 Mpc/h ~ 5.5 km/s (Onorbe et al. 2016)
 # k_F = 1 / lambda_F ~ 12.5 1/Mpc ~ 18.2 h/Mpc ~ 0.182 s/km
 
 
-class PressureModel(object):
+class PressureModel:
     """Model the redshift evolution of the pressure smoothing length.
     We use a power law rescaling around a fiducial simulation at the centre
     of the initial Latin hypercube in simulation space."""
@@ -25,21 +26,23 @@ class PressureModel(object):
         priors=None,
         Gauss_priors=None,
         back_igm=None,
-        fid_value=[0, 0],
+        fid_value=None,
     ):
         """Construct model with central redshift and (x2,x1,x0) polynomial."""
 
+        if fid_value is None:
+            fid_value = [0, 0]
         if fid_igm is None:
             repo = os.path.dirname(lace.__path__[0]) + "/"
             fname = repo + "data/sim_suites/Australia20/IGM_histories.npy"
             try:
                 igm_hist = np.load(fname, allow_pickle=True).item()
-            except:
+            except Exception:
                 raise ValueError(
                     fname
                     + " not found. You can produce it using the LaCE"
                     + r" script save_mpg_IGM.py"
-                )
+                ) from None
             else:
                 fid_igm = igm_hist["mpg_central"]
         self.fid_igm = fid_igm
@@ -54,7 +57,7 @@ class PressureModel(object):
         elif np.sum(mask) != fid_igm["kF_kms"].shape[0]:
             print(
                 "The fiducial value of kF is zero for z: ",
-                fid_igm["z_kF"][mask == False],
+                fid_igm["z_kF"][not mask],
             )
 
         # fit power law to fiducial data to reduce noise
@@ -137,7 +140,7 @@ class PressureModel(object):
         assert len(self.ln_kF_coeff) == len(self.params), "size mismatch"
         return len(self.ln_kF_coeff)
 
-    def power_law_scaling(self, z, like_params=[], over_coeff=None):
+    def power_law_scaling(self, z, like_params=None, over_coeff=None):
         """Power law rescaling around z_tau"""
 
         if over_coeff is None:
@@ -150,7 +153,7 @@ class PressureModel(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_kF_kms(self, z, like_params=[], over_coeff=None):
+    def get_kF_kms(self, z, like_params=None, over_coeff=None):
         """kF_kms at the input redshift"""
         kF_kms = self.power_law_scaling(
             z, like_params=like_params, over_coeff=over_coeff
@@ -202,7 +205,7 @@ class PressureModel(object):
 
         return self.params
 
-    def get_kF_coeffs(self, like_params=[]):
+    def get_kF_coeffs(self, like_params=None):
         """Return list of mean flux coefficients"""
         if like_params:
             ln_kF_coeff = self.ln_kF_coeff.copy()
@@ -254,7 +257,7 @@ class PressureModel(object):
 
     #     return
 
-    # def get_new_model(self, like_params=[]):
+    # def get_new_model(self, like_params=None):
     #     """Return copy of model, updating values from list of parameters"""
 
     #     kF = PressureModel(

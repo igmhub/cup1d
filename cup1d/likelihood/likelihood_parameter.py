@@ -1,9 +1,8 @@
 """Likelihood parameter representation and cube transforms."""
 
-import numpy as np
 
 
-class LikelihoodParameter(object):
+class LikelihoodParameter:
     """One scalar likelihood parameter with bounds and optional Gaussian prior."""
 
     def __init__(
@@ -43,7 +42,7 @@ class LikelihoodParameter(object):
         """Set the physical parameter value directly."""
         # Check to make sure parameter is within min/max
         assert self.min_value < value < self.max_value, (
-            "Parameter name: %s" % self.name
+            f"Parameter name: {self.name}"
         )
         self.value = value
         return

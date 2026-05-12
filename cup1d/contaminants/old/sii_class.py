@@ -1,4 +1,5 @@
 import numpy as np
+
 from cup1d.nuisance.base_contaminants import Contaminant
 
 
@@ -119,7 +120,7 @@ class SiiModel(Contaminant):
             Gauss_priors=Gauss_priors,
         )
 
-    def get_contamination(self, z, k_kms, mF, like_params=[], remove=None):
+    def get_contamination(self, z, k_kms, mF, like_params=None, remove=None):
         """Multiplicative contamination at a given z and k (in s/km).
         The mean flux (mF) is used scale it (see McDonald et al. 2006)"""
 

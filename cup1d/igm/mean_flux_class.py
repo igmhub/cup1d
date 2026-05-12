@@ -7,11 +7,12 @@ transmitted flux fraction in the intergalactic medium.
 
 from __future__ import annotations
 
+from typing import Any, Union
+
 import numpy as np
 import numpy.typing as npt
-from cup1d.igm.base_igm import IGM_model
-from typing import Optional, List, Dict, Any, Tuple, Union
 
+from cup1d.igm.base_igm import IGM_model
 
 # Type aliases
 Array1D = npt.NDArray[np.float64]
@@ -43,14 +44,14 @@ class MeanFlux(IGM_model):
 
     def __init__(
         self,
-        coeffs: Optional[Dict[str, float]] = None,
-        prop_coeffs: Optional[Dict[str, Any]] = None,
-        free_param_names: Optional[List[str]] = None,
+        coeffs: dict[str, float] | None = None,
+        prop_coeffs: dict[str, Any] | None = None,
+        free_param_names: list[str] | None = None,
         z_0: float = 3.0,
-        fid_igm: Optional[Dict[str, Array1D]] = None,
-        fid_vals: Optional[Dict[str, Array1D]] = None,
-        flat_priors: Optional[Dict[str, Tuple[float, float]]] = None,
-        Gauss_priors: Optional[Dict[str, float]] = None,
+        fid_igm: dict[str, Array1D] | None = None,
+        fid_vals: dict[str, Array1D] | None = None,
+        flat_priors: dict[str, tuple[float, float]] | None = None,
+        Gauss_priors: dict[str, float] | None = None,
     ) -> None:
         list_coeffs = ["tau_eff"]
 
@@ -87,7 +88,7 @@ class MeanFlux(IGM_model):
     def get_tau_eff(
         self,
         z: float,
-        like_params: List = None,
+        like_params: list = None,
         name_par: str = "tau_eff",
     ) -> float:
         """Effective optical depth at the input redshift.
@@ -110,7 +111,7 @@ class MeanFlux(IGM_model):
         tau_eff *= self.fid_interp[name_par](z)
         return tau_eff
 
-    def get_mean_flux(self, z: float, like_params: List = None) -> float:
+    def get_mean_flux(self, z: float, like_params: list = None) -> float:
         """Mean transmitted flux fraction at the input redshift.
 
         Parameters

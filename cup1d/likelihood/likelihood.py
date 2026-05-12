@@ -7,30 +7,25 @@ of cosmological parameters from Lyman-alpha forest P1D measurements.
 
 from __future__ import annotations
 
-import numpy as np
-import numpy.typing as npt
-import os
-import math
 import copy
-from mpi4py import MPI
-from scipy.stats.distributions import chi2 as chi2_scipy
-from scipy.optimize import minimize
-from scipy.linalg import block_diag
-from typing import Optional, List, Dict, Any, Tuple, Union
-from dataclasses import dataclass
-
-from lace.cosmo import camb_cosmo
-from cup1d.utils.utils import is_number_string
-from cup1d.utils.compute_hessian import get_hessian
-
-from cup1d.utils.utils import split_string
-from cup1d.utils.utils import get_path_repo
-
-from cup1d.utils.various_dicts import conv_strings
+import math
+import os
+from typing import Any, Union
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
+import numpy as np
+import numpy.typing as npt
+from lace.cosmo import camb_cosmo
 from matplotlib import rcParams
+from matplotlib.ticker import MaxNLocator
+from mpi4py import MPI
+from scipy.linalg import block_diag
+from scipy.optimize import minimize
+from scipy.stats.distributions import chi2 as chi2_scipy
+
+from cup1d.utils.compute_hessian import get_hessian
+from cup1d.utils.utils import get_path_repo, is_number_string, split_string
+from cup1d.utils.various_dicts import conv_strings
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -77,7 +72,7 @@ def get_bin_coverage(
     return cover
 
 
-class Likelihood(object):
+class Likelihood:
     """Likelihood class, holds data, theory, and knows about parameters.
 
     Parameters
@@ -112,15 +107,15 @@ class Likelihood(object):
         self,
         data: Any,
         theory: Any,
-        free_param_names: Optional[List[str]] = None,
-        free_param_limits: Optional[List[Tuple[float, float]]] = None,
+        free_param_names: list[str] | None = None,
+        free_param_limits: list[tuple[float, float]] | None = None,
         verbose: bool = False,
         cov_factor: float = 1.0,
-        prior_Gauss_rms: Optional[float] = None,
+        prior_Gauss_rms: float | None = None,
         emu_cov_type: str = "block",
-        extra_data: Optional[Any] = None,
+        extra_data: Any | None = None,
         min_log_like: float = -1e100,
-        args: Optional[Any] = None,
+        args: Any | None = None,
         start_from_min: bool = True,
     ) -> None:
         """Setup likelihood from theory and data. Options:
@@ -141,15 +136,15 @@ class Likelihood(object):
 
         # Configuration
         self.verbose: bool = verbose
-        self.prior_Gauss_rms: Optional[float] = prior_Gauss_rms
-        self.cov_factor: Union[float, Dict[str, Any]] = cov_factor
+        self.prior_Gauss_rms: float | None = prior_Gauss_rms
+        self.cov_factor: float | dict[str, Any] = cov_factor
         self.emu_cov_type: str = emu_cov_type
         self.min_log_like: float = min_log_like
 
         # Data
         self.data: Any = data
-        self.extra_data: Optional[Any] = extra_data
-        self.args: Optional[Any] = args
+        self.extra_data: Any | None = extra_data
+        self.args: Any | None = args
 
         if self.args.rebin_k != 1:
             self.rebin = {}
@@ -215,7 +210,7 @@ class Likelihood(object):
                 if self.rank == 0:
                     print("No best fit found to set ICs:", args.file_ic)
 
-    def rebinning(self, zs: Array1D, Pk_kms_finek: List[Array1D]) -> List[Array1D]:
+    def rebinning(self, zs: Array1D, Pk_kms_finek: list[Array1D]) -> list[Array1D]:
         """For rebinning Pk predictions.
 
         Parameters
@@ -230,7 +225,7 @@ class Likelihood(object):
         List[Array1D]
             Rebinned power spectra at original k bins.
         """
-        Pk_kms_origk: List[Array1D] = []
+        Pk_kms_origk: list[Array1D] = []
         # _Pk_kms_finek = np.atleast_1d(Pk_kms_finek)
         for iz in range(len(zs)):
             indz = np.argmin(np.abs(self.data.z - zs[iz]))
@@ -246,7 +241,7 @@ class Likelihood(object):
 
     def set_Gauss_priors(self) -> None:
         """Sets Gaussian priors on the parameters."""
-        self.Gauss_priors = np.ones((len(self.free_params)))
+        self.Gauss_priors = np.ones(len(self.free_params))
         for ii, par_like in enumerate(self.free_params):
             if self.prior_Gauss_rms is not None:
                 _prior = self.prior_Gauss_rms
@@ -268,7 +263,7 @@ class Likelihood(object):
 
     def set_blinding(self) -> None:
         """Set the blinding parameters."""
-        blind_prior: Dict[str, float] = {
+        blind_prior: dict[str, float] = {
             "Delta2_star": 0.05,
             "n_star": 0.01,
             "alpha_star": 0.005,
@@ -276,7 +271,7 @@ class Likelihood(object):
         if self.data.apply_blinding:
             seed = int.from_bytes(self.data.blinding.encode("utf-8"), byteorder="big")
             rng = np.random.default_rng(seed)
-        self.blind: Dict[str, float] = {}
+        self.blind: dict[str, float] = {}
         for key in blind_prior:
             if self.data.apply_blinding:
                 self.blind[key] = rng.normal(0, blind_prior[key])
@@ -285,10 +280,10 @@ class Likelihood(object):
 
     def apply_blinding(
         self,
-        dict_cosmo: Dict[str, float],
+        dict_cosmo: dict[str, float],
         conv: bool = False,
-        sample: Optional[str] = None,
-    ) -> Dict[str, float]:
+        sample: str | None = None,
+    ) -> dict[str, float]:
         """Apply blinding to the dict_cosmo.
 
         Parameters
@@ -318,16 +313,16 @@ class Likelihood(object):
 
                 try:
                     dict_cosmo[key2] += self.blind[key]
-                except:
+                except Exception:
                     pass
 
         return dict_cosmo
 
     def apply_unblinding(
         self,
-        dict_cosmo: Dict[str, float],
+        dict_cosmo: dict[str, float],
         conv: bool = False,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Apply unblinding to the dict_cosmo.
 
         Parameters
@@ -629,8 +624,8 @@ class Likelihood(object):
 
     def set_free_parameters(
         self,
-        free_param_names: Optional[List[str]],
-        free_param_limits: Optional[List[Tuple[float, float]]],
+        free_param_names: list[str] | None,
+        free_param_limits: list[tuple[float, float]] | None,
     ) -> None:
         """Setup likelihood parameters that we want to vary.
 
@@ -674,11 +669,11 @@ class Likelihood(object):
                     break
             if not found:
                 raise ValueError(
-                    "Could not find free parameter {} in theory".format(par)
+                    f"Could not find free parameter {par} in theory"
                 )
 
         if self.verbose and (self.rank == 0):
-            print("likelihood setup with {} free parameters".format(Nfree))
+            print(f"likelihood setup with {len(self.free_params)} free parameters")
 
         return
 
@@ -771,7 +766,7 @@ class Likelihood(object):
         for key in self.data.truth["igm"]:
             if key not in self.theory.model_igm.fid_igm:
                 continue
-            lenz = self.theory.model_igm.fid_igm[key].shape[0]
+            self.theory.model_igm.fid_igm[key].shape[0]
             if not np.allclose(
                 np.array(self.data.truth["igm"][key])[mask_z],
                 self.theory.model_igm.fid_igm[key],
@@ -838,7 +833,6 @@ class Likelihood(object):
         self.fid["cosmo"]["H0"] = sim_cosmo.H0
         self.fid["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
 
-        blob_params = ["Delta2_star", "n_star", "alpha_star"]
         blob = self.theory.fid_cosmo["cosmo"].get_linP_params()
 
         self.fid["igm"] = self.theory.model_igm.fid_igm
@@ -856,15 +850,15 @@ class Likelihood(object):
 
     def get_p1d_kms(
         self,
-        zs: Optional[Array1D] = None,
-        _k_kms: Optional[List[Array1D]] = None,
-        values: Optional[Array1D] = None,
+        zs: Array1D | None = None,
+        _k_kms: list[Array1D] | None = None,
+        values: Array1D | None = None,
         return_covar: bool = False,
         return_blob: bool = False,
         return_emu_params: bool = False,
         apply_hull: bool = True,
-        remove: Optional[str] = None,
-    ) -> Optional[Union[List[Array1D], Tuple]]:
+        remove: str | None = None,
+    ) -> list[Array1D] | tuple | None:
         """Compute theoretical prediction for 1D P(k).
 
         Parameters
@@ -946,10 +940,10 @@ class Likelihood(object):
 
     def get_chi2(
         self,
-        values: Optional[Array1D] = None,
+        values: Array1D | None = None,
         return_all: bool = False,
-        zmask: Optional[Array1D] = None,
-    ) -> Union[float, Tuple[float, List[float]]]:
+        zmask: Array1D | None = None,
+    ) -> float | tuple[float, list[float]]:
         """Compute chi2 using data and theory, without adding emulator covariance.
 
         Parameters
@@ -975,7 +969,7 @@ class Likelihood(object):
         else:
             return -2.0 * log_like
 
-    def get_error(self, p0: Array1D) -> Tuple[Array1D, Array2D]:
+    def get_error(self, p0: Array1D) -> tuple[Array1D, Array2D]:
         """Compute parameter errors from Hessian.
 
         Parameters
@@ -1011,11 +1005,11 @@ class Likelihood(object):
 
     def get_log_like(
         self,
-        values: Optional[Array1D] = None,
+        values: Array1D | None = None,
         ignore_log_det_cov: bool = True,
         return_blob: bool = False,
-        zmask: Optional[Array1D] = None,
-    ) -> Union[Tuple[float, float], Tuple[float, float, Tuple]]:
+        zmask: Array1D | None = None,
+    ) -> tuple[float, float] | tuple[float, float, tuple]:
         """Compute log(likelihood), including determinant of covariance unless you are setting ignore_log_det_cov=True.
 
         Parameters
@@ -1282,9 +1276,9 @@ class Likelihood(object):
     def minus_log_prob(
         self,
         values: Array1D,
-        zmask: Optional[Array1D] = None,
-        ind_fix: Optional[Array1D] = None,
-        pfix: Optional[Array1D] = None,
+        zmask: Array1D | None = None,
+        ind_fix: Array1D | None = None,
+        pfix: Array1D | None = None,
     ) -> float:
         """Return minus log_prob (needed to maximise posterior).
 
@@ -1311,7 +1305,7 @@ class Likelihood(object):
 
     def maximise_posterior(
         self,
-        initial_values: Optional[Array1D] = None,
+        initial_values: Array1D | None = None,
         method: str = "nelder-mead",
         tol: float = 1e-4,
     ) -> Any:
@@ -1368,7 +1362,7 @@ class Likelihood(object):
         if store_data:
             out_data = {}
 
-        if (zmask is not None) | (plot_realizations == False):
+        if (zmask is not None) | (not plot_realizations):
             n_perturb = 0
 
         if zmask is None:
@@ -1636,7 +1630,7 @@ class Likelihood(object):
 
                     try:
                         axs = axs[0]
-                    except:
+                    except Exception:
                         pass
 
                     axs.tick_params(axis="both", which="major", labelsize=fontsize)
@@ -1699,7 +1693,7 @@ class Likelihood(object):
                         )
 
                     if print_chi2:
-                        if plot_panels == False:
+                        if not plot_panels:
                             ypos = 0.75 + yshift
                             axs.text(xpos, ypos, label, fontsize=fontsize - 4)
 
@@ -1822,7 +1816,7 @@ class Likelihood(object):
             # ax[ii].plot(k_kms[0], 1, linestyle="-", label="Data", color="k")
             # ax[ii].plot(k_kms[0], 1, linestyle="--", label="Fit", color="k")
             if residuals:
-                if plot_panels == False:
+                if not plot_panels:
                     axs.legend(fontsize=fontsize)
             else:
                 ax[ii].legend(loc="lower right", ncol=4, fontsize=fontsize - 4)
@@ -1834,7 +1828,7 @@ class Likelihood(object):
             # ax[-1].set_xlabel(r"$k_\parallel$ [s/km]")
 
             if residuals:
-                if plot_panels == False:
+                if not plot_panels:
                     ax[ii].set_ylabel(
                         r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$",
                         fontsize=fontsize,
@@ -1945,7 +1939,7 @@ class Likelihood(object):
             if return_covar:
                 emu_p1d_extra, emu_cov_extra = _res
             else:
-                emu_p1d_extra = _res
+                pass
 
         fig, ax = plt.subplots(
             len(_data_z) // 2 + len(_data_z) % 2,
@@ -1958,7 +1952,6 @@ class Likelihood(object):
             ax = [ax]
         else:
             ax = ax.reshape(-1)
-        length = 1
         # if (len(_data_z) % 2 + 1) != 0:
         #     ax[-1].axis("off")
 
@@ -1990,7 +1983,7 @@ class Likelihood(object):
 
             # access data for this redshift
             z = zs[iz]
-            k_kms = data.k_kms[iz]
+            data.k_kms[iz]
             p1d_data = data.Pk_kms[iz]
             p1d_cov = self.cov_Pk_kms[iz]
             p1d_err = np.sqrt(np.diag(p1d_cov))
@@ -2261,7 +2254,7 @@ class Likelihood(object):
             k_kms_inter = np.linspace(
                 self.data.k_kms[ind].min(), self.data.k_kms[ind].max(), 500
             )
-            k_kms = self.data.k_kms[ind].copy()
+            self.data.k_kms[ind].copy()
             mF = self.theory.model_igm.models["F_model"].get_mean_flux(
                 zstar, like_params=free_params
             )
@@ -2909,7 +2902,6 @@ class Likelihood(object):
             #     r"$\gamma$",
             # ]
             arr_labs = ["mF", "T0", "gamma"]
-            nexp_mF = 1
             latex_labs = [
                 # r"$(1+z)\bar{F}$",
                 r"$\bar{F}$",
@@ -3350,7 +3342,7 @@ class Likelihood(object):
         else:
             plt.show()
 
-    def plot_hull_fid(self, like_params=[]):
+    def plot_hull_fid(self, like_params=None):
         emu_call, M_of_z = self.theory.get_emulator_calls(
             self.data.z, like_params=like_params
         )
@@ -3372,7 +3364,7 @@ class Likelihood(object):
 
         # make a copy of free params, and set their values to the best-fit
         free_params = self.free_params.copy()
-        for jj, p in enumerate(free_params):
+        for _jj, p in enumerate(free_params):
             if p.name in ["As", "ns"]:
                 continue
             pname, iistr = split_string(p.name)
@@ -3428,7 +3420,7 @@ class Likelihood(object):
 
         # make a copy of free params, and set their values to the best-fit
         free_params = self.free_params.copy()
-        for jj, p in enumerate(free_params):
+        for _jj, p in enumerate(free_params):
             if p.name in ["As", "ns"]:
                 continue
             pname, iistr = split_string(p.name)

@@ -3,19 +3,18 @@
 import os
 
 from cup1d.p1ds import (
-    data_gadget,
-    data_nyx,
+    challenge_DESIY1,
     data_accel2,
     data_Chabanier2019,
+    data_DESIY1,
+    data_gadget,
     data_Karacayli2022,
     data_Karacayli2024,
-    data_Ravoux2023,
+    data_nyx,
     data_QMLE_Ohio,
+    data_Ravoux2023,
     mock_data,
-    data_DESIY1,
-    challenge_DESIY1,
 )
-
 from cup1d.pipeline.set_archive import set_archive
 
 

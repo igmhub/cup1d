@@ -1,8 +1,9 @@
-import numpy as np
-import copy
 import os
+
 import lace
+import numpy as np
 from scipy.interpolate import interp1d
+
 from cup1d.likelihood import likelihood_parameter
 
 
@@ -36,18 +37,18 @@ def get_fid_igm():
     )
     try:
         igm_hist = np.load(fname, allow_pickle=True).item()
-    except:
+    except Exception:
         raise ValueError(
             fname
             + " not found. You can produce it using the LaCE"
             + r" script save_mpg_IGM.py"
-        )
+        ) from None
     else:
         fid_igm = igm_hist["mpg_central"]
     return fid_igm
 
 
-class MeanFluxModelChunks(object):
+class MeanFluxModelChunks:
     """Use a handful of parameters to model the mean transmitted flux fraction
     (or mean flux) as a function of redshift.
      For now, we use a polynomial to describe log(tau_eff) around z_tau.
@@ -76,7 +77,7 @@ class MeanFluxModelChunks(object):
         elif np.sum(mask) != fid_igm["tau_eff"].shape[0]:
             print(
                 "The fiducial value of tau_eff is zero for z: ",
-                fid_igm["z_tau"][mask == False],
+                fid_igm["z_tau"][not mask],
             )
 
         # fit power law to fiducial data to reduce noise
@@ -161,7 +162,7 @@ class MeanFluxModelChunks(object):
         assert len(self.ln_tau_coeff) == len(self.params), "size mismatch"
         return len(self.ln_tau_coeff)
 
-    def get_tau_eff(self, z, like_params=[]):
+    def get_tau_eff(self, z, like_params=None):
         """Effective optical depth at the input redshift"""
 
         ln_tau_coeff = self.get_tau_coeffs(like_params=like_params)
@@ -174,7 +175,7 @@ class MeanFluxModelChunks(object):
 
         return tau_eff
 
-    def get_mean_flux(self, z, like_params=[]):
+    def get_mean_flux(self, z, like_params=None):
         """Mean transmitted flux fraction at the input redshift"""
         tau = self.get_tau_eff(z, like_params=like_params)
         return np.exp(-tau)
@@ -199,7 +200,7 @@ class MeanFluxModelChunks(object):
         """Return likelihood parameters for the mean flux model"""
         return self.params
 
-    def get_tau_coeffs(self, like_params=[]):
+    def get_tau_coeffs(self, like_params=None):
         """Return list of mean flux coefficients"""
 
         if like_params:

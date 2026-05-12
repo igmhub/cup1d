@@ -1,10 +1,9 @@
 import matplotlib.pyplot as plt
-from cup1d.likelihood.CAMB_model import CAMBModel
-from cup1d.likelihood.cosmologies import set_cosmo
 import numpy as np
-
 from lace.cosmo import camb_cosmo
 
+from cup1d.likelihood.CAMB_model import CAMBModel
+from cup1d.likelihood.cosmologies import set_cosmo
 
 # grid of As and ns values without priors
 nn = 10

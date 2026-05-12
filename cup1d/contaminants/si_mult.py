@@ -162,7 +162,7 @@ class SiMult(Contaminant):
             Gauss_priors=Gauss_priors,
         )
 
-    def get_contamination(self, z, k_kms, mF, like_params=[], remove=None):
+    def get_contamination(self, z, k_kms, mF, like_params=None, remove=None):
         """Return the multiplicative silicon correction for each redshift bin.
 
         Parameters

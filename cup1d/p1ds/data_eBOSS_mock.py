@@ -1,12 +1,10 @@
 # P1D data from fiducial eBOSS mock, created using nyx_central
 
-import os
 
-import pandas
 import numpy as np
 
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
-from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
 
 
 class P1D_eBOSS_mock(BaseMockP1D):
@@ -92,7 +90,7 @@ def read_from_file(diag_cov, input_sim, kmax_kms=None, old_cov=False):
     kbins = np.unique(k)
     Nk = kbins.size
     Nz = zbins.size
-    print("Nz = {} , Nk = {}".format(Nz, Nk))
+    print(f"Nz = {Nz} , Nk = {Nk}")
 
     Pkbins = []
     covbins = []

@@ -1,21 +1,13 @@
 """Class to generate a mock P1D from another P1D object and an emulator"""
 
 import numpy as np
-from lace.emulator import gp_emulator
-from lace.cosmo import camb_cosmo
-from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 
 from cup1d.p1ds import (
-    data_Chabanier2019,
-    data_Karacayli2022,
-    data_QMLE_Ohio,
-    data_Karacayli2024,
-    data_DESIY1,
     challenge_DESIY1,
+    data_Chabanier2019,
+    data_DESIY1,
 )
-from cup1d.likelihood import lya_theory
-from cup1d.likelihood.model_contaminants import Contaminants
-from cup1d.likelihood.model_igm import IGM
+from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 
 
 class Mock_P1D(BaseMockP1D):

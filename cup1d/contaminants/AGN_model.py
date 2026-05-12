@@ -8,7 +8,7 @@ from cup1d.likelihood import likelihood_parameter
 from cup1d.utils.utils import get_discrete_cmap, get_path_repo
 
 
-class AGN_Model(object):
+class AGN_Model:
     """Multiplicative AGN feedback correction.
 
     This model follows the Chabanier et al. (2020) correction
@@ -23,7 +23,7 @@ class AGN_Model(object):
     def __init__(
         self,
         z_0=3.0,
-        fid_value=[0, -5],
+        fid_value=None,
         null_value=-5.5,
         ln_AGN_coeff=None,
         free_param_names=None,
@@ -46,6 +46,8 @@ class AGN_Model(object):
             Likelihood parameter names used to decide how many AGN coefficients
             are varied.
         """
+        if fid_value is None:
+            fid_value = [0, -5]
         self.z_0 = z_0
         if fid_value is None:
             fid_value = [0, -5]
@@ -101,7 +103,7 @@ class AGN_Model(object):
         assert len(self.ln_AGN_coeff) == len(self.params), "size mismatch"
         return len(self.ln_AGN_coeff)
 
-    def get_AGN_damp(self, z, like_params=[]):
+    def get_AGN_damp(self, z, like_params=None):
         """Evaluate the AGN correction amplitude at redshift ``z``."""
 
         ln_AGN_coeff = self.get_AGN_coeffs(like_params=like_params)
@@ -113,7 +115,7 @@ class AGN_Model(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Return the multiplicative AGN correction at ``z`` and ``k_kms``."""
 
         fAGN = self.get_AGN_damp(z, like_params=like_params)
@@ -146,7 +148,7 @@ class AGN_Model(object):
         """Return the AGN likelihood parameters."""
         return self.params
 
-    def get_AGN_coeffs(self, like_params=[]):
+    def get_AGN_coeffs(self, like_params=None):
         """Return AGN coefficients, updated from likelihood parameters."""
 
         if like_params:
@@ -191,12 +193,14 @@ class AGN_Model(object):
         cmap=None,
         smooth_k=False,
         dict_data=None,
-        zrange=[0, 10],
+        zrange=None,
         name=None,
     ):
         """Plot the AGN correction for a set of redshifts and wavenumbers."""
 
         # plot for fiducial value
+        if zrange is None:
+            zrange = [0, 10]
         if ln_AGN_coeff is None:
             ln_AGN_coeff = self.ln_AGN_coeff
 
@@ -311,7 +315,7 @@ def _load_agn_file():
     NzAGN = 9
     AGN_z = np.ndarray(NzAGN, "float")
     AGN_expansion = np.ndarray((NzAGN, 3), "float")
-    with open(agn_corr_filename, "r") as datafile:
+    with open(agn_corr_filename) as datafile:
         for i in range(NzAGN):
             line = datafile.readline()
             values = [float(valstring) for valstring in line.split()]

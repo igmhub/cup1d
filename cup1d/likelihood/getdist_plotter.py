@@ -1,8 +1,8 @@
 # read emcee chains and get them ready to plot with getdist
 import numpy as np
 from getdist import MCSamples
-from cup1d.likelihood import fitter
 
+from cup1d.likelihood import fitter
 
 # for each parameter name, figure out LaTeX label
 param_latex_dict = {

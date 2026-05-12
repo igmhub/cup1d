@@ -1,12 +1,11 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from iminuit import Minuit
 
 # our own modules
-from cup1d.likelihood import likelihood
 
 
-class IminuitMinimizer(object):
+class IminuitMinimizer:
     """Wrapper around an iminuit minimizer for Lyman alpha likelihood"""
 
     def __init__(self, like, ini_values=None, error=0.02, verbose=False):

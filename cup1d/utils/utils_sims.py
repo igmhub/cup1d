@@ -4,8 +4,7 @@ import os
 
 import numpy as np
 
-from cup1d.utils.utils import is_number_string
-from cup1d.utils.utils import get_path_repo
+from cup1d.utils.utils import get_path_repo, is_number_string
 
 
 def get_training_hc(

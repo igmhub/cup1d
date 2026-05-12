@@ -1,4 +1,5 @@
 import numpy as np
+
 from cup1d.nuisance.base_contaminants import Contaminant
 
 
@@ -76,7 +77,7 @@ class HCD_Model(Contaminant):
             Gauss_priors=Gauss_priors,
         )
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Multiplicative contamination caused by HCDs"""
         vals = {}
         for key in self.list_coeffs:

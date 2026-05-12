@@ -1,8 +1,9 @@
+
 import numpy as np
-import copy, os
 from matplotlib import pyplot as plt
-from cup1d.utils.utils import get_discrete_cmap
+
 from cup1d.likelihood import likelihood_parameter
+from cup1d.utils.utils import get_discrete_cmap
 
 
 def get_Rz(z, k_kms):
@@ -26,17 +27,19 @@ def get_Rz(z, k_kms):
     return Rz
 
 
-class Resolution_Model(object):
+class Resolution_Model:
     """New model for Resolution systematics"""
 
     def __init__(
         self,
         z_0=3.0,
-        fid_R_coeff=[0, 0],
+        fid_R_coeff=None,
         R_coeff=None,
         free_param_names=None,
         Gauss_priors=None,
     ):
+        if fid_R_coeff is None:
+            fid_R_coeff = [0, 0]
         self.z_0 = z_0
         self.Gauss_priors = Gauss_priors
 
@@ -100,7 +103,7 @@ class Resolution_Model(object):
             raise ValueError("parameter size mismatch")
         return all_par
 
-    def get_R(self, z, like_params=[]):
+    def get_R(self, z, like_params=None):
         """Amplitude of Resolution_Model contamination around z_0"""
 
         R_coeff = self.get_R_coeffs(like_params=like_params)
@@ -118,7 +121,7 @@ class Resolution_Model(object):
         """Return likelihood parameters for the Resolution_Model model"""
         return self.R_params
 
-    def get_R_coeffs(self, like_params=[]):
+    def get_R_coeffs(self, like_params=None):
         """Return list of mean flux coefficients"""
 
         if like_params:
@@ -154,7 +157,7 @@ class Resolution_Model(object):
 
         return R_coeff
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Multiplicative contamination caused by Resolution"""
         nelem = len(np.atleast_1d(z))
         res = []
@@ -180,12 +183,14 @@ class Resolution_Model(object):
         cmap=None,
         smooth_k=False,
         dict_data=None,
-        zrange=[0, 10],
+        zrange=None,
         name=None,
     ):
         """Plot the contamination model"""
 
         # plot for fiducial value
+        if zrange is None:
+            zrange = [0, 10]
         if R_coeff is None:
             R_coeff = self.R_coeff
 

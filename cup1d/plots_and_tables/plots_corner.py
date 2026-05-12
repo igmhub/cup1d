@@ -1,15 +1,11 @@
-import numpy as np
 import os
+
+import matplotlib.pyplot as plt
+import numpy as np
 from corner import corner
 from emcee.autocorr import integrated_time
-import matplotlib.pyplot as plt
-
-from scipy.ndimage import gaussian_filter
-from matplotlib.ticker import MaxNLocator
-from scipy.stats import gaussian_kde
-
 from matplotlib import rcParams
-import matplotlib
+from matplotlib.ticker import MaxNLocator
 from scipy.stats import chi2 as chi2_scipy
 
 # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
@@ -22,8 +18,10 @@ from cup1d.utils.various_dicts import param_dict
 
 
 def prepare_data(
-    folder_in, truth={"Delta2_star": 0, "n_star": 0}, nburn_extra=0
+    folder_in, truth=None, nburn_extra=0
 ):
+    if truth is None:
+        truth = {"Delta2_star": 0, "n_star": 0}
     fdict = np.load(
         os.path.join(folder_in, "fitter_results.npy"), allow_pickle=True
     ).item()
@@ -78,13 +76,15 @@ def plots_chain(
     folder_out=None,
     nburn_extra=0,
     ftsize=20,
-    truth={"Delta2_star": 0, "n_star": 0},
+    truth=None,
     store_data=False,
 ):
     """
     Plot the chains
     """
 
+    if truth is None:
+        truth = {"Delta2_star": 0, "n_star": 0}
     out_data = {}
 
     if folder_out is None:
@@ -96,46 +96,46 @@ def plots_chain(
 
     try:
         plot_lnprob(lnprob, folder_out, ftsize)
-    except:
+    except Exception:
         print("Could not plot lnprob")
 
     try:
         out_data = corr_compressed(
             dat, labels, priors, folder_out=folder_out, store_data=store_data
         )
-    except:
+    except Exception:
         print("Could not plot corr_compressed")
 
     try:
         plot_corr(dat, labels, folder_out=folder_out, ftsize=ftsize)
-    except:
+    except Exception:
         print("Could not plot corr")
 
     try:
         corner_blobs(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
-    except:
+    except Exception:
         print("Could not plot corner_blobs")
 
     try:
         save_contours(dat[:, 0], dat[:, 1], folder_out=folder_out)
-    except:
+    except Exception:
         print("Could not save contours")
 
     try:
         save_contours(
             dat_Asns[:, 0], dat_Asns[:, 1], folder_out=folder_out, flag="_Asns"
         )
-    except:
+    except Exception:
         print("Could not save contours")
 
     try:
         out_data = plot_res(dat, folder_out=folder_out, store_data=store_data)
-    except:
+    except Exception:
         print("Could not plot res")
 
     try:
         get_summary(folder_out, lnprob)
-    except:
+    except Exception:
         print("Could not get summary")
 
     # corner_chain(dat, folder_out=folder_out, ftsize=ftsize, labels=labels)
@@ -252,7 +252,7 @@ def save_contours(x, y, folder_out=None, bins=50, flag=""):
 
     # Extract vertices for each level using allsegs
     contours_dict = {}
-    for sigma, segs in zip([0.68, 0.95], cs.allsegs):
+    for sigma, _segs in zip([0.68, 0.95], cs.allsegs, strict=False):
         level_contours = []
         # cs.allsegs is in the same order as levels_plot (increasing)
         # so match by density
@@ -425,9 +425,9 @@ def corr_compressed(
             }
 
         if key in ["tau", "sigT_kms", "gamma"]:
-            sharex = "all"
+            pass
         else:
-            sharex = "col"
+            pass
 
         if key != "mix":
             xsize = len(lab_use) * 3

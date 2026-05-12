@@ -1,24 +1,24 @@
 import os
 import time
+
 import emcee
-from scipy.stats import truncnorm
-from scipy.optimize import minimize, dual_annealing
 import numpy as np
-from pyDOE2 import lhs
 from mpi4py import MPI
+from pyDOE2 import lhs
+from scipy.optimize import dual_annealing, minimize
+from scipy.stats import truncnorm
 
 # our own modules
-from cup1d.utils.utils import create_print_function, purge_chains
-from cup1d.utils.utils import get_path_repo
+from cup1d.utils.utils import create_print_function, get_path_repo, purge_chains
 from cup1d.utils.various_dicts import (
-    param_dict,
-    param_dict_rev,
     blob_strings,
     blob_strings_orig,
+    param_dict,
+    param_dict_rev,
 )
 
 
-class Fitter(object):
+class Fitter:
     """Wrapper around an emcee sampler for Lyman alpha likelihood"""
 
     def __init__(
@@ -34,6 +34,7 @@ class Fitter(object):
         parallel=False,
         explore=False,
         fix_cosmology=False,
+        read_chain_file=None,
     ):
         """Setup sampler from likelihood, or use default.
         If read_chain_file is provided, read pre-computed chain.
@@ -60,6 +61,12 @@ class Fitter(object):
         self.print = create_print_function(self.verbose)
 
         self.like = like
+        if read_chain_file is not None:
+            self.load_chain(
+                read_chain_file, rootdir=rootdir, subfolder=subfolder
+            )
+            return
+
         # number of free parameters to sample
         self.thin = thin
         self.nburn = nburn
@@ -176,11 +183,12 @@ class Fitter(object):
             _log_func = log_func
 
         if zmask is not None:
-            log_func = lambda x: _log_func(x, zmask=zmask)
+            def log_func(x):
+                return _log_func(x, zmask=zmask)
         else:
             log_func = _log_func
 
-        if self.parallel == False:
+        if not self.parallel:
             ## Get initial walkers
             p0 = self.get_initial_walkers(pini=pini)
 
@@ -194,7 +202,7 @@ class Fitter(object):
                 f"Running MCMC with {self.nwalkers} walkers, {self.ndim} dimensions, and {self.nsteps}, {self.nburn}.",
                 flush=True,
             )
-            for sample in sampler.sample(
+            for _sample in sampler.sample(
                 p0, iterations=self.nburn + self.nsteps
             ):
                 if sampler.iteration % 100 == 0:
@@ -223,7 +231,7 @@ class Fitter(object):
                 self.nwalkers, self.ndim, log_func, blobs_dtype=self.blobs_dtype
             )
 
-            for sample in sampler.sample(
+            for _sample in sampler.sample(
                 p0,
                 iterations=self.nburn + self.nsteps,
                 skip_initial_state_check=True,
@@ -299,9 +307,10 @@ class Fitter(object):
         """Minimizer"""
 
         def set_log_func_minimize(pini, zmask=None, mask_pars=False):
-            if mask_pars == False:
+            if not mask_pars:
                 if zmask is not None:
-                    fun = lambda x: log_func_minimize(x, zmask=zmask)
+                    def fun(x):
+                        return log_func_minimize(x, zmask=zmask)
                     return fun
                 else:
                     return log_func_minimize
@@ -313,14 +322,16 @@ class Fitter(object):
                 ind_fix = np.array(ind_fix)
                 pfix = pini[ind_fix]
                 if zmask is not None:
-                    fun = lambda x: log_func_minimize(
-                        x, zmask=zmask, ind_fix=ind_fix, pfix=pfix
-                    )
+                    def fun(x):
+                        return log_func_minimize(
+                                            x, zmask=zmask, ind_fix=ind_fix, pfix=pfix
+                                        )
                     return fun
                 else:
-                    fun = lambda x: log_func_minimize(
-                        x, ind_fix=ind_fix, pfix=pfix
-                    )
+                    def fun(x):
+                        return log_func_minimize(
+                                            x, ind_fix=ind_fix, pfix=pfix
+                                        )
                     return fun
 
         _log_func_minimize = set_log_func_minimize(
@@ -476,7 +487,8 @@ class Fitter(object):
         def set_log_func_minimize(pini, zmask=None, mask_pars=None):
             if mask_pars is None:
                 if zmask is not None:
-                    fun = lambda x: log_func_minimize(x, zmask=zmask)
+                    def fun(x):
+                        return log_func_minimize(x, zmask=zmask)
                     return fun
                 else:
                     return log_func_minimize
@@ -488,14 +500,16 @@ class Fitter(object):
                 ind_fix = np.array(ind_fix)
                 pfix = pini[ind_fix]
                 if zmask is not None:
-                    fun = lambda x: log_func_minimize(
-                        x, zmask=zmask, ind_fix=ind_fix, pfix=pfix
-                    )
+                    def fun(x):
+                        return log_func_minimize(
+                                            x, zmask=zmask, ind_fix=ind_fix, pfix=pfix
+                                        )
                     return fun
                 else:
-                    fun = lambda x: log_func_minimize(
-                        x, ind_fix=ind_fix, pfix=pfix
-                    )
+                    def fun(x):
+                        return log_func_minimize(
+                                            x, ind_fix=ind_fix, pfix=pfix
+                                        )
                     return fun
 
         if restart:
@@ -581,7 +595,7 @@ class Fitter(object):
         self.like.theory.rescale_fid_cosmo(target)
 
         # check whether new fiducial cosmology is within priors
-        if np.isfinite(self.like.get_chi2(input_pars)) == False:
+        if not np.isfinite(self.like.get_chi2(input_pars)):
             print("skipping", irank, blind_cosmo)
             return
 
@@ -631,7 +645,7 @@ class Fitter(object):
         self.mle_cube = mle_cube
         mle_no_cube = mle_cube.copy()
         for ii, par_i in enumerate(self.like.free_params):
-            scale_i = par_i.max_value - par_i.min_value
+            par_i.max_value - par_i.min_value
             mle_no_cube[ii] = par_i.value_from_cube(mle_cube[ii])
 
         print("Fit params cube:", self.mle_cube, flush=True)
@@ -789,7 +803,7 @@ class Fitter(object):
         - if delta_lnprob_cut is set, use it to remove low-prob islands"""
 
         # mask walkers not converged
-        if self.explore == False:
+        if not self.explore:
             mask, _ = purge_chains(self.lnprob[extra_nburn:, :])
         else:
             mask = np.ones(self.lnprob.shape[1], dtype=bool)
@@ -815,7 +829,7 @@ class Fitter(object):
             lnprob = lnprob[mask]
             blobs = blobs[mask]
 
-        if cube == False:
+        if not cube:
             cube_values = np.zeros_like(chain)
             for ip in range(chain.shape[-1]):
                 cube_values[..., ip] = self.like.free_params[
@@ -867,6 +881,48 @@ class Fitter(object):
 
         return all_params, all_strings, lnprob
 
+    def load_chain(self, read_chain_file, rootdir=None, subfolder=None):
+        """Load a pre-computed chain from file."""
+        if rootdir is None:
+            rootdir = os.path.join(get_path_repo("cup1d"), "data", "chains")
+
+        if subfolder:
+            chain_location = os.path.join(rootdir, subfolder)
+        else:
+            chain_location = rootdir
+
+        if isinstance(read_chain_file, int):
+            self.save_directory = os.path.join(
+                chain_location, "chain_" + str(read_chain_file)
+            )
+        else:
+            self.save_directory = os.path.join(chain_location, read_chain_file)
+
+        fname = os.path.join(self.save_directory, "fitter_results.npy")
+        if not os.path.isfile(fname):
+            raise FileNotFoundError(f"Could not find {fname}")
+
+        data = np.load(fname, allow_pickle=True).item()
+
+        # load sampler results
+        self.mle_cube = data["fitter"]["mle_cube"]
+        self.mle_cosmo = data["fitter"]["mle_cosmo"]
+        self.mle = data["fitter"]["mle"]
+        self.lnprop_mle = data["fitter"]["lnprob_mle"]
+
+        if os.path.isfile(os.path.join(self.save_directory, "lnprob.npy")):
+            self.lnprob = np.load(os.path.join(self.save_directory, "lnprob.npy"))
+            self.chain = np.load(os.path.join(self.save_directory, "chain.npy"))
+            self.blobs = np.load(os.path.join(self.save_directory, "blobs.npy"))
+
+        # setup truth if available
+        self.set_truth()
+
+        # list of parameter names in tex format for plotting
+        self.paramstrings = data["fitter"]["chain_names_latex"]
+
+        return
+
     def _setup_chain_folder(self, rootdir=None, subfolder=None):
         """Set up a directory to save files for this sampler run"""
 
@@ -917,7 +973,7 @@ class Fitter(object):
         with open(self.save_directory + "/info.txt", "w") as f:
             for item in saveDict.keys():
                 if item not in dontPrint:
-                    f.write("%s: %s\n" % (item, str(saveDict[item])))
+                    f.write(f"{item}: {str(saveDict[item])}\n")
 
         return
 
@@ -1095,3 +1151,7 @@ class Fitter(object):
         out_file = self.save_directory + "/fitter_results.npy"
         print("Saving data to " + out_file)
         np.save(out_file, dict_out)
+
+
+# Alias for compatibility
+EmceeSampler = Fitter

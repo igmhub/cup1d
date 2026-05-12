@@ -5,7 +5,8 @@ to model IGM properties.
 """
 
 import numpy as np
-from cup1d.igm import Thermal, MeanFlux
+
+from cup1d.igm import MeanFlux, Thermal
 
 
 def example_thermal():

@@ -1,14 +1,12 @@
+
 import numpy as np
-import copy
-import os
-import lace
-from scipy.interpolate import interp1d
+
 from cup1d.likelihood import likelihood_parameter
-from cup1d.nuisance.resolution_model import get_Rz
 from cup1d.nuisance.mean_flux_model_chunks import split_into_n_chunks
+from cup1d.nuisance.resolution_model import get_Rz
 
 
-class Resolution_Model_Chunks(object):
+class Resolution_Model_Chunks:
     """Use a handful of parameters to model the mean transmitted flux fraction
     (or mean flux) as a function of redshift.
      For now, we use a polynomial to describe log(tau_eff) around z_tau.
@@ -75,7 +73,7 @@ class Resolution_Model_Chunks(object):
         assert len(self.R_coeff) == len(self.params), "size mismatch"
         return len(self.R_coeff)
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Multiplicative contamination caused by Resolution"""
 
         R_coeff = self.get_R_coeffs(like_params=like_params)
@@ -101,7 +99,7 @@ class Resolution_Model_Chunks(object):
         """Return likelihood parameters for the mean flux model"""
         return self.params
 
-    def get_R_coeffs(self, like_params=[]):
+    def get_R_coeffs(self, like_params=None):
         """Return list of mean flux coefficients"""
 
         if like_params:

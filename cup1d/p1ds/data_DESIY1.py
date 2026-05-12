@@ -2,9 +2,8 @@
 
 import os
 
-from astropy.io import fits
-import matplotlib.pyplot as plt
 import numpy as np
+from astropy.io import fits
 
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
 from cup1d.utils.utils import get_path_repo
@@ -213,7 +212,7 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red", variation=No
     for lab in sys_labels:
         try:
             _ = syst[lab]
-        except:
+        except Exception:
             print(lab, " not in syst")
             continue
         if lab in sys_labels_ucorr:
@@ -327,8 +326,8 @@ def read_from_file(
     # folder storing P1D measurement
     try:
         hdu = fits.open(p1d_fname)
-    except:
-        raise ValueError("Cannot read: ", p1d_fname)
+    except Exception:
+        raise ValueError("Cannot read: ", p1d_fname) from None
 
     if "fft" in p1d_fname:
         type_measurement = "FFT"
@@ -348,7 +347,7 @@ def read_from_file(
 
     iuse = dict_with_keys["P1D_BLIND"]
     if "VELUNITS" in hdu[iuse].header:
-        if hdu[iuse].header["VELUNITS"] == False:
+        if not hdu[iuse].header["VELUNITS"]:
             raise ValueError("Not velocity units in: ", p1d_fname)
 
     blinding = None

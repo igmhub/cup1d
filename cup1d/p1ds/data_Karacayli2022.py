@@ -1,9 +1,8 @@
-import os
 
-import pandas
 import numpy as np
+import pandas
 
-from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Karacayli2022(BaseDataP1D):
@@ -44,7 +43,7 @@ def read_from_file(diag_cov, kmax_kms):
 
     w = kbins < kmax_kms
     kbins = kbins[w]
-    print("Nz = {} , Nk = {}".format(Nz, Nk))
+    print(f"Nz = {Nz} , Nk = {Nk}")
     Pk = data["P"].reshape(Nz, Nk)[:, w]
     ek = data["e"].reshape(Nz, Nk)[:, w]
 

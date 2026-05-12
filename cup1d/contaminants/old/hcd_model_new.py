@@ -1,19 +1,20 @@
+
 import numpy as np
-import copy, os
 from matplotlib import pyplot as plt
-from cup1d.utils.utils import get_discrete_cmap
+
 from cup1d.likelihood import likelihood_parameter
+from cup1d.utils.utils import get_discrete_cmap
 
 
-class HCD_Model_new(object):
+class HCD_Model_new:
     """New model for HCD contamination"""
 
     def __init__(
         self,
         z_0=3.0,
-        fid_A_damp=[0, -9],
-        fid_A_scale=[0, 5],
-        fid_A_const=[0, 0],
+        fid_A_damp=None,
+        fid_A_scale=None,
+        fid_A_const=None,
         null_A_damp=-9.5,
         ln_A_damp_coeff=None,
         ln_A_scale_coeff=None,
@@ -21,6 +22,12 @@ class HCD_Model_new(object):
         free_param_names=None,
         Gauss_priors=None,
     ):
+        if fid_A_const is None:
+            fid_A_const = [0, 0]
+        if fid_A_scale is None:
+            fid_A_scale = [0, 5]
+        if fid_A_damp is None:
+            fid_A_damp = [0, -9]
         self.z_0 = z_0
         self.Gauss_priors = Gauss_priors
         self.null_A_damp = null_A_damp
@@ -189,7 +196,7 @@ class HCD_Model_new(object):
             raise ValueError("parameter size mismatch")
         return all_par
 
-    def get_A_damp(self, z, like_params=[]):
+    def get_A_damp(self, z, like_params=None):
         """Amplitude of HCD contamination around z_0"""
 
         ln_A_damp_coeff = self.get_A_damp_coeffs(like_params=like_params)
@@ -201,7 +208,7 @@ class HCD_Model_new(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_A_scale(self, z, like_params=[]):
+    def get_A_scale(self, z, like_params=None):
         """Amplitude of HCD contamination around z_0"""
 
         ln_A_scale_coeff = self.get_A_scale_coeffs(like_params=like_params)
@@ -211,7 +218,7 @@ class HCD_Model_new(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_A_const(self, z, like_params=[]):
+    def get_A_const(self, z, like_params=None):
         """Amplitude of HCD contamination around z_0"""
 
         ln_A_const_coeff = self.get_A_const_coeffs(like_params=like_params)
@@ -233,7 +240,7 @@ class HCD_Model_new(object):
         """Return likelihood parameters for the HCD model"""
         return self.A_const_params
 
-    def get_A_damp_coeffs(self, like_params=[]):
+    def get_A_damp_coeffs(self, like_params=None):
         """Return list of mean flux coefficients"""
 
         if like_params:
@@ -274,7 +281,7 @@ class HCD_Model_new(object):
 
         return ln_A_damp_coeff
 
-    def get_A_scale_coeffs(self, like_params=[]):
+    def get_A_scale_coeffs(self, like_params=None):
         """Return list of mean flux coefficients"""
 
         if like_params:
@@ -315,7 +322,7 @@ class HCD_Model_new(object):
 
         return ln_A_scale_coeff
 
-    def get_A_const_coeffs(self, like_params=[]):
+    def get_A_const_coeffs(self, like_params=None):
         """Return list of mean flux coefficients"""
 
         if like_params:
@@ -356,7 +363,7 @@ class HCD_Model_new(object):
 
         return ln_A_const_coeff
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Multiplicative contamination caused by HCDs"""
         A_damp = self.get_A_damp(z, like_params=like_params)
         if A_damp is None:
@@ -388,12 +395,14 @@ class HCD_Model_new(object):
         cmap=None,
         smooth_k=False,
         dict_data=None,
-        zrange=[0, 10],
+        zrange=None,
         name=None,
     ):
         """Plot the contamination model"""
 
         # plot for fiducial value
+        if zrange is None:
+            zrange = [0, 10]
         if ln_A_damp_coeff is None:
             ln_A_damp_coeff = self.ln_A_damp_coeff
         if ln_A_scale_coeff is None:

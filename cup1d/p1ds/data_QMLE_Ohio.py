@@ -1,4 +1,5 @@
 import os
+
 import numpy as np
 import pandas
 
@@ -65,7 +66,7 @@ class P1D_QMLE_Ohio(BaseDataP1D):
         ).to_records(index=False)
         # z k1 k2 kc Pfid ThetaP Pest ErrorP d b t
         zbins = np.unique(data["z"])
-        Nz = zbins.shape[0]
+        zbins.shape[0]
 
         k = []
         Pk = []

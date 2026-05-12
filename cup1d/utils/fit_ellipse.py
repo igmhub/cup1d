@@ -1,7 +1,7 @@
 """Fit and draw two-dimensional Gaussian-style ellipses."""
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.patches import Ellipse
 
 
@@ -91,13 +91,15 @@ def plot_ellipse(
     sigma1=0.2,
     sigma2=0.5,
     rho=0.6,
-    mean=[1.0, 2.0],
+    mean=None,
     ax=None,
     color="C1",
     label="ellipse",
 ):
     """Draw a 68 percent covariance ellipse on ``ax``."""
     # Covariance matrix
+    if mean is None:
+        mean = [1.0, 2.0]
     cov = np.array(
         [
             [sigma1**2, rho * sigma1 * sigma2],
@@ -127,7 +129,7 @@ def plot_ellipse(
     if ax is None:
         fig, ax = plt.subplots()
     else:
-        fig = None
+        pass
 
     ellipse = Ellipse(
         xy=mean,

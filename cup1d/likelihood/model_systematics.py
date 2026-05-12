@@ -5,7 +5,7 @@ import numpy as np
 from cup1d.contaminants import resolution_class
 
 
-class Systematics(object):
+class Systematics:
     """Container for multiplicative systematic corrections."""
 
     def __init__(
@@ -24,9 +24,9 @@ class Systematics(object):
             Gauss_priors = None
 
         if "z_max" in pars_syst:
-            z_max = pars_syst["z_max"]
+            pars_syst["z_max"]
         else:
-            z_max = None
+            pass
 
         prop_coeffs = {}
         fid_vals = {}
@@ -71,7 +71,7 @@ class Systematics(object):
 
     #     return dict_out
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Return the multiplicative systematic correction."""
         # include multiplicative resolution correction
         cont = self.resolution_model.get_contamination(

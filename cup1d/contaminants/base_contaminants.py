@@ -7,19 +7,20 @@ and HCD systems in the Lyman-alpha forest.
 
 from __future__ import annotations
 
+from typing import Any, Union
+
 import numpy as np
 import numpy.typing as npt
-from scipy.interpolate import make_smoothing_spline, make_interp_spline
-from cup1d.likelihood import likelihood_parameter
-from typing import Optional, List, Dict, Any, Tuple, Union
+from scipy.interpolate import make_interp_spline, make_smoothing_spline
 
+from cup1d.likelihood import likelihood_parameter
 
 # Type aliases
 Array1D = npt.NDArray[np.float64]
 Float = Union[float, int]
 
 
-class Contaminant(object):
+class Contaminant:
     """New model for HCD contamination.
 
     Parameters
@@ -48,16 +49,16 @@ class Contaminant(object):
 
     def __init__(
         self,
-        coeffs: Optional[Dict[str, float]] = None,
-        list_coeffs: Optional[List[str]] = None,
-        prop_coeffs: Optional[Dict[str, Any]] = None,
-        free_param_names: Optional[List[str]] = None,
+        coeffs: dict[str, float] | None = None,
+        list_coeffs: list[str] | None = None,
+        prop_coeffs: dict[str, Any] | None = None,
+        free_param_names: list[str] | None = None,
         z_0: float = 3.0,
-        fid_vals: Optional[Dict[str, Array1D]] = None,
-        null_vals: Optional[Dict[str, float]] = None,
-        z_max: Optional[float] = None,
-        flat_priors: Optional[Dict[str, Tuple[float, float]]] = None,
-        Gauss_priors: Optional[Dict[str, float]] = None,
+        fid_vals: dict[str, Array1D] | None = None,
+        null_vals: dict[str, float] | None = None,
+        z_max: float | None = None,
+        flat_priors: dict[str, tuple[float, float]] | None = None,
+        Gauss_priors: dict[str, float] | None = None,
     ) -> None:
         # store input data
         self.list_coeffs = list_coeffs
@@ -74,17 +75,17 @@ class Contaminant(object):
             try:
                 self.prop_coeffs[key + "_otype"] = prop_coeffs[key + "_otype"]
             except KeyError:
-                raise ValueError("must specify otype in prop_coeffs for:", key)
+                raise ValueError("must specify otype in prop_coeffs for:", key) from None
             try:
                 self.prop_coeffs[key + "_ztype"] = prop_coeffs[key + "_ztype"]
             except KeyError:
-                raise ValueError("must specify ztype in prop_coeffs for:", key)
+                raise ValueError("must specify ztype in prop_coeffs for:", key) from None
 
             if prop_coeffs[key + "_ztype"].startswith("interp"):
                 try:
                     self.prop_coeffs[key + "_znodes"] = prop_coeffs[key + "_znodes"]
                 except KeyError:
-                    raise ValueError("must specify zs in prop_coeffs for:", key)
+                    raise ValueError("must specify zs in prop_coeffs for:", key) from None
 
         self.coeffs = {}
         if coeffs is not None:
@@ -186,7 +187,7 @@ class Contaminant(object):
             raise ValueError("mismatch between number of params and coeffs")
         return n_params
 
-    def get_value(self, name, z, like_params=[]):
+    def get_value(self, name, z, like_params=None):
         """Evaluate one nuisance coefficient at redshift ``z``.
 
         The interpolation/evolution mode is controlled by
@@ -248,7 +249,7 @@ class Contaminant(object):
         """Return likelihood parameters"""
         return self.params
 
-    def get_coeff(self, name, like_params=[]):
+    def get_coeff(self, name, like_params=None):
         """Return coefficients for ``name``, optionally updated from a chain state."""
         if like_params:
             coeff = self.coeffs[name].copy()
@@ -326,7 +327,7 @@ class Contaminant(object):
             ax = [ax]
 
         try:
-            len_p = len(like_params[0])
+            len(like_params[0])
         except TypeError:
             z_at_time = False
         else:

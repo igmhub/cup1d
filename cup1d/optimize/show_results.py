@@ -1,7 +1,6 @@
 """Small reporting helpers for optimization outputs."""
 
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.stats import chi2 as chi2_scipy
 
 

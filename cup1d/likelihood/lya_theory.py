@@ -1,15 +1,16 @@
 import numpy as np
 from lace.cosmo import camb_cosmo
+
 from cup1d.likelihood import CAMB_model
 from cup1d.likelihood.model_contaminants import Contaminants
-from cup1d.likelihood.model_systematics import Systematics
 from cup1d.likelihood.model_igm import IGM
-from cup1d.utils.utils_sims import get_training_hc
+from cup1d.likelihood.model_systematics import Systematics
 from cup1d.utils.hull import Hull
 from cup1d.utils.utils import is_number_string
+from cup1d.utils.utils_sims import get_training_hc
 
 
-class Theory(object):
+class Theory:
     """Translator between the likelihood object and the emulator. This object
     will map from a set of CAMB parameters directly to emulator calls, without
     going through our Delta^2_\star parametrisation"""
@@ -25,6 +26,7 @@ class Theory(object):
         z_star=3.0,
         kp_kms=0.009,
         use_star_priors=None,
+        zs=None,
     ):
         """Setup object to compute predictions for the 1D power spectrum.
         Inputs:
@@ -215,7 +217,7 @@ class Theory(object):
 
         for key in self.emu_cosmo_all:
             cos = self.emu_cosmo_all[key]
-            if is_number_string(cos["sim_label"][-1]) == False:
+            if not is_number_string(cos["sim_label"][-1]):
                 continue
             test_Astar = cos["star_params"]["Delta2_star"]
             test_nstar = cos["star_params"]["n_star"]
@@ -408,7 +410,7 @@ class Theory(object):
         return res
 
     def get_emulator_calls(
-        self, zs, like_params=[], return_M_of_z=True, return_blob=False
+        self, zs, like_params=None, return_M_of_z=True, return_blob=False
     ):
         """Compute models that will be emulated, one per redshift bin.
         - like_params identify likelihood parameters to use.
@@ -486,7 +488,7 @@ class Theory(object):
                     "Not a theory model for emulator parameter", key
                 )
 
-        if return_M_of_z == True:
+        if return_M_of_z:
             if return_blob:
                 return emu_call, M_of_zs, blob
             else:
@@ -611,7 +613,7 @@ class Theory(object):
         self,
         zs,
         k_kms,
-        like_params=[],
+        like_params=None,
         return_covar=False,
         return_blob=True,
         return_emu_params=False,
@@ -655,7 +657,7 @@ class Theory(object):
 
         # check priors
         if self.use_hull & apply_hull:
-            if hires == False:
+            if not hires:
                 hull = self.hull
             else:
                 hull = self.hull_hires
@@ -665,7 +667,7 @@ class Theory(object):
                 p0[:, jj] = emu_call[key]
                 # print(key, emu_call[key])
 
-            if hull.in_hulls(p0) == False:
+            if not hull.in_hulls(p0):
                 # print("Not in hull")
                 return None
 
@@ -864,7 +866,7 @@ class Theory(object):
     def plot_p1d(
         self,
         k_kms,
-        like_params=[],
+        like_params=None,
         plot_every_iz=1,
         k_kms_hires=None,
         zmask=None,
@@ -902,7 +904,7 @@ class Theory(object):
                     k_kms_use[iz],
                     emu_p1d[iz] * k_kms_use[iz] / np.pi,
                     color=col,
-                    label="z=%.1f" % zs[iz],
+                    label=f"z={zs[iz]:.1f}",
                 )
 
             ax[ii].legend()

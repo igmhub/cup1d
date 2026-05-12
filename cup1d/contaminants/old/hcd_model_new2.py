@@ -1,11 +1,12 @@
+
 import numpy as np
-import copy, os
 from matplotlib import pyplot as plt
-from cup1d.utils.utils import get_discrete_cmap
+
 from cup1d.likelihood import likelihood_parameter
+from cup1d.utils.utils import get_discrete_cmap
 
 
-class HCD_Model_new2(object):
+class HCD_Model_new2:
     """New model for HCD contamination"""
 
     def __init__(
@@ -137,7 +138,7 @@ class HCD_Model_new2(object):
             raise ValueError("mismatch between number of params and coeffs")
         return n_params
 
-    def get_value(self, name, z, like_params=[]):
+    def get_value(self, name, z, like_params=None):
         """Amplitude of HCD contamination around z_0"""
 
         coeff = self.get_coeff(name, like_params=like_params)
@@ -157,7 +158,7 @@ class HCD_Model_new2(object):
         """Return likelihood parameters for the HCD model"""
         return self.params[name]
 
-    def get_coeff(self, name, like_params=[]):
+    def get_coeff(self, name, like_params=None):
         """Return list of mean flux coefficients"""
 
         if like_params:
@@ -188,7 +189,7 @@ class HCD_Model_new2(object):
 
         return coeff
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Multiplicative contamination caused by HCDs"""
         vals = {}
         for key in self.list_coeffs:
@@ -222,12 +223,14 @@ class HCD_Model_new2(object):
         plot_every_iz=1,
         cmap=None,
         dict_data=None,
-        zrange=[0, 10],
+        zrange=None,
         name=None,
     ):
         """Plot the contamination model"""
 
         # plot for fiducial value
+        if zrange is None:
+            zrange = [0, 10]
         if coeffs is None:
             coeffs = self.coeffs
         else:

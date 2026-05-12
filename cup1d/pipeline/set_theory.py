@@ -2,11 +2,11 @@
 
 import numpy as np
 
-from cup1d.likelihood.lya_theory import Theory
-from cup1d.likelihood.model_igm import IGM
-from cup1d.likelihood.model_contaminants import Contaminants
-from cup1d.likelihood.model_systematics import Systematics
 from cup1d.likelihood.cosmologies import set_cosmo
+from cup1d.likelihood.lya_theory import Theory
+from cup1d.likelihood.model_contaminants import Contaminants
+from cup1d.likelihood.model_igm import IGM
+from cup1d.likelihood.model_systematics import Systematics
 
 
 def set_theory(

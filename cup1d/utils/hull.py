@@ -2,8 +2,8 @@
 
 import os
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy.spatial import ConvexHull
 
 from cup1d.utils.utils import get_path_repo
@@ -14,7 +14,7 @@ def in_hull(hull, p):
     return np.all(hull.eq @ p.T + hull.eq2[:, : p.shape[0]] <= hull.tol, 0)
 
 
-class Hull(object):
+class Hull:
     """Compute and query emulator-domain convex hulls."""
 
     def __init__(

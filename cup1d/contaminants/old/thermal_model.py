@@ -1,13 +1,14 @@
-import numpy as np
-import copy
 import os
+
 import lace
-from scipy.interpolate import interp1d
+import numpy as np
 from lace.cosmo import thermal_broadening
+from scipy.interpolate import interp1d
+
 from cup1d.likelihood import likelihood_parameter
 
 
-class ThermalModel(object):
+class ThermalModel:
     """Model the redshift evolution of the gas temperature parameters gamma
     and sigT_kms.
     We use a power law rescaling around a fiducial simulation at the centre
@@ -26,13 +27,17 @@ class ThermalModel(object):
         Gauss_priors=None,
         emu_suite="mpg",
         back_igm=None,
-        fid_value_sigT=[0, 0],
-        fid_value_gamma=[0, 0],
+        fid_value_sigT=None,
+        fid_value_gamma=None,
     ):
         """Model the redshift evolution of the thermal broadening scale and gamma.
         We use a power law rescaling around a fiducial simulation at the centre
         of the initial Latin hypercube in simulation space."""
 
+        if fid_value_gamma is None:
+            fid_value_gamma = [0, 0]
+        if fid_value_sigT is None:
+            fid_value_sigT = [0, 0]
         self.z_T = z_T
         self.priors = priors
         self.Gauss_priors = Gauss_priors
@@ -72,7 +77,7 @@ class ThermalModel(object):
             fname = repo + "data/sim_suites/Australia20/IGM_histories.npy"
             try:
                 igm_hist = np.load(fname, allow_pickle=True).item()
-            except:
+            except Exception:
                 raise ValueError(
                     fname
                     + " not found. You can produce it using the LaCE"
@@ -86,13 +91,13 @@ class ThermalModel(object):
         if np.sum(mask) != fid_igm["gamma"].shape[0]:
             print(
                 "The fiducial value of gamma is zero for z: ",
-                fid_igm["z_T"][mask == False],
+                fid_igm["z_T"][not mask],
             )
         mask = (fid_igm["sigT_kms"] != 0) & np.isfinite(fid_igm["sigT_kms"])
         if np.sum(mask) != fid_igm["sigT_kms"].shape[0]:
             print(
                 "The fiducial value of sigT_kms is zero for z: ",
-                fid_igm["z_T"][mask == False],
+                fid_igm["z_T"][not mask],
             )
 
         mask = (
@@ -223,7 +228,7 @@ class ThermalModel(object):
         ), "size mismatch"
         return len(self.ln_gamma_coeff)
 
-    def power_law_scaling_gamma(self, z, like_params=[], over_coeff=None):
+    def power_law_scaling_gamma(self, z, like_params=None, over_coeff=None):
         """Power law rescaling around z_T"""
 
         if over_coeff is not None:
@@ -236,7 +241,7 @@ class ThermalModel(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def power_law_scaling_sigT_kms(self, z, like_params=[], over_coeff=None):
+    def power_law_scaling_sigT_kms(self, z, like_params=None, over_coeff=None):
         """Power law rescaling around z_T"""
 
         if over_coeff is not None:
@@ -249,7 +254,7 @@ class ThermalModel(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_sigT_kms(self, z, like_params=[], over_coeff=None):
+    def get_sigT_kms(self, z, like_params=None, over_coeff=None):
         """sigT_kms at the input redshift"""
         sigT_kms = self.power_law_scaling_sigT_kms(
             z,
@@ -258,7 +263,7 @@ class ThermalModel(object):
         ) * self.fid_sigT_kms_interp(z)
         return sigT_kms
 
-    def get_T0(self, z, like_params=[], over_coeff=None):
+    def get_T0(self, z, like_params=None, over_coeff=None):
         """T_0 at the input redshift"""
         sigT_kms = self.power_law_scaling_sigT_kms(
             z, like_params=like_params, over_coeff=over_coeff
@@ -266,7 +271,7 @@ class ThermalModel(object):
         T0 = thermal_broadening.T0_from_broadening_kms(sigT_kms)
         return T0
 
-    def get_gamma(self, z, like_params=[], over_coeff=None):
+    def get_gamma(self, z, like_params=None, over_coeff=None):
         """gamma at the input redshift"""
         gamma = self.power_law_scaling_gamma(
             z,
@@ -407,7 +412,7 @@ class ThermalModel(object):
 
     #     return
 
-    # def get_new_model(self, like_params=[]):
+    # def get_new_model(self, like_params=None):
     #     """Return copy of model, updating values from list of parameters"""
 
     #     T = ThermalModel(
@@ -419,7 +424,7 @@ class ThermalModel(object):
     #     T.update_parameters(like_params)
     #     return T
 
-    def get_sigT_coeffs(self, like_params=[]):
+    def get_sigT_coeffs(self, like_params=None):
         """Return list of sigT coefficients"""
         if like_params:
             ln_sigT_kms_coeff = self.ln_sigT_kms_coeff.copy()
@@ -453,7 +458,7 @@ class ThermalModel(object):
 
         return ln_sigT_kms_coeff
 
-    def get_gamma_coeffs(self, like_params=[]):
+    def get_gamma_coeffs(self, like_params=None):
         """Return list of gamma coefficients"""
         if like_params:
             ln_gamma_coeff = self.ln_gamma_coeff.copy()

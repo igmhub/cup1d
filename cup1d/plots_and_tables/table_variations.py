@@ -1,10 +1,9 @@
 """Print LaTeX rows for analysis-variation summary tables."""
 
-import os
 import math
+import os
 
 import numpy as np
-from scipy.stats import chi2 as chi2_scipy
 
 
 def match_precision(x, xp, xm, sig=2):
@@ -38,8 +37,12 @@ def format_last(val):
     return f"{val:.2f}"
 
 
-def make_latex_table(table, color_threshold=[0.9655, 2.2957], colors=["yellow", "red"]):
+def make_latex_table(table, color_threshold=None, colors=None):
     """Print aligned LaTeX rows from a prepared variation table."""
+    if colors is None:
+        colors = ["yellow", "red"]
+    if color_threshold is None:
+        color_threshold = [0.9655, 2.2957]
     rows_plain = []
     for row in table:
         name = str(row[0])

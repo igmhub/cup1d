@@ -1,7 +1,8 @@
 import numpy as np
-from cup1d.likelihood.pipeline import set_like
-from cup1d.likelihood.fitter import Fitter
 from scipy.stats.distributions import chi2 as chi2_scipy
+
+from cup1d.likelihood.fitter import Fitter
+from cup1d.likelihood.pipeline import set_like
 
 
 def chi2_grow_model_atz(
@@ -119,7 +120,7 @@ def chi2_grow_model_atz(
             for par in out["mle"][0]:
                 try:
                     par2 = fitter.param_dict_rev[par]
-                except:
+                except Exception:
                     continue
                 for p in like.free_params:
                     if par2 == p.name:

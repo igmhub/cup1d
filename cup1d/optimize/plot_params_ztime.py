@@ -1,5 +1,5 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def plot_z_at_time_params(fitter, out_mle, save_fig=None):
@@ -35,7 +35,7 @@ def plot_z_at_time_params(fitter, out_mle, save_fig=None):
 
     dict_out = {}
     jj = 0
-    for ii, key in enumerate(paramstrings):
+    for _ii, key in enumerate(paramstrings):
         if key not in out_mle[0]:
             continue
         dict_out[key] = np.zeros(len(out_mle))
@@ -48,7 +48,7 @@ def plot_z_at_time_params(fitter, out_mle, save_fig=None):
         jj += 1
 
     jj = 0
-    for ii, key in enumerate(paramstrings):
+    for _ii, key in enumerate(paramstrings):
         if key not in dict_out:
             continue
         print(
@@ -68,7 +68,7 @@ def plot_z_at_time_params(fitter, out_mle, save_fig=None):
         y = dict_out[key].copy()[ind]
         w = np.ones_like(x)
         fit = np.polyfit(x, y, ofit[fitter.param_dict_rev[key]], w=w)
-        for kk in range(3):
+        for _kk in range(3):
             mod = np.poly1d(fit)(x)
             std_mod = np.std(mod - y)
             # if "ln_x_" in fitter.param_dict_rev[key]:

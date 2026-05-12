@@ -2,7 +2,6 @@
 
 import os
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 
@@ -108,7 +107,7 @@ class Args:
     cov_syst_type: str = "red"
     z_star: float = 3
     kp_kms: float = 0.009
-    use_star_priors: Optional[dict] = None
+    use_star_priors: dict | None = None
     add_noise: bool = False
     seed_noise: int = 0
     verbose: bool = True
@@ -835,7 +834,7 @@ class Args:
             else:
                 fname = "nyx_ic_global_red.npy"
             self.file_ic = os.path.join(self.path_ic, fname)
-            if ic_global == False:
+            if not ic_global:
                 self.file_ic = None
 
             if (name_variation is not None) and (name_variation.startswith("sim_")):

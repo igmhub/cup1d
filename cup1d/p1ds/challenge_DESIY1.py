@@ -1,7 +1,5 @@
-import os
-from astropy.io import fits
-import matplotlib.pyplot as plt
 import numpy as np
+from astropy.io import fits
 
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 
@@ -53,8 +51,8 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5, max_cov=1e3):
     print("Reading: ", p1d_fname)
     try:
         hdu = fits.open(p1d_fname)
-    except:
-        raise ValueError("Cannot read: ", p1d_fname)
+    except Exception:
+        raise ValueError("Cannot read: ", p1d_fname) from None
 
     dict_with_keys = {}
     for ii in range(len(hdu)):
@@ -73,7 +71,7 @@ def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5, max_cov=1e3):
 
     iuse = dict_with_keys["P1D"]
     if "VELUNITS" in hdu[iuse].header:
-        if hdu[iuse].header["VELUNITS"] == False:
+        if not hdu[iuse].header["VELUNITS"]:
             raise ValueError("Not velocity units in: ", p1d_fname)
     blinding = None
 

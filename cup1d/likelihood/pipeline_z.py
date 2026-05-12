@@ -1,13 +1,15 @@
 import os
+
 import numpy as np
-from mpi4py import MPI
 
 # our own modules
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.pipeline import set_archive, Pipeline
+from mpi4py import MPI
+
+from cup1d.likelihood.pipeline import Pipeline, set_archive
 
 
-class Pipeline_z(object):
+class Pipeline_z:
     """Full pipeline for extracting cosmology from P1D using sampler one z at a time"""
 
     def __init__(self, args, out_folder=None):
@@ -20,7 +22,7 @@ class Pipeline_z(object):
         ## MPI stuff
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
-        size = comm.Get_size()
+        comm.Get_size()
 
         # set archive and emulator
         if rank == 0:
@@ -47,13 +49,13 @@ class Pipeline_z(object):
         pip = Pipeline(args)
 
         list_z = pip.fitter.like.data.z
-        print("list_z = {}".format(list_z))
+        print(f"list_z = {list_z}")
 
         # only minimizer for now, need to implement sampler
         for z in list_z:
             if rank == 0:
-                print("Analyzing z = {}".format(z))
-            out_folder = os.path.join(self.out_folder, "z{}".format(z))
+                print(f"Analyzing z = {z}")
+            out_folder = os.path.join(self.out_folder, f"z{z}")
             args.z_min = z - 0.01
             args.z_max = z + 0.01
             self.pip2 = Pipeline(args, out_folder=out_folder)

@@ -100,7 +100,7 @@ class HCD_Model_Rogers(Contaminant):
             Gauss_priors=Gauss_priors,
         )
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Return the multiplicative HCD correction for each redshift bin."""
 
         # z = np.atleast_1d(z)

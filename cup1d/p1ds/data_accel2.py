@@ -1,20 +1,18 @@
 import os
-import sys
 
+import matplotlib.pyplot as plt
 import numpy as np
-from scipy.interpolate import interp1d, RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator, interp1d
 
-from lace.cosmo import camb_cosmo
-from cup1d.likelihood import cosmologies
-from cup1d.likelihood import CAMB_model
-from cup1d.p1ds.base_p1d_mock import BaseMockP1D
+from cup1d.likelihood import CAMB_model, cosmologies
 from cup1d.p1ds import (
-    data_PD2013,
     data_Chabanier2019,
-    data_QMLE_Ohio,
-    data_Karacayli2022,
     data_DESIY1,
+    data_Karacayli2022,
+    data_PD2013,
+    data_QMLE_Ohio,
 )
+from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 
 
 def load_data(folder, sim_label="l160_r25", hh=0.675, kmax=10):
@@ -220,7 +218,7 @@ class Accel2_P1D(BaseMockP1D):
         # print("add", add_cont_total)
 
         full_Pk_kms = []
-        for iz, z in enumerate(zs):
+        for iz, _z in enumerate(zs):
             # Pcont = (mul_metal * HCD * IC_corr * Pemu + add_metal) * syst
             Pk_kms[iz] = (
                 cont_all["cont_HCD"][iz]
