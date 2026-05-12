@@ -672,7 +672,7 @@ class Likelihood(object):
                     self.free_params.append(p)
                     found = True
                     break
-            if found == False:
+            if not found:
                 raise ValueError(
                     "Could not find free parameter {} in theory".format(par)
                 )
@@ -744,7 +744,7 @@ class Likelihood(object):
         """Store true cosmology from the simulation used to make mock data."""
 
         # access true cosmology used in mock data
-        if hasattr(self.data, "truth") == False:
+        if not hasattr(self.data, "truth"):
             if self.rank == 0:
                 print("will not store truth, working with real data")
             self.truth = None
@@ -772,12 +772,9 @@ class Likelihood(object):
             if key not in self.theory.model_igm.fid_igm:
                 continue
             lenz = self.theory.model_igm.fid_igm[key].shape[0]
-            if (
-                np.allclose(
-                    np.array(self.data.truth["igm"][key])[mask_z],
-                    self.theory.model_igm.fid_igm[key],
-                )
-                == False
+            if not np.allclose(
+                np.array(self.data.truth["igm"][key])[mask_z],
+                self.theory.model_igm.fid_igm[key],
             ):
                 equal_IGM = False
                 break
@@ -2936,7 +2933,7 @@ class Likelihood(object):
 
             if cloud:
                 for jj, sim_label in enumerate(self.theory.emu_igm_all):
-                    if is_number_string(sim_label[-1]) == False:
+                    if not is_number_string(sim_label[-1]):
                         continue
                     if jj == 0:
                         lab = "Training data"

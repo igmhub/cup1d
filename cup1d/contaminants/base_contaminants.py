@@ -125,7 +125,7 @@ class Contaminant(object):
         self.set_params()
 
     def set_params(self) -> None:
-        """Setup likelihood parameters in the HCD model."""
+        """Create likelihood parameters for all contaminant coefficients."""
         self.params = {}
 
         for key in self.list_coeffs:
@@ -327,7 +327,7 @@ class Contaminant(object):
 
         try:
             len_p = len(like_params[0])
-        except:
+        except TypeError:
             z_at_time = False
         else:
             z_at_time = True
@@ -336,7 +336,7 @@ class Contaminant(object):
         coeffs_out = {}
 
         for ii, key in enumerate(self.coeffs.keys()):
-            if z_at_time == False:
+            if z_at_time is False:
                 vals = self.get_value(key, z, like_params=like_params)
                 coeffs_out[key] = self.get_coeff(key, like_params=like_params)
             else:

@@ -62,7 +62,7 @@ class Plotter(object):
                 self.fitter.chain = data["fitter"]["chain"]
                 self.fitter.blobs = data["fitter"]["blobs"]
         else:
-            ValueError("Provide either fitter or fname_chain")
+            raise ValueError("Provide either fitter or fname_chain")
 
         self.cmap = get_discrete_cmap(len(self.fitter.like.data.z))
         self.save_directory = save_directory
@@ -200,12 +200,12 @@ class Plotter(object):
                 os.environ["NYX_PATH"], "nyx_emu_cosmo_" + nyx_version + ".npy"
             )
         else:
-            ValueError("cosmo_label should be 'mpg' or 'nyx'")
+            raise ValueError("cosmo_label should be 'mpg' or 'nyx'")
 
         try:
             data_cosmo = np.load(fname, allow_pickle=True).item()
-        except:
-            ValueError(f"{fname} not found")
+        except FileNotFoundError:
+            raise ValueError(f"{fname} not found")
 
         labs = []
         delta2_star = np.zeros(len(data_cosmo))
