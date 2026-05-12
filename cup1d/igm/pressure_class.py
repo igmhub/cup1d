@@ -1,8 +1,13 @@
+"""Pressure-smoothing model for the IGM."""
+
 import numpy as np
+
 from cup1d.igm.base_igm import IGM_model
 
 
 class Pressure(IGM_model):
+    """Pressure-smoothing scale model for the IGM."""
+
     def __init__(
         self,
         coeffs=None,
@@ -14,6 +19,11 @@ class Pressure(IGM_model):
         flat_priors=None,
         Gauss_priors=None,
     ):
+        """Build the pressure-smoothing model.
+
+        Parameters mirror :class:`cup1d.igm.base_igm.IGM_model`. The default
+        model varies the filtering scale ``kF_kms`` at interpolation nodes.
+        """
         list_coeffs = ["kF_kms"]
 
         if prop_coeffs is None:
@@ -49,7 +59,7 @@ class Pressure(IGM_model):
         )
 
     def get_kF_kms(self, z, like_params=[], name_par="kF_kms"):
-        """Effective optical depth at the input redshift"""
+        """Return the pressure filtering scale at the input redshift."""
 
         kF_kms = self.get_value(name_par, z, like_params=like_params)
         kF_kms *= self.fid_interp[name_par](z)

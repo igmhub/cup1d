@@ -1,7 +1,8 @@
-"""P1D data loading module.
+"""Shared container for observed 1D power spectrum measurements.
 
-This module provides classes for loading 1D power spectrum measurements
-from various simulations and observations.
+This module provides the base class used by observational and mock P1D loaders.
+It stores per-redshift wavenumbers, power spectra, covariance matrices, and
+optional flattened arrays for analyses with cross-redshift covariance.
 
 """
 
@@ -39,7 +40,7 @@ def _drop_zbins(
     kmin_in: Optional[List[Array1D]] = None,
     kmax_in: Optional[List[Array1D]] = None,
 ) -> Tuple:
-    """Drop redshift bins below z_min or above z_max.
+    """Drop redshift bins outside ``[z_min, z_max]`` and trim empty k bins.
 
     Parameters
     ----------
@@ -74,8 +75,9 @@ def _drop_zbins(
 
     Returns
     -------
-    Tuple
-        Processed data arrays.
+    tuple
+        Processed per-redshift arrays and optional flattened full-covariance
+        arrays, in the order consumed by :class:`BaseDataP1D`.
     """
 
     # k_in center of the kbin
@@ -254,22 +256,22 @@ class BaseDataP1D(object):
                 self.apply_blinding = True
 
     def get_Pk_iz(self, iz):
-        """Return P1D in units of km/s for redshift bin iz"""
+        """Return P1D in km/s units for redshift bin ``iz``."""
 
         return self.Pk_kms[iz]
 
     def get_cov_iz(self, iz):
-        """Return covariance of P1D in units of (km/s)^2 for redshift bin iz"""
+        """Return the P1D covariance for redshift bin ``iz``."""
 
         return self.cov_Pk_kms[iz]
 
     def get_icov_iz(self, iz):
-        """Return covariance of P1D in units of (km/s)^2 for redshift bin iz"""
+        """Return the inverse P1D covariance for redshift bin ``iz``."""
 
         return self.icov_Pk_kms[iz]
 
     def cull_data(self, kmin_kms=0, kmax_kms=10):
-        """Remove bins with wavenumber k < kmin_kms and k > kmin_kms"""
+        """Remove bins with wavenumber outside ``[kmin_kms, kmax_kms]``."""
 
         if (kmin_kms is None) & (kmax_kms is None):
             return
@@ -294,7 +296,12 @@ class BaseDataP1D(object):
         ftsize=18,
         store_data=False,
     ):
-        """Plot P1D mesurement. If use_dimensionless, plot k*P(k)/pi."""
+        """Plot the P1D measurement.
+
+        If ``use_dimensionless`` is true, the y-axis is ``k P(k) / pi``.
+        When ``store_data`` is true, return the plotted arrays instead of only
+        creating the figure.
+        """
 
         import matplotlib.pyplot as plt
         from matplotlib import rcParams

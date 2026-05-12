@@ -1,5 +1,22 @@
+"""Likelihood-parameter selection helpers."""
+
+
 def set_free_like_parameters(args, emulator_label="CH24_mpgcen_gpr"):
-    """Set free parameters for likelihood"""
+    """Return the free parameter names implied by the pipeline arguments.
+
+    Parameters
+    ----------
+    args : cup1d.likelihood.input_pipeline.Args
+        Pipeline configuration containing cosmology, IGM, contaminant, and
+        systematic parameter choices.
+    emulator_label : str, optional
+        Emulator label used to decide whether Nyx alpha parameters can vary.
+
+    Returns
+    -------
+    list[str]
+        Names of likelihood parameters that should be varied.
+    """
 
     # cosmology
     if args.fix_cosmo:

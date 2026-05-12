@@ -1,3 +1,7 @@
+"""Factory for observed and mock P1D data objects."""
+
+import os
+
 from cup1d.p1ds import (
     data_gadget,
     data_nyx,
@@ -16,29 +20,22 @@ from cup1d.pipeline.set_archive import set_archive
 
 
 def set_P1D(args, archive=None, theory=None):
-    """Set P1D data
+    """Build the P1D data object requested by the pipeline arguments.
 
     Parameters
     ----------
-    archive : object
-        Archive object containing P1D data
-    data_label : str
-        Label of simulation/dataset used to generate mock data
-    cov_label : str, optional
-        Label of covariance matrix
-    apply_smoothing : bool or None
-        If True, apply smoothing to P1D. If None, do what is best for the input emulator
-    z_min : float
-        Minimum redshift of P1D measurements
-    z_max : float
-        Maximum redshift of P1D measurements
-    cull_data : bool
-        If True, cull data outside of k range from emulator
+    args : cup1d.likelihood.input_pipeline.Args
+        Pipeline configuration. The ``data_label`` attribute selects which
+        branch below is used.
+    archive : object or None, optional
+        Preloaded archive used for simulation-backed mocks.
+    theory : object or None, optional
+        Theory object required for mocks generated from simulations.
 
     Returns
     -------
-    data : object
-        P1D data
+    object
+        P1D data instance with ``data_label`` attached.
     """
 
     data_label = args.data_label

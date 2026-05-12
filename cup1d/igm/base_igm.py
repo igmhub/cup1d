@@ -25,7 +25,7 @@ Float = Union[float, int]
 
 
 class IGM_model(object):
-    """New model for HCD contamination.
+    """Base model for redshift-dependent IGM nuisance parameters.
 
     Parameters
     ----------
@@ -96,12 +96,12 @@ class IGM_model(object):
                 if key in coeffs:
                     self.coeffs[key] = coeffs[key]
                 else:
-                    raise ("Coeff not specified:", key)
+                    raise ValueError(f"Coeff not specified: {key}")
         else:
             if free_param_names is None:
                 raise ValueError("must specify either coeffs or free_param_names")
 
-            # figure out number of HCD free params
+            # figure out number of IGM free params
             self.n_pars = {}
             for key in self.list_coeffs:
                 self.n_pars[key] = len([p for p in free_param_names if key + "_" in p])
@@ -225,7 +225,7 @@ class IGM_model(object):
         )
 
     def set_params(self) -> None:
-        """Setup likelihood parameters in the HCD model."""
+        """Create likelihood parameters for all IGM coefficients."""
         self.params = {}
 
         for key in self.list_coeffs:
@@ -285,12 +285,17 @@ class IGM_model(object):
         n_params = len(self.params)
         n_coeffs = 0
         for coeff in self.coeffs:
-            n_coeffs += len(coeff)
+            n_coeffs += len(self.coeffs[coeff])
         if n_params != n_coeffs:
             raise ValueError("mismatch between number of params and coeffs")
         return n_params
 
     def get_value(self, name: str, z: float, like_params: List = None) -> float:
+        """Evaluate one IGM coefficient at redshift ``z``.
+
+        The returned value is either the evolved coefficient itself or its
+        exponential, depending on ``prop_coeffs[f"{name}_otype"]``.
+        """
         coeff = self.get_coeff(name, like_params=like_params)
 
         if self.prop_coeffs[name + "_ztype"] == "pivot":
@@ -326,13 +331,15 @@ class IGM_model(object):
             raise ValueError("prop_coeffs must be const or exp for", name)
 
     def get_parameter(self, name):
+        """Return one likelihood parameter by name."""
         return self.params[name]
 
     def get_parameters(self):
-        """Return likelihood parameters"""
+        """Return all likelihood parameters."""
         return self.params
 
     def get_coeff(self, name, like_params=[]):
+        """Return coefficients for ``name``, optionally updated from parameters."""
         if like_params:
             coeff = self.coeffs[name].copy()
             Npar = 0
@@ -365,7 +372,7 @@ class IGM_model(object):
         return coeff
 
     def reset_coeffs(self, like_params, rank=0):
-        """Reset all coefficients to fiducial values"""
+        """Update stored coefficients from a list of likelihood parameters."""
         for name in self.coeffs:
             Npar = 0
             if rank == 0:
@@ -398,7 +405,7 @@ class IGM_model(object):
                 print("new", name, self.coeffs[name])
 
     def plot_parameters(self, z, like_params, folder=None):
-        """Plot likelihood parameters"""
+        """Plot IGM parameter evolution over redshift."""
 
         from matplotlib import pyplot as plt
 
@@ -419,7 +426,7 @@ class IGM_model(object):
         coeffs_out = {}
 
         for ii, key in enumerate(self.coeffs.keys()):
-            if z_at_time == False:
+            if z_at_time is False:
                 if key == "tau_eff":
                     vals = self.get_tau_eff(z, like_params=like_params)
                 elif key == "gamma":

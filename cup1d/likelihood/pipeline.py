@@ -1,5 +1,8 @@
+"""High-level MPI pipeline for fitting P1D likelihoods."""
+
 import os
 import time
+
 import numpy as np
 from mpi4py import MPI
 
@@ -17,7 +20,7 @@ from cup1d.utils.utils import split_string
 
 
 def get_grid_large(nelem):
-    """Need to be moved somewhere else"""
+    """Return a regular grid spanning the large Australia20 emulator domain."""
     fname = os.path.join(
         get_path_repo("lace"),
         "data",
@@ -46,7 +49,7 @@ def get_grid_large(nelem):
 
 
 class Pipeline(object):
-    """Full pipeline for extracting cosmology from P1D using sampler"""
+    """Coordinate emulator setup, data loading, fitting, and plotting."""
 
     def __init__(
         self,
@@ -56,9 +59,23 @@ class Pipeline(object):
         archive=None,
         system="local",
     ):
-        """Set pipeline"""
+        """Initialize the full likelihood pipeline.
 
-        if args == None:
+        Parameters
+        ----------
+        args : Args or None, optional
+            Pipeline configuration. If omitted, the CM2026 defaults are used.
+        make_plots : bool, optional
+            Kept for API compatibility; plotting is controlled by run methods.
+        out_folder : str or None, optional
+            Output folder overriding ``args.out_folder``.
+        archive : object or None, optional
+            Optional preloaded simulation archive.
+        system : str, optional
+            System label used when constructing default arguments.
+        """
+
+        if args is None:
             # set default args to Chaves-Montero+26 analysis
             args = Args(pre_defined="CM2026", system=system)
 
@@ -124,7 +141,7 @@ class Pipeline(object):
             data = comm.recv(source=0, tag=(rank + 1) * 5)
 
         if args.data_label_hires is not None:
-            zs = np.concatenate([data["P1Ds"].z, data_hires["extra_P1Ds"].z])
+            zs = np.concatenate([data["P1Ds"].z, data["extra_P1Ds"].z])
         else:
             zs = data["P1Ds"].z
 
@@ -170,8 +187,9 @@ class Pipeline(object):
         n_burn_in=0,
         test=False,
     ):
+        """Set default emcee step counts for selected data/covariance labels."""
         # set steps
-        if test == True:
+        if test:
             self.n_steps = 10
         else:
             if n_steps != 0:
@@ -183,7 +201,7 @@ class Pipeline(object):
                     self.n_steps = 1250
 
         # set burn-in
-        if test == True:
+        if test:
             self.n_burn_in = 0
         else:
             if n_burn_in != 0:
@@ -209,9 +227,7 @@ class Pipeline(object):
         restart=False,
         type_minimizer="NM",
     ):
-        """
-        Run the minimizer (only rank 0)
-        """
+        """Run the selected minimizer on rank 0 and broadcast the best fit."""
 
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
@@ -263,9 +279,7 @@ class Pipeline(object):
             self.fitter.mle_cube = comm.recv(source=0, tag=(rank + 1) * 13)
 
     def run_sampler(self, pini=None, make_plots=False, zmask=None):
-        """
-        Run the sampler (after minimizer)
-        """
+        """Run the MCMC sampler after a minimizer pass."""
 
         # def func_for_sampler(p0):
         #     res = self.fitter.like.get_log_like(values=p0, return_blob=True)
@@ -313,11 +327,10 @@ class Pipeline(object):
         type_minimizer="NM",
         folder_ic=None,
     ):
-        """
-        Run profile likelihood
+        """Run a profile likelihood scan.
 
         First minimize with varying cosmology, then optimize while fixing the
-        cosmology for different fiducial values
+        cosmology for different fiducial values.
         """
 
         # if grid_type == "large":
@@ -401,6 +414,7 @@ class Pipeline(object):
             self.fprint("----------")
 
     def save_global_ic(self, fname):
+        """Save best-fit redshift-dependent nuisance values for later reuse."""
         out_dict = {}
         vals = np.array(list(self.fitter.mle.values()))
         for jj, p in enumerate(self.fitter.like.free_params):

@@ -239,8 +239,6 @@ pip.fitter.like.plot_p1d(p0)
 pip.run_minimizer(p0, restart=True)
 
 # %%
-
-# %%
 pip.fitter.like.plot_p1d(pip.fitter.mle_cube)
 
 # %%
@@ -252,9 +250,6 @@ pip.fitter.like.plot_p1d(pip.fitter.mle_cube)
 # ### Data analysis
 
 # %%
-
-
-
 variations = [
     "fid",
     "no_inflate",  # no increase errors for 3, 3.6, and 4
@@ -315,7 +310,7 @@ emu_cov_type = "full"
 # emu_cov_type = "diagonal"
 
 
-emulator_label="CH24_mpgcen_gpr"
+emulator_label = "CH24_mpgcen_gpr"
 # emulator_label="CH24_nyxcen_gpr"
 # name_variation = "cosmo_h74"
 # name_variation = "cosmo_mnu_varh"
@@ -323,15 +318,23 @@ emulator_label="CH24_mpgcen_gpr"
 # name_variation = "cosmo_high_3sig"
 # name_variation = "infl_emu_cov"
 
-name_variation = "Metals_Ma2025"
+# name_variation = "Metals_Ma2025"
 
+name_variation = None
+# p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/in_DESI_DR1/output/mean_Pk1d_DESI_SNRcut1_vel.fits"
 
-args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
+args = Args(
+    data_label=data_label,
+    emulator_label=emulator_label,
+    emu_cov_type=emu_cov_type,
+    # p1d_fname=p1d_fname,
+)
+
 args.set_baseline(
-    fit_type="global_opt", 
-    fix_cosmo=False, 
-    P1D_type=data_label, 
-    name_variation=name_variation, 
+    fit_type="global_opt",
+    fix_cosmo=False,
+    P1D_type=data_label,
+    name_variation=name_variation,
 )
 
 pip = Pipeline(args)
@@ -342,18 +345,18 @@ for ii, par in enumerate(pip.fitter.like.free_params):
     print(ii, par.name, par.value, par.min_value, par.max_value)
 
 # %%
-p0[18:26] = np.array(
-    [
-        0.1,
-        0.1,
-        0.3,
-        0.3,
-        0.66,
-        0.70,
-        0.52,
-        0.52,
-    ]
-)
+# p0[18:26] = np.array(
+#     [
+#         0.1,
+#         0.1,
+#         0.3,
+#         0.3,
+#         0.66,
+#         0.70,
+#         0.52,
+#         0.52,
+#     ]
+# )
 
 # %%
 # plt.plot(pip.fitter.like.data.full_cov_stat_Pk_kms[100])

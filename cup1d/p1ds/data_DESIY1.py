@@ -1,4 +1,7 @@
+"""DESI Year 1 P1D measurement loader."""
+
 import os
+
 from astropy.io import fits
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,7 +11,7 @@ from cup1d.utils.utils import get_path_repo
 
 
 def set_p1d_filename(data_label="QMLE3"):
-    """Set path to DESI DR1 P1D file"""
+    """Return the packaged DESI Y1 P1D filename for ``data_label``."""
 
     path_data = os.path.join(get_path_repo("cup1d"), "data", "p1d_measurements")
 
@@ -49,15 +52,31 @@ def set_p1d_filename(data_label="QMLE3"):
     #         "p1d_fft_y1_measurement_kms_v8_nocrossexp_snr3noweights.fits",
     #     )
     else:
-        raise ValueError(
-            "data_label " + data_label + " not implemented for DESI_DR1"
-        )
+        raise ValueError("data_label " + data_label + " not implemented for DESI_DR1")
     return p1d_fname
 
 
-def compute_cov(
-    syst, type_measurement="QMLE", type_analysis="red", variation=None
-):
+def compute_cov(syst, type_measurement="QMLE", type_analysis="red", variation=None):
+    """Build the systematic covariance matrix for a DESI Y1 measurement.
+
+    Parameters
+    ----------
+    syst : FITS_rec
+        Systematics table from the DESI Y1 P1D FITS file.
+    type_measurement : {"QMLE", "FFT"}, optional
+        Measurement family. Controls which systematic columns are available.
+    type_analysis : {"fid", "red", "xred"}, optional
+        Systematics prescription to use.
+    variation : str or None, optional
+        Optional analysis variation. ``"data_syst_diag"`` treats selected
+        terms as redshift-bin uncorrelated.
+
+    Returns
+    -------
+    ndarray or None
+        Systematic covariance matrix. ``None`` is returned for unknown
+        measurement families.
+    """
     if type_measurement == "QMLE":
         sys_labels = [
             "E_DLA_COMPLETENESS",
@@ -209,6 +228,8 @@ def compute_cov(
 
 
 class P1D_DESIY1(BaseDataP1D):
+    """DESI Year 1 P1D data product."""
+
     def __init__(
         self,
         data_label=None,
@@ -219,10 +240,24 @@ class P1D_DESIY1(BaseDataP1D):
         variation=None,
         data_bias=1.0,
     ):
-        """Read measured P1D from file.
-        - full_cov: for now, no covariance between redshift bins
-        - z_min: z=2.0 bin is not recommended by Karacayli2024
-        - z_max: maximum redshift to include"""
+        """Read DESI Y1 P1D measurements from a FITS file.
+
+        Parameters
+        ----------
+        data_label : str or None, optional
+            DESI Y1 measurement label used by :func:`set_p1d_filename`.
+        z_min, z_max : float, optional
+            Redshift range to keep.
+        cov_syst_type : str, optional
+            Systematics prescription passed to :func:`compute_cov`.
+        p1d_fname : str or None, optional
+            Explicit FITS filename. If omitted, one is selected from
+            ``data_label``.
+        variation : str or None, optional
+            Optional covariance/data variation.
+        data_bias : float, optional
+            Multiplicative correction applied to P1D and covariance.
+        """
 
         if p1d_fname is None:
             p1d_fname = set_p1d_filename(data_label=data_label)
@@ -281,7 +316,11 @@ def read_from_file(
     variation=None,
     data_bias=1.0,
 ):
-    """Read file containing P1D"""
+    """Read DESI Y1 P1D arrays and covariance matrices from FITS.
+
+    Returns the per-redshift arrays expected by :class:`BaseDataP1D`, plus the
+    flattened full covariance used by analyses that need cross-bin structure.
+    """
 
     # we correct both the stat cov matrix and p1d for data bias
 
@@ -300,6 +339,7 @@ def read_from_file(
 
     dict_with_keys = {}
     for ii in range(len(hdu)):
+        print(ii, hdu[ii].header)
         if "EXTNAME" in hdu[ii].header:
             dict_with_keys[hdu[ii].header["EXTNAME"]] = ii
 
@@ -319,9 +359,7 @@ def read_from_file(
         if hdu[iuse].header["EXTNAME"] == "P1D_BLIND":
             blinding = True
 
-    cov_stat_raw = (
-        hdu[dict_with_keys["COVARIANCE_STAT"]].data.copy() * data_bias**2
-    )
+    cov_stat_raw = hdu[dict_with_keys["COVARIANCE_STAT"]].data.copy() * data_bias**2
     cov_syst_raw = compute_cov(
         hdu[dict_with_keys["SYSTEMATICS"]].data,
         type_measurement=type_measurement,
