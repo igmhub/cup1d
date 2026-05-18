@@ -13,7 +13,6 @@ import html
 from dataclasses import dataclass
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_DIR = ROOT / "cup1d"
 OUT_DIR = ROOT / "docs" / "api"

@@ -20,6 +20,7 @@
 
 # %%
 from cup1d.plots_and_tables.table_variations import table_variations
+
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 table_variations(base)
 

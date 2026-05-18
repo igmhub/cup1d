@@ -17,13 +17,12 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
+import numpy as np
+from lace.cosmo import camb_cosmo
 
 from cup1d.likelihood.cosmologies import set_cosmo
-from lace.cosmo import camb_cosmo
 
 # %%
 cosmo_planck = set_cosmo("Planck18")
@@ -95,7 +94,7 @@ for ii in range(3):
     _ = np.argmin(np.abs(k1_h - 1))
     print(zlab[ii], np.round(tt2[_]/tt1[_]-1, 4), np.round(tt3[_]/tt1[_]-1, 4))
 
-    plt.plot(k1_h, tt2/tt1, "C"+str(ii), label="z={}".format(zlab[ii]))
+    plt.plot(k1_h, tt2/tt1, "C"+str(ii), label=f"z={zlab[ii]}")
     plt.plot(k1_h, tt3/tt1, "C"+str(ii)+"--")
 plt.legend()
 plt.xlabel(r"$k\, [1/Mpc]$")

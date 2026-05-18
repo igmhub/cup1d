@@ -31,10 +31,12 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
+import matplotlib as mpl
+
 ## Set default plot size, as normally its a bit too small
 import matplotlib.pyplot as plt
-import matplotlib as mpl
+import numpy as np
+
 mpl.rcParams['savefig.dpi'] = 120
 mpl.rcParams['figure.dpi'] = 120
 from cup1d.nuisance import mean_flux_model

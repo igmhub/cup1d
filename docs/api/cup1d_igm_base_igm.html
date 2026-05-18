@@ -98,7 +98,7 @@ temperature, pressure, and mean flux evolution.</pre>
     <h3>Functions</h3>
     <p class="missing">No public functions.</p>
     <h3>Classes</h3>
-    <section class="classdoc"><h3>IGM_model(object)</h3><pre>Base model for redshift-dependent IGM nuisance parameters.
+    <section class="classdoc"><h3>IGM_model</h3><pre>Base model for redshift-dependent IGM nuisance parameters.
 
 Parameters
 ----------
@@ -119,7 +119,7 @@ fid_vals : Optional[Dict[str, Array1D]], optional
 flat_priors : Optional[Dict[str, Tuple[float, float]]], optional
     Flat prior bounds.
 Gauss_priors : Optional[Dict[str, float]], optional
-    Gaussian prior widths.</pre><section class="member"><h4>process_igm</h4><code>process_igm(self, fid_igm: Dict[str, Array1D], name_coeff: str, order_extra: int = 2, smoothing: bool = True, zmin: float = 1.9, zmax: float = 5.5) -&gt; None</code><pre>Post-process IGM from simulation.
+    Gaussian prior widths.</pre><section class="member"><h4>process_igm</h4><code>process_igm(self, fid_igm: dict[str, Array1D], name_coeff: str, order_extra: int = 2, smoothing: bool = True, zmin: float = 1.9, zmax: float = 5.5) -&gt; None</code><pre>Post-process IGM from simulation.
 
 Parameters
 ----------
@@ -142,13 +142,13 @@ Returns
 -------
 int
     Number of parameters.</pre></section>
-<section class="member"><h4>get_value</h4><code>get_value(self, name: str, z: float, like_params: List = None) -&gt; float</code><pre>Evaluate one IGM coefficient at redshift ``z``.
+<section class="member"><h4>get_value</h4><code>get_value(self, name: str, z: float, like_params: list = None) -&gt; float</code><pre>Evaluate one IGM coefficient at redshift ``z``.
 
 The returned value is either the evolved coefficient itself or its
 exponential, depending on ``prop_coeffs[f&quot;{name}_otype&quot;]``.</pre></section>
 <section class="member"><h4>get_parameter</h4><code>get_parameter(self, name)</code><pre>Return one likelihood parameter by name.</pre></section>
 <section class="member"><h4>get_parameters</h4><code>get_parameters(self)</code><pre>Return all likelihood parameters.</pre></section>
-<section class="member"><h4>get_coeff</h4><code>get_coeff(self, name, like_params = [])</code><pre>Return coefficients for ``name``, optionally updated from parameters.</pre></section>
+<section class="member"><h4>get_coeff</h4><code>get_coeff(self, name, like_params = None)</code><pre>Return coefficients for ``name``, optionally updated from parameters.</pre></section>
 <section class="member"><h4>reset_coeffs</h4><code>reset_coeffs(self, like_params, rank = 0)</code><pre>Update stored coefficients from a list of likelihood parameters.</pre></section>
 <section class="member"><h4>plot_parameters</h4><code>plot_parameters(self, z, like_params, folder = None)</code><pre>Plot IGM parameter evolution over redshift.</pre></section></section>
   </main>

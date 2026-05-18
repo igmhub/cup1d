@@ -19,16 +19,15 @@
 # %load_ext autoreload
 # %autoreload 2
 
+import os
+
 import numpy as np
-import time, os, sys
-import matplotlib.pyplot as plt
 
 # our own modules
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
 from cup1d.likelihood.plotter import Plotter
 from cup1d.utils.utils import get_path_repo
-
 
 # +
 
@@ -124,7 +123,7 @@ plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize
 # -
 store_data = plotter.plot_illustrate_contaminants_each(out_mle_cube[0].copy(), zmask, fontsize=22, store_data=True)
 # +
-import cup1d, os
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_7.npy")
@@ -150,10 +149,12 @@ np.save(fname, dir_out)
 
 # inflate 5%
 from cup1d.optimize.show_results import print_results
+
 print_results(pip.fitter.like, out_chi2, out_mle_cube)
 
 # no inflate
 from cup1d.optimize.show_results import print_results
+
 print_results(pip.fitter.like, out_chi2, out_mle_cube)
 
 

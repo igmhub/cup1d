@@ -20,17 +20,18 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
+import matplotlib as mpl
+
 ## Set default plot size, as normally its a bit too small
 import matplotlib.pyplot as plt
-import matplotlib as mpl
+import numpy as np
+
 mpl.rcParams['savefig.dpi'] = 120
 mpl.rcParams['figure.dpi'] = 120
-from lace.emulator import gp_emulator
-from cup1d.nuisance import mean_flux_model
-from cup1d.nuisance import metal_model
+from lace.emulator import gp_emulator, nn_emulator
+
 from cup1d.likelihood import lya_theory
-from lace.emulator import nn_emulator
+from cup1d.nuisance import mean_flux_model
 
 # %%
 emu_params=['Delta2_p', 'n_p','mF', 'sigT_Mpc', 'gamma', 'kF_Mpc']

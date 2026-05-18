@@ -19,10 +19,11 @@
 
 # +
 import os
+
 import numpy as np
 
-from cup1d.utils.utils import get_path_repo
 from cup1d.plots_and_tables.plots_corner import plots_chain
+from cup1d.utils.utils import get_path_repo
 
 # blinding to be subtracted from blinded measurement
 fname = os.path.join(get_path_repo("cup1d"), "data", "blinding", "DESI_DR1", "blinding.npy")
@@ -38,7 +39,9 @@ folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/gl
 store_data = plots_chain(folder, store_data=True, truth=real_blinding)
 
 # +
-import cup1d, os
+import os
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_20d.npy")

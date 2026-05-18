@@ -18,19 +18,19 @@
 
 # %%
 # %matplotlib inline
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+
 mpl.rcParams['savefig.dpi'] = 140
 mpl.rcParams['figure.dpi'] = 140
 import numpy as np
+
 # our own modules
 from lace.archive import gadget_archive
-from lace.emulator import gp_emulator
-from lace.emulator import nn_emulator
+from lace.emulator import gp_emulator, nn_emulator
+
 from cup1d.data import data_gadget
-from cup1d.likelihood import lya_theory
-from cup1d.likelihood import likelihood
-from cup1d.likelihood import iminuit_minimizer
+from cup1d.likelihood import iminuit_minimizer, likelihood, lya_theory
 
 # %% [markdown]
 # ### Setup test P1D data from Gadget sim
@@ -40,7 +40,7 @@ from cup1d.likelihood import iminuit_minimizer
 test_sim_label="central"
 if type(test_sim_label)==int:
     drop_sim=test_sim_label
-    print('will drop sim number {} from emulator'.format(drop_sim))
+    print(f'will drop sim number {drop_sim} from emulator')
 else:
     drop_sim=None
 
@@ -96,7 +96,7 @@ free_param_names=["As","ns"]
 n_igm=2
 for i in range(n_igm):
     for par in ["tau","sigT_kms","gamma","kF"]:
-        free_param_names.append('ln_{}_{}'.format(par,i))
+        free_param_names.append(f'ln_{par}_{i}')
 
 # %%
 for label,run in runs.items():
@@ -146,7 +146,7 @@ for label,run in runs.items():
     # what is the chi2 of the best-fit? (should be close to 0)
     best_fit_values=np.array(run['minimizer'].minimizer.values)
     best_chi2=run['likelihood'].get_chi2(values=best_fit_values)
-    print('chi2 improved from {} to {}'.format(ini_chi2,best_chi2))
+    print(f'chi2 improved from {ini_chi2} to {best_chi2}')
     
 
 # %%

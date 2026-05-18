@@ -1,12 +1,13 @@
 import os
-import configargparse
 import time
+
+import configargparse
 
 # our own modules
 from lace.emulator import gp_emulator
+
 from cup1d.data import mock_data
-from cup1d.likelihood import likelihood
-from cup1d.likelihood import emcee_sampler
+from cup1d.likelihood import emcee_sampler, likelihood
 
 os.environ["OMP_NUM_THREADS"] = "1"
 
@@ -105,10 +106,10 @@ else:
 if args.no_igm:
     print("running without IGM parameters")
 else:
-    print("using {} parameters for IGM model".format(args.n_igm))
+    print(f"using {args.n_igm} parameters for IGM model")
     for i in range(args.n_igm):
         for par in ["tau", "sigT_kms", "gamma", "kF"]:
-            free_parameters.append("ln_{}_{}".format(par, i))
+            free_parameters.append(f"ln_{par}_{i}")
 print("free parameters", free_parameters)
 
 # set up an emulator
@@ -166,7 +167,7 @@ sampler.run_sampler(
 )
 end = time.time()
 multi_time = end - start
-print("Sampling took {0:.1f} seconds".format(multi_time))
+print(f"Sampling took {multi_time:.1f} seconds")
 
 # store results (skip plotting when running at NERSC)
 sampler.write_chain_to_file(

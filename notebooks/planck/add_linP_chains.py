@@ -23,11 +23,13 @@
 # %% jupyter={"outputs_hidden": false}
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
 import os
+
+import numpy as np
 from getdist import plots
-from cup1d.planck import planck_chains
-from cup1d.planck import add_linP_params
+
+from cup1d.planck import add_linP_params, planck_chains
+
 # because of black magic, getdist needs this strange order of imports
 # %matplotlib inline
 from cup1d.utils.utils import get_path_repo
@@ -58,7 +60,7 @@ samples=cmb['samples'].copy()
 thinning=1
 samples.thin(thinning)
 Nsamp,Npar=samples.samples.shape
-print('Thinned chains have {} samples and {} parameters'.format(Nsamp,Npar))
+print(f'Thinned chains have {Nsamp} samples and {Npar} parameters')
 
 # %% [markdown]
 # ### For each element in the chain, compute and store linear power parameters
@@ -94,8 +96,8 @@ samples.addDerived(linP_n_star,'test_linP_n_star',label='Ly\\alpha \\, n_\\ast')
 # get basic statistics for the new parameters
 param_means=np.mean(samples.samples,axis=0)
 param_vars=np.var(samples.samples,axis=0)
-print('DL2_star mean = {} +/- {}'.format(param_means[Npar],np.sqrt(param_vars[Npar])))
-print('n_star mean = {} +/- {}'.format(param_means[Npar+1],np.sqrt(param_vars[Npar+1])))
+print(f'DL2_star mean = {param_means[Npar]} +/- {np.sqrt(param_vars[Npar])}')
+print(f'n_star mean = {param_means[Npar+1]} +/- {np.sqrt(param_vars[Npar+1])}')
 
 # %% [markdown]
 # ### Write extended chains to file
@@ -110,6 +112,7 @@ samples.saveAsText(root=new_root,make_dirs=True)
 # %% jupyter={"outputs_hidden": false}
 # Try reading the new file
 from getdist import loadMCSamples
+
 key_model = "base"
 key_data = "plikHM_TTTEEE_lowl_lowE"
 new_root = os.path.join(
@@ -122,7 +125,7 @@ new_samples = loadMCSamples(new_root + "/")
 # get basic statistics for the new parameters
 new_param_means=np.mean(new_samples.samples,axis=0)
 new_param_vars=np.var(new_samples.samples,axis=0)
-print('old DL2_star mean = {} +/- {}'.format(param_means[Npar],np.sqrt(param_vars[Npar])))
-print('new DL2_star mean = {} +/- {}'.format(new_param_means[Npar],np.sqrt(new_param_vars[Npar])))
+print(f'old DL2_star mean = {param_means[Npar]} +/- {np.sqrt(param_vars[Npar])}')
+print(f'new DL2_star mean = {new_param_means[Npar]} +/- {np.sqrt(new_param_vars[Npar])}')
 
 # %% jupyter={"outputs_hidden": true}

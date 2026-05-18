@@ -17,8 +17,8 @@
 # # MC mocks
 
 # %%
+import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.pyplot as plt 
 
 # %%
 local_computer = "/home/jchaves/Proyectos/projects/lya/data/cup1d/sampler/"
@@ -44,7 +44,7 @@ print(mc_err/pred_err-1)
 # %%
 fig, ax = plt.subplots(1,2, sharey=True)
 for ii in range(2):
-    ax[ii].hist(err[:,ii]);
+    ax[ii].hist(err[:,ii])
     ax[ii].axvline(mc_err[ii], c="C1")
 ax[0].set_ylabel("Histogram")
 ax[0].set_xlabel(r"Error on $\Delta^2_*$")

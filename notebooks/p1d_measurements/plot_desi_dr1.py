@@ -23,12 +23,13 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import set_P1D, set_emulator
+from cup1d.likelihood.pipeline import set_emulator, set_P1D
+
 # -
 
 args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
@@ -245,7 +246,6 @@ plot_cov(fname_qmle, save_directory='figs')
 # +
 
 from astropy.io import fits
-
 
 hdu = fits.open(fname_qmle)
 _ = (hdu[1].data["Z"] == 2.2) & (hdu[1].data["K"] < 0.04)

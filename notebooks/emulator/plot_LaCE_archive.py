@@ -20,9 +20,10 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+
 mpl.rcParams['savefig.dpi'] = 120
 mpl.rcParams['figure.dpi'] = 120
 
@@ -56,13 +57,13 @@ archive = set_archive(training_set)
 # %% jupyter={"outputs_hidden": false}
 # each simulation has multiple snapshots, and each snapshot might have multiple post-processings
 # (this also includes multiple axes and phases from a given simulation)
-print('{} entries in the archive'.format(len(archive.data)))
+print(f'{len(archive.data)} entries in the archive')
 
 # %% jupyter={"outputs_hidden": false}
 emu_params=['Delta2_p', 'n_p','mF', 'sigT_Mpc', 'gamma', 'kF_Mpc']
 # now we decide how to combine phases and axes to provide the training set to be used in the emulator
 training_data=archive.get_training_data(emu_params=emu_params)
-print('{} entries in the training set'.format(len(training_data)))
+print(f'{len(training_data)} entries in the training set')
 
 # %% [markdown]
 # ### Linear density power spectra in the archive

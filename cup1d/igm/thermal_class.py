@@ -7,7 +7,7 @@ and thermal broadening in the intergalactic medium.
 
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt

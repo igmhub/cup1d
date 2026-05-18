@@ -1,12 +1,12 @@
-import os, sys
+import os
+import sys
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
 from mpi4py import MPI
-from cup1d.planck import planck_chains
-from cup1d.planck import add_linP_params
-from cup1d.utils.utils import get_path_repo
+
+from cup1d.planck import add_linP_params, planck_chains
 
 
 def main():

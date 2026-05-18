@@ -93,9 +93,29 @@
     <h2>cup1d.likelihood.pipeline</h2>
     <pre>High-level MPI pipeline for fitting P1D likelihoods.</pre>
     <h3>Functions</h3>
-    <section class="member"><h4>get_grid_large</h4><code>get_grid_large(nelem)</code><pre>Return a regular grid spanning the large Australia20 emulator domain.</pre></section>
+    <section class="member"><h4>set_like</h4><code>set_like(data, emulator, args, data_hires = None)</code><pre>Set the likelihood object for a given data and emulator.
+
+This function sets up the free parameters, the theory model, and
+initializes the Likelihood object.
+
+Parameters
+----------
+data : cup1d.p1ds.base_p1d_data.BaseP1DData
+    The primary P1D data to be fitted.
+emulator : lace.emulator.emulator_manager.EmulatorManager
+    The emulator used to provide fast model predictions.
+args : cup1d.likelihood.input_pipeline.Args
+    Configuration object containing analysis settings.
+data_hires : cup1d.p1ds.base_p1d_data.BaseP1DData, optional
+    Additional high-redshift or high-resolution data. Default is None.
+
+Returns
+-------
+cup1d.likelihood.likelihood.Likelihood
+    The initialized likelihood object ready for fitting.</pre></section>
+<section class="member"><h4>get_grid_large</h4><code>get_grid_large(nelem)</code><pre>Return a regular grid spanning the large Australia20 emulator domain.</pre></section>
     <h3>Classes</h3>
-    <section class="classdoc"><h3>Pipeline(object)</h3><pre>Coordinate emulator setup, data loading, fitting, and plotting.</pre><section class="member"><h4>set_emcee_options</h4><code>set_emcee_options(self, data_label, cov_label, n_igm, n_steps = 0, n_burn_in = 0, test = False)</code><pre>Set default emcee step counts for selected data/covariance labels.</pre></section>
+    <section class="classdoc"><h3>Pipeline</h3><pre>Coordinate emulator setup, data loading, fitting, and plotting.</pre><section class="member"><h4>set_emcee_options</h4><code>set_emcee_options(self, data_label, cov_label, n_igm, n_steps = 0, n_burn_in = 0, test = False)</code><pre>Set default emcee step counts for selected data/covariance labels.</pre></section>
 <section class="member"><h4>run_minimizer</h4><code>run_minimizer(self, p0, make_plots = False, mask_pars = False, save_chains = False, zmask = None, restart = False, type_minimizer = &#x27;NM&#x27;)</code><pre>Run the selected minimizer on rank 0 and broadcast the best fit.</pre></section>
 <section class="member"><h4>run_sampler</h4><code>run_sampler(self, pini = None, make_plots = False, zmask = None)</code><pre>Run the MCMC sampler after a minimizer pass.</pre></section>
 <section class="member"><h4>run_profile</h4><code>run_profile(self, sigma_cosmo, mle_cosmo_cen = None, nelem = 10, nsig = 10, type_minimizer = &#x27;NM&#x27;, folder_ic = None)</code><pre>Run a profile likelihood scan.

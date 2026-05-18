@@ -18,8 +18,11 @@
 # Zenodo holder
 
 # +
-import cup1d, os
+import os
+
 import numpy as np
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 store_data = {
@@ -29,8 +32,11 @@ fname = os.path.join(path_out, "fig_11_to_16.npy")
 np.save(fname, store_data)
 
 # +
-import cup1d, os
+import os
+
 import numpy as np
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 store_data = {
@@ -40,8 +46,11 @@ fname = os.path.join(path_out, "fig_23_24.npy")
 np.save(fname, store_data)
 
 # +
-import cup1d, os
+import os
+
 import numpy as np
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 store_data = {
@@ -58,8 +67,11 @@ fname = os.path.join(path_out, "fig_25.npy")
 np.save(fname, store_data)
 
 # +
-import cup1d, os
+import os
+
 import numpy as np
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 store_data = {
@@ -69,7 +81,9 @@ fname = os.path.join(path_out, "fig_D1.npy")
 np.save(fname, store_data)
 
 # +
-import cup1d, os
+import os
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "other_figures.npy")

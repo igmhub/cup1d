@@ -1,12 +1,15 @@
-import os, sys, time, subprocess, textwrap
-import numpy as np
+import os
+import subprocess
+import textwrap
+import time
 from itertools import product
+
+import numpy as np
 
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
-from lace.cosmo import camb_cosmo
-from cup1d.data import data_gadget, data_nyx
-from cup1d.scripts.sam_sim import sam_sim, path_sampler
+
+from cup1d.scripts.sam_sim import path_sampler
 
 
 class Args:

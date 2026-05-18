@@ -1,6 +1,7 @@
 # //global/cfs/cdirs/desicollab/science/lya/y1-p1d/likelihood_files/data_files/MockChallengeSnapshot
 
-import socket, os, sys, glob
+import os
+import socket
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
@@ -9,11 +10,11 @@ os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 # os.environ["VECLIB_MAXIMUM_THREADS"] = "4" # export VECLIB_MAXIMUM_THREADS=4
 # os.environ["NUMEXPR_NUM_THREADS"] = "6" # export NUMEXPR_NUM_THREADS=6
 import numpy as np
-from mpi4py import MPI
-from cup1d.likelihood.input_pipeline import Args
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.pipeline import set_archive, Pipeline, set_cosmo
-from cup1d.likelihood import CAMB_model
+from mpi4py import MPI
+
+from cup1d.likelihood.input_pipeline import Args
+from cup1d.likelihood.pipeline import Pipeline, set_archive, set_cosmo
 from cup1d.utils.utils import get_path_repo
 
 

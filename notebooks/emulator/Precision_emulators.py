@@ -22,14 +22,13 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
+import numpy as np
 from lace.archive import gadget_archive, nyx_archive
 from lace.emulator.gp_emulator_multi import GPEmulator
-from matplotlib.ticker import FormatStrFormatter
-
 from matplotlib import rcParams
+from matplotlib.ticker import FormatStrFormatter
+from scipy.optimize import curve_fit
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -156,14 +155,18 @@ plt.tight_layout()
 # plt.savefig("figs/nyx_seed.png")
 
 # %%
-import cup1d, os
+import os
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_4a.npy")
 np.save(fname, store_data)
 
 # %%
-import cup1d, os
+import os
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_B2a.npy")

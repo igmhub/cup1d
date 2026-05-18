@@ -20,14 +20,15 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
-import os
-import matplotlib.pyplot as plt
+
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+
 mpl.rcParams['savefig.dpi'] = 160
 mpl.rcParams['figure.dpi'] = 160
-from cup1d.data.data_eBOSS_mock import P1D_eBOSS_mock
 from cup1d.data.data_Chabanier2019 import P1D_Chabanier2019
+from cup1d.data.data_eBOSS_mock import P1D_eBOSS_mock
 
 # %% jupyter={"outputs_hidden": false}
 eBOSS_mock = P1D_eBOSS_mock()

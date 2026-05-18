@@ -23,17 +23,16 @@
 # %% jupyter={"outputs_hidden": false}
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
 import os
-from getdist import plots
+
 import matplotlib.pyplot as plt
-from cup1d.planck import planck_chains
-from cup1d.likelihood import marg_lya_like
-
-from cup1d.utils.utils import get_path_repo
-
-
+import numpy as np
+from getdist import plots
 from matplotlib import rcParams
+
+from cup1d.likelihood import marg_lya_like
+from cup1d.planck import planck_chains
+from cup1d.utils.utils import get_path_repo
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -102,8 +101,11 @@ chi2_Wa2024 = marg_lya_like.gaussian_chi2_Walther2024(neff_grid, DL2_grid, ana_t
 np.mean(cmb["samples"]['linP_DL2_star'])
 
 # %%
-import cup1d, os
+import os
+
 import numpy as np
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 store_data = {
@@ -160,8 +162,8 @@ np.save(fname, store_data)
 store_data
 
 # %%
-import scipy.stats as stats
 import matplotlib.lines as mlines
+import scipy.stats as stats
 
 # %%
 base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
@@ -222,8 +224,8 @@ desi_dr1
 # %%
 
 # %%
-from scipy.stats import gaussian_kde
 import numpy as np
+from scipy.stats import gaussian_kde
 
 h_d2s, bin_d2s = np.histogram(delta2_star, bins=50)
 hist_d2s_x = 0.5 * (bin_d2s[:-1] + bin_d2s[1:])
@@ -247,6 +249,7 @@ y_ns /= y_ns.max()
 
 # %%
 from cup1d.likelihood.cosmologies import set_cosmo
+
 mpg_all = set_cosmo("mpg_0", return_all=True)
 
 # %% jupyter={"outputs_hidden": false}

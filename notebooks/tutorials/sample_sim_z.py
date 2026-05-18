@@ -17,33 +17,13 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
+import os
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 # our own modules
-from lace.cosmo import camb_cosmo
-from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood import lya_theory, likelihood
-from cup1d.likelihood.fitter import Fitter
-from cup1d.likelihood.plotter import Plotter
-
-from cup1d.likelihood.pipeline import (
-    set_archive,
-    set_P1D,
-    set_cosmo,
-    set_free_like_parameters,
-    set_like,
-    Pipeline,
-)
-from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
-from astropy.io import fits
-
 from cup1d.likelihood.input_pipeline import Args
-
-from corner import corner
-from cup1d.likelihood import CAMB_model
-
 from cup1d.likelihood.pipeline_z import Pipeline_z
 
 # %%
@@ -136,12 +116,12 @@ key_avoid = [
 out_folder_base = "desi_fft_z"
 # list_z = pip.fitter.like.data.z
 list_z = np.array([2.2, 2.4, 2.6, 2.8, 3. , 3.2, 3.4, 3.6, 3.8, 4. , 4.2])
-print("list_z = {}".format(list_z))
+print(f"list_z = {list_z}")
 
 # only minimizer for now, need to implement sampler
 for ii, z in enumerate(list_z):
-    print("Reading z = {}".format(z))
-    fname = os.path.join(out_folder_base, "z{}".format(z), "chain_1", "fitter_results.npy") 
+    print(f"Reading z = {z}")
+    fname = os.path.join(out_folder_base, f"z{z}", "chain_1", "fitter_results.npy") 
     data = np.load(fname, allow_pickle=True).item()
 
     # create results
@@ -150,20 +130,20 @@ for ii, z in enumerate(list_z):
         for key in data["fitter"]["mle"]:
             if key in key_avoid:
                 continue
-            results[key] = np.zeros((len(list_z)))
+            results[key] = np.zeros(len(list_z))
 
         for key in data["IGM"]:
             if key in key_avoid:
                 continue
-            results[key] = np.zeros((len(list_z)))
+            results[key] = np.zeros(len(list_z))
         
         for key in data["nuisance"]["SiIII"]:
             if key in key_avoid:
                 continue
-            results["SiIII_" + key] = np.zeros((len(list_z)))
+            results["SiIII_" + key] = np.zeros(len(list_z))
             
-        results['lnprob_mle'] = np.zeros((len(list_z)))
-        results['HCD'] = np.zeros((len(list_z)))
+        results['lnprob_mle'] = np.zeros(len(list_z))
+        results['HCD'] = np.zeros(len(list_z))
 
     for key in data["fitter"]["mle"]:
         if key in key_avoid:

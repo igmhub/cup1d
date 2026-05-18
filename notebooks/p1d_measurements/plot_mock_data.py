@@ -20,16 +20,15 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+
 mpl.rcParams['savefig.dpi'] = 160
 mpl.rcParams['figure.dpi'] = 160
-from cup1d.data import data_Chabanier2019
-from cup1d.data import data_Karacayli2022
-from cup1d.data import data_QMLE_Ohio
-from cup1d.data import mock_data
 from lace.emulator import nn_emulator
+
+from cup1d.data import data_Chabanier2019, data_Karacayli2022, data_QMLE_Ohio, mock_data
 
 # %%
 # setup data to mimic, with a maximum z to avoid redshifts not emulated
@@ -101,7 +100,7 @@ def combined_plot(datasets,zmin=1.7,zmax=6.0,kmin=0.001,kmax=0.1):
             plt.errorbar(k_kms,fact*Pk_kms,
                          marker=marker,ms=4.5,ls="none",
                          yerr=fact*err_Pk_kms,
-                         label=label+' z = {}'.format(z))
+                         label=label+f' z = {z}')
     plt.legend()
     plt.yscale('log', nonpositive='clip')
     plt.xscale('log')

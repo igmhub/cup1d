@@ -1,6 +1,7 @@
 import unittest
-from io import StringIO
 from contextlib import redirect_stdout
+from io import StringIO
+
 from parallel_square import parallel_square
 
 
@@ -18,7 +19,7 @@ class TestParallelSquare(unittest.TestCase):
         self.assertEqual(result, expected_result)
 
         for i, number in enumerate(numbers):
-            self.assertIn(f"Thread ThreadPoolExecutor-", printed_output)
+            self.assertIn("Thread ThreadPoolExecutor-", printed_output)
             self.assertIn(f"Squaring {number}", printed_output)
 
 

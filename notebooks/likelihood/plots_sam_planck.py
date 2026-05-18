@@ -32,12 +32,13 @@
 #     target_version=black.TargetVersion.PY310,
 # )
 
-import numpy as np
 import os
 import sys
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib import rcParams
+
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
@@ -68,20 +69,10 @@ sys.path.append(path_program)
 
 # %%
 
-from matplotlib.ticker import MaxNLocator
-from lace.archive import gadget_archive, nyx_archive
-from cup1d.likelihood import lya_theory
-from lace.cosmo.camb_cosmo import (
-    get_camb_results,
-    get_Nyx_cosmology,
-    get_cosmology_from_dictionary,
-)
-from lace.cosmo.fit_linP import parameterize_cosmology_kms
-from cup1d.likelihood import CAMB_model
 
 # %%
-from chainconsumer import ChainConsumer, Chain, Truth, PlotConfig
 import pandas as pd
+from chainconsumer import Chain, ChainConsumer, PlotConfig, Truth
 
 # %%
 folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/sampler/v3/emu_Pedersen23_ext/cov_Chabanier2019/mock_Chabanier19_igm_mpg_central_cosmo_mpg_central_nigm_2_smooth/chain_5/"
@@ -115,16 +106,16 @@ from corner import corner
 chain_mask = chain[:, mask, :].reshape(-1, 12)
 
 # %%
-corner(chain_mask[:, :2], bins=30, range=[0.98, 0.98]);
+corner(chain_mask[:, :2], bins=30, range=[0.98, 0.98])
 plt.savefig("test_chabanier19_pla.png")
 
 # %%
-corner(chain_mask[:, -2:], bins=30, range=[0.98, 0.98]);
+corner(chain_mask[:, -2:], bins=30, range=[0.98, 0.98])
 # plt.savefig("test_chabanier19_P23.png")
 plt.savefig("test_chabanier19_CH24.png")
 
 # %%
-corner(chain_mask[:, 2:], bins=30, range=list(np.zeros(10)+0.98));
+corner(chain_mask[:, 2:], bins=30, range=list(np.zeros(10)+0.98))
 plt.savefig("test_chabanier19_all_P23.png")
 # plt.savefig("test_chabanier19_all_CH24.png")
 

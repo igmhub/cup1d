@@ -21,18 +21,15 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
+import os
+
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
-
-import lace
-from lace.archive import gadget_archive, nyx_archive
+import numpy as np
+from lace.archive import nyx_archive
 from lace.emulator.gp_emulator_multi import GPEmulator
-from matplotlib.ticker import FormatStrFormatter
-
-
 from matplotlib import rcParams
+from matplotlib.ticker import FormatStrFormatter
+from scipy.optimize import curve_fit
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -139,7 +136,7 @@ plt.tight_layout()
 # plt.savefig("figs/smooth_cen_seed.pdf")
 
 # +
-import cup1d, os
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_B1a.npy")

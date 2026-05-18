@@ -26,9 +26,12 @@ def get_parameters(par, z, like, mle_cube):
     raise ValueError(f"Parameter {par} not found")
 
 
-def reformat_cube(args, data, emulator, out_mle_cube, weak_priors=None):
+def reformat_cube(args, data, emulator, out_mle_cube, weak_priors=None, list_fix=None):
     """Reformat per-redshift best-fit cubes onto a shared parameter ordering."""
     from cup1d.likelihood.pipeline import set_like
+
+    if list_fix is None:
+        list_fix = []
 
     ii = 0
     args.set_baseline(ztar=data["P1Ds"].z[ii], fit_type="at_a_time")

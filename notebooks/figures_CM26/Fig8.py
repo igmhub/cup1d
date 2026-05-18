@@ -21,14 +21,13 @@
 # %load_ext autoreload
 # %autoreload 2
 
+import os
+
 import numpy as np
-import time, os, sys
-import matplotlib.pyplot as plt
 
 # our own modules
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
-from cup1d.utils.utils import get_path_repo
 
 # +
 data_label = "DESIY1_QMLE3"
@@ -79,7 +78,7 @@ out_data = pip.fitter.like.plot_p1d(
 )
 
 # +
-import cup1d, os
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_8.npy")

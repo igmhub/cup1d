@@ -95,7 +95,7 @@
     <h3>Functions</h3>
     <p class="missing">No public functions.</p>
     <h3>Classes</h3>
-    <section class="classdoc"><h3>Fitter(object)</h3><pre>Wrapper around an emcee sampler for Lyman alpha likelihood</pre><section class="member"><h4>set_truth</h4><code>set_truth(self)</code><pre>Set up dictionary with true values of cosmological
+    <section class="classdoc"><h3>Fitter</h3><pre>Wrapper around an emcee sampler for Lyman alpha likelihood</pre><section class="member"><h4>set_truth</h4><code>set_truth(self)</code><pre>Set up dictionary with true values of cosmological
 likelihood parameters for plotting purposes</pre></section>
 <section class="member"><h4>run_sampler</h4><code>run_sampler(self, pini = None, log_func = None, zmask = None, timeout = None, force_timeout = False)</code><pre>Set up sampler, run burn in, run chains,
 return chains
@@ -123,6 +123,7 @@ Runs in the range [0,1] with a rms specified on initialisation</pre></section>
 returns a 2D array of all parameters, and an ordered list of
 the LaTeX strings for each.
     - if delta_lnprob_cut is set, keep only high-prob points</pre></section>
+<section class="member"><h4>load_chain</h4><code>load_chain(self, read_chain_file, rootdir = None, subfolder = None)</code><pre>Load a pre-computed chain from file.</pre></section>
 <section class="member"><h4>get_best_fit</h4><code>get_best_fit(self, delta_lnprob_cut = None, stat_best_fit = &#x27;mean&#x27;)</code><pre>Return an array of best fit values (mean) from the MCMC chain,
 in unit likelihood space.
     - if delta_lnprob_cut is set, use only high-prob points</pre></section>

@@ -21,22 +21,23 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
 import os
-import matplotlib.pyplot as plt
+
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
 
 mpl.rcParams["savefig.dpi"] = 160
 mpl.rcParams["figure.dpi"] = 160
 
-from cup1d.data import data_Chabanier2019, data_Karacayli2022
+# %%
+import black
+import jupyter_black
 from lace.archive.gadget_archive import GadgetArchive
 from lace.archive.nyx_archive import NyxArchive
 from lace.emulator.nn_emulator import NNEmulator
 
-# %%
-import black
-import jupyter_black
+from cup1d.data import data_Chabanier2019, data_Karacayli2022
 
 jupyter_black.load(
     lab=False,

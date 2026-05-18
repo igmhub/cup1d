@@ -18,20 +18,17 @@
 
 # %%
 # %matplotlib inline
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+
 mpl.rcParams['savefig.dpi'] = 140
 mpl.rcParams['figure.dpi'] = 140
-import numpy as np
 import time
+
 # our own modules
-from lace.emulator import gp_emulator
-from lace.emulator import nn_emulator
-from cup1d.data import data_Chabanier2019
-from cup1d.data import data_Karacayli2022
-from cup1d.likelihood import lya_theory
-from cup1d.likelihood import likelihood
-from cup1d.likelihood import emcee_sampler
+from lace.emulator import gp_emulator, nn_emulator
+
+from cup1d.data import data_Chabanier2019, data_Karacayli2022
+from cup1d.likelihood import emcee_sampler, likelihood, lya_theory
 
 # %% [markdown]
 # ### Set up data (eBOSS P1D measurement from Chabanier et al. 2019)
@@ -95,7 +92,7 @@ else:
 n_igm=1
 for i in range(n_igm):
     for par in ["tau","sigT_kms","gamma","kF"]:
-        free_param_names.append('ln_{}_{}'.format(par,i))
+        free_param_names.append(f'ln_{par}_{i}')
 
 # %%
 # add metal line contaminations
@@ -138,7 +135,7 @@ start = time.time()
 sampler.run_sampler(n_burn_in,n_steps,parallel=False)
 end = time.time()
 sampler_time = end - start
-print("Sampling took {0:.1f} seconds".format(sampler_time))
+print(f"Sampling took {sampler_time:.1f} seconds")
 
 # %%
 sampler.write_chain_to_file(residuals=True,plot_nersc=True,plot_delta_lnprob_cut=50)

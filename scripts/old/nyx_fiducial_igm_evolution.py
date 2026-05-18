@@ -1,6 +1,7 @@
-from lace.archive.nyx_archive import NyxArchive
-import numpy as np
 import os
+
+import numpy as np
+from lace.archive.nyx_archive import NyxArchive
 
 
 def main():

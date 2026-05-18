@@ -26,10 +26,9 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
-import glob
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 # %%
 folder_out = "/home/jchaves/Proyectos/projects/lya/data/cup1d/validate_igm/"
@@ -43,10 +42,10 @@ nIGM = 2
 sim_labels = []
 if "Nyx" in arr_folder_emu[iemu]:
     for ii in range(14):
-        sim_labels.append("nyx_{}".format(ii))
+        sim_labels.append(f"nyx_{ii}")
 else:
     for ii in range(30):
-        sim_labels.append("mpg_{}".format(ii))
+        sim_labels.append(f"mpg_{ii}")
 nsims = len(sim_labels)
 
 true_star = np.zeros((nsims, 3))

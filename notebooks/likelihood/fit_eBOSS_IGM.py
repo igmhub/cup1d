@@ -20,27 +20,26 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
-import matplotlib.pyplot as plt
+import os
 
 # our own modules
-import lace
-from lace.archive import gadget_archive, nyx_archive
-from lace.cosmo import camb_cosmo
+import matplotlib.pyplot as plt
+import numpy as np
 from lace.emulator.emulator_manager import set_emulator
+
+from cup1d.likelihood import emcee_sampler, likelihood, lya_theory
+from cup1d.likelihood.input_pipeline import Args
+from cup1d.likelihood.sampler_pipeline import (
+    set_archive,
+    set_fid_cosmo,
+    set_like,
+    set_P1D,
+    set_P1D_hires,
+)
 from cup1d.p1ds import (
-    data_gadget,
-    data_nyx,
-    data_eBOSS_mock,
     data_Chabanier2019,
     data_Karacayli2022,
-    data_Karacayli2024,
-    data_Ravoux2023,
 )
-from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
-from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_P1D_hires, set_fid_cosmo, set_like
-from cup1d.likelihood.input_pipeline import Args
 
 # from cup1d.likelihood import lya_theory
 # from cup1d.likelihood import likelihood
@@ -234,7 +233,7 @@ else:
 n_igm=1
 for i in range(n_igm):
     for par in ["tau","sigT_kms","gamma","kF"]:
-        free_param_names.append('ln_{}_{}'.format(par,i))
+        free_param_names.append(f'ln_{par}_{i}')
 # add metal line contaminations
 free_param_names.append('ln_SiIII_0')
 

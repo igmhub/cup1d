@@ -23,12 +23,13 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
 import glob
-import matplotlib.pyplot as plt
+import os
+
+import numpy as np
+
 from cup1d.likelihood.plotter import Plotter
-from corner import corner
+
 # -
 
 path_out_challenge = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/v9fx/"

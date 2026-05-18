@@ -20,9 +20,8 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+
 mpl.rcParams['savefig.dpi'] = 120
 mpl.rcParams['figure.dpi'] = 120
 from cup1d.data import data_Walther2018

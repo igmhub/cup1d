@@ -20,21 +20,22 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 # our own modules
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.p1ds import (
-    data_Chabanier2019,
-    data_Ravoux2023,
-    data_Karacayli2024,
-    data_Karacayli2022
-)
-from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
-from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_P1D_hires, set_fid_cosmo, set_like
+
+from cup1d.likelihood import emcee_sampler
 from cup1d.likelihood.input_pipeline import Args
+from cup1d.likelihood.sampler_pipeline import (
+    set_archive,
+    set_fid_cosmo,
+    set_like,
+    set_P1D,
+    set_P1D_hires,
+)
 
 # %%
 # args = Args(emulator_label="Pedersen21")
@@ -228,9 +229,9 @@ if False:
     sampler.like.plot_p1d(residuals=False,values=best_fit_values)
     sampler.like.extra_p1d_like.plot_p1d(residuals=False,values=best_fit_values)
     plt.xscale('log')
-    plt.text(0.5,0.1,'chi2={:.2f}, dof={}'.format(chi2,dof),transform=ax.transAxes)
+    plt.text(0.5,0.1,f'chi2={chi2:.2f}, dof={dof}',transform=ax.transAxes)
 
-    plt.savefig('p1d_lr_hr_z{}.png'.format(zs[iz]))
+    plt.savefig(f'p1d_lr_hr_z{zs[iz]}.png')
 
 # %%
 if False:
@@ -240,7 +241,7 @@ if False:
     allz_runs[iz]['like'].plot_p1d(residuals=True,values=sampler.mle_cube)
     allz_runs[iz]['like'].extra_p1d_like.plot_p1d(residuals=True,values=sampler.mle_cube)
     plt.xscale('log')
-    plt.savefig('res_p1d_lr_hr_z{}.png'.format(zs[iz]))
+    plt.savefig(f'res_p1d_lr_hr_z{zs[iz]}.png')
 
 # %% [markdown]
 # ### Look at the chi2 in each redshift

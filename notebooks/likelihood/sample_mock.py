@@ -20,19 +20,19 @@
 
 # %%
 # %matplotlib inline
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+
 mpl.rcParams['savefig.dpi'] = 140
 mpl.rcParams['figure.dpi'] = 140
-import numpy as np
 import time
+
+import numpy as np
+
 # our own modules
 from lace.emulator import gp_emulator
-from lace.emulator import nn_emulator
+
 from cup1d.data import mock_data
-from cup1d.likelihood import lya_theory
-from cup1d.likelihood import likelihood
-from cup1d.likelihood import emcee_sampler
+from cup1d.likelihood import emcee_sampler, likelihood, lya_theory
 
 # %%
 # specify if you want to add high-resolution P1D (only working for Pedersen23)
@@ -77,7 +77,7 @@ free_param_names=["As","ns"]
 n_igm=0
 for i in range(n_igm):
     for par in ["tau","sigT_kms","gamma","kF"]:
-        free_param_names.append('ln_{}_{}'.format(par,i))
+        free_param_names.append(f'ln_{par}_{i}')
 
 # %%
 theory=lya_theory.Theory(zs=data.z,emulator=emulator,free_param_names=free_param_names)
@@ -124,7 +124,7 @@ start = time.time()
 sampler.run_sampler(n_burn_in,n_steps)
 end = time.time()
 sampler_time = end - start
-print("Sampling took {0:.1f} seconds".format(sampler_time))
+print(f"Sampling took {sampler_time:.1f} seconds")
 
 # %%
 sampler.write_chain_to_file(residuals=True,plot_nersc=True,plot_delta_lnprob_cut=50)
@@ -156,7 +156,7 @@ chain, lnprob, blobs = sampler.get_chain(
         )
 
 # %%
-corner(chain, labels=['$\\Delta^2_\\star$','$n_\\star$']);
+corner(chain, labels=['$\\Delta^2_\\star$','$n_\\star$'])
 
 # %%
 blobs_full = np.hstack(
@@ -173,7 +173,7 @@ blobs_full = np.hstack(
 all_params = np.hstack((chain, blobs_full))
 
 # %%
-corner(all_params[:,:2], labels=['$\\Delta^2_\\star$','$n_\\star$']);
+corner(all_params[:,:2], labels=['$\\Delta^2_\\star$','$n_\\star$'])
 
 # %%
 all_params.shape

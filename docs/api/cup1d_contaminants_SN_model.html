@@ -95,12 +95,12 @@
     <h3>Functions</h3>
     <p class="missing">No public functions.</p>
     <h3>Classes</h3>
-    <section class="classdoc"><h3>SN_Model(object)</h3><pre>Multiplicative supernova feedback model following Viel et al. (2013).</pre><section class="member"><h4>set_parameters</h4><code>set_parameters(self)</code><pre>Create likelihood parameters for the SN amplitude.</pre></section>
+    <section class="classdoc"><h3>SN_Model</h3><pre>Multiplicative supernova feedback model following Viel et al. (2013).</pre><section class="member"><h4>set_parameters</h4><code>set_parameters(self)</code><pre>Create likelihood parameters for the SN amplitude.</pre></section>
 <section class="member"><h4>get_Nparam</h4><code>get_Nparam(self)</code><pre>Return the number of free SN parameters.</pre></section>
-<section class="member"><h4>get_SN_damp</h4><code>get_SN_damp(self, z, like_params = [])</code><pre>Evaluate the SN correction amplitude at redshift ``z``.</pre></section>
-<section class="member"><h4>get_contamination</h4><code>get_contamination(self, z, k_Mpc, like_params = [])</code><pre>Return the multiplicative SN correction at ``z`` and ``k_Mpc``.</pre></section>
+<section class="member"><h4>get_SN_damp</h4><code>get_SN_damp(self, z, like_params = None)</code><pre>Evaluate the SN correction amplitude at redshift ``z``.</pre></section>
+<section class="member"><h4>get_contamination</h4><code>get_contamination(self, z, k_Mpc, like_params = None)</code><pre>Return the multiplicative SN correction at ``z`` and ``k_Mpc``.</pre></section>
 <section class="member"><h4>get_parameters</h4><code>get_parameters(self)</code><pre>Return the SN likelihood parameters.</pre></section>
-<section class="member"><h4>get_SN_coeffs</h4><code>get_SN_coeffs(self, like_params = [])</code><pre>Return SN coefficients, updated from likelihood parameters.</pre></section></section>
+<section class="member"><h4>get_SN_coeffs</h4><code>get_SN_coeffs(self, like_params = None)</code><pre>Return SN coefficients, updated from likelihood parameters.</pre></section></section>
   </main>
 </body>
 </html>

@@ -95,7 +95,7 @@
     <h3>Functions</h3>
     <section class="member"><h4>plot_cov</h4><code>plot_cov(p1d_fname, kmin = 0.001, nknyq = 0.5, fontsize = 14, save_directory = None, lab = &#x27;&#x27;)</code><p class="missing">No docstring yet.</p></section>
     <h3>Classes</h3>
-    <section class="classdoc"><h3>Plotter(object)</h3><p class="missing">No docstring yet.</p><section class="member"><h4>plots_minimizer</h4><code>plots_minimizer(self, zrange = [0, 10], zmask = None)</code><p class="missing">No docstring yet.</p></section>
+    <section class="classdoc"><h3>Plotter</h3><p class="missing">No docstring yet.</p><section class="member"><h4>plots_minimizer</h4><code>plots_minimizer(self, zrange = None, zmask = None)</code><p class="missing">No docstring yet.</p></section>
 <section class="member"><h4>plots_sampler</h4><code>plots_sampler(self)</code><p class="missing">No docstring yet.</p></section>
 <section class="member"><h4>get_hc_star</h4><code>get_hc_star(self, nyx_version = &#x27;Jul2024&#x27;)</code><p class="missing">No docstring yet.</p></section>
 <section class="member"><h4>plot_mle_cosmo</h4><code>plot_mle_cosmo(self, fontsize = 16)</code><pre>Plot MLE cosmology</pre></section>
@@ -124,10 +124,10 @@ Pass a list of chain files (ints) and a list of labels (strings)
  - save_string: to save the plot. Must include
                 file extension (i.e. .pdf, .png etc)
  - if delta_lnprob_cut is set, keep only high-prob points</pre></section>
-<section class="member"><h4>plot_hcd_cont</h4><code>plot_hcd_cont(self, plot_every_iz = 1, smooth_k = False, plot_data = False, zrange = [0, 10])</code><pre>Function to plot the HCD contamination</pre></section>
-<section class="member"><h4>plot_metal_cont</h4><code>plot_metal_cont(self, plot_every_iz = 1, stat_best_fit = &#x27;mle&#x27;, smooth_k = False, plot_data = False, zrange = [0, 10], mle_results = None, plot_panels = True)</code><pre>Function to plot metal contamination</pre></section>
-<section class="member"><h4>plot_agn_cont</h4><code>plot_agn_cont(self, plot_every_iz = 1, smooth_k = False, plot_data = False, zrange = [0, 10])</code><pre>Function to plot AGN contamination</pre></section>
-<section class="member"><h4>plot_res_cont</h4><code>plot_res_cont(self, plot_every_iz = 1, smooth_k = False, plot_data = False, zrange = [0, 10])</code><pre>Function to plot AGN contamination</pre></section>
+<section class="member"><h4>plot_hcd_cont</h4><code>plot_hcd_cont(self, plot_every_iz = 1, smooth_k = False, plot_data = False, zrange = None)</code><pre>Function to plot the HCD contamination</pre></section>
+<section class="member"><h4>plot_metal_cont</h4><code>plot_metal_cont(self, plot_every_iz = 1, stat_best_fit = &#x27;mle&#x27;, smooth_k = False, plot_data = False, zrange = None, mle_results = None, plot_panels = True)</code><pre>Function to plot metal contamination</pre></section>
+<section class="member"><h4>plot_agn_cont</h4><code>plot_agn_cont(self, plot_every_iz = 1, smooth_k = False, plot_data = False, zrange = None)</code><pre>Function to plot AGN contamination</pre></section>
+<section class="member"><h4>plot_res_cont</h4><code>plot_res_cont(self, plot_every_iz = 1, smooth_k = False, plot_data = False, zrange = None)</code><pre>Function to plot AGN contamination</pre></section>
 <section class="member"><h4>plot_hull</h4><code>plot_hull(self, p0 = None, save_plot = True, zmask = None)</code><pre>Function to plot data within hull</pre></section>
 <section class="member"><h4>plot_illustrate_contaminants_cum</h4><code>plot_illustrate_contaminants_cum(self, values, zmask, fontsize = 18)</code><p class="missing">No docstring yet.</p></section>
 <section class="member"><h4>plot_illustrate_contaminants_each</h4><code>plot_illustrate_contaminants_each(self, values, zmask, fontsize = 18, store_data = False)</code><p class="missing">No docstring yet.</p></section>

@@ -20,11 +20,9 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import os, sys
 import matplotlib.pyplot as plt
-from cup1d.likelihood.pipeline import Pipeline
 
+from cup1d.likelihood.pipeline import Pipeline
 
 # %% [markdown]
 # ## Load P1D measurements and set likelihood

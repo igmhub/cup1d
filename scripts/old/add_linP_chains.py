@@ -1,8 +1,9 @@
-import numpy as np
 import os
 import time
-from cup1d.planck import planck_chains
-from cup1d.planck import add_linP_params
+
+import numpy as np
+
+from cup1d.planck import add_linP_params, planck_chains
 
 # point to original Planck chains
 root_dir=os.environ['PLANCK_CHAINS']
@@ -35,7 +36,7 @@ samples=planck['samples']
 thinning=10
 samples.thin(thinning)
 Nsamp,Npar=samples.samples.shape
-print('Thinned chains have {} samples and {} parameters'.format(Nsamp,Npar))
+print(f'Thinned chains have {Nsamp} samples and {Npar} parameters')
 
 # print in total 100 updates
 print_every=int(Nsamp/100)+1
@@ -82,12 +83,12 @@ if z_evol:
 # get basic statistics for the new parameters
 param_means=np.mean(samples.samples,axis=0)
 param_vars=np.var(samples.samples,axis=0)
-print('DL2_star mean = {} +/- {}'.format(param_means[Npar],np.sqrt(param_vars[Npar])))
-print('n_star mean = {} +/- {}'.format(param_means[Npar+1],np.sqrt(param_vars[Npar+1])))
-print('alpha_star mean = {} +/- {}'.format(param_means[Npar+2],np.sqrt(param_vars[Npar+2])))
+print(f'DL2_star mean = {param_means[Npar]} +/- {np.sqrt(param_vars[Npar])}')
+print(f'n_star mean = {param_means[Npar+1]} +/- {np.sqrt(param_vars[Npar+1])}')
+print(f'alpha_star mean = {param_means[Npar+2]} +/- {np.sqrt(param_vars[Npar+2])}')
 if z_evol:
-    print('f_star mean = {} +/- {}'.format(param_means[Npar+3],np.sqrt(param_vars[Npar+3])))
-    print('g_star mean = {} +/- {}'.format(param_means[Npar+4],np.sqrt(param_vars[Npar+4])))
+    print(f'f_star mean = {param_means[Npar+3]} +/- {np.sqrt(param_vars[Npar+3])}')
+    print(f'g_star mean = {param_means[Npar+4]} +/- {np.sqrt(param_vars[Npar+4])}')
 
 # store new chain to file
 new_root_name=planck['dir_name']+planck['chain_name']

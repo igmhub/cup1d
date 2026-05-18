@@ -26,14 +26,15 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
+import matplotlib as mpl
+
 ## Set default plot size, as normally its a bit too small
 import matplotlib.pyplot as plt
-import matplotlib as mpl
+import numpy as np
+
 mpl.rcParams['savefig.dpi'] = 120
 mpl.rcParams['figure.dpi'] = 120
-from cup1d.nuisance import metal_model
-from cup1d.nuisance import mean_flux_model
+from cup1d.nuisance import mean_flux_model, metal_model
 
 # %%
 X_model=metal_model.MetalModel(metal_label='SiIII')
@@ -74,7 +75,7 @@ for z in [2,3,4]:
     plt.plot(k_kms,test,label='test')
     plt.xlabel('k [s/km]')
     plt.ylabel('metal contamination')
-    plt.title('z={}'.format(z))
+    plt.title(f'z={z}')
     plt.legend()
 
 # %%

@@ -22,16 +22,17 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
-import os
-import matplotlib.pyplot as plt
+
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+
 mpl.rcParams['savefig.dpi'] = 160
 mpl.rcParams['figure.dpi'] = 160
-from lace.archive import gadget_archive, nyx_archive
+from lace.archive import gadget_archive
+
 from cup1d.data.data_eBOSS_mock import P1D_eBOSS_mock
 from cup1d.data.data_gadget import Gadget_P1D
-from cup1d.data.data_nyx import Nyx_P1D
 
 # %% [markdown]
 # ## Generate eBOSS P1D mock

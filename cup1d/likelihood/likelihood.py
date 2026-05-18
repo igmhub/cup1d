@@ -10,7 +10,7 @@ from __future__ import annotations
 import copy
 import math
 import os
-from typing import Any, Union
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -1474,6 +1474,10 @@ class Likelihood:
         #             )
         #         err_posterior_extra = np.std(rand_emu_extra, axis=0)
 
+        if rand_posterior is not None:
+            err_posterior = None
+            err_posterior_extra = None
+
         if self.extra_data is None:
             if plot_panels:
                 nrows = len(_data_z) // 3
@@ -1604,7 +1608,10 @@ class Likelihood:
                         cov_theory = emu_cov_use[iz]
                         err_theory = np.sqrt(np.diag(cov_theory))
                 else:
-                    err_theory = err_posterior_use[iz]
+                    if err_posterior_use is not None:
+                        err_theory = err_posterior_use[iz]
+                    else:
+                        err_theory = None
 
                 # plot everything
                 if Nz > 1:
@@ -1879,6 +1886,7 @@ class Likelihood:
         zmask=None,
         z_at_time=False,
         fontsize=16,
+        return_covar=False,
     ):
         """Plot P1D in theory vs data. If plot_every_iz >1,
         plot only few redshift bins"""

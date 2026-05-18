@@ -6,15 +6,80 @@ import time
 import numpy as np
 from mpi4py import MPI
 
+from cup1d.likelihood.cosmologies import set_cosmo
 from cup1d.likelihood.fitter import Fitter
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.likelihood import Likelihood
 from cup1d.likelihood.plotter import Plotter
+from cup1d.pipeline.set_archive import set_archive
 from cup1d.pipeline.set_emulator import set_emulator
 from cup1d.pipeline.set_like_params import set_free_like_parameters
 from cup1d.pipeline.set_p1d import set_P1D
 from cup1d.pipeline.set_theory import set_theory
 from cup1d.utils.utils import create_print_function, get_path_repo, split_string
+
+__all__ = [
+    "set_like",
+    "set_archive",
+    "set_cosmo",
+    "set_emulator",
+    "set_free_like_parameters",
+    "set_P1D",
+    "set_theory",
+    "Pipeline",
+]
+
+
+def set_like(data, emulator, args, data_hires=None):
+    """Set the likelihood object for a given data and emulator.
+
+    This function sets up the free parameters, the theory model, and
+    initializes the Likelihood object.
+
+    Parameters
+    ----------
+    data : cup1d.p1ds.base_p1d_data.BaseP1DData
+        The primary P1D data to be fitted.
+    emulator : lace.emulator.emulator_manager.EmulatorManager
+        The emulator used to provide fast model predictions.
+    args : cup1d.likelihood.input_pipeline.Args
+        Configuration object containing analysis settings.
+    data_hires : cup1d.p1ds.base_p1d_data.BaseP1DData, optional
+        Additional high-redshift or high-resolution data. Default is None.
+
+    Returns
+    -------
+    cup1d.likelihood.likelihood.Likelihood
+        The initialized likelihood object ready for fitting.
+    """
+    free_parameters = set_free_like_parameters(
+        args, emulator_label=emulator.emulator_label
+    )
+
+    if data_hires is not None:
+        zs = np.concatenate([data.z, data_hires.z])
+    else:
+        zs = data.z
+
+    theory = set_theory(
+        args,
+        emulator,
+        free_parameters,
+        fid_or_true="fid",
+        use_hull=False,
+        zs=zs,
+    )
+
+    like = Likelihood(
+        data,
+        theory,
+        extra_data=data_hires,
+        free_param_names=free_parameters,
+        cov_factor=args.cov_factor,
+        emu_cov_type=args.emu_cov_type,
+        args=args,
+    )
+    return like
 
 
 def get_grid_large(nelem):

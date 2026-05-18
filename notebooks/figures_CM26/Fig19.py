@@ -28,7 +28,9 @@ store_data = plot_table_igm(base, name_variation=None, save_fig=None, chain="7",
 # plot_table_igm(base, name_variation="more_igm", save_fig=save_fig, chain="2")
 
 # +
-import cup1d, os
+import os
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_19.npy")

@@ -1,27 +1,25 @@
-import numpy as np
-import time, os, sys
 import glob
+import os
+import sys
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 # our own modules
-from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood import lya_theory, likelihood
-from cup1d.likelihood.fitter import Fitter
 
+# MPI stuff
+from mpi4py import MPI
+
+from cup1d.likelihood.fitter import Fitter
+from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import (
     set_archive,
-    set_P1D,
     set_cosmo,
     set_free_like_parameters,
     set_like,
 )
-
 from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
-from cup1d.likelihood.input_pipeline import Args
-
-# MPI stuff
-from mpi4py import MPI
 from cup1d.utils.utils import create_print_function
 
 

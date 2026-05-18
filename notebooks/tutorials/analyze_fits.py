@@ -23,14 +23,12 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 # our own modules
 from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
-from cup1d.utils.utils import get_path_repo
 
 # +
 # emu = "mpg"

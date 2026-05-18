@@ -115,7 +115,7 @@ Array2D
     Coverage matrix for rebinning.</pre></section>
 <section class="member"><h4>others_igm</h4><code>others_igm()</code><p class="missing">No docstring yet.</p></section>
     <h3>Classes</h3>
-    <section class="classdoc"><h3>Likelihood(object)</h3><pre>Likelihood class, holds data, theory, and knows about parameters.
+    <section class="classdoc"><h3>Likelihood</h3><pre>Likelihood class, holds data, theory, and knows about parameters.
 
 Parameters
 ----------
@@ -142,7 +142,7 @@ min_log_like : float, optional
 args : Optional[Any], optional
     Additional arguments.
 start_from_min : bool, optional
-    Whether to start from minimum.</pre><section class="member"><h4>rebinning</h4><code>rebinning(self, zs: Array1D, Pk_kms_finek: List[Array1D]) -&gt; List[Array1D]</code><pre>For rebinning Pk predictions.
+    Whether to start from minimum.</pre><section class="member"><h4>rebinning</h4><code>rebinning(self, zs: Array1D, Pk_kms_finek: list[Array1D]) -&gt; list[Array1D]</code><pre>For rebinning Pk predictions.
 
 Parameters
 ----------
@@ -157,7 +157,7 @@ List[Array1D]
     Rebinned power spectra at original k bins.</pre></section>
 <section class="member"><h4>set_Gauss_priors</h4><code>set_Gauss_priors(self) -&gt; None</code><pre>Sets Gaussian priors on the parameters.</pre></section>
 <section class="member"><h4>set_blinding</h4><code>set_blinding(self) -&gt; None</code><pre>Set the blinding parameters.</pre></section>
-<section class="member"><h4>apply_blinding</h4><code>apply_blinding(self, dict_cosmo: Dict[str, float], conv: bool = False, sample: Optional[str] = None) -&gt; Dict[str, float]</code><pre>Apply blinding to the dict_cosmo.
+<section class="member"><h4>apply_blinding</h4><code>apply_blinding(self, dict_cosmo: dict[str, float], conv: bool = False, sample: str | None = None) -&gt; dict[str, float]</code><pre>Apply blinding to the dict_cosmo.
 
 Parameters
 ----------
@@ -172,7 +172,7 @@ Returns
 -------
 Dict[str, float]
     Blinded cosmological parameters.</pre></section>
-<section class="member"><h4>apply_unblinding</h4><code>apply_unblinding(self, dict_cosmo: Dict[str, float], conv: bool = False) -&gt; Dict[str, float]</code><pre>Apply unblinding to the dict_cosmo.
+<section class="member"><h4>apply_unblinding</h4><code>apply_unblinding(self, dict_cosmo: dict[str, float], conv: bool = False) -&gt; dict[str, float]</code><pre>Apply unblinding to the dict_cosmo.
 
 Parameters
 ----------
@@ -223,7 +223,7 @@ Raises:
 -------
 ValueError:
     If the covariance matrix inversion fails (e.g., due to singularity).</pre></section>
-<section class="member"><h4>set_free_parameters</h4><code>set_free_parameters(self, free_param_names: Optional[List[str]], free_param_limits: Optional[List[Tuple[float, float]]]) -&gt; None</code><pre>Setup likelihood parameters that we want to vary.
+<section class="member"><h4>set_free_parameters</h4><code>set_free_parameters(self, free_param_names: list[str] | None, free_param_limits: list[tuple[float, float]] | None) -&gt; None</code><pre>Setup likelihood parameters that we want to vary.
 
 Parameters
 ----------
@@ -242,7 +242,7 @@ Array1D
 cosmology params</pre></section>
 <section class="member"><h4>set_truth</h4><code>set_truth(self) -&gt; None</code><pre>Store true cosmology from the simulation used to make mock data.</pre></section>
 <section class="member"><h4>set_fid</h4><code>set_fid(self) -&gt; None</code><pre>Store fiducial cosmology assumed for the fit.</pre></section>
-<section class="member"><h4>get_p1d_kms</h4><code>get_p1d_kms(self, zs: Optional[Array1D] = None, _k_kms: Optional[List[Array1D]] = None, values: Optional[Array1D] = None, return_covar: bool = False, return_blob: bool = False, return_emu_params: bool = False, apply_hull: bool = True, remove: Optional[str] = None) -&gt; Optional[Union[List[Array1D], Tuple]]</code><pre>Compute theoretical prediction for 1D P(k).
+<section class="member"><h4>get_p1d_kms</h4><code>get_p1d_kms(self, zs: Array1D | None = None, _k_kms: list[Array1D] | None = None, values: Array1D | None = None, return_covar: bool = False, return_blob: bool = False, return_emu_params: bool = False, apply_hull: bool = True, remove: str | None = None) -&gt; list[Array1D] | tuple | None</code><pre>Compute theoretical prediction for 1D P(k).
 
 Parameters
 ----------
@@ -267,7 +267,7 @@ Returns
 -------
 Optional[Union[List[Array1D], Tuple]]
     Power spectrum predictions.</pre></section>
-<section class="member"><h4>get_chi2</h4><code>get_chi2(self, values: Optional[Array1D] = None, return_all: bool = False, zmask: Optional[Array1D] = None) -&gt; Union[float, Tuple[float, List[float]]]</code><pre>Compute chi2 using data and theory, without adding emulator covariance.
+<section class="member"><h4>get_chi2</h4><code>get_chi2(self, values: Array1D | None = None, return_all: bool = False, zmask: Array1D | None = None) -&gt; float | tuple[float, list[float]]</code><pre>Compute chi2 using data and theory, without adding emulator covariance.
 
 Parameters
 ----------
@@ -282,7 +282,7 @@ Returns
 -------
 Union[float, Tuple[float, List[float]]]
     Chi2 value(s).</pre></section>
-<section class="member"><h4>get_error</h4><code>get_error(self, p0: Array1D) -&gt; Tuple[Array1D, Array2D]</code><pre>Compute parameter errors from Hessian.
+<section class="member"><h4>get_error</h4><code>get_error(self, p0: Array1D) -&gt; tuple[Array1D, Array2D]</code><pre>Compute parameter errors from Hessian.
 
 Parameters
 ----------
@@ -293,7 +293,7 @@ Returns
 -------
 Tuple[Array1D, Array2D]
     Errors and covariance matrix.</pre></section>
-<section class="member"><h4>get_log_like</h4><code>get_log_like(self, values: Optional[Array1D] = None, ignore_log_det_cov: bool = True, return_blob: bool = False, zmask: Optional[Array1D] = None) -&gt; Union[Tuple[float, float], Tuple[float, float, Tuple]]</code><pre>Compute log(likelihood), including determinant of covariance unless you are setting ignore_log_det_cov=True.
+<section class="member"><h4>get_log_like</h4><code>get_log_like(self, values: Array1D | None = None, ignore_log_det_cov: bool = True, return_blob: bool = False, zmask: Array1D | None = None) -&gt; tuple[float, float] | tuple[float, float, tuple]</code><pre>Compute log(likelihood), including determinant of covariance unless you are setting ignore_log_det_cov=True.
 
 Parameters
 ----------
@@ -326,7 +326,7 @@ Returns
 -------
 float
     Log prior value.</pre></section>
-<section class="member"><h4>minus_log_prob</h4><code>minus_log_prob(self, values: Array1D, zmask: Optional[Array1D] = None, ind_fix: Optional[Array1D] = None, pfix: Optional[Array1D] = None) -&gt; float</code><pre>Return minus log_prob (needed to maximise posterior).
+<section class="member"><h4>minus_log_prob</h4><code>minus_log_prob(self, values: Array1D, zmask: Array1D | None = None, ind_fix: Array1D | None = None, pfix: Array1D | None = None) -&gt; float</code><pre>Return minus log_prob (needed to maximise posterior).
 
 Parameters
 ----------
@@ -343,7 +343,7 @@ Returns
 -------
 float
     Negative log probability.</pre></section>
-<section class="member"><h4>maximise_posterior</h4><code>maximise_posterior(self, initial_values: Optional[Array1D] = None, method: str = &#x27;nelder-mead&#x27;, tol: float = 0.0001) -&gt; Any</code><pre>Run scipy minimizer to find maximum of posterior.
+<section class="member"><h4>maximise_posterior</h4><code>maximise_posterior(self, initial_values: Array1D | None = None, method: str = &#x27;nelder-mead&#x27;, tol: float = 0.0001) -&gt; Any</code><pre>Run scipy minimizer to find maximum of posterior.
 
 Parameters
 ----------
@@ -360,7 +360,7 @@ Any
     Minimization result.</pre></section>
 <section class="member"><h4>plot_p1d</h4><code>plot_p1d(self, values = None, plot_every_iz = 1, residuals = False, plot_fname = None, rand_posterior = None, show = True, return_covar = False, print_ratio = False, print_chi2 = True, return_all = False, collapse = False, plot_realizations = True, zmask = None, n_perturb = 0, plot_panels = False, z_at_time = False, fontsize = 20, glob_full = False, fix_cosmo = False, n_param_glob_full = 16, chi2_nozcov = False, ylims = None, store_data = False)</code><pre>Plot P1D in theory vs data. If plot_every_iz &gt;1,
 plot only few redshift bins</pre></section>
-<section class="member"><h4>plot_p1d_errors</h4><code>plot_p1d_errors(self, values = None, plot_fname = None, show = True, zmask = None, z_at_time = False, fontsize = 16)</code><pre>Plot P1D in theory vs data. If plot_every_iz &gt;1,
+<section class="member"><h4>plot_p1d_errors</h4><code>plot_p1d_errors(self, values = None, plot_fname = None, show = True, zmask = None, z_at_time = False, fontsize = 16, return_covar = False)</code><pre>Plot P1D in theory vs data. If plot_every_iz &gt;1,
 plot only few redshift bins</pre></section>
 <section class="member"><h4>plot_hcd_cont</h4><code>plot_hcd_cont(self, zstar = 3, p0 = None, chain = None, save_directory = None, ftsize = 24, nelem = 5000, store_data = False)</code><p class="missing">No docstring yet.</p></section>
 <section class="member"><h4>plot_metal_cont_add</h4><code>plot_metal_cont_add(self, free_params = None, chain = None, save_directory = None, ftsize = 24, nelem = 5000, store_data = False)</code><p class="missing">No docstring yet.</p></section>
@@ -369,7 +369,7 @@ plot only few redshift bins</pre></section>
 <section class="member"><h4>plot_cov_terms</h4><code>plot_cov_terms(self, save_directory = None)</code><p class="missing">No docstring yet.</p></section>
 <section class="member"><h4>plot_cov_to_pk</h4><code>plot_cov_to_pk(self, use_pk_smooth = True, fname = None, ftsize = 18, store_data = False)</code><p class="missing">No docstring yet.</p></section>
 <section class="member"><h4>plot_correlation_matrix</h4><code>plot_correlation_matrix(self, save_directory = None)</code><p class="missing">No docstring yet.</p></section>
-<section class="member"><h4>plot_hull_fid</h4><code>plot_hull_fid(self, like_params = [])</code><p class="missing">No docstring yet.</p></section>
+<section class="member"><h4>plot_hull_fid</h4><code>plot_hull_fid(self, like_params = None)</code><p class="missing">No docstring yet.</p></section>
 <section class="member"><h4>set_ic_from_z_at_time</h4><code>set_ic_from_z_at_time(self, fname, verbose = True)</code><pre>Set the initial conditions for the likelihood from a fit</pre></section>
 <section class="member"><h4>set_ic_global</h4><code>set_ic_global(self, fname, verbose = True)</code><pre>Set the initial conditions for the likelihood from a fit</pre></section></section>
   </main>

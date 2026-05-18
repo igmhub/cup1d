@@ -20,20 +20,18 @@
 
 # %%
 # %matplotlib inline
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+
 mpl.rcParams['savefig.dpi'] = 140
 mpl.rcParams['figure.dpi'] = 140
+
 import numpy as np
-import time
+
 # our own modules
-from lace.emulator import gp_emulator
-from lace.emulator import nn_emulator
-from cup1d.data import data_Chabanier2019
-from cup1d.data import data_Karacayli2022
-from cup1d.likelihood import lya_theory
-from cup1d.likelihood import likelihood
-from cup1d.likelihood import iminuit_minimizer
+from lace.emulator import gp_emulator, nn_emulator
+
+from cup1d.data import data_Chabanier2019, data_Karacayli2022
+from cup1d.likelihood import iminuit_minimizer, likelihood, lya_theory
 
 # %% [markdown]
 # ### Set up data (eBOSS P1D measurement from Chabanier et al. 2019)
@@ -97,7 +95,7 @@ else:
 n_igm=1
 for i in range(n_igm):
     for par in ["tau","sigT_kms","gamma","kF"]:
-        free_param_names.append('ln_{}_{}'.format(par,i))
+        free_param_names.append(f'ln_{par}_{i}')
 # add metal line contaminations
 free_param_names.append('ln_SiIII_0')
 
@@ -144,7 +142,7 @@ minimizer.minimize(compute_hesse=True)
 best_fit_values=np.array(minimizer.minimizer.values)
 print('best fit values',best_fit_values)
 best_chi2=like.get_chi2(values=best_fit_values)
-print('chi2 improved from {} to {}'.format(ini_chi2,best_chi2))
+print(f'chi2 improved from {ini_chi2} to {best_chi2}')
 
 # %%
 minimizer.plot_best_fit(plot_every_iz=plot_every_iz,residuals=True)

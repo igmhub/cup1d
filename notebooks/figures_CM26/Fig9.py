@@ -22,10 +22,13 @@
 # %autoreload 2
 
 import os
+
 import numpy as np
+
 import cup1d
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
+
 # -
 
 args = Args(pre_defined="CM2026", system="local")

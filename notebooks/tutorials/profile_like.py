@@ -19,16 +19,15 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
-import matplotlib.pyplot as plt
-from cup1d.utils.fit_ellipse import fit_ellipse, plot_ellipse
-from scipy.interpolate import griddata
+
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib import rcParams
+from scipy.interpolate import griddata
 from scipy.stats import chi2 as chi2_scipy
 
-
-from matplotlib import rcParams
+from cup1d.utils.fit_ellipse import fit_ellipse, plot_ellipse
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -112,8 +111,8 @@ mle_cube_cen = data_cen["mle_cube"].copy()
 chi2 = np.zeros(nelem)
 params = np.zeros((nelem, 2))
 mle_cube = np.zeros((nelem, len(mle_cube_cen)-2))
-hcd0 = np.zeros((nelem))
-tau3 = np.zeros((nelem))
+hcd0 = np.zeros(nelem)
+tau3 = np.zeros(nelem)
 all_pars = np.zeros((nelem, len(mle_cube_cen)+1))
 mle = []
 for ii in range(nelem):
@@ -931,8 +930,8 @@ plt.tight_layout()
 
 
 
-from cup1d.likelihood.cosmologies import set_cosmo
 from cup1d.likelihood import CAMB_model
+from cup1d.likelihood.cosmologies import set_cosmo
 
 # 26 params
 
@@ -1014,11 +1013,9 @@ plt.tight_layout()
 
 # #### Contours from chains
 
-from cup1d.likelihood.cosmologies import set_cosmo
+
 from cup1d.likelihood import CAMB_model
-import matplotlib.cm as cm
-
-
+from cup1d.likelihood.cosmologies import set_cosmo
 
 # +
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
@@ -1176,10 +1173,8 @@ dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 # dat_kF = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 # -
-from cup1d.likelihood.cosmologies import set_cosmo
 from cup1d.likelihood import CAMB_model
-import matplotlib.cm as cm
-
+from cup1d.likelihood.cosmologies import set_cosmo
 
 # +
 

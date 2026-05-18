@@ -20,30 +20,25 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
+import os
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 # our own modules
-from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood import lya_theory, likelihood
-from cup1d.likelihood.fitter import Fitter
 
+# %%
+from cup1d.likelihood.fitter import Fitter
+from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import (
     set_archive,
-    set_P1D,
     set_cosmo,
     set_free_like_parameters,
     set_like,
+    set_P1D,
 )
 from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
-
-from cup1d.likelihood.input_pipeline import Args
-
-# %%
-import cup1d
-import os
 
 # %% [markdown]
 # ### Set emulator
@@ -229,7 +224,7 @@ for run in runs.values():
 for z, run in runs.items():
     values=run['results']['best_fit_cube']
     for residuals, tag in zip([True,False],['_res','']):
-        plot_fname=outdir+'/p1d{}_{}.png'.format(tag,z)
+        plot_fname=outdir+f'/p1d{tag}_{z}.png'
         run['fitter'].like.plot_p1d(values=values,residuals=residuals,plot_fname=plot_fname)
 
 # %%

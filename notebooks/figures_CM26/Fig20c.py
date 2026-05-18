@@ -22,10 +22,13 @@
 # %autoreload 2
 
 import os
+
 import numpy as np
+
 import cup1d
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
+
 # -
 
 args = Args(pre_defined="CM2026", system="local")
@@ -47,7 +50,6 @@ chain = np.load(folder + "chain.npy")
 out_data = pip.fitter.like.plot_hcd_cont(p0=p0, chain=chain, save_directory=None, store_data=True)
 
 # +
-import cup1d, os
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_20c.npy")

@@ -95,12 +95,12 @@
     <h3>Functions</h3>
     <p class="missing">No public functions.</p>
     <h3>Classes</h3>
-    <section class="classdoc"><h3>HCD_Model_McDonald2005(object)</h3><pre>Multiplicative HCD correction following McDonald et al. (2005).</pre><section class="member"><h4>set_parameters</h4><code>set_parameters(self)</code><pre>Create likelihood parameters for the HCD amplitude.</pre></section>
+    <section class="classdoc"><h3>HCD_Model_McDonald2005</h3><pre>Multiplicative HCD correction following McDonald et al. (2005).</pre><section class="member"><h4>set_parameters</h4><code>set_parameters(self)</code><pre>Create likelihood parameters for the HCD amplitude.</pre></section>
 <section class="member"><h4>get_Nparam</h4><code>get_Nparam(self)</code><pre>Return the number of free HCD parameters.</pre></section>
-<section class="member"><h4>get_A_damp</h4><code>get_A_damp(self, z, like_params = [])</code><pre>Evaluate the HCD damping amplitude at redshift ``z``.</pre></section>
-<section class="member"><h4>get_contamination</h4><code>get_contamination(self, z, k_kms, like_params = [])</code><pre>Return the multiplicative HCD correction at ``z`` and ``k_kms``.</pre></section>
+<section class="member"><h4>get_A_damp</h4><code>get_A_damp(self, z, like_params = None)</code><pre>Evaluate the HCD damping amplitude at redshift ``z``.</pre></section>
+<section class="member"><h4>get_contamination</h4><code>get_contamination(self, z, k_kms, like_params = None)</code><pre>Return the multiplicative HCD correction at ``z`` and ``k_kms``.</pre></section>
 <section class="member"><h4>get_parameters</h4><code>get_parameters(self)</code><pre>Return the HCD likelihood parameters.</pre></section>
-<section class="member"><h4>get_A_damp_coeffs</h4><code>get_A_damp_coeffs(self, like_params = [])</code><pre>Return HCD coefficients, updated from likelihood parameters.</pre></section>
+<section class="member"><h4>get_A_damp_coeffs</h4><code>get_A_damp_coeffs(self, like_params = None)</code><pre>Return HCD coefficients, updated from likelihood parameters.</pre></section>
 <section class="member"><h4>plot_contamination</h4><code>plot_contamination(self, z, k_kms, ln_A_damp_coeff = None, plot_every_iz = 1, cmap = None, smooth_k = False)</code><pre>Plot the HCD correction for a set of redshifts and wavenumbers.</pre></section></section>
   </main>
 </body>

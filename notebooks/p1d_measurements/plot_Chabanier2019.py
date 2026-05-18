@@ -20,14 +20,11 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
-import os
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+
 mpl.rcParams['savefig.dpi'] = 160
 mpl.rcParams['figure.dpi'] = 160
-from cup1d.p1ds import data_PD2013
-from cup1d.p1ds import data_Chabanier2019
+from cup1d.p1ds import data_Chabanier2019, data_PD2013
 
 # %% jupyter={"outputs_hidden": false}
 Cha2019=data_Chabanier2019.P1D_Chabanier2019(add_syst=True)

@@ -20,9 +20,10 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+
 mpl.rcParams['savefig.dpi'] = 120
 mpl.rcParams['figure.dpi'] = 120
 from cup1d.data import data_Irsic2017
@@ -41,6 +42,7 @@ data.plot_p1d()
 
 # %% jupyter={"outputs_hidden": false}
 import os
+
 assert ('CUP1D_PATH' in os.environ),'You need to define CUP1D_PATH'
 basedir=os.environ['CUP1D_PATH']+'/data_files/p1d_measurements/Irsic2017/'
 cov_file=basedir+'/cov_pk_xs_final.txt'

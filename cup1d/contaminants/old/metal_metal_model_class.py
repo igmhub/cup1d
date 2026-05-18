@@ -18,6 +18,8 @@ class MetalModel(Contaminant):
         flat_priors=None,
         z_max=None,
         Gauss_priors=None,
+        lambda_rest=None,
+        osc_strength=None,
     ):
         """Model the evolution of a metal contamination (SiII or SiIII).
         We use a power law around z_X=3."""
@@ -36,6 +38,10 @@ class MetalModel(Contaminant):
         else:
             if lambda_rest is None:
                 raise ValueError("need to specify lambda_rest", metal_label)
+            self.lambda_rest = lambda_rest
+            if osc_strength is None:
+                raise ValueError("need to specify osc_strength", metal_label)
+            self.osc_strength = osc_strength
         c_kms = 299792.458
         self.dv = np.log(self.lambda_rest[1] / self.lambda_rest[0]) * c_kms
         self.ratio_f = np.min(self.osc_strength) / np.max(self.osc_strength)

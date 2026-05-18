@@ -1,5 +1,5 @@
-from multiprocessing.pool import ThreadPool
 import threading
+from multiprocessing.pool import ThreadPool
 
 
 def square_number(number):

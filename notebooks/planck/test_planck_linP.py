@@ -23,11 +23,12 @@
 # %% jupyter={"outputs_hidden": false}
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
 import os
-from getdist import plots,loadMCSamples
-import matplotlib.pyplot as plt
+
+from getdist import plots
+
 from cup1d.planck import planck_chains
+
 # because of black magic, getdist needs this strange order of imports
 # %matplotlib inline
 from cup1d.utils.utils import get_path_repo

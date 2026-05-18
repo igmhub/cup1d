@@ -1,5 +1,5 @@
-from parallel_square import parallel_square
 import numpy as np
+from parallel_square import parallel_square
 
 
 def main():

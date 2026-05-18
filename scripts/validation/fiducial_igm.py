@@ -1,8 +1,9 @@
 import os
 
-from cup1d.likelihood.input_pipeline import Args
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.pipeline import set_archive, Pipeline
+
+from cup1d.likelihood.input_pipeline import Args
+from cup1d.likelihood.pipeline import Pipeline, set_archive
 
 
 def main():

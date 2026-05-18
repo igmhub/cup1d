@@ -98,7 +98,7 @@ and HCD systems in the Lyman-alpha forest.</pre>
     <h3>Functions</h3>
     <p class="missing">No public functions.</p>
     <h3>Classes</h3>
-    <section class="classdoc"><h3>Contaminant(object)</h3><pre>New model for HCD contamination.
+    <section class="classdoc"><h3>Contaminant</h3><pre>New model for HCD contamination.
 
 Parameters
 ----------
@@ -123,14 +123,14 @@ flat_priors : Optional[Dict[str, Tuple[float, float]]], optional
 Gauss_priors : Optional[Dict[str, float]], optional
     Gaussian prior widths.</pre><section class="member"><h4>set_params</h4><code>set_params(self) -&gt; None</code><pre>Create likelihood parameters for all contaminant coefficients.</pre></section>
 <section class="member"><h4>get_Nparam</h4><code>get_Nparam(self)</code><pre>Return the number of likelihood parameters in the model.</pre></section>
-<section class="member"><h4>get_value</h4><code>get_value(self, name, z, like_params = [])</code><pre>Evaluate one nuisance coefficient at redshift ``z``.
+<section class="member"><h4>get_value</h4><code>get_value(self, name, z, like_params = None)</code><pre>Evaluate one nuisance coefficient at redshift ``z``.
 
 The interpolation/evolution mode is controlled by
 ``prop_coeffs[f&quot;{name}_ztype&quot;]``. Coefficients can be returned directly
 or exponentiated according to ``prop_coeffs[f&quot;{name}_otype&quot;]``.</pre></section>
 <section class="member"><h4>get_parameter</h4><code>get_parameter(self, name)</code><pre>Return one likelihood parameter by name.</pre></section>
 <section class="member"><h4>get_parameters</h4><code>get_parameters(self)</code><pre>Return likelihood parameters</pre></section>
-<section class="member"><h4>get_coeff</h4><code>get_coeff(self, name, like_params = [])</code><pre>Return coefficients for ``name``, optionally updated from a chain state.</pre></section>
+<section class="member"><h4>get_coeff</h4><code>get_coeff(self, name, like_params = None)</code><pre>Return coefficients for ``name``, optionally updated from a chain state.</pre></section>
 <section class="member"><h4>reset_coeffs</h4><code>reset_coeffs(self, like_params, rank = 0)</code><pre>Update stored coefficients from a list of likelihood parameters.</pre></section>
 <section class="member"><h4>plot_parameters</h4><code>plot_parameters(self, z, like_params, folder = None)</code><pre>Plot coefficient evolution over redshift.</pre></section></section>
   </main>

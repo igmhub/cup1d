@@ -1,13 +1,17 @@
-import os, sys, time
-import numpy as np
+import os
+import sys
+import time
+
 import configargparse
+import numpy as np
 
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
-from lace.emulator.nn_emulator import NNEmulator
 from lace.emulator.gp_emulator import GPEmulator
+from lace.emulator.nn_emulator import NNEmulator
+
 from cup1d.data import data_gadget, data_nyx
-from cup1d.likelihood import lya_theory, likelihood, iminuit_minimizer
+from cup1d.likelihood import iminuit_minimizer, likelihood, lya_theory
 
 
 def parse_args():
@@ -307,7 +311,7 @@ def minimize(args, like, free_parameters):
         err_best_fit_values[ii] = err_best
 
     best_chi2 = like.get_chi2(values=cube_values)
-    print("chi2 improved from {} to {}".format(ini_chi2, best_chi2))
+    print(f"chi2 improved from {ini_chi2} to {best_chi2}")
     # print(best_chi2)
     # print(free_parameters)
     # print(truth_values)
@@ -442,10 +446,10 @@ def max_like_sim(args):
     print("----------")
     print("Set likelihood")
     free_parameters = ["As", "ns"]
-    print("Using {} parameters for IGM model".format(args.n_igm))
+    print(f"Using {args.n_igm} parameters for IGM model")
     for ii in range(args.n_igm):
         for par in ["tau", "sigT_kms", "gamma", "kF"]:
-            free_parameters.append("ln_{}_{}".format(par, ii))
+            free_parameters.append(f"ln_{par}_{ii}")
     print("free parameters", free_parameters)
     ## set theory
     theory = lya_theory.Theory(

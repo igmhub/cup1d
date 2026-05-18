@@ -1,5 +1,7 @@
 import numpy as np
+
 from cup1d.likelihood.likelihood import get_bin_coverage
+
 
 def test_get_bin_coverage():
     xmin_o = np.array([0.0, 1.0, 2.0])

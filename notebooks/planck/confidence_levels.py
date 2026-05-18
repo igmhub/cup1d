@@ -19,12 +19,12 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-from cup1d.utils.fit_ellipse import fit_ellipse
+import numpy as np
 from scipy.stats import chi2 as chi2_scipy
+from scipy.stats import multivariate_normal
 
+from cup1d.utils.fit_ellipse import fit_ellipse
 
 # +
 cont = np.array([0, 1, 2])
@@ -118,8 +118,8 @@ for jj in range(2,3):
     print(fit_params)
 
 # +
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Example fake log-likelihood grid (Gaussian for demo)
 theta1_vals = np.linspace(-3, 3, 200)

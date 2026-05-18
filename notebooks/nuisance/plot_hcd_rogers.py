@@ -22,15 +22,17 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
+import matplotlib as mpl
+
 ## Set default plot size, as normally its a bit too small
 import matplotlib.pyplot as plt
-import matplotlib as mpl
+import numpy as np
+
 mpl.rcParams['savefig.dpi'] = 120
 mpl.rcParams['figure.dpi'] = 120
-from cup1d.nuisance import hcd_model_rogers_class
-
 from matplotlib import rcParams
+
+from cup1d.nuisance import hcd_model_rogers_class
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -83,7 +85,9 @@ plt.savefig("HCD_contamination.png")
 plt.savefig("HCD_contamination.pdf")
 
 # %%
-import cup1d, os
+import os
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_6.npy")

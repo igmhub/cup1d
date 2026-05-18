@@ -17,13 +17,12 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
-import matplotlib.pyplot as plt
 
-from cup1d.likelihood.cosmologies import set_cosmo
-from cup1d.likelihood import CAMB_model
+import matplotlib.pyplot as plt
+import numpy as np
 from lace.cosmo import camb_cosmo
+
+from cup1d.likelihood import CAMB_model
 
 
 # %%
@@ -208,9 +207,8 @@ for ii in range(omch2new.shape[0]):
 # %%
 from corner import corner
 
-
 # %%
-corner(res, labels=["Delta2_star", "n_star", "alpha_star", "omch2"]);
+corner(res, labels=["Delta2_star", "n_star", "alpha_star", "omch2"])
 plt.savefig("star_omch2.png")
 
 # %%

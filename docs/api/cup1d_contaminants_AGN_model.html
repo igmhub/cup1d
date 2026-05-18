@@ -95,7 +95,7 @@
     <h3>Functions</h3>
     <p class="missing">No public functions.</p>
     <h3>Classes</h3>
-    <section class="classdoc"><h3>AGN_Model(object)</h3><pre>Multiplicative AGN feedback correction.
+    <section class="classdoc"><h3>AGN_Model</h3><pre>Multiplicative AGN feedback correction.
 
 This model follows the Chabanier et al. (2020) correction
 
@@ -105,11 +105,11 @@ where the redshift-dependent amplitude is represented as a polynomial in
 ``log((1 + z) / (1 + z_0))`` and the scale dependence is read from the
 tabulated AGN correction file.</pre><section class="member"><h4>set_parameters</h4><code>set_parameters(self)</code><pre>Create likelihood parameters for the AGN amplitude.</pre></section>
 <section class="member"><h4>get_Nparam</h4><code>get_Nparam(self)</code><pre>Return the number of free AGN parameters.</pre></section>
-<section class="member"><h4>get_AGN_damp</h4><code>get_AGN_damp(self, z, like_params = [])</code><pre>Evaluate the AGN correction amplitude at redshift ``z``.</pre></section>
-<section class="member"><h4>get_contamination</h4><code>get_contamination(self, z, k_kms, like_params = [])</code><pre>Return the multiplicative AGN correction at ``z`` and ``k_kms``.</pre></section>
+<section class="member"><h4>get_AGN_damp</h4><code>get_AGN_damp(self, z, like_params = None)</code><pre>Evaluate the AGN correction amplitude at redshift ``z``.</pre></section>
+<section class="member"><h4>get_contamination</h4><code>get_contamination(self, z, k_kms, like_params = None)</code><pre>Return the multiplicative AGN correction at ``z`` and ``k_kms``.</pre></section>
 <section class="member"><h4>get_parameters</h4><code>get_parameters(self)</code><pre>Return the AGN likelihood parameters.</pre></section>
-<section class="member"><h4>get_AGN_coeffs</h4><code>get_AGN_coeffs(self, like_params = [])</code><pre>Return AGN coefficients, updated from likelihood parameters.</pre></section>
-<section class="member"><h4>plot_contamination</h4><code>plot_contamination(self, z, k_kms, ln_AGN_coeff = None, plot_every_iz = 1, cmap = None, smooth_k = False, dict_data = None, zrange = [0, 10], name = None)</code><pre>Plot the AGN correction for a set of redshifts and wavenumbers.</pre></section></section>
+<section class="member"><h4>get_AGN_coeffs</h4><code>get_AGN_coeffs(self, like_params = None)</code><pre>Return AGN coefficients, updated from likelihood parameters.</pre></section>
+<section class="member"><h4>plot_contamination</h4><code>plot_contamination(self, z, k_kms, ln_AGN_coeff = None, plot_every_iz = 1, cmap = None, smooth_k = False, dict_data = None, zrange = None, name = None)</code><pre>Plot the AGN correction for a set of redshifts and wavenumbers.</pre></section></section>
   </main>
 </body>
 </html>

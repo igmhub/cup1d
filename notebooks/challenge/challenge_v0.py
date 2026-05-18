@@ -17,29 +17,23 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
-import matplotlib.pyplot as plt
+import os
 
 # our own modules
-import lace
-from lace.archive import gadget_archive, nyx_archive
-from lace.cosmo import camb_cosmo
+import matplotlib.pyplot as plt
+import numpy as np
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.p1ds import (
-    data_gadget,
-    data_nyx,
-    data_eBOSS_mock,
-    data_Chabanier2019,
-    data_Karacayli2022,
-    data_Karacayli2024,
-    data_Ravoux2023,
-)
-from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
-from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_fid_cosmo, set_like
-from cup1d.likelihood.input_pipeline import Args
-# -
 
+from cup1d.likelihood import emcee_sampler
+from cup1d.likelihood.input_pipeline import Args
+from cup1d.likelihood.sampler_pipeline import (
+    set_archive,
+    set_fid_cosmo,
+    set_like,
+    set_P1D,
+)
+
+# -
 from cup1d.p1ds.data_QMLE_Ohio import P1D_QMLE_Ohio
 
 folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/challenge/MockChallenge-v0.1/"
@@ -152,7 +146,7 @@ mask = np.argwhere(lnprob>lnprob_min)[:,0]
 # n_star= -2.3139639485226837
 # corner(chain[mask][:, -2:], range=([0.305, 0.35], [-2.332, -2.315]), truths=[Delta2_star, n_star]);
 
-corner(chain[mask][:, -2:], range=([0.305, 0.35], [-2.332, -2.315]), labels=["Delta2_star", "n_star"]);
+corner(chain[mask][:, -2:], range=([0.305, 0.35], [-2.332, -2.315]), labels=["Delta2_star", "n_star"])
 plt.savefig("corner_challenge_v0.png")
 # -
 
@@ -272,7 +266,7 @@ z = 2.2
 emulator.emulate_p1d_Mpc(p1, k, z=z, return_covar=False)
 
 # +
-from lace.cosmo.camb_cosmo import get_Nyx_cosmology, dkms_dMpc
+from lace.cosmo.camb_cosmo import dkms_dMpc, get_Nyx_cosmology
 
 cosmo_params = {}
 cosmo_params["H_0"] = 67.78216034931903

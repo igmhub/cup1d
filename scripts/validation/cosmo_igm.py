@@ -1,12 +1,12 @@
 import os
 
 os.environ["OMP_NUM_THREADS"] = "1"
-from mpi4py import MPI
 import numpy as np
+from lace.emulator.emulator_manager import set_emulator
+from mpi4py import MPI
 
 from cup1d.likelihood.input_pipeline import Args
-from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.pipeline import set_archive, Pipeline
+from cup1d.likelihood.pipeline import Pipeline, set_archive
 
 
 def main():

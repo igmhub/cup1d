@@ -20,16 +20,14 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
+import os
+
 import matplotlib.pyplot as plt
-from cup1d.utils.fit_ellipse import fit_ellipse, plot_ellipse
-from scipy.interpolate import griddata
-import matplotlib.patches as mpatches
+import numpy as np
+from matplotlib import rcParams
 from scipy.stats import chi2 as chi2_scipy
 
-
-from matplotlib import rcParams
+from cup1d.utils.fit_ellipse import plot_ellipse
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
@@ -54,7 +52,10 @@ print(chi2_levels)
 
 # %%
 from lace.cosmo import camb_cosmo
+
 from cup1d.likelihood import CAMB_model
+
+
 def rescale_star(fid_cosmo, new_cosmo, kp_Mpc, ks_Mpc=0.05):
     """Fast computation of blob when running with fixed background"""
 
@@ -157,7 +158,8 @@ res_fit2 = res_fit2.reshape(-1, 2)
 
 # %%
 import alphashape
-from shapely.geometry import Polygon, MultiPolygon
+from shapely.geometry import MultiPolygon, Polygon
+
 alpha = 1.0
 
 # Compute alpha shape (concave hull)
@@ -225,9 +227,9 @@ plt.plot(boundary2[:,0], boundary2[:,1], "C1")
 # #### Contours from chains
 
 # %%
-from cup1d.likelihood.cosmologies import set_cosmo
+
 from cup1d.likelihood import CAMB_model
-import matplotlib.cm as cm
+from cup1d.likelihood.cosmologies import set_cosmo
 
 # %%
 base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
@@ -272,7 +274,7 @@ store_data["lyssa-central"] = sum_nyx_sim
 store_data["sherwood"] = sum_sherwood
 
 # %%
-import cup1d, os
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_10a.npy")
@@ -285,7 +287,9 @@ store_data["orange"] = sum_mpg_igm
 store_data["green"] = sum_mpg_igm0
 
 # %%
-import cup1d, os
+import os
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_10b.npy")
@@ -492,12 +496,11 @@ dat_Metals_Ma2025 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item(
 # dat_kF = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 # %%
-from cup1d.likelihood.cosmologies import set_cosmo
-from cup1d.likelihood import CAMB_model
-import matplotlib.cm as cm
-
-from matplotlib.path import Path
 from matplotlib.patches import PathPatch
+from matplotlib.path import Path
+
+from cup1d.likelihood import CAMB_model
+from cup1d.likelihood.cosmologies import set_cosmo
 
 # Suppose you already have:
 # boundary: (N,2) array of alpha shape boundary points (closed polygon)

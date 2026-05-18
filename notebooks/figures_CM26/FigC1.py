@@ -25,7 +25,9 @@ base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 store_data = plot_table_igm(base, name_variation="nyx", save_fig=None, chain="3", store_data=True)
 
 # +
-import cup1d, os
+import os
+
+import cup1d
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_C1.npy")

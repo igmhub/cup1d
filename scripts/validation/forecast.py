@@ -1,14 +1,15 @@
-import os, socket
+import os
+import socket
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"
 
 import numpy as np
+from lace.emulator.emulator_manager import set_emulator
 from mpi4py import MPI
 
 from cup1d.likelihood.input_pipeline import Args
-from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.pipeline import set_archive, Pipeline
+from cup1d.likelihood.pipeline import Pipeline
 from cup1d.utils.utils import get_path_repo
 
 

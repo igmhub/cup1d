@@ -20,18 +20,19 @@
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+
 mpl.rcParams['savefig.dpi'] = 160
 mpl.rcParams['figure.dpi'] = 160
 from cup1d.p1ds import (
-    data_Irsic2017,
-    data_Walther2018,
     data_Chabanier2019,
+    data_Irsic2017,
     data_Karacayli2022,
-    data_Ravoux2023,
     data_Karacayli2024,
+    data_Ravoux2023,
+    data_Walther2018,
 )
 
 # %% [markdown]
@@ -73,7 +74,7 @@ def combined_plot(datasets,zmin=1.7,zmax=6.0,kmin=0.001,kmax=0.1):
                          marker=marker,ms=4.5,ls="none",
                          c=color,
                          yerr=(fact*err_Pk_kms)[_],
-                         label=label+' z = {}'.format(z), alpha=0.7)
+                         label=label+f' z = {z}', alpha=0.7)
     plt.legend()
     plt.yscale('log', nonpositive='clip')
     plt.xscale('log')

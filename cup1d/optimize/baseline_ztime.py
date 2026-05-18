@@ -6,7 +6,7 @@ from cup1d.likelihood.pipeline import set_like
 
 
 def chi2_grow_model_atz(
-    folder, args, iz, fix_props, basic_props, label_fit="basic"
+    folder, args, iz, fix_props, basic_props, data, emulator, output_dir, label_fit="basic"
 ):
     """Add parameter at a time, save to disk"""
     fid_vals_metals = {
@@ -60,6 +60,7 @@ def chi2_grow_model_atz(
     out["chi2"] = []
     out["ndeg"] = []
 
+    fitter = None
     for iq, prop in enumerate(basic_props):
         list_props = []
 
@@ -180,7 +181,7 @@ def chi2_grow_model_atz(
     np.save(folder + "grow_" + label_fit + ".npy", out)
 
 
-def run_grow_model_atz(folder, zs, verbose=True):
+def run_grow_model_atz(folder, zs, args, data, emulator, output_dir, verbose=True):
     """Read"""
     select_props = {}
     for iz in range(len(zs)):
@@ -224,6 +225,9 @@ def run_grow_model_atz(folder, zs, verbose=True):
                     iz,
                     fix_props,
                     basic_props,
+                    data,
+                    emulator,
+                    output_dir,
                     label_fit=label_fit,
                 )
 
@@ -285,7 +289,7 @@ def run_grow_model_atz(folder, zs, verbose=True):
     return select_props
 
 
-def chi2_adding_one_param_at_time(args):
+def chi2_adding_one_param_at_time(args, data, emulator, output_dir):
     """Add parameter at a time, no iterative, old"""
 
     list_props = [

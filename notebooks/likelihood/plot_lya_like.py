@@ -29,12 +29,12 @@
 
 # %% jupyter={"outputs_hidden": false}
 # %matplotlib inline
-import numpy as np
-import os
+
 import matplotlib.pyplot as plt
+import numpy as np
+from lace.cosmo import camb_cosmo, fit_linP
+
 from cup1d.likelihood import marg_lya_like
-from lace.cosmo import camb_cosmo
-from lace.cosmo import fit_linP
 
 # %% [markdown]
 # ## Plot marginalised likelihoods

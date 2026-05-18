@@ -15,8 +15,8 @@
 
 # # Compute star parameters
 
-from cup1d.likelihood.pipeline import set_cosmo
 from cup1d.likelihood import CAMB_model
+from cup1d.likelihood.pipeline import set_cosmo
 
 # +
 

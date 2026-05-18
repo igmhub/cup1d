@@ -9,7 +9,6 @@ optional flattened arrays for analyses with cross-redshift covariance.
 from __future__ import annotations
 
 import os
-from typing import Union
 
 import numpy as np
 import numpy.typing as npt

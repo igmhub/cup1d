@@ -20,25 +20,16 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
-import matplotlib.pyplot as plt
 
 # our own modules
 from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood import lya_theory, likelihood
-from cup1d.likelihood.fitter import Fitter
 
+from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import (
     set_archive,
     set_P1D,
-    set_cosmo,
-    set_free_like_parameters,
-    set_like,
 )
-
-from cup1d.likelihood.input_pipeline import Args
 
 # %% [markdown]
 # ## Set emulator
@@ -127,6 +118,7 @@ data["P1Ds"].truth
 # %%
 
 from lace.cosmo import camb_cosmo
+
 from cup1d.likelihood import CAMB_model
 
 cosmo = camb_cosmo.get_cosmology(

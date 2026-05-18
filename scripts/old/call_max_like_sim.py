@@ -1,10 +1,12 @@
-import os, sys
+import os
+
 import numpy as np
 
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
+
 from cup1d.data import data_gadget, data_nyx
-from cup1d.scripts.max_like_sim import max_like_sim, fname_minimize
+from cup1d.scripts.max_like_sim import fname_minimize, max_like_sim
 
 
 class Args:
