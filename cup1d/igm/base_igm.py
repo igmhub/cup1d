@@ -92,6 +92,13 @@ class IGMModel:
         self.flat_priors = flat_priors
         self.fid_interp = {}
 
+        map_fidigm_param = {
+            "tau_eff": "mF",
+            "gamma": "T",
+            "sigT_kms": "T",
+            "kF_kms": "kF",
+        }
+
         if self.list_coeffs is None:
             self.list_coeffs = []
 
@@ -154,7 +161,7 @@ class IGMModel:
 
         # post-process fiducial IGM
         for key in self.list_coeffs:
-            self.process_igm(fid_igm, key)
+            self.process_igm(fid_igm[map_fidigm_param[key]], key)
 
         self.set_params()
 
@@ -189,12 +196,13 @@ class IGMModel:
         ValueError
             If no non-zero value is found for fiducial IGM.
         """
+
         mask = (
-            (fid_igm[name_coeff + "_z"] != 0)
+            (fid_igm["z"] != 0)
             & (fid_igm[name_coeff] != 0)
             & np.isfinite(fid_igm[name_coeff])
         )
-        mask_znonzero = fid_igm[name_coeff + "_z"] != 0
+        mask_znonzero = fid_igm["z"] != 0
         if np.sum(mask) == 0:
             raise ValueError("No non-zero value for fiducial IGM", name_coeff)
         elif np.sum(mask) != fid_igm[name_coeff].shape[0]:
@@ -202,7 +210,7 @@ class IGMModel:
                 "The fiducial value of",
                 name_coeff,
                 " is zero for z: ",
-                fid_igm[name_coeff + "_z"][not mask],
+                fid_igm["z"][not mask],
             )
 
         # fit to fiducial data to reduce noise
@@ -210,19 +218,17 @@ class IGMModel:
         if self.prop_coeffs[name_coeff + "_otype"] == "exp":
             y = np.log(y)
 
-        pfit = np.polyfit(fid_igm[name_coeff + "_z"][mask], y, order_extra)
+        pfit = np.polyfit(fid_igm["z"][mask], y, order_extra)
         p = np.poly1d(pfit)
 
         # extrapolate to z=2 (if needed)
-        if np.min(fid_igm[name_coeff + "_z"]) > zmin:
-            z_to_inter = np.concatenate(
-                [[zmin], fid_igm[name_coeff + "_z"][mask_znonzero]]
-            )
+        if np.min(fid_igm["z"]) > zmin:
+            z_to_inter = np.concatenate([[zmin], fid_igm["z"][mask_znonzero]])
         else:
-            z_to_inter = fid_igm[name_coeff + "_z"][mask_znonzero]
+            z_to_inter = fid_igm["z"][mask_znonzero]
 
         # extrapolate to z=5.0 (if needed)
-        if np.max(fid_igm[name_coeff + "_z"]) < zmax:
+        if np.max(fid_igm["z"]) < zmax:
             z_to_inter = np.concatenate([z_to_inter, [zmax]])
 
         if smoothing:
@@ -238,11 +244,11 @@ class IGMModel:
             if self.prop_coeffs[name_coeff + "_otype"] == "exp":
                 vhigh = np.exp(vhigh)
 
-            if np.min(fid_igm[name_coeff + "_z"]) > zmin:
+            if np.min(fid_igm["z"]) > zmin:
                 fid_vals = np.concatenate([[vlow], fid_igm[name_coeff][mask_znonzero]])
             else:
                 fid_vals = fid_igm[name_coeff][mask_znonzero]
-            if np.max(fid_igm[name_coeff + "_z"]) < zmax:
+            if np.max(fid_igm["z"]) < zmax:
                 fid_vals = np.concatenate([fid_vals, [vhigh]])
 
             mask_coeff0 = fid_vals == 0

@@ -183,7 +183,7 @@ class IGM:
                     "data",
                     "sim_suites",
                     "Australia20",
-                    "mpg_emu_IGM.npy",
+                    "IGM_histories.npy",
                 )
             elif sim_igm[:3] == "nyx":
                 fname = os.path.join(
