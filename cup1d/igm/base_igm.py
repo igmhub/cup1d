@@ -2,7 +2,6 @@
 
 This module provides classes for modeling the IGM properties including
 temperature, pressure, and mean flux evolution.
-
 """
 
 from __future__ import annotations
@@ -22,32 +21,54 @@ from cup1d.likelihood import likelihood_parameter
 # Type aliases
 Array1D = npt.NDArray[np.float64]
 Array2D = npt.NDArray[np.float64]
-Float = float | int
 
 
-class IGM_model:
+class IGMModel:
     """Base model for redshift-dependent IGM nuisance parameters.
 
     Parameters
     ----------
-    coeffs : Optional[Dict[str, float]], optional
-        Coefficient dictionary.
-    list_coeffs : Optional[List[str]], optional
-        List of coefficient names.
-    prop_coeffs : Optional[Dict[str, Any]], optional
-        Coefficient properties.
-    free_param_names : Optional[List[str]], optional
-        List of free parameter names.
+    coeffs : dict[str, float] | None, optional
+        Coefficient dictionary. Default is None.
+    list_coeffs : list[str] | None, optional
+        List of coefficient names. Default is None.
+    prop_coeffs : dict[str, Any] | None, optional
+        Coefficient properties. Default is None.
+    free_param_names : list[str] | None, optional
+        List of free parameter names. Default is None.
     z_0 : float, optional
+        Pivot redshift. Default is 3.0.
+    fid_igm : dict[str, Array1D] | None, optional
+        Fiducial IGM parameters. Default is None.
+    fid_vals : dict[str, Array1D] | None, optional
+        Fiducial values. Default is None.
+    flat_priors : dict[str, list[list[float]]] | None, optional
+        Flat prior bounds. Default is None.
+    Gauss_priors : dict[str, list[float]] | None, optional
+        Gaussian prior widths. Default is None.
+
+    Attributes
+    ----------
+    list_coeffs : list[str] | None
+        List of coefficient names.
+    z_0 : float
         Pivot redshift.
-    fid_igm : Optional[Dict[str, Array1D]], optional
-        Fiducial IGM parameters.
-    fid_vals : Optional[Dict[str, Array1D]], optional
+    fid_vals : dict[str, Array1D] | None
         Fiducial values.
-    flat_priors : Optional[Dict[str, Tuple[float, float]]], optional
-        Flat prior bounds.
-    Gauss_priors : Optional[Dict[str, float]], optional
+    Gauss_priors : dict[str, list[float]] | None
         Gaussian prior widths.
+    flat_priors : dict[str, list[list[float]]] | None
+        Flat prior bounds.
+    fid_interp : dict[str, Any]
+        Interpolators for fiducial IGM parameters.
+    prop_coeffs : dict[str, Any]
+        Coefficient properties.
+    coeffs : dict[str, list[float]]
+        Coefficient values.
+    n_pars : dict[str, int]
+        Number of parameters for each coefficient.
+    params : dict[str, likelihood_parameter.LikelihoodParameter]
+        Likelihood parameters.
     """
 
     def __init__(
@@ -59,9 +80,10 @@ class IGM_model:
         z_0: float = 3.0,
         fid_igm: dict[str, Array1D] | None = None,
         fid_vals: dict[str, Array1D] | None = None,
-        flat_priors: dict[str, tuple[float, float]] | None = None,
-        Gauss_priors: dict[str, float] | None = None,
+        flat_priors: dict[str, list[list[float]]] | None = None,
+        Gauss_priors: dict[str, list[float]] | None = None,
     ) -> None:
+        """Initialize the IGM model."""
         # store input data
         self.list_coeffs = list_coeffs
         self.z_0 = z_0
@@ -70,23 +92,32 @@ class IGM_model:
         self.flat_priors = flat_priors
         self.fid_interp = {}
 
+        if self.list_coeffs is None:
+            self.list_coeffs = []
+
         # set prop_coeffs (only for interp, not pivot)
         self.prop_coeffs = {}
         for key in self.list_coeffs:
             try:
                 self.prop_coeffs[key + "_otype"] = prop_coeffs[key + "_otype"]
             except KeyError:
-                raise ValueError("must specify otype in prop_coeffs for:", key) from None
+                raise ValueError(
+                    "must specify otype in prop_coeffs for:", key
+                ) from None
             try:
                 self.prop_coeffs[key + "_ztype"] = prop_coeffs[key + "_ztype"]
             except KeyError:
-                raise ValueError("must specify ztype in prop_coeffs for:", key) from None
+                raise ValueError(
+                    "must specify ztype in prop_coeffs for:", key
+                ) from None
 
             if prop_coeffs[key + "_ztype"].startswith("interp"):
                 try:
                     self.prop_coeffs[key + "_znodes"] = prop_coeffs[key + "_znodes"]
                 except KeyError:
-                    raise ValueError("must specify znodes in prop_coeffs for:", key) from None
+                    raise ValueError(
+                        "must specify znodes in prop_coeffs for:", key
+                    ) from None
 
         self.coeffs = {}
         if coeffs is not None:
@@ -140,20 +171,24 @@ class IGM_model:
 
         Parameters
         ----------
-        fid_igm : Dict[str, Array1D]
+        fid_igm : dict[str, Array1D]
             Fiducial IGM parameters dictionary.
         name_coeff : str
             Name of the coefficient to process.
         order_extra : int, optional
-            Polynomial order for fitting.
+            Polynomial order for fitting. Default is 2.
         smoothing : bool, optional
-            Whether to apply smoothing.
+            Whether to apply smoothing. Default is True.
         zmin : float, optional
-            Minimum redshift for extrapolation.
+            Minimum redshift for extrapolation. Default is 1.9.
         zmax : float, optional
-            Maximum redshift for extrapolation.
-        """
+            Maximum redshift for extrapolation. Default is 5.5.
 
+        Raises
+        ------
+        ValueError
+            If no non-zero value is found for fiducial IGM.
+        """
         mask = (
             (fid_igm[name_coeff + "_z"] != 0)
             & (fid_igm[name_coeff] != 0)
@@ -169,7 +204,6 @@ class IGM_model:
                 " is zero for z: ",
                 fid_igm[name_coeff + "_z"][not mask],
             )
-        # print(name_coeff, fid_igm[name_coeff], fid_igm[name_coeff][mask])
 
         # fit to fiducial data to reduce noise
         y = fid_igm[name_coeff][mask]
@@ -190,8 +224,6 @@ class IGM_model:
         # extrapolate to z=5.0 (if needed)
         if np.max(fid_igm[name_coeff + "_z"]) < zmax:
             z_to_inter = np.concatenate([z_to_inter, [zmax]])
-        else:
-            z_to_inter = fid_igm[name_coeff + "_z"][mask_znonzero]
 
         if smoothing:
             fid_vals = p(z_to_inter)
@@ -207,11 +239,11 @@ class IGM_model:
                 vhigh = np.exp(vhigh)
 
             if np.min(fid_igm[name_coeff + "_z"]) > zmin:
-                fid_vals = np.concatenate([vlow, fid_igm[name_coeff][mask_znonzero]])
+                fid_vals = np.concatenate([[vlow], fid_igm[name_coeff][mask_znonzero]])
             else:
                 fid_vals = fid_igm[name_coeff][mask_znonzero]
             if np.max(fid_igm[name_coeff + "_z"]) < zmax:
-                fid_vals = np.concatenate([fid_vals, vhigh])
+                fid_vals = np.concatenate([fid_vals, [vhigh]])
 
             mask_coeff0 = fid_vals == 0
             # use poly fit to interpolate when data is missing (needed for Nyx)
@@ -228,6 +260,9 @@ class IGM_model:
     def set_params(self) -> None:
         """Create likelihood parameters for all IGM coefficients."""
         self.params = {}
+
+        if self.flat_priors is None:
+            return
 
         for key in self.list_coeffs:
             values = self.coeffs[key]
@@ -282,6 +317,11 @@ class IGM_model:
         -------
         int
             Number of parameters.
+
+        Raises
+        ------
+        ValueError
+            If there is a mismatch between number of parameters and coefficients.
         """
         n_params = len(self.params)
         n_coeffs = 0
@@ -291,11 +331,30 @@ class IGM_model:
             raise ValueError("mismatch between number of params and coeffs")
         return n_params
 
-    def get_value(self, name: str, z: float, like_params: list = None) -> float:
+    def get_value(self, name: str, z: float, like_params: list | None = None) -> float:
         """Evaluate one IGM coefficient at redshift ``z``.
 
         The returned value is either the evolved coefficient itself or its
         exponential, depending on ``prop_coeffs[f"{name}_otype"]``.
+
+        Parameters
+        ----------
+        name : str
+            Coefficient name.
+        z : float
+            Redshift.
+        like_params : list | None, optional
+            Likelihood parameters. Default is None.
+
+        Returns
+        -------
+        float
+            Evaluated coefficient value.
+
+        Raises
+        ------
+        ValueError
+            If prop_coeffs are invalid.
         """
         coeff = self.get_coeff(name, like_params=like_params)
 
@@ -325,22 +384,57 @@ class IGM_model:
             raise ValueError("prop_coeffs must be interp or pivot for", name)
 
         if self.prop_coeffs[name + "_otype"] == "const":
-            return ln_out
+            return float(ln_out)
         elif self.prop_coeffs[name + "_otype"] == "exp":
-            return np.exp(ln_out)
+            return float(np.exp(ln_out))
         else:
             raise ValueError("prop_coeffs must be const or exp for", name)
 
-    def get_parameter(self, name):
-        """Return one likelihood parameter by name."""
+    def get_parameter(self, name: str) -> likelihood_parameter.LikelihoodParameter:
+        """Return one likelihood parameter by name.
+
+        Parameters
+        ----------
+        name : str
+            Parameter name.
+
+        Returns
+        -------
+        likelihood_parameter.LikelihoodParameter
+            The requested parameter.
+        """
         return self.params[name]
 
-    def get_parameters(self):
-        """Return all likelihood parameters."""
+    def get_parameters(self) -> dict[str, likelihood_parameter.LikelihoodParameter]:
+        """Return all likelihood parameters.
+
+        Returns
+        -------
+        dict[str, likelihood_parameter.LikelihoodParameter]
+            Dictionary of likelihood parameters.
+        """
         return self.params
 
-    def get_coeff(self, name, like_params=None):
-        """Return coefficients for ``name``, optionally updated from parameters."""
+    def get_coeff(self, name: str, like_params: list | None = None) -> list[float]:
+        """Return coefficients for ``name``, optionally updated from parameters.
+
+        Parameters
+        ----------
+        name : str
+            Coefficient name.
+        like_params : list | None, optional
+            Likelihood parameters. Default is None.
+
+        Returns
+        -------
+        list[float]
+            Coefficient values.
+
+        Raises
+        ------
+        ValueError
+            If number of parameters mismatch.
+        """
         if like_params:
             coeff = self.coeffs[name].copy()
             Npar = 0
@@ -351,8 +445,8 @@ class IGM_model:
                     array_names.append(par.name)
                     array_values.append(par.value)
                     Npar += 1
-            array_names = np.array(array_names)
-            array_values = np.array(array_values)
+            array_names_np = np.array(array_names)
+            array_values_np = np.array(array_values)
 
             # return fiducial value
             if Npar == 0:
@@ -362,18 +456,31 @@ class IGM_model:
                 raise ValueError("number of params mismatch for: " + name)
 
             for ii in range(Npar):
-                ind_arr = np.argwhere(name + "_" + str(ii) == array_names)[0, 0]
+                ind_arr = np.argwhere(name + "_" + str(ii) == array_names_np)[0, 0]
                 if self.prop_coeffs[name + "_ztype"] == "pivot":
-                    coeff[-(ii + 1)] = array_values[ind_arr]
+                    coeff[-(ii + 1)] = array_values_np[ind_arr]
                 else:
-                    coeff[ii] = array_values[ind_arr]
+                    coeff[ii] = array_values_np[ind_arr]
         else:
             coeff = self.coeffs[name]
 
         return coeff
 
-    def reset_coeffs(self, like_params, rank=0):
-        """Update stored coefficients from a list of likelihood parameters."""
+    def reset_coeffs(self, like_params: list, rank: int = 0) -> None:
+        """Update stored coefficients from a list of likelihood parameters.
+
+        Parameters
+        ----------
+        like_params : list
+            Likelihood parameters.
+        rank : int, optional
+            MPI rank. Default is 0.
+
+        Raises
+        ------
+        ValueError
+            If number of parameters mismatch.
+        """
         for name in self.coeffs:
             Npar = 0
             if rank == 0:
@@ -385,8 +492,8 @@ class IGM_model:
                     array_names.append(par.name)
                     array_values.append(par.value)
                     Npar += 1
-            array_names = np.array(array_names)
-            array_values = np.array(array_values)
+            array_names_np = np.array(array_names)
+            array_values_np = np.array(array_values)
 
             # return fiducial value
             if Npar == 0:
@@ -397,17 +504,41 @@ class IGM_model:
                 raise ValueError("number of params mismatch for: " + name)
 
             for ii in range(Npar):
-                ind_arr = np.argwhere(name + "_" + str(ii) == array_names)[0, 0]
+                ind_arr = np.argwhere(name + "_" + str(ii) == array_names_np)[0, 0]
                 if self.prop_coeffs[name + "_ztype"] == "pivot":
-                    self.coeffs[name][-(ii + 1)] = array_values[ind_arr]
+                    self.coeffs[name][-(ii + 1)] = array_values_np[ind_arr]
                 else:
-                    self.coeffs[name][ii] = array_values[ind_arr]
+                    self.coeffs[name][ii] = array_values_np[ind_arr]
             if rank == 0:
                 print("new", name, self.coeffs[name])
 
-    def plot_parameters(self, z, like_params, folder=None):
-        """Plot IGM parameter evolution over redshift."""
+    def plot_parameters(
+        self,
+        z: Array1D,
+        like_params: list,
+        folder: str | None = None,
+    ) -> tuple[dict[str, Array1D], dict[str, Any]]:
+        """Plot IGM parameter evolution over redshift.
 
+        Parameters
+        ----------
+        z : Array1D
+            Redshifts.
+        like_params : list
+            Likelihood parameters.
+        folder : str | None, optional
+            Folder to save plots. Default is None.
+
+        Returns
+        -------
+        tuple[dict[str, Array1D], dict[str, Any]]
+            Evaluated values and coefficients.
+
+        Raises
+        ------
+        ValueError
+            If key is invalid.
+        """
         from matplotlib import pyplot as plt
 
         fig, ax = plt.subplots(
@@ -418,10 +549,9 @@ class IGM_model:
 
         try:
             len(like_params[0])
-        except Exception:
-            z_at_time = False
-        else:
             z_at_time = True
+        except (TypeError, IndexError):
+            z_at_time = False
 
         vals_out = {}
         coeffs_out = {}
@@ -440,21 +570,25 @@ class IGM_model:
                     raise ValueError("key must be tau_eff, gamma, sigT_kms, or kF_kms")
                 coeffs_out[key] = self.get_coeff(key, like_params=like_params)
             else:
-                vals = []
+                vals_list = []
                 coeffs_out[key] = []
                 for jj in range(len(z)):
                     if key == "tau_eff":
-                        vals.append(
+                        vals_list.append(
                             self.get_tau_eff(z[jj], like_params=like_params[jj])
                         )
                     elif key == "gamma":
-                        vals.append(self.get_gamma(z[jj], like_params=like_params[jj]))
+                        vals_list.append(
+                            self.get_gamma(z[jj], like_params=like_params[jj])
+                        )
                     elif key == "sigT_kms":
-                        vals.append(
+                        vals_list.append(
                             self.get_sigT_kms(z[jj], like_params=like_params[jj])
                         )
                     elif key == "kF_kms":
-                        vals.append(self.get_kF_kms(z[jj], like_params=like_params[jj]))
+                        vals_list.append(
+                            self.get_kF_kms(z[jj], like_params=like_params[jj])
+                        )
                     else:
                         raise ValueError(
                             "key must be tau_eff, gamma, sigT_kms, or kF_kms"
@@ -462,7 +596,7 @@ class IGM_model:
                     coeffs_out[key].append(
                         self.get_coeff(key, like_params=like_params[jj])[0]
                     )
-                vals = np.array(vals)
+                vals = np.array(vals_list)
 
             if key == "tau_eff":
                 fid_vals = self.get_tau_eff(z)

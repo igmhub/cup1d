@@ -47,7 +47,7 @@ class TestSimulation:
 
         repo = os.path.dirname(lace.__path__[0]) + "/data/sim_suites/"
 
-        if type(sim_label) == int:
+        if isinstance(sim_label, int):
             self.fulldir = repo + basedir + "sim_pair_" + str(sim_label)
         elif sim_label[0].isdigit():
             self.fulldir = repo + basedir + "sim_pair_" + sim_label

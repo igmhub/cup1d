@@ -2,7 +2,6 @@
 
 This module provides the MeanFlux class for modeling the mean
 transmitted flux fraction in the intergalactic medium.
-
 """
 
 from __future__ import annotations
@@ -12,34 +11,33 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-from cup1d.igm.base_igm import IGM_model
+from cup1d.igm.base_igm import IGMModel
 
 # Type aliases
 Array1D = npt.NDArray[np.float64]
-Float = float | int
 
 
-class MeanFlux(IGM_model):
+class MeanFlux(IGMModel):
     """Mean flux model for the IGM.
 
     Parameters
     ----------
-    coeffs : Optional[Dict[str, float]], optional
-        Coefficient dictionary.
-    prop_coeffs : Optional[Dict[str, Any]], optional
-        Coefficient properties.
-    free_param_names : Optional[List[str]], optional
-        List of free parameter names.
+    coeffs : dict[str, float] | None, optional
+        Coefficient dictionary. Default is None.
+    prop_coeffs : dict[str, Any] | None, optional
+        Coefficient properties. Default is None.
+    free_param_names : list[str] | None, optional
+        List of free parameter names. Default is None.
     z_0 : float, optional
-        Pivot redshift.
-    fid_igm : Optional[Dict[str, Array1D]], optional
-        Fiducial IGM parameters.
-    fid_vals : Optional[Dict[str, Array1D]], optional
-        Fiducial values.
-    flat_priors : Optional[Dict[str, Tuple[float, float]]], optional
-        Flat prior bounds.
-    Gauss_priors : Optional[Dict[str, float]], optional
-        Gaussian prior widths.
+        Pivot redshift. Default is 3.0.
+    fid_igm : dict[str, Array1D] | None, optional
+        Fiducial IGM parameters. Default is None.
+    fid_vals : dict[str, Array1D] | None, optional
+        Fiducial values. Default is None.
+    flat_priors : dict[str, list[list[float]]] | None, optional
+        Flat prior bounds. Default is None.
+    Gauss_priors : dict[str, list[float]] | None, optional
+        Gaussian prior widths. Default is None.
     """
 
     def __init__(
@@ -50,9 +48,10 @@ class MeanFlux(IGM_model):
         z_0: float = 3.0,
         fid_igm: dict[str, Array1D] | None = None,
         fid_vals: dict[str, Array1D] | None = None,
-        flat_priors: dict[str, tuple[float, float]] | None = None,
-        Gauss_priors: dict[str, float] | None = None,
+        flat_priors: dict[str, list[list[float]]] | None = None,
+        Gauss_priors: dict[str, list[float]] | None = None,
     ) -> None:
+        """Initialize the mean flux model."""
         list_coeffs = ["tau_eff"]
 
         if prop_coeffs is None:
@@ -65,6 +64,9 @@ class MeanFlux(IGM_model):
             flat_priors = {}
             for coeff in list_coeffs:
                 flat_priors[coeff] = [[-0.5, 0.5], [-0.2, 0.2]]
+
+        if fid_vals is None:
+            fid_vals = {}
 
         for coeff in list_coeffs:
             if coeff not in fid_vals:
@@ -88,7 +90,7 @@ class MeanFlux(IGM_model):
     def get_tau_eff(
         self,
         z: float,
-        like_params: list = None,
+        like_params: list | None = None,
         name_par: str = "tau_eff",
     ) -> float:
         """Effective optical depth at the input redshift.
@@ -97,10 +99,10 @@ class MeanFlux(IGM_model):
         ----------
         z : float
             Redshift.
-        like_params : List, optional
-            Likelihood parameters.
+        like_params : list | None, optional
+            Likelihood parameters. Default is None.
         name_par : str, optional
-            Parameter name.
+            Parameter name. Default is "tau_eff".
 
         Returns
         -------
@@ -109,17 +111,17 @@ class MeanFlux(IGM_model):
         """
         tau_eff = self.get_value(name_par, z, like_params=like_params)
         tau_eff *= self.fid_interp[name_par](z)
-        return tau_eff
+        return float(tau_eff)
 
-    def get_mean_flux(self, z: float, like_params: list = None) -> float:
+    def get_mean_flux(self, z: float, like_params: list | None = None) -> float:
         """Mean transmitted flux fraction at the input redshift.
 
         Parameters
         ----------
         z : float
             Redshift.
-        like_params : List, optional
-            Likelihood parameters.
+        like_params : list | None, optional
+            Likelihood parameters. Default is None.
 
         Returns
         -------
@@ -127,4 +129,4 @@ class MeanFlux(IGM_model):
             Mean flux fraction.
         """
         tau = self.get_tau_eff(z, like_params=like_params)
-        return np.exp(-tau)
+        return float(np.exp(-tau))

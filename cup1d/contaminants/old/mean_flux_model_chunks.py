@@ -162,8 +162,28 @@ class MeanFluxModelChunks:
         assert len(self.ln_tau_coeff) == len(self.params), "size mismatch"
         return len(self.ln_tau_coeff)
 
-    def get_tau_eff(self, z, like_params=None):
-        """Effective optical depth at the input redshift"""
+    def get_tau_eff(
+        self,
+        z: float,
+        like_params: list = None,
+        name_par: str = "tau_eff",
+    ) -> float:
+        """Effective optical depth at the input redshift.
+
+        Parameters
+        ----------
+        z : float
+            Redshift.
+        like_params : List, optional
+            Likelihood parameters.
+        name_par : str, optional
+            Parameter name.
+
+        Returns
+        -------
+        float
+            Effective optical depth.
+        """
 
         ln_tau_coeff = self.get_tau_coeffs(like_params=like_params)
 

@@ -8,13 +8,13 @@ from matplotlib import rcParams
 from matplotlib.ticker import MaxNLocator
 from scipy.stats import chi2 as chi2_scipy
 
+from cup1d.utils.various_dicts import param_dict
+
 # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
-
-from cup1d.utils.various_dicts import param_dict
 
 
 def prepare_data(

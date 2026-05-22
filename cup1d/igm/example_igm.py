@@ -4,12 +4,15 @@ This script demonstrates how to use the Thermal and MeanFlux classes
 to model IGM properties.
 """
 
+from __future__ import annotations
+
 import numpy as np
 
-from cup1d.igm import MeanFlux, Thermal
+from cup1d.igm.mean_flux_class import MeanFlux
+from cup1d.igm.thermal_class import Thermal
 
 
-def example_thermal():
+def example_thermal() -> None:
     """Example of using the Thermal class."""
     # Fiducial IGM values
     fid_igm = {
@@ -24,8 +27,17 @@ def example_thermal():
         "gamma": np.array([1.0, 1.0, 1.0, 1.0, 1.0]),
     }
 
+    prop_coeffs = {
+        "sigT_kms_ztype": "interp_spl",
+        "sigT_kms_otype": "const",
+        "sigT_kms_znodes": np.array([2.0, 2.5, 3.0, 3.5, 4.0]),
+        "gamma_ztype": "interp_spl",
+        "gamma_otype": "const",
+        "gamma_znodes": np.array([2.0, 2.5, 3.0, 3.5, 4.0]),
+    }
+
     # Create thermal model
-    thermal = Thermal(fid_igm=fid_igm, fid_vals=fid_vals)
+    thermal = Thermal(fid_igm=fid_igm, fid_vals=fid_vals, prop_coeffs=prop_coeffs)
 
     # Get thermal properties at z=2.5
     z = 2.5
@@ -39,7 +51,7 @@ def example_thermal():
     print(f"  gamma = {gamma:.2f}")
 
 
-def example_mean_flux():
+def example_mean_flux() -> None:
     """Example of using the MeanFlux class."""
     # Fiducial IGM values
     fid_igm = {
@@ -51,8 +63,14 @@ def example_mean_flux():
         "tau_eff": np.array([1.0, 1.0, 1.0, 1.0, 1.0]),
     }
 
+    prop_coeffs = {
+        "tau_eff_ztype": "interp_spl",
+        "tau_eff_otype": "exp",
+        "tau_eff_znodes": np.array([2.0, 2.5, 3.0, 3.5, 4.0]),
+    }
+
     # Create mean flux model
-    mean_flux = MeanFlux(fid_igm=fid_igm, fid_vals=fid_vals)
+    mean_flux = MeanFlux(fid_igm=fid_igm, fid_vals=fid_vals, prop_coeffs=prop_coeffs)
 
     # Get mean flux at z=2.5
     z = 2.5

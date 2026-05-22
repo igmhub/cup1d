@@ -1,41 +1,108 @@
 """SiIII contamination model following Ma et al. (2026)."""
 
+from __future__ import annotations
+
 import numpy as np
+import numpy.typing as npt
 
 from cup1d.contaminants.base_contaminants import Contaminant
 
 
-def vel_diff(lambda1, lambda2):
-    """Return the velocity separation between two rest wavelengths in km/s."""
+def vel_diff(lambda1: float, lambda2: float) -> float:
+    """Return the velocity separation between two rest wavelengths in km/s.
+
+    Parameters
+    ----------
+    lambda1 : float
+        First wavelength.
+    lambda2 : float
+        Second wavelength.
+
+    Returns
+    -------
+    float
+        Velocity separation in km/s.
+    """
     c_kms = 299792.458
-    return np.abs(np.log(lambda2 / lambda1)) * c_kms
+    return float(np.abs(np.log(lambda2 / lambda1)) * c_kms)
 
 
-def rstrength(lambda1, lambda2, f1, f2):
-    """Return the optically thin relative line strength."""
+def rstrength(lambda1: float, lambda2: float, f1: float, f2: float) -> float:
+    """Return the optically thin relative line strength.
+
+    Parameters
+    ----------
+    lambda1 : float
+        First wavelength.
+    lambda2 : float
+        Second wavelength.
+    f1 : float
+        First oscillator strength.
+    f2 : float
+        Second oscillator strength.
+
+    Returns
+    -------
+    float
+        Relative line strength.
+    """
     return (lambda1 * f1) / (lambda2 * f2)
 
 
 class SiVid(Contaminant):
-    """SiIII-Lya correction model based on Ma et al. (2026), Eq. 18."""
+    """SiIII-Lya correction model based on Ma et al. (2026), Eq. 18.
+
+    The default model evolves the SiIII auto amplitude, the Lya-SiIII
+    cross amplitude, and their damping scales around ``z_0``.
+
+    Parameters
+    ----------
+    coeffs : dict | None
+        Coefficients for the silicon correction.
+    prop_coeffs : dict | None
+        Properties of the coefficients.
+    free_param_names : list[str] | None
+        Names of the free parameters.
+    z_0 : float, optional
+        Pivot redshift. Default is 3.0.
+    fid_vals : dict | None
+        Fiducial values for the coefficients.
+    null_vals : dict | None
+        Null values for the coefficients.
+    z_max : dict | None
+        Maximum redshift for each coefficient.
+    flat_priors : dict | None
+        Flat priors for the coefficients.
+    Gauss_priors : dict | None
+        Gaussian priors for the coefficients.
+
+    Attributes
+    ----------
+    wav : dict
+        Rest wavelengths for silicon and Lyman-alpha lines.
+    osc_strength : dict
+        Oscillator strengths for silicon lines.
+    dv : dict
+        Velocity separations between lines.
+    rat : dict
+        Relative line strengths.
+    off : dict
+        Switches for different line-pair contributions.
+    """
 
     def __init__(
         self,
-        coeffs=None,
-        prop_coeffs=None,
-        free_param_names=None,
-        z_0=3.0,
-        fid_vals=None,
-        null_vals=None,
-        z_max=None,
-        flat_priors=None,
-        Gauss_priors=None,
+        coeffs: dict | None = None,
+        prop_coeffs: dict | None = None,
+        free_param_names: list[str] | None = None,
+        z_0: float = 3.0,
+        fid_vals: dict | None = None,
+        null_vals: dict | None = None,
+        z_max: dict | None = None,
+        flat_priors: dict | None = None,
+        Gauss_priors: dict | None = None,
     ):
-        """Build the Ma et al. SiIII correction.
-
-        The default model evolves the SiIII auto amplitude, the Lya-SiIII
-        cross amplitude, and their damping scales around ``z_0``.
-        """
+        """Build the Ma et al. SiIII correction."""
 
         self.wav = {
             "SiIII": 1206.51,
@@ -162,30 +229,42 @@ class SiVid(Contaminant):
             Gauss_priors=Gauss_priors,
         )
 
-    def get_contamination(self, z, k_kms, mF, like_params=None, remove=None):
+    def get_contamination(
+        self,
+        z: npt.NDArray[np.float64],
+        k_kms: list[npt.NDArray[np.float64]],
+        mF: npt.NDArray[np.float64],
+        like_params: list | None = None,
+        remove: dict | None = None,
+    ) -> list[npt.NDArray[np.float64]]:
         """Return the multiplicative Ma et al. SiIII correction.
 
         Parameters
         ----------
-        z : array-like
+        z : npt.NDArray[np.float64]
             Redshift values, one per entry of ``k_kms``.
-        k_kms : sequence[array-like]
+        k_kms : list[npt.NDArray[np.float64]]
             Wavenumber arrays in s/km.
-        mF : array-like
+        mF : npt.NDArray[np.float64]
             Mean transmitted flux values used to normalize metal amplitudes.
-        like_params : list, optional
+        like_params : list | None, optional
             Likelihood parameters used to override the fiducial coefficients.
-        remove : dict or None, optional
+            Default is None.
+        remove : dict | None, optional
             Per-term switches for API compatibility with related models.
-        """
+            Default is None.
 
-        # z = np.atleast_1d(z)
-        # k_kms = np.atleast_2d(k_kms)
-        # mF = np.atleast_1d(mF)
+        Returns
+        -------
+        list[npt.NDArray[np.float64]]
+            Multiplicative silicon correction.
+        """
 
         vals = {}
         for key in self.list_coeffs:
-            vals[key] = np.atleast_1d(self.get_value(key, z, like_params=like_params))
+            vals[key] = np.atleast_1d(
+                self.get_value(key, z, like_params=like_params)
+            )
             if key in self.null_vals:
                 if self.prop_coeffs[key + "_otype"] == "const":
                     null = self.null_vals[key]
@@ -193,13 +272,6 @@ class SiVid(Contaminant):
                     null = np.exp(self.null_vals[key])
                 _ = vals[key] <= null
                 vals[key][_] = 0
-
-        # for key in vals:
-        #     print(key, vals[key])
-
-        self.rat["SiIIa_SiIII"]
-        self.rat["SiIIb_SiIII"]
-        self.rat["SiIIc_SiIII"]
 
         self.off = {
             "SiIII_Lya": 1,

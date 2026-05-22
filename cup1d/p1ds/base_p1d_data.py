@@ -205,7 +205,7 @@ class BaseDataP1D:
         # more than one z, and kms is the same for all z
         elif (len(z) > 1) & (len(np.atleast_1d(_k_kms[0])) == 1):
             k_kms = []
-            for iz in range(len(z)):
+            for _ in range(len(z)):
                 k_kms.append(_k_kms)
         # only one z
         else:

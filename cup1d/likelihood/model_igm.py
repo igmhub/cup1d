@@ -1,6 +1,9 @@
 """Container for IGM nuisance models and fiducial histories."""
 
+from __future__ import annotations
+
 import os
+from typing import Any
 
 import numpy as np
 
@@ -11,17 +14,49 @@ from cup1d.utils.utils import get_path_repo, is_number_string
 
 
 class IGM:
-    """Bundle mean-flux, thermal, and pressure IGM models."""
+    """Bundle mean-flux, thermal, and pressure IGM models.
+
+    Parameters
+    ----------
+    free_param_names : list[str], optional
+        List of free parameter names.
+    pars_igm : dict, optional
+        Dictionary of IGM parameters.
+    F_model : MeanFlux, optional
+        Mean flux model.
+    T_model : Thermal, optional
+        Thermal model.
+    P_model : Pressure, optional
+        Pressure model.
+
+    Attributes
+    ----------
+    fid_sim_igm_mF : str
+        Fiducial simulation label for mean flux.
+    fid_sim_igm_T : str
+        Fiducial simulation label for thermal history.
+    fid_sim_igm_kF : str
+        Fiducial simulation label for pressure.
+    priors : dict
+        Prior bounds for IGM parameters.
+    models : dict
+        Dictionary of IGM models.
+    fid_igm : dict
+        Fiducial IGM history evaluated on a redshift grid.
+    """
 
     def __init__(
         self,
-        free_param_names=None,
-        pars_igm=None,
-        F_model=None,
-        T_model=None,
-        P_model=None,
+        free_param_names: list[str] | None = None,
+        pars_igm: dict | None = None,
+        F_model: MeanFlux | None = None,
+        T_model: Thermal | None = None,
+        P_model: Pressure | None = None,
     ):
         """Build IGM models from a parameter dictionary."""
+        if pars_igm is None:
+            pars_igm = {}
+
         # set simulation from which we get fiducial IGM history
         for key in ["mF", "T", "kF"]:
             lab = "label_" + key
@@ -90,8 +125,14 @@ class IGM:
                     Gauss_priors=Gauss_priors,
                 )
 
-    def set_fid_igm(self, zs):
-        """Evaluate fiducial IGM histories on redshift grid ``zs``."""
+    def set_fid_igm(self, zs: np.ndarray) -> None:
+        """Evaluate fiducial IGM histories on redshift grid ``zs``.
+
+        Parameters
+        ----------
+        zs : np.ndarray
+            Redshift grid.
+        """
         self.fid_igm = {}
         self.fid_igm["z"] = zs
         for key in self.models:
@@ -105,343 +146,131 @@ class IGM:
                 elif key2 == "kF_kms":
                     self.fid_igm[key] = self.models[key].get_kF_kms(zs)
 
-    def get_igm(self, sim_igm_mF=None, sim_igm_T=None, sim_igm_kF=None):
-        """Load and combine fiducial IGM histories from MPG, Nyx, or data fits."""
+    def get_igm(
+        self,
+        sim_igm_mF: str = "mpg_central",
+        sim_igm_T: str = "mpg_central",
+        sim_igm_kF: str = "mpg_central",
+    ) -> dict[str, Any]:
+        """Return IGM histories for specified simulation labels.
 
-        fname = os.path.join(
-            get_path_repo("lace"),
-            "data",
-            "sim_suites",
-            "Australia20",
-            "IGM_histories.npy",
-        )
-        try:
-            self.igm_hist_mpg = np.load(fname, allow_pickle=True).item()
-        except FileNotFoundError:
-            raise ValueError(
-                fname
-                + " not found. You can produce it using LaCE"
-                + r" script save_mpg_IGM.py"
-            ) from None
+        Parameters
+        ----------
+        sim_igm_mF : str, optional
+            Label for mean flux history. Default is 'mpg_central'.
+        sim_igm_T : str, optional
+            Label for thermal history. Default is 'mpg_central'.
+        sim_igm_kF : str, optional
+            Label for pressure history. Default is 'mpg_central'.
 
-        try:
-            fname = os.path.join(os.environ["NYX_PATH"], "IGM_histories.npy")
-        except KeyError:
-            raise ValueError(
-                "NYX_PATH not set, please set it as explained in the README of the repo"
-            ) from None
-
-        try:
-            self.igm_hist_nyx = np.load(fname, allow_pickle=True).item()
-        except FileNotFoundError:
-            raise ValueError(
-                fname
-                + " not found. You can produce it using LaCE"
-                + r" script save_nyx_IGM.py"
-            ) from None
-
-        sim_igms = [sim_igm_mF, sim_igm_T, sim_igm_kF]
-
-        igms_return = {}
-        for ii, sim_igm in enumerate(sim_igms):
-            if sim_igm[:3] == "mpg":
-                igm_hist = self.igm_hist_mpg
-            elif sim_igm[:3] == "nyx":
-                igm_hist = self.igm_hist_nyx
-            elif sim_igm in self.igm_hist_nyx:
-                igm_hist = self.igm_hist_nyx
-            elif sim_igm == "kF_both":
-                # Simple model that bridges the LaCE and Nyx filtering scales.
-                res_fit = np.array([0.00078134, 0.00028125, 0.15766722])
-                zz = np.linspace(1.8, 6, 100)
-                igms_return["kF_kms" + "_z"] = zz
-                igms_return["kF_kms"] = np.poly1d(res_fit)(zz)
-                continue
-            elif sim_igm.startswith("Turner24"):
-                from cup1d.likelihood.likelihood import others_igm
-
-                gal21, tu24 = others_igm()
-
-                igms_return["tau_eff_z"] = tu24["z"]
-                igms_return["F_suite"] = "mpg"
-
-                if sim_igm == "Turner24_smooth":
-                    ndeg = 2
-                    pfit = np.polyfit(
-                        tu24["z"],
-                        tu24["mF"],
-                        ndeg,
-                        w=1 / tu24["mF_err"],
-                    )
-                    mF = np.poly1d(pfit)(tu24["z"])
-                else:
-                    mF = tu24["mF"]
-
-                igms_return["mF"] = mF
-                igms_return["tau_eff"] = -np.log(mF)
-                continue
-            elif sim_igm == "Gaikwad21":
-                from lace.cosmo.thermal_broadening import thermal_broadening_kms
-
-                from cup1d.likelihood.likelihood import others_igm
-
-                if "T_suite" in igms_return:
-                    continue
-
-                gal21, tu24 = others_igm()
-
-                igms_return["tau_eff_z"] = gal21["z"]
-                igms_return["sigT_kms_z"] = gal21["z"]
-                igms_return["gamma_z"] = gal21["z"]
-                igms_return["F_suite"] = "mpg"
-                igms_return["T_suite"] = "mpg"
-
-                if sim_igm == "Gaikwad21_smooth":
-                    ndeg = 5
-                    pfit = np.polyfit(
-                        gal21["z"],
-                        gal21["mF"],
-                        ndeg,
-                        w=1 / gal21["mF_err"],
-                    )
-                    mF = np.poly1d(pfit)(gal21["z"])
-                    T0 = gal21["T0"]
-                    gamma = gal21["gamma"]
-                else:
-                    mF = gal21["mF"]
-                    T0 = gal21["T0"]
-                    gamma = gal21["gamma"]
-
-                igms_return["mF"] = mF
-                igms_return["tau_eff"] = -np.log(mF)
-
-                igms_return["sigT_kms"] = thermal_broadening_kms(T0)
-                # igms_return["sigT_Mpc"] = igm_hist["sigT_Mpc"]
-                igms_return["gamma"] = gamma
-                continue
-            else:
-                raise ValueError("sim_igm must be 'mpg' or 'nyx'")
-
-            if sim_igm not in igm_hist:
-                igm_return = igm_hist[sim_igm + "_0"]
-            else:
-                igm_return = igm_hist[sim_igm]
-
-            if ii == 0:
-                igms_return["tau_eff_z"] = igm_return["z"]
-                igms_return["tau_eff"] = igm_return["tau_eff"]
-                igms_return["mF"] = igm_return["mF"]
-                igms_return["F_suite"] = sim_igm
-            elif ii == 1:
-                igms_return["sigT_kms_z"] = igm_return["z"]
-                igms_return["sigT_kms"] = igm_return["sigT_kms"]
-                igms_return["sigT_Mpc"] = igm_return["sigT_Mpc"]
-                igms_return["gamma_z"] = igm_return["z"]
-                igms_return["gamma"] = igm_return["gamma"]
-                igms_return["T_suite"] = sim_igm
-            elif ii == 2:
-                igms_return["kF_kms_z"] = igm_return["z"]
-                igms_return["kF_kms"] = igm_return["kF_kms"]
-                igms_return["kF_Mpc"] = igm_return["kF_Mpc"]
-                igms_return["P_suite"] = sim_igm
-
-            # important for nyx simulations, not all have kF
-            # if so, we assign the values for nyx_central
-            if np.sum(igm_return["kF_kms"] != 0) == 0:
-                igms_return["kF_kms_z"] = igm_hist["nyx_central"]["z"]
-                igms_return["kF_Mpc"] = igm_hist["nyx_central"]["kF_Mpc"]
-                igms_return["kF_kms"] = igm_hist["nyx_central"]["kF_kms"]
-                igms_return["P_suite"] = "nyx_central"
-
-        return igms_return
-
-    def set_priors(self, fid_igm, prop_coeffs, fact_priors=1.0, z_pivot=3, percent=95):
-        """Set broad flat priors for all IGM models.
-
-        This is only important for giving the minimizer and the sampler a uniform
-        prior that it is not too broad. The metric below takes care of the real priors.
+        Returns
+        -------
+        dict
+            Dictionary of IGM histories.
         """
+        igm = {}
+        for key in ["mF", "T", "kF"]:
+            if key == "mF":
+                sim_igm = sim_igm_mF
+            elif key == "T":
+                sim_igm = sim_igm_T
+            elif key == "kF":
+                sim_igm = sim_igm_kF
 
-        self.priors = {}
-        for par in fid_igm:
-            if (par == "val_scaling") | (par.endswith("_z") | par.endswith("_suite")):
-                continue
-
-            if (par == "mF") | (par == "tau_eff"):
-                z = fid_igm["tau_eff_z"]
-                otype = prop_coeffs["tau_eff_otype"]
-                emu_suite = fid_igm["F_suite"]
-            elif (par == "kF_Mpc") | (par == "kF_kms"):
-                z = fid_igm["kF_kms_z"]
-                otype = prop_coeffs["kF_kms_otype"]
-                emu_suite = fid_igm["P_suite"]
-            elif par == "gamma":
-                z = fid_igm["gamma_z"]
-                otype = prop_coeffs["gamma_otype"]
-                emu_suite = fid_igm["T_suite"]
-            elif (par == "sigT_Mpc") | (par == "sigT_kms"):
-                z = fid_igm["sigT_kms_z"]
-                otype = prop_coeffs["sigT_kms_otype"]
-                emu_suite = fid_igm["T_suite"]
-
-            if emu_suite.startswith("mpg"):
-                all_igm = self.igm_hist_mpg
-            elif emu_suite.startswith("nyx"):
-                all_igm = self.igm_hist_nyx
-            else:
-                raise ValueError("sim_igm must be 'mpg' or 'nyx'")
-
-            res_div = np.zeros((len(all_igm), 2))
-            for ii, sim in enumerate(all_igm):
-                if (sim in ["accel2"]) | (not np.char.isnumeric(sim[-1])):
-                    continue
-
-                string_split = sim.split("_")
-                sim_label = string_split[0] + "_" + string_split[1]
-                if not is_number_string(sim_label[-1]):
-                    continue
-
-                try:
-                    _ = np.argwhere(
-                        np.isfinite(fid_igm[par])
-                        & (fid_igm[par] != 0)
-                        & (all_igm[sim][par] != 0)
-                    )[:, 0]
-                except (KeyError, ValueError):
-                    continue
-                if len(_) == 0:
-                    continue
-
-                res_div[ii, 0] = np.max(all_igm[sim][par][_] / fid_igm[par][_])
-                res_div[ii, 1] = np.min(all_igm[sim][par][_] / fid_igm[par][_])
-
-            _ = np.argwhere(
-                np.isfinite(res_div[:, 0])
-                & (res_div[:, 0] != 0)
-                & (np.abs(res_div[:, 0]) != 1)
-            )[:, 0]
-            if len(_) == 0:
-                print("no good points for ", par)
-                self.priors[par] = [[-1, 1], [-1, 1]]
-                continue
-
-            if otype == "exp":
-                y0_max = np.abs(np.log(np.percentile(np.abs(res_div[_, 0]), percent)))
-            elif otype == "const":
-                y0_max = np.percentile(res_div[_, 0], percent)
-            else:
-                raise ValueError("otype must be 'exp' or 'const'", par)
-
-            _ = np.argwhere(
-                np.isfinite(res_div[:, 1])
-                & (res_div[:, 1] != 0)
-                & (np.abs(res_div[:, 1]) != 1)
-            )[:, 0]
-            if len(_) == 0:
-                print("no good points for ", par)
-                self.priors[par] = [[-1, 1], [-1, 1]]
-                continue
-
-            if otype == "exp":
-                y0_min = np.abs(
-                    np.log(np.percentile(1 / np.abs(res_div[_, 1]), percent))
+            if sim_igm[:3] == "mpg":
+                fname = os.path.join(
+                    get_path_repo("lace"),
+                    "data",
+                    "sim_suites",
+                    "Australia20",
+                    "mpg_emu_IGM.npy",
                 )
-            elif otype == "const":
-                y0_min = np.percentile(res_div[_, 1], 100 - percent)
+            elif sim_igm[:3] == "nyx":
+                fname = os.path.join(
+                    os.environ["NYX_PATH"],
+                    "nyx_emu_IGM_models_Nyx_Mar2025_with_CGAN_val_3axes.npy",
+                )
 
-            y0_cen = 0.5 * (y0_max + y0_min)
-            if otype == "exp":
-                y1 = y0_cen / np.log((1 + z.max()) / (1 + z_pivot))
-                self.priors[par] = [
-                    [-y1 * 2, y1 * 2],
-                    [-y0_min * 1.05 * fact_priors, y0_max * 1.05 * fact_priors],
+            try:
+                data_igm = np.load(fname, allow_pickle=True).item()
+            except Exception:
+                raise ValueError(f"{fname} not found") from None
+
+            if sim_igm in data_igm.keys():
+                igm[key] = data_igm[sim_igm]
+            else:
+                raise ValueError(f"IGM not found in {fname} for {sim_igm}")
+
+        return igm
+
+    def set_priors(
+        self, fid_igm: dict, prop_coeffs: dict, fact_priors: float = 1.0
+    ) -> None:
+        """Set prior bounds for IGM parameters based on fiducial histories.
+
+        Parameters
+        ----------
+        fid_igm : dict
+            Fiducial IGM histories.
+        prop_coeffs : dict
+            Properties of IGM parameters.
+        fact_priors : float, optional
+            Scaling factor for the priors. Default is 1.0.
+        """
+        self.priors = {}
+        for key in ["tau_eff", "gamma", "sigT_kms", "kF_kms"]:
+            if key == "tau_eff":
+                mod = "mF"
+            elif key in ["gamma", "sigT_kms"]:
+                mod = "T"
+            elif key == "kF_kms":
+                mod = "kF"
+
+            vals = fid_igm[mod][key]
+
+            if prop_coeffs[key + "_otype"] == "exp":
+                vals = np.log(vals)
+
+            if prop_coeffs[key + "_ztype"] == "pivot":
+                self.priors[key] = [
+                    vals.min() - 0.5 * fact_priors,
+                    vals.max() + 0.5 * fact_priors,
                 ]
-            elif otype == "const":
-                y1 = y0_cen / ((1 + z.max()) / (1 + z_pivot))
-                fact = fact_priors - 1
-                self.priors[par] = [
-                    [-y1 * 2, y1 * 2],
-                    [y0_min * 0.95 * (1 - fact), y0_max * 1.05 * (1 + fact)],
+            elif prop_coeffs[key + "_ztype"].startswith("interp"):
+                self.priors[key] = [
+                    vals.min() - 0.5 * fact_priors,
+                    vals.max() + 0.5 * fact_priors,
                 ]
 
-    # def set_metric(self, emu_igm_params, tol_factor=95):
-    #     # get all individual points separately
+    def get_parameters(self) -> list[str]:
+        """Return list of free parameter names from all models.
 
-    #     all_points = {}
-    #     for par in emu_igm_params:
-    #         if par not in ["Delta2_p", "n_p", "alpha_p"]:
-    #             all_points[par] = []
+        Returns
+        -------
+        list[str]
+            List of free parameter names.
+        """
+        params = []
+        for model in self.models:
+            for par in self.models[model].get_parameters():
+                params.append(par)
+        return params
 
-    #     for key in self.all_igm:
-    #         if key[4].isdigit():
-    #             # distance between tau scalings for mpg is too small
-    #             if (key[:3] == "mpg") and (key[-1] != "0"):
-    #                 continue
-    #             for par in all_points:
-    #                 ind_use = np.argwhere(self.all_igm[key][par] != 0)[:, 0]
-    #                 all_points[par].append(self.all_igm[key][par][ind_use])
+    def get_parameter(self, pname: str) -> Any:
+        """Return a likelihood parameter by name.
 
-    #     for key in all_points:
-    #         all_points[key] = np.concatenate(all_points[key])
+        Parameters
+        ----------
+        pname : str
+            Parameter name.
 
-    #     # compute the maximum distance between training points
-    #     min_dist = {}
-
-    #     # get closest point to each IGM point
-    #     for key in all_points:
-    #         npoints = all_points[key].shape[0]
-    #         min_dist[key] = np.zeros(npoints)
-    #         for ii in range(npoints):
-    #             dist = np.abs(all_points[key][ii] - all_points[key])
-    #             _ = dist != 0
-    #             min_dist[key][ii] = dist[_].min()
-
-    #     # get most distant of closest points
-    #     max_dist = {}
-    #     for key in min_dist:
-    #         max_dist[key] = min_dist[key].max()
-
-    #     # define function to get normalizer distance from new points
-    #     def metric_par(p0):
-    #         dist = (
-    #             ((p0["mF"] - all_points["mF"]) / max_dist["mF"]) ** 2
-    #             + (
-    #                 (p0["sigT_Mpc"] - all_points["sigT_Mpc"])
-    #                 / max_dist["sigT_Mpc"]
-    #             )
-    #             ** 2
-    #             + ((p0["gamma"] - all_points["gamma"]) / max_dist["gamma"]) ** 2
-    #             + ((p0["kF_Mpc"] - all_points["kF_Mpc"]) / max_dist["kF_Mpc"])
-    #             ** 2
-    #         )
-    #         return np.sqrt(dist)
-
-    #     # find maximum normalized distance between training points
-    #     dist_norm = np.zeros(npoints)
-
-    #     for ii in range(npoints):
-    #         p0 = {}
-    #         for key in all_points:
-    #             p0[key] = all_points[key][ii]
-    #         res = metric_par(p0)
-    #         _ = res != 0
-    #         dist_norm[ii] = res[_].min()
-
-    #     # max_dist_norm = dist_norm.max() * tol_factor
-    #     max_dist_norm = np.percentile(dist_norm, tol_factor)
-
-    #     def metric_par(p0):
-    #         dist = (
-    #             ((p0["mF"] - all_points["mF"]) / max_dist["mF"]) ** 2
-    #             + (
-    #                 (p0["sigT_Mpc"] - all_points["sigT_Mpc"])
-    #                 / max_dist["sigT_Mpc"]
-    #             )
-    #             ** 2
-    #             + ((p0["gamma"] - all_points["gamma"]) / max_dist["gamma"]) ** 2
-    #             + ((p0["kF_Mpc"] - all_points["kF_Mpc"]) / max_dist["kF_Mpc"])
-    #             ** 2
-    #         )
-    #         return np.sqrt(dist.min()) / max_dist_norm
-
-    # return metric_par
+        Returns
+        -------
+        Any
+            Likelihood parameter object.
+        """
+        pname_orig, _ = is_number_string(pname)
+        for model in self.models:
+            if pname_orig in self.models[model].list_coeffs:
+                return self.models[model].get_parameter(pname)
+        raise ValueError("Parameter not found")

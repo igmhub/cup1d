@@ -155,8 +155,31 @@ class MeanFluxModel:
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_tau_eff(self, z, like_params=None, over_coeff=None):
-        """Effective optical depth at the input redshift"""
+    def get_tau_eff(
+        self,
+        z: float,
+        like_params: list = None,
+        name_par: str = "tau_eff",
+        over_coeff: list = None,
+    ) -> float:
+        """Effective optical depth at the input redshift.
+
+        Parameters
+        ----------
+        z : float
+            Redshift.
+        like_params : List, optional
+            Likelihood parameters.
+        name_par : str, optional
+            Parameter name.
+        over_coeff : List, optional
+            Override coefficients.
+
+        Returns
+        -------
+        float
+            Effective optical depth.
+        """
         tau_eff = self.power_law_scaling(
             z, like_params=like_params, over_coeff=over_coeff
         ) * self.fid_tau_interp(z)

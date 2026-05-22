@@ -1,41 +1,108 @@
 """Additive silicon-metal contamination model."""
 
+from __future__ import annotations
+
 import numpy as np
+import numpy.typing as npt
 
 from cup1d.contaminants.base_contaminants import Contaminant
 
 
-def vel_diff(lambda1, lambda2):
-    """Return the velocity separation between two rest wavelengths in km/s."""
+def vel_diff(lambda1: float, lambda2: float) -> float:
+    """Return the velocity separation between two rest wavelengths in km/s.
+
+    Parameters
+    ----------
+    lambda1 : float
+        First wavelength.
+    lambda2 : float
+        Second wavelength.
+
+    Returns
+    -------
+    float
+        Velocity separation in km/s.
+    """
     c_kms = 299792.458
-    return np.abs(np.log(lambda2 / lambda1)) * c_kms
+    return float(np.abs(np.log(lambda2 / lambda1)) * c_kms)
 
 
-def rstrength(lambda1, lambda2, f1, f2):
-    """Return the optically thin relative line strength."""
+def rstrength(lambda1: float, lambda2: float, f1: float, f2: float) -> float:
+    """Return the optically thin relative line strength.
+
+    Parameters
+    ----------
+    lambda1 : float
+        First wavelength.
+    lambda2 : float
+        Second wavelength.
+    f1 : float
+        First oscillator strength.
+    f2 : float
+        Second oscillator strength.
+
+    Returns
+    -------
+    float
+        Relative line strength.
+    """
     return (lambda1 * f1) / (lambda2 * f2)
 
 
 class SiAdd(Contaminant):
-    """Additive SiII-SiII metal-line correction."""
+    """Additive SiII-SiII metal-line correction.
+
+    The default model evolves the SiII amplitude and smoothing scale as
+    pivot polynomials around ``z_0``.
+
+    Parameters
+    ----------
+    coeffs : dict | None
+        Coefficients for the silicon correction.
+    prop_coeffs : dict | None
+        Properties of the coefficients.
+    free_param_names : list[str] | None
+        Names of the free parameters.
+    z_0 : float, optional
+        Pivot redshift. Default is 3.0.
+    fid_vals : dict | None
+        Fiducial values for the coefficients.
+    null_vals : dict | None
+        Null values for the coefficients.
+    flat_priors : dict | None
+        Flat priors for the coefficients.
+    z_max : dict | None
+        Maximum redshift for each coefficient.
+    Gauss_priors : dict | None
+        Gaussian priors for the coefficients.
+
+    Attributes
+    ----------
+    wav : dict
+        Rest wavelengths for silicon lines.
+    osc_strength : dict
+        Oscillator strengths for silicon lines.
+    dv : dict
+        Velocity separations between silicon lines.
+    rat : dict
+        Relative line strengths.
+    off : dict
+        Switches for different line-pair contributions.
+    """
 
     def __init__(
         self,
-        coeffs=None,
-        prop_coeffs=None,
-        free_param_names=None,
-        z_0=3.0,
-        fid_vals=None,
-        null_vals=None,
-        flat_priors=None,
-        z_max=None,
-        Gauss_priors=None,
+        coeffs: dict | None = None,
+        prop_coeffs: dict | None = None,
+        free_param_names: list[str] | None = None,
+        z_0: float = 3.0,
+        fid_vals: dict | None = None,
+        null_vals: dict | None = None,
+        flat_priors: dict | None = None,
+        z_max: dict | None = None,
+        Gauss_priors: dict | None = None,
     ):
-        """Build the additive silicon correction.
-
-        The default model evolves the SiII amplitude and smoothing scale as
-        pivot polynomials around ``z_0``.
-        """
+        """Build the additive silicon correction."""
 
         self.wav = {
             # "SiIII": 1206.50,
@@ -135,28 +202,37 @@ class SiAdd(Contaminant):
             Gauss_priors=Gauss_priors,
         )
 
-    def get_contamination(self, z, k_kms, mF, like_params=None, remove=None):
+    def get_contamination(
+        self,
+        z: npt.NDArray[np.float64],
+        k_kms: list[npt.NDArray[np.float64]],
+        mF: npt.NDArray[np.float64],
+        like_params: list | None = None,
+        remove: dict | None = None,
+    ) -> list[npt.NDArray[np.float64]]:
         """Return the additive silicon correction for each redshift bin.
 
         Parameters
         ----------
-        z : array-like
+        z : npt.NDArray[np.float64]
             Redshift values, one per entry of ``k_kms``.
-        k_kms : sequence[array-like]
+        k_kms : list[npt.NDArray[np.float64]]
             Wavenumber arrays in s/km.
-        mF : array-like
+        mF : npt.NDArray[np.float64]
             Mean transmitted flux values. Kept for API compatibility with
             other silicon models.
-        like_params : list, optional
+        like_params : list | None, optional
             Likelihood parameters used to override the fiducial coefficients.
-        remove : dict or None, optional
+            Default is None.
+        remove : dict | None, optional
             Per-term switches for enabling or disabling individual line-pair
-            contributions.
-        """
+            contributions. Default is None.
 
-        # z = np.atleast_1d(z)
-        # k_kms = np.atleast_2d(k_kms)
-        # mF = np.atleast_1d(mF)
+        Returns
+        -------
+        list[npt.NDArray[np.float64]]
+            Additive silicon correction.
+        """
 
         vals = {}
         for key in self.list_coeffs:
@@ -170,7 +246,6 @@ class SiAdd(Contaminant):
                     null = np.exp(self.null_vals[key])
                 _ = vals[key] <= null
                 vals[key][_] = 0
-        # print(vals)
 
         rac = self.rat["SiIIa_SiIIc"]
         rbc = self.rat["SiIIb_SiIIc"]
@@ -180,16 +255,12 @@ class SiAdd(Contaminant):
             for key in remove:
                 if key in self.off:
                     self.off[key] = remove[key]
-        # print(self.off)
 
         metal_corr = []
 
         for iz in range(len(z)):
             aSiII = vals["f_SiIIa_SiIIb"][iz].copy()
 
-            # G_SiII_SiII = 2 - 2 / (
-            #     1 + np.exp(-vals["s_SiIIa_SiIIb"][iz] * k_kms[iz])
-            # )
             G_SiII_SiII = np.exp(
                 -1 * vals["s_SiIIa_SiIIb"][iz] ** 2 * k_kms[iz] ** 2
             )

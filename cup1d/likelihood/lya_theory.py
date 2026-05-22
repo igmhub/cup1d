@@ -1,7 +1,11 @@
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 from lace.cosmo import camb_cosmo
 
-from cup1d.likelihood import CAMB_model
+from cup1d.likelihood import CAMB_model, likelihood_parameter
 from cup1d.likelihood.model_contaminants import Contaminants
 from cup1d.likelihood.model_igm import IGM
 from cup1d.likelihood.model_systematics import Systematics
@@ -11,37 +15,50 @@ from cup1d.utils.utils_sims import get_training_hc
 
 
 class Theory:
-    """Translator between the likelihood object and the emulator. This object
-    will map from a set of CAMB parameters directly to emulator calls, without
-    going through our Delta^2_\star parametrisation"""
+    """Translator between the likelihood object and the emulator.
+
+    This object will map from a set of CAMB parameters directly to emulator
+    calls, without going through our Delta^2_\star parametrisation.
+
+    Parameters
+    ----------
+    emulator : Any
+        Object to interpolate simulated p1d.
+    model_igm : IGM, optional
+        IGM model.
+    model_cont : Contaminants, optional
+        Contaminants model.
+    model_syst : Systematics, optional
+        Systematics model.
+    use_hull : bool, optional
+        Whether to use a convex hull to restrict parameter space.
+        Default is True.
+    verbose : bool, optional
+        Whether to print verbose output. Default is False.
+    z_star : float, optional
+        Pivot redshift. Default is 3.0.
+    kp_kms : float, optional
+        Pivot wavenumber in km/s. Default is 0.009.
+    use_star_priors : Any, optional
+        Whether to use star priors.
+    zs : np.ndarray, optional
+        Redshifts that will be evaluated.
+    """
 
     def __init__(
         self,
-        emulator=None,
-        model_igm=None,
-        model_cont=None,
-        model_syst=None,
-        use_hull=True,
-        verbose=False,
-        z_star=3.0,
-        kp_kms=0.009,
-        use_star_priors=None,
-        zs=None,
+        emulator: Any,
+        model_igm: IGM | None = None,
+        model_cont: Contaminants | None = None,
+        model_syst: Systematics | None = None,
+        use_hull: bool = True,
+        verbose: bool = False,
+        z_star: float = 3.0,
+        kp_kms: float = 0.009,
+        use_star_priors: Any | None = None,
+        zs: np.ndarray | None = None,
     ):
-        """Setup object to compute predictions for the 1D power spectrum.
-        Inputs:
-            - zs: redshifts that will be evaluated
-            - emulator: object to interpolate simulated p1d
-            - verbose: print information, useful to debug
-            - F_model: mean flux model
-            - T_model: thermal model
-            - P_model: pressure model
-            - metal_models: list of metal models to include
-            - hcd_model: model for HCD contamination
-            - fid_cosmo: fiducial cosmology used for fixed parameters
-            - fid_sim_igm: IGM model assumed
-            - true_sim_igm: if not None, true IGM model of the mock
-        """
+        """Initialize the Theory object."""
 
         self.verbose = verbose
 
@@ -270,8 +287,11 @@ class Theory:
         return True
 
     def get_linP_Mpc_params_from_fiducial(
-        self, zs, like_params, return_derivs=False
-    ):
+        self,
+        zs: np.ndarray | list[float],
+        like_params: list,
+        return_derivs: bool = False,
+    ) -> list[dict[str, float]] | tuple[list[dict[str, float]], dict[str, float]]:
         """Recycle linP_Mpc_params from fiducial model, when only varying
         primordial power spectrum (As, ns, nrun)"""
 
@@ -352,7 +372,9 @@ class Theory:
         else:
             return linP_Mpc_params
 
-    def get_err_linP_Mpc_params(self, like_params, covar):
+    def get_err_linP_Mpc_params(
+        self, like_params: list, covar: np.ndarray
+    ) -> dict[str, float]:
         """Get error on linP_Mpc_params"""
 
         res = {}
@@ -410,8 +432,12 @@ class Theory:
         return res
 
     def get_emulator_calls(
-        self, zs, like_params=None, return_M_of_z=True, return_blob=False
-    ):
+        self,
+        zs: np.ndarray | list[float],
+        like_params: list = None,
+        return_M_of_z: bool = True,
+        return_blob: bool = False,
+    ) -> dict | tuple:
         """Compute models that will be emulated, one per redshift bin.
         - like_params identify likelihood parameters to use.
         - return_M_of_z will also return conversion from Mpc to km/s
@@ -499,7 +525,7 @@ class Theory:
             else:
                 return emu_call
 
-    def get_blobs_dtype(self):
+    def get_blobs_dtype(self) -> list[tuple[str, type]]:
         """Return the format of the extra information (blobs) returned
         by get_p1d_kms and used in the fitter."""
 
@@ -513,7 +539,7 @@ class Theory:
         ]
         return blobs_dtype
 
-    def get_blob(self, camb_model=None):
+    def get_blob(self, camb_model: CAMB_model.CAMBModel = None) -> tuple:
         """Return extra information (blob) for the fitter."""
 
         if camb_model is None:
@@ -535,7 +561,9 @@ class Theory:
                 camb_model.cosmo.H0,
             )
 
-    def get_blob_fixed_background(self, like_params):
+    def get_blob_fixed_background(
+        self, like_params: list, return_derivs: bool = False
+    ) -> tuple:
         """Fast computation of blob when running with fixed background"""
 
         # make sure you are not changing the background expansion
@@ -583,9 +611,35 @@ class Theory:
 
         linP_Mpc_params = (Delta2_star, n_star, alpha_star) + fid_blob[3:]
 
-        return linP_Mpc_params
+        if return_derivs:
+            val_derivs = {}
+            val_derivs["Delta2star"] = Delta2_star
+            val_derivs["nstar"] = n_star
+            val_derivs["alphastar"] = alpha_star
 
-    def err_star(self, cov_As_ns, like_params):
+            val_derivs["der_alphastar_nrun"] = 1
+            val_derivs["der_alphastar_ns"] = 0
+            val_derivs["der_alphastar_As"] = 0
+
+            val_derivs["der_nstar_nrun"] = ln_kp_ks
+            val_derivs["der_nstar_ns"] = 1
+            val_derivs["der_nstar_As"] = 0
+
+            val_derivs["der_Delta2star_nrun"] = (
+                0.5 * val_derivs["Delta2star"] * ln_kp_ks**2
+            )
+            val_derivs["der_Delta2star_ns"] = (
+                val_derivs["Delta2star"] * ln_kp_ks
+            )
+            val_derivs["der_Delta2star_As"] = val_derivs["Delta2star"] / (
+                ratio_As * fid_As
+            )
+
+            return linP_Mpc_params, val_derivs
+        else:
+            return linP_Mpc_params
+
+    def err_star(self, cov_As_ns: np.ndarray, like_params: list) -> tuple:
         D2star = self.get_blob_fixed_background(like_params)[0]
         for par in like_params:
             if par.name == "As":
@@ -611,17 +665,17 @@ class Theory:
 
     def get_p1d_kms(
         self,
-        zs,
-        k_kms,
-        like_params=None,
-        return_covar=False,
-        return_blob=True,
-        return_emu_params=False,
-        apply_hull=True,
-        hires=False,
-        remove=None,
-        return_contaminants=False,
-    ):
+        zs: np.ndarray | list[float],
+        k_kms: list[np.ndarray],
+        like_params: list = None,
+        return_covar: bool = False,
+        return_blob: bool = True,
+        return_emu_params: bool = False,
+        apply_hull: bool = True,
+        hires: bool = False,
+        remove: dict = None,
+        return_contaminants: bool = False,
+    ) -> list[np.ndarray] | tuple:
         """Emulate P1D in velocity units, for all redshift bins,
         as a function of input likelihood parameters.
         It might also return a covariance from the emulator,
@@ -815,7 +869,7 @@ class Theory:
         else:
             return out
 
-    def get_parameters(self):
+    def get_parameters(self) -> list[likelihood_parameter.LikelihoodParameter]:
         """Return parameters in models, even if not free parameters"""
 
         # get parameters from CAMB model

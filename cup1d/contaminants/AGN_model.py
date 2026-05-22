@@ -1,6 +1,16 @@
+"""Multiplicative AGN feedback correction.
+
+References
+----------
+.. [1] Chabanier et al. (2020) - Lyman-alpha forest P1D constraints
+"""
+
+from __future__ import annotations
+
 import os
 
 import numpy as np
+import numpy.typing as npt
 from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
 
@@ -18,39 +28,52 @@ class AGN_Model:
     where the redshift-dependent amplitude is represented as a polynomial in
     ``log((1 + z) / (1 + z_0))`` and the scale dependence is read from the
     tabulated AGN correction file.
+
+    Parameters
+    ----------
+    z_0 : float, optional
+        Pivot redshift for the polynomial amplitude. Default is 3.0.
+    fid_value : list[float] | None, optional
+        Fiducial polynomial coefficients. The last entry is the amplitude
+        at ``z_0``. Default is None, which sets to [0, -5].
+    null_value : float, optional
+        Log-amplitude threshold below which the correction is disabled.
+        Default is -5.5.
+    ln_AGN_coeff : list[float] | None, optional
+        Fixed polynomial coefficients. Mutually exclusive with
+        ``free_param_names``. Default is None.
+    free_param_names : list[str] | None, optional
+        Likelihood parameter names used to decide how many AGN coefficients
+        are varied. Default is None.
+
+    Attributes
+    ----------
+    z_0 : float
+        Pivot redshift for the polynomial amplitude.
+    null_value : float
+        Log-amplitude threshold below which the correction is disabled.
+    ln_AGN_coeff : list[float]
+        Polynomial coefficients for the AGN correction amplitude.
+    params : list[likelihood_parameter.LikelihoodParameter]
+        Likelihood parameters for the AGN model.
+    AGN_z : npt.NDArray[np.float64]
+        Redshifts where the AGN correction is tabulated.
+    AGN_expansion : npt.NDArray[np.float64]
+        Tabulated AGN correction coefficients.
     """
 
     def __init__(
         self,
-        z_0=3.0,
-        fid_value=None,
-        null_value=-5.5,
-        ln_AGN_coeff=None,
-        free_param_names=None,
+        z_0: float = 3.0,
+        fid_value: list[float] | None = None,
+        null_value: float = -5.5,
+        ln_AGN_coeff: list[float] | None = None,
+        free_param_names: list[str] | None = None,
     ):
-        """Build the AGN feedback model.
-
-        Parameters
-        ----------
-        z_0 : float, optional
-            Pivot redshift for the polynomial amplitude.
-        fid_value : list[float] or None, optional
-            Fiducial polynomial coefficients. The last entry is the amplitude
-            at ``z_0``.
-        null_value : float, optional
-            Log-amplitude threshold below which the correction is disabled.
-        ln_AGN_coeff : list[float] or None, optional
-            Fixed polynomial coefficients. Mutually exclusive with
-            ``free_param_names``.
-        free_param_names : list[str] or None, optional
-            Likelihood parameter names used to decide how many AGN coefficients
-            are varied.
-        """
+        """Initialize the AGN feedback model."""
         if fid_value is None:
             fid_value = [0, -5]
         self.z_0 = z_0
-        if fid_value is None:
-            fid_value = [0, -5]
         self.null_value = null_value
 
         if ln_AGN_coeff is not None:
@@ -75,9 +98,8 @@ class AGN_Model:
 
         self.AGN_z, self.AGN_expansion = _load_agn_file()
 
-    def set_parameters(self):
+    def set_parameters(self) -> None:
         """Create likelihood parameters for the AGN amplitude."""
-
         self.params = []
         Npar = len(self.ln_AGN_coeff)
         for i in range(Npar):
@@ -96,16 +118,39 @@ class AGN_Model:
             )
             self.params.append(par)
 
-        return
+    def get_Nparam(self) -> int:
+        """Return the number of free AGN parameters.
 
-    def get_Nparam(self):
-        """Return the number of free AGN parameters."""
+        Returns
+        -------
+        int
+            Number of free AGN parameters.
+        """
         assert len(self.ln_AGN_coeff) == len(self.params), "size mismatch"
         return len(self.ln_AGN_coeff)
 
-    def get_AGN_damp(self, z, like_params=None):
-        """Evaluate the AGN correction amplitude at redshift ``z``."""
+    def get_AGN_damp(
+        self,
+        z: float,
+        like_params: list | None = None,
+        name_par: str = "ln_AGN",
+    ) -> float:
+        """Evaluate the AGN correction amplitude at redshift ``z``.
 
+        Parameters
+        ----------
+        z : float
+            Redshift.
+        like_params : list | None, optional
+            Likelihood parameters. Default is None.
+        name_par : str, optional
+            Parameter name prefix. Default is "ln_AGN".
+
+        Returns
+        -------
+        float
+            AGN damping amplitude.
+        """
         ln_AGN_coeff = self.get_AGN_coeffs(like_params=like_params)
         if ln_AGN_coeff[-1] <= self.null_value:
             return 0
@@ -113,14 +158,33 @@ class AGN_Model:
         xz = np.log((1 + z) / (1 + self.z_0))
         ln_poly = np.poly1d(ln_AGN_coeff)
         ln_out = ln_poly(xz)
-        return np.exp(ln_out)
+        return float(np.exp(ln_out))
 
-    def get_contamination(self, z, k_kms, like_params=None):
-        """Return the multiplicative AGN correction at ``z`` and ``k_kms``."""
+    def get_contamination(
+        self,
+        z: float,
+        k_kms: npt.NDArray[np.float64],
+        like_params: list | None = None,
+    ) -> npt.NDArray[np.float64]:
+        """Return the multiplicative AGN correction at ``z`` and ``k_kms``.
 
+        Parameters
+        ----------
+        z : float
+            Redshift.
+        k_kms : npt.NDArray[np.float64]
+            Wavenumber in s/km.
+        like_params : list | None, optional
+            Likelihood parameters. Default is None.
+
+        Returns
+        -------
+        npt.NDArray[np.float64]
+            AGN correction.
+        """
         fAGN = self.get_AGN_damp(z, like_params=like_params)
         if fAGN == 0:
-            return 1
+            return np.ones_like(k_kms)
 
         if z <= np.max(self.AGN_z):
             yy = self.AGN_expansion[:, 0][None, :] + self.AGN_expansion[:, 1][
@@ -144,15 +208,33 @@ class AGN_Model:
 
         return 1 + beta
 
-    def get_parameters(self):
-        """Return the AGN likelihood parameters."""
+    def get_parameters(self) -> list[likelihood_parameter.LikelihoodParameter]:
+        """Return the AGN likelihood parameters.
+
+        Returns
+        -------
+        list[likelihood_parameter.LikelihoodParameter]
+            List of AGN likelihood parameters.
+        """
         return self.params
 
-    def get_AGN_coeffs(self, like_params=None):
-        """Return AGN coefficients, updated from likelihood parameters."""
+    def get_AGN_coeffs(
+        self, like_params: list | None = None
+    ) -> list[float] | npt.NDArray[np.float64]:
+        """Return AGN coefficients, updated from likelihood parameters.
 
+        Parameters
+        ----------
+        like_params : list | None, optional
+            Likelihood parameters. Default is None.
+
+        Returns
+        -------
+        list[float] | npt.NDArray[np.float64]
+            AGN coefficients.
+        """
         if like_params:
-            ln_AGN_coeff = self.ln_AGN_coeff.copy()
+            ln_AGN_coeff = list(self.ln_AGN_coeff)
             Npar = 0
             array_names = []
             array_values = []
@@ -161,8 +243,8 @@ class AGN_Model:
                     Npar += 1
                     array_names.append(par.name)
                     array_values.append(par.value)
-            array_names = np.array(array_names)
-            array_values = np.array(array_values)
+            array_names_np = np.array(array_names)
+            array_values_np = np.array(array_values)
 
             # use fiducial value (no contamination)
             if Npar == 0:
@@ -172,13 +254,13 @@ class AGN_Model:
                 raise ValueError("number of params mismatch in get_AGN_coeffs")
 
             for ip in range(Npar):
-                _ = np.argwhere(self.params[ip].name == array_names)[:, 0]
+                _ = np.argwhere(self.params[ip].name == array_names_np)[:, 0]
                 if len(_) != 1:
                     raise ValueError(
                         "could not update parameter" + self.params[ip].name
                     )
                 else:
-                    ln_AGN_coeff[Npar - ip - 1] = array_values[_[0]]
+                    ln_AGN_coeff[Npar - ip - 1] = array_values_np[_[0]]
         else:
             ln_AGN_coeff = self.ln_AGN_coeff
 
@@ -186,18 +268,39 @@ class AGN_Model:
 
     def plot_contamination(
         self,
-        z,
-        k_kms,
-        ln_AGN_coeff=None,
-        plot_every_iz=1,
-        cmap=None,
-        smooth_k=False,
-        dict_data=None,
-        zrange=None,
-        name=None,
-    ):
-        """Plot the AGN correction for a set of redshifts and wavenumbers."""
+        z: npt.NDArray[np.float64],
+        k_kms: list[npt.NDArray[np.float64]],
+        ln_AGN_coeff: list[float] | None = None,
+        plot_every_iz: int = 1,
+        cmap: plt.Colormap | None = None,
+        smooth_k: bool = False,
+        dict_data: dict | None = None,
+        zrange: list[float] | None = None,
+        name: str | None = None,
+    ) -> None:
+        """Plot the AGN correction for a set of redshifts and wavenumbers.
 
+        Parameters
+        ----------
+        z : npt.NDArray[np.float64]
+            Redshifts.
+        k_kms : list[npt.NDArray[np.float64]]
+            Wavenumbers for each redshift.
+        ln_AGN_coeff : list[float] | None, optional
+            AGN coefficients. Default is None.
+        plot_every_iz : int, optional
+            Plot every N-th redshift. Default is 1.
+        cmap : plt.Colormap | None, optional
+            Colormap to use. Default is None.
+        smooth_k : bool, optional
+            Whether to smooth the k axis. Default is False.
+        dict_data : dict | None, optional
+            Dictionary with data to plot. Default is None.
+        zrange : list[float] | None, optional
+            Redshift range to plot. Default is None.
+        name : str | None, optional
+            Name for the output plots. Default is None.
+        """
         # plot for fiducial value
         if zrange is None:
             zrange = [0, 10]
@@ -209,7 +312,7 @@ class AGN_Model:
 
         agn_model = AGN_Model(ln_AGN_coeff=ln_AGN_coeff)
 
-        yrange = [1, 1]
+        yrange = [1.0, 1.0]
         fig1, ax1 = plt.subplots(figsize=(8, 6))
         fig2, ax2 = plt.subplots(
             len(z), sharex=True, sharey=True, figsize=(8, len(z) * 4)
@@ -237,8 +340,8 @@ class AGN_Model:
             else:
                 k_use = k_kms[ii]
             cont = agn_model.get_contamination(z[ii], k_use)
-            if isinstance(cont, int):
-                cont = np.ones_like(k_use)
+            if isinstance(cont, (int, float)):
+                cont = np.ones_like(k_use) * cont
 
             ax1.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
             ax2[ii].plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
@@ -304,11 +407,15 @@ class AGN_Model:
             fig2.savefig(name + "_z.pdf")
             fig2.savefig(name + "_z.png")
 
-        return
 
+def _load_agn_file() -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    """Read the tabulated AGN scale-dependence coefficients.
 
-def _load_agn_file():
-    """Read the tabulated AGN scale-dependence coefficients."""
+    Returns
+    -------
+    tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]
+        Redshifts and tabulated AGN correction coefficients.
+    """
     agn_corr_filename = os.path.join(
         get_path_repo("cup1d"), "data", "nuisance", "AGN_corr.dat"
     )

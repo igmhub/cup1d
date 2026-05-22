@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import inspect
 import os
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,15 +13,34 @@ from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
 
 
 class Plotter:
+    """Plotting utilities for the Lyman-alpha likelihood pipeline.
+
+    Parameters
+    ----------
+    fitter : Fitter, optional
+        Fitter object containing results.
+    save_directory : str, optional
+        Directory to save plots.
+    fname_chain : str, optional
+        Path to a saved chain file to load results from.
+    zmask : np.ndarray, optional
+        Redshift mask.
+    fname_priors : str, optional
+        Path to a file containing prior information.
+    args : dict or Args, optional
+        Configuration arguments.
+    """
+
     def __init__(
         self,
-        fitter=None,
-        save_directory=None,
-        fname_chain=None,
-        zmask=None,
-        fname_priors=None,
-        args=None,
+        fitter: Any | None = None,
+        save_directory: str | None = None,
+        fname_chain: str | None = None,
+        zmask: np.ndarray | None = None,
+        fname_priors: str | None = None,
+        args: Any | None = None,
     ):
+        """Initialize the Plotter."""
         if args is None:
             args = {}
         self.zmask = zmask

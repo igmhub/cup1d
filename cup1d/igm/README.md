@@ -13,7 +13,7 @@ This module provides classes for modeling the physical properties of the interga
 
 | Class | Description |
 |-------|-------------|
-| `IGM_model` | Base class for IGM modeling |
+| `IGMModel` | Base class for IGM modeling |
 | `Thermal` | Thermal properties (sigT, gamma, T0) |
 | `MeanFlux` | Mean flux fraction (tau_eff) |
 | `Pressure` | Pressure modeling |

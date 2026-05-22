@@ -1,4 +1,9 @@
-import matplotlib.pyplot as plt
+"""Wrapper around an iminuit minimizer for Lyman alpha likelihood."""
+
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 from iminuit import Minuit
 
@@ -6,10 +11,38 @@ from iminuit import Minuit
 
 
 class IminuitMinimizer:
-    """Wrapper around an iminuit minimizer for Lyman alpha likelihood"""
+    """Wrapper around an iminuit minimizer for Lyman alpha likelihood.
 
-    def __init__(self, like, ini_values=None, error=0.02, verbose=False):
-        """Setup minimizer from likelihood."""
+    Parameters
+    ----------
+    like : Any
+        Likelihood object to be minimized.
+    ini_values : np.ndarray, optional
+        Initial parameter values in the unit cube. If None, the center of the
+        unit cube is used.
+    error : float, optional
+        Initial step size for the parameters. Default is 0.02.
+    verbose : bool, optional
+        Whether to print verbose output. Default is False.
+
+    Attributes
+    ----------
+    verbose : bool
+        Verbose flag.
+    like : Any
+        Likelihood object.
+    minimizer : Minuit
+        Iminuit minimizer object.
+    """
+
+    def __init__(
+        self,
+        like: Any,
+        ini_values: np.ndarray | None = None,
+        error: float = 0.02,
+        verbose: bool = False,
+    ):
+        """Initialize the iminuit minimizer."""
 
         self.verbose = verbose
         self.like = like
@@ -25,8 +58,14 @@ class IminuitMinimizer:
         # error only used to set initial parameter step
         self.minimizer.errors = error
 
-    def minimize(self, compute_hesse=True):
-        """Run migrad optimizer, and optionally compute Hessian matrix"""
+    def minimize(self, compute_hesse: bool = True) -> None:
+        """Run migrad optimizer, and optionally compute Hessian matrix.
+
+        Parameters
+        ----------
+        compute_hesse : bool, optional
+            Whether to compute the Hessian matrix. Default is True.
+        """
 
         if self.verbose:
             print("will run migrad")
@@ -40,9 +79,16 @@ class IminuitMinimizer:
 
         return
 
-    def plot_best_fit(self, plot_every_iz=1, residuals=True):
+    def plot_best_fit(self, plot_every_iz: int = 1, residuals: bool = True) -> None:
         """Plot best-fit P1D vs data.
-        - plot_every_iz (int): skip some redshift bins."""
+
+        Parameters
+        ----------
+        plot_every_iz : int, optional
+            Skip some redshift bins. Default is 1.
+        residuals : bool, optional
+            Whether to plot residuals. Default is True.
+        """
 
         # get best-fit values from minimizer (should check that it was run)
         best_fit_values = np.array(self.minimizer.values)
@@ -58,21 +104,55 @@ class IminuitMinimizer:
 
         return
 
-    def parameter_by_name(self, pname):
-        """Find parameter in list of likelihood free parameters"""
+    def parameter_by_name(self, pname: str) -> Any:
+        """Find parameter in list of likelihood free parameters.
+
+        Parameters
+        ----------
+        pname : str
+            Parameter name.
+
+        Returns
+        -------
+        Any
+            Likelihood parameter object.
+        """
 
         return [p for p in self.like.free_params if p.name == pname][0]
 
-    def index_by_name(self, pname):
-        """Find parameter index in list of likelihood free parameters"""
+    def index_by_name(self, pname: str) -> int:
+        """Find parameter index in list of likelihood free parameters.
+
+        Parameters
+        ----------
+        pname : str
+            Parameter name.
+
+        Returns
+        -------
+        int
+            Index of the parameter.
+        """
 
         return [
             i for i, p in enumerate(self.like.free_params) if p.name == pname
         ][0]
 
-    def best_fit_value(self, pname, return_hesse=False):
+    def best_fit_value(self, pname: str, return_hesse: bool = False) -> Any:
         """Return best-fit value for pname parameter (assuming it was run).
-        - return_hess: set to true to return also Gaussian error"""
+
+        Parameters
+        ----------
+        pname : str
+            Parameter name.
+        return_hesse : bool, optional
+            Whether to return also the Gaussian error. Default is False.
+
+        Returns
+        -------
+        float or tuple[float, float]
+            Best-fit value, or (value, error) if return_hesse is True.
+        """
 
         # get best-fit values from minimizer (in unit cube)
         cube_values = np.array(self.minimizer.values)
@@ -92,93 +172,24 @@ class IminuitMinimizer:
         else:
             return par_value
 
-    def plot_ellipses(self, pname_x, pname_y, nsig=2, cube_values=False):
-        """Plot Gaussian contours for parameters (pname_x,pname_y)
-        - nsig: number of sigma contours to plot
-        - cube_values: if True, will use unit cube values."""
+    def plot_ellipses(
+        self,
+        pname_x: str,
+        pname_y: str,
+        nsig: int = 2,
+        cube_values: bool = False,
+    ) -> None:
+        """Plot Gaussian contours for parameters (pname_x, pname_y).
 
-        from matplotlib.patches import Ellipse
-        from numpy import linalg as LA
+        Parameters
+        ----------
+        pname_x : str
+            Name of the parameter on the x-axis.
+        pname_y : str
+            Name of the parameter on the y-axis.
+        nsig : int, optional
+            Number of sigma contours to plot. Default is 2.
+        cube_values : bool, optional
+            If True, will use unit cube values. Default is False.
+        """
 
-        # figure out true values of parameters
-        if self.like.truth:
-            if self.verbose:
-                print("compute true values for", pname_x, pname_y)
-            if pname_x in self.like.truth:
-                true_x = self.like.truth[pname_x]
-                if pname_x == "As":
-                    true_x *= 1e9
-            else:
-                true_x = 0.5 if cube_values else 0.0
-            if pname_y in self.like.truth:
-                true_y = self.like.truth[pname_y]
-                if pname_y == "As":
-                    true_y *= 1e9
-            else:
-                true_y = 0.5 if cube_values else 0.0
-
-        # figure out order of parameters in free parameters list
-        ix = self.index_by_name(pname_x)
-        iy = self.index_by_name(pname_y)
-
-        # find out best-fit values, errors and covariance for parameters
-        val_x = self.minimizer.values[ix]
-        val_y = self.minimizer.values[iy]
-        sig_x = self.minimizer.errors[ix]
-        sig_y = self.minimizer.errors[iy]
-        r = self.minimizer.covariance[ix, iy] / sig_x / sig_y
-
-        # rescale from cube values (unless asked not to)
-        if not cube_values:
-            par_x = self.like.free_params[ix]
-            val_x = par_x.value_from_cube(val_x)
-            sig_x = sig_x * (par_x.max_value - par_x.min_value)
-            par_y = self.like.free_params[iy]
-            val_y = par_y.value_from_cube(val_y)
-            sig_y = sig_y * (par_y.max_value - par_y.min_value)
-            # multiply As by 10^9 for now, otherwise ellipse crashes
-            if pname_x == "As":
-                val_x *= 1e9
-                sig_x *= 1e9
-                pname_x += " x 1e9"
-            if pname_y == "As":
-                val_y *= 1e9
-                sig_y *= 1e9
-                pname_y += " x 1e9"
-
-        # shape of ellipse from eigenvalue decomposition of covariance
-        w, v = LA.eig(
-            np.array(
-                [
-                    [sig_x**2, sig_x * sig_y * r],
-                    [sig_x * sig_y * r, sig_y**2],
-                ]
-            )
-        )
-
-        # semi-major and semi-minor axis of ellipse
-        a = np.sqrt(w[0])
-        b = np.sqrt(w[1])
-
-        # figure out inclination angle of ellipse
-        alpha = np.arccos(v[0, 0])
-        if v[1, 0] < 0:
-            alpha = -alpha
-        # compute angle in degrees (expected by matplotlib)
-        alpha_deg = alpha * 180 / np.pi
-
-        # make plot
-        fig = plt.subplot(111)
-        for isig in range(1, nsig + 1):
-            ell = Ellipse(
-                (val_x, val_y), 2 * isig * a, 2 * isig * b, angle=alpha_deg
-            )
-            ell.set_alpha(0.6 / isig)
-            fig.add_artist(ell)
-        plt.xlabel(pname_x)
-        plt.ylabel(pname_y)
-        plt.xlim(val_x - (nsig + 1) * sig_x, val_x + (nsig + 1) * sig_x)
-        plt.ylim(val_y - (nsig + 1) * sig_y, val_y + (nsig + 1) * sig_y)
-        if self.like.truth:
-            plt.axhline(y=true_y, ls=":", color="gray")
-            plt.axvline(x=true_x, ls=":", color="gray")

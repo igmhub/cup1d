@@ -1,7 +1,10 @@
 """High-level MPI pipeline for fitting P1D likelihoods."""
 
+from __future__ import annotations
+
 import os
 import time
+from typing import Any
 
 import numpy as np
 from mpi4py import MPI
@@ -30,7 +33,12 @@ __all__ = [
 ]
 
 
-def set_like(data, emulator, args, data_hires=None):
+def set_like(
+    data: Any,
+    emulator: Any,
+    args: Args,
+    data_hires: Any | None = None,
+) -> Likelihood:
     """Set the likelihood object for a given data and emulator.
 
     This function sets up the free parameters, the theory model, and
@@ -38,18 +46,18 @@ def set_like(data, emulator, args, data_hires=None):
 
     Parameters
     ----------
-    data : cup1d.p1ds.base_p1d_data.BaseP1DData
+    data : Any
         The primary P1D data to be fitted.
-    emulator : lace.emulator.emulator_manager.EmulatorManager
+    emulator : Any
         The emulator used to provide fast model predictions.
-    args : cup1d.likelihood.input_pipeline.Args
+    args : Args
         Configuration object containing analysis settings.
-    data_hires : cup1d.p1ds.base_p1d_data.BaseP1DData, optional
+    data_hires : Any, optional
         Additional high-redshift or high-resolution data. Default is None.
 
     Returns
     -------
-    cup1d.likelihood.likelihood.Likelihood
+    Likelihood
         The initialized likelihood object ready for fitting.
     """
     free_parameters = set_free_like_parameters(
@@ -82,8 +90,19 @@ def set_like(data, emulator, args, data_hires=None):
     return like
 
 
-def get_grid_large(nelem):
-    """Return a regular grid spanning the large Australia20 emulator domain."""
+def get_grid_large(nelem: int) -> tuple[np.ndarray, np.ndarray]:
+    """Return a regular grid spanning the large Australia20 emulator domain.
+
+    Parameters
+    ----------
+    nelem : int
+        Number of elements in each dimension of the grid.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        X and Y grid arrays.
+    """
     fname = os.path.join(
         get_path_repo("lace"),
         "data",
@@ -112,31 +131,42 @@ def get_grid_large(nelem):
 
 
 class Pipeline:
-    """Coordinate emulator setup, data loading, fitting, and plotting."""
+    """Coordinate emulator setup, data loading, fitting, and plotting.
+
+    Parameters
+    ----------
+    args : Args, optional
+        Pipeline configuration. If omitted, the CM2026 defaults are used.
+    make_plots : bool, optional
+        Kept for API compatibility; plotting is controlled by run methods.
+    out_folder : str, optional
+        Output folder overriding ``args.out_folder``.
+    archive : Any, optional
+        Optional preloaded simulation archive.
+    system : str, optional
+        System label used when constructing default arguments. Default is "local".
+
+    Attributes
+    ----------
+    out_folder : str
+        Output folder for results.
+    fprint : Callable
+        Print function for rank 0.
+    fitter : Fitter
+        MCMC sampler wrapper.
+    plotter : Plotter
+        Plotting utility.
+    """
 
     def __init__(
         self,
-        args=None,
-        make_plots=False,
-        out_folder=None,
-        archive=None,
-        system="local",
+        args: Args | None = None,
+        make_plots: bool = False,
+        out_folder: str | None = None,
+        archive: Any | None = None,
+        system: str = "local",
     ):
-        """Initialize the full likelihood pipeline.
-
-        Parameters
-        ----------
-        args : Args or None, optional
-            Pipeline configuration. If omitted, the CM2026 defaults are used.
-        make_plots : bool, optional
-            Kept for API compatibility; plotting is controlled by run methods.
-        out_folder : str or None, optional
-            Output folder overriding ``args.out_folder``.
-        archive : object or None, optional
-            Optional preloaded simulation archive.
-        system : str, optional
-            System label used when constructing default arguments.
-        """
+        """Initialize the full likelihood pipeline."""
 
         if args is None:
             # set default args to Chaves-Montero+26 analysis
@@ -243,14 +273,30 @@ class Pipeline:
 
     def set_emcee_options(
         self,
-        data_label,
-        cov_label,
-        n_igm,
-        n_steps=0,
-        n_burn_in=0,
-        test=False,
-    ):
-        """Set default emcee step counts for selected data/covariance labels."""
+        data_label: str,
+        cov_label: str,
+        n_igm: int,
+        n_steps: int = 0,
+        n_burn_in: int = 0,
+        test: bool = False,
+    ) -> None:
+        """Set default emcee step counts for selected data/covariance labels.
+
+        Parameters
+        ----------
+        data_label : str
+            Data label.
+        cov_label : str
+            Covariance label.
+        n_igm : int
+            Number of IGM parameters.
+        n_steps : int, optional
+            Number of steps. Default is 0.
+        n_burn_in : int, optional
+            Number of burn-in steps. Default is 0.
+        test : bool, optional
+            Whether this is a test run. Default is False.
+        """
         # set steps
         if test:
             self.n_steps = 10
@@ -282,15 +328,33 @@ class Pipeline:
 
     def run_minimizer(
         self,
-        p0,
-        make_plots=False,
-        mask_pars=False,
-        save_chains=False,
-        zmask=None,
-        restart=False,
-        type_minimizer="NM",
-    ):
-        """Run the selected minimizer on rank 0 and broadcast the best fit."""
+        p0: np.ndarray | None = None,
+        make_plots: bool = False,
+        mask_pars: bool = False,
+        save_chains: bool = False,
+        zmask: np.ndarray | None = None,
+        restart: bool = False,
+        type_minimizer: str = "NM",
+    ) -> None:
+        """Run the selected minimizer on rank 0 and broadcast the best fit.
+
+        Parameters
+        ----------
+        p0 : np.ndarray, optional
+            Initial parameter values.
+        make_plots : bool, optional
+            Whether to make plots. Default is False.
+        mask_pars : bool, optional
+            Whether to mask parameters. Default is False.
+        save_chains : bool, optional
+            Whether to save chains. Default is False.
+        zmask : np.ndarray, optional
+            Redshift mask.
+        restart : bool, optional
+            Whether to restart. Default is False.
+        type_minimizer : str, optional
+            Type of minimizer ('NM' or 'DA'). Default is 'NM'.
+        """
 
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
@@ -341,8 +405,23 @@ class Pipeline:
             # get testing_data from task 0
             self.fitter.mle_cube = comm.recv(source=0, tag=(rank + 1) * 13)
 
-    def run_sampler(self, pini=None, make_plots=False, zmask=None):
-        """Run the MCMC sampler after a minimizer pass."""
+    def run_sampler(
+        self,
+        pini: np.ndarray | None = None,
+        make_plots: bool = False,
+        zmask: np.ndarray | None = None,
+    ) -> None:
+        """Run the MCMC sampler after a minimizer pass.
+
+        Parameters
+        ----------
+        pini : np.ndarray, optional
+            Initial parameter values.
+        make_plots : bool, optional
+            Whether to make plots. Default is False.
+        zmask : np.ndarray, optional
+            Redshift mask.
+        """
 
         # def func_for_sampler(p0):
         #     res = self.fitter.like.get_log_like(values=p0, return_blob=True)
@@ -383,17 +462,32 @@ class Pipeline:
 
     def run_profile(
         self,
-        sigma_cosmo,
-        mle_cosmo_cen=None,
-        nelem=10,
-        nsig=10,
-        type_minimizer="NM",
-        folder_ic=None,
-    ):
+        sigma_cosmo: dict[str, float],
+        mle_cosmo_cen: dict[str, float] | None = None,
+        nelem: int = 10,
+        nsig: int = 10,
+        type_minimizer: str = "NM",
+        folder_ic: str | None = None,
+    ) -> None:
         """Run a profile likelihood scan.
 
         First minimize with varying cosmology, then optimize while fixing the
         cosmology for different fiducial values.
+
+        Parameters
+        ----------
+        sigma_cosmo : dict[str, float]
+            Cosmological parameter uncertainties.
+        mle_cosmo_cen : dict[str, float], optional
+            Central cosmological parameter values.
+        nelem : int, optional
+            Number of elements in the grid. Default is 10.
+        nsig : int, optional
+            Number of sigma to scan. Default is 10.
+        type_minimizer : str, optional
+            Type of minimizer. Default is 'NM'.
+        folder_ic : str, optional
+            Folder for initial conditions.
         """
 
         # if grid_type == "large":
@@ -476,8 +570,14 @@ class Pipeline:
             self.fprint("Profile run in " + multi_time + " s")
             self.fprint("----------")
 
-    def save_global_ic(self, fname):
-        """Save best-fit redshift-dependent nuisance values for later reuse."""
+    def save_global_ic(self, fname: str) -> None:
+        """Save best-fit redshift-dependent nuisance values for later reuse.
+
+        Parameters
+        ----------
+        fname : str
+            Filename to save the initial conditions.
+        """
         out_dict = {}
         vals = np.array(list(self.fitter.mle.values()))
         for jj, p in enumerate(self.fitter.like.free_params):

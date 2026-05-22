@@ -71,8 +71,28 @@ class Systematics:
 
     #     return dict_out
 
-    def get_contamination(self, z, k_kms, like_params=None):
-        """Return the multiplicative systematic correction."""
+    def get_contamination(
+        self,
+        z: np.ndarray,
+        k_kms: list[np.ndarray],
+        like_params: list = None,
+    ) -> list[np.ndarray]:
+        """Return the multiplicative systematic correction.
+
+        Parameters
+        ----------
+        z : np.ndarray
+            Redshifts.
+        k_kms : List[np.ndarray]
+            Wavenumbers in s/km.
+        like_params : List, optional
+            Likelihood parameters.
+
+        Returns
+        -------
+        List[np.ndarray]
+            Multiplicative systematic correction.
+        """
         # include multiplicative resolution correction
         cont = self.resolution_model.get_contamination(
             z=z, k_kms=k_kms, like_params=like_params

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import os
 import time
+from typing import Any
 
 import emcee
 import numpy as np
@@ -19,27 +22,52 @@ from cup1d.utils.various_dicts import (
 
 
 class Fitter:
-    """Wrapper around an emcee sampler for Lyman alpha likelihood"""
+    """Wrapper around an emcee sampler for Lyman alpha likelihood.
+
+    Parameters
+    ----------
+    like : Any, optional
+        Likelihood object.
+    nwalkers : int, optional
+        Number of walkers. Default is 1.
+    nsteps : int, optional
+        Number of steps. Default is 1.
+    nburn : int, optional
+        Number of burn-in steps. Default is 0.
+    thin : int, optional
+        Thinning factor. Default is 1.
+    verbose : bool, optional
+        Whether to print verbose output. Default is False.
+    subfolder : str, optional
+        Subfolder for saving chains.
+    rootdir : str, optional
+        Root directory for saving chains.
+    parallel : bool, optional
+        Whether to run in parallel using MPI. Default is False.
+    explore : bool, optional
+        Whether to explore the parameter space. Default is False.
+    fix_cosmology : bool, optional
+        Whether to fix the cosmology. Default is False.
+    read_chain_file : str, optional
+        Path to a pre-computed chain file to load.
+    """
 
     def __init__(
         self,
-        like=None,
-        nwalkers=1,
-        nsteps=1,
-        nburn=0,
-        thin=1,
-        verbose=False,
-        subfolder=None,
-        rootdir=None,
-        parallel=False,
-        explore=False,
-        fix_cosmology=False,
-        read_chain_file=None,
+        like: Any | None = None,
+        nwalkers: int = 1,
+        nsteps: int = 1,
+        nburn: int = 0,
+        thin: int = 1,
+        verbose: bool = False,
+        subfolder: str | None = None,
+        rootdir: str | None = None,
+        parallel: bool = False,
+        explore: bool = False,
+        fix_cosmology: bool = False,
+        read_chain_file: str | None = None,
     ):
-        """Setup sampler from likelihood, or use default.
-        If read_chain_file is provided, read pre-computed chain.
-        rootdir allows user to search for saved chains in a different
-        location to the code itself."""
+        """Initialize the Fitter."""
 
         self.parallel = parallel
         self.explore = explore
@@ -207,8 +235,7 @@ class Fitter:
             ):
                 if sampler.iteration % 100 == 0:
                     self.print(
-                        "Step %d out of %d "
-                        % (sampler.iteration, self.nburn + self.nsteps)
+                        f"Step {sampler.iteration} out of {self.nburn + self.nsteps} "
                     )
 
             ## Get samples, flat=False to be able to mask not converged chains latter
@@ -238,8 +265,7 @@ class Fitter:
             ):
                 if sampler.iteration % 100 == 0:
                     self.print(
-                        "Step %d out of %d "
-                        % (sampler.iteration, self.nsteps + self.nburn)
+                        f"Step {sampler.iteration} out of {self.nsteps + self.nburn} "
                     )
 
             print(f"Rank {self.rank} done", flush=True)
@@ -268,7 +294,7 @@ class Fitter:
                 blobs.append(_blobs)
 
                 for irank in range(1, self.size):
-                    self.print("Receiving from rank %d" % irank)
+                    self.print(f"Receiving from rank {irank}")
                     lnprob.append(
                         self.comm.recv(source=irank, tag=1000 + irank)
                     )
@@ -765,7 +791,7 @@ class Fitter:
         ndim = self.ndim
         nwalkers = self.nwalkers
 
-        self.print("set %d walkers with %d dimensions" % (nwalkers, ndim))
+        self.print(f"set {nwalkers} walkers with {ndim} dimensions")
 
         p0 = np.random.rand(ndim * nwalkers).reshape((nwalkers, ndim))
         for ii in range(ndim):

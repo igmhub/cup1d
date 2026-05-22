@@ -1,5 +1,9 @@
 """CAMB-backed cosmology model used by the Lyman-alpha theory layer."""
 
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 from lace.cosmo import camb_cosmo, fit_linP
 
@@ -7,12 +11,50 @@ from cup1d.likelihood import likelihood_parameter
 
 
 class CAMBModel:
-    """Interface between a CAMB cosmology object and :class:`Theory`."""
+    """Interface between a CAMB cosmology object and :class:`Theory`.
+
+    Parameters
+    ----------
+    zs : np.ndarray
+        List of redshifts at which we evaluate linear power.
+    cosmo : Any, optional
+        CAMB cosmology object. If None, a default cosmology is used.
+    z_star : float, optional
+        Pivot redshift for linear power parameters. Default is 3.0.
+    kp_kms : float, optional
+        Pivot wavenumber in km/s. Default is 0.009.
+    fast_camb : bool, optional
+        Whether to use fast CAMB evaluation. Default is True.
+
+    Attributes
+    ----------
+    zs : np.ndarray
+        Redshifts for evaluation.
+    cosmo : Any
+        CAMB cosmology object.
+    z_star : float
+        Pivot redshift.
+    kp_kms : float
+        Pivot wavenumber.
+    fast_camb : bool
+        Fast CAMB flag.
+    cached_camb_results : Any
+        Cached CAMB results object.
+    cached_linP_Mpc : tuple[np.ndarray, np.ndarray, np.ndarray]
+        Cached linear power in Mpc.
+    cached_linP_params : dict[str, float]
+        Cached linear power parameters.
+    """
 
     def __init__(
-        self, zs, cosmo=None, z_star=3.0, kp_kms=0.009, fast_camb=True
+        self,
+        zs: np.ndarray,
+        cosmo: Any | None = None,
+        z_star: float = 3.0,
+        kp_kms: float = 0.009,
+        fast_camb: bool = True,
     ):
-        """Set up from a CAMB cosmology object and a list of redshifts."""
+        """Initialize the CAMB model."""
 
         # list of redshifts at which we evaluate linear power
         self.zs = zs
@@ -33,8 +75,21 @@ class CAMBModel:
         self.kp_kms = kp_kms
         self.cached_linP_params = None
 
-    def get_likelihood_parameters(self, cosmo_priors=None):
-        """Return cosmological likelihood parameters."""
+    def get_likelihood_parameters(
+        self, cosmo_priors: dict | None = None
+    ) -> list[likelihood_parameter.LikelihoodParameter]:
+        """Return cosmological likelihood parameters.
+
+        Parameters
+        ----------
+        cosmo_priors : dict, optional
+            Dictionary of cosmological priors.
+
+        Returns
+        -------
+        list[likelihood_parameter.LikelihoodParameter]
+            List of likelihood parameters.
+        """
 
         # should clarify role of min/max given that these are also
         # set in the likelihood
@@ -118,8 +173,14 @@ class CAMBModel:
 
         return params
 
-    def get_camb_results(self):
-        """Return cached CAMB results, computing them if needed."""
+    def get_camb_results(self) -> Any:
+        """Return cached CAMB results, computing them if needed.
+
+        Returns
+        -------
+        Any
+            CAMB results object.
+        """
 
         if self.cached_camb_results is None:
             self.cached_camb_results = camb_cosmo.get_camb_results(
@@ -128,8 +189,14 @@ class CAMBModel:
 
         return self.cached_camb_results
 
-    def get_linP_Mpc(self):
-        """Return cached ``(k_Mpc, zs, linP_Mpc)`` arrays."""
+    def get_linP_Mpc(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return cached ``(k_Mpc, zs, linP_Mpc)`` arrays.
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray, np.ndarray]
+            Wavenumbers, redshifts, and linear power in Mpc.
+        """
 
         if self.cached_linP_Mpc is None:
             camb_results = self.get_camb_results()
@@ -139,8 +206,14 @@ class CAMBModel:
 
         return self.cached_linP_Mpc
 
-    def get_linP_params(self):
-        """Return linear-power parameters at ``(z_star, kp_kms)``."""
+    def get_linP_params(self) -> dict[str, float]:
+        """Return linear-power parameters at ``(z_star, kp_kms)``.
+
+        Returns
+        -------
+        dict[str, float]
+            Dictionary of linear power parameters.
+        """
 
         if self.cached_linP_params is None:
             self.cached_linP_params = fit_linP.parameterize_cosmology_kms(
@@ -153,8 +226,19 @@ class CAMBModel:
 
         return self.cached_linP_params
 
-    def get_linP_Mpc_params(self, kp_Mpc):
-        """Return emulator linear-power parameters around ``kp_Mpc``."""
+    def get_linP_Mpc_params(self, kp_Mpc: float) -> list[dict[str, float]]:
+        """Return emulator linear-power parameters around ``kp_Mpc``.
+
+        Parameters
+        ----------
+        kp_Mpc : float
+            Pivot wavenumber in Mpc.
+
+        Returns
+        -------
+        list[dict[str, float]]
+            List of linear power parameters for each redshift.
+        """
 
         ## Get the P(k) at each z
         k_Mpc, z, pk_Mpc = self.get_linP_Mpc()
@@ -184,16 +268,33 @@ class CAMBModel:
 
         return linP_params
 
-    def dkms_dMpc(self, z):
-        """Return ``H(z)/(1+z)`` to convert Mpc to km/s."""
+    def dkms_dMpc(self, z: float) -> float:
+        """Return ``H(z)/(1+z)`` to convert Mpc to km/s.
+
+        Parameters
+        ----------
+        z : float
+            Redshift.
+
+        Returns
+        -------
+        float
+            Conversion factor.
+        """
 
         # get CAMB results objects (might be cached already)
         camb_results = self.get_camb_results()
         H_z = camb_results.hubble_parameter(z)
         return H_z / (1 + z)
 
-    def get_M_of_zs(self):
-        """Return ``M(z)=H(z)/(1+z)`` for every model redshift."""
+    def get_M_of_zs(self) -> list[float]:
+        """Return ``M(z)=H(z)/(1+z)`` for every model redshift.
+
+        Returns
+        -------
+        list[float]
+            List of conversion factors for each model redshift.
+        """
 
         M_of_zs = []
         for z in self.zs:
@@ -201,8 +302,25 @@ class CAMBModel:
 
         return M_of_zs
 
-    def get_new_model(self, zs, like_params):
-        """Return a new :class:`CAMBModel` updated from likelihood parameters."""
+    def get_new_model(
+        self,
+        zs: np.ndarray,
+        like_params: list[likelihood_parameter.LikelihoodParameter],
+    ) -> CAMBModel:
+        """Return a new :class:`CAMBModel` updated from likelihood parameters.
+
+        Parameters
+        ----------
+        zs : np.ndarray
+            Redshifts for the new model.
+        like_params : list[likelihood_parameter.LikelihoodParameter]
+            List of likelihood parameters.
+
+        Returns
+        -------
+        CAMBModel
+            New CAMB model.
+        """
 
         # store a dictionary with parameters set to input values
         camb_param_dict = {}

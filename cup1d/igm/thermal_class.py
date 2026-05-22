@@ -2,7 +2,6 @@
 
 This module provides the Thermal class for modeling temperature
 and thermal broadening in the intergalactic medium.
-
 """
 
 from __future__ import annotations
@@ -13,34 +12,33 @@ import numpy as np
 import numpy.typing as npt
 from lace.cosmo import thermal_broadening
 
-from cup1d.igm.base_igm import IGM_model
+from cup1d.igm.base_igm import IGMModel
 
 # Type aliases
 Array1D = npt.NDArray[np.float64]
-Float = float | int
 
 
-class Thermal(IGM_model):
+class Thermal(IGMModel):
     """Thermal model for the IGM.
 
     Parameters
     ----------
-    coeffs : Optional[Dict[str, float]], optional
-        Coefficient dictionary.
-    prop_coeffs : Optional[Dict[str, Any]], optional
-        Coefficient properties.
-    free_param_names : Optional[List[str]], optional
-        List of free parameter names.
+    coeffs : dict[str, float] | None, optional
+        Coefficient dictionary. Default is None.
+    prop_coeffs : dict[str, Any] | None, optional
+        Coefficient properties. Default is None.
+    free_param_names : list[str] | None, optional
+        List of free parameter names. Default is None.
     z_0 : float, optional
-        Pivot redshift.
-    fid_igm : Optional[Dict[str, Array1D]], optional
-        Fiducial IGM parameters.
-    fid_vals : Optional[Dict[str, Array1D]], optional
-        Fiducial values.
-    flat_priors : Optional[Dict[str, Tuple[float, float]]], optional
-        Flat prior bounds.
-    Gauss_priors : Optional[Dict[str, float]], optional
-        Gaussian prior widths.
+        Pivot redshift. Default is 3.0.
+    fid_igm : dict[str, Array1D] | None, optional
+        Fiducial IGM parameters. Default is None.
+    fid_vals : dict[str, Array1D] | None, optional
+        Fiducial values. Default is None.
+    flat_priors : dict[str, list[list[float]]] | None, optional
+        Flat prior bounds. Default is None.
+    Gauss_priors : dict[str, list[float]] | None, optional
+        Gaussian prior widths. Default is None.
     """
 
     def __init__(
@@ -51,9 +49,10 @@ class Thermal(IGM_model):
         z_0: float = 3.0,
         fid_igm: dict[str, Array1D] | None = None,
         fid_vals: dict[str, Array1D] | None = None,
-        flat_priors: dict[str, tuple[float, float]] | None = None,
-        Gauss_priors: dict[str, float] | None = None,
+        flat_priors: dict[str, list[list[float]]] | None = None,
+        Gauss_priors: dict[str, list[float]] | None = None,
     ) -> None:
+        """Initialize the thermal model."""
         list_coeffs = ["sigT_kms", "gamma"]
 
         if prop_coeffs is None:
@@ -66,6 +65,9 @@ class Thermal(IGM_model):
             flat_priors = {}
             for coeff in list_coeffs:
                 flat_priors[coeff] = [[-1, 1], [-1.25, 1.25]]
+
+        if fid_vals is None:
+            fid_vals = {}
 
         for coeff in list_coeffs:
             if coeff not in fid_vals:
@@ -89,7 +91,7 @@ class Thermal(IGM_model):
     def get_sigT_kms(
         self,
         z: float,
-        like_params: list = None,
+        like_params: list | None = None,
         name_par: str = "sigT_kms",
     ) -> float:
         """sigT_kms at the input redshift.
@@ -98,10 +100,10 @@ class Thermal(IGM_model):
         ----------
         z : float
             Redshift.
-        like_params : List, optional
-            Likelihood parameters.
+        like_params : list | None, optional
+            Likelihood parameters. Default is None.
         name_par : str, optional
-            Parameter name.
+            Parameter name. Default is "sigT_kms".
 
         Returns
         -------
@@ -110,12 +112,12 @@ class Thermal(IGM_model):
         """
         sigT_kms = self.get_value(name_par, z, like_params=like_params)
         sigT_kms *= self.fid_interp[name_par](z)
-        return sigT_kms
+        return float(sigT_kms)
 
     def get_T0(
         self,
         z: float,
-        like_params: list = None,
+        like_params: list | None = None,
         name_par: str = "sigT_kms",
     ) -> float:
         """T_0 at the input redshift.
@@ -124,10 +126,10 @@ class Thermal(IGM_model):
         ----------
         z : float
             Redshift.
-        like_params : List, optional
-            Likelihood parameters.
+        like_params : list | None, optional
+            Likelihood parameters. Default is None.
         name_par : str, optional
-            Parameter name.
+            Parameter name. Default is "sigT_kms".
 
         Returns
         -------
@@ -136,12 +138,12 @@ class Thermal(IGM_model):
         """
         sigT_kms = self.get_sigT_kms(z, like_params=like_params, name_par=name_par)
         T0 = thermal_broadening.T0_from_broadening_kms(sigT_kms)
-        return T0
+        return float(T0)
 
     def get_gamma(
         self,
         z: float,
-        like_params: list = None,
+        like_params: list | None = None,
         name_par: str = "gamma",
     ) -> float:
         """gamma at the input redshift.
@@ -150,10 +152,10 @@ class Thermal(IGM_model):
         ----------
         z : float
             Redshift.
-        like_params : List, optional
-            Likelihood parameters.
+        like_params : list | None, optional
+            Likelihood parameters. Default is None.
         name_par : str, optional
-            Parameter name.
+            Parameter name. Default is "gamma".
 
         Returns
         -------
@@ -162,4 +164,4 @@ class Thermal(IGM_model):
         """
         gamma = self.get_value(name_par, z, like_params=like_params)
         gamma *= self.fid_interp[name_par](z)
-        return gamma
+        return float(gamma)
