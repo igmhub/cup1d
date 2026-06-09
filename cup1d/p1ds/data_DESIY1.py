@@ -1,6 +1,5 @@
 import os
 from astropy.io import fits
-import matplotlib.pyplot as plt
 import numpy as np
 
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
@@ -30,34 +29,18 @@ def set_p1d_filename(data_label="QMLE3"):
             "Ravoux2025",
             "p1d_fft_y1_measurement_kms_v8_directmetalsubtraction.fits",
         )
-    # elif data_label.endswith("FFT"):
-    #     p1d_fname = os.path.join(
-    #         path_data,
-    #         "fft_measurement",
-    #         "p1d_fft_y1_measurement_kms_v8_baseline.fits",
-    #     )
     elif data_label.endswith("FFT3_dir"):
         p1d_fname = os.path.join(
             path_data,
             "Ravoux2025",
             "p1d_fft_y1_measurement_kms_v8_nocrossexp_snr3noweights_directmetalsubtraction.fits",
         )
-    # elif data_label.endswith("FFT3"):
-    #     p1d_fname = os.path.join(
-    #         path_data,
-    #         "fft_measurement",
-    #         "p1d_fft_y1_measurement_kms_v8_nocrossexp_snr3noweights.fits",
-    #     )
     else:
-        raise ValueError(
-            "data_label " + data_label + " not implemented for DESI_DR1"
-        )
+        raise ValueError("data_label " + data_label + " not implemented for DESI_DR1")
     return p1d_fname
 
 
-def compute_cov(
-    syst, type_measurement="QMLE", type_analysis="red", variation=None
-):
+def compute_cov(syst, type_measurement="QMLE", type_analysis="red", variation=None):
     if type_measurement == "QMLE":
         sys_labels = [
             "E_DLA_COMPLETENESS",
@@ -319,9 +302,7 @@ def read_from_file(
         if hdu[iuse].header["EXTNAME"] == "P1D_BLIND":
             blinding = True
 
-    cov_stat_raw = (
-        hdu[dict_with_keys["COVARIANCE_STAT"]].data.copy() * data_bias**2
-    )
+    cov_stat_raw = hdu[dict_with_keys["COVARIANCE_STAT"]].data.copy() * data_bias**2
     cov_syst_raw = compute_cov(
         hdu[dict_with_keys["SYSTEMATICS"]].data,
         type_measurement=type_measurement,

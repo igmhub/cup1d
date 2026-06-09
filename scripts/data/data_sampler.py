@@ -51,6 +51,13 @@ def main():
     else:
         emu_cov_type = "full"
 
+    if name_variation == "DESIY1_FFT3_dir_DLA_TANG":
+        name_variation = "DLA_TANG"
+        data_label = "DESIY1_FFT3"
+        p1d_fname = "/pscratch/sd/j/jjchaves/data/in_DESI_DR1/tin_tang/p1d_fft_y1_measurement_kms_tingdla_nocrossexp_snr3noweights_directmetalsubtraction.fits"
+    else:
+        p1d_fname = None
+
     if name_variation == "None":
         name_variation = None
 
@@ -59,6 +66,7 @@ def main():
         emulator_label="CH24_" + emu + "cen_gpr",
         path_out=path_out,
         emu_cov_type=emu_cov_type,
+        p1d_fname=p1d_fname,
     )
     args.set_baseline(
         fit_type="global_opt",
