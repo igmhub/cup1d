@@ -41,7 +41,7 @@ variations=(
     # "metal_deco"
     # "metal_si2"
     # "metal_trad"
-    "Metals_Ma2025"
+    # "Metals_Ma2025"
     # "LLS_nz4"
     # "IGM_priors"
     # "bias_eBOSS"
@@ -58,6 +58,8 @@ variations=(
     # "hcd_z"
     # "Turner24"
     # "kF_kms"
+    ################
+    "DESIY1_FFT3_dir_DLA_TANG"
 )
 
 source /global/homes/j/jjchaves/miniconda3/bin/activate lace
