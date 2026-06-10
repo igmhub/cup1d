@@ -322,7 +322,7 @@ emulator_label = "CH24_mpgcen_gpr"
 
 name_variation = None
 p1d_fname = None
-# name_variation = "DLA_TANG"
+# name_variation = "DLA_TAN"
 # p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/in_DESI_DR1/ting_tan/p1d_fft_y1_measurement_kms_tingdla_nocrossexp_snr3noweights_directmetalsubtraction.fits"
 
 args = Args(
@@ -341,6 +341,25 @@ args.set_baseline(
 
 pip = Pipeline(args)
 
+
+# %%
+# cov1 = pip.fitter.like.data.cov_Pk_kms.copy()
+# cov2 = pip.fitter.like.data.cov_Pk_kms.copy()
+
+# pk1 = pip.fitter.like.data.Pk_kms.copy()
+# pk2 = pip.fitter.like.data.Pk_kms.copy()
+
+# %%
+# cov1[0]/cov2[0]
+
+# %%
+# kk = pip.fitter.like.data.k_kms
+# for ii in range(len(cov2)):
+#     plt.plot(kk[ii], np.diag(cov1[ii])/np.diag(cov2[ii]), label="z=" + str(pip.fitter.like.data.z[ii]))
+# plt.yscale("log")
+# plt.ylabel("covariance diagonal ratio new/original")
+# plt.xlabel("k [h/Mpc]")
+# plt.legend()
 
 # %%
 for ii, par in enumerate(pip.fitter.like.free_params):

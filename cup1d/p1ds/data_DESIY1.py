@@ -199,6 +199,7 @@ class P1D_DESIY1(BaseDataP1D):
         z_max=10.0,
         cov_syst_type="red",
         p1d_fname=None,
+        cov_fname=None,
         variation=None,
         data_bias=1.0,
     ):
@@ -212,9 +213,13 @@ class P1D_DESIY1(BaseDataP1D):
         else:
             print("Reading P1D measurements from", p1d_fname)
 
+        if variation == "DLA_TAN":
+            cov_fname = set_p1d_filename(data_label=data_label)
+
         # read redshifts, wavenumbers, power spectra and covariance matrices
         res = read_from_file(
             p1d_fname=p1d_fname,
+            cov_fname=cov_fname,
             cov_syst_type=cov_syst_type,
             variation=variation,
             data_bias=data_bias,
@@ -257,6 +262,7 @@ class P1D_DESIY1(BaseDataP1D):
 
 def read_from_file(
     p1d_fname=None,
+    cov_fname=None,
     kmin=1e-3,
     nknyq=0.5,
     max_cov=1e3,
@@ -273,6 +279,15 @@ def read_from_file(
         hdu = fits.open(p1d_fname)
     except:
         raise ValueError("Cannot read: ", p1d_fname)
+
+    # folder storing P1D cov measurement, typically in the P1D measurement file
+    if cov_fname is not None:
+        try:
+            hdu_cov = fits.open(cov_fname)
+        except:
+            raise ValueError("Cannot read: ", cov_fname)
+    else:
+        hdu_cov = hdu
 
     if "fft" in p1d_fname:
         type_measurement = "FFT"
@@ -302,9 +317,9 @@ def read_from_file(
         if hdu[iuse].header["EXTNAME"] == "P1D_BLIND":
             blinding = True
 
-    cov_stat_raw = hdu[dict_with_keys["COVARIANCE_STAT"]].data.copy() * data_bias**2
+    cov_stat_raw = hdu_cov[dict_with_keys["COVARIANCE_STAT"]].data.copy() * data_bias**2
     cov_syst_raw = compute_cov(
-        hdu[dict_with_keys["SYSTEMATICS"]].data,
+        hdu_cov[dict_with_keys["SYSTEMATICS"]].data,
         type_measurement=type_measurement,
         type_analysis=cov_syst_type,
         variation=variation,

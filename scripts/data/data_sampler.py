@@ -51,9 +51,9 @@ def main():
     else:
         emu_cov_type = "full"
 
-    if name_variation == "DESIY1_FFT3_dir_DLA_TANG":
-        name_variation = "DLA_TANG"
-        data_label = "DESIY1_FFT3"
+    if name_variation == "DESIY1_FFT3_dir_DLA_TAN":
+        name_variation = "DLA_TAN"
+        data_label = "DESIY1_FFT3_dir"
         p1d_fname = "/pscratch/sd/j/jjchaves/data/in_DESI_DR1/tin_tang/p1d_fft_y1_measurement_kms_tingdla_nocrossexp_snr3noweights_directmetalsubtraction.fits"
     else:
         p1d_fname = None

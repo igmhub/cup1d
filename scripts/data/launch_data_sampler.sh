@@ -59,7 +59,7 @@ variations=(
     # "Turner24"
     # "kF_kms"
     ################
-    "DESIY1_FFT3_dir_DLA_TANG"
+    "DESIY1_FFT3_dir_DLA_TAN"
 )
 
 source /global/homes/j/jjchaves/miniconda3/bin/activate lace
