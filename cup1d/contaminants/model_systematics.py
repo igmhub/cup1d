@@ -1,14 +1,12 @@
 import numpy as np
 
-from cup1d.contaminants import resolution_class
+from cup1d.contaminants.spectro_resolution import resolution_class
 
 
 class Systematics(object):
     """Contains all IGM models"""
 
-    def __init__(
-        self, free_param_names=None, resolution_model=None, pars_syst=None
-    ):
+    def __init__(self, free_param_names=None, resolution_model=None, pars_syst=None):
         self.pars_syst = pars_syst
 
         if "flat_priors" in pars_syst:

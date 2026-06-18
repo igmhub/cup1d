@@ -1,9 +1,9 @@
 import numpy as np
 
 from cup1d.likelihood.lya_theory import Theory
-from cup1d.likelihood.model_igm import IGM
-from cup1d.likelihood.model_contaminants import Contaminants
-from cup1d.likelihood.model_systematics import Systematics
+from cup1d.igm.model_igm import IGM
+from cup1d.contaminants.model_contaminants import Contaminants
+from cup1d.contaminants.model_systematics import Systematics
 from cup1d.likelihood.cosmologies import set_cosmo
 
 
@@ -39,9 +39,7 @@ def set_theory(
     )
 
     # set systematics
-    model_syst = Systematics(
-        free_param_names=free_parameters, pars_syst=pars_syst
-    )
+    model_syst = Systematics(free_param_names=free_parameters, pars_syst=pars_syst)
 
     # set theory
     theory = Theory(
@@ -55,13 +53,9 @@ def set_theory(
         kp_kms=args.kp_kms,
     )
 
-    true_cosmo = set_cosmo(
-        cosmo_label=cosmo_label, nyx_version=args.nyx_training_set
-    )
+    true_cosmo = set_cosmo(cosmo_label=cosmo_label, nyx_version=args.nyx_training_set)
     if zs is None:
-        zs = np.concatenate(
-            [np.arange(2.2, 4.401, 0.2), np.arange(2.0, 4.501, 0.25)]
-        )
+        zs = np.concatenate([np.arange(2.2, 4.401, 0.2), np.arange(2.0, 4.501, 0.25)])
     theory.set_fid_cosmo(np.unique(zs), input_cosmo=true_cosmo)
 
     theory.model_igm.set_fid_igm(zs)

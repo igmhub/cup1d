@@ -14,8 +14,8 @@ from cup1d.p1ds import (
     challenge_DESIY1,
 )
 from cup1d.likelihood import lya_theory
-from cup1d.likelihood.model_contaminants import Contaminants
-from cup1d.likelihood.model_igm import IGM
+from cup1d.contaminants.model_contaminants import Contaminants
+from cup1d.igm.model_igm import IGM
 
 
 class Mock_P1D(BaseMockP1D):

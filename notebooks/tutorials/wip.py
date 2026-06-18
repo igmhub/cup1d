@@ -301,9 +301,9 @@ name_variation = None
 ###
 
 
-# data_label = "DESIY1_QMLE3"
+data_label = "DESIY1_QMLE3"
 # data_label = "DESIY1_QMLE"
-data_label = "DESIY1_FFT3_dir"
+# data_label = "DESIY1_FFT3_dir"
 
 emu_cov_type = "full"
 # emu_cov_type = "block"
@@ -348,6 +348,17 @@ pip = Pipeline(args)
 
 # pk1 = pip.fitter.like.data.Pk_kms.copy()
 # pk2 = pip.fitter.like.data.Pk_kms.copy()
+
+# %%
+from cup1d.plots_and_tables.table_nuisance import table_nuisance
+
+# %%
+folder_in = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_2/"
+table_nuisance(folder_in)
+
+# %%
+folder_in = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_FFT3_dir/DLA_TAN/CH24_mpgcen_gpr/chain_2/"
+table_nuisance(folder_in)
 
 # %%
 # cov1[0]/cov2[0]
