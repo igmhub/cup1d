@@ -1,9 +1,9 @@
 import numpy as np
 from lace.cosmo import camb_cosmo
 from cup1d.likelihood import CAMB_model
-from cup1d.likelihood.model_contaminants import Contaminants
-from cup1d.likelihood.model_systematics import Systematics
-from cup1d.likelihood.model_igm import IGM
+from cup1d.contaminants.model_contaminants import Contaminants
+from cup1d.contaminants.model_systematics import Systematics
+from cup1d.igm.model_igm import IGM
 from cup1d.utils.utils_sims import get_training_hc
 from cup1d.utils.hull import Hull
 from cup1d.utils.utils import is_number_string
@@ -79,9 +79,7 @@ class Theory(object):
         else:
             self.model_syst = model_syst
 
-    def set_fid_cosmo(
-        self, zs, zs_hires=None, input_cosmo=None, extra_factor=1.15
-    ):
+    def set_fid_cosmo(self, zs, zs_hires=None, input_cosmo=None, extra_factor=1.15):
         """Setup fiducial cosmology"""
 
         self.zs = zs
@@ -124,13 +122,11 @@ class Theory(object):
             z_star=self.z_star,
             kp_kms=self.kp_kms,
         )
-        self.fid_cosmo["linP_Mpc_params"] = self.fid_cosmo[
-            "cosmo"
-        ].get_linP_Mpc_params(kp_Mpc=self.emu_kp_Mpc)
+        self.fid_cosmo["linP_Mpc_params"] = self.fid_cosmo["cosmo"].get_linP_Mpc_params(
+            kp_Mpc=self.emu_kp_Mpc
+        )
         self.fid_cosmo["M_of_zs"] = self.fid_cosmo["cosmo"].get_M_of_zs()
-        self.fid_cosmo["linP_params"] = self.fid_cosmo[
-            "cosmo"
-        ].get_linP_params()
+        self.fid_cosmo["linP_params"] = self.fid_cosmo["cosmo"].get_linP_params()
 
         # when using a fiducial cosmology, easy to change in other cases (TODO)
         self.set_cosmo_priors()
@@ -154,9 +150,7 @@ class Theory(object):
         delta_ns = delta_np
         ln_ratio_As = np.log(ratio_Ap) - delta_np * ln_kp_ks
 
-        new_As = (
-            np.exp(ln_ratio_As) * self.fid_cosmo["cosmo"].cosmo.InitPower.As
-        )
+        new_As = np.exp(ln_ratio_As) * self.fid_cosmo["cosmo"].cosmo.InitPower.As
         new_ns = delta_ns + self.fid_cosmo["cosmo"].cosmo.InitPower.ns
         rescaled_cosmo = camb_cosmo.get_cosmology(
             H0=self.fid_cosmo["cosmo"].cosmo.H0,
@@ -172,9 +166,7 @@ class Theory(object):
             wa=self.fid_cosmo["cosmo"].cosmo.DarkEnergy.wa,
         )
 
-        self.set_fid_cosmo(
-            self.zs, zs_hires=self.zs_hires, input_cosmo=rescaled_cosmo
-        )
+        self.set_fid_cosmo(self.zs, zs_hires=self.zs_hires, input_cosmo=rescaled_cosmo)
 
     def set_cosmo_priors(self, extra_factor=1.25):
         """Set priors for cosmological parameters
@@ -228,8 +220,7 @@ class Theory(object):
             delta_nrun = delta_alphastar
             delta_ns = delta_nstar - delta_nrun * ln_kp_ks
             ln_ratio_As = (
-                ln_ratio_Astar
-                - (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
+                ln_ratio_Astar - (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
             )
             hc_fid["nrun"].append(fid_nrun + delta_nrun)
             hc_fid["ns"].append(fid_ns + delta_ns)
@@ -267,9 +258,7 @@ class Theory(object):
 
         return True
 
-    def get_linP_Mpc_params_from_fiducial(
-        self, zs, like_params, return_derivs=False
-    ):
+    def get_linP_Mpc_params_from_fiducial(self, zs, like_params, return_derivs=False):
         """Recycle linP_Mpc_params from fiducial model, when only varying
         primordial power spectrum (As, ns, nrun)"""
 
@@ -302,8 +291,7 @@ class Theory(object):
         delta_alpha_p = delta_nrun
         delta_n_p = delta_ns + delta_nrun * ln_kp_ks
         ln_ratio_A_p = (
-            np.log(ratio_As)
-            + (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
+            np.log(ratio_As) + (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
         )
 
         # update values of linP_params at emulator pivot point, at each z
@@ -339,9 +327,7 @@ class Theory(object):
             val_derivs["der_Delta2star_nrun"] = (
                 0.5 * val_derivs["Delta2star"] * ln_kp_ks**2
             )
-            val_derivs["der_Delta2star_ns"] = (
-                val_derivs["Delta2star"] * ln_kp_ks
-            )
+            val_derivs["der_Delta2star_ns"] = val_derivs["Delta2star"] * ln_kp_ks
             val_derivs["der_Delta2star_As"] = val_derivs["Delta2star"] / (
                 ratio_As * fid_As
             )
@@ -389,12 +375,8 @@ class Theory(object):
             der["der_Delta2star_nrun"] ** 2 * err_nrun
             + der["der_Delta2star_ns"] ** 2 * err_ns
             + der["der_Delta2star_As"] ** 2 * err_As
-            + der["der_Delta2star_nrun"]
-            * der["der_Delta2star_ns"]
-            * err_nrun_ns
-            + der["der_Delta2star_nrun"]
-            * der["der_Delta2star_As"]
-            * err_nrun_As
+            + der["der_Delta2star_nrun"] * der["der_Delta2star_ns"] * err_nrun_ns
+            + der["der_Delta2star_nrun"] * der["der_Delta2star_As"] * err_nrun_As
             + der["der_Delta2star_ns"] * der["der_Delta2star_As"] * err_ns_As
         )
 
@@ -420,9 +402,7 @@ class Theory(object):
             # use background and transfer functions from fiducial cosmology
             if self.verbose:
                 print("recycle transfer function")
-            linP_Mpc_params = self.get_linP_Mpc_params_from_fiducial(
-                zs, like_params
-            )
+            linP_Mpc_params = self.get_linP_Mpc_params_from_fiducial(zs, like_params)
             M_of_zs = []
             for z in zs:
                 _ = np.argwhere(self.fid_cosmo["zs"] == z)[0, 0]
@@ -435,9 +415,7 @@ class Theory(object):
             if self.verbose:
                 print("create new CAMB_model")
             camb_model = self.fid_cosmo["cosmo"].get_new_model(zs, like_params)
-            linP_Mpc_params = camb_model.get_linP_Mpc_params(
-                kp_Mpc=self.emu_kp_Mpc
-            )
+            linP_Mpc_params = camb_model.get_linP_Mpc_params(kp_Mpc=self.emu_kp_Mpc)
             M_of_zs = camb_model.get_M_of_zs()
             if return_blob:
                 blob = self.get_blob(camb_model=camb_model)
@@ -453,9 +431,7 @@ class Theory(object):
                 emu_call[key] = self.model_igm.models["F_model"].get_mean_flux(
                     zs, like_params=like_params
                 )
-                emu_call["mF_fid"] = self.model_igm.models[
-                    "F_model"
-                ].get_mean_flux(zs)
+                emu_call["mF_fid"] = self.model_igm.models["F_model"].get_mean_flux(zs)
             elif key == "gamma":
                 emu_call[key] = self.model_igm.models["T_model"].get_gamma(
                     zs, like_params=like_params
@@ -482,9 +458,7 @@ class Theory(object):
                     * M_of_zs
                 )
             else:
-                raise ValueError(
-                    "Not a theory model for emulator parameter", key
-                )
+                raise ValueError("Not a theory model for emulator parameter", key)
 
         if return_M_of_z == True:
             if return_blob:
@@ -571,8 +545,7 @@ class Theory(object):
         delta_alpha_star = delta_nrun
         delta_n_star = delta_ns + delta_nrun * ln_kp_ks
         ln_ratio_A_star = (
-            np.log(ratio_As)
-            + (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
+            np.log(ratio_As) + (delta_ns + 0.5 * delta_nrun * ln_kp_ks) * ln_kp_ks
         )
 
         alpha_star = fid_blob[2] + delta_alpha_star
@@ -906,9 +879,7 @@ class Theory(object):
                 )
 
             ax[ii].legend()
-            ax[ii].set_ylabel(
-                r"$k_\parallel \, P_{\rm 1D}(z,k_\parallel) / \pi$"
-            )
+            ax[ii].set_ylabel(r"$k_\parallel \, P_{\rm 1D}(z,k_\parallel) / \pi$")
             ax[ii].set_yscale("log")
             ax[ii].set_xlabel(r"$k$ [s/km]")
 

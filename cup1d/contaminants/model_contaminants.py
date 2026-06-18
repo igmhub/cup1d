@@ -1,12 +1,18 @@
 import numpy as np
 
-from cup1d.contaminants import (
+from cup1d.contaminants.HCD import (
     hcd_model_McDonald2005,
     hcd_model_rogers_class,
     hcd_boss,
+)
+
+from cup1d.contaminants.metals import (
     si_mult,
     si_vid_final,
     si_add,
+)
+
+from cup1d.contaminants.feedback import (
     SN_model,
     AGN_model,
 )
