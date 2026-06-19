@@ -1564,9 +1564,9 @@ class Likelihood(object):
 
             length = 1
         else:
-            fig, ax = plt.subplots(1, 1, figsize=(14, 8))
-            length = 1
-            ax = [ax]
+            fig, ax = plt.subplots(len(self.data), 1, figsize=(14, 14), sharex=True)
+            if len(ax) == 1:
+                ax = [ax]
 
         # figure out y range for plot
         ymin = 1e10

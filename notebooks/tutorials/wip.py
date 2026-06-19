@@ -56,7 +56,40 @@ from cup1d.pipeline.set_archive import set_archive
 
 
 # %%
-data_label = ["DESIY1_QMLE3"]
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
+import pandas
+
+# folder storing P1D measurement
+datadir = BaseDataP1D.BASEDIR + "/Karacayli2022/"
+
+# start by reading the file with measured band power
+# z, k, P, e
+data = np.loadtxt(
+    datadir + "final-conservative-p1d-karacayli_etal2021.txt",
+    skiprows=1,
+    usecols=(1, 2, 3, 4),
+    delimiter="|",
+)
+
+cov_kms = np.loadtxt(
+    datadir + "final-conservative-covariance-karacayli_etal2021.txt",
+)
+
+# %%
+z = data[:, 0]
+k_kms = data[:, 1]
+P_kms = data[:, 2]
+
+cov_kms = cov 
+
+# %%
+cov.shape
+
+# %%
+k.shape
+
+# %%
+data_label = ["DESIY1_QMLE3", "Karacayli2022"]
 emulator_label = "CH24_mpgcen_gpr"
 args = Args(
     data_label=data_label,
@@ -73,7 +106,15 @@ pip = Pipeline(args)
 
 # %%
 
+p0 = pip.fitter.like.sampling_point_from_parameters().copy()
+free_params = pip.fitter.like.parameters_from_sampling_point(p0)
+pip.fitter.like.get_chi2(p0)
+
 # %%
+pip.fitter.like.plot_p1d(p0, print_chi2=False)
+
+# %%
+21.961857252395838
 
 # %%
 # Name, Box Mpc, Resolution kpc; h=67.5
