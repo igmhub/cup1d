@@ -1,21 +1,16 @@
 """Class to generate a mock P1D from another P1D object and an emulator"""
 
 import numpy as np
-from lace.emulator import gp_emulator
-from lace.cosmo import camb_cosmo
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 
-from cup1d.p1ds import (
+from cup1d.p1ds.observations import (
     data_Chabanier2019,
-    data_Karacayli2022,
-    data_QMLE_Ohio,
-    data_Karacayli2024,
     data_DESIY1,
+)
+
+from cup1d.p1ds.simulations import (
     challenge_DESIY1,
 )
-from cup1d.likelihood import lya_theory
-from cup1d.contaminants.model_contaminants import Contaminants
-from cup1d.igm.model_igm import IGM
 
 
 class Mock_P1D(BaseMockP1D):
@@ -80,17 +75,6 @@ class Mock_P1D(BaseMockP1D):
                 )
         else:
             raise ValueError("Unknown data_label", data_label)
-
-        # (
-        #     zs,
-        #     k_kms,
-        #     Pk_kms,
-        #     cov_Pk_kms,
-        #     full_zs,
-        #     full_Pk_kms,
-        #     full_cov_kms,
-        #     blind,
-        # ) = data_from_obs
 
         # evaluate theory at k_kms, for all redshifts. get Pk_kms from emulator
         zs = np.array(data_from_obs.z)

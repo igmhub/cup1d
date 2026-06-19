@@ -1,147 +1,36 @@
-import os
-import sys
-
 import numpy as np
 from scipy.interpolate import interp1d, RegularGridInterpolator
 
-from lace.cosmo import camb_cosmo
-from cup1d.likelihood import cosmologies
-from cup1d.likelihood import CAMB_model
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
-from cup1d.p1ds import (
+from cup1d.p1ds.observations import (
     data_PD2013,
     data_Chabanier2019,
-    data_QMLE_Ohio,
     data_Karacayli2022,
     data_DESIY1,
 )
 
 
-def load_data(folder, sim_label="l160_r25", hh=0.675, kmax=10):
-    """
-    This function loads the P1D and P3D data from the ACCEL2 simulations
-
-    For the P1D, it loads the P1D from individual axes (x, y, z)
-    For the P3D, it loads the average P3D (individual axes not available)
-
-    Input:
-    - folder: folder where the data is stored
-    - sim_label: label of the simulation
-    - hh: hubble parameter
-    - kmax: maximum k to use in the P1D and P3D (larger than maximum needed)
-    """
-
-    labs_dirs = ["x", "y", "z"]
-    labs_z = [
-        "plt02937_2.0_",
-        "plt02122_2.6_",
-        "plt01902_3.0_",
-        "plt01623_3.6_",
-        "plt01392_4.0_",
-        "plt00908_5.0_",
-    ]
-    zz = np.array([2.0, 2.6, 3.0, 3.6, 4.0, 5.0])
-    folder1d = os.path.join(folder, "p1d_from_sim", sim_label)
-    folder3d = os.path.join(folder, "p3d_from_sim", sim_label)
-
-    for iz, labz in enumerate(labs_z):
-        for ii, ax in enumerate(labs_dirs):
-            file = labz + "f" + ax + "_flux_ps1d.txt"
-            dat = np.loadtxt(os.path.join(folder1d, file))
-            _ = dat[:, 0] < kmax
-            if (ii == 0) & (iz == 0):
-                k1d = dat[_, 0] * hh  # the beginning of the bin!
-                # defined at the beginning of the bin, now center (equal bins)
-                k1d += 0.5 * (k1d[1] - k1d[0])
-
-                nmod1d = dat[_, 1]
-                p1d_all = np.zeros((len(labs_z), k1d.shape[0], 3))
-                p1d = np.zeros((len(labs_z), k1d.shape[0]))
-
-                p1d[iz] = dat[_, 3] / hh
-                p1d_all[iz, :, ii] = p1d[iz]
-            else:
-                _p1d = dat[_, 3] / hh
-                p1d[iz] += _p1d
-                p1d_all[iz, :, ii] = _p1d
-        p1d[iz] /= len(labs_dirs)
-
-        file = labz + "fmeandirection_flux_pkmu.txt"
-        dat = np.loadtxt(os.path.join(folder3d, file))
-        _ = dat[:, 0] < kmax
-
-        if iz == 0:
-            u_k3d = dat[_, 0] * hh  # the beginning of the bin!
-            u_mu3d = dat[_, 1]  # the beginning of the bin!
-            u_nmod3d = dat[_, 2]
-
-            k3d_uni = np.unique(u_k3d)
-            mu3d_uni = np.unique(u_mu3d)
-
-            # defined at the beginning of the bin, now center (equal bins)
-            diffk = 0.5 * (k3d_uni[1] - k3d_uni[0])
-            diffmu = 0.5 * (mu3d_uni[1] - mu3d_uni[0])
-
-            u_k3d += diffk
-            k3d_uni += diffk
-            u_mu3d += diffmu
-            mu3d_uni += diffmu
-
-            k3d = np.zeros((k3d_uni.shape[0], mu3d_uni.shape[0]))
-            mu3d = np.zeros_like(k3d)
-            nmod3d = np.zeros_like(k3d)
-            p3d = np.zeros((len(labs_z), k3d_uni.shape[0], mu3d_uni.shape[0]))
-
-        u_p3d = dat[_, 5] / hh**3
-
-        for ii in range(k3d.shape[0]):
-            for jj in range(k3d.shape[1]):
-                _ = np.argwhere(
-                    (u_k3d == k3d_uni[ii]) & (u_mu3d == mu3d_uni[jj])
-                )[0, 0]
-                if iz == 0:
-                    k3d[ii, jj] = u_k3d[_]
-                    mu3d[ii, jj] = u_mu3d[_]
-                    nmod3d[ii, jj] = u_nmod3d[_]
-                p3d[iz, ii, jj] = u_p3d[_]
-
-        dict_out = {
-            "z": zz,
-            "k1d_Mpc": k1d,
-            "p1d_Mpc": p1d,
-            "p1d_Mpc_axes": p1d_all,
-            "nmod1d": nmod1d,
-            "k3d_Mpc": k3d,
-            "mu3d": mu3d,
-            "nmod3d": nmod3d,
-            "p3d_Mpc": p3d,
-        }
-
-    return dict_out
-
-
-class Accel2_P1D(BaseMockP1D):
+class Gadget_P1D(BaseMockP1D):
     """Class to load an MP-Gadget simulation as a mock data object.
     Can use PD2013 or Chabanier2019 covmats"""
 
     def __init__(
         self,
         theory,
-        testing_data=None,
+        testing_data,
         apply_smoothing=True,
-        input_sim="l160_r25",
+        input_sim="mpg_central",
         data_cov_label="Chabanier2019",
         add_syst=True,
         add_noise=False,
         seed=0,
         z_min=0,
         z_max=10,
-        path_data=None,
         p1d_fname=None,
         interp_to_cov=False,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
-        - testing_data: has to be None
+        - testing_data: p1d measurements from Gadget sims
         - input_sim: check available options in testing_data
         - z_max: maximum redshift to use in mock data
         - data_cov_label: P1D covariance to use (Chabanier2019 or PD2013)
@@ -156,29 +45,8 @@ class Accel2_P1D(BaseMockP1D):
         self.data_cov_label = data_cov_label
         self.input_sim = input_sim
 
-        # load data from simulations
-        out_dict = load_data(path_data)
-        sim_cosmo = cosmologies.set_cosmo(cosmo_label="accel2")
-        camb_cosmo = CAMB_model.CAMBModel(zs=out_dict["z"], cosmo=sim_cosmo)
-
-        testing_data = []
-        for ii in range(out_dict["p1d_Mpc"].shape[0]):
-            # flux rescaled to this value in ACCEL2
-            tau_eff = 0.0025 * (1 + out_dict["z"][ii]) ** 3.7
-            testing_data.append(
-                {
-                    "z": out_dict["z"][ii],
-                    "k_Mpc": out_dict["k1d_Mpc"],
-                    "p1d_Mpc": out_dict["p1d_Mpc"][ii],
-                    "dkms_dMpc": camb_cosmo.dkms_dMpc(out_dict["z"][ii]),
-                    "mF": np.exp(-tau_eff),
-                }
-            )
-
         if apply_smoothing:
-            self.testing_data = super().set_smoothing_Mpc(
-                theory.emulator, testing_data
-            )
+            self.testing_data = super().set_smoothing_Mpc(theory.emulator, testing_data)
         else:
             print("No smoothing is applied")
             self.testing_data = testing_data
@@ -315,8 +183,6 @@ class Accel2_P1D(BaseMockP1D):
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)
         elif self.data_cov_label == "PD2013":
             data = data_PD2013.P1D_PD2013(add_syst=self.add_syst)
-        elif self.data_cov_label == "QMLE_Ohio":
-            data = data_QMLE_Ohio.P1D_QMLE_Ohio()
         elif self.data_cov_label == "Karacayli2022":
             data = data_Karacayli2022.P1D_Karacayli2022()
         elif self.data_cov_label.startswith("DESIY1"):
@@ -342,9 +208,7 @@ class Accel2_P1D(BaseMockP1D):
 
         theory.set_fid_cosmo(z_sim)
 
-        interp = RegularGridInterpolator(
-            (z_sim, k_Mpc_sim[0]), np.log(p1d_Mpc_sim)
-        )
+        interp = RegularGridInterpolator((z_sim, k_Mpc_sim[0]), np.log(p1d_Mpc_sim))
 
         zs = data.z
         k_kms = []
@@ -377,9 +241,7 @@ class Accel2_P1D(BaseMockP1D):
             j0 = ind0[np.argmin(abs(full_k_kms[i0] - data.full_k_kms[ind0]))]
             for i1 in range(len(full_Pk_kms)):
                 ind1 = np.argwhere(full_zs[i1] == data.full_zs)[:, 0]
-                j1 = ind1[
-                    np.argmin(abs(full_k_kms[i1] - data.full_k_kms[ind1]))
-                ]
+                j1 = ind1[np.argmin(abs(full_k_kms[i1] - data.full_k_kms[ind1]))]
                 full_cov_kms[i0, i1] = data.full_cov_Pk_kms[j0, j1]
                 full_cov_stat_kms[i0, i1] = data.full_cov_stat_Pk_kms[j0, j1]
 
@@ -402,8 +264,6 @@ class Accel2_P1D(BaseMockP1D):
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)
         elif self.data_cov_label == "PD2013":
             data = data_PD2013.P1D_PD2013(add_syst=self.add_syst)
-        elif self.data_cov_label == "QMLE_Ohio":
-            data = data_QMLE_Ohio.P1D_QMLE_Ohio()
         elif self.data_cov_label == "Karacayli2022":
             data = data_Karacayli2022.P1D_Karacayli2022()
         elif self.data_cov_label.startswith("DESIY1"):
@@ -482,9 +342,7 @@ class Accel2_P1D(BaseMockP1D):
             j0 = ind0[np.argmin(abs(full_k_kms[i0] - data.full_k_kms[ind0]))]
             for i1 in range(len(full_Pk_kms)):
                 ind1 = np.argwhere(full_zs_cov[i1] == data.full_zs)[:, 0]
-                j1 = ind1[
-                    np.argmin(abs(full_k_kms[i1] - data.full_k_kms[ind1]))
-                ]
+                j1 = ind1[np.argmin(abs(full_k_kms[i1] - data.full_k_kms[ind1]))]
                 full_cov_kms[i0, i1] = data.full_cov_Pk_kms[j0, j1]
                 full_cov_stat_kms[i0, i1] = data.full_cov_stat_Pk_kms[j0, j1]
 
@@ -499,44 +357,3 @@ class Accel2_P1D(BaseMockP1D):
             full_cov_kms,
             full_cov_stat_kms,
         )
-
-    def plot_p1d_z(self, out_dict):
-        for ii in range(out_dict["p1d_Mpc"].shape[0]):
-            plt.plot(
-                out_dict["k1d_Mpc"],
-                out_dict["k1d_Mpc"] * out_dict["p1d_Mpc"][ii] / np.pi,
-                label=str(out_dict["z"][ii]),
-            )
-        plt.legend()
-        plt.yscale("log")
-        plt.xscale("log")
-
-    def plot_p1d_axes(self, out_dict):
-        labs_dirs = ["x", "y", "z"]
-        iz = 0
-        for ii in range(3):
-            plt.plot(
-                out_dict["k1d_Mpc"],
-                out_dict["p1d_Mpc_axes"][iz, :, ii] / out_dict["p1d_Mpc"][iz],
-                label=labs_dirs[ii],
-            )
-        plt.axhline(1, ls=":", color="k")
-        plt.axhline(1.01, ls=":", color="k")
-        plt.axhline(0.99, ls=":", color="k")
-        plt.xscale("log")
-        # plt.ylim(0.98, 1.02)
-        plt.legend()
-        plt.ylabel("P1D_direction/P1D_average-1")
-
-    def plot_p3d_z(self, out_dict):
-        for iz in range(0, 5, 2):
-            for ii in range(out_dict["k3d_Mpc"].shape[1]):
-                col = "C" + str(ii)
-                plt.loglog(
-                    out_dict["k3d_Mpc"][:, ii],
-                    out_dict["k3d_Mpc"][:, ii] ** 3
-                    * out_dict["p3d_Mpc"][iz, :, ii]
-                    / 2
-                    / np.pi**2,
-                    col,
-                )

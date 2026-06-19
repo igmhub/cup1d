@@ -1,14 +1,10 @@
-import os
-import sys
 import numpy as np
 from scipy.interpolate import interp1d
 
-# from lace.cosmo import camb_cosmo
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
-from cup1d.p1ds import (
+from cup1d.p1ds.observations import (
     data_PD2013,
     data_Chabanier2019,
-    data_QMLE_Ohio,
     data_Karacayli2022,
     data_DESIY1,
 )
@@ -47,9 +43,7 @@ class Nyx_P1D(BaseMockP1D):
         self.input_sim = input_sim
 
         if apply_smoothing:
-            self.testing_data = super().set_smoothing_Mpc(
-                theory.emulator, testing_data
-            )
+            self.testing_data = super().set_smoothing_Mpc(theory.emulator, testing_data)
         else:
             print("No smoothing is applied")
             self.testing_data = testing_data
@@ -174,8 +168,6 @@ class Nyx_P1D(BaseMockP1D):
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)
         elif self.data_cov_label == "PD2013":
             data = data_PD2013.P1D_PD2013(add_syst=self.add_syst)
-        elif self.data_cov_label == "QMLE_Ohio":
-            data = data_QMLE_Ohio.P1D_QMLE_Ohio()
         elif self.data_cov_label == "Karacayli2022":
             data = data_Karacayli2022.P1D_Karacayli2022()
         elif self.data_cov_label.startswith("DESIY1"):
@@ -254,9 +246,7 @@ class Nyx_P1D(BaseMockP1D):
             j0 = ind0[np.argmin(abs(full_k_kms[i0] - data.full_k_kms[ind0]))]
             for i1 in range(len(full_Pk_kms)):
                 ind1 = np.argwhere(full_zs_cov[i1] == data.full_zs)[:, 0]
-                j1 = ind1[
-                    np.argmin(abs(full_k_kms[i1] - data.full_k_kms[ind1]))
-                ]
+                j1 = ind1[np.argmin(abs(full_k_kms[i1] - data.full_k_kms[ind1]))]
                 full_cov_kms[i0, i1] = data.full_cov_Pk_kms[j0, j1]
                 full_cov_stat_kms[i0, i1] = data.full_cov_stat_Pk_kms[j0, j1]
 

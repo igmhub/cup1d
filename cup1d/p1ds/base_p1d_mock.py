@@ -31,9 +31,7 @@ class BaseMockP1D(BaseDataP1D):
 
         if add_noise:
             warn("Perturbing data by adding Gaussian noise")
-            Pk_perturb_kms = self.get_Pk_iz_perturbed(
-                Pk_kms, cov_Pk_kms, seed=seed
-            )
+            Pk_perturb_kms = self.get_Pk_iz_perturbed(Pk_kms, cov_Pk_kms, seed=seed)
         else:
             Pk_perturb_kms = Pk_kms
 
@@ -64,9 +62,7 @@ class BaseMockP1D(BaseDataP1D):
         Pk_iz_perturb = []
 
         for iz in range(len(Pk_kms)):
-            _ = np.random.multivariate_normal(
-                Pk_kms[iz], cov_Pk_kms[iz], nsamples
-            )
+            _ = np.random.multivariate_normal(Pk_kms[iz], cov_Pk_kms[iz], nsamples)
             if nsamples == 1:
                 Pk_iz_perturb.append(_[0])
             else:
@@ -87,9 +83,7 @@ class BaseMockP1D(BaseDataP1D):
         apply_smoothing(emulator, list_data_Mpc, fprint=fprint)
 
         for ii in range(len(self.z)):
-            self.Pk_kms[ii] = (
-                list_data_Mpc[ii]["p1d_Mpc_smooth"] / self.dkms_dMpc[ii]
-            )
+            self.Pk_kms[ii] = list_data_Mpc[ii]["p1d_Mpc_smooth"] / self.dkms_dMpc[ii]
 
     def set_smoothing_Mpc(self, emulator, list_data_Mpc, fprint=print):
         """Smooth data in 1/Mpc"""
@@ -98,9 +92,7 @@ class BaseMockP1D(BaseDataP1D):
         print(list_data_Mpc[0]["k_Mpc"].max())
         for ii in range(len(list_data_Mpc)):
             if "p1d_Mpc_smooth" in list_data_Mpc[ii]:
-                list_data_Mpc[ii]["p1d_Mpc"] = list_data_Mpc[ii][
-                    "p1d_Mpc_smooth"
-                ]
+                list_data_Mpc[ii]["p1d_Mpc"] = list_data_Mpc[ii]["p1d_Mpc_smooth"]
 
         return list_data_Mpc
 

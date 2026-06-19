@@ -1,12 +1,10 @@
 # P1D data from fiducial eBOSS mock, created using nyx_central
 
 import os
-
-import pandas
 import numpy as np
 
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
-from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_eBOSS_mock(BaseMockP1D):
@@ -54,9 +52,7 @@ def read_from_file(diag_cov, input_sim, kmax_kms=None, old_cov=False):
         assert input_sim in all_input_sim
     except AssertionError:
         raise ValueError(
-            "Mock from input_sim="
-            + input_sim
-            + " not included. Available options: ",
+            "Mock from input_sim=" + input_sim + " not included. Available options: ",
             all_input_sim,
         )
     else:

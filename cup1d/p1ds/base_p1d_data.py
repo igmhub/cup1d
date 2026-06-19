@@ -1,6 +1,5 @@
-import os, sys
+import os
 import numpy as np
-from warnings import warn
 
 from cup1d.utils.utils import get_path_repo
 
@@ -253,9 +252,7 @@ class BaseDataP1D(object):
             plt.yscale("log", nonpositive="clip")
         if xlog:
             plt.xscale("log")
-        plt.xlabel(
-            r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize
-        )
+        plt.xlabel(r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
         if use_dimensionless:
             plt.ylabel(r"$\mathrm{\pi}^{-1}k_\parallel\,P(k)$", fontsize=ftsize)
         else:
