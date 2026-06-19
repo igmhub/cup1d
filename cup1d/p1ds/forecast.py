@@ -13,8 +13,13 @@ from cup1d.p1ds.simulations import (
 )
 
 
-class Mock_P1D(BaseMockP1D):
-    """Class to generate a mock P1D from another P1D object and a theory"""
+class Forecast_P1D(BaseMockP1D):
+    """Class to generate a Forecast P1D
+
+    Provide data_label to load covariance matrix and range of redshifts and scales from observation
+
+    Provide theory with an emulator to generate P1D signal at the same redshifts and scales as the data_label
+    """
 
     def __init__(
         self,

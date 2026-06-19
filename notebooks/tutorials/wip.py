@@ -44,7 +44,6 @@ from cup1d.likelihood.plotter import Plotter
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import Pipeline
 
-from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
 from astropy.io import fits
 
 
@@ -55,6 +54,26 @@ from cup1d.utils.utils import get_path_repo
 from scipy.stats import chi2 as chi2_scipy
 from cup1d.pipeline.set_archive import set_archive
 
+
+# %%
+data_label = ["DESIY1_QMLE3"]
+emulator_label = "CH24_mpgcen_gpr"
+args = Args(
+    data_label=data_label,
+    emulator_label=emulator_label,
+)
+
+args.set_baseline(
+    fit_type="global_opt",
+    fix_cosmo=False,
+    P1D_type=data_label,
+)
+
+pip = Pipeline(args)
+
+# %%
+
+# %%
 
 # %%
 # Name, Box Mpc, Resolution kpc; h=67.5
@@ -90,52 +109,70 @@ emulator_label = "CH24_mpgcen_gpr"
 # data_label = "nyx_seed"
 # data_label = "nyx_cgan_base"
 # data_label = "accel2"
-data_label = "sherwood"
+# data_label = "sherwood"
 
 # data_label = "mpg_central"
 # data_label = "mpg_seed"
 # data_label = "nyx_seed"
 
-if data_label == "mpg_central":
-    zmin=2.2
-    zmax=4.2
-elif data_label == "nyx_central":
-    zmin=2.2
-    zmax=4.2
-else:
-    zmin=2.2
-    zmax=4.2
+# if data_label == "mpg_central":
+#     zmin=2.2
+#     zmax=4.2
+# elif data_label == "nyx_central":
+#     zmin=2.2
+#     zmax=4.2
+# else:
+#     zmin=2.2
+#     zmax=4.2
 
 cov_label="DESIY1_QMLE3"
-true_cosmo_label = data_label
-fid_cosmo_label = data_label
-name_variation= "sim_" + data_label
+# true_cosmo_label = data_label
+# fid_cosmo_label = data_label
+data_label = "forecast_DESIY1_QMLE3"
+# name_variation= "sim_" + data_label
 # name_variation= "sim_" + data_label + "_igm"
 # name_variation= "sim_" + data_label + "_igm0"
-fit_type = "global_opt"
+# fit_type = "global_opt"
 # name_variation = None
+
+# args = Args(
+#     data_label=data_label,
+#     cov_label=cov_label,
+#     emulator_label=emulator_label,
+#     true_cosmo_label=true_cosmo_label,
+#     apply_smoothing=True,
+#     add_noise=False,
+#     seed_noise=0,
+#     emu_cov_type="full",
+# )
+
+
+# args.set_baseline(
+#     fit_type=fit_type,
+#     fix_cosmo=False,
+#     fid_cosmo_label=fid_cosmo_label,
+#     P1D_type=cov_label,
+#     name_variation=name_variation,
+#     z_min=zmin,
+#     z_max=zmax,
+#     mcmc_conf="explore",
+# )
 
 args = Args(
     data_label=data_label,
-    cov_label=cov_label,
     emulator_label=emulator_label,
-    true_cosmo_label=data_label,
-    apply_smoothing=True,
-    add_noise=False,
-    seed_noise=0,
-    emu_cov_type="full",
 )
 
 args.set_baseline(
-    fit_type=fit_type,
+    fit_type="global_opt",
     fix_cosmo=False,
-    fid_cosmo_label=data_label,
-    P1D_type=cov_label,
-    name_variation=name_variation,
-    z_min=zmin,
-    z_max=zmax,
-    mcmc_conf="explore",
+    P1D_type=data_label,
 )
+
+pip = Pipeline(args)
+
+# %%
+pip.fitter.like.plot_p1d()
 
 # %%
 
@@ -301,7 +338,7 @@ name_variation = None
 ###
 
 
-data_label = "DESIY1_QMLE3"
+data_label = ["DESIY1_QMLE3"]
 # data_label = "DESIY1_QMLE"
 # data_label = "DESIY1_FFT3_dir"
 

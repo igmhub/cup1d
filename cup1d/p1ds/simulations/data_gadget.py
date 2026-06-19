@@ -27,6 +27,7 @@ class Gadget_P1D(BaseMockP1D):
         z_min=0,
         z_max=10,
         p1d_fname=None,
+        path_data=None,
         interp_to_cov=False,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:

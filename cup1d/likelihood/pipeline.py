@@ -104,14 +104,13 @@ class Pipeline(object):
         )
 
         if rank == 0:
-            data = {"P1Ds": None, "extra_P1Ds": None}
+            data = {}
             fprint("----------")
             fprint("Setting P1Ds")
-            data["P1Ds"] = set_P1D(args, theory=true_theory, archive=archive)
-
-            if args.data_label_hires is not None:
-                data["extra_P1Ds"] = set_P1D(
-                    args, theory=true_theory, archive=archive
+            for data_label in args.data_label:
+                fprint("Setting P1D for", data_label)
+                data[data_label] = set_P1D(
+                    args, data_label, theory=true_theory, archive=archive
                 )
 
             fprint("Done setting P1Ds")
@@ -123,10 +122,10 @@ class Pipeline(object):
             # get testing_data from task 0
             data = comm.recv(source=0, tag=(rank + 1) * 5)
 
-        if args.data_label_hires is not None:
-            zs = np.concatenate([data["P1Ds"].z, data_hires["extra_P1Ds"].z])
-        else:
-            zs = data["P1Ds"].z
+        zs = []
+        for data_label in args.data_label:
+            zs.append(data[data_label].z)
+        zs = np.unique(np.concatenate(zs))
 
         theory = set_theory(
             args,
@@ -138,9 +137,8 @@ class Pipeline(object):
         )
 
         like = Likelihood(
-            data["P1Ds"],
+            data,
             theory,
-            extra_data=data["extra_P1Ds"],
             free_param_names=free_parameters,
             cov_factor=args.cov_factor,
             emu_cov_type=args.emu_cov_type,
@@ -255,9 +253,7 @@ class Pipeline(object):
 
             # distribute best_fit to all tasks
             for irank in range(1, size):
-                comm.send(
-                    self.fitter.mle_cube, dest=irank, tag=(irank + 1) * 13
-                )
+                comm.send(self.fitter.mle_cube, dest=irank, tag=(irank + 1) * 13)
         else:
             # get testing_data from task 0
             self.fitter.mle_cube = comm.recv(source=0, tag=(rank + 1) * 13)

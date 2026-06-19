@@ -10,11 +10,12 @@ from scipy.linalg import block_diag
 from lace.cosmo import camb_cosmo
 from cup1d.utils.utils import is_number_string
 from cup1d.utils.compute_hessian import get_hessian
+from cup1d.utils import rebinning
 
 from cup1d.utils.utils import split_string
 from cup1d.utils.utils import get_path_repo
+from cup1d.utils import blinding
 
-from cup1d.utils.various_dicts import conv_strings
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
@@ -22,19 +23,6 @@ from matplotlib import rcParams
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
-
-
-def get_bin_coverage(xmin_o, xmax_o, xmin_n, xmax_n):
-    """Trick to accelerate rebinning"""
-    # check out https://stcorp.github.io/harp/doc/html/algorithms/regridding.html
-    cover = np.zeros((len(xmin_n), len(xmin_o)))
-    for jj in range(len(xmin_n)):
-        cover[jj] = np.fmax(
-            (np.fmin(xmax_o, xmax_n[jj]) - np.fmax(xmin_o, xmin_n[jj]))
-            / (xmax_o - xmin_o),
-            0,
-        )
-    return cover
 
 
 class Likelihood(object):
@@ -50,7 +38,6 @@ class Likelihood(object):
         cov_factor=1.0,
         prior_Gauss_rms=None,
         emu_cov_type="block",
-        extra_data=None,
         min_log_like=-1e100,
         args=None,
         start_from_min=True,
@@ -76,34 +63,11 @@ class Likelihood(object):
         self.emu_cov_type = emu_cov_type
         self.min_log_like = min_log_like
         self.data = data
-        self.extra_data = extra_data
         # we only do this for latter save all relevant after fitting the model
         self.args = args
 
-        if self.args.rebin_k != 1:
-            self.rebin = {}
-            self.rebin["k_kms"] = []  # new k_kms
-            self.rebin["cover"] = []  # to accelerate rebinning
-            self.rebin["sum_cover"] = []  # to accelerate rebinning
-            for iz in range(len(self.data.z)):
-                nelem = len(self.data.k_kms[iz]) * self.args.rebin_k
-                _kms_reb = np.linspace(
-                    self.data.k_kms_min[iz][0] * 0.95,
-                    self.data.k_kms_max[iz][-1] * 1.05,
-                    nelem,
-                )
-                self.rebin["k_kms"].append(_kms_reb)
-                xmin_o = _kms_reb - 0.5 * (_kms_reb[1] - _kms_reb[0])
-                xmax_o = _kms_reb + 0.5 * (_kms_reb[1] - _kms_reb[0])
-
-                _cover = get_bin_coverage(
-                    xmin_o,
-                    xmax_o,
-                    self.data.k_kms_min[iz],
-                    self.data.k_kms_max[iz],
-                )
-                self.rebin["cover"].append(_cover)
-                self.rebin["sum_cover"].append(np.sum(_cover, axis=1))
+        # set a class containing the rebinned data
+        self.Rebin_data = rebinning.Rebinning(self.data, rebin_k=args.rebin_k)
 
         self.theory = theory
         # Set inverse covariance. We do it here so we can account for emulator error
@@ -117,17 +81,26 @@ class Likelihood(object):
 
         self.set_Gauss_priors()
 
-        # sometimes we want to know the true theory (when working with mocks)
+        # TBD (should be hanging from mock), true model (when working with mocks)
         self.set_truth()
 
-        # store also fiducial model
-        self.set_fid()
+        # store model
+        self.set_model()
 
         # set blinding
-        self.set_blinding()
+        apply_blinding = False
+        seed = 0
+        # apply blinding if any of the data sets has apply_blinding set to True
+        for key in self.data:
+            if self.data[key].apply_blinding:
+                apply_blinding = True
+                seed = int.from_bytes(
+                    self.data[key].blinding.encode("utf-8"), byteorder="big"
+                )
+                break
+        self.blind = blinding.set_blinding(apply_blinding, seed)
 
-        # set like to good starting point
-
+        # set IC for likelihood
         if start_from_min and (args.file_ic is not None):
             if os.path.isfile(args.file_ic):
                 if self.rank == 0:
@@ -143,22 +116,6 @@ class Likelihood(object):
             else:
                 if self.rank == 0:
                     print("No best fit found to set ICs:", args.file_ic)
-
-    def rebinning(self, zs, Pk_kms_finek):
-        """For rebinning Pk predictions"""
-        Pk_kms_origk = []
-        # _Pk_kms_finek = np.atleast_1d(Pk_kms_finek)
-        for iz in range(len(zs)):
-            indz = np.argmin(np.abs(self.data.z - zs[iz]))
-            _Pk_kms = (
-                np.sum(
-                    self.rebin["cover"][indz] * Pk_kms_finek[iz][np.newaxis, :],
-                    axis=1,
-                )
-                / self.rebin["sum_cover"][indz]
-            )
-            Pk_kms_origk.append(_Pk_kms)
-        return Pk_kms_origk
 
     def set_Gauss_priors(self):
         """
@@ -184,51 +141,6 @@ class Likelihood(object):
             pass
         else:
             self.Gauss_priors = None
-
-    def set_blinding(self):
-        """Set the blinding parameters"""
-        blind_prior = {"Delta2_star": 0.05, "n_star": 0.01, "alpha_star": 0.005}
-        if self.data.apply_blinding:
-            seed = int.from_bytes(self.data.blinding.encode("utf-8"), byteorder="big")
-            rng = np.random.default_rng(seed)
-        self.blind = {}
-        for key in blind_prior:
-            if self.data.apply_blinding:
-                self.blind[key] = rng.normal(0, blind_prior[key])
-            else:
-                self.blind[key] = 0
-
-    def apply_blinding(self, dict_cosmo, conv=False, sample=None):
-        """Apply blinding to the dict_cosmo"""
-
-        if self.data.apply_blinding:
-            if sample is not None:
-                if self.rank == 0:
-                    print("Blinding " + sample)
-            for key in self.blind:
-                if conv:
-                    key2 = conv_strings[key]
-                else:
-                    key2 = key
-
-                try:
-                    dict_cosmo[key2] += self.blind[key]
-                except:
-                    pass
-
-        return dict_cosmo
-
-    def apply_unblinding(self, dict_cosmo, conv=False):
-        """Apply unblinding to the dict_cosmo"""
-        out_dict = copy.deepcopy(dict_cosmo)
-        for key in self.blind:
-            if conv:
-                key2 = conv_strings[key]
-            else:
-                key2 = key
-            if key2 in dict_cosmo:
-                out_dict[key2] = dict_cosmo[key2] - self.blind[key]
-        return out_dict
 
     def set_icov(self):
         """
@@ -287,30 +199,24 @@ class Likelihood(object):
         # dict_save["k_Mpc_zk"] = k_Mpc_k
         # dict_save["cov_zk"] = cov
 
+        # split in redshifts
+        self.icov_Pk_kms = {}
+        self.cov_Pk_kms = {}
+        self.cov_emu_Pk_kms = {}
+        # all redshifts together, for full Pk
+        self.full_icov_Pk_kms = {}
+        self.full_cov_Pk_kms = {}
+        self.emu_full_cov_Pk_kms = {}
+
         # Iterate over both datasets: main dataset (idata = 0) and additional dataset (idata = 1)
-        for idata in range(2):
-            if idata == 0:  # Main dataset
-                data = self.data
-                # Initialize list to store inverse covariance matrices for Pk_kms
-                self.icov_Pk_kms = []
-                self.cov_Pk_kms = []
-                self.cov_emu_Pk_kms = []
-                # Initialize the full inverse covariance matrix for Pk_kms
-                self.full_icov_Pk_kms = None
-                self.full_cov_Pk_kms = None
-            else:  # Additional dataset
-                data = self.extra_data
-                # Initialize list for extra inverse covariance matrices
-                self.extra_icov_Pk_kms = []
-                self.extra_cov_Pk_kms = []
-                self.extra_cov_emu_Pk_kms = []
-                # Initialize the full inverse covariance matrix for extra data
-                self.extra_full_icov_Pk_kms = None
-                self.extra_full_cov_Pk_kms = None
+        for key in self.data:
+            data = self.data[key]
+            # initialize, to store the results for different redshifts
+            icov_Pk_kms = []
+            cov_Pk_kms = []
+            cov_emu_Pk_kms = []
 
-            if data is None:  # Skip if no data is provided for this dataset
-                continue
-
+            # TBD need to ensure that we have a Pksmooth_kms for the emulator covariance
             if data.Pksmooth_kms is not None:
                 pksmooth = data.Pksmooth_kms
             else:
@@ -383,14 +289,13 @@ class Likelihood(object):
                 cov *= self.cov_factor["val_full"][ind] ** 2
 
                 # Compute and store the inverse covariance matrix
-                if idata == 0:
-                    self.icov_Pk_kms.append(np.linalg.inv(cov))
-                    self.cov_Pk_kms.append(cov)
-                    self.cov_emu_Pk_kms.append(add_emu_cov_kms)
-                else:
-                    self.extra_icov_Pk_kms.append(np.linalg.inv(cov))
-                    self.extra_cov_Pk_kms.append(cov)
-                    self.extra_cov_emu_Pk_kms.append(add_emu_cov_kms)
+                icov_Pk_kms.append(np.linalg.inv(cov))
+                cov_Pk_kms.append(cov)
+                cov_emu_Pk_kms.append(add_emu_cov_kms)
+
+            self.icov_Pk_kms[key] = icov_Pk_kms
+            self.cov_Pk_kms[key] = cov_Pk_kms
+            self.cov_emu_Pk_kms[key] = cov_emu_Pk_kms
 
             # Process the full power spectrum data if available
             if data.full_Pk_kms is not None:
@@ -497,14 +402,9 @@ class Likelihood(object):
                         cov[i0, i1] = cov[i0, i1] * fact0 * fact1
 
                 # Compute and store the inverse covariance matrix
-                if idata == 0:
-                    self.full_icov_Pk_kms = np.linalg.inv(cov)
-                    self.full_cov_Pk_kms = cov
-                    self.emu_full_cov_Pk_kms = full_emu_cov
-                else:
-                    self.extra_full_icov_Pk_kms = np.linalg.inv(cov)
-                    self.extra_full_cov_Pk_kms = cov
-                    self.extra_emu_full_cov_Pk_kms = full_emu_cov
+                self.full_icov_Pk_kms[key] = np.linalg.inv(cov)
+                self.full_cov_Pk_kms[key] = cov
+                self.emu_full_cov_Pk_kms[key] = full_emu_cov
 
     def set_free_parameters(self, free_param_names, free_param_limits):
         """Setup likelihood parameters that we want to vary"""
@@ -687,7 +587,7 @@ class Likelihood(object):
             #         par.name
             #     ] = par.get_value_in_cube(self.truth["cont"][par.name])
 
-    def set_fid(self):
+    def set_model(self):
         """Store fiducial cosmology assumed for the fit"""
 
         self.fid = {}
@@ -721,8 +621,6 @@ class Likelihood(object):
 
     def get_p1d_kms(
         self,
-        zs=None,
-        _k_kms=None,
         values=None,
         return_covar=False,
         return_blob=False,
@@ -730,22 +628,7 @@ class Likelihood(object):
         apply_hull=True,
         remove=None,
     ):
-        """Compute theoretical prediction for 1D P(k)"""
-
-        if _k_kms is None:
-            k_kms = self.data.k_kms
-        else:
-            k_kms = _k_kms
-
-        if zs is None:
-            zs = self.data.z
-
-        if self.args.rebin_k != 1:
-            k_kms = []
-            zs = np.atleast_1d(zs)
-            for iz in range(len(zs)):
-                ind = np.argmin(np.abs(zs[iz] - self.data.z))
-                k_kms.append(self.rebin["k_kms"][ind])
+        """Compute theoretical prediction for P1D"""
 
         # translate sampling point (in unit cube) to parameter values
         if values is not None:
@@ -753,36 +636,35 @@ class Likelihood(object):
         else:
             like_params = []
 
-        results = self.theory.get_p1d_kms(
-            zs,
-            k_kms,
-            like_params=like_params,
-            return_covar=return_covar,
-            return_blob=return_blob,
-            return_emu_params=return_emu_params,
-            apply_hull=apply_hull,
-            remove=remove,
-        )
+        all_p1ds = {}
+        other_stuff = {}
+        for key in self.Rebin_data.zs:
+            _results = self.theory.get_p1d_kms(
+                self.Rebin_data.zs[key],
+                self.Rebin_data.k_kms[key],
+                like_params=like_params,
+                return_covar=return_covar,
+                return_blob=return_blob,
+                return_emu_params=return_emu_params,
+                apply_hull=apply_hull,
+                remove=remove,
+            )
+            if _results is None:
+                return None
 
-        if results is None:
-            return None
+            if return_blob | return_emu_params:
+                p1ds = _results[0]
+            else:
+                p1ds = _results
 
-        out = []
-        if return_blob | return_emu_params:
-            p1ds = results[0]
-        else:
-            p1ds = results
+            all_p1ds[key] = self.Rebin_data.rebinning(key, p1ds)
 
-        if self.args.rebin_k == 1:
-            out.append(p1ds)
-        else:
-            out.append(self.rebinning(zs, p1ds))
+            other_stuff[key] = []
+            if return_blob | return_emu_params:
+                for ii in range(1, len(_results)):
+                    other_stuff[key].append(_results[ii])
 
-        if return_blob | return_emu_params:
-            for ii in range(1, len(results)):
-                out.append(results[ii])
-
-        return out
+        return all_p1ds, other_stuff
 
     def get_chi2(self, values=None, return_all=False, zmask=None):
         """Compute chi2 using data and theory, without adding
@@ -792,10 +674,16 @@ class Likelihood(object):
             values, ignore_log_det_cov=True, zmask=zmask
         )
 
+        chi2_eachz = {}
+        for key in log_like_all:
+            chi2_eachz[key] = -2.0 * log_like_all[key]
+
+        chi2_total = -2.0 * log_like
+
         if return_all:
-            return -2.0 * log_like, -2.0 * log_like_all
+            return chi2_total, chi2_eachz
         else:
-            return -2.0 * log_like
+            return chi2_total
 
     def get_error(self, p0):
         # get hessian to compute errors
@@ -840,94 +728,27 @@ class Likelihood(object):
             if (values > 1.0).any() | (values < 0.0).any():
                 return null_out
 
-        # ask emulator prediction for P1D in each bin
-        if zmask is not None:
-            emu_p1d = []
-            for iz in range(len(self.data.z)):
-                ind = np.argwhere(np.abs(zmask - self.data.z[iz]) < 1e-3)
-                if len(ind) == 0:
-                    emu_p1d.append(0)
-                else:
-                    _res = self.get_p1d_kms(
-                        np.atleast_1d(self.data.z[iz]),
-                        np.atleast_2d(self.data.k_kms[iz]),
-                        values,
-                        return_blob=return_blob,
-                    )
-                    if _res is None:
-                        return null_out
-
-                    if return_blob:
-                        blob = _res[1]
-
-                    emu_p1d.append(_res[0])
+        # evaluate model
+        _res = self.get_p1d_kms(values, return_blob=return_blob)
+        if _res is None:
+            return null_out
         else:
-            _res = self.get_p1d_kms(
-                self.data.z, self.data.k_kms, values, return_blob=return_blob
-            )
-            if _res is None:
-                return null_out
-
             if return_blob:
                 emu_p1d, blob = _res
             else:
-                emu_p1d = _res
+                emu_p1d = _res[0]
 
-        # out of priors
-        if len(emu_p1d) == 1:
-            if (len(emu_p1d[0]) == 1) | (len(emu_p1d[0]) == len(self.data.z)):
-                emu_p1d = emu_p1d[0]
-
-        # use high-res data
-        if self.extra_data is not None:
-            length = 2
-            nz = np.max([len(self.data.z), len(self.extra_data.z)])
-
-            if zmask is not None:
-                _res = []
-                for iz in range(len(self.extra_data.z)):
-                    ind = np.argwhere(np.abs(zmask - self.extra_data.z[iz]) < 1e-3)
-                    if len(ind) == 0:
-                        _res.append(0)
-                    else:
-                        _res = self.get_p1d_kms(
-                            np.atleast_1d(self.extra_data.z[iz]),
-                            np.atleast_1d(self.extra_data.k_kms[iz]),
-                            values,
-                            return_blob=return_blob,
-                        )
-            else:
-                _res = self.get_p1d_kms(
-                    self.extra_data.z,
-                    self.extra_data.k_kms,
-                    values,
-                    return_blob=return_blob,
-                )
-
-            emu_p1d_extra = _res
-            # out of priors
-            if emu_p1d_extra is None:
-                return null_out
-
-        else:
-            length = 1
-            nz = len(self.data.z)
-
-        # compute log like contribution from each redshift bin
-        log_like_all = np.zeros((length, nz))
+        # compute log like contribution from each sample and redshift bin
+        log_like_all = {}
         log_like = 0
-        # loop over low and high res data
-        for ii in range(length):
-            if ii == 0:
-                emu_p1d_use = emu_p1d
-                data = self.data
-                icov_Pk_kms = self.icov_Pk_kms
-                full_icov_Pk_kms = self.full_icov_Pk_kms
-            else:
-                emu_p1d_use = emu_p1d_extra
-                data = self.extra_data
-                icov_Pk_kms = self.extra_icov_Pk_kms
-                full_icov_Pk_kms = self.extra_full_icov_Pk_kms
+        for key in self.Rebin_data.zs:
+
+            log_like_all[key] = np.zeros((self.Rebin_data.zs[key].shape[0]))
+
+            emu_p1d_use = emu_p1d[key]
+            data = self.data[key]
+            icov_Pk_kms = self.icov_Pk_kms[key]
+            full_icov_Pk_kms = self.full_icov_Pk_kms[key]
 
             # loop over redshift bins
             for iz in range(len(data.z)):
@@ -945,13 +766,13 @@ class Likelihood(object):
                 # print(iz, chi2_z)
                 # check whether to add determinant of covariance as well
                 if ignore_log_det_cov:
-                    log_like_all[ii, iz] = -0.5 * chi2_z
+                    log_like_all[key][iz] = -0.5 * chi2_z
                 else:
                     log_det_cov = np.log(np.abs(1 / np.linalg.det(icov_Pk_kms[iz])))
-                    log_like_all[ii, iz] = -0.5 * (chi2_z + log_det_cov)
+                    log_like_all[key][iz] = -0.5 * (chi2_z + log_det_cov)
 
             if (full_icov_Pk_kms is None) | (zmask is not None):
-                log_like += np.sum(log_like_all[ii])
+                log_like += np.sum(log_like_all[key])
             else:
                 # compute chi2 using full cov
                 diff = data.full_Pk_kms - np.concatenate(emu_p1d_use)
@@ -1079,7 +900,7 @@ class Likelihood(object):
 
         return minimize(self.minus_log_prob, x0=initial_values, method=method, tol=tol)
 
-    def plot_p1d(
+    def old_plot_p1d(
         self,
         values=None,
         plot_every_iz=1,
@@ -1186,22 +1007,6 @@ class Likelihood(object):
                 )
                 chi2_all.append(_chi2)
             chi2 = np.sum(chi2_all)
-            # account for extra_data
-            chi2_all = np.array([chi2_all])
-
-        if self.extra_data is not None:
-            _res = self.get_p1d_kms(
-                self.extra_data.z,
-                self.extra_data.k_kms,
-                values,
-                return_covar=return_covar,
-            )
-            if _res is None:
-                return print("Prior out of range")
-            if return_covar:
-                emu_p1d_extra, emu_cov_extra = _res
-            else:
-                emu_p1d_extra = _res
 
         # if rand_posterior is not None:
         #     Nz = len(self.data.z)
@@ -1561,6 +1366,498 @@ class Likelihood(object):
                     out["extra_p1d_err"].append(p1d_err)
                     out["extra_chi2"].append(chi2_all[ii, iz])
                     out["extra_prob"].append(prob)
+
+            # ax[ii].plot(k_kms[0], 1, linestyle="-", label="Data", color="k")
+            # ax[ii].plot(k_kms[0], 1, linestyle="--", label="Fit", color="k")
+            if residuals:
+                if plot_panels == False:
+                    axs.legend(fontsize=fontsize)
+            else:
+                ax[ii].legend(loc="lower right", ncol=4, fontsize=fontsize - 4)
+
+            # ax[ii].set_xlim(min(k_kms[0]) - 0.001, max(k_kms[-1]) + 0.001)
+            # if plot_panels == False:
+            # ax[ii].set_xlabel(r"$k_\parallel$ [s/km]")
+            # else:
+            # ax[-1].set_xlabel(r"$k_\parallel$ [s/km]")
+
+            if residuals:
+                if plot_panels == False:
+                    ax[ii].set_ylabel(
+                        r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$",
+                        fontsize=fontsize,
+                    )
+                    ax[ii].set_ylim(ymin - 0.3, ymax + 0.3)
+            else:
+                ax[ii].set_ylim(0.8 * ymin, 1.3 * ymax)
+                ax[ii].set_yscale("log")
+                ax[ii].set_ylabel(
+                    r"$k_\parallel \, P_{\rm 1D}(z, k_\parallel) / \pi$",
+                    fontsize=fontsize,
+                )
+
+        if ylims is not None:
+            ax[0].set_ylim(ylims[0, 0], ylims[0, 1])
+            ax[3].set_ylim(ylims[1, 0], ylims[1, 1])
+            ax[6].set_ylim(ylims[2, 0], ylims[2, 1])
+            ax[9].set_ylim(ylims[3, 0], ylims[3, 1])
+
+        fig.supxlabel(r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize)
+        fig.supylabel(
+            r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$",
+            fontsize=fontsize,
+        )
+
+        plt.tight_layout()
+
+        plt.subplots_adjust(wspace=0.05, hspace=0.1)
+        if plot_fname is not None:
+            plt.savefig(plot_fname + ".pdf")
+            plt.savefig(plot_fname + ".png")
+        else:
+            if show:
+                plt.show()
+
+        if return_all:
+            return out
+        elif store_data:
+            return out_data
+        else:
+            return
+
+    def plot_p1d(
+        self,
+        values=None,
+        plot_every_iz=1,
+        residuals=False,
+        plot_fname=None,
+        rand_posterior=None,
+        show=True,
+        return_covar=False,
+        print_ratio=False,
+        print_chi2=True,
+        return_all=False,
+        collapse=False,
+        plot_realizations=True,
+        zmask=None,
+        n_perturb=0,
+        plot_panels=False,
+        z_at_time=False,
+        fontsize=20,
+        glob_full=False,
+        fix_cosmo=False,
+        n_param_glob_full=16,
+        chi2_nozcov=False,
+        ylims=None,
+        store_data=False,
+    ):
+        """Plot P1D in theory vs data. If plot_every_iz >1,
+        plot only few redshift bins"""
+
+        if store_data:
+            out_data = {}
+
+        if (zmask is not None) | (plot_realizations == False):
+            n_perturb = 0
+
+        # if zmask is None:
+        #     _data_z = self.data.z
+        #     _data_k_kms = self.data.k_kms
+        # else:
+        #     _data_z = []
+        #     _data_k_kms = []
+        #     for iz in range(len(self.data.z)):
+        #         _ = np.argwhere(np.abs(zmask - self.data.z[iz]) < 1e-3)
+        #         if len(_) != 0:
+        #             _data_z.append(self.data.z[iz])
+        #             _data_k_kms.append(self.data.k_kms[iz])
+        #     _data_z = np.array(_data_z)
+
+        # z at time fits or full fit
+        if z_at_time is False:
+            _res = self.get_p1d_kms(values, return_covar=return_covar)
+            if _res is None:
+                return print("Prior out of range")
+            if return_covar:
+                emu_p1d, emu_cov = _res
+            else:
+                emu_p1d = _res
+
+            if len(emu_p1d) == 1:
+                emu_p1d = emu_p1d[0]
+
+            # the sum of chi2_all may be different from chi2 due to covariance
+            chi2, chi2_all = self.get_chi2(values=values, return_all=True, zmask=zmask)
+
+            if chi2_nozcov:
+                chi2 = np.sum(chi2_all)
+
+        else:
+            emu_p1d = []
+            chi2_all = []
+            ndeg_all = []
+            for iz in range(len(_data_z)):
+                _res = self.get_p1d_kms(
+                    _data_z[iz],
+                    _data_k_kms[iz],
+                    values[iz],
+                    return_covar=return_covar,
+                )
+                _ = np.argwhere(values[iz] != 0)[:, 0]
+                # print(iz, len(_data_k_kms[iz]), len(_))
+                ndeg_all.append(len(_data_k_kms[iz]) - len(_))
+                if _res is None:
+                    return print("Prior out of range for z = ", _data_z[iz])
+                if return_covar:
+                    emu_p1d.append(_res[0])
+                else:
+                    if len(_res) == 1:
+                        emu_p1d.append(_res[0])
+                    else:
+                        emu_p1d.append(_res)
+
+                _chi2, _ = self.get_chi2(
+                    values=values[iz],
+                    return_all=True,
+                    zmask=np.array([_data_z[iz]]),
+                )
+                chi2_all.append(_chi2)
+            chi2 = np.sum(chi2_all)
+            # account for extra_data
+            chi2_all = np.array([chi2_all])
+
+        # if rand_posterior is not None:
+        #     Nz = len(self.data.z)
+        #     rand_emu = np.zeros((rand_posterior.shape[0], Nz, len(k_emu_kms)))
+        #     for ii in range(rand_posterior.shape[0]):
+        #         rand_emu[ii] = self.get_p1d_kms(
+        #             self.data.z, k_emu_kms, rand_posterior[ii]
+        #         )
+        #     err_posterior = np.std(rand_emu, axis=0)
+
+        #     if self.extra_data is not None:
+        #         Nz = len(self.extra_data.z)
+        #         rand_emu_extra = np.zeros(
+        #             (rand_posterior.shape[0], Nz, len(k_emu_kms_extra))
+        #         )
+        #         for ii in range(rand_posterior.shape[0]):
+        #             rand_emu_extra[ii] = self.get_p1d_kms(
+        #                 self.extra_data.z, k_emu_kms_extra, rand_posterior[ii]
+        #             )
+        #         err_posterior_extra = np.std(rand_emu_extra, axis=0)
+
+        if plot_panels:
+            nrows = len(_data_z) // 3
+            if len(_data_z) % 3 != 0:
+                nrows += 1
+            if nrows == 0:
+                nrows = 1
+            fig, ax = plt.subplots(
+                nrows, 3, figsize=(12, nrows * 2), sharex=True, sharey="row"
+            )
+            if len(_data_z) == 1:
+                ax = [ax]
+            else:
+                ax = ax.reshape(-1)
+                if len(_data_z) % 2 != 0:
+                    ax[-1].axis("off")
+
+            length = 1
+        else:
+            fig, ax = plt.subplots(1, 1, figsize=(14, 8))
+            length = 1
+            ax = [ax]
+
+        # figure out y range for plot
+        ymin = 1e10
+        ymax = -1e10
+
+        # print chi2
+        if z_at_time is False:
+            n_free_p = len(self.free_params)
+            ndeg = 0
+            for key in self.data:
+                data = self.data[key]
+                for iz in range(len(data.k_kms)):
+                    ndeg += np.sum(data.Pk_kms[iz] != 0)
+            _ndeg = ndeg - n_free_p
+            if fix_cosmo:
+                _ndeg -= 2
+        else:
+            _ndeg = np.sum(ndeg_all)
+        prob = chi2_scipy.sf(chi2, _ndeg)
+        if self.rank == 0:
+            print(prob * 100)
+
+        if prob > 0.0001:
+            str_chi2 = str(np.round(prob * 100, 2))
+        else:
+            str_chi2 = str(np.round(prob * 100, 4))
+        label = (
+            r"$\chi^2=$"
+            + str(np.round(chi2, 2))
+            + r", $n_\mathrm{deg}$="
+            + str(_ndeg)
+            + ", prob="
+            + str_chi2
+            + "%"
+        )
+
+        fig.suptitle(label, fontsize=fontsize)
+
+        out = {}
+
+        for ii, key in enumerate(self.data):
+            data = self.data[key]
+            # TBD (fix 0)
+            emu_p1d_use = emu_p1d[0][key]
+            if return_covar:
+                emu_cov_use = emu_cov[key]
+            if rand_posterior is not None:
+                err_posterior_use = err_posterior
+            out[key] = {}
+
+            out[key]["zs"] = []
+            out[key]["k_kms"] = []
+            out[key]["p1d_data"] = []
+            out[key]["p1d_model"] = []
+            out[key]["p1d_err"] = []
+            out[key]["chi2"] = []
+            out[key]["prob"] = []
+
+            if n_perturb > 0:
+                full_emu_p1d = np.concatenate(emu_p1d_use)
+                perturb = np.random.multivariate_normal(
+                    full_emu_p1d, self.full_cov_Pk_kms, n_perturb
+                )
+
+            zs = data.z
+            Nz = len(zs)
+
+            # plot only few redshifts for clarity
+            for iz in range(0, Nz, plot_every_iz):
+                if zmask is not None:
+                    indemu = np.argwhere(np.abs(zmask - zs[iz]) < 1e-3)[:, 0]
+                    if len(indemu) == 0:
+                        continue
+                    else:
+                        indemu = indemu[0]
+                else:
+                    indemu = iz
+                # access data for this redshift
+                z = zs[iz]
+                k_kms = data.k_kms[iz]
+                p1d_data = data.Pk_kms[iz]
+                p1d_cov = self.cov_Pk_kms[key][iz]
+                p1d_err = np.sqrt(np.diag(p1d_cov))
+                p1d_theory = emu_p1d_use[indemu]
+                if len(p1d_theory) == 1:
+                    p1d_theory = p1d_theory[0]
+
+                if rand_posterior is None:
+                    if return_covar:
+                        cov_theory = emu_cov_use[iz]
+                        err_theory = np.sqrt(np.diag(cov_theory))
+                else:
+                    err_theory = err_posterior_use[iz]
+
+                # plot everything
+                if Nz > 1:
+                    col = plt.cm.jet(iz / (Nz - 1))
+                    if collapse:
+                        yshift = 0
+                    else:
+                        yshift = 4 * iz / (Nz - 1)
+                else:
+                    col = "C0"
+                    yshift = 0
+
+                if plot_panels:
+                    col = "C0"
+                    yshift = 0
+
+                if residuals:
+                    if plot_panels:
+                        axs = ax[indemu]
+                        yshift = 0
+                    else:
+                        axs = ax[ii]
+
+                    try:
+                        axs = axs[0]
+                    except:
+                        pass
+
+                    axs.tick_params(axis="both", which="major", labelsize=fontsize)
+
+                    if store_data:
+                        out_data["x" + str(iz)] = k_kms
+                        out_data["y" + str(iz)] = p1d_data / p1d_theory + yshift
+                        out_data["yerr" + str(iz)] = p1d_err / p1d_theory
+                    # shift data in y axis for clarity
+                    axs.errorbar(
+                        k_kms,
+                        p1d_data / p1d_theory + yshift,
+                        color=col,
+                        yerr=p1d_err / p1d_theory,
+                        fmt="o",
+                        ms="4",
+                        label="z=" + str(np.round(z, 2)),
+                    )
+
+                    ind = self.data.full_zs == z
+                    for kk in range(n_perturb):
+                        axs.plot(
+                            k_kms,
+                            perturb[kk, ind] / p1d_theory + yshift,
+                            color=col,
+                            alpha=0.025,
+                        )
+
+                    # print chi2
+                    xpos = k_kms[0]
+                    ndeg = np.sum(p1d_data != 0)
+                    # get degrees of freedom
+                    if z_at_time:
+                        _ndeg = ndeg_all[iz]
+                    else:
+                        _ndeg = ndeg - n_free_p
+                    if glob_full:
+                        _ndeg = ndeg - n_param_glob_full
+
+                    prob = chi2_scipy.sf(chi2_all[ii, iz], _ndeg)
+
+                    if print_chi2:
+                        label = (
+                            r"$\chi^2=$"
+                            + str(np.round(chi2_all[ii, iz], 2))
+                            + r", $n_\mathrm{deg}$="
+                            + str(_ndeg)
+                            + ", prob="
+                            + str(np.round(prob * 100, 2))
+                            + "%"
+                        )
+                    else:
+                        label = (
+                            r"$z=$"
+                            + str(np.round(z, 2))
+                            + r", $\chi^2=$"
+                            + str(np.round(chi2_all[ii, iz], 2))
+                            + r", $n_\mathrm{data}$="
+                            + str(ndeg)
+                        )
+
+                    if print_chi2:
+                        if plot_panels == False:
+                            ypos = 0.75 + yshift
+                            axs.text(xpos, ypos, label, fontsize=fontsize - 4)
+
+                    if print_ratio:
+                        if self.rank == 0:
+                            print(p1d_data / p1d_theory)
+                    ymin = min(ymin, min(p1d_data / p1d_theory + yshift))
+                    ymax = max(ymax, max(p1d_data / p1d_theory + yshift))
+
+                    axs.axhline(1, color="k", linestyle=":", alpha=0.5)
+
+                    if return_covar | (rand_posterior is not None):
+                        axs.fill_between(
+                            k_kms,
+                            (p1d_theory + err_theory) / p1d_theory + yshift,
+                            (p1d_theory - err_theory) / p1d_theory + yshift,
+                            alpha=0.35,
+                            color=col,
+                        )
+                else:
+                    ax[ii].errorbar(
+                        k_kms,
+                        p1d_data * k_kms / np.pi,
+                        color=col,
+                        yerr=p1d_err * k_kms / np.pi,
+                        fmt="o",
+                        ms="4",
+                        label="z=" + str(np.round(z, 2)),
+                    )
+
+                    ind = data.full_zs == z
+                    for kk in range(n_perturb):
+                        ax[ii].plot(
+                            k_kms,
+                            perturb[kk, ind] * k_kms / np.pi,
+                            color=col,
+                            alpha=0.05,
+                        )
+
+                    # print chi2
+                    xpos = k_kms[-1] + 0.001
+                    ypos = (p1d_theory * k_kms / np.pi)[-1]
+                    ndeg = np.sum(p1d_data != 0)
+                    prob = chi2_scipy.sf(chi2_all[key][iz], ndeg - n_free_p)
+
+                    if print_chi2:
+                        label = (
+                            r"$\chi^2=$"
+                            + str(np.round(chi2_all[key][iz], 2))
+                            + r", $n_\mathrm{deg}$="
+                            + str(ndeg - n_free_p)
+                            + ", prob="
+                            + str(np.round(prob * 100, 2))
+                            + "%"
+                        )
+                    else:
+                        label = (
+                            r"$\chi^2=$"
+                            + str(np.round(chi2_all[key][iz], 2))
+                            + r", $n_\mathrm{data}$="
+                            + str(ndeg)
+                        )
+
+                    ax[ii].text(xpos, ypos, label, fontsize=fontsize - 4)
+
+                    ax[ii].plot(
+                        k_kms,
+                        (p1d_theory * k_kms) / np.pi,
+                        color=col,
+                        linestyle="dashed",
+                    )
+                    if return_covar | (rand_posterior is not None):
+                        ax[ii].fill_between(
+                            k_kms,
+                            (p1d_theory + err_theory) * k_kms / np.pi,
+                            (p1d_theory - err_theory) * k_kms / np.pi,
+                            alpha=0.35,
+                            color=col,
+                        )
+                    ymin = min(ymin, min(p1d_data * k_kms / np.pi))
+                    ymax = max(ymax, max(p1d_data * k_kms / np.pi))
+
+                if residuals & plot_panels:
+                    if print_chi2:
+                        axs.legend(loc="upper right", fontsize=fontsize - 4)
+                    ymin = 1 - min((p1d_data - p1d_err) / p1d_theory + yshift)
+                    ymax = 1 - max((p1d_data + p1d_err) / p1d_theory + yshift)
+                    y2plot = 1.05 * np.max([np.abs(ymin), np.abs(ymax)])
+                    if iz % 2 == 1:
+                        axs.set_ylim(1 - y2plot, 1 + y2plot)
+                    elif iz == len(zs) - 1:
+                        axs.set_ylim(1 - y2plot, 1 + y2plot)
+
+                    # if print_chi2:
+                    axs.text(
+                        0.05,
+                        0.05,
+                        label,
+                        fontsize=fontsize - 4,
+                        transform=axs.transAxes,
+                    )
+
+                out[key]["zs"].append(z)
+                out[key]["k_kms"].append(k_kms)
+                out[key]["p1d_data"].append(p1d_data)
+                out[key]["p1d_model"].append(p1d_theory)
+                out[key]["p1d_err"].append(p1d_err)
+                out[key]["chi2"].append(chi2_all[key][iz])
+                out[key]["prob"].append(prob)
 
             # ax[ii].plot(k_kms[0], 1, linestyle="-", label="Data", color="k")
             # ax[ii].plot(k_kms[0], 1, linestyle="--", label="Fit", color="k")

@@ -1,21 +1,24 @@
-from cup1d.p1ds import (
+from cup1d.p1ds.simulations import (
     data_gadget,
     data_nyx,
     data_accel2,
+    challenge_DESIY1,
+)
+
+from cup1d.p1ds import forecast
+
+from cup1d.p1ds.observations import (
     data_Chabanier2019,
     data_Karacayli2022,
     data_Karacayli2024,
     data_Ravoux2023,
-    data_QMLE_Ohio,
-    mock_data,
     data_DESIY1,
-    challenge_DESIY1,
 )
 
 from cup1d.pipeline.set_archive import set_archive
 
 
-def set_P1D(args, archive=None, theory=None):
+def set_P1D(args, data_label, archive=None, theory=None):
     """Set P1D data
 
     Parameters
@@ -40,8 +43,6 @@ def set_P1D(args, archive=None, theory=None):
     data : object
         P1D data
     """
-
-    data_label = args.data_label
 
     if (
         data_label.startswith("mpg")
@@ -118,10 +119,11 @@ def set_P1D(args, archive=None, theory=None):
             path_data=args.path_data,
             p1d_fname=args.p1d_fname,
         )
-    elif data_label.startswith("mock"):
-        data = mock_data.Mock_P1D(
+    elif data_label.startswith("forecast"):
+        prefix, rest = data_label.split("_", 1)
+        data = forecast.Forecast_P1D(
             theory,
-            data_label=data_label[5:],
+            data_label=rest,
             add_noise=args.add_noise,
             seed=args.seed_noise,
             z_min=args.z_min,
@@ -151,7 +153,7 @@ def set_P1D(args, archive=None, theory=None):
         )
     elif data_label.startswith("DESIY1"):
         data = data_DESIY1.P1D_DESIY1(
-            data_label=args.data_label,
+            data_label=data_label,
             z_min=args.z_min,
             z_max=args.z_max,
             cov_syst_type=args.cov_syst_type,

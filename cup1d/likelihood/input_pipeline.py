@@ -12,9 +12,12 @@ class Args:
     Class to store input arguments
     """
 
-    data_label: str = "DESIY1_QMLE3"
+    data_label: list[str] = field(
+        default_factory=lambda: [
+            "DESIY1_QMLE3",
+        ]
+    )
     data_bias: float = 1
-    data_label_hires: str | None = None
     z_min: float = 0
     z_max: float = 10
     rebin_k: int = 8
@@ -134,6 +137,7 @@ class Args:
     p1d_fname: str | None = None
     pre_defined: str | None = None
     file_ic: str | None = None
+    path_data: str | None = None
 
     def __post_init__(self, val_null=-20):
         """Initialize some parameters"""
@@ -175,7 +179,7 @@ class Args:
         if self.pre_defined == "CM2026":
             # Baseline model from Chaves-Montero+2026
             # This option overrides some parameters
-            self.data_label = "DESIY1_QMLE3"
+            self.data_label = ["DESIY1_QMLE3"]
             print("Using: data_label ", self.data_label)
             self.emulator_label = "CH24_mpgcen_gpr"
             print("Using: emulator_label ", self.emulator_label)
@@ -474,9 +478,10 @@ class Args:
         else:
             tag = self.name_variation
 
+        # TBD (fix, we need a different one for each P1D label)
         self.out_folder = os.path.join(
             self.path_out,
-            self.P1D_type,
+            self.P1D_type[0],
             tag,
             self.emulator_label,
         )
@@ -487,7 +492,7 @@ class Args:
         z_max=4.2,
         fit_type="at_a_time",
         fix_cosmo=True,
-        P1D_type="DESIY1_QMLE3",
+        P1D_type=["DESIY1_QMLE3"],
         fid_cosmo_label="Planck18",
         name_variation=None,
         mcmc_conf="explore",
@@ -636,7 +641,8 @@ class Args:
         }
         # multiply cov by cov_factor**2
 
-        if "DESIY1" in P1D_type:
+        # TBD (fix, we need a different one for each P1D label)
+        if "DESIY1" in P1D_type[0]:
             inf_stat = 1.05  # needed to get a good fit with QMLE
             # inf_stat = 1.18 # needed to get a good fit with FFT
             inf_syst = 1

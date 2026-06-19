@@ -27,6 +27,7 @@ class Nyx_P1D(BaseMockP1D):
         z_min=0,
         z_max=10,
         p1d_fname=None,
+        path_data=None,
     ):
         """Read mock P1D from MP-Gadget sims, and returns mock measurement:
         - testing_data: p1d measurements from Nyx sims
