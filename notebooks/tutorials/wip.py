@@ -56,41 +56,10 @@ from cup1d.pipeline.set_archive import set_archive
 
 
 # %%
-from cup1d.p1ds.base_p1d_data import BaseDataP1D
-import pandas
-
-# folder storing P1D measurement
-datadir = BaseDataP1D.BASEDIR + "/Karacayli2022/"
-
-# start by reading the file with measured band power
-# z, k, P, e
-data = np.loadtxt(
-    datadir + "final-conservative-p1d-karacayli_etal2021.txt",
-    skiprows=1,
-    usecols=(1, 2, 3, 4),
-    delimiter="|",
-)
-
-cov_kms = np.loadtxt(
-    datadir + "final-conservative-covariance-karacayli_etal2021.txt",
-)
-
-# %%
-z = data[:, 0]
-k_kms = data[:, 1]
-P_kms = data[:, 2]
-
-cov_kms = cov 
-
-# %%
-cov.shape
-
-# %%
-k.shape
-
-# %%
 data_label = ["DESIY1_QMLE3", "Karacayli2022"]
 emulator_label = "CH24_mpgcen_gpr"
+name_variation = "no_res"
+
 args = Args(
     data_label=data_label,
     emulator_label=emulator_label,
@@ -100,6 +69,7 @@ args.set_baseline(
     fit_type="global_opt",
     fix_cosmo=False,
     P1D_type=data_label,
+    name_variation=name_variation,
 )
 
 pip = Pipeline(args)
@@ -115,6 +85,40 @@ pip.fitter.like.plot_p1d(p0, print_chi2=False)
 
 # %%
 21.961857252395838
+
+# %%
+pip.run_minimizer(p0)
+p0 = pip.fitter.mle_cube
+
+# %%
+p0 = np.array([
+    2.75118584e-01, 5.17774010e-01, 5.30625889e-01, 1.83371658e-01,
+    3.14888265e-01, 2.56233809e-04, 4.49190221e-01, 8.08802364e-01,
+    2.75376246e-01, 7.60464392e-01, 7.80380692e-01, 2.13933769e-01,
+    9.76238948e-01, 2.12625196e-01, 8.36634280e-03, 6.11667700e-04,
+    4.83328967e-01, 4.62507818e-01, 4.42825501e-01, 5.07518881e-01,
+    5.77167635e-01, 5.82047638e-01, 5.73636776e-01, 2.43226185e-01,
+    7.31152406e-01, 3.84519394e-01, 5.72142838e-01, 6.79952839e-01,
+    5.84233785e-01, 7.22705904e-01, 4.60296343e-01, 3.86725805e-01,
+    2.67293134e-01, 7.58941796e-01, 9.45021016e-01, 9.02367918e-01,
+    2.21158462e-01, 6.56859007e-01, 8.39572131e-02, 1.92424581e-01,
+    6.38898130e-01, 6.63939405e-01
+])
+
+# %%
+pip.fitter.like.plot_p1d(p0, print_chi2=False)
+
+# %% [markdown]
+# TODO:
+# - Add ForestFlow
+# - Clean up plotting routine
+# - Decide baseline (check all variations)
+# - Run samplers to check improvement in cosmological constraints, also check whether IGM constraints make more sense now
+# - Validation of IGM constraints?
+# - Remove pressure?
+
+# %%
+pip.fitter.mle_cosmo
 
 # %%
 # Name, Box Mpc, Resolution kpc; h=67.5

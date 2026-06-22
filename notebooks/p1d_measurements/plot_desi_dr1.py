@@ -1,25 +1,26 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Plots of P1D and cov of DESI-DR1
 #
 # We make multiple comparisons between QMLE and FFT measurements
 #
 # We also plot covariance matrix, and look at the contributions to P(k) in the files
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
@@ -29,8 +30,8 @@ import matplotlib.pyplot as plt
 
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.pipeline import set_P1D, set_emulator
-# -
 
+# %%
 args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
 emulator = set_emulator(
     emulator_label=args.emulator_label,
@@ -38,7 +39,7 @@ emulator = set_emulator(
 args.data_label = "DESIY1"
 args.cov_syst_type = "red"
 
-# +
+# %%
 
 folder = "/home/jchaves/Proyectos/projects/lya/data/DESI-DR1/"
 # in NERSC
@@ -79,11 +80,11 @@ data["fft"] = set_P1D(
     emulator=emulator,
     cull_data=False
 )
-# -
 
+# %% [markdown]
 # ## Comparison of P1D
 
-# +
+# %%
 fig, ax = plt.subplots(4, 3, figsize=(10, 8), sharey="row")
 ax = ax.reshape(-1)
 
@@ -113,7 +114,7 @@ fig.supylabel(r"$P_x(k)/P_\mathrm{QMLE}-1$")
 plt.tight_layout()
 # plt.savefig("figs/ratio_w_qmle.pdf")
 
-# +
+# %%
 fig, ax = plt.subplots(4, 3, figsize=(12, 10))
 ax = ax.reshape(-1)
 
@@ -144,11 +145,11 @@ fig.supxlabel(r"$k[\mathrm{km}^{-1}\mathrm{s}]$")
 fig.supylabel(r"$P_\mathrm{QMLE3}(k)/P_\mathrm{QMLE}-1$")
 plt.tight_layout()
 # plt.savefig("figs/ratio_w_qmle.pdf")
-# -
 
+# %% [markdown]
 # ## Comparison cov matrix
 
-# +
+# %%
 fig, ax = plt.subplots(4, 3, figsize=(12, 10))
 ax = ax.reshape(-1)
 
@@ -179,11 +180,11 @@ fig.supxlabel(r"$k[\mathrm{km}^{-1}\mathrm{s}]$")
 fig.supylabel(r"$\sigma_\mathrm{QMLE3}(k)/\sigma_\mathrm{QMLE}-1$")
 plt.tight_layout()
 plt.savefig("figs/ratio_sigma_qmle.pdf")
-# -
 
+# %% [markdown]
 # ## SNR
 
-# +
+# %%
 fig, ax = plt.subplots(4, 3, figsize=(12, 10), sharey="row")
 ax = ax.reshape(-1)
 
@@ -228,21 +229,21 @@ fig.supxlabel(r"$k[\mathrm{km}^{-1}\mathrm{s}]$")
 fig.supylabel(r"SNR")
 plt.tight_layout()
 plt.savefig("figs/snr_all.pdf")
-# -
 
+# %% [markdown]
 # ## Covariance matrix
 
-# +
+# %%
 from cup1d.likelihood.plotter import plot_cov
 
 plot_cov(fname_qmle, save_directory='figs')
 
 
-# -
 
+# %% [markdown]
 # ## Contributions to QMLE P1D
 
-# +
+# %%
 
 from astropy.io import fits
 
@@ -255,11 +256,11 @@ plt.plot(hdu[1].data["K"][_], hdu[1].data["PNOISE"][_])
 plt.plot(hdu[1].data["K"][_], hdu[1].data["ThetaP"][_])
 plt.plot(hdu[1].data["K"][_], hdu[1].data["PRAW"][_] - hdu[1].data["PNOISE"][_])
 plt.plot(hdu[1].data["K"][_], hdu[1].data["PFID"][_])
-# -
 
+# %% [markdown]
 # ## Syst to stat ratio
 
-# +
+# %%
 hdu = fits.open(fname_qmle)
 
 rat = np.diag(hdu[5].data)/np.diag(hdu[4].data)
@@ -270,6 +271,5 @@ for zz in zu:
 plt.legend(ncol=3)
 plt.xscale("log")
 plt.yscale("log")
-# -
 
-
+# %%

@@ -9,7 +9,8 @@ class P1D_Karacayli2022(BaseDataP1D):
         - diag_cov: for now, use diagonal covariance
         - kmax_kms: limit to low-k where we trust emulator"""
 
-        kmax_kms = 0.05
+        # optimize
+        kmax_kms = 0.07
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         res = read_from_file(kmax_kms)

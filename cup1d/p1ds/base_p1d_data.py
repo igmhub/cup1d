@@ -68,7 +68,8 @@ def _drop_zbins(
         full_zs = full_zs[ind]
         full_Pk_kms = full_Pk_kms[ind]
         full_cov_kms = full_cov_kms[ind, :][:, ind]
-        full_cov_stat_kms = full_cov_stat_kms[ind, :][:, ind]
+        if full_cov_stat_kms is not None:
+            full_cov_stat_kms = full_cov_stat_kms[ind, :][:, ind]
 
     return (
         z_out,
@@ -207,65 +208,19 @@ class BaseDataP1D(object):
         ftsize=18,
         store_data=False,
     ):
-        """Plot P1D mesurement. If use_dimensionless, plot k*P(k)/pi."""
 
-        import matplotlib.pyplot as plt
-        from matplotlib import rcParams
-        from matplotlib import colormaps
+        from cup1d.plots_and_tables.data import p1d
 
-        rcParams["mathtext.fontset"] = "stix"
-        rcParams["font.family"] = "STIXGeneral"
-
-        if store_data:
-            out_data = {}
-
-        fig, ax = plt.subplots(figsize=(8, 6))
-
-        N = len(self.z)
-        for ii in range(N):
-            k_kms = self.k_kms[ii]
-            Pk_kms = self.get_Pk_iz(ii)
-            if cov_ext is None:
-                err_Pk_kms = np.sqrt(np.diagonal(self.get_cov_iz(ii)))
-            else:
-                err_Pk_kms = np.sqrt(np.diagonal(cov_ext[ii]))
-            if use_dimensionless:
-                fact = k_kms / np.pi
-            else:
-                fact = 1.0
-
-            if store_data:
-                out_data["x" + str(ii)] = k_kms
-                out_data["y" + str(ii)] = fact * Pk_kms
-                out_data["err" + str(ii)] = fact * err_Pk_kms
-
-            ax.errorbar(
-                k_kms,
-                fact * Pk_kms,
-                yerr=fact * err_Pk_kms,
-                label=r"$z = {}$".format(np.round(self.z[ii], 3)),
-                color=colormaps["tab20"].colors[ii],
-            )
-
-        ax.legend(ncol=4, fontsize=ftsize - 4)
-        if ylog:
-            plt.yscale("log", nonpositive="clip")
-        if xlog:
-            plt.xscale("log")
-        plt.xlabel(r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
-        if use_dimensionless:
-            plt.ylabel(r"$\mathrm{\pi}^{-1}k_\parallel\,P(k)$", fontsize=ftsize)
-        else:
-            plt.ylabel(r"$P(k) [km/s]$", fontsize=ftsize)
-
-        ax.tick_params(axis="both", which="major", labelsize=ftsize)
-        plt.tight_layout()
-
-        if fname is not None:
-            plt.savefig(fname + ".pdf")
-            plt.savefig(fname + ".png")
-        else:
-            plt.show()
-
-        if store_data:
-            return out_data
+        p1d.plot_p1d(
+            self.z,
+            self.k_kms,
+            self.Pk_kms,
+            self.cov_Pk_kms,
+            use_dimensionless=use_dimensionless,
+            xlog=xlog,
+            ylog=ylog,
+            fname=fname,
+            cov_ext=cov_ext,
+            ftsize=ftsize,
+            store_data=store_data,
+        )
