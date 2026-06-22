@@ -19,7 +19,7 @@
 # %% jupyter={"outputs_hidden": false}
 from cup1d.p1ds.observations import data_Chabanier2019
 
-Cha2019 = data_Chabanier2019.P1D_Chabanier2019()
-Cha2019.plot_p1d()
+data = data_Chabanier2019.P1D_Chabanier2019()
+data.plot_p1d()
 
 # %%

@@ -15,9 +15,7 @@ class P1D_Irsic2017(BaseDataP1D):
         # folder storing P1D measurement
         datadir = BaseDataP1D.BASEDIR + "/Irsic2017/"
 
-        z, k_kms, Pk_kms, cov_Pk_kms = read_from_file(
-            datadir, add_syst, ignore_zcov
-        )
+        z, k_kms, Pk_kms, cov_Pk_kms = read_from_file(datadir, add_syst, ignore_zcov)
 
         super().__init__(z, k_kms, Pk_kms, cov_Pk_kms, z_min=z_min, z_max=z_max)
 
@@ -47,6 +45,7 @@ def read_from_file(basedir, add_syst, ignore_zcov):
     _, _, inCov = np.loadtxt(cov_file, unpack=True)
     cov_syst = inCov.reshape(Nz * Nk, Nz * Nk)
 
+    # TBD Add full covariance
     # for now use diagonal covariance matrices
     cov_Pk_kms = []
     for iz in range(Nz):
