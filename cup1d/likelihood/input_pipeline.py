@@ -200,6 +200,7 @@ class Args:
             "Pedersen23_ext",
             "CH24_mpgcen_gpr",
             "CH24_nyxcen_gpr",
+            "forest_mpg",
         ]
         if self.emulator_label not in avail_emulator_label:
             raise ValueError(

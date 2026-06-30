@@ -8,10 +8,11 @@ from cup1d.p1ds.simulations import (
 from cup1d.p1ds import forecast
 
 from cup1d.p1ds.observations import (
+    data_Walther2018,
     data_Chabanier2019,
     data_Karacayli2022,
-    data_Karacayli2024,
     data_Ravoux2023,
+    data_Karacayli2024,
     data_DESIY1,
 )
 
@@ -137,7 +138,6 @@ def set_P1D(args, data_label, archive=None, theory=None):
             z_min=args.z_min,
             z_max=args.z_max,
         )
-
     elif data_label == "Chabanier2019":
         data = data_Chabanier2019.P1D_Chabanier2019(z_min=args.z_min, z_max=args.z_max)
     elif data_label == "Ravoux2023":
@@ -146,11 +146,8 @@ def set_P1D(args, data_label, archive=None, theory=None):
         data = data_Karacayli2024.P1D_Karacayli2024(z_min=args.z_min, z_max=args.z_max)
     elif data_label == "Karacayli2022":
         data = data_Karacayli2022.P1D_Karacayli2022(z_min=args.z_min, z_max=args.z_max)
-    elif data_label == "challenge_v0":
-        file = os.environ["CHALLENGE_PATH"] + "fiducial_lym1d_p1d_qmleformat_IC.txt"
-        data = data_QMLE_Ohio.P1D_QMLE_Ohio(
-            filename=file, z_min=args.z_min, z_max=args.z_max
-        )
+    elif data_label == "Walther2018":
+        data = data_Walther2018.P1D_Walther2018(z_min=args.z_min, z_max=args.z_max)
     elif data_label.startswith("DESIY1"):
         data = data_DESIY1.P1D_DESIY1(
             data_label=data_label,
@@ -163,19 +160,6 @@ def set_P1D(args, data_label, archive=None, theory=None):
         )
     else:
         raise ValueError(f"data_label {data_label} not implemented")
-
-    # # cull data within emulator range
-    # if cull_data:
-    #     if args.true_cosmo_label is not None:
-    #         cosmo = set_cosmo(cosmo_label=args.true_cosmo_label)
-    #     else:
-    #         cosmo = set_cosmo(cosmo_label=args.fid_cosmo_label)
-
-    #     dkms_dMpc_zmin = camb_cosmo.dkms_dMpc(cosmo, z=np.min(data.z))
-    #     kmin_kms = emulator.kmin_Mpc / dkms_dMpc_zmin
-    #     dkms_dMpc_zmax = camb_cosmo.dkms_dMpc(cosmo, z=np.max(data.z))
-    #     kmax_kms = emulator.kmax_Mpc / dkms_dMpc_zmax
-    #     data.cull_data(kmin_kms=kmin_kms, kmax_kms=kmax_kms)
 
     data.data_label = data_label
 

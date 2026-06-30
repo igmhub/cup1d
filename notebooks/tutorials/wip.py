@@ -56,8 +56,13 @@ from cup1d.pipeline.set_archive import set_archive
 
 
 # %%
-data_label = ["DESIY1_QMLE3", "Karacayli2022"]
-emulator_label = "CH24_mpgcen_gpr"
+
+# %%
+
+# %%
+data_label = ["DESIY1_QMLE3", "Karacayli2022", "Walther2018"]
+# emulator_label = "CH24_mpgcen_gpr"
+emulator_label = "forest_mpg"
 name_variation = "no_res"
 
 args = Args(
@@ -81,6 +86,16 @@ free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
 
 # %%
+# pip.fitter.like.theory.emulator.list_sim_cube
+
+# %%
+
+# %%
+
+# %%
+# np.diag(pip.fitter.like.full_icov_Pk_kms["Karacayli2022"])
+
+# %%
 pip.fitter.like.plot_p1d(p0, print_chi2=False)
 
 # %%
@@ -91,6 +106,7 @@ pip.run_minimizer(p0)
 p0 = pip.fitter.mle_cube
 
 # %%
+# kmax_kms = 0.05
 p0 = np.array([
     2.75118584e-01, 5.17774010e-01, 5.30625889e-01, 1.83371658e-01,
     3.14888265e-01, 2.56233809e-04, 4.49190221e-01, 8.08802364e-01,
@@ -105,17 +121,23 @@ p0 = np.array([
     6.38898130e-01, 6.63939405e-01
 ])
 
+# kmax_kms = 0.1
+p1 = np.array([
+    7.33426056e-01, 5.34725468e-01, 3.21560156e-01, 1.05118655e-01,
+    9.22835705e-05, 3.58845416e-06, 6.17809858e-01, 9.99986596e-01,
+    9.99973173e-01, 9.99879839e-01, 8.49863134e-01, 5.03862818e-01,
+    5.42119000e-01, 7.11304802e-01, 5.86267647e-04, 1.09726365e-05,
+    2.83928640e-01, 7.58647865e-06, 4.26733863e-01, 4.45587879e-01,
+    5.78405300e-01, 5.40943959e-01, 5.38033093e-01, 5.58162278e-01,
+    7.12800869e-01, 7.68411451e-01, 5.68971975e-01, 7.87179192e-01,
+    5.83447873e-01, 8.16674457e-01, 4.46660740e-01, 5.24128245e-01,
+    2.86619375e-01, 5.26975148e-01, 9.15807378e-01, 7.87923616e-01,
+    7.19038867e-01, 8.13452558e-01, 7.00610726e-02, 5.34434791e-02,
+    6.25417538e-01, 1.42502425e-02
+])
+
 # %%
 pip.fitter.like.plot_p1d(p0, print_chi2=False)
-
-# %% [markdown]
-# TODO:
-# - Add ForestFlow
-# - Clean up plotting routine
-# - Decide baseline (check all variations)
-# - Run samplers to check improvement in cosmological constraints, also check whether IGM constraints make more sense now
-# - Validation of IGM constraints?
-# - Remove pressure?
 
 # %%
 pip.fitter.mle_cosmo
@@ -383,9 +405,9 @@ name_variation = None
 ###
 
 
-data_label = ["DESIY1_QMLE3"]
+# data_label = ["DESIY1_QMLE3"]
 # data_label = "DESIY1_QMLE"
-# data_label = "DESIY1_FFT3_dir"
+data_label = ["DESIY1_FFT3_dir"]
 
 emu_cov_type = "full"
 # emu_cov_type = "block"
@@ -404,8 +426,8 @@ emulator_label = "CH24_mpgcen_gpr"
 
 name_variation = None
 p1d_fname = None
-# name_variation = "DLA_TAN"
-# p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/in_DESI_DR1/ting_tan/p1d_fft_y1_measurement_kms_tingdla_nocrossexp_snr3noweights_directmetalsubtraction.fits"
+name_variation = "DLA_TAN"
+p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/in_DESI_DR1/ting_tan/p1d_fft_y1_measurement_kms_tingdla_nocrossexp_snr3noweights_directmetalsubtraction.fits"
 
 args = Args(
     data_label=data_label,
@@ -500,12 +522,17 @@ fit_type = "global_opt"
 if data_lab == "DESIY1_QMLE3":
     folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/chain_7/"
 elif data_lab == "DESIY1_FFT3_dir":
-    folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/chain_2/"
+    if name_variation is None:
+        folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"+data_lab+"/"+fit_type+"/CH24_"+emu+"cen_gpr/chain_2/"
+    else:
+        folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_FFT3_dir/DLA_TAN/CH24_mpgcen_gpr/chain_2/"
 
 data = np.load(folder + "fitter_results.npy", allow_pickle=True).item()
 p0 = data["fitter"]["mle_cube"]
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
+
+# %%
 
 # %%
 pip.fitter.like.plot_p1d(p0, print_chi2=False)

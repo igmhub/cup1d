@@ -74,6 +74,7 @@ class Theory(object):
             self.model_cont = model_cont
 
         # setup model_syst
+        # TBD different systematics for differet datasets?
         if model_syst is None:
             self.model_syst = Systematics()
         else:

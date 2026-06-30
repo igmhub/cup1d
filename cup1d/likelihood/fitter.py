@@ -7,6 +7,8 @@ import numpy as np
 from pyDOE2 import lhs
 from mpi4py import MPI
 
+from cup1d.utils import blinding
+
 # our own modules
 from cup1d.utils.utils import create_print_function, purge_chains
 from cup1d.utils.utils import get_path_repo
@@ -194,9 +196,7 @@ class Fitter(object):
                 f"Running MCMC with {self.nwalkers} walkers, {self.ndim} dimensions, and {self.nsteps}, {self.nburn}.",
                 flush=True,
             )
-            for sample in sampler.sample(
-                p0, iterations=self.nburn + self.nsteps
-            ):
+            for sample in sampler.sample(p0, iterations=self.nburn + self.nsteps):
                 if sampler.iteration % 100 == 0:
                     self.print(
                         "Step %d out of %d "
@@ -238,12 +238,8 @@ class Fitter(object):
             _lnprob = sampler.get_log_prob(
                 flat=False, discard=self.nburn, thin=self.thin
             )
-            _chain = sampler.get_chain(
-                flat=False, discard=self.nburn, thin=self.thin
-            )
-            _blobs = sampler.get_blobs(
-                flat=False, discard=self.nburn, thin=self.thin
-            )
+            _chain = sampler.get_chain(flat=False, discard=self.nburn, thin=self.thin)
+            _blobs = sampler.get_blobs(flat=False, discard=self.nburn, thin=self.thin)
 
             if self.rank != 0:
                 self.comm.send(_lnprob, dest=0, tag=1000 + self.rank)
@@ -261,9 +257,7 @@ class Fitter(object):
 
                 for irank in range(1, self.size):
                     self.print("Receiving from rank %d" % irank)
-                    lnprob.append(
-                        self.comm.recv(source=irank, tag=1000 + irank)
-                    )
+                    lnprob.append(self.comm.recv(source=irank, tag=1000 + irank))
                     chain.append(self.comm.recv(source=irank, tag=2000 + irank))
                     blobs.append(self.comm.recv(source=irank, tag=3000 + irank))
 
@@ -273,15 +267,11 @@ class Fitter(object):
 
                 map_ind = np.argmax(self.lnprob.reshape(-1))
                 map_chi2 = -2.0 * self.lnprob.reshape(-1)[map_ind]
-                map_chain = self.chain.reshape(-1, self.chain.shape[-1])[
-                    map_ind
-                ]
+                map_chain = self.chain.reshape(-1, self.chain.shape[-1])[map_ind]
                 self.set_mle(map_chain, map_chi2)
 
                 # apply masking (only to star parameters)
-                self.blobs = self.like.apply_blinding(
-                    self.blobs, sample="chains"
-                )
+                self.blobs = blinding.apply_blinding(self.like.blind, self.blobs)
 
         return sampler
 
@@ -318,14 +308,10 @@ class Fitter(object):
                     )
                     return fun
                 else:
-                    fun = lambda x: log_func_minimize(
-                        x, ind_fix=ind_fix, pfix=pfix
-                    )
+                    fun = lambda x: log_func_minimize(x, ind_fix=ind_fix, pfix=pfix)
                     return fun
 
-        _log_func_minimize = set_log_func_minimize(
-            p0, zmask=zmask, mask_pars=mask_pars
-        )
+        _log_func_minimize = set_log_func_minimize(p0, zmask=zmask, mask_pars=mask_pars)
 
         if restart:
             self.mle_chi2 = 1e10
@@ -370,9 +356,7 @@ class Fitter(object):
                             "maxfev": neval,
                         },
                     )
-                    print(
-                        "ITER", it, ii, res.fun, pini[:2], res.x[:2], flush=True
-                    )
+                    print("ITER", it, ii, res.fun, pini[:2], res.x[:2], flush=True)
                     if res.fun < _chi2:
                         _chi2 = res.fun
                         pnext = res.x
@@ -493,17 +477,13 @@ class Fitter(object):
                     )
                     return fun
                 else:
-                    fun = lambda x: log_func_minimize(
-                        x, ind_fix=ind_fix, pfix=pfix
-                    )
+                    fun = lambda x: log_func_minimize(x, ind_fix=ind_fix, pfix=pfix)
                     return fun
 
         if restart:
             self.mle_chi2 = 1e10
 
-        _log_func_minimize = set_log_func_minimize(
-            p0, zmask=zmask, mask_pars=mask_pars
-        )
+        _log_func_minimize = set_log_func_minimize(p0, zmask=zmask, mask_pars=mask_pars)
 
         npars = len(self.like.free_params)
 
@@ -565,8 +545,7 @@ class Fitter(object):
         """Profile likelihood"""
 
         blind_cosmo = {
-            "Delta2_star": mle_cosmo_cen["Delta2_star"]
-            + shift_cosmo["Delta2_star"],
+            "Delta2_star": mle_cosmo_cen["Delta2_star"] + shift_cosmo["Delta2_star"],
             "n_star": mle_cosmo_cen["n_star"] + shift_cosmo["n_star"],
         }
         if verbose:
@@ -575,7 +554,7 @@ class Fitter(object):
             print()
 
         # unblind internally to apply shift consistently
-        target = self.like.apply_unblinding(mle_cosmo_cen)
+        target = blinding.apply_unblinding(self.like.blind, mle_cosmo_cen)
         target["Delta2_star"] += shift_cosmo["Delta2_star"]
         target["n_star"] += shift_cosmo["n_star"]
         self.like.theory.rescale_fid_cosmo(target)
@@ -597,9 +576,7 @@ class Fitter(object):
                 restart=True,
             )
         elif type_minimizer == "DA":
-            self.run_minimizer_da(
-                self.like.minus_log_prob, p0=input_pars, restart=True
-            )
+            self.run_minimizer_da(self.like.minus_log_prob, p0=input_pars, restart=True)
         else:
             raise ValueError("type_minimizer must be 'NM' or 'DA'")
 
@@ -647,7 +624,7 @@ class Fitter(object):
         # self.mle_cosmo = self.get_cosmo_err(log_func_minimize)
 
         # apply blinding
-        self.mle_cosmo = self.like.apply_blinding(self.mle_cosmo, sample="mle")
+        self.mle_cosmo = blinding.apply_blinding(self.like.blind, self.mle_cosmo)
 
         self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(self.mle_cube)
 
@@ -659,7 +636,7 @@ class Fitter(object):
 
         if "A_s" not in self.paramstrings[0]:
             return
-        self.mle = self.like.apply_blinding(self.mle, conv=True)
+        self.mle = blinding.apply_blinding(self.like.blind, self.mle)
 
         for key in self.like.blind:
             if self.like.blind[key] != 0:
@@ -679,9 +656,7 @@ class Fitter(object):
                 if par in self.like.truth["like_params"]:
                     true = np.round(self.like.truth["like_params"][par], 5)
                     rat = np.round(
-                        self.mle_cosmo[par]
-                        / self.like.truth["like_params"][par]
-                        - 1,
+                        self.mle_cosmo[par] / self.like.truth["like_params"][par] - 1,
                         5,
                     )
                     print(par, val, true, rat)
@@ -781,9 +756,7 @@ class Fitter(object):
 
         return values
 
-    def get_chain(
-        self, cube=True, extra_nburn=0, delta_lnprob_cut=None, collapse=True
-    ):
+    def get_chain(self, cube=True, extra_nburn=0, delta_lnprob_cut=None, collapse=True):
         """Figure out whether chain has been read from file, or computed.
         - if cube=True, return values in range [0,1]
         - if delta_lnprob_cut is set, use it to remove low-prob islands"""
@@ -798,9 +771,7 @@ class Fitter(object):
 
         if collapse:
             lnprob = self.lnprob[extra_nburn:, mask].reshape(-1)
-            chain = self.chain[extra_nburn:, mask, :].reshape(
-                -1, self.chain.shape[-1]
-            )
+            chain = self.chain[extra_nburn:, mask, :].reshape(-1, self.chain.shape[-1])
             blobs = self.blobs[extra_nburn:, mask].reshape(-1)
         else:
             lnprob = self.lnprob[extra_nburn:, mask]
@@ -818,17 +789,15 @@ class Fitter(object):
         if cube == False:
             cube_values = np.zeros_like(chain)
             for ip in range(chain.shape[-1]):
-                cube_values[..., ip] = self.like.free_params[
-                    ip
-                ].value_from_cube(chain[..., ip])
+                cube_values[..., ip] = self.like.free_params[ip].value_from_cube(
+                    chain[..., ip]
+                )
 
             return cube_values, lnprob, blobs
         else:
             return chain, lnprob, blobs
 
-    def get_all_params(
-        self, delta_lnprob_cut=None, extra_nburn=0, collapse=True
-    ):
+    def get_all_params(self, delta_lnprob_cut=None, extra_nburn=0, collapse=True):
         """Get a merged array of both sampled and derived parameters
         returns a 2D array of all parameters, and an ordered list of
         the LaTeX strings for each.
@@ -855,9 +824,7 @@ class Fitter(object):
 
             all_params[..., : chain.shape[-1]] = chain
             for ii in range(6):
-                all_params[..., chain.shape[-1] + ii] = blobs[
-                    blob_strings_orig[ii]
-                ]
+                all_params[..., chain.shape[-1] + ii] = blobs[blob_strings_orig[ii]]
 
             # Ordered strings for all parameters
             all_strings = self.paramstrings + blob_strings
@@ -873,9 +840,7 @@ class Fitter(object):
         if rootdir:
             chain_location = rootdir
         else:
-            chain_location = os.path.join(
-                get_path_repo("cup1d"), "data", "chains"
-            )
+            chain_location = os.path.join(get_path_repo("cup1d"), "data", "chains")
         if subfolder:
             # If there is one, check if it exists, if not make it
             subfolder_dir = os.path.join(chain_location, subfolder)
@@ -927,14 +892,10 @@ class Fitter(object):
             - if delta_lnprob_cut is set, use only high-prob points"""
 
         if stat_best_fit == "mean":
-            chain, lnprob, blobs = self.get_chain(
-                delta_lnprob_cut=delta_lnprob_cut
-            )
+            chain, lnprob, blobs = self.get_chain(delta_lnprob_cut=delta_lnprob_cut)
             best_values = np.mean(chain, axis=0)
         elif stat_best_fit == "median":
-            chain, lnprob, blobs = self.get_chain(
-                delta_lnprob_cut=delta_lnprob_cut
-            )
+            chain, lnprob, blobs = self.get_chain(delta_lnprob_cut=delta_lnprob_cut)
             best_values = np.median(chain, axis=0)
         elif stat_best_fit == "mle":
             best_values = self.mle_cube
@@ -980,12 +941,8 @@ class Fitter(object):
         for par in self.like.free_params:
             dict_out["like"]["free_params"][par.name] = {}
             dict_out["like"]["free_params"][par.name]["value"] = par.value
-            dict_out["like"]["free_params"][par.name][
-                "min_value"
-            ] = par.min_value
-            dict_out["like"]["free_params"][par.name][
-                "max_value"
-            ] = par.max_value
+            dict_out["like"]["free_params"][par.name]["min_value"] = par.min_value
+            dict_out["like"]["free_params"][par.name]["max_value"] = par.max_value
             dict_out["like"]["free_params"][par.name]["fixed"] = par.fixed
             dict_out["like"]["free_params"][par.name][
                 "Gauss_priors_width"
@@ -1002,9 +959,7 @@ class Fitter(object):
 
         # IGM
         if self.mle_cube is not None:
-            like_params = self.like.parameters_from_sampling_point(
-                self.mle_cube
-            )
+            like_params = self.like.parameters_from_sampling_point(self.mle_cube)
         else:
             like_params = self.like.parameters_from_sampling_point()
         dict_out["IGM"] = {}
@@ -1078,12 +1033,8 @@ class Fitter(object):
             for ip in range(self.chain.shape[-1]):
                 param = self.like.free_params[ip]
                 dict_out["fitter"]["chain_from_cube"][param.name] = np.zeros(2)
-                dict_out["fitter"]["chain_from_cube"][param.name][
-                    0
-                ] = param.min_value
-                dict_out["fitter"]["chain_from_cube"][param.name][
-                    1
-                ] = param.max_value
+                dict_out["fitter"]["chain_from_cube"][param.name][0] = param.min_value
+                dict_out["fitter"]["chain_from_cube"][param.name][1] = param.max_value
 
             dict_out["fitter"]["chain_names_latex"] = self.paramstrings
             dict_out["fitter"]["blobs_names"] = blob_strings_orig

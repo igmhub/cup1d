@@ -10,7 +10,7 @@ class P1D_Karacayli2022(BaseDataP1D):
         - kmax_kms: limit to low-k where we trust emulator"""
 
         # optimize
-        kmax_kms = 0.07
+        # kmax_kms = 0.07
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         res = read_from_file(kmax_kms)

@@ -64,7 +64,9 @@ class Plotter(object):
         else:
             ValueError("Provide either fitter or fname_chain")
 
-        self.cmap = get_discrete_cmap(len(self.fitter.like.data.z))
+        key = list(self.fitter.like.data.keys())[0]
+
+        self.cmap = get_discrete_cmap(len(self.fitter.like.data[key].z))
         self.save_directory = save_directory
         if save_directory is not None:
             os.makedirs(save_directory, exist_ok=True)
@@ -73,13 +75,13 @@ class Plotter(object):
         self.like_params = self.fitter.like.parameters_from_sampling_point(
             self.mle_values
         )
-        self.mle_results = self.fitter.like.plot_p1d(
-            values=self.mle_values,
-            plot_every_iz=1,
-            return_all=True,
-            show=False,
-            zmask=zmask,
-        )
+        # self.mle_results = self.fitter.like.plot_p1d(
+        #     values=self.mle_values,
+        #     plot_every_iz=1,
+        #     return_all=True,
+        #     show=False,
+        #     zmask=zmask,
+        # )
 
         if fname_priors is not None:
             data = np.load(fname_priors, allow_pickle=True).item()
@@ -289,16 +291,12 @@ class Plotter(object):
                     Delta2_star = self.fitter.like.truth["linP"]["Delta2_star"]
                     n_star = self.fitter.like.truth["linP"]["n_star"]
                     if suite_emu != "mpg":
-                        alpha_star = self.fitter.like.truth["linP"][
-                            "alpha_star"
-                        ]
+                        alpha_star = self.fitter.like.truth["linP"]["alpha_star"]
                     label = "truth"
                 else:
                     continue
 
-            ax[0].scatter(
-                Delta2_star, n_star, marker=marker, color=color, label=label
-            )
+            ax[0].scatter(Delta2_star, n_star, marker=marker, color=color, label=label)
             if suite_emu != "mpg":
                 ax[1].scatter(
                     Delta2_star,
@@ -453,22 +451,20 @@ class Plotter(object):
 
         # plot priors
         if self.fitter.chain_priors is not None:
-            nelem_priors = (
-                self.fitter.chain_priors[:, :, 0].reshape(-1)
-            ).shape[0]
+            nelem_priors = (self.fitter.chain_priors[:, :, 0].reshape(-1)).shape[0]
             chain_priors = np.zeros((nelem_priors, len(yesplot)))
             for ii, par in enumerate(yesplot):
                 try:
-                    _ = np.argwhere(
-                        np.array(self.fitter.chain_priors_names) == par
-                    )[0, 0]
+                    _ = np.argwhere(np.array(self.fitter.chain_priors_names) == par)[
+                        0, 0
+                    ]
                 except:
                     continue
 
                 pars = self.fitter.chain_priors[:, :, _].reshape(-1)
-                chain_priors[:, ii] = self.fitter.like.free_params[
-                    ii
-                ].value_from_cube(pars)
+                chain_priors[:, ii] = self.fitter.like.free_params[ii].value_from_cube(
+                    pars
+                )
 
             corner(
                 chain_priors,
@@ -583,16 +579,10 @@ class Plotter(object):
                 ax.set_ylim(ylim[0] - 0.05 * ydiff, ylim[1] + 0.05 * ydiff)
 
         if (extra_data is not None) and only_cosmo:
-            axes[1, 0].scatter(
-                extra_data[:, 0], extra_data[:, 1], color="C3", s=2
-            )
+            axes[1, 0].scatter(extra_data[:, 0], extra_data[:, 1], color="C3", s=2)
             if "nrun" in self.fitter.like.free_param_names:
-                axes[2, 0].scatter(
-                    extra_data[:, 0], extra_data[:, 2], color="C3", s=2
-                )
-                axes[2, 1].scatter(
-                    extra_data[:, 1], extra_data[:, 2], color="C3", s=2
-                )
+                axes[2, 0].scatter(extra_data[:, 0], extra_data[:, 2], color="C3", s=2)
+                axes[2, 1].scatter(extra_data[:, 1], extra_data[:, 2], color="C3", s=2)
 
         if only_cosmo:
             (
@@ -621,17 +611,13 @@ class Plotter(object):
                 elif ii == 1:
                     x = delta2_star
                     y = alpha_star
-                    _ = np.argwhere(np.array(yesplot) == "$\\alpha_\\star$")[
-                        0, 0
-                    ]
+                    _ = np.argwhere(np.array(yesplot) == "$\\alpha_\\star$")[0, 0]
                     ychain = chain[:, _]
                     ax = axs[2, 0]
                 else:
                     x = n_star
                     y = alpha_star
-                    _ = np.argwhere(np.array(yesplot) == "$\\alpha_\\star$")[
-                        0, 0
-                    ]
+                    _ = np.argwhere(np.array(yesplot) == "$\\alpha_\\star$")[0, 0]
                     ychain = chain[:, _]
                     ax = axs[2, 1]
 
@@ -647,9 +633,7 @@ class Plotter(object):
             for ii in range(len(axs)):
                 if ii == 0:
                     x = delta2_star
-                    _ = np.argwhere(np.array(yesplot) == "$\\Delta^2_\\star$")[
-                        0, 0
-                    ]
+                    _ = np.argwhere(np.array(yesplot) == "$\\Delta^2_\\star$")[0, 0]
                     xchain = chain[:, _]
                 elif ii == 1:
                     x = n_star
@@ -657,9 +641,7 @@ class Plotter(object):
                     xchain = chain[:, _]
                 else:
                     x = alpha_star
-                    _ = np.argwhere(np.array(yesplot) == "$\\alpha_\\star$")[
-                        0, 0
-                    ]
+                    _ = np.argwhere(np.array(yesplot) == "$\\alpha_\\star$")[0, 0]
                     xchain = chain[:, _]
 
                 if only_cosmo_lims:
@@ -740,9 +722,7 @@ class Plotter(object):
             for pp in igm_params:
                 if pp in par_notex:
                     for jj in range(chain.shape[0]):
-                        chain[jj, ii] = igm_params[pp](
-                            z_use, over_coeff=chain[jj, ii]
-                        )
+                        chain[jj, ii] = igm_params[pp](z_use, over_coeff=chain[jj, ii])
                     truth[ii] = igm_params[pp](z_use, over_coeff=truth[ii])
                     MLE[ii] = igm_params[pp](z_use, over_coeff=MLE[ii])
                     yesplot[ii] = igm_params_labels[pp]
@@ -769,23 +749,21 @@ class Plotter(object):
 
         # plot priors
         if self.fitter.chain_priors is not None:
-            nelem_priors = (
-                self.fitter.chain_priors[:, :, 0].reshape(-1)
-            ).shape[0]
+            nelem_priors = (self.fitter.chain_priors[:, :, 0].reshape(-1)).shape[0]
             chain_priors = np.zeros((nelem_priors, len(yesplot)))
             for ii, par in enumerate(yesplot_orig):
                 try:
-                    _ = np.argwhere(
-                        np.array(self.fitter.chain_priors_names) == par
-                    )[0, 0]
+                    _ = np.argwhere(np.array(self.fitter.chain_priors_names) == par)[
+                        0, 0
+                    ]
                 except:
                     print("not found parameter", par)
                     continue
 
                 pars = self.fitter.chain_priors[:, :, _].reshape(-1)
-                chain_priors[:, ii] = self.fitter.like.free_params[
-                    ii
-                ].value_from_cube(pars)
+                chain_priors[:, ii] = self.fitter.like.free_params[ii].value_from_cube(
+                    pars
+                )
 
                 par_notex = self.fitter.param_dict_rev[par]
                 for pp in igm_params:
@@ -1030,9 +1008,7 @@ class Plotter(object):
         - if delta_lnprob_cut is set, use only high-prob points"""
 
         # get chain (from sampler or from file)
-        chain, lnprob, blobs = self.fitter.get_chain(
-            delta_lnprob_cut=delta_lnprob_cut
-        )
+        chain, lnprob, blobs = self.fitter.get_chain(delta_lnprob_cut=delta_lnprob_cut)
         plt.figure()
 
         for ip in range(self.fitter.ndim):
@@ -1479,9 +1455,7 @@ class Plotter(object):
                 _data_z.append(self.fitter.like.data.z[iz])
                 _data_k_kms.append(self.fitter.like.data.k_kms[iz])
                 _data_Pk_kms.append(self.fitter.like.data.Pk_kms[iz])
-                _data_ePk_kms.append(
-                    np.sqrt(np.diag(self.fitter.like.cov_Pk_kms[iz]))
-                )
+                _data_ePk_kms.append(np.sqrt(np.diag(self.fitter.like.cov_Pk_kms[iz])))
                 _data_icov_kms.append(self.fitter.like.icov_Pk_kms[iz])
         _data_z = np.array(_data_z)
 
@@ -1518,8 +1492,7 @@ class Plotter(object):
         labels = [
             ["Residual w/o ..., HCD terms", "HCD term"],
             [
-                "Residual w/o ..., "
-                + r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$ terms",
+                "Residual w/o ..., " + r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$ terms",
                 r"$\mathrm{Ly}\alpha-\mathrm{SiIII}$ term",
             ],
             [
@@ -1527,9 +1500,7 @@ class Plotter(object):
                 r"$\mathrm{SiII}-\mathrm{SiII}$ term",
             ],
             [
-                "Residual w/o ..., "
-                + r"$\mathrm{Ly}\alpha-\mathrm{SiII}$"
-                + " terms",
+                "Residual w/o ..., " + r"$\mathrm{Ly}\alpha-\mathrm{SiII}$" + " terms",
                 r"$\mathrm{Ly}\alpha-\mathrm{SiII}$ term",
             ],
             [
@@ -1549,8 +1520,7 @@ class Plotter(object):
                         key = "HCD_damp" + str(ii + 1) + "_" + str(jj)
                         try:
                             ind = np.argwhere(
-                                np.array(self.fitter.like.free_param_names)
-                                == key
+                                np.array(self.fitter.like.free_param_names) == key
                             )[0, 0]
                             _values[ind] = -11.5
                         except:
@@ -1574,9 +1544,7 @@ class Plotter(object):
                 except:
                     pass
 
-            cont = self.fitter.like.get_p1d_kms(
-                zs=zmask, values=_values, remove=remove
-            )
+            cont = self.fitter.like.get_p1d_kms(zs=zmask, values=_values, remove=remove)
 
             contaminants.append(cont[0])
 
@@ -1684,16 +1652,20 @@ class Plotter(object):
         _data_Pk_kms = []
         _data_ePk_kms = []
         _data_icov_kms = []
-        for iz in range(len(self.fitter.like.data.z)):
-            _ = np.argwhere(np.abs(zmask - self.fitter.like.data.z[iz]) < 1e-3)
+
+        key_data = list(self.fitter.like.data.keys())[0]
+        data = self.fitter.like.data[key_data]
+        indz = np.argwhere(data.z == zmask[0])[0, 0]
+        for iz in range(len(data.z)):
+            _ = np.argwhere(np.abs(zmask - data.z[iz]) < 1e-3)
             if len(_) != 0:
-                _data_z.append(self.fitter.like.data.z[iz])
-                _data_k_kms.append(self.fitter.like.data.k_kms[iz])
-                _data_Pk_kms.append(self.fitter.like.data.Pk_kms[iz])
+                _data_z.append(data.z[iz])
+                _data_k_kms.append(data.k_kms[iz])
+                _data_Pk_kms.append(data.Pk_kms[iz])
                 _data_ePk_kms.append(
-                    np.sqrt(np.diag(self.fitter.like.cov_Pk_kms[iz]))
+                    np.sqrt(np.diag(self.fitter.like.cov_Pk_kms[key_data][iz]))
                 )
-                _data_icov_kms.append(self.fitter.like.icov_Pk_kms[iz])
+                _data_icov_kms.append(self.fitter.like.icov_Pk_kms[key_data][iz])
         _data_z = np.array(_data_z)
 
         each_contaminants = [
@@ -1764,9 +1736,7 @@ class Plotter(object):
                 r"$\mathrm{SiII}-\mathrm{SiII}$ term (2 params)",
             ],
             [
-                "Residual w/o "
-                + r"$\mathrm{Ly}\alpha-\mathrm{SiII}$"
-                + " term",
+                "Residual w/o " + r"$\mathrm{Ly}\alpha-\mathrm{SiII}$" + " term",
                 r"$\mathrm{Ly}\alpha-\mathrm{SiII}$ term (2 params)",
             ],
             ["Residual w/o HCD term", "HCD term (4 params)"],
@@ -1786,8 +1756,7 @@ class Plotter(object):
                         key = "HCD_damp" + str(ii + 1) + "_" + str(jj)
                         try:
                             ind = np.argwhere(
-                                np.array(self.fitter.like.free_param_names)
-                                == key
+                                np.array(self.fitter.like.free_param_names) == key
                             )[0, 0]
                             _values[ind] = -11.5
                         except:
@@ -1811,11 +1780,9 @@ class Plotter(object):
                 except:
                     pass
 
-            cont = self.fitter.like.get_p1d_kms(
-                zs=zmask, values=_values, remove=remove
-            )
+            cont, _ = self.fitter.like.get_p1d_kms(values=_values, remove=remove)
 
-            contaminants.append(cont[0])
+            contaminants.append(cont[key_data][indz])
 
         chi2_all = []
         emu_p1d = []
@@ -1823,7 +1790,7 @@ class Plotter(object):
         for ii in range(len(each_contaminants)):
             emu_p1d.append(contaminants[ii])
             diff = _data_Pk_kms[0] - contaminants[ii]
-            chi2_all.append(np.dot(np.dot(_data_icov_kms[0], diff[0]), diff[0]))
+            chi2_all.append(np.dot(np.dot(_data_icov_kms[0], diff), diff))
 
         nax = len(emu_p1d) // 2
         naxres = len(emu_p1d) % 2
@@ -1842,21 +1809,15 @@ class Plotter(object):
         for ii in range(len(emu_p1d)):
             if store_data:
                 out_data["x"] = _data_k_kms[0]
-                out_data["y" + str(ii) + "_blue"] = (
-                    _data_Pk_kms[0] / emu_p1d[ii][0] - 1
-                )
-                out_data["yerr" + str(ii) + "_blue"] = (
-                    _data_ePk_kms[0] / emu_p1d[ii][0]
-                )
+                out_data["y" + str(ii) + "_blue"] = _data_Pk_kms[0] / emu_p1d[ii] - 1
+                out_data["yerr" + str(ii) + "_blue"] = _data_ePk_kms[0] / emu_p1d[ii]
                 if ii != 0:
-                    out_data["y" + str(ii) + "_orange"] = (
-                        emu_p1d[0][0] / emu_p1d[ii][0] - 1
-                    )
+                    out_data["y" + str(ii) + "_orange"] = emu_p1d[0] / emu_p1d[ii] - 1
 
             ax[ii].errorbar(
                 _data_k_kms[0],
-                _data_Pk_kms[0] / emu_p1d[ii][0] - 1,
-                _data_ePk_kms[0] / emu_p1d[ii][0],
+                _data_Pk_kms[0] / emu_p1d[ii] - 1,
+                _data_ePk_kms[0] / emu_p1d[ii],
                 # _data_Pk_kms[0] - emu_p1d[ii][0],
                 # _data_ePk_kms[0],
                 color="C0",
@@ -1867,7 +1828,7 @@ class Plotter(object):
             if ii != 0:
                 ax[ii].plot(
                     _data_k_kms[0],
-                    emu_p1d[0][0] / emu_p1d[ii][0] - 1,
+                    emu_p1d[0] / emu_p1d[ii] - 1,
                     "C1-",
                     label=labels[ii][1],
                 )
@@ -1926,9 +1887,7 @@ class Plotter(object):
         if store_data:
             return out_data
 
-    def plot_illustrate_contaminants2(
-        self, values, zmask, fontsize=18, lines_use=None
-    ):
+    def plot_illustrate_contaminants2(self, values, zmask, fontsize=18, lines_use=None):
         # all_contaminants = np.array(lines_use + ["DLA", "res", "none"])
         all_contaminants = np.array(lines_use + ["DLA", "none"])
 
@@ -1984,8 +1943,7 @@ class Plotter(object):
                         _values[ind] = 0
                 try:
                     ind = np.argwhere(
-                        np.array(self.fitter.like.free_param_names)
-                        == "HCD_const_0"
+                        np.array(self.fitter.like.free_param_names) == "HCD_const_0"
                     )[0, 0]
                     _values[ind] = 1
                 except:
@@ -1994,8 +1952,7 @@ class Plotter(object):
             if "res" in all_contaminants:
                 if "res" not in conts:
                     ind = np.argwhere(
-                        np.array(self.fitter.like.free_param_names)
-                        == "R_coeff_0"
+                        np.array(self.fitter.like.free_param_names) == "R_coeff_0"
                     )[0, 0]
                     _values[ind] = 0.5
 
@@ -2052,8 +2009,7 @@ class Plotter(object):
                         _values[ind] = 0
                 try:
                     ind = np.argwhere(
-                        np.array(self.fitter.like.free_param_names)
-                        == "HCD_const_0"
+                        np.array(self.fitter.like.free_param_names) == "HCD_const_0"
                     )[0, 0]
                     _values[ind] = 1
                 except:
@@ -2112,8 +2068,7 @@ class Plotter(object):
             if ii != len(emu_p1d) - 1:
                 ax[ii].plot(
                     _data_k_kms[0],
-                    dict_cont_each[lab2cont[labels[ii + 1]]]
-                    - dict_cont_each["none"],
+                    dict_cont_each[lab2cont[labels[ii + 1]]] - dict_cont_each["none"],
                     "C1-",
                     label=labels[ii + 1],
                 )
@@ -2135,9 +2090,7 @@ class Plotter(object):
                 )
             ax[ii].axhline(color="k", ls=":", alpha=0.5)
 
-            ax[ii].tick_params(
-                axis="both", which="major", labelsize=fontsize - 2
-            )
+            ax[ii].tick_params(axis="both", which="major", labelsize=fontsize - 2)
             _handles, _labels = ax[ii].get_legend_handles_labels()
             if ii != len(emu_p1d) - 1:
                 order = [1, 0]
@@ -2175,9 +2128,7 @@ class Plotter(object):
             plt.show()
 
 
-def plot_cov(
-    p1d_fname, kmin=1e-3, nknyq=0.5, fontsize=14, save_directory=None, lab=""
-):
+def plot_cov(p1d_fname, kmin=1e-3, nknyq=0.5, fontsize=14, save_directory=None, lab=""):
     from astropy.io import fits
 
     try:
