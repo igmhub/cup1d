@@ -915,15 +915,17 @@ class Fitter(object):
         #     dict_out["args"][key] = self.like.args[key]
 
         # DATA
+        key = list(self.like.data.keys())[0]
+        data = self.like.data[key]
         dict_out["data"] = {}
-        dict_out["data"]["data_label"] = self.like.data.data_label
-        dict_out["data"]["zs"] = self.like.data.z
-        dict_out["data"]["k_kms"] = self.like.data.k_kms
-        dict_out["data"]["Pk_kms"] = self.like.data.Pk_kms
-        dict_out["data"]["cov_Pk_kms"] = self.like.data.cov_Pk_kms
-        if self.like.data.full_Pk_kms is not None:
-            dict_out["data"]["full_Pk_kms"] = self.like.data.full_Pk_kms
-            dict_out["data"]["full_cov_Pk_kms"] = self.like.data.full_cov_Pk_kms
+        dict_out["data"]["data_label"] = data.data_label
+        dict_out["data"]["zs"] = data.z
+        dict_out["data"]["k_kms"] = data.k_kms
+        dict_out["data"]["Pk_kms"] = data.Pk_kms
+        dict_out["data"]["cov_Pk_kms"] = data.cov_Pk_kms
+        if data.full_Pk_kms is not None:
+            dict_out["data"]["full_Pk_kms"] = data.full_Pk_kms
+            dict_out["data"]["full_cov_Pk_kms"] = data.full_cov_Pk_kms
 
         # EMULATOR
         dict_out["emulator"] = {}

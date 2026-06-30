@@ -1564,9 +1564,8 @@ class Likelihood(object):
 
             length = 1
         else:
-            fig, ax = plt.subplots(len(self.data), 1, figsize=(14, 14), sharex=True)
-            if len(ax) == 1:
-                ax = [ax]
+            fig, ax = plt.subplots(len(self.data), 1, figsize=(16, 14), sharex=True)
+            ax = np.atleast_1d(ax)
 
         # figure out y range for plot
         ymin = 1e10
@@ -3270,7 +3269,9 @@ class Likelihood(object):
     def plot_cov_to_pk(
         self, use_pk_smooth=True, fname=None, ftsize=18, store_data=False
     ):
-        npanels = int(np.round(np.sqrt(len(self.cov_Pk_kms))))
+        key = list(self.data.keys())[0]
+        nz = len(self.data[key].z)
+        npanels = int(np.round(np.sqrt(nz)))
 
         fig, ax = plt.subplots(
             npanels + 1, npanels, sharex=True, sharey="row", figsize=(10, 8)
@@ -3279,50 +3280,50 @@ class Likelihood(object):
 
         if store_data:
             out_data = {}
-        for ii in range(len(self.cov_Pk_kms)):
-            cov_stat = np.diag(self.data.covstat_Pk_kms[ii])
-            cov_syst = np.diag(self.data.cov_Pk_kms[ii]) - cov_stat
+        for ii in range(nz):
+            cov_stat = np.diag(self.data[key].covstat_Pk_kms[ii])
+            cov_syst = np.diag(self.data[key].cov_Pk_kms[ii]) - cov_stat
 
-            ind = np.argmin(np.abs(self.cov_factor["z"] - self.data.z[ii]))
+            ind = np.argmin(np.abs(self.cov_factor["z"] - self.data[key].z[ii]))
             # inflate errors stat
             cov_stat = cov_stat * self.cov_factor["val_stat"][ind] ** 2
             # inflate errors syst
             cov_syst = cov_syst * self.cov_factor["val_syst"][ind] ** 2
 
-            cov_emu = np.diag(self.cov_emu_Pk_kms[ii])
-            cov_tot = np.diag(self.cov_Pk_kms[ii])
+            cov_emu = np.diag(self.cov_emu_Pk_kms[key][ii])
+            cov_tot = np.diag(self.cov_Pk_kms[key][ii])
             if use_pk_smooth:
-                pk = self.data.Pksmooth_kms[ii].copy()
+                pk = self.data[key].Pksmooth_kms[ii].copy()
             else:
-                pk = self.data.Pk_kms[ii].copy()
+                pk = self.data[key].Pk_kms[ii].copy()
 
             if store_data:
-                out_data["x" + str(ii)] = self.data.k_kms[ii]
+                out_data["x" + str(ii)] = self.data[key].k_kms[ii]
                 out_data["y" + str(ii) + "_blue"] = np.sqrt(cov_stat) / pk
                 out_data["y" + str(ii) + "_orange"] = np.sqrt(cov_syst) / pk
                 out_data["y" + str(ii) + "_green"] = np.sqrt(cov_emu) / pk
                 out_data["y" + str(ii) + "_red"] = np.sqrt(cov_tot) / pk
 
             ax[ii].plot(
-                self.data.k_kms[ii],
+                self.data[key].k_kms[ii],
                 np.sqrt(cov_stat) / pk,
                 ls="-",
                 lw=3,
             )
             ax[ii].plot(
-                self.data.k_kms[ii],
+                self.data[key].k_kms[ii],
                 np.sqrt(cov_syst) / pk,
                 ls=":",
                 lw=3,
             )
             ax[ii].plot(
-                self.data.k_kms[ii],
+                self.data[key].k_kms[ii],
                 np.sqrt(cov_emu) / pk,
                 ls="--",
                 lw=3,
             )
             ax[ii].plot(
-                self.data.k_kms[ii],
+                self.data[key].k_kms[ii],
                 np.sqrt(cov_tot) / pk,
                 ls="-.",
                 lw=3,
@@ -3330,15 +3331,15 @@ class Likelihood(object):
             ax[ii].text(
                 0.05,
                 0.95,
-                "z=" + str(self.data.z[ii]),
+                "z=" + str(self.data[key].z[ii]),
                 ha="left",
                 va="top",
                 transform=ax[ii].transAxes,
                 fontsize=ftsize,
             )
             ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
-        if len(ax) > len(self.cov_Pk_kms):
-            for ii in range(len(self.cov_Pk_kms), len(ax)):
+        if len(ax) > nz:
+            for ii in range(nz, len(ax)):
                 ax[ii].axis("off")
 
         labs = ["stat", "syst", "emu", "total"]
