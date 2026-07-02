@@ -13,14 +13,12 @@ If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es
 
 - Download and install Conda. You can find the instructions here https://docs.anaconda.com/miniconda/miniconda-install/
 
-- Create a new conda environment. It is usually better to follow python version one or two behind. In January 2024, the latest is 3.12, so we recommend 3.11.
+- Create a conda environment
 
 ```
-conda create -n cup1d -c conda-forge python=3.11 camb mpich mpi4py fdasrsf
-conda activate cup1d
-pip install --upgrade pip
+conda create -n cup1d -c conda-forge python=3.12 mpi4py
 ```
-- Clone and install LaCE (do so within the environment created above):
+- Clone and install LaCE following the instructions [here](https://github.com/igmhub/LaCE) (do so within the environment created above):
 
 ```
 git clone https://github.com/igmhub/LaCE.git
@@ -83,7 +81,7 @@ pip install ipykernel
 python -m ipykernel install --user --name cup1d --display-name cup1d
 ```
 
-You can find the main tutorial to run your analyses in `notebooks/tutorials/sample_sim.py`
+You can find the main tutorial to run the DESI DR1 analysis in `notebooks/tutorials/dr1_tutorial.py`
 
 You can also plot many P1D measurements stored in the repo, by looking at `notebooks/p1d_measurements`
 

@@ -6,51 +6,42 @@ build-backend = "setuptools.build_meta"
 name="cup1d"
 version="2024.0.0"
 authors = [
+    { name="Jonas Chaves-Montero", email="jchaves@ifae.es" },
     { name="Andreu Font-Ribera", email="afont@ifae.es" },
     { name="Chris Pedersen" },
-    { name="Jonas Chaves-Montero", email="jchaves@ifae.es" },
 ]
 maintainers = [
-    { name="Andreu Font-Ribera", email="afont@ifae.es" },
     { name="Jonas Chaves-Montero", email="jchaves@ifae.es" },
+    { name="Andreu Font-Ribera", email="afont@ifae.es" },
 ]
 description = "Likelihood for Lyman-alpha 1D power spectrum"
 readme = "README.md"
+license = { text = "MIT" }
 keywords = [
     "Lyman-alpha", "Cosmology", "Power Spectrum", "Emulator",
 ]
-requires-python = ">= 3.10"
+requires-python = ">= 3.12"
 dependencies = [
-    "numpy>=1.24.4",
-    "pandas>=2.1.4",
-    "scipy>=1.11.4",
-    "h5py>=3.10.0",
-    "matplotlib>=3.8.2",
-    "configobj>=5.0.8",
-    "configargparse>=1.7",
-    "emcee>=3.1.4",
-    "chainconsumer>=1.0.2",
-    "getdist>=1.4.6",
-    "iminuit>=2.24.0",
-    "bottleneck>=1.3.7",
-    "jupyterlab",
-    "pyDOE2",
-    "numdifftools",
-    "astropy"
+    "numpy",
+    "pandas",
+    "scipy",
+    "matplotlib",
+    "emcee",
+    "getdist",
+    "astropy",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific :: Cosmology/Astrophysics",
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 [tool.setuptools.packages.find]
-include = ["cup1d"]
+include = ["cup1d","cup1d.*"]
 namespaces = false
 
 [project.urls]

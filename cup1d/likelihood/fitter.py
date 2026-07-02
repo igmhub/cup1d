@@ -1,10 +1,7 @@
 import os
 import time
-import emcee
-from scipy.stats import truncnorm
-from scipy.optimize import minimize, dual_annealing
+from scipy.optimize import minimize
 import numpy as np
-from pyDOE2 import lhs
 from mpi4py import MPI
 
 from cup1d.utils import blinding
@@ -172,6 +169,8 @@ class Fitter(object):
             - force_timeout will continue to run the chains
               until timeout, regardless of convergence"""
 
+        import emcee
+
         if log_func is None:
             _log_func = self.like.log_prob_and_blobs
         else:
@@ -326,12 +325,17 @@ class Fitter(object):
             mle_cube = np.ones(npars) * 0.5
 
         if burn_in:
+
+            from scipy.stats import qmc
+
             # random starting points
             _chi2 = 1e10
             nsamples = 25
             sig = 0.25
             niter = 1
-            arr_p0 = lhs(npars, samples=nsamples)
+
+            lhs_sampler = qmc.LatinHypercube(d=npars, seed=42)
+            arr_p0 = lhs_sampler.random(n=nsamples)
 
             # star minimization at different points, keep best
             # we hope it is easier to get to the local minima
@@ -456,6 +460,8 @@ class Fitter(object):
         restart=True,
     ):
         """Minimizer using dual annealing"""
+
+        from scipy.optimize import dual_annealing
 
         def set_log_func_minimize(pini, zmask=None, mask_pars=None):
             if mask_pars is None:
@@ -744,6 +750,8 @@ class Fitter(object):
     def get_trunc_norm(self, mean, n_samples):
         """Wrapper for scipys truncated normal distribution
         Runs in the range [0,1] with a rms specified on initialisation"""
+
+        from scipy.stats import truncnorm
 
         rms = self.like.prior_Gauss_rms
         values = truncnorm.rvs(
