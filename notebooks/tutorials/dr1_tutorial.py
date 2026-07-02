@@ -26,24 +26,6 @@ import matplotlib.pyplot as plt
 from cup1d.likelihood.pipeline import Pipeline
 
 
-# %%
-from scipy.stats import qmc
-
-# 1. Define dimensions (features) and number of samples
-dimensions = 3
-n_samples = 5
-
-# 2. Initialize the Latin Hypercube sampler
-sampler = qmc.LatinHypercube(d=dimensions, seed=42)
-
-# 3. Generate samples in the [0, 1) range
-sample_matrix = sampler.random(n=n_samples)
-
-# %%
-sample_matrix.shape
-
-# %%
-
 # %% [markdown]
 # ## Load P1D measurements and set likelihood
 

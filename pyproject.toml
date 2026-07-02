@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name="cup1d"
-version="2024.0.0"
+version="2026.07"
 authors = [
     { name="Jonas Chaves-Montero", email="jchaves@ifae.es" },
     { name="Andreu Font-Ribera", email="afont@ifae.es" },
