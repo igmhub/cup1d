@@ -194,4 +194,30 @@ pip.run_minimizer(p0)
 p1 = pip.fitter.mle_cube
 pip.fitter.like.plot_p1d(p1)
 
+# %% [markdown]
+# Read chain
+
+# %%
+path = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/blobs.npy"
+base_chain = np.load(path)
+
+results = {}
+results["Delta2_star"] = base_chain["Delta2_star"].reshape(-1)
+results["n_star"] = base_chain["n_star"].reshape(-1)
+
+for par in results:
+    print(np.median(results[par]))
+
+# %% [markdown]
+# Apply unblinding
+
+# %%
+from cup1d.utils.blinding import apply_unblinding
+
+results_unblind = apply_unblinding(pip.fitter.like.blind, results)
+
+# %%
+for par in results_unblind:
+    print(np.median(results_unblind[par]))
+
 # %%
