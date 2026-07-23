@@ -1,5 +1,7 @@
 import numpy as np
 
+from lace.cosmo import cosmology
+
 from cup1d.likelihood.lya_theory import Theory
 from cup1d.igm.model_igm import IGM
 from cup1d.contaminants.model_contaminants import Contaminants
@@ -59,5 +61,8 @@ def set_theory(
     theory.set_fid_cosmo(np.unique(zs), input_cosmo=true_cosmo)
 
     theory.model_igm.set_fid_igm(zs)
+
+    class_cosmo = cosmology.Cosmology(cosmo_label=cosmo_label)
+    emulator.set_cosmo(class_cosmo.input_cosmo_params_dict)
 
     return theory

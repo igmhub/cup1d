@@ -661,7 +661,16 @@ class Theory(object):
             kin_Mpc[iz, : len(k_kms[iz])] = k_kms[iz] * M_of_z[iz]
 
         # call emulator
-        _res = self.emulator.emulate_p1d_Mpc(emu_call, kin_Mpc)
+        if "forest" in self.emulator.emulator_label:
+            new_cosmo_params = {}
+            for par in like_params:
+                if par.name in ["As", "ns", "nrun"]:
+                    new_cosmo_params[par.name] = par.value
+            _res = self.emulator.emulate_p1d_Mpc(
+                emu_call, kin_Mpc, zs, new_cosmo_params=new_cosmo_params
+            )
+        else:
+            _res = self.emulator.emulate_p1d_Mpc(emu_call, kin_Mpc)
         # if return_covar:
         #     p1d_Mpc, cov_Mpc = _res
         # else:

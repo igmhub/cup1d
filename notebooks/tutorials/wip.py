@@ -56,13 +56,12 @@ from cup1d.pipeline.set_archive import set_archive
 
 
 # %%
-
-# %%
-
-# %%
-data_label = ["DESIY1_QMLE3", "Karacayli2022", "Walther2018"]
+data_label = ["DESIY1_QMLE3"]
+# data_label = ["DESIY1_QMLE3", "Karacayli2022"]
+# data_label = ["DESIY1_QMLE3", "Karacayli2022", "Walther2018"]
 # emulator_label = "CH24_mpgcen_gpr"
 emulator_label = "forest_mpg"
+# emulator_label = "CH24_mpgcen_gpr"
 name_variation = "no_res"
 
 args = Args(
@@ -89,10 +88,6 @@ pip.fitter.like.get_chi2(p0)
 # pip.fitter.like.theory.emulator.list_sim_cube
 
 # %%
-
-# %%
-
-# %%
 # np.diag(pip.fitter.like.full_icov_Pk_kms["Karacayli2022"])
 
 # %%
@@ -104,6 +99,9 @@ pip.fitter.like.plot_p1d(p0, print_chi2=False)
 # %%
 pip.run_minimizer(p0)
 p0 = pip.fitter.mle_cube
+
+# %%
+pip.fitter.like.plot_p1d(p0, print_chi2=False)
 
 # %%
 # kmax_kms = 0.05
@@ -134,6 +132,11 @@ p1 = np.array([
     2.86619375e-01, 5.26975148e-01, 9.15807378e-01, 7.87923616e-01,
     7.19038867e-01, 8.13452558e-01, 7.00610726e-02, 5.34434791e-02,
     6.25417538e-01, 1.42502425e-02
+])
+
+# forestflow DESI DR1
+p0 = np.array([
+    
 ])
 
 # %%
