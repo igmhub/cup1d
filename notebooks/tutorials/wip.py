@@ -79,10 +79,37 @@ args.set_baseline(
 pip = Pipeline(args)
 
 # %%
-
 p0 = pip.fitter.like.sampling_point_from_parameters().copy()
 free_params = pip.fitter.like.parameters_from_sampling_point(p0)
 pip.fitter.like.get_chi2(p0)
+
+# %%
+pip.fitter.like.get_chi2(p0)
+
+# %%
+# %%time
+for ii in range(10):
+    pip.fitter.like.get_chi2(p0)
+
+# %%
+
+# %%
+# %%time
+for ii in range(10):
+    pip.fitter.like.get_chi2(p0)
+
+# %%
+
+# %%
+# forest-mpg 0.2 s
+17.6/100.
+# lace-mpg 0.0072 s
+0.718/100.
+
+# %%
+
+# %%
+0.17/0.0072
 
 # %%
 # pip.fitter.like.theory.emulator.list_sim_cube
@@ -99,6 +126,31 @@ pip.fitter.like.plot_p1d(p0, print_chi2=False)
 # %%
 pip.run_minimizer(p0)
 p0 = pip.fitter.mle_cube
+
+# %%
+DESI DR1 lace-mpg
+7 s per step
+fit prob 12.620160058817945
+Delta2_star 0.44641
+n_star -2.31264
+alpha_star -0.21804
+Almost out of bounds:
+tau_eff_3 6.554882735132123e-05 -0.22089778801658366
+gamma_2 0.9923529975743228 1.2610307967380079
+gamma_3 0.0009226403192475971 0.7641173356498491
+kF_kms_3 0.9776768775681337 1.2855076291518504
+
+DESI DR1 forest-mpg
+200 s per step
+fit prob 24.215951076049226
+Delta2_star 0.37374
+n_star -2.31357
+alpha_star -0.21804
+Almost out of bounds:
+tau_eff_3 0.010964543875754372 -0.2160482471924363
+gamma_0 0.9999676876608057 1.2648473452008409
+gamma_3 0.0027691300887306815 0.7650428122761227
+kF_kms_1 0.006074003117882781 0.8160790278955864
 
 # %%
 pip.fitter.like.plot_p1d(p0, print_chi2=False)
@@ -136,11 +188,22 @@ p1 = np.array([
 
 # forestflow DESI DR1
 p0 = np.array([
-    
+    0.44370891, 0.41896411, 0.61988151, 0.40441576, 0.45867814,
+       0.01096454, 0.67756427, 0.10833635, 0.08650839, 0.72379107,
+       0.99996769, 0.69281722, 0.64864356, 0.00276913, 0.13844165,
+       0.006074  , 0.30521981, 0.85987199, 0.45887747, 0.52643935,
+       0.58099397, 0.57841591, 0.58993933, 0.31664493, 0.7344514 ,
+       0.42520576, 0.56215998, 0.66432898, 0.59622537, 0.6936141 ,
+       0.46279051, 0.39349512, 0.26083371, 0.73383231, 0.84770478,
+       0.80593018, 0.17142966, 0.76663517, 0.54851977, 0.32703703,
+       0.57129636, 0.62593543
 ])
 
 # %%
-pip.fitter.like.plot_p1d(p0, print_chi2=False)
+pip.fitter.like.plot_p1d(p0, print_chi2=False, residuals=True)
+
+# %%
+help(pip.fitter.like.plot_p1d)
 
 # %%
 pip.fitter.mle_cosmo

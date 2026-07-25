@@ -24,14 +24,33 @@ class P1D_emulator:
         self.emu_params = self.emulator.input_labels
         self.emulator_label = name_emu
 
+        self.arr_z = None
+        self.arr_k_Mpc = None
+        self.cosmo_params_dict = None
+        self.model_Arinyo = None
+        self.linear = None
+
     def set_cosmo(self, cosmo_params_dict):
+        self.cosmo_params_dict = cosmo_params_dict
         fid_cosmo = cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
         self.model_Arinyo = ArinyoModel(fid_cosmo)
 
-    def emulate_p1d_Mpc(self, in_params, k_Mpc, z, new_cosmo_params=None):
+    def set_linear_theory(self, z, new_cosmo_params=None):
 
-        arr_z = np.atleast_1d(z)
-        arr_k_Mpc = np.atleast_1d(k_Mpc)
+        z = np.atleast_1d(z)
+
+        if (self.linear is not None) and same_cosmo(
+            self.cosmo_params_dict, new_cosmo_params
+        ):
+            return
+
+        self.linear = self.model_Arinyo.linear_theory(
+            zmin=z.min(),
+            zmax=z.max(),
+            new_cosmo_params=new_cosmo_params,
+        )
+
+    def emulate_p1d_Mpc(self, zs, kin_Mpc, in_params):
 
         list_dicts = []
         nin = in_params["Delta2_p"].shape[0]
@@ -40,24 +59,22 @@ class P1D_emulator:
             for par in self.emu_params:
                 in_par_only[par] = in_params[par][ii]
             list_dicts.append(in_par_only)
-
         out_emu = self.emulator.evaluate(list_dicts)
 
-        list_out_emu = []
-        for ii in range(nin):
-            out_par_only = {}
-            for par in out_emu:
-                out_par_only[par] = out_emu[par][ii]
-            list_out_emu.append(out_par_only)
-
-        list_P1D_Mpc = []
-        for ii in range(nin):
-            _P1D_Mpc = self.model_Arinyo.P1D_Mpc(
-                arr_z[ii],
-                arr_k_Mpc[ii],
-                list_out_emu[ii],
-                new_cosmo_params=new_cosmo_params,
-            )
-            list_P1D_Mpc.append(_P1D_Mpc)
+        list_P1D_Mpc = self.model_Arinyo.P1D_Mpc(
+            self.linear,
+            zs,
+            kin_Mpc,
+            out_emu,
+        )
 
         return list_P1D_Mpc
+
+
+def same_cosmo(cosmo_params_dict, new_cosmo_params):
+    if new_cosmo_params is None:
+        return True
+
+    return all(
+        cosmo_params_dict.get(key) == value for key, value in new_cosmo_params.items()
+    )

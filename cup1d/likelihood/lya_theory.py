@@ -666,9 +666,8 @@ class Theory(object):
             for par in like_params:
                 if par.name in ["As", "ns", "nrun"]:
                     new_cosmo_params[par.name] = par.value
-            _res = self.emulator.emulate_p1d_Mpc(
-                emu_call, kin_Mpc, zs, new_cosmo_params=new_cosmo_params
-            )
+            self.emulator.set_linear_theory(zs, new_cosmo_params=new_cosmo_params)
+            _res = self.emulator.emulate_p1d_Mpc(zs, kin_Mpc, emu_call)
         else:
             _res = self.emulator.emulate_p1d_Mpc(emu_call, kin_Mpc)
         # if return_covar:
