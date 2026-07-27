@@ -662,6 +662,7 @@ class Theory(object):
 
         # call emulator
         if "forest" in self.emulator.emulator_label:
+            # this is a hack, do it properly (TODO)
             new_cosmo_params = {}
             for par in like_params:
                 if par.name in ["As", "ns", "nrun"]:

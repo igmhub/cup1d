@@ -38,16 +38,16 @@ class P1D_emulator:
     def set_linear_theory(self, z, new_cosmo_params=None):
 
         z = np.atleast_1d(z)
+        zuse = np.unique(z)
 
         if (self.linear is not None) and same_cosmo(
             self.cosmo_params_dict, new_cosmo_params
         ):
-            return
+            if np.all(zuse == self.linear.z):
+                return
 
         self.linear = self.model_Arinyo.linear_theory(
-            zmin=z.min(),
-            zmax=z.max(),
-            new_cosmo_params=new_cosmo_params,
+            zuse, new_cosmo_params=new_cosmo_params
         )
 
     def emulate_p1d_Mpc(self, zs, kin_Mpc, in_params):

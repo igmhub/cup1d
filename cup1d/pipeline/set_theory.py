@@ -66,6 +66,5 @@ def set_theory(
     if emulator.emulator_label == "forest_mpg":
         class_cosmo = cosmology.Cosmology(cosmo_label=cosmo_label)
         emulator.set_cosmo(class_cosmo.input_cosmo_params_dict)
-        emulator.set_linear_theory(zs)
 
     return theory
