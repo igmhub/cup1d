@@ -16,14 +16,14 @@ If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es
 - Create a conda environment
 
 ```
-conda create -n cup1d -c conda-forge python=3.12 mpi4py
+conda create -n cup1d python=3.12
 ```
 - Clone and install LaCE following the instructions [here](https://github.com/igmhub/LaCE) (do so within the environment created above):
 
 ```
 git clone https://github.com/igmhub/LaCE.git
 cd LacE
-pip install -e .
+make install
 ``` 
 
 - Clone and install cup1d:
@@ -31,7 +31,7 @@ pip install -e .
 ```
 git clone https://github.com/igmhub/cup1d.git
 cd cup1d
-pip install -e .
+make install
 ``` 
 
 #### NERSC users:
