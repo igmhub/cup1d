@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -56,12 +56,16 @@ from cup1d.pipeline.set_archive import set_archive
 
 
 # %%
-# data_label = ["DESIY1_QMLE3"]
-data_label = ["DESIY1_QMLE3", "Karacayli2022"]
+data_label = ["DESIY1_QMLE3"]
+name_variation = None
+
+# data_label = ["DESIY1_QMLE3", "Karacayli2022"]
 # data_label = ["DESIY1_QMLE3", "Karacayli2022", "Walther2018"]
-# emulator_label = "CH24_mpgcen_gpr"
-emulator_label = "forest_mpg"
-name_variation = "no_res"
+# name_variation = "no_res"
+
+emulator_label = "CH24_mpgcen_gpr"
+# emulator_label = "forest_mpg"
+
 
 args = Args(
     data_label=data_label,
@@ -76,6 +80,49 @@ args.set_baseline(
 )
 
 pip = Pipeline(args)
+
+# %%
+full_cov = pip.fitter.like.full_cov_Pk_kms["DESIY1_QMLE3"]
+
+
+# %%
+lenz = []
+for ii in range(11):
+    lenz.append(len(pip.fitter.like.data["DESIY1_QMLE3"].k_kms[ii]))
+    print(lenz[-1])
+
+# %%
+stat_sys_emu_cov = pip.fitter.like.full_cov_Pk_kms["DESIY1_QMLE3"]
+stat_sys_cov = pip.fitter.like.data["DESIY1_QMLE3"].full_cov_Pk_kms
+stat_cov = pip.fitter.like.data["DESIY1_QMLE3"].full_cov_stat_Pk_kms
+
+sys_cov = stat_sys_cov - stat_cov
+emu_cov = stat_sys_emu_cov - stat_sys_cov
+
+data = {
+    "cov_stat": stat_cov,
+    "cov_sys": sys_cov,
+    "cov_emu": emu_cov,
+    "k_kms": pip.fitter.like.data["DESIY1_QMLE3"].full_k_kms,
+    "Pk_kms": pip.fitter.like.data["DESIY1_QMLE3"].full_Pk_kms,
+    "z": pip.fitter.like.data["DESIY1_QMLE3"].z,
+    "len_k_z": lenz,
+}
+
+np.save("P1D_covs.npy", data)
+
+# %%
+kk = pip.fitter.like.data["DESIY1_QMLE3"].k_kms[0]
+nelem = len(kk)
+plt.plot(kk, np.diag(stat_cov[:nelem, :nelem]), label="stat")
+plt.plot(kk, np.diag(sys_cov[:nelem, :nelem]), label="sys")
+plt.plot(kk, np.diag(emu_cov[:nelem, :nelem]), label="emu")
+
+plt.yscale("log")
+plt.legend()
+
+# %%
+pip.fitter.like.plot_cov_to_pk()
 
 # %%
 p0 = pip.fitter.like.sampling_point_from_parameters().copy()
