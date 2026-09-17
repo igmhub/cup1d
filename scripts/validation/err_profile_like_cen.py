@@ -40,7 +40,7 @@ def main():
     else:
         zmin = 2.2
         zmax = 4.2
-        archive_mock = set_archive(training_set=args.nyx_training_set)
+        archive_mock = set_archive(training_set=args.training_set)
 
     args.set_baseline(
         fit_type="global_opt",

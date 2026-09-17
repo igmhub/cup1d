@@ -4,8 +4,8 @@ from cup1d.pipeline.set_archive import set_archive
 
 
 def plot_cosmic_variance():
-    nyx_training_set = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
-    archive_mock = set_archive(training_set=nyx_training_set)
+    training_set = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
+    archive_mock = set_archive(training_set=training_set)
     central = archive_mock.get_testing_data("nyx_central")
     seed = archive_mock.get_testing_data("nyx_seed")
 

@@ -55,7 +55,10 @@ def set_theory(
         kp_kms=args.kp_kms,
     )
 
-    true_cosmo = set_cosmo(cosmo_label=cosmo_label, nyx_version=args.nyx_training_set)
+    true_cosmo = set_cosmo(
+        cosmo_label=cosmo_label,
+        nyx_version=args.training_set,
+    )
     if zs is None:
         zs = np.concatenate([np.arange(2.2, 4.401, 0.2), np.arange(2.0, 4.501, 0.25)])
     theory.set_fid_cosmo(np.unique(zs), input_cosmo=true_cosmo)

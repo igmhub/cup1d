@@ -29,6 +29,7 @@ dependencies = [
     "emcee",
     "getdist",
     "astropy",
+    "PyYAML",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -46,6 +47,9 @@ version = {attr = "cup1d.__version__"}
 [tool.setuptools.packages.find]
 include = ["cup1d","cup1d.*"]
 namespaces = false
+
+[tool.setuptools.package-data]
+cup1d = ["configuration/*.yaml"]
 
 [project.urls]
 Homepage="https://github.com/igmhub/cup1d"

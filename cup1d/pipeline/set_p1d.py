@@ -19,6 +19,15 @@ from cup1d.p1ds.observations import (
 from cup1d.pipeline.set_archive import set_archive
 
 
+def is_synthetic_data_label(data_label):
+    """Return whether a P1D dataset requires a true theory model."""
+
+    return (
+        data_label.startswith(("mpg", "nyx", "forecast"))
+        or data_label in {"accel2", "sherwood", "challenge_DESIY1"}
+    )
+
+
 def set_P1D(args, data_label, archive=None, theory=None):
     """Set P1D data
 
@@ -68,12 +77,11 @@ def set_P1D(args, data_label, archive=None, theory=None):
 
         if load_archive:
             if data_label.startswith("mpg"):
-                archive_mock = set_archive(training_set="Cabayol23")
-                # archive_mock = set_archive(training_set="Pedersen21")
+                archive_mock = set_archive(training_set=args.training_set)
             elif data_label.startswith("nyx"):
-                archive_mock = set_archive(training_set=args.nyx_training_set)
+                archive_mock = set_archive(training_set=args.training_set)
             elif data_label == "sherwood":
-                archive_mock = set_archive(training_set=args.nyx_training_set)
+                archive_mock = set_archive(training_set=args.training_set)
             elif data_label == "accel2":
                 archive_mock = None
             else:

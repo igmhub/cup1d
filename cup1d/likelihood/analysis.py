@@ -6,7 +6,7 @@ from mpi4py import MPI
 from cup1d.pipeline.set_theory import set_theory
 from cup1d.pipeline.set_emulator import set_emulator
 from cup1d.pipeline.set_like_params import set_free_like_parameters
-from cup1d.pipeline.set_p1d import set_P1D
+from cup1d.pipeline.set_p1d import is_synthetic_data_label, set_P1D
 from cup1d.likelihood.input_pipeline import Args
 from cup1d.likelihood.likelihood import Likelihood
 from cup1d.likelihood.fitter import Fitter
@@ -100,14 +100,23 @@ class Analysis(object):
             self.emulator = emulator
 
         free_parameters = set_free_like_parameters(
-            self.args, emulator_label=emulator.emulator_label
+            self.args, emulator_label=self.args.emulator_label
         )
 
-        # Set true theory to create mocks P1D measurements.
-        # Ignored if setting P1D measurements from observations
-        true_theory = set_theory(
-            self.args, emulator, free_parameters, fid_or_true="true", use_hull=False
+        # A true theory is only needed to construct synthetic P1D data.
+        needs_true_theory = data is None and any(
+            is_synthetic_data_label(label) for label in self.args.data_label
         )
+        if needs_true_theory:
+            true_theory = set_theory(
+                self.args,
+                self.emulator,
+                free_parameters,
+                fid_or_true="true",
+                use_hull=False,
+            )
+        else:
+            true_theory = None
 
         if data is None:
             if rank == 0:
@@ -133,10 +142,8 @@ class Analysis(object):
 
         zs = []
         for data_label in self.args.data_label:
-            zs.append(data[data_label].z)
+            zs.append(self.data[data_label].z)
         zs = np.unique(np.concatenate(zs))
-
-        self.data = data
 
         self.theory = set_theory(
             self.args,
@@ -148,7 +155,7 @@ class Analysis(object):
         )
 
         self.likelihood = Likelihood(
-            data,
+            self.data,
             self.theory,
             free_param_names=free_parameters,
             cov_factor=self.args.cov_factor,

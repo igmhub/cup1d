@@ -1,9 +1,239 @@
 import os
 import numpy as np
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Optional
 
 from cup1d.utils.utils import get_path_repo
+
+
+_TRAINING_SETS = {
+    "CH24_mpgcen_gpr": "Cabayol23",
+    "CH24_nyxcen_gpr": "models_Nyx_Sept2025_include_Nyx_fid_rseed",
+}
+
+
+def get_training_set(emulator_label):
+    """Return the simulation archive associated with an emulator."""
+
+    return _TRAINING_SETS.get(
+        emulator_label,
+        "Cabayol23" if "mpg" in emulator_label else "Pedersen21",
+    )
+
+
+class Args_new:
+    """Analysis arguments loaded directly from a resolved YAML file."""
+
+    _CONT_PARAMS = {
+        "f_Lya_SiIII": [0, -20.0],
+        "s_Lya_SiIII": [0, 2.1],
+        "f_Lya_SiII": [0, -20.0],
+        "s_Lya_SiII": [0, 2.1],
+        "f_SiIIa_SiIIb": [0, -20.0],
+        "s_SiIIa_SiIIb": [0, 0.1],
+        "f_SiIIa_SiIII": [0, 0.0],
+        "f_SiIIb_SiIII": [0, 0.0],
+        "HCD_damp1": [0, -20.0],
+        "HCD_damp2": [0, -20.0],
+        "HCD_damp3": [0, -20.0],
+        "HCD_damp4": [0, -20.0],
+        "HCD_const": [0, 0.0],
+    }
+
+    _SYST_PARAMS = {"R_coeff": [0, 0.0]}
+
+    _CONT_FLAT_PRIORS = {
+        "f_Lya_SiIII": [[-1, 1], [-6, -2]],
+        "s_Lya_SiIII": [[-1, 1], [2, 7]],
+        "f_Lya_SiII": [[-1, 1], [-6, -2]],
+        "s_Lya_SiII": [[-1, 1], [2, 7]],
+        "f_SiIIa_SiIIb": [[-1, 4], [-3, 3]],
+        "s_SiIIa_SiIIb": [[-1, 3], [0, 7.5]],
+        "f_SiIIa_SiIII": [[-1, 2], [-1, 3]],
+        "f_SiIIb_SiIII": [[-1, 1], [-1, 5]],
+        "HCD_damp1": [[-0.5, 0.5], [-10.0, -0.03]],
+        "HCD_damp2": [[-0.5, 0.5], [-10.0, -1.0]],
+        "HCD_damp3": [[-0.5, 0.5], [-10.0, -1.0]],
+        "HCD_damp4": [[-0.5, 0.5], [-10.0, -1.0]],
+        "HCD_const": [[-1, 1], [-0.2, 0.2]],
+    }
+
+    _FIDUCIAL_VALUES = {
+        "fid_igm": {
+            "tau_eff": 0.0,
+            "sigT_kms": 1.0,
+            "gamma": 1.0,
+            "kF_kms": 1.0,
+        },
+        "fid_cont": {
+            "f_Lya_SiIII": -4.0,
+            "s_Lya_SiIII": 5.0,
+            "f_Lya_SiII": -4.0,
+            "s_Lya_SiII": 5.5,
+            "f_SiIIa_SiIIb": 0.5,
+            "s_SiIIa_SiIIb": 4.0,
+            "f_SiIIa_SiIII": 1.0,
+            "f_SiIIb_SiIII": 1.0,
+            "HCD_damp1": -1.4,
+            "HCD_damp2": -6.0,
+            "HCD_damp3": -5.0,
+            "HCD_damp4": -5.0,
+            "HCD_const": 0.0,
+        },
+        "fid_syst": {"R_coeff": 0.0},
+    }
+
+    _NULL_VALUES = {
+        "tau_eff": 0.0,
+        "sigT_kms": 1.0,
+        "gamma": 1.0,
+        "kF_kms": 1.0,
+        "f_Lya_SiIII": -10.0,
+        "s_Lya_SiIII": 2.1,
+        "f_Lya_SiII": -10.0,
+        "s_Lya_SiII": 2.1,
+        "f_SiIIa_SiIIb": -10.0,
+        "s_SiIIa_SiIIb": 0.1,
+        "f_SiIIa_SiIII": 0.0,
+        "f_SiIIb_SiIII": 0.0,
+        "HCD_damp1": -10.0,
+        "HCD_damp2": -10.0,
+        "HCD_damp3": -10.0,
+        "HCD_damp4": -10.0,
+        "HCD_const": 0.0,
+        "R_coeff": 0.0,
+    }
+
+    def __init__(self, synthetic=False, **options):
+        if not options:
+            from cup1d.configuration import (
+                make_cm2026_defaults,
+                make_cm2026_synth_defaults,
+            )
+
+            factory = make_cm2026_synth_defaults if synthetic else make_cm2026_defaults
+            options = factory()
+        for name, value in options.items():
+            setattr(self, name, value)
+        if self.file_ic is not None and not os.path.isabs(self.file_ic):
+            self.file_ic = os.path.join(self.path_ic, self.file_ic)
+        self.training_set = get_training_set(self.emulator_label)
+        self.cont_params = {
+            name: values.copy() for name, values in self._CONT_PARAMS.items()
+        }
+        self.syst_params = {
+            name: values.copy() for name, values in self._SYST_PARAMS.items()
+        }
+        self._set_covariance_redshifts()
+        self._set_parameter_nodes()
+        self._set_fiducial_values()
+        self._set_contaminant_priors()
+
+    def _set_parameter_nodes(self):
+        """Construct IGM and contamination nodes from the analysis settings."""
+
+        for section, names in (
+            (self.fid_igm, self.igm_params),
+            (self.fid_cont, self.cont_params),
+            (self.fid_syst, self.syst_params),
+        ):
+            for name in names:
+                n_nodes = section.get(f"n_{name}", 0)
+                key = f"{name}_znodes"
+                if n_nodes > 0 and key not in section:
+                    if n_nodes == 1:
+                        section[key] = np.asarray([self.z_star])
+                    elif section is self.fid_syst:
+                        section[key] = np.linspace(
+                            self.z_min, self.z_max, n_nodes
+                        )
+                    else:
+                        section[key] = np.geomspace(
+                            self.z_min, self.z_max, n_nodes
+                        )
+
+    def _set_covariance_redshifts(self):
+        """Construct the covariance grid from the analysis redshift settings."""
+
+        self.cov_factor["z"] = np.arange(
+            self.z_min,
+            self.z_max + 0.5 * self.zbin_width,
+            self.zbin_width,
+        )
+        n_redshifts = len(self.cov_factor["z"])
+        for name in ("val_stat", "val_syst", "val_emu", "val_full"):
+            value = self.cov_factor[name]
+            if np.isscalar(value):
+                self.cov_factor[name] = np.full(n_redshifts, value)
+
+    def _set_fiducial_values(self):
+        """Create internal model reference values from the parameter layout."""
+
+        parameter_sections = {
+            "fid_igm": self.igm_params,
+            "fid_cont": self.cont_params,
+            "fid_syst": self.syst_params,
+        }
+        for section, names in parameter_sections.items():
+            values = getattr(self, section)
+            for name in names:
+                n_nodes = values.get(f"n_{name}", 0)
+                reference = (
+                    self._FIDUCIAL_VALUES[section][name]
+                    if n_nodes > 0
+                    else self._NULL_VALUES[name]
+                )
+                if values.get(f"{name}_ztype") == "pivot":
+                    values[name] = [0, reference]
+                else:
+                    nodes = values.get(f"{name}_znodes", [])
+                    values[name] = np.full(len(nodes), reference)
+
+    def _set_contaminant_priors(self):
+        """Set built-in flat priors and ensure they contain reference values."""
+
+        priors = deepcopy(self._CONT_FLAT_PRIORS)
+        variation = getattr(self, "name_variation", None)
+        if variation is not None and variation.startswith("sim_"):
+            for name in ("f_Lya_SiIII", "f_Lya_SiII", "f_SiIIa_SiIIb"):
+                priors[name][-1][0] = -10.5
+            for name in ("HCD_damp1", "HCD_damp2", "HCD_damp3", "HCD_damp4"):
+                priors[name][-1][0] = -10.5
+
+        for name, bounds in priors.items():
+            reference = self.fid_cont[name][-1]
+            if reference < bounds[-1][0]:
+                bounds[-1][0] = reference - 0.1
+            if reference > bounds[-1][1]:
+                bounds[-1][1] = reference + 0.1
+        self.fid_cont["flat_priors"] = priors
+
+    @classmethod
+    def from_yaml(cls, filename, verbose=True, synthetic=False):
+        """Create arguments from one fully resolved YAML configuration."""
+
+        from cup1d.config import (
+            apply_overrides,
+            print_resolved_values,
+            read_config,
+            restore_runtime_types,
+        )
+        from cup1d.configuration import (
+            make_cm2026_defaults,
+            make_cm2026_synth_defaults,
+            update_cm2026_derived,
+        )
+
+        factory = make_cm2026_synth_defaults if synthetic else make_cm2026_defaults
+        defaults = factory()
+        overrides = read_config(filename)
+        config = apply_overrides(defaults, overrides, verbose=False)
+        config = update_cm2026_derived(config, overrides)
+        config = restore_runtime_types(config)
+        if verbose:
+            print_resolved_values(config, overrides)
+        return cls(**config)
 
 
 @dataclass
@@ -20,6 +250,7 @@ class Args:
     data_bias: float = 1
     z_min: float = 0
     z_max: float = 10
+    zbin_width: float = 0.2
     rebin_k: int = 8
     emulator_label: str = "CH24_mpgcen_gpr"
     drop_sim: str | None = None
@@ -105,8 +336,6 @@ class Args:
     apply_smoothing: bool = False
     cov_label: str = "Chabanier2019"
     cov_label_hires: str = "Karacayli2022"
-    # nyx_training_set: str = "models_Nyx_Mar2025_with_CGAN_val_3axes"
-    nyx_training_set: str = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
     cov_syst_type: str = "red"
     z_star: float = 3
     kp_kms: float = 0.009
@@ -139,15 +368,26 @@ class Args:
     file_ic: str | None = None
     path_data: str | None = None
 
+    @classmethod
+    def from_yaml(cls, filename):
+        """Create arguments from CM2026 defaults and YAML overrides."""
+
+        from cup1d.config import apply_overrides, read_config
+
+        args = cls(pre_defined="CM2026")
+        defaults = vars(args)
+        overrides = read_config(filename)
+        resolved = apply_overrides(defaults, overrides)
+
+        for key, value in resolved.items():
+            setattr(args, key, value)
+
+        return args
+
     def __post_init__(self, val_null=-20):
         """Initialize some parameters"""
         self.check_emulator_label()
-        if "nyx" in self.emulator_label:
-            self.training_set = "models_Nyx_Mar2025_with_CGAN_val_3axes"
-        elif "mpg" in self.emulator_label:
-            self.training_set = "Cabayol23"
-        else:
-            self.training_set = "Pedersen21"
+        self.training_set = get_training_set(self.emulator_label)
 
         if self.true_cont["hcd_model_type"] == "new_rogers":
             for jj in range(1, 5):
@@ -180,11 +420,8 @@ class Args:
             # Baseline model from Chaves-Montero+2026
             # This option overrides some parameters
             self.data_label = ["DESIY1_QMLE3"]
-            print("Using: data_label ", self.data_label)
             self.emulator_label = "CH24_mpgcen_gpr"
-            print("Using: emulator_label ", self.emulator_label)
             self.emu_cov_type = "full"
-            print("Using: emu_cov_type ", self.emu_cov_type)
             self.set_baseline(
                 fit_type="global_opt",
                 fix_cosmo=False,
@@ -638,7 +875,11 @@ class Args:
 
         ## inflate errors
         self.cov_factor = {
-            "z": np.arange(self.z_min, self.z_max + 1e-3, 0.2),
+            "z": np.arange(
+                self.z_min,
+                self.z_max + 0.5 * self.zbin_width,
+                self.zbin_width,
+            ),
         }
         # multiply cov by cov_factor**2
 
