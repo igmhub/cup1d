@@ -23,7 +23,7 @@
 import numpy as np
 import os, sys
 import matplotlib.pyplot as plt
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.likelihood.analysis import Analysis
 from cup1d.likelihood.input_pipeline import Args
 
 
@@ -55,7 +55,7 @@ args.set_baseline(
     mcmc_conf=mcmc_conf,
 )
 
-pip = Pipeline(args)
+pip = Analysis(args)
 
 # %% [markdown]
 # ## Plot Mock P1D data 

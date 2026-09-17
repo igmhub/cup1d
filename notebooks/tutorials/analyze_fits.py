@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 
 # our own modules
 from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.likelihood.analysis import Analysis
 from cup1d.utils.utils import get_path_repo
 
 # +
@@ -41,7 +41,7 @@ from cup1d.utils.utils import get_path_repo
 
 # args = Args(data_label=data_label, emulator_label="CH24_"+emu+"cen_gpr")
 # args.set_baseline(fit_type=type_fit, fix_cosmo=True, P1D_type=data_label)
-# pip = Pipeline(args, out_folder=None)
+# pip = Analysis(args, out_folder=None)
 
 name_variation = None
 args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")

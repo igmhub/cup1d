@@ -21,12 +21,12 @@ class Plotter(object):
             self.fitter = fitter
         elif fname_chain is not None:
             from cup1d.likelihood.input_pipeline import Args
-            from cup1d.likelihood.pipeline import Pipeline
+            from cup1d.likelihood.analysis import Analysis
 
             # load file with chain
             data = np.load(fname_chain, allow_pickle=True).item()
 
-            # set input args to pipeline and evaluate
+            # set input args for the analysis and evaluate
             args_possible = inspect.signature(Args)
             dict_input = {}
             for param in args_possible.parameters.values():
@@ -50,7 +50,7 @@ class Plotter(object):
 
             args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/DESI-DR1/qmle_measurement/DataProducts/v3/desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
             # args.p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/cup1d/obs/p1d_fft_y1_measurement_kms_v6.fits"
-            self.fitter = Pipeline(args, out_folder=save_directory).fitter
+            self.fitter = Analysis(args, out_folder=save_directory).fitter
 
             # add sampler results to fitter
             self.fitter.mle_cube = data["fitter"]["mle_cube"]

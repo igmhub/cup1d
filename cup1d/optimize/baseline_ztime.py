@@ -1,5 +1,5 @@
 import numpy as np
-from cup1d.likelihood.pipeline import set_like
+from cup1d.likelihood.analysis import set_like
 from cup1d.likelihood.fitter import Fitter
 from scipy.stats.distributions import chi2 as chi2_scipy
 

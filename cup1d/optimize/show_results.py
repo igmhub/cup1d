@@ -25,7 +25,7 @@ def get_parameters(par, z, like, mle_cube):
 
 
 def reformat_cube(args, data, emulator, out_mle_cube, weak_priors=None):
-    from cup1d.likelihood.pipeline import set_like
+    from cup1d.likelihood.analysis import set_like
 
     ii = 0
     args.set_baseline(ztar=data["P1Ds"].z[ii], fit_type="at_a_time")

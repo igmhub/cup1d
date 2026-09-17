@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.likelihood.analysis import Analysis
 
 
 def format_asym_error(arr):
@@ -55,7 +55,7 @@ def plot_table_igm(
         P1D_type=data_label,
         name_variation=name_variation,
     )
-    pip = Pipeline(args, out_folder=args.out_folder)
+    pip = Analysis(args, out_folder=args.out_folder)
     if name_variation is None:
         name_variation = "global_opt"
 

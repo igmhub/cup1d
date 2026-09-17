@@ -28,13 +28,13 @@ from cup1d.likelihood import lya_theory, likelihood
 from cup1d.likelihood.fitter import Fitter
 from cup1d.likelihood.plotter import Plotter
 
-from cup1d.likelihood.pipeline import (
+from cup1d.likelihood.analysis import (
     set_archive,
     set_P1D,
     set_cosmo,
     set_free_like_parameters,
     set_like,
-    Pipeline,
+    Analysis,
 )
 from cup1d.p1ds.data_DESIY1 import P1D_DESIY1
 from astropy.io import fits
@@ -121,7 +121,7 @@ pip = Pipeline_z(args, out_folder="desi_fft_z")
 # %%
 
 # %%
-# pip = Pipeline(args)
+# pip = Analysis(args)
 
 # %%
 key_avoid = [

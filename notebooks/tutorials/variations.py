@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -552,8 +552,9 @@ dict_trans = {
     "DESIY1_QMLE3_mpg":"Baseline", 
     
     "DESIY1_QMLE_mpg":"Data: w/ low SNR", 
-    "DESIY1_FFT3_dir_mpg": "Data: FFT",
-    "DESIY1_FFT3_dir_mpg_tan": "Data: FFT Tan",
+    # "DESIY1_FFT3_dir_mpg": "Data: FFT",
+    "DESIY1_FFT3_dir_mpg": "Chaves-Montero+26",
+    "DESIY1_FFT3_dir_mpg_tan": "This work",
     # "DESIY1_FFT_dir_mpg":"Data: FFT w/ low SNR", 
     "zmin": "Data: $z \geq 2.6$",  # restricted zrange
     "zmax": "Data: $z \leq 3.4$",  # restricted zrange

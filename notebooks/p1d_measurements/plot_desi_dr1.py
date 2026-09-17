@@ -29,7 +29,7 @@ import time, os, sys
 import matplotlib.pyplot as plt
 
 from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import set_P1D, set_emulator
+from cup1d.likelihood.analysis import set_P1D, set_emulator
 
 # %%
 args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")

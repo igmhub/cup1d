@@ -30,7 +30,7 @@ from lace.emulator.emulator_manager import set_emulator
 from cup1d.likelihood import lya_theory, likelihood
 from cup1d.likelihood.fitter import Fitter
 
-from cup1d.likelihood.pipeline import (
+from cup1d.likelihood.analysis import (
     set_archive,
     set_P1D,
     set_cosmo,

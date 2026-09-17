@@ -3,13 +3,13 @@ import os
 from corner import corner
 from emcee.autocorr import integrated_time
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 from scipy.ndimage import gaussian_filter
 from matplotlib.ticker import MaxNLocator
 from scipy.stats import gaussian_kde
 
 from matplotlib import rcParams
-import matplotlib
 from scipy.stats import chi2 as chi2_scipy
 
 # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
@@ -21,9 +21,7 @@ rcParams["font.family"] = "STIXGeneral"
 from cup1d.utils.various_dicts import param_dict
 
 
-def prepare_data(
-    folder_in, truth={"Delta2_star": 0, "n_star": 0}, nburn_extra=0
-):
+def prepare_data(folder_in, truth={"Delta2_star": 0, "n_star": 0}, nburn_extra=0):
     fdict = np.load(
         os.path.join(folder_in, "fitter_results.npy"), allow_pickle=True
     ).item()
@@ -44,9 +42,7 @@ def prepare_data(
     nelem = (chain.shape[0] - nburn_extra) * chain.shape[1]
     ndim = chain.shape[-1]
     dat = np.zeros((nelem, ndim))
-    dat[:, 0] = (
-        blobs["Delta2_star"][nburn_extra:, :].reshape(-1) - truth["Delta2_star"]
-    )
+    dat[:, 0] = blobs["Delta2_star"][nburn_extra:, :].reshape(-1) - truth["Delta2_star"]
     dat[:, 1] = blobs["n_star"][nburn_extra:, :].reshape(-1) - truth["n_star"]
     if ndim > 2:
         dat[:, 2:] = chain[nburn_extra:, :, 2:].reshape(-1, ndim - 2)
@@ -75,6 +71,7 @@ def prepare_data(
 
 def plots_chain(
     folder_in,
+    folder_in2=None,
     folder_out=None,
     nburn_extra=0,
     ftsize=20,
@@ -94,17 +91,30 @@ def plots_chain(
         folder_in, truth, nburn_extra=nburn_extra
     )
 
+    if folder_in2 is not None:
+        _, _, dat2, _, _ = prepare_data(folder_in2, truth, nburn_extra=nburn_extra)
+    else:
+        dat2 = None
+
+    try:
+        out_data = corr_compressed(
+            dat,
+            labels,
+            priors,
+            folder_out=folder_out,
+            store_data=store_data,
+            dat2=dat2,
+            show_correlation=False,
+            show_range=False,
+        )
+        return
+    except:
+        print("Could not plot corr_compressed")
+
     try:
         plot_lnprob(lnprob, folder_out, ftsize)
     except:
         print("Could not plot lnprob")
-
-    try:
-        out_data = corr_compressed(
-            dat, labels, priors, folder_out=folder_out, store_data=store_data
-        )
-    except:
-        print("Could not plot corr_compressed")
 
     try:
         plot_corr(dat, labels, folder_out=folder_out, ftsize=ftsize)
@@ -206,14 +216,11 @@ def get_summary(folder_out, lnprob):
     dict_out["nstar_2dcen"] = np.median(data[0.68][0][1])
 
     data = np.load(os.path.join(folder_out, "blobs.npy"))
-    dict_out["delta2_star_16_50_84"] = np.percentile(
-        data["Delta2_star"], [16, 50, 84]
-    )
+    dict_out["delta2_star_16_50_84"] = np.percentile(data["Delta2_star"], [16, 50, 84])
     dict_out["n_star_16_50_84"] = np.percentile(data["n_star"], [16, 50, 84])
 
     dict_out["delta2_star_err"] = 0.5 * (
-        dict_out["delta2_star_16_50_84"][2]
-        - dict_out["delta2_star_16_50_84"][0]
+        dict_out["delta2_star_16_50_84"][2] - dict_out["delta2_star_16_50_84"][0]
     )
     dict_out["n_star_err"] = 0.5 * (
         dict_out["n_star_16_50_84"][2] - dict_out["n_star_16_50_84"][0]
@@ -264,9 +271,7 @@ def save_contours(x, y, folder_out=None, bins=50, flag=""):
             level_contours.append((x_line, y_line))
         contours_dict[sigma] = level_contours
 
-    np.save(
-        os.path.join(folder_out, "line_sigmas" + flag + ".npy"), contours_dict
-    )
+    np.save(os.path.join(folder_out, "line_sigmas" + flag + ".npy"), contours_dict)
     plt.close()
 
     return
@@ -359,12 +364,8 @@ def corner_chain(dat, folder_out=None, ftsize=20, labels=None, divs=2):
             ax.tick_params(labelsize=ftsize - 4)
 
         if folder_out is not None:
-            plt.savefig(
-                os.path.join(folder_out, "corner_all" + str(ii) + ".pdf")
-            )
-            plt.savefig(
-                os.path.join(folder_out, "corner_all" + str(ii) + ".png")
-            )
+            plt.savefig(os.path.join(folder_out, "corner_all" + str(ii) + ".pdf"))
+            plt.savefig(os.path.join(folder_out, "corner_all" + str(ii) + ".png"))
         else:
             plt.show()
         plt.close()
@@ -376,17 +377,19 @@ def corr_compressed(
     dat,
     labels,
     priors,
+    dat2=None,
     folder_out=None,
     ftsize=20,
     sigmas=2,
     threshold=1e-4,
     store_data=False,
+    show_correlation=True,
+    show_range=True,
 ):
     store_data = {}
     print("plotting corr_compressed")
     # labels = fdict["like"]["free_param_names"]
     frange = 0.1
-    cmap = plt.get_cmap("Blues")
     groups = [
         "tau",
         "sigT_kms",
@@ -437,8 +440,26 @@ def corr_compressed(
         fig, ax = plt.subplots(
             2, len(lab_use), sharex="col", sharey="row", figsize=(xsize, 6)
         )
+        if dat2 is not None:
+            legend_handles = [
+                Patch(color="tab:blue", label="Chaves-Montero+26"),
+            ]
+            legend = ax[0, 0].legend(handles=legend_handles, fontsize=ftsize - 3)
+            legend.set_in_layout(False)
+
+            legend_handles = [
+                Patch(color="tab:orange", label="This work"),
+            ]
+            legend = ax[0, 1].legend(handles=legend_handles, fontsize=ftsize - 3)
+            legend.set_in_layout(False)
+
         for ii, lab in enumerate(lab_use):
             pp = dat[:, lab_use[lab]].copy()
+            if dat2 is not None:
+                pp2 = dat2[:, lab_use[lab]].copy()
+                ndat = 2
+            else:
+                ndat = 1
 
             if egroups[igroup] == "cte":
                 pass
@@ -446,6 +467,11 @@ def corr_compressed(
                 pp = np.exp(pp)
                 if lab.startswith("s_"):
                     pp = 1 / pp
+
+                if dat2 is not None:
+                    pp2 = np.exp(pp2)
+                    if lab.startswith("s_"):
+                        pp2 = 1 / pp2
 
             if key == "mix":
                 store_data["x_0_" + str(ii) + "_cen"] = pp.mean()
@@ -458,107 +484,120 @@ def corr_compressed(
                 store_data["y_1_" + str(ii) + "_cen"] = dat[:, 1].mean()
                 store_data["y_1_" + str(ii) + "_std"] = dat[:, 1].std()
 
-            x, y, h, levels = get_contours(
-                pp, dat[:, 0], sigmas=sigmas, threshold=threshold
-            )
-            cs1 = ax[0, ii].contour(x, y, h, levels=levels, colors="k")
-            cs1 = ax[0, ii].contourf(x, y, h, levels=levels, cmap=cmap)
-
-            x, y, h, levels = get_contours(
-                pp, dat[:, 1], sigmas=sigmas, threshold=threshold
-            )
-            cs2 = ax[1, ii].contour(x, y, h, levels=levels, colors="k")
-            cs2 = ax[1, ii].contourf(x, y, h, levels=levels, cmap=cmap)
-
-            for j1 in range(2):
-                rr = np.corrcoef(pp, dat[:, j1])[0, 1]
-                if rr < 0:
-                    xppos = 0.95
-                    ha = "right"
+            for idat in range(ndat):
+                if idat == 0:
+                    upp = pp
+                    udat = dat
+                    cmap = plt.get_cmap("Blues")
+                    alpha = 1
+                    # label = None
                 else:
-                    xppos = 0.05
-                    ha = "left"
-                ax[j1, ii].text(
-                    xppos,
-                    0.95,
-                    r"$r=$" + str(np.round(rr, 2)),
-                    transform=ax[j1, ii].transAxes,
-                    ha=ha,
-                    va="top",
-                    fontsize=ftsize + 1,
+                    upp = pp2
+                    udat = dat2
+                    cmap = plt.get_cmap("Oranges")
+                    alpha = 0.3
+
+                x, y, h, levels = get_contours(
+                    upp, udat[:, 0], sigmas=sigmas, threshold=threshold
                 )
+                cs1 = ax[0, ii].contour(x, y, h, levels=levels, colors="k")
+                cs1 = ax[0, ii].contourf(x, y, h, levels=levels, cmap=cmap, alpha=alpha)
 
-            ##
-            x_line = []
-            y_line = []
-            for path in cs1.get_paths():
-                v = path.vertices
-                x_line.extend(v[:, 0])
-                y_line.extend(v[:, 1])
+                x, y, h, levels = get_contours(
+                    upp, udat[:, 1], sigmas=sigmas, threshold=threshold
+                )
+                cs2 = ax[1, ii].contour(x, y, h, levels=levels, colors="k")
+                cs2 = ax[1, ii].contourf(x, y, h, levels=levels, cmap=cmap, alpha=alpha)
 
-            # print(lab, np.min(y_line), np.max(y_line))
-            # print(np.min(x_line), np.max(x_line))
+                if show_correlation:
+                    for j1 in range(2):
+                        rr = np.corrcoef(upp, udat[:, j1])[0, 1]
+                        if rr < 0:
+                            xppos = 0.95
+                            ha = "right"
+                        else:
+                            xppos = 0.05
+                            ha = "left"
+                        ax[j1, ii].text(
+                            xppos,
+                            0.95,
+                            r"$r=$" + str(np.round(rr, 2)),
+                            transform=ax[j1, ii].transAxes,
+                            ha=ha,
+                            va="top",
+                            fontsize=ftsize + 1,
+                        )
+                ##
+                x_line = []
+                y_line = []
+                for path in cs1.get_paths():
+                    v = path.vertices
+                    x_line.extend(v[:, 0])
+                    y_line.extend(v[:, 1])
 
-            if ii == 0:
-                yrange1 = [np.min(y_line), np.max(y_line)]
-                change_alims = True
-                change_blims = True
-            else:
-                if np.min(y_line) < yrange1[0]:
-                    yrange1[0] = np.min(y_line)
+                # print(lab, np.min(y_line), np.max(y_line))
+                # print(np.min(x_line), np.max(x_line))
+
+                if ii == 0:
+                    yrange1 = [np.min(y_line), np.max(y_line)]
                     change_alims = True
-                else:
-                    change_alims = False
-                if np.max(y_line) > yrange1[1]:
-                    yrange1[1] = np.max(y_line)
                     change_blims = True
                 else:
-                    change_blims = False
-            if change_alims | change_blims:
-                dy = yrange1[1] - yrange1[0]
-                if change_alims:
-                    yrange1[0] -= frange * dy
-                if change_blims:
-                    yrange1[1] += frange * dy
-            ##
+                    if np.min(y_line) < yrange1[0]:
+                        yrange1[0] = np.min(y_line)
+                        change_alims = True
+                    else:
+                        change_alims = False
+                    if np.max(y_line) > yrange1[1]:
+                        yrange1[1] = np.max(y_line)
+                        change_blims = True
+                    else:
+                        change_blims = False
+                if change_alims | change_blims:
+                    dy = yrange1[1] - yrange1[0]
+                    if change_alims:
+                        yrange1[0] -= frange * dy
+                    if change_blims:
+                        yrange1[1] += frange * dy
+                ##
 
-            ##
-            x_line = []
-            y_line = []
-            for path in cs2.get_paths():
-                v = path.vertices
-                x_line.extend(v[:, 0])
-                y_line.extend(v[:, 1])
+                ##
+                x_line = []
+                y_line = []
+                for path in cs2.get_paths():
+                    v = path.vertices
+                    x_line.extend(v[:, 0])
+                    y_line.extend(v[:, 1])
 
-            if ii == 0:
-                yrange2 = [np.min(y_line), np.max(y_line)]
-                change_alims = True
-                change_blims = True
-            else:
-                if np.min(y_line) < yrange2[0]:
-                    yrange2[0] = np.min(y_line)
+                if ii == 0:
+                    yrange2 = [np.min(y_line), np.max(y_line)]
                     change_alims = True
-                else:
-                    change_alims = False
-                if np.max(y_line) > yrange2[1]:
-                    yrange2[1] = np.max(y_line)
                     change_blims = True
                 else:
-                    change_blims = False
-            if change_alims | change_blims:
-                dy = yrange2[1] - yrange2[0]
-                if change_alims:
-                    yrange2[0] -= frange * dy
-                if change_blims:
-                    yrange2[1] += frange * dy
-            ##
+                    if np.min(y_line) < yrange2[0]:
+                        yrange2[0] = np.min(y_line)
+                        change_alims = True
+                    else:
+                        change_alims = False
+                    if np.max(y_line) > yrange2[1]:
+                        yrange2[1] = np.max(y_line)
+                        change_blims = True
+                    else:
+                        change_blims = False
+                if change_alims | change_blims:
+                    dy = yrange2[1] - yrange2[0]
+                    if change_alims:
+                        yrange2[0] -= frange * dy
+                    if change_blims:
+                        yrange2[1] += frange * dy
+                ##
 
-            xrange = [np.min(x_line), np.max(x_line)]
-            dy = xrange[1] - xrange[0]
-            xrange[0] -= frange * dy
-            xrange[1] += frange * dy
-            if pp.min() < threshold:
-                xrange[0] = 0
+                xrange = [np.min(x_line), np.max(x_line)]
+                dy = xrange[1] - xrange[0]
+                xrange[0] -= frange * dy
+                xrange[1] += frange * dy
+                if pp.min() < threshold:
+                    xrange[0] = 0
 
             # if sigmas == 2:
             #     range_par = np.percentile(dat[:, lab_use[lab]], [0.1, 99.9])
@@ -570,12 +609,8 @@ def corr_compressed(
 
             for i0 in range(2):
                 ax[i0, ii].set_xlim(xrange)
-                ax[i0, ii].xaxis.set_major_locator(
-                    MaxNLocator(nbins=3, prune=None)
-                )
-                ax[i0, ii].tick_params(
-                    axis="both", which="major", labelsize=ftsize
-                )
+                ax[i0, ii].xaxis.set_major_locator(MaxNLocator(nbins=3, prune=None))
+                ax[i0, ii].tick_params(axis="both", which="major", labelsize=ftsize)
                 for j0 in range(2):
                     if egroups[igroup] == "cte":
                         xplot = priors[lab_use[lab], j0]
@@ -591,19 +626,16 @@ def corr_compressed(
         ax[1, 0].set_ylabel(r"$n_\star$", fontsize=ftsize + 2)
 
         plt.tight_layout()
+        fig.subplots_adjust(wspace=0.05, hspace=0)
         if folder_out is None:
             plt.show()
         else:
             plt.savefig(
-                os.path.join(
-                    folder_out, "corr_compressed_" + str(igroup) + ".pdf"
-                ),
+                os.path.join(folder_out, "corr_compressed_" + str(igroup) + ".pdf"),
                 bbox_inches="tight",
             )
             plt.savefig(
-                os.path.join(
-                    folder_out, "corr_compressed_" + str(igroup) + ".png"
-                ),
+                os.path.join(folder_out, "corr_compressed_" + str(igroup) + ".png"),
                 bbox_inches="tight",
             )
         plt.close()

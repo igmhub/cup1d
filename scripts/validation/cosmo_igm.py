@@ -6,7 +6,7 @@ import numpy as np
 
 from cup1d.likelihood.input_pipeline import Args
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.pipeline import set_archive, Pipeline
+from cup1d.likelihood.analysis import set_archive, Analysis
 
 
 def main():
@@ -137,7 +137,7 @@ def validate_cosmo(emulator_label, training_set, base_out_folder, include_sys):
             + str(args.n_kF),
         )
 
-        pip = Pipeline(args, out_folder=out_folder)
+        pip = Analysis(args, out_folder=out_folder)
         p0 = np.array(list(pip.fitter.like.fid["fit_cube"].values()))
         pip.run_minimizer(p0)
         pip.run_sampler()

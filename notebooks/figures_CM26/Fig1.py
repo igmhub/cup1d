@@ -22,11 +22,11 @@
 # %autoreload 2
 
 import os
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.likelihood.analysis import Analysis
 # -
 
 # args = Args(pre_defined="CM2026", system="local")
-pip = Pipeline()
+pip = Analysis()
 
 pip.fitter.like.data.plot_p1d()
 

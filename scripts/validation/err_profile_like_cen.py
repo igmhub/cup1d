@@ -4,7 +4,7 @@ import os
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
 from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.likelihood.analysis import Analysis
 from cup1d.utils.utils import get_path_repo
 from cup1d.pipeline.set_archive import set_archive
 
@@ -64,7 +64,7 @@ def main():
             args.out_folder,
             "seed_" + str(args.seed_noise),
         )
-        pip = Pipeline(args, out_folder=out_folder, archive=archive_mock)
+        pip = Analysis(args, out_folder=out_folder, archive=archive_mock)
 
         input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
         print(input_pars)

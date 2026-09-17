@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 
 # our own modules
 from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.likelihood.analysis import Analysis
 from cup1d.likelihood.plotter import Plotter
 from cup1d.utils.utils import get_path_repo
 
@@ -67,7 +67,7 @@ args.set_baseline(
     name_variation=name_variation,
 )
 
-pip = Pipeline(args, out_folder=None)
+pip = Analysis(args, out_folder=None)
 
 # %%
 key = "DESIY1_FFT3_dir"
@@ -90,7 +90,7 @@ out_pnames = []
 for ii in range(1):
     zmask = np.array([pip.fitter.like.data[key].z[ii]])
 
-    pip = Pipeline(args, out_folder=None)
+    pip = Analysis(args, out_folder=None)
     
     print()
     

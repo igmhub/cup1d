@@ -4,7 +4,7 @@ import os
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
 from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.likelihood.analysis import Analysis
 from cup1d.utils.utils import get_path_repo
 
 
@@ -47,7 +47,7 @@ def main():
         z_min=zmin,
         z_max=zmax,
     )
-    pip = Pipeline(args, out_folder=args.out_folder)
+    pip = Analysis(args, out_folder=args.out_folder)
 
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 

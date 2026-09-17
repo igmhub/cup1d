@@ -6,7 +6,7 @@ os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
 from mpi4py import MPI
 from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.likelihood.analysis import Analysis
 from cup1d.utils.utils import get_path_repo
 from cup1d.plots_and_tables.plots_corner import plots_chain
 
@@ -70,7 +70,7 @@ def main():
                 "path_data not defined for data_label = " + data_label
             )
 
-    pip = Pipeline(args)
+    pip = Analysis(args)
 
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 

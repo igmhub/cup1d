@@ -4,7 +4,7 @@ from mpi4py import MPI
 
 # our own modules
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.pipeline import set_archive, Pipeline
+from cup1d.likelihood.analysis import set_archive, Analysis
 
 
 class Pipeline_z(object):
@@ -44,7 +44,7 @@ class Pipeline_z(object):
 
         #######################
 
-        pip = Pipeline(args)
+        pip = Analysis(args)
 
         list_z = pip.fitter.like.data.z
         print("list_z = {}".format(list_z))
@@ -56,6 +56,6 @@ class Pipeline_z(object):
             out_folder = os.path.join(self.out_folder, "z{}".format(z))
             args.z_min = z - 0.01
             args.z_max = z + 0.01
-            self.pip2 = Pipeline(args, out_folder=out_folder)
+            self.pip2 = Analysis(args, out_folder=out_folder)
             p0 = np.array(list(self.pip2.fitter.like.fid["fit_cube"].values()))
             self.pip2.run_minimizer(p0)

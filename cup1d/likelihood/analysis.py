@@ -45,25 +45,28 @@ def get_grid_large(nelem):
     return xgrid, ygrid
 
 
-class Pipeline(object):
-    """Full pipeline for extracting cosmology from P1D using sampler"""
+class Analysis(object):
+    """Full analysis for extracting cosmology from P1D using sampler"""
 
     def __init__(
         self,
         args=None,
-        make_plots=False,
-        out_folder=None,
+        data=None,
         archive=None,
+        emulator=None,
+        out_folder=None,
         system="local",
     ):
-        """Set pipeline"""
+        """Set analysis"""
 
-        if args == None:
+        if args is None:
             # set default args to Chaves-Montero+26 analysis
-            args = Args(pre_defined="CM2026", system=system)
+            self.args = Args(pre_defined="CM2026", system=system)
+        else:
+            self.args = args
 
         if out_folder is None:
-            self.out_folder = args.out_folder
+            self.out_folder = self.args.out_folder
         else:
             self.out_folder = out_folder
 
@@ -73,88 +76,96 @@ class Pipeline(object):
         size = comm.Get_size()
 
         # create print function (only for rank 0)
-        fprint = create_print_function(verbose=args.verbose)
+        fprint = create_print_function(verbose=self.args.verbose)
         self.fprint = fprint
 
-        if rank == 0:
-            self.fprint("----------")
-            self.fprint("Setting emulator")
-            emulator = set_emulator(
-                emulator_label=args.emulator_label,
-                drop_sim=args.drop_sim,
-                training_set=args.training_set,
-            )
-            self.fprint("Done setting emulator")
-            self.fprint("----------")
-            # distribute emulator to all ranks
-            for irank in range(1, size):
-                comm.send(emulator, dest=irank, tag=(irank + 1) * 3)
+        if emulator is None:
+            if rank == 0:
+                self.fprint("----------")
+                self.fprint("Setting emulator")
+                self.emulator = set_emulator(
+                    emulator_label=self.args.emulator_label,
+                    drop_sim=self.args.drop_sim,
+                    training_set=self.args.training_set,
+                )
+                self.fprint("Done setting emulator")
+                self.fprint("----------")
+                # distribute emulator to all ranks
+                for irank in range(1, size):
+                    comm.send(self.emulator, dest=irank, tag=(irank + 1) * 3)
+            else:
+                # receive emulator from ranks 0
+                self.emulator = comm.recv(source=0, tag=(rank + 1) * 3)
         else:
-            # receive emulator from ranks 0
-            emulator = comm.recv(source=0, tag=(rank + 1) * 3)
+            self.emulator = emulator
 
         free_parameters = set_free_like_parameters(
-            args, emulator_label=emulator.emulator_label
+            self.args, emulator_label=emulator.emulator_label
         )
 
         # Set true theory to create mocks P1D measurements.
         # Ignored if setting P1D measurements from observations
         true_theory = set_theory(
-            args, emulator, free_parameters, fid_or_true="true", use_hull=False
+            self.args, emulator, free_parameters, fid_or_true="true", use_hull=False
         )
 
-        if rank == 0:
-            data = {}
-            fprint("----------")
-            fprint("Setting P1Ds")
-            for data_label in args.data_label:
-                fprint("Setting P1D for", data_label)
-                data[data_label] = set_P1D(
-                    args, data_label, theory=true_theory, archive=archive
-                )
+        if data is None:
+            if rank == 0:
+                self.data = {}
+                fprint("----------")
+                fprint("Setting P1Ds")
+                for data_label in self.args.data_label:
+                    fprint("Setting P1D for", data_label)
+                    self.data[data_label] = set_P1D(
+                        self.args, data_label, theory=true_theory, archive=archive
+                    )
 
-            fprint("Done setting P1Ds")
-            fprint("----------")
-            # distribute data to all tasks
-            for irank in range(1, size):
-                comm.send(data, dest=irank, tag=(irank + 1) * 5)
+                fprint("Done setting P1Ds")
+                fprint("----------")
+                # distribute data to all tasks
+                for irank in range(1, size):
+                    comm.send(self.data, dest=irank, tag=(irank + 1) * 5)
+            else:
+                # get testing_data from task 0
+                self.data = comm.recv(source=0, tag=(rank + 1) * 5)
         else:
-            # get testing_data from task 0
-            data = comm.recv(source=0, tag=(rank + 1) * 5)
+            self.data = data
 
         zs = []
-        for data_label in args.data_label:
+        for data_label in self.args.data_label:
             zs.append(data[data_label].z)
         zs = np.unique(np.concatenate(zs))
 
-        theory = set_theory(
-            args,
-            emulator,
+        self.data = data
+
+        self.theory = set_theory(
+            self.args,
+            self.emulator,
             free_parameters,
             fid_or_true="fid",
             use_hull=False,
             zs=zs,
         )
 
-        like = Likelihood(
+        self.likelihood = Likelihood(
             data,
-            theory,
+            self.theory,
             free_param_names=free_parameters,
-            cov_factor=args.cov_factor,
-            emu_cov_type=args.emu_cov_type,
-            args=args,
+            cov_factor=self.args.cov_factor,
+            emu_cov_type=self.args.emu_cov_type,
+            args=self.args,
         )
 
         self.fitter = Fitter(
-            like=like,
+            like=self.likelihood,
             rootdir=self.out_folder,
-            nwalkers=args.mcmc["n_walkers"],
-            nburn=args.mcmc["n_burn_in"],
-            nsteps=args.mcmc["n_steps"],
-            thin=args.mcmc["thin"],
-            parallel=args.mcmc["parallel"],
-            explore=args.mcmc["explore"],
-            fix_cosmology=args.fix_cosmo,
+            nwalkers=self.args.mcmc["n_walkers"],
+            nburn=self.args.mcmc["n_burn_in"],
+            nsteps=self.args.mcmc["n_steps"],
+            thin=self.args.mcmc["thin"],
+            parallel=self.args.mcmc["parallel"],
+            explore=self.args.mcmc["explore"],
+            fix_cosmology=self.args.fix_cosmo,
         )
 
         #######################

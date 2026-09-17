@@ -42,7 +42,7 @@ from cup1d.likelihood.fitter import Fitter
 from cup1d.likelihood.plotter import Plotter
 
 from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.likelihood.analysis import Analysis
 
 from astropy.io import fits
 
@@ -54,6 +54,17 @@ from cup1d.utils.utils import get_path_repo
 from scipy.stats import chi2 as chi2_scipy
 from cup1d.pipeline.set_archive import set_archive
 
+
+# %%
+from cup1d.plots_and_tables.plots_corner import plots_chain
+
+# %%
+folder_ina = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_2/"
+folder_inb = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_FFT3_dir/DLA_TAN/CH24_mpgcen_gpr/chain_2/"
+
+plots_chain(folder_ina, folder_in2=folder_inb)
+
+# %%
 
 # %%
 data_label = ["DESIY1_QMLE3"]
@@ -79,7 +90,7 @@ args.set_baseline(
     name_variation=name_variation,
 )
 
-pip = Pipeline(args)
+pip = Analysis(args)
 
 # %%
 full_cov = pip.fitter.like.full_cov_Pk_kms["DESIY1_QMLE3"]
@@ -512,7 +523,7 @@ args.set_baseline(
     P1D_type=data_label,
 )
 
-pip = Pipeline(args)
+pip = Analysis(args)
 
 # %%
 pip.fitter.like.plot_p1d()
@@ -587,8 +598,8 @@ args.set_baseline(
 
 # nyx_training_set = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
 # archive_mock = set_archive(training_set=nyx_training_set)
-# pip = Pipeline(args, archive=archive_mock)
-pip = Pipeline(args)
+# pip = Analysis(args, archive=archive_mock)
+pip = Analysis(args)
 
 # %%
 pip.fitter.like.plot_p1d()
@@ -625,6 +636,7 @@ pip.fitter.like.plot_p1d(pip.fitter.mle_cube)
 # pip.fitter.mle
 
 # %%
+XXXX
 
 # %% [markdown]
 # ### Data analysis
@@ -719,7 +731,7 @@ args.set_baseline(
     name_variation=name_variation,
 )
 
-pip = Pipeline(args)
+pip = Analysis(args)
 
 
 # %%
