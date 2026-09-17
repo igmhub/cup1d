@@ -6,9 +6,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
-#     display_name: test_lace
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
@@ -24,13 +24,19 @@ import numpy as np
 import os, sys
 import matplotlib.pyplot as plt
 from cup1d.likelihood.analysis import Analysis
+from cup1d.likelihood.input_pipeline import Args
+from cup1d.utils.utils import get_path_repo
 
 
 # %% [markdown]
 # ## Load P1D measurements and set likelihood
 
 # %%
-pip = Analysis()
+config_file = os.path.join(
+    get_path_repo("cup1d"), "configs", "cm2026", "cm2026_base.yaml"
+)
+args = Args.from_yaml(config_file, verbose=False)
+analysis = Analysis(args)
 
 # %% [markdown]
 # ## Plot P1D data 
@@ -38,56 +44,56 @@ pip = Analysis()
 # Get parameters from a point of the parameter space close to the best fit
 
 # %%
-p0 = pip.fitter.like.sampling_point_from_parameters().copy()
-free_params = pip.fitter.like.parameters_from_sampling_point(p0)
-pip.fitter.like.get_chi2(p0)
+p0 = analysis.like.sampling_point_from_parameters().copy()
+free_params = analysis.like.parameters_from_sampling_point(p0)
+analysis.like.get_chi2(p0)
 
 # %% [markdown]
 # Plot model for these parameters
 
 # %%
-pip.fitter.like.plot_p1d(p0)
+analysis.like.plot_p1d(p0)
 
 # %% [markdown]
 # #### If you want to extract the data
 
 # %%
 # measurements in z bins (no correlation between z bins)
-key = list(pip.fitter.like.data.keys())[0]
+key = list(analysis.data.keys())[0]
 
-k_kms = pip.fitter.like.data[key].k_kms
-Pk_kms = pip.fitter.like.data[key].Pk_kms
-cov_Pk_kms = pip.fitter.like.cov_Pk_kms[key]
+k_kms = analysis.data[key].k_kms
+Pk_kms = analysis.data[key].Pk_kms
+cov_Pk_kms = analysis.like.cov_Pk_kms[key]
 print(len(k_kms), len(Pk_kms), len(cov_Pk_kms))
 print(k_kms[0].shape, Pk_kms[0].shape, cov_Pk_kms[0].shape)
 
 # %%
 # measurements in full array (correlation between z bins)
-k_kms = pip.fitter.like.data[key].full_k_kms
-Pk_kms = pip.fitter.like.data[key].full_Pk_kms
-cov_Pk_kms = pip.fitter.like.full_cov_Pk_kms[key]
+k_kms = analysis.data[key].full_k_kms
+Pk_kms = analysis.data[key].full_Pk_kms
+cov_Pk_kms = analysis.like.full_cov_Pk_kms[key]
 print(k_kms.shape, Pk_kms.shape, cov_Pk_kms.shape)
 
 # %% [markdown]
 # #### Components of the covariance matrix
 
 # %%
-pip.fitter.like.plot_cov_to_pk()
+analysis.like.plot_cov_to_pk()
 
 # %%
 # access the components of the covariance matrix
-key = list(pip.fitter.like.data.keys())[0]
+key = list(analysis.data.keys())[0]
 
 ## stat + sys + emu
-cov_Pk_kms_tot = pip.fitter.like.cov_Pk_kms[key]
+cov_Pk_kms_tot = analysis.like.cov_Pk_kms[key]
 ## stat
-cov_Pk_kms_stat = pip.fitter.like.data[key].covstat_Pk_kms
+cov_Pk_kms_stat = analysis.data[key].covstat_Pk_kms
 ## syst
 cov_Pk_kms_syst = []
 for ii in range(len(cov_Pk_kms_stat)):
-    cov_Pk_kms_syst.append(pip.fitter.like.data[key].cov_Pk_kms[ii] - cov_Pk_kms_stat[ii])
+    cov_Pk_kms_syst.append(analysis.data[key].cov_Pk_kms[ii] - cov_Pk_kms_stat[ii])
 ## emu
-cov_Pk_kms_emu = pip.fitter.like.cov_emu_Pk_kms[key]
+cov_Pk_kms_emu = analysis.like.cov_emu_Pk_kms[key]
 
 print(
     len(cov_Pk_kms_tot), len(cov_Pk_kms_stat), len(cov_Pk_kms_syst), len(cov_Pk_kms_emu)
@@ -99,7 +105,7 @@ print(
 # %%
 # list of model parameters
 
-for par in pip.fitter.like.free_params:
+for par in analysis.like.free_params:
     print(par.name, par.value, par.min_value, par.max_value)
 
 # %% [markdown]
@@ -107,21 +113,21 @@ for par in pip.fitter.like.free_params:
 
 # %%
 # evaluate model for the initial value of the input parameters
-zs = pip.fitter.like.data[key].z
-k_kms = pip.fitter.like.data[key].k_kms
-ini_free_params = pip.fitter.like.free_params
+zs = analysis.data[key].z
+k_kms = analysis.data[key].k_kms
+ini_free_params = analysis.like.free_params
 
-ini_model_Pk_kms = pip.fitter.like.theory.get_p1d_kms(
+ini_model_Pk_kms = analysis.theory.get_p1d_kms(
     zs, k_kms, like_params=ini_free_params
 )[0]
 
 # %%
 # evaluate model for other values of input parameters, only changing As
-zs = pip.fitter.like.data[key].z
-k_kms = pip.fitter.like.data[key].k_kms
+zs = analysis.data[key].z
+k_kms = analysis.data[key].k_kms
 
 new_free_params = []
-for par in pip.fitter.like.free_params:
+for par in analysis.like.free_params:
     old_value = par.value
     new_par = par.get_new_parameter(0.5)
     if par.name == "As":
@@ -132,7 +138,7 @@ for par in pip.fitter.like.free_params:
         new_par.value = old_value
     new_free_params.append(new_par)
 
-new_As_model_Pk_kms = pip.fitter.like.theory.get_p1d_kms(
+new_As_model_Pk_kms = analysis.theory.get_p1d_kms(
     zs, k_kms, like_params=new_free_params
 )[0]
 
@@ -155,13 +161,13 @@ plt.show()
 # ### Compressed parameters
 
 # %%
-blob = pip.fitter.like.theory.get_blob_fixed_background(ini_free_params)
+blob = analysis.theory.get_blob_fixed_background(ini_free_params)
 ini_Delta2_star = blob[0]
 ini_n_star = blob[1]
 print(ini_Delta2_star, ini_n_star)
 
 # %%
-blob = pip.fitter.like.theory.get_blob_fixed_background(new_free_params)
+blob = analysis.theory.get_blob_fixed_background(new_free_params)
 new_Delta2_star = blob[0]
 new_n_star = blob[1]
 print(new_Delta2_star, new_n_star)
@@ -177,22 +183,22 @@ new_Delta2_star/ini_Delta2_star
 # Get value of parameters close to best fit again
 
 # %%
-p0 = pip.fitter.like.sampling_point_from_parameters().copy()
-free_params = pip.fitter.like.parameters_from_sampling_point(p0)
-pip.fitter.like.get_chi2(p0)
+p0 = analysis.like.sampling_point_from_parameters().copy()
+free_params = analysis.like.parameters_from_sampling_point(p0)
+analysis.like.get_chi2(p0)
 
 # %% [markdown]
 # Run minimizer starting from this point, it should stop the minimization soon
 
 # %%
-pip.run_minimizer(p0)
+analysis.run_minimizer(p0)
 
 # %% [markdown]
 # Evaluate for the new best fit
 
 # %%
-p1 = pip.fitter.mle_cube
-pip.fitter.like.plot_p1d(p1)
+p1 = analysis.fitter.mle_cube
+analysis.like.plot_p1d(p1)
 
 # %% [markdown]
 # Read chain
@@ -214,7 +220,7 @@ for par in results:
 # %%
 from cup1d.utils.blinding import apply_unblinding
 
-results_unblind = apply_unblinding(pip.fitter.like.blind, results)
+results_unblind = apply_unblinding(analysis.like.blind, results)
 
 # %%
 for par in results_unblind:

@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 import yaml
 
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.old_code.old_input import Args
 from cup1d.configuration import make_cm2026_defaults, make_cm2026_synth_defaults
 from cup1d.utils.utils import get_path_repo
 
@@ -19,7 +19,7 @@ REPO_ROOT = Path(get_path_repo("cup1d"))
 CONFIG_DIR = REPO_ROOT / "configs" / "cm2026"
 DEFAULTS_OUTPUT = CONFIG_DIR / "cm2026_defaults.yaml"
 SYNTH_DEFAULTS_OUTPUT = CONFIG_DIR / "cm2026_synth_defaults.yaml"
-BASELINE_OUTPUT = CONFIG_DIR / "baseline.yaml"
+BASELINE_OUTPUT = CONFIG_DIR / "cm2026_base.yaml"
 VARIATIONS_DIR = CONFIG_DIR / "variations"
 
 # File name -> inputs needed by the current Args configuration machinery.
@@ -89,9 +89,9 @@ TOP_LEVEL_COMMENTS = {
     "z_min": "Minimum redshift included in the analysis.",
     "z_max": "Maximum redshift included in the analysis.",
     "zbin_width": "Redshift-bin width used to construct regular grids.",
-    "rebin_k": "Number of k bins combined when rebinning the data.",
+    "k_rebin_factor": "Factor controlling interpolation before k-bin rebinning.",
     "emulator_label": "Identifier of the P1D emulator.",
-    "drop_sim": "Simulation omitted from emulator training, or null to use all simulations.",
+    "drop_emu_sim": "Simulation omitted from emulator training, or null to use all simulations.",
     "true_cosmo_label": "Cosmology used to generate synthetic data.",
     "fid_cosmo_label": "Fiducial cosmology used by the likelihood model.",
     "igm_params": "Names of the intergalactic-medium model parameters.",
@@ -104,7 +104,7 @@ TOP_LEVEL_COMMENTS = {
     "true_syst": "Instrumental-systematic settings used to generate synthetic data.",
     "fid_syst": "Fiducial instrumental-systematic model.",
     "apply_smoothing": "Whether smoothing is applied when constructing mock P1D data.",
-    "cov_label": "Dataset used for the main covariance model.",
+    "synth_cov_label": "Dataset used to construct synthetic-data covariance.",
     "cov_label_hires": "Dataset used for the high-resolution covariance model.",
     "cov_syst_type": "Structure assumed for the observational systematic covariance.",
     "z_star": "Pivot redshift for compressed linear-power parameters.",
@@ -130,7 +130,6 @@ TOP_LEVEL_COMMENTS = {
     "path_data": "Optional base directory for input data.",
     "training_set": "Simulation archive used to train or construct the emulator.",
     "fit_type": "Inference configuration used for this analysis.",
-    "P1D_type": "Historical dataset labels retained for compatibility.",
     "name_variation": "Name of the analysis variation, or null for the baseline.",
     "cov_factor": "Redshift-dependent covariance rescaling factors.",
 }
@@ -196,7 +195,6 @@ def make_variation(options: dict[str, Any]) -> dict[str, Any]:
     args.set_baseline(
         fit_type="global_opt",
         fix_cosmo=False,
-        P1D_type=[data_label],
         name_variation=name_variation,
         mcmc_conf="explore",
     )

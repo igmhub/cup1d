@@ -319,7 +319,7 @@ def chi2_adding_one_param_at_time(args):
 
     args.emu_cov_factor = 1
     args.emu_cov_type = "block"
-    args.rebin_k = 8
+    args.k_rebin_factor = 8
     args.cov_factor = 1
     args.fix_cosmo = True
     args.vary_alphas = False

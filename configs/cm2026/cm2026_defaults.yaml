@@ -13,8 +13,8 @@ z_min: 2.2
 z_max: 4.2
 # Redshift-bin width used to construct regular grids.
 zbin_width: 0.2
-# Number of k bins combined when rebinning the data.
-rebin_k: 8
+# Factor controlling interpolation before k-bin rebinning.
+k_rebin_factor: 8
 # Optional explicit P1D measurement filename.
 p1d_fname: null
 # Optional base directory for input data.
@@ -24,7 +24,7 @@ path_data: null
 # Identifier of the P1D emulator.
 emulator_label: CH24_mpgcen_gpr
 # Simulation omitted from emulator training, or null to use all simulations.
-drop_sim: null
+drop_emu_sim: null
 
 ## Cosmology
 # Fiducial cosmology used by the likelihood model.
@@ -273,6 +273,3 @@ verbose: true
 name_variation: null
 # Name of the historical preset used to create this resolved file.
 pre_defined: CM2026
-# Historical dataset labels retained for compatibility.
-P1D_type:
-- DESIY1_QMLE3

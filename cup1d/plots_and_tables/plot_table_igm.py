@@ -52,7 +52,6 @@ def plot_table_igm(
     args.set_baseline(
         fit_type="global_opt",
         fix_cosmo=False,
-        P1D_type=data_label,
         name_variation=name_variation,
     )
     pip = Analysis(args, out_folder=args.out_folder)

@@ -24,7 +24,7 @@ def main():
 
     args = Args(
         data_label=data_label,
-        cov_label=cov_label,
+        synth_cov_label=cov_label,
         emulator_label="CH24_" + emu + "cen_gpr",
         true_cosmo_label=data_label,
         fid_cosmo_label=data_label,
@@ -45,7 +45,6 @@ def main():
     args.set_baseline(
         fit_type="global_opt",
         fix_cosmo=False,
-        P1D_type=cov_label,
         name_variation=name_variation,
         z_min=zmin,
         z_max=zmax,

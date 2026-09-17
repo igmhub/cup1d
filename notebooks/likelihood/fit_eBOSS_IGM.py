@@ -100,7 +100,7 @@ data["P1Ds"], true_sim_igm = set_P1D(
     emulator,
     args.data_label,
     cosmo_fid,
-    cov_label=args.cov_label,
+    cov_label=args.synth_cov_label,
     apply_smoothing=False,
     z_min=args.z_min,
     z_max=args.z_max,

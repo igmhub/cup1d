@@ -101,7 +101,7 @@ def get_onez_likelihood(z):
         emulator,
         args.data_label,
         cosmo_fid,
-        cov_label=args.cov_label,
+        cov_label=args.synth_cov_label,
         apply_smoothing=False,
         z_min=z-0.01,
         z_max=z+0.01,

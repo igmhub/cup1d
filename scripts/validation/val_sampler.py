@@ -38,7 +38,7 @@ def main():
 
     args = Args(
         data_label=data_label,
-        cov_label=cov_label,
+        synth_cov_label=cov_label,
         emulator_label="CH24_" + emu + "cen_gpr",
         true_cosmo_label=data_label,
         apply_smoothing=True,
@@ -51,7 +51,6 @@ def main():
         fit_type=fit_type,
         fix_cosmo=False,
         fid_cosmo_label=data_label,
-        P1D_type=cov_label,
         name_variation=name_variation,
         z_min=zmin,
         z_max=zmax,

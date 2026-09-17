@@ -12,39 +12,9 @@ import yaml
 from cup1d.config import restore_runtime_types
 from cup1d.utils.utils import get_path_repo
 
-_BASE_FILE = Path(__file__).with_name("cm2026_base.yaml")
-_SYNTHETIC_KEYS = {
-    "true_cosmo_label",
-    "true_igm",
-    "true_cont",
-    "true_syst",
-    "add_noise",
-    "seed_noise",
-    "apply_smoothing",
-    "cov_label",
-    "cov_label_hires",
-}
-
-_FIDUCIAL_VALUE_KEYS = {
-    "fid_igm": {"tau_eff", "sigT_kms", "gamma", "kF_kms"},
-    "fid_cont": {
-        "f_Lya_SiIII",
-        "s_Lya_SiIII",
-        "f_Lya_SiII",
-        "s_Lya_SiII",
-        "f_SiIIa_SiIIb",
-        "s_SiIIa_SiIIb",
-        "f_SiIIa_SiIII",
-        "f_SiIIb_SiIII",
-        "HCD_damp1",
-        "HCD_damp2",
-        "HCD_damp3",
-        "HCD_damp4",
-        "HCD_const",
-    },
-    "fid_syst": {"R_coeff"},
-}
-
+_CONFIG_DIR = Path(get_path_repo("cup1d")) / "configs" / "cm2026"
+_DEFAULTS_FILE = _CONFIG_DIR / "cm2026_defaults.yaml"
+_SYNTH_DEFAULTS_FILE = _CONFIG_DIR / "cm2026_synth_defaults.yaml"
 _CONFIG_GROUPS = (
     (
         "Data",
@@ -54,7 +24,7 @@ _CONFIG_GROUPS = (
             "z_min",
             "z_max",
             "zbin_width",
-            "rebin_k",
+            "k_rebin_factor",
             "p1d_fname",
             "path_data",
         ),
@@ -67,13 +37,13 @@ _CONFIG_GROUPS = (
             "true_cont",
             "true_syst",
             "apply_smoothing",
-            "cov_label",
+            "synth_cov_label",
             "cov_label_hires",
             "add_noise",
             "seed_noise",
         ),
     ),
-    ("Emulator", ("emulator_label", "drop_sim")),
+    ("Emulator", ("emulator_label", "drop_emu_sim")),
     (
         "Cosmology",
         ("fid_cosmo_label", "z_star", "kp_kms", "fix_cosmo", "vary_alphas"),
@@ -93,50 +63,33 @@ _CONFIG_GROUPS = (
             "verbose",
             "name_variation",
             "pre_defined",
-            "P1D_type",
         ),
     ),
 )
 
 
 def make_cm2026_defaults() -> dict[str, Any]:
-    """Build defaults for the observational CM2026 analysis."""
+    """Read the canonical observational CM2026 defaults."""
 
-    config = make_cm2026_synth_defaults()
-    for key in _SYNTHETIC_KEYS:
-        config.pop(key)
-    return config
+    return _read_defaults(_DEFAULTS_FILE)
 
 
 def make_cm2026_synth_defaults() -> dict[str, Any]:
-    """Build CM2026 defaults including synthetic-data settings."""
+    """Read the canonical synthetic-data CM2026 defaults."""
 
-    with _BASE_FILE.open(encoding="utf-8") as stream:
+    return _read_defaults(_SYNTH_DEFAULTS_FILE)
+
+
+def _read_defaults(filename: Path) -> dict[str, Any]:
+    """Load a user-facing defaults file and restore local runtime paths."""
+
+    with filename.open(encoding="utf-8") as stream:
         config = yaml.safe_load(stream)
 
     config = deepcopy(config)
-    config.pop("cont_params", None)
-    config.pop("syst_params", None)
-    config.pop("training_set", None)
-    # Numerical fiducial parameter values are runtime implementation details.
-    # Args_new reconstructs them after resolving the user-facing configuration.
-    for section, names in _FIDUCIAL_VALUE_KEYS.items():
-        for name in names:
-            config[section].pop(name, None)
+    if not isinstance(config, dict):
+        raise ValueError(f"CM2026 defaults in {filename} must be a mapping")
     config["path_ic"] = str(Path(get_path_repo("cup1d")) / "data" / "ics")
-    config["file_ic"] = "mpg_ic_global_red.npy"
-    update_cm2026_derived(config, overrides={})
-    for name in config["igm_params"]:
-        config["fid_igm"].pop(f"{name}_znodes", None)
-    for name in _parameter_names(config["fid_cont"]):
-        config["fid_cont"].pop(f"{name}_znodes", None)
-    config["fid_cont"].pop("flat_priors", None)
-    for name in _parameter_names(config["fid_syst"]):
-        config["fid_syst"].pop(f"{name}_znodes", None)
-    config["cov_factor"].pop("z", None)
-    for name in ("val_stat", "val_syst", "val_emu", "val_full"):
-        values = config["cov_factor"][name]
-        config["cov_factor"][name] = float(values[0])
     return _organize_config(restore_runtime_types(config))
 
 

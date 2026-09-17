@@ -45,12 +45,11 @@ name_variation = "no_contaminants"
 # mcmc_conf = "explore"
 mcmc_conf = "test"
 
-args = Args(data_label=data_label, cov_label=cov_label)
+args = Args(data_label=data_label, synth_cov_label=cov_label)
 
 args.set_baseline(
     fix_cosmo=False,
     fit_type=fit_type,
-    P1D_type=cov_label,
     name_variation=name_variation,
     mcmc_conf=mcmc_conf,
 )

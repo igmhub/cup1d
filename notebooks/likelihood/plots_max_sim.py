@@ -768,9 +768,9 @@ print(fid_cosmo["Delta2_star"][ind], fid_cosmo["n_star"][ind])
 #             args.emulator_label = emulator_label
 #             args.add_hires = add_hires
 #             args.use_polyfit = use_polyfit
-#             args.cov_label = cov_label
+#             args.synth_cov_label = cov_label
 
-#             args.drop_sim = drop_sim
+#             args.drop_emu_sim = drop_sim
 #             args.n_igm = n_igm
 #             args.test_sim_label = sim_label
 
@@ -820,9 +820,9 @@ for ii, drop_sim in enumerate(arr_drop_sim):
                 args.emulator_label = emulator_label
                 args.add_hires = add_hires
                 args.use_polyfit = use_polyfit
-                args.cov_label = cov_label
+                args.synth_cov_label = cov_label
 
-                args.drop_sim = drop_sim
+                args.drop_emu_sim = drop_sim
                 args.n_igm = n_igm
                 args.test_sim_label = sim_label
 

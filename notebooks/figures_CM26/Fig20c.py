@@ -53,5 +53,3 @@ path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_20c.npy")
 np.save(fname, out_data)
 # -
-
-

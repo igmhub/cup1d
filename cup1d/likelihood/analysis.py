@@ -57,11 +57,12 @@ class Analysis(object):
         out_folder=None,
         system="local",
     ):
-        """Set analysis"""
+        """Set analysis."""
 
         if args is None:
             # set default args to Chaves-Montero+26 analysis
-            self.args = Args(pre_defined="CM2026", system=system)
+            self.args = Args.from_baseline()
+            self.args.system = system
         else:
             self.args = args
 
@@ -85,7 +86,7 @@ class Analysis(object):
                 self.fprint("Setting emulator")
                 self.emulator = set_emulator(
                     emulator_label=self.args.emulator_label,
-                    drop_sim=self.args.drop_sim,
+                    drop_emu_sim=self.args.drop_emu_sim,
                     training_set=self.args.training_set,
                 )
                 self.fprint("Done setting emulator")
@@ -154,7 +155,7 @@ class Analysis(object):
             zs=zs,
         )
 
-        self.likelihood = Likelihood(
+        self.like = Likelihood(
             self.data,
             self.theory,
             free_param_names=free_parameters,
@@ -162,9 +163,12 @@ class Analysis(object):
             emu_cov_type=self.args.emu_cov_type,
             args=self.args,
         )
+        # Backward-compatible descriptive alias. Public analysis code should
+        # use ``analysis.like`` rather than reaching through the fitter.
+        self.likelihood = self.like
 
         self.fitter = Fitter(
-            like=self.likelihood,
+            like=self.like,
             rootdir=self.out_folder,
             nwalkers=self.args.mcmc["n_walkers"],
             nburn=self.args.mcmc["n_burn_in"],

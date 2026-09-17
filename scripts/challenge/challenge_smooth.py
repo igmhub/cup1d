@@ -115,7 +115,7 @@ def main():
 
     # args.apply_smoothing = True
     args.apply_smoothing = False
-    args.cov_label = "DESIY1"
+    args.synth_cov_label = "DESIY1"
 
     impose_fid_cosmo_label = None
     # impose_fid_cosmo_label = "Planck18"

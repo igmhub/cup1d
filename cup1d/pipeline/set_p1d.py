@@ -37,8 +37,8 @@ def set_P1D(args, data_label, archive=None, theory=None):
         Archive object containing P1D data
     data_label : str
         Label of simulation/dataset used to generate mock data
-    cov_label : str, optional
-        Label of covariance matrix
+    synth_cov_label : str, optional
+        Covariance dataset used to construct synthetic data.
     apply_smoothing : bool or None
         If True, apply smoothing to P1D. If None, do what is best for the input emulator
     z_min : float
@@ -119,7 +119,7 @@ def set_P1D(args, data_label, archive=None, theory=None):
             theory,
             p1d_ideal,
             input_sim=data_label,
-            data_cov_label=args.cov_label,
+            data_cov_label=args.synth_cov_label,
             apply_smoothing=args.apply_smoothing,
             add_noise=args.add_noise,
             seed=args.seed_noise,

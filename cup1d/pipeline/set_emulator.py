@@ -1,6 +1,6 @@
 def set_emulator(
     emulator_label="CH24_mpgcen_gpr",
-    drop_sim=None,
+    drop_emu_sim=None,
     archive=None,
     training_set="Cabayol23",
 ):
@@ -39,7 +39,7 @@ def set_emulator(
         emulator = emulator_manager.set_emulator(
             emulator_label=emulator_label,
             archive=archive,
-            drop_sim=drop_sim,
+            drop_sim=drop_emu_sim,
         )
 
     return emulator

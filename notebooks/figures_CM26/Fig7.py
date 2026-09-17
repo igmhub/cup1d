@@ -48,7 +48,6 @@ args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=e
 args.set_baseline(
     fit_type="at_a_time_global", 
     fix_cosmo=True, 
-    P1D_type=data_label, 
     name_variation=name_variation, 
 )
 
@@ -121,6 +120,3 @@ path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_7.npy")
 np.save(fname, store_data)
 # -
-
-
-

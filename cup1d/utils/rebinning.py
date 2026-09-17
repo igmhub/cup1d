@@ -21,7 +21,7 @@ class Rebinning(object):
 
     """
 
-    def __init__(self, dict_data, rebin_k=1):
+    def __init__(self, dict_data, k_rebin_factor=1):
 
         self.k_kms = {}
         self.zs = {}
@@ -36,8 +36,8 @@ class Rebinning(object):
             data = dict_data[key]
             self.zs[key] = data.z
 
-            if rebin_k == 1:
-                # do not do anything if rebin_k == 1, just store the original k_kms
+            if k_rebin_factor == 1:
+                # Do nothing for a factor of one; retain the original k grid.
                 for iz in range(len(self.zs[key])):
                     self.k_kms[key].append(data.k_kms[iz])
                     self.cover[key].append(
@@ -46,7 +46,7 @@ class Rebinning(object):
                     self.sum_cover[key].append(np.sum(self.cover[key][iz], axis=1))
             else:
                 for iz in range(len(self.zs[key])):
-                    nelem = len(data.k_kms[iz]) * rebin_k
+                    nelem = len(data.k_kms[iz]) * k_rebin_factor
                     _kms_reb = np.linspace(
                         data.k_kms_min[iz][0] * 0.95,
                         data.k_kms_max[iz][-1] * 1.05,

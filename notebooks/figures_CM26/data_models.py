@@ -221,5 +221,3 @@ plt.savefig("figs/fig_with_model.png")
 
 
 
-
-

@@ -46,7 +46,6 @@ def main():
     args.set_baseline(
         fit_type=fit_type,
         fix_cosmo=True,
-        P1D_type=data_label,
         name_variation=name_variation,
     )
     out_folder = os.path.join(args.out_folder, prof_type)

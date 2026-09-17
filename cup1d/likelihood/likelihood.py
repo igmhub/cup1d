@@ -67,7 +67,9 @@ class Likelihood(object):
         self.args = args
 
         # set a class containing the rebinned data
-        self.Rebin_data = rebinning.Rebinning(self.data, rebin_k=args.rebin_k)
+        self.Rebin_data = rebinning.Rebinning(
+            self.data, k_rebin_factor=args.k_rebin_factor
+        )
 
         self.theory = theory
         # Set inverse covariance. We do it here so we can account for emulator error

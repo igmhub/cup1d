@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from corner import corner
 import numpy as np
 import os
+from cup1d.likelihood.input_pipeline import Args
 from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
 
 
@@ -20,7 +21,6 @@ class Plotter(object):
         if fitter is not None:
             self.fitter = fitter
         elif fname_chain is not None:
-            from cup1d.likelihood.input_pipeline import Args
             from cup1d.likelihood.analysis import Analysis
 
             # load file with chain

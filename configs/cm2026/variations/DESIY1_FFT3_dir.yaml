@@ -4,5 +4,3 @@ data_label:
 - DESIY1_FFT3_dir
 out_folder: ./DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr
 pre_defined: null
-P1D_type:
-- DESIY1_FFT3_dir

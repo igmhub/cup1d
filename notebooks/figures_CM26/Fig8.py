@@ -41,7 +41,6 @@ args = Args(data_label=data_label, emulator_label=emulator_label)
 args.set_baseline(
     fit_type="global_all", 
     fix_cosmo=True, 
-    P1D_type=data_label, 
     name_variation=name_variation, 
 )
 

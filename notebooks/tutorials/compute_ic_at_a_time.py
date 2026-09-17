@@ -63,7 +63,6 @@ args = Args(
 args.set_baseline(
     fit_type="at_a_time_global",
     fix_cosmo=True,
-    P1D_type=data_label,
     name_variation=name_variation,
 )
 

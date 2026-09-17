@@ -86,7 +86,6 @@ args = Args(
 args.set_baseline(
     fit_type="global_opt",
     fix_cosmo=False,
-    P1D_type=data_label,
     name_variation=name_variation,
 )
 
@@ -491,7 +490,7 @@ data_label = "forecast_DESIY1_QMLE3"
 
 # args = Args(
 #     data_label=data_label,
-#     cov_label=cov_label,
+#     synth_cov_label=cov_label,
 #     emulator_label=emulator_label,
 #     true_cosmo_label=true_cosmo_label,
 #     apply_smoothing=True,
@@ -505,7 +504,6 @@ data_label = "forecast_DESIY1_QMLE3"
 #     fit_type=fit_type,
 #     fix_cosmo=False,
 #     fid_cosmo_label=fid_cosmo_label,
-#     P1D_type=cov_label,
 #     name_variation=name_variation,
 #     z_min=zmin,
 #     z_max=zmax,
@@ -520,7 +518,6 @@ args = Args(
 args.set_baseline(
     fit_type="global_opt",
     fix_cosmo=False,
-    P1D_type=data_label,
 )
 
 pip = Analysis(args)
@@ -573,7 +570,7 @@ fit_type = "global_opt"
 
 args = Args(
     data_label=data_label,
-    cov_label=cov_label,
+    synth_cov_label=cov_label,
     emulator_label=emulator_label,
     true_cosmo_label=data_label,
     apply_smoothing=True,
@@ -588,7 +585,6 @@ args.set_baseline(
     fit_type=fit_type,
     fix_cosmo=False,
     fid_cosmo_label=data_label,
-    P1D_type=cov_label,
     name_variation=name_variation,
     z_min=zmin,
     z_max=zmax,
@@ -727,7 +723,6 @@ args = Args(
 args.set_baseline(
     fit_type="global_opt",
     fix_cosmo=False,
-    P1D_type=data_label,
     name_variation=name_variation,
 )
 
@@ -953,7 +948,7 @@ elif choose_mock:
     # args.apply_smoothing=True
     args.apply_smoothing=False
 
-    # args.cov_label = "DESIY1"
+    # args.synth_cov_label = "DESIY1"
     version = "9fx"
     folder = "/home/jchaves/Proyectos/projects/lya/data/mock_challenge/MockChallengeSnapshot/mockchallenge-0."+version+"/"
     fname = "mockchallenge-0."+version+"_nonoise_fiducial.fits.gz"
