@@ -29,7 +29,7 @@ mpl.rcParams['figure.dpi'] = 120
 from lace.emulator import gp_emulator
 from cup1d.nuisance import mean_flux_model
 from cup1d.nuisance import metal_model
-from cup1d.likelihood import lya_theory
+from cup1d.theory import theory as lya_theory
 from lace.emulator import nn_emulator
 
 # %%

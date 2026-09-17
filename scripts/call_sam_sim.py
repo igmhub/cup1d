@@ -9,7 +9,7 @@ from itertools import product
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
 from cup1d.likelihood.sampler_pipeline import path_sampler, SamplerPipeline
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.configuration.args import Args
 from cup1d.utils.utils import create_print_function
 
 

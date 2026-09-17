@@ -7,7 +7,9 @@ from lace.archive import gadget_archive, nyx_archive
 from lace.emulator.nn_emulator import NNEmulator
 from lace.emulator.gp_emulator import GPEmulator
 from cup1d.data import data_gadget, data_nyx
-from cup1d.likelihood import lya_theory, likelihood, iminuit_minimizer
+from cup1d.theory import theory as lya_theory
+from cup1d.likelihood import likelihood
+from cup1d.inference import iminuit as iminuit_minimizer
 
 
 def parse_args():

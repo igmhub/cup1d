@@ -28,8 +28,8 @@ import time, os, sys
 import matplotlib.pyplot as plt
 
 # our own modules
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.analysis import Analysis
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
 from cup1d.utils.utils import get_path_repo
 
 # +

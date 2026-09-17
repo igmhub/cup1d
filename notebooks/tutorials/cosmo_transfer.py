@@ -22,7 +22,7 @@ import time, os, sys
 import matplotlib.pyplot as plt
 
 
-from cup1d.likelihood.cosmologies import set_cosmo
+from cup1d.theory.cosmology import set_cosmo
 from lace.cosmo import camb_cosmo
 
 # %%

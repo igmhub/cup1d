@@ -5,10 +5,10 @@ import sys
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
 from mpi4py import MPI
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.analysis import Analysis
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
 from cup1d.utils.utils import get_path_repo
-from cup1d.plots_and_tables.plots_corner import plots_chain
+from cup1d.postprocessing.plots_corner import plots_chain
 
 
 def main():

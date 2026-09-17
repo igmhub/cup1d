@@ -209,7 +209,7 @@ class BaseDataP1D(object):
         store_data=False,
     ):
 
-        from cup1d.plots_and_tables.data import p1d
+        from cup1d.postprocessing.data import p1d
 
         p1d.plot_p1d(
             self.z,

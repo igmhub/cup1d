@@ -35,12 +35,13 @@ from cup1d.p1ds import (
     data_Karacayli2024,
     data_Ravoux2023,
 )
-from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
+from cup1d.theory import theory as lya_theory
+from cup1d.likelihood import likelihood, emcee_sampler
 from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_fid_cosmo, set_like
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.configuration.args import Args
 # -
 
-from cup1d.p1ds.data_QMLE_Ohio import P1D_QMLE_Ohio
+from cup1d.p1ds.simulations.data_QMLE_Ohio import P1D_QMLE_Ohio
 
 folder = "/home/jchaves/Proyectos/projects/lya/data/cup1d/challenge/MockChallenge-v0.1/"
 file = "fiducial_lym1d_p1d_qmleformat_IC.txt"

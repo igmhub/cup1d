@@ -23,8 +23,8 @@
 
 import os
 import cup1d
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.analysis import Analysis
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
 # -
 
 args = Args(pre_defined="CM2026", system="local")

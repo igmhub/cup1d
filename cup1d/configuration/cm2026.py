@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 import yaml
 
-from cup1d.config import restore_runtime_types
+from cup1d.configuration.loader import restore_runtime_types
 from cup1d.utils.utils import get_path_repo
 
 _CONFIG_DIR = Path(get_path_repo("cup1d")) / "configs" / "cm2026"

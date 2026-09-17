@@ -10,10 +10,12 @@ os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 # os.environ["NUMEXPR_NUM_THREADS"] = "6" # export NUMEXPR_NUM_THREADS=6
 import numpy as np
 from mpi4py import MPI
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.configuration.args import Args
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.analysis import set_archive, Analysis, set_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.emulator.archive import set_archive
+from cup1d.inference.analysis import Analysis
+from cup1d.theory.cosmology import set_cosmo
+from cup1d.theory import camb as CAMB_model
 from cup1d.utils.utils import get_path_repo
 
 

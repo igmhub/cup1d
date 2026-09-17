@@ -4,8 +4,8 @@ import sys
 import numpy as np
 from scipy.interpolate import interp1d, RegularGridInterpolator
 
-from cup1d.likelihood import cosmologies
-from cup1d.likelihood import CAMB_model
+from cup1d.theory import cosmology as cosmologies
+from cup1d.theory import camb as CAMB_model
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 from cup1d.p1ds.observations import (
     data_PD2013,

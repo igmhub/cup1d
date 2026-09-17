@@ -1,7 +1,7 @@
 # mpiexec -n 4 python sam_sim.py --emulator_label Pedersen21 --data_label mpg_central --igm_label mpg_central --cosmo_label mpg_central --n_igm 0  --cov_label Chabanier2019 --verbose --parallel
 
 import os
-from cup1d.likelihood.input_pipeline import parse_args
+from cup1d.configuration.args import parse_args
 from cup1d.likelihood.sampler_pipeline import SamplerPipeline
 
 
@@ -11,7 +11,7 @@ def sam_sim(args):
     Parameters
     ----------
     args : Namespace
-        Command line arguments. See cup1d.likelihood.input_pipeline.parse_args()
+        Command line arguments. See cup1d.configuration.args.parse_args()
     """
 
     pip = SamplerPipeline(args)

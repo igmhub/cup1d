@@ -22,7 +22,7 @@ import os
 import numpy as np
 
 from cup1d.utils.utils import get_path_repo
-from cup1d.plots_and_tables.plots_corner import plots_chain
+from cup1d.postprocessing.plots_corner import plots_chain
 
 # blinding to be subtracted from blinded measurement
 fname = os.path.join(get_path_repo("cup1d"), "data", "blinding", "DESI_DR1", "blinding.npy")
@@ -93,4 +93,3 @@ variations = {
 for ii, var in enumerate(variations):
     folder = os.path.join(base, variations[var][1])
     store_data = plots_chain(folder, store_data=True, truth=real_blinding)
-

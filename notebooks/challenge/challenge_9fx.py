@@ -27,7 +27,7 @@ import numpy as np
 import time, os, sys
 import glob
 import matplotlib.pyplot as plt
-from cup1d.likelihood.plotter import Plotter
+from cup1d.postprocessing.plotter import Plotter
 from corner import corner
 # -
 
@@ -63,5 +63,4 @@ for ii in range(len(files)):
 fname_chain = os.path.join(path_out_challenge, emulator, "mockchallenge-0.9fx_nonoise_fiducial/chain_5/fitter_results.npy")
 plotter = Plotter(save_directory="test", fname_chain=fname_chain)
 plotter.plot_corner(only_cosmo=True, only_cosmo_lims=False, extra_data=best_fit)
-
 

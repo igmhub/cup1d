@@ -28,9 +28,9 @@ from lace.archive import gadget_archive
 from lace.emulator import gp_emulator
 from lace.emulator import nn_emulator
 from cup1d.data import data_gadget
-from cup1d.likelihood import lya_theory
+from cup1d.theory import theory as lya_theory
 from cup1d.likelihood import likelihood
-from cup1d.likelihood import iminuit_minimizer
+from cup1d.inference import iminuit
 
 # %% [markdown]
 # ### Setup test P1D data from Gadget sim

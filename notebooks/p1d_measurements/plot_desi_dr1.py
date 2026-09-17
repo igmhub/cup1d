@@ -28,8 +28,9 @@ import numpy as np
 import time, os, sys
 import matplotlib.pyplot as plt
 
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.analysis import set_P1D, set_emulator
+from cup1d.configuration.args import Args
+from cup1d.p1ds.factory import set_P1D
+from cup1d.emulator.factory import set_emulator
 
 # %%
 args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
@@ -234,7 +235,7 @@ plt.savefig("figs/snr_all.pdf")
 # ## Covariance matrix
 
 # %%
-from cup1d.likelihood.plotter import plot_cov
+from cup1d.postprocessing.plotter import plot_cov
 
 plot_cov(fname_qmle, save_directory='figs')
 

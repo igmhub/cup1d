@@ -246,7 +246,7 @@ y_ns = kde_ns(x_ns)
 y_ns /= y_ns.max()
 
 # %%
-from cup1d.likelihood.cosmologies import set_cosmo
+from cup1d.theory.cosmology import set_cosmo
 mpg_all = set_cosmo("mpg_0", return_all=True)
 
 # %% jupyter={"outputs_hidden": false}

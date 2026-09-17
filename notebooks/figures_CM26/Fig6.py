@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.rcParams['savefig.dpi'] = 120
 mpl.rcParams['figure.dpi'] = 120
-from cup1d.contaminants import hcd_model_rogers_class
+from cup1d.models.contaminants import hcd_model_rogers_class
 
 from matplotlib import rcParams
 

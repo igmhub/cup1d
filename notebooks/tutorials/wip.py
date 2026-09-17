@@ -37,12 +37,13 @@ import matplotlib.pyplot as plt
 # our own modules
 from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood import lya_theory, likelihood
-from cup1d.likelihood.fitter import Fitter
-from cup1d.likelihood.plotter import Plotter
+from cup1d.theory import theory as lya_theory
+from cup1d.likelihood import likelihood
+from cup1d.inference.fitter import Fitter
+from cup1d.postprocessing.plotter import Plotter
 
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.analysis import Analysis
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
 
 from astropy.io import fits
 
@@ -52,11 +53,11 @@ from corner import corner
 from cup1d.utils.utils import get_path_repo
 
 from scipy.stats import chi2 as chi2_scipy
-from cup1d.pipeline.set_archive import set_archive
+from cup1d.emulator.archive import set_archive
 
 
 # %%
-from cup1d.plots_and_tables.plots_corner import plots_chain
+from cup1d.postprocessing.plots_corner import plots_chain
 
 # %%
 folder_ina = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_2/"
@@ -737,7 +738,7 @@ pip = Analysis(args)
 # pk2 = pip.fitter.like.data.Pk_kms.copy()
 
 # %%
-from cup1d.plots_and_tables.table_nuisance import table_nuisance
+from cup1d.postprocessing.tables.nuisance import table_nuisance
 
 # %%
 folder_in = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_2/"

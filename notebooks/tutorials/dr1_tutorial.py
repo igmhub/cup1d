@@ -23,8 +23,7 @@
 import numpy as np
 import os, sys
 import matplotlib.pyplot as plt
-from cup1d.likelihood.analysis import Analysis
-from cup1d.likelihood.input_pipeline import Args
+from cup1d import Analysis, Args
 from cup1d.utils.utils import get_path_repo
 
 

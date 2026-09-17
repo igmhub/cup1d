@@ -24,8 +24,8 @@
 import os
 import numpy as np
 import cup1d
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.analysis import Analysis
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
 import matplotlib.pyplot as plt
 
 from matplotlib import rcParams
@@ -217,7 +217,5 @@ plt.tight_layout()
 plt.savefig("figs/fig_with_model.pdf")
 plt.savefig("figs/fig_with_model.png")
 # -
-
-
 
 

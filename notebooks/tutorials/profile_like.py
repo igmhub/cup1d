@@ -931,8 +931,8 @@ plt.tight_layout()
 
 
 
-from cup1d.likelihood.cosmologies import set_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.theory.cosmology import set_cosmo
+from cup1d.theory import camb as CAMB_model
 
 # 26 params
 
@@ -1014,8 +1014,8 @@ plt.tight_layout()
 
 # #### Contours from chains
 
-from cup1d.likelihood.cosmologies import set_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.theory.cosmology import set_cosmo
+from cup1d.theory import camb as CAMB_model
 import matplotlib.cm as cm
 
 
@@ -1176,8 +1176,8 @@ dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 # dat_kF = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 # -
-from cup1d.likelihood.cosmologies import set_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.theory.cosmology import set_cosmo
+from cup1d.theory import camb as CAMB_model
 import matplotlib.cm as cm
 
 
@@ -1517,5 +1517,3 @@ plt.tight_layout()
 # plt.savefig("figs/validation_2d.pdf")
 # plt.savefig("figs/validation_2d.png")
 # -
-
-

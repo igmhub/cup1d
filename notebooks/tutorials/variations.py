@@ -54,7 +54,7 @@ print(chi2_levels)
 
 # %%
 from lace.cosmo import camb_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.theory import camb as CAMB_model
 def rescale_star(fid_cosmo, new_cosmo, kp_Mpc, ks_Mpc=0.05):
     """Fast computation of blob when running with fixed background"""
 
@@ -188,7 +188,7 @@ elif isinstance(alpha_shape2, MultiPolygon):
 # hull_points = hull_points.reshape(-1, 2)
 
 # %%
-from cup1d.likelihood.cosmologies import set_cosmo
+from cup1d.theory.cosmology import set_cosmo
 
 # %%
 mpg_all = set_cosmo("mpg_0", return_all=True)
@@ -225,8 +225,8 @@ plt.plot(boundary2[:,0], boundary2[:,1], "C1")
 # #### Contours from chains
 
 # %%
-from cup1d.likelihood.cosmologies import set_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.theory.cosmology import set_cosmo
+from cup1d.theory import camb as CAMB_model
 import matplotlib.cm as cm
 
 # %%
@@ -497,8 +497,8 @@ dat_Metals_Ma2025 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item(
 # dat_kF = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 # %%
-from cup1d.likelihood.cosmologies import set_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.theory.cosmology import set_cosmo
+from cup1d.theory import camb as CAMB_model
 import matplotlib.cm as cm
 
 from matplotlib.path import Path
@@ -935,4 +935,3 @@ plt.tight_layout()
 # plt.savefig("figs/validation_2d.pdf")
 # plt.savefig("figs/validation_2d.png")
 # %%
-

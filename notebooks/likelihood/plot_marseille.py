@@ -32,9 +32,10 @@ from cup1d.p1ds import (
     data_Karacayli2024,
     data_Karacayli2022
 )
-from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
+from cup1d.theory import theory as lya_theory
+from cup1d.likelihood import likelihood, emcee_sampler
 from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_P1D_hires, set_fid_cosmo, set_like
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.configuration.args import Args
 
 # %%
 # args = Args(emulator_label="Pedersen21")

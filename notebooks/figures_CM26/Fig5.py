@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.rcParams['savefig.dpi'] = 120
 mpl.rcParams['figure.dpi'] = 120
-from cup1d.contaminants import si_add, si_mult
+from cup1d.models.contaminants import si_add, si_mult
 
 
 from matplotlib import rcParams

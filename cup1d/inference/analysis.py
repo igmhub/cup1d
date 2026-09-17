@@ -1,0 +1,455 @@
+import os
+import time
+import numpy as np
+from mpi4py import MPI
+
+from cup1d.theory.factory import set_theory
+from cup1d.emulator.factory import set_emulator
+from cup1d.likelihood.parameters import set_free_like_parameters
+from cup1d.p1ds.factory import is_synthetic_data_label, set_P1D
+from cup1d.configuration.args import Args
+from cup1d.likelihood.likelihood import Likelihood
+from cup1d.inference.fitter import Fitter
+from cup1d.utils.utils import get_path_repo
+from cup1d.utils.utils import create_print_function
+from cup1d.utils.utils import split_string
+
+
+def get_grid_large(nelem):
+    """Need to be moved somewhere else"""
+    fname = os.path.join(
+        get_path_repo("lace"),
+        "data",
+        "sim_suites",
+        "Australia20",
+        "mpg_emu_cosmo.npy",
+    )
+
+    data_cosmo = np.load(fname, allow_pickle=True).item()
+
+    pars = np.zeros((30, 2))
+    for ii, key in enumerate(data_cosmo):
+        try:
+            int(key[-1])
+        except:
+            continue
+
+        pars[ii, 0] = data_cosmo[key]["star_params"]["Delta2_star"]
+        pars[ii, 1] = data_cosmo[key]["star_params"]["n_star"]
+
+    x = np.linspace(pars[:, 0].min(), pars[:, 0].max(), nelem)
+    y = np.linspace(pars[:, 1].min(), pars[:, 1].max(), nelem)
+    xgrid, ygrid = np.meshgrid(x, y)
+
+    return xgrid, ygrid
+
+
+class Analysis(object):
+    """Full analysis for extracting cosmology from P1D using sampler"""
+
+    def __init__(
+        self,
+        args=None,
+        data=None,
+        archive=None,
+        emulator=None,
+        out_folder=None,
+        system="local",
+    ):
+        """Set analysis."""
+
+        if args is None:
+            # set default args to Chaves-Montero+26 analysis
+            self.args = Args.from_baseline()
+            self.args.system = system
+        else:
+            self.args = args
+
+        if out_folder is None:
+            self.out_folder = self.args.out_folder
+        else:
+            self.out_folder = out_folder
+
+        ## MPI stuff
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        # create print function (only for rank 0)
+        fprint = create_print_function(verbose=self.args.verbose)
+        self.fprint = fprint
+
+        if emulator is None:
+            if rank == 0:
+                self.fprint("----------")
+                self.fprint("Setting emulator")
+                self.emulator = set_emulator(
+                    emulator_label=self.args.emulator_label,
+                    drop_emu_sim=self.args.drop_emu_sim,
+                    training_set=self.args.training_set,
+                )
+                self.fprint("Done setting emulator")
+                self.fprint("----------")
+                # distribute emulator to all ranks
+                for irank in range(1, size):
+                    comm.send(self.emulator, dest=irank, tag=(irank + 1) * 3)
+            else:
+                # receive emulator from ranks 0
+                self.emulator = comm.recv(source=0, tag=(rank + 1) * 3)
+        else:
+            self.emulator = emulator
+
+        free_parameters = set_free_like_parameters(
+            self.args, emulator_label=self.args.emulator_label
+        )
+
+        # A true theory is only needed to construct synthetic P1D data.
+        needs_true_theory = data is None and any(
+            is_synthetic_data_label(label) for label in self.args.data_label
+        )
+        if needs_true_theory:
+            true_theory = set_theory(
+                self.args,
+                self.emulator,
+                free_parameters,
+                fid_or_true="true",
+                use_hull=False,
+            )
+        else:
+            true_theory = None
+
+        if data is None:
+            if rank == 0:
+                self.data = {}
+                fprint("----------")
+                fprint("Setting P1Ds")
+                for data_label in self.args.data_label:
+                    fprint("Setting P1D for", data_label)
+                    self.data[data_label] = set_P1D(
+                        self.args, data_label, theory=true_theory, archive=archive
+                    )
+
+                fprint("Done setting P1Ds")
+                fprint("----------")
+                # distribute data to all tasks
+                for irank in range(1, size):
+                    comm.send(self.data, dest=irank, tag=(irank + 1) * 5)
+            else:
+                # get testing_data from task 0
+                self.data = comm.recv(source=0, tag=(rank + 1) * 5)
+        else:
+            self.data = data
+
+        zs = []
+        for data_label in self.args.data_label:
+            zs.append(self.data[data_label].z)
+        zs = np.unique(np.concatenate(zs))
+
+        self.theory = set_theory(
+            self.args,
+            self.emulator,
+            free_parameters,
+            fid_or_true="fid",
+            use_hull=False,
+            zs=zs,
+        )
+
+        self.like = Likelihood(
+            self.data,
+            self.theory,
+            free_param_names=free_parameters,
+            cov_factor=self.args.cov_factor,
+            emu_cov_type=self.args.emu_cov_type,
+            args=self.args,
+        )
+        # Backward-compatible descriptive alias. Public analysis code should
+        # use ``analysis.like`` rather than reaching through the fitter.
+        self.likelihood = self.like
+
+        self.fitter = Fitter(
+            like=self.like,
+            rootdir=self.out_folder,
+            nwalkers=self.args.mcmc["n_walkers"],
+            nburn=self.args.mcmc["n_burn_in"],
+            nsteps=self.args.mcmc["n_steps"],
+            thin=self.args.mcmc["thin"],
+            parallel=self.args.mcmc["parallel"],
+            explore=self.args.mcmc["explore"],
+            fix_cosmology=self.args.fix_cosmo,
+        )
+
+        #######################
+
+    def set_emcee_options(
+        self,
+        data_label,
+        cov_label,
+        n_igm,
+        n_steps=0,
+        n_burn_in=0,
+        test=False,
+    ):
+        # set steps
+        if test == True:
+            self.n_steps = 10
+        else:
+            if n_steps != 0:
+                self.n_steps = n_steps
+            else:
+                if data_label == "Chabanier2019":
+                    self.n_steps = 2000
+                else:
+                    self.n_steps = 1250
+
+        # set burn-in
+        if test == True:
+            self.n_burn_in = 0
+        else:
+            if n_burn_in != 0:
+                self.n_burn_in = n_burn_in
+            else:
+                if data_label == "Chabanier2019":
+                    self.n_burn_in = 2000
+                else:
+                    if cov_label == "Chabanier2019":
+                        self.n_burn_in = 1500
+                    elif cov_label == "QMLE_Ohio":
+                        self.n_burn_in = 1500
+                    else:
+                        self.n_burn_in = 1500
+
+    def run_minimizer(
+        self,
+        p0,
+        make_plots=False,
+        mask_pars=False,
+        save_chains=False,
+        zmask=None,
+        restart=False,
+        type_minimizer="NM",
+    ):
+        """
+        Run the minimizer (only rank 0)
+        """
+
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        if rank == 0:
+            start = time.time()
+            self.fprint("----------")
+            self.fprint("Running minimizer")
+            # start fit from initial values
+
+            if type_minimizer == "NM":
+                self.fitter.run_minimizer(
+                    log_func_minimize=self.fitter.like.minus_log_prob,
+                    p0=p0,
+                    zmask=zmask,
+                    mask_pars=mask_pars,
+                    restart=restart,
+                )
+            elif type_minimizer == "DA":
+                self.fitter.run_minimizer_da(
+                    log_func_minimize=self.fitter.like.minus_log_prob,
+                    p0=p0,
+                    zmask=zmask,
+                    restart=restart,
+                )
+            else:
+                raise ValueError("type_minimizer must be 'NM' or 'DA'")
+
+            # save fit
+            self.fitter.save_fitter(save_chains=save_chains)
+
+            if make_plots:
+                from cup1d.postprocessing.plotter import Plotter
+
+                # plot fit
+                self.plotter = Plotter(
+                    self.fitter,
+                    save_directory=self.fitter.save_directory,
+                    zmask=zmask,
+                )
+                self.plotter.plots_minimizer()
+
+            # distribute best_fit to all tasks
+            for irank in range(1, size):
+                comm.send(self.fitter.mle_cube, dest=irank, tag=(irank + 1) * 13)
+        else:
+            # get testing_data from task 0
+            self.fitter.mle_cube = comm.recv(source=0, tag=(rank + 1) * 13)
+
+    def run_sampler(self, pini=None, make_plots=False, zmask=None):
+        """
+        Run the sampler (after minimizer)
+        """
+
+        # def func_for_sampler(p0):
+        #     res = self.fitter.like.get_log_like(values=p0, return_blob=True)
+        #     return res[0], *res[2]
+
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        if rank == 0:
+            start = time.time()
+            self.fprint("----------")
+            self.fprint("Running sampler")
+
+        # make sure all tasks start at the same time
+        if pini is None:
+            pini = self.fitter.mle_cube
+
+        self.fitter.run_sampler(pini=pini, zmask=zmask)
+
+        if rank == 0:
+            end = time.time()
+            multi_time = str(np.round(end - start, 2))
+            self.fprint("Sampler run in " + multi_time + " s")
+
+            self.fprint("----------")
+            self.fprint("Saving data")
+            self.fitter.save_fitter(save_chains=True)
+
+            # plot fit
+            if make_plots:
+                from cup1d.postprocessing.plotter import Plotter
+
+                self.plotter = Plotter(
+                    self.fitter,
+                    save_directory=self.fitter.save_directory,
+                    zmask=zmask,
+                )
+                self.plotter.plots_sampler()
+
+    def run_profile(
+        self,
+        sigma_cosmo,
+        mle_cosmo_cen=None,
+        nelem=10,
+        nsig=10,
+        type_minimizer="NM",
+        folder_ic=None,
+    ):
+        """
+        Run profile likelihood
+
+        First minimize with varying cosmology, then optimize while fixing the
+        cosmology for different fiducial values
+        """
+
+        # if grid_type == "large":
+        # xran, yran = get_grid_large(nelem)
+
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        dim = len(sigma_cosmo)
+        x = np.linspace(-nsig, nsig, nelem)
+        if dim == 1:
+            if "Delta2_star" in sigma_cosmo:
+                xgrid = sigma_cosmo["Delta2_star"] * x
+            else:
+                xgrid = x[:] * 0
+            if "n_star" in sigma_cosmo:
+                ygrid = sigma_cosmo["n_star"] * x
+            else:
+                ygrid = x[:] * 0
+        elif dim == 2:
+            xgrid, ygrid = np.meshgrid(x, x)
+            xgrid = xgrid.reshape(-1) * sigma_cosmo["Delta2_star"]
+            ygrid = ygrid.reshape(-1) * sigma_cosmo["n_star"]
+        else:
+            raise ValueError("dim must be 1 or 2")
+
+        ind_ranks = np.array_split(np.arange(len(xgrid)), size)
+        if rank == 0:
+            print("IDs to each rank:", ind_ranks)
+
+        if mle_cosmo_cen is None:
+            if rank == 0:
+                # read ini data and redistribute (from scripts/data/profile_like_cen.py)
+                if folder_ic is None:
+                    folder_ic = os.path.dirname(
+                        os.path.dirname(self.fitter.save_directory)
+                    )
+                file_out = os.path.join(folder_ic, "best_dircosmo.npy")
+                print("Loading IC from", file_out)
+                print("")
+                out_dict = np.load(file_out, allow_pickle=True).item()
+                # pini = out_dict["mle_cube"][2:]
+                mle_cosmo_cen = out_dict["mle_cosmo_cen"]
+
+                # distribute emulator to all ranks
+                for irank in range(1, size):
+                    # comm.send(pini, dest=irank, tag=(irank + 1) * 3)
+                    comm.send(mle_cosmo_cen, dest=irank, tag=(irank + 1) * 5)
+            else:
+                # receive emulator from ranks 0
+                # pini = comm.recv(source=0, tag=(rank + 1) * 3)
+                mle_cosmo_cen = comm.recv(source=0, tag=(rank + 1) * 5)
+
+        pini = self.fitter.like.sampling_point_from_parameters().copy()
+
+        if rank == 0:
+            start = time.time()
+            self.fprint("----------")
+            self.fprint("Running like profile")
+
+        for irank in ind_ranks[rank]:
+            if rank == 0:
+                self.fprint(irank, max(ind_ranks[rank]))
+            shift_cosmo = {
+                "Delta2_star": xgrid[irank],
+                "n_star": ygrid[irank],
+            }
+            self.fitter.run_profile(
+                irank,
+                mle_cosmo_cen,
+                shift_cosmo,
+                pini,
+                type_minimizer=type_minimizer,
+            )
+
+        if rank == 0:
+            end = time.time()
+            multi_time = str(np.round(end - start, 2))
+            self.fprint("Profile run in " + multi_time + " s")
+            self.fprint("----------")
+
+    def save_global_ic(self, fname):
+        out_dict = {}
+        vals = np.array(list(self.fitter.mle.values()))
+        for jj, p in enumerate(self.fitter.like.free_params):
+            if (p.name == "As") or (p.name == "ns"):
+                continue
+            pname, iistr = split_string(p.name)
+            ii = int(iistr)
+            if pname in self.fitter.like.args.fid_igm:
+                znode = self.fitter.like.args.fid_igm[pname + "_znodes"][ii]
+            elif pname in self.fitter.like.args.fid_cont:
+                znode = self.fitter.like.args.fid_cont[pname + "_znodes"][ii]
+            elif pname in self.fitter.like.args.fid_syst:
+                znode = self.fitter.like.args.fid_syst[pname + "_znodes"][ii]
+            else:
+                raise ValueError("pname not found:", pname)
+            # print(pname, znode, vals[jj])
+
+            if pname not in out_dict:
+                out_dict[pname] = {"z": [], "val": []}
+            out_dict[pname]["z"].append(znode)
+            out_dict[pname]["val"].append(vals[jj])
+
+        for key in out_dict:
+            out_dict[key]["z"] = np.array(out_dict[key]["z"])
+            ind = np.argsort(out_dict[key]["z"])
+            out_dict[key]["z"] = out_dict[key]["z"][ind]
+            out_dict[key]["val"] = np.array(out_dict[key]["val"])[ind]
+
+            print(key, out_dict[key]["val"])
+
+        np.save(fname, out_dict)

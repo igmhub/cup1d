@@ -71,14 +71,14 @@ from cup1d.scripts.call_max_like_sim import Args
 from cup1d.scripts.sam_sim import path_sampler
 from matplotlib.ticker import MaxNLocator
 from lace.archive import gadget_archive, nyx_archive
-from cup1d.likelihood import lya_theory
+from cup1d.theory import theory as lya_theory
 from lace.cosmo.camb_cosmo import (
     get_camb_results,
     get_Nyx_cosmology,
     get_cosmology_from_dictionary,
 )
 from lace.cosmo.fit_linP import parameterize_cosmology_kms
-from cup1d.likelihood import CAMB_model
+from cup1d.theory import camb as CAMB_model
 
 
 # %% [markdown]

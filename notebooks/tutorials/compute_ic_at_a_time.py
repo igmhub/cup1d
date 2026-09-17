@@ -25,9 +25,9 @@ import time, os, sys
 import matplotlib.pyplot as plt
 
 # our own modules
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.analysis import Analysis
-from cup1d.likelihood.plotter import Plotter
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
+from cup1d.postprocessing.plotter import Plotter
 from cup1d.utils.utils import get_path_repo
 
 
@@ -215,12 +215,12 @@ np.save(fname, dir_out)
 
 # %%
 # inflate 5%
-from cup1d.optimize.show_results import print_results
+from cup1d.postprocessing.show_results import print_results
 print_results(pip.fitter.like, out_chi2, out_mle_cube)
 
 # %%
 # no inflate
-from cup1d.optimize.show_results import print_results
+from cup1d.postprocessing.show_results import print_results
 print_results(pip.fitter.like, out_chi2, out_mle_cube)
 
 # %%

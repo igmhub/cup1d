@@ -213,7 +213,7 @@ class ArgsNewSnapshot:
     def from_yaml(cls, filename, verbose=True, synthetic=False):
         """Create arguments from one fully resolved YAML configuration."""
 
-        from cup1d.config import (
+        from cup1d.configuration.loader import (
             apply_overrides,
             print_resolved_values,
             read_config,
@@ -372,7 +372,7 @@ class Args:
     def from_yaml(cls, filename):
         """Create arguments from CM2026 defaults and YAML overrides."""
 
-        from cup1d.config import apply_overrides, read_config
+        from cup1d.configuration.loader import apply_overrides, read_config
 
         args = cls(pre_defined="CM2026")
         defaults = vars(args)

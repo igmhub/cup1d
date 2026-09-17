@@ -1,5 +1,6 @@
 """Configuration defaults and derivation rules for cup1d analyses."""
 
+from .args import Args
 from .cm2026 import (
     make_cm2026_defaults,
     make_cm2026_synth_defaults,
@@ -7,6 +8,7 @@ from .cm2026 import (
 )
 
 __all__ = [
+    "Args",
     "make_cm2026_defaults",
     "make_cm2026_synth_defaults",
     "update_cm2026_derived",

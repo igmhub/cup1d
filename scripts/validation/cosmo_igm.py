@@ -4,9 +4,10 @@ os.environ["OMP_NUM_THREADS"] = "1"
 from mpi4py import MPI
 import numpy as np
 
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.configuration.args import Args
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.analysis import set_archive, Analysis
+from cup1d.emulator.archive import set_archive
+from cup1d.inference.analysis import Analysis
 
 
 def main():
