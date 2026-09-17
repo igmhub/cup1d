@@ -31,6 +31,9 @@ dependencies = [
     "astropy",
     "PyYAML",
 ]
+
+[project.optional-dependencies]
+test = ["pytest>=9"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
