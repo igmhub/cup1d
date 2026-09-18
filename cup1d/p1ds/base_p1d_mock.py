@@ -140,7 +140,7 @@ class BaseMockP1D(BaseDataP1D):
         # setup fiducial cosmology
         self.truth = {}
 
-        sim_cosmo = theory.fid_cosmo["cosmo"].cosmo
+        sim_cosmo = theory.fid_cosmo["cosmo"].CAMBparams
 
         self.truth["cosmo"] = {}
         self.truth["cosmo"]["ombh2"] = sim_cosmo.ombh2

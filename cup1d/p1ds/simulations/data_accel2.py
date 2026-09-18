@@ -343,7 +343,7 @@ class Accel2_P1D(BaseMockP1D):
         cov_stat = []
         full_zs = []
         for ii, _k_kms in enumerate(data.k_kms):
-            dkms_dMpc = theory.fid_cosmo["cosmo"].dkms_dMpc(zs[ii])
+            dkms_dMpc = theory.fid_cosmo["cosmo"].get_dkms_dMpc(zs[ii])
             # convert Mpc to km/s
             data_k_Mpc = _k_kms * dkms_dMpc
             # cutting scales too large for the simulation

@@ -539,66 +539,6 @@ class Fitter(object):
 
         self.set_mle(mle_cube, chi2)
 
-    def run_profile(
-        self,
-        irank,
-        mle_cosmo_cen,
-        shift_cosmo,
-        input_pars,
-        type_minimizer="NM",
-        verbose=True,
-    ):
-        """Profile likelihood"""
-
-        blind_cosmo = {
-            "Delta2_star": mle_cosmo_cen["Delta2_star"] + shift_cosmo["Delta2_star"],
-            "n_star": mle_cosmo_cen["n_star"] + shift_cosmo["n_star"],
-        }
-        if verbose:
-            print()
-            print("Starting profile", irank, blind_cosmo)
-            print()
-
-        # unblind internally to apply shift consistently
-        target = blinding.apply_unblinding(self.like.blind, mle_cosmo_cen)
-        target["Delta2_star"] += shift_cosmo["Delta2_star"]
-        target["n_star"] += shift_cosmo["n_star"]
-        self.like.theory.rescale_fid_cosmo(target)
-
-        # check whether new fiducial cosmology is within priors
-        if np.isfinite(self.like.get_chi2(input_pars)) == False:
-            print("skipping", irank, blind_cosmo)
-            return
-
-        # test = True
-        # if test:
-        #     print(blind_cosmo)
-        #     return
-
-        if type_minimizer == "NM":
-            self.run_minimizer(
-                self.like.minus_log_prob,
-                p0=input_pars,
-                restart=True,
-            )
-        elif type_minimizer == "DA":
-            self.run_minimizer_da(self.like.minus_log_prob, p0=input_pars, restart=True)
-        else:
-            raise ValueError("type_minimizer must be 'NM' or 'DA'")
-
-        out_dict = {
-            "chi2": self.mle_chi2,
-            "blind_cosmo": blind_cosmo,
-            "mle_cube": self.mle_cube,
-            "mle": self.mle,
-        }
-
-        file_out = os.path.join(
-            os.path.dirname(self.save_directory),
-            "profile_" + str(irank) + ".npy",
-        )
-        np.save(file_out, out_dict)
-
     def set_mle(self, mle_cube, mle_chi2):
         """Set the maximum likelihood solution"""
 
@@ -621,14 +561,11 @@ class Fitter(object):
         print("Fit params no cube:", mle_no_cube, flush=True)
 
         like_pars = self.like.parameters_from_sampling_point(self.mle_cube)
-        star_pars = self.like.theory.get_blob_fixed_background(like_pars)
+        star_pars = self.like.theory.get_blob_for_parameters(like_pars)
         self.mle_cosmo = {}
         self.mle_cosmo["Delta2_star"] = star_pars[0]
         self.mle_cosmo["n_star"] = star_pars[1]
         self.mle_cosmo["alpha_star"] = star_pars[2]
-        # errors from Hessian do not work
-        # self.mle_cosmo = self.get_cosmo_err(log_func_minimize)
-
         # apply blinding
         self.mle_cosmo = blinding.apply_blinding(self.like.blind, self.mle_cosmo)
 
@@ -668,61 +605,6 @@ class Fitter(object):
                     print(par, val, true, rat)
             else:
                 print(par, val)
-
-    def get_cosmo_err(self, fun_minimize):
-        """Deprecated
-
-        Getting errors from Hessian does not work properly, I tested many methods to get the
-        Hessian, including Iminuit, and results very bad
-
-        """
-
-        import numdifftools as nd
-
-        hess = nd.Hessian(fun_minimize)
-        ii = 0
-        for par_i in self.like.free_params:
-            if par_i.name == "As":
-                ii += 1
-            elif par_i.name == "ns":
-                ii += 1
-            elif par_i.name == "nrun":
-                ii += 1
-
-        if ii == 0:
-            return
-
-        cov = hess(self.mle_cube)
-        mle_cov_cube = np.linalg.inv(cov)
-
-        mle_cov = np.zeros((3, 3))
-        for par_i in self.like.free_params:
-            if par_i.name == "As":
-                ii = 0
-            elif par_i.name == "ns":
-                ii = 1
-            elif par_i.name == "nrun":
-                ii = 2
-            else:
-                continue
-            scale_i = par_i.max_value - par_i.min_value
-            for par_j in self.like.free_params:
-                if par_j.name == "As":
-                    jj = 0
-                elif par_j.name == "ns":
-                    jj = 1
-                elif par_j.name == "nrun":
-                    jj = 2
-                else:
-                    continue
-                scale_j = par_j.max_value - par_j.min_value
-                mle_cov[ii, jj] = mle_cov_cube[ii, jj] * scale_i * scale_j
-
-        like_pars = self.like.parameters_from_sampling_point(self.mle_cube)
-
-        res = self.like.theory.get_err_linP_Mpc_params(like_pars, mle_cov)
-
-        return res
 
     def get_initial_walkers(self, pini=None, rms=0.01):
         """Setup initial states of walkers in sensible points

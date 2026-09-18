@@ -23,7 +23,12 @@ def get_training_set(emulator_label):
 
 
 class Args:
-    """Analysis arguments resolved from CM2026 defaults and YAML overrides."""
+    """Analysis arguments resolved from CM2026 defaults and YAML overrides.
+
+    Most analysis choices originate in YAML. Stable package-level choices,
+    including broad cosmological prior limits, are internal defaults and can
+    still be overridden with an optional YAML ``cosmo_priors`` section.
+    """
 
     _CONT_PARAMS = {
         "f_Lya_SiIII": [0, -20.0], "s_Lya_SiIII": [0, 2.1],
@@ -72,6 +77,15 @@ class Args:
         "HCD_damp3": -10.0, "HCD_damp4": -10.0,
         "HCD_const": 0.0, "R_coeff": 0.0,
     }
+    _COSMO_PRIORS = {
+        "ombh2": [0.018, 0.026],
+        "omch2": [0.10, 0.14],
+        "As": None,
+        "ns": None,
+        "mnu": [0.0, 1.0],
+        "nrun": None,
+        "H0": [50.0, 100.0],
+    }
 
     def __init__(self, synthetic=False, **options):
         from cup1d.configuration.loader import apply_overrides, restore_runtime_types
@@ -82,7 +96,11 @@ class Args:
         )
 
         factory = make_cm2026_synth_defaults if synthetic else make_cm2026_defaults
-        config = apply_overrides(factory(), options, verbose=False)
+        defaults = factory()
+        # Keep stable broad limits out of the baseline YAML while allowing a
+        # dedicated YAML overlay to override individual entries.
+        defaults["cosmo_priors"] = deepcopy(self._COSMO_PRIORS)
+        config = apply_overrides(defaults, options, verbose=False)
         config = update_cm2026_derived(config, options)
         config = restore_runtime_types(config)
         for name, value in config.items():
@@ -192,6 +210,7 @@ class Args:
 
         factory = make_cm2026_synth_defaults if synthetic else make_cm2026_defaults
         defaults = factory()
+        defaults["cosmo_priors"] = deepcopy(cls._COSMO_PRIORS)
         config = apply_overrides(defaults, overrides, verbose=False)
         config = update_cm2026_derived(config, overrides)
         config = restore_runtime_types(config)

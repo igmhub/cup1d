@@ -160,13 +160,13 @@ plt.show()
 # ### Compressed parameters
 
 # %%
-blob = analysis.theory.get_blob_fixed_background(ini_free_params)
+blob = analysis.theory.get_blob_for_parameters(ini_free_params)
 ini_Delta2_star = blob[0]
 ini_n_star = blob[1]
 print(ini_Delta2_star, ini_n_star)
 
 # %%
-blob = analysis.theory.get_blob_fixed_background(new_free_params)
+blob = analysis.theory.get_blob_for_parameters(new_free_params)
 new_Delta2_star = blob[0]
 new_n_star = blob[1]
 print(new_Delta2_star, new_n_star)

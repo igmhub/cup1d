@@ -9,7 +9,6 @@ from scipy.linalg import block_diag
 
 from lace.cosmo import camb_cosmo
 from cup1d.utils.utils import is_number_string
-from cup1d.utils.compute_hessian import get_hessian
 from cup1d.utils import rebinning
 
 from cup1d.utils.utils import split_string
@@ -250,7 +249,7 @@ class Likelihood(object):
                 # also add emulator covariance to stat + syst covariance
 
                 # data k_kms to Mpc
-                dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(data.z[ii])
+                dkms_dMpc = self.theory.fid_cosmo["cosmo"].get_dkms_dMpc(data.z[ii])
                 k_Mpc = data.k_kms[ii] * dkms_dMpc
 
                 # initialize emulator covariance
@@ -337,7 +336,7 @@ class Likelihood(object):
                 else:
                     full_emu_cov = np.zeros_like(cov)
                     for i0 in range(cov.shape[0]):
-                        dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
+                        dkms_dMpc = self.theory.fid_cosmo["cosmo"].get_dkms_dMpc(
                             data.full_zs[i0]
                         )
                         full_k_kms0 = data.full_k_kms[i0] * dkms_dMpc
@@ -358,7 +357,7 @@ class Likelihood(object):
                         )
 
                         for i1 in range(cov.shape[0]):
-                            dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
+                            dkms_dMpc = self.theory.fid_cosmo["cosmo"].get_dkms_dMpc(
                                 data.full_zs[i1]
                             )
                             full_k_kms1 = data.full_k_kms[i1] * dkms_dMpc
@@ -594,7 +593,7 @@ class Likelihood(object):
 
         self.fid = {}
 
-        sim_cosmo = self.theory.fid_cosmo["cosmo"].cosmo
+        sim_cosmo = self.theory.fid_cosmo["cosmo"].CAMBparams
 
         self.fid["cosmo"] = {}
         self.fid["cosmo"]["ombh2"] = sim_cosmo.ombh2
@@ -606,7 +605,7 @@ class Likelihood(object):
         self.fid["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
 
         blob_params = ["Delta2_star", "n_star", "alpha_star"]
-        blob = self.theory.fid_cosmo["cosmo"].get_linP_params()
+        blob = self.theory.fid_cosmo["linP_params"]
 
         self.fid["igm"] = self.theory.model_igm.fid_igm
         self.fid["fit"] = {}
@@ -686,28 +685,6 @@ class Likelihood(object):
             return chi2_total, chi2_eachz
         else:
             return chi2_total
-
-    def get_error(self, p0):
-        # get hessian to compute errors
-        hess = get_hessian(self.minus_log_prob, p0)
-        ihess = np.linalg.inv(hess)
-
-        for par in self.free_params:
-            if par.name == "As":
-                scale_As = par.max_value - par.min_value
-            elif par.name == "ns":
-                scale_ns = par.max_value - par.min_value
-
-        scaled_cov = np.zeros((2, 2))
-        scaled_cov[0, 0] = ihess[0, 0] * scale_As**2
-        scaled_cov[1, 1] = ihess[1, 1] * scale_ns**2
-        scaled_cov[1, 0] = ihess[1, 0] * scale_As * scale_ns
-        scaled_cov[0, 1] = ihess[0, 1] * scale_As * scale_ns
-
-        like_params = self.parameters_from_sampling_point(p0)
-        err = self.theory.err_star(scaled_cov, like_params)
-
-        return {"err_Delta2star": err[0], "err_nstar": err[1]}
 
     def get_log_like(
         self,

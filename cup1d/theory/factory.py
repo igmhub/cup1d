@@ -6,7 +6,6 @@ from cup1d.theory.theory import Theory
 from cup1d.models.igm.model_igm import IGM
 from cup1d.models.contaminants.model_contaminants import Contaminants
 from cup1d.models.contaminants.model_systematics import Systematics
-from cup1d.theory.cosmology import set_cosmo
 
 
 def set_theory(
@@ -17,7 +16,10 @@ def set_theory(
     fid_or_true="fid",
     zs=None,
 ):
-    """Set theory"""
+    """Construct a theory model for fiducial or synthetic-data settings."""
+
+    if zs is None:
+        zs = np.arange(2.0, 4.51, 0.1)
 
     if fid_or_true == "fid":
         pars_igm = args.fid_igm
@@ -29,21 +31,19 @@ def set_theory(
         pars_cont = args.true_cont
         pars_syst = args.true_syst
         cosmo_label = args.true_cosmo_label
+    else:
+        raise ValueError("fid_or_true must be 'fid' or 'true'")
 
-    # set igm model
     model_igm = IGM(free_param_names=free_parameters, pars_igm=pars_igm)
 
-    # set contaminants
     model_cont = Contaminants(
         free_param_names=free_parameters,
         pars_cont=pars_cont,
         ic_correction=args.ic_correction,
     )
 
-    # set systematics
     model_syst = Systematics(free_param_names=free_parameters, pars_syst=pars_syst)
 
-    # set theory
     theory = Theory(
         emulator=emulator,
         model_igm=model_igm,
@@ -53,21 +53,14 @@ def set_theory(
         use_star_priors=args.use_star_priors,
         z_star=args.z_star,
         kp_kms=args.kp_kms,
+        cosmo_priors=args.cosmo_priors,
     )
+    theory.set_fid_cosmo(np.unique(zs), cosmo_label=cosmo_label)
 
-    true_cosmo = set_cosmo(
-        cosmo_label=cosmo_label,
-        nyx_version=args.training_set,
-    )
-    if zs is None:
-        zs = np.concatenate([np.arange(2.2, 4.401, 0.2), np.arange(2.0, 4.501, 0.25)])
-    theory.set_fid_cosmo(np.unique(zs), input_cosmo=true_cosmo)
+    theory.model_igm.set_fid_igm(np.unique(zs))
 
-    theory.model_igm.set_fid_igm(zs)
-
-    # this is a hack, do it properly (TODO)
     if emulator.emulator_label == "forest_mpg":
-        class_cosmo = cosmology.Cosmology(cosmo_label=cosmo_label)
-        emulator.set_cosmo(class_cosmo.input_cosmo_params_dict)
+        emulator_cosmology = cosmology.Cosmology(cosmo_label=cosmo_label)
+        emulator.set_cosmo(emulator_cosmology.input_cosmo_params_dict)
 
     return theory
