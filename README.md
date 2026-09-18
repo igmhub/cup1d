@@ -1,5 +1,7 @@
 # cup1d
 
+[![Documentation Status](https://readthedocs.org/projects/igmhubcup1d/badge/?version=latest)](https://igmhubcup1d.readthedocs.io/en/latest/)
+
 ## Cosmology using P1D - small-scale clustering of the Lyman alpha forest
 
 This repository contains some tools to perform the last steps of a cosmological analysis of the 1D power spectrum (P1D) of the Lyman alpha forest. 
@@ -13,6 +15,9 @@ If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es
 
 The documentation covers installation, YAML configuration, the package layout,
 tutorials, and the active API. Build it locally with:
+
+- [Online documentation](https://igmhubcup1d.readthedocs.io/en/latest/)
+- [Documentation source](https://github.com/igmhub/cup1d/tree/main/docs)
 
 ```
 python -m pip install -e ".[docs]"

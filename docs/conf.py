@@ -36,6 +36,8 @@ autodoc_member_order = "bysource"
 # scientific stack or the external LaCE package is unavailable.
 autodoc_mock_imports = [
     "camb",
+    "corner",
+    "forestflow",
     "lace",
     "mpi4py",
 ]
