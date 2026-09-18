@@ -1,11 +1,3 @@
-numpy
-pandas
-scipy
-h5py
-scikit-learn
-matplotlib
-configobj
-camb
-torch
-scikit-fda
-Gpy
+sphinx>=7
+numpydoc>=1.6
+pydata-sphinx-theme>=0.15

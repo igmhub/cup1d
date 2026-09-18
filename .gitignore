@@ -10,3 +10,5 @@ __pycache__
 *.paramnames
 *.ranges
 *.npy
+docs/_build/
+docs/generated/

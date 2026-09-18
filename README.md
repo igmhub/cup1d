@@ -9,6 +9,20 @@ It uses the LaCE emulator (https://github.com/igmhub/LaCE), and some extra tools
 If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es) or Jonas Chaves-Montero (jchaves@ifae.es).
  
 
+### Documentation
+
+The documentation covers installation, YAML configuration, the package layout,
+tutorials, and the active API. Build it locally with:
+
+```
+python -m pip install -e ".[docs]"
+make docs
+```
+
+Open `docs/_build/html/index.html` after the build completes. The repository
+also includes a Read the Docs configuration for publishing the same site.
+
+
 ### Installation
 
 - Download and install Conda. You can find the instructions here https://docs.anaconda.com/miniconda/miniconda-install/
