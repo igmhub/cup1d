@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -27,7 +27,8 @@ from getdist import plots, loadMCSamples
 import matplotlib.pyplot as plt
 from cup1d.postprocessing.chains import planck as planck_chains
 from cup1d.theory import linear_power as add_linP_params
-from cup1d.likelihood import marg_lya_like
+from cup1d.likelihood import marginal as marg_lya_like
+from cup1d.postprocessing.star_contours import StarContourPlotter
 from cup1d.utils.utils import get_path_repo
 
 from matplotlib import rcParams
@@ -43,7 +44,7 @@ rcParams["font.family"] = "STIXGeneral"
 root_dir=os.path.join(get_path_repo("cup1d"), "data", "planck_linP_chains")
 
 # folder = root_dir + "/crisjagq/base_mnu/desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP/base_mnu_desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP"
-# cmb_mnu2 = {} 
+# cmb_mnu2 = {}
 # cmb_mnu2["samples"] = loadMCSamples(folder)
 
 cmb = planck_chains.get_planck_2018(
@@ -228,281 +229,6 @@ desi_dr1
 
 # %%
 
-# %% [markdown]
-# #### Get pk from cmb chains
-
-# %%
-from lace.cosmo import camb_cosmo
-
-def get_pk(icmb, nn=100):
-    
-    ind = np.random.permutation(np.arange(len(icmb['samples'][0])))[:nn]
-    for ii in range(nn):
-        if ii % 10 == 0:
-            print(ii)
-        pars_median = icmb['samples'].getParamSampleDict(ii)
-        _cosmo = camb_cosmo.get_cosmology_from_dictionary(pars_median)
-        k_kms, zs_out, _P_kms = camb_cosmo.get_linP_kms(_cosmo)
-        if ii == 0:
-            P_kms = np.zeros((nn, k_kms[0].shape[0]))
-        P_kms[ii] = _P_kms[0]
-    return k_kms[0], P_kms
-
-
-run_code = False
-
-if run_code:
-    for ii in range(len(cmb_all)):
-        k_kms, P_kms = get_pk(cmb_all[ii], nn=500)
-
-# %% [markdown]
-# ### Fig. 22
-
-# %%
-ftsize = 22
-kp_kms = 0.009
-fact = kp_kms**3 / (2 * np.pi**2)
-hatch =  ["", "", "/", "", "/", ""]
-
-store_data = {}
-
-_ds = cmb['samples'][cmb['samples'].index['linP_DL2_star']]
-_ns = cmb['samples'][cmb['samples'].index['linP_n_star']]
-# p16, p50, p84 = np.percentile(vals, [16, 50, 84])
-A_fid, sigma_A = np.median(np.log(_ds/fact)), np.std(np.log(_ds/fact))
-# B_fid, sigma_B = np.median(_ns), np.std(_ns)
-# rho = np.corrcoef(_ds, _ns)[0][1]
-
-x = np.geomspace(0.5 * kp_kms, 2 * kp_kms, 200)
-y_samp_fid = np.median(np.log(_ds/fact)[:,None] + _ns[:,None] * np.log(x[None,:]/kp_kms), axis=0)
-
-cmb_all = [
-    cmb, 
-    # cmb_tau, 
-    cmb_mnu, 
-    cmb_nnu, 
-    cmb_nrun, 
-    cmb_nrun_nrunrun,
-]
-cmb_labs = [
-    r"$\mathit{Planck}$ T&E: $\Lambda$CDM", 
-    # r"Planck+18 $\Lambda$CDM (no lowE)",
-    r"$\mathit{Planck}$ T&E: $\sum m_\nu$",
-    r"$\mathit{Planck}$ T&E: $N_\mathrm{eff}$",
-    r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}$",
-    r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
-]
-
-# icmb = cmb
-# pars_median = {}
-# for par in icmb['samples'].index:
-#     pars_median[par] = np.median(icmb['samples'][icmb['samples'].index[par]])
-# i_best = cmb['samples'].loglikes.argmax()
-# pars_median = cmb['samples'].getParamSampleDict(i_best)
-# _cosmo = camb_cosmo.get_cosmology_from_dictionary(pars_median)
-# k_kms, zs_out, P_kms = camb_cosmo.get_linP_kms(_cosmo)
-
-fig, ax = plt.subplots(3, 1, figsize=(10, 12), sharex=True, sharey=True)
-
-for ii in range(len(cmb_all)):
-# for ii in range(5):
-
-    if ii == 0:
-        nn = 20000
-        ind = np.random.permutation(np.arange(len(ds)))[:nn]
-        A_samp = np.log(ds[ind]/fact)
-        B_samp = ns[ind]
-        
-        # x-grid and sampled lines
-        # x = np.geomspace(0.001, 0.04, 200)
-        
-        x = np.geomspace(0.5 * kp_kms, 2 * kp_kms, 200)
-        # y_samp = np.exp(A_samp[:,None] + B_samp[:,None] * np.log(x[None,:]/kp_kms))/np.exp(y_samp_fid)
-        y_samp = np.exp(np.median(A_samp) + B_samp[:,None] * np.log(x[None,:]/kp_kms))/np.exp(y_samp_fid)
-        
-        # mean and percentiles
-        y_med = np.median(y_samp, axis=0)
-        y_p16 = np.percentile(y_samp, 16, axis=0)
-        y_p84 = np.percentile(y_samp, 84, axis=0)
-        # y_err = np.std(y_samp)
-        
-        # plot
-
-        for kk in range(3):
-            if kk == 0:
-                lab = r"DESI $P_\mathrm{1D}$"
-            else:
-                lab = None
-            ax[kk].errorbar(
-                kp_kms, 
-                np.median(np.exp(A_samp)/np.exp(A_fid)), 
-                np.std(np.exp(A_samp)/np.exp(A_fid)),
-                marker="o", 
-                color="C0",
-                elinewidth=2
-            )
-            # ax[kk].plot(x, y_med, color="C0")
-            ax[kk].fill_between(x, y_p16, y_p84, alpha=0.3, label=lab, color="C0")
-
-            store_data["x_C0"] = kp_kms
-            store_data["y_C0"] = np.median(np.exp(A_samp)/np.exp(A_fid))
-            store_data["yerr_C0"] = np.std(np.exp(A_samp)/np.exp(A_fid))
-            store_data["y_C0_shaded_low"] = y_p16
-            store_data["y_C0_shaded_high"] = y_p84
-            
-    
-        P_kms = np.load("P_kms_" + str(ii) + ".npy")
-        y16, ynorm, y84 = np.percentile(P_kms, [16, 50, 84], axis=0)
-        fid_k_kms = 10**np.arange(-5.888706504390846, -0.41158524967118454, 0.0054826)
-        ax[0].fill_between(fid_k_kms, y16/ynorm, y84/ynorm, alpha=0.2, color="C1", label=cmb_labs[ii])
-        ax[0].plot(fid_k_kms, ynorm/ynorm, lw=2, color="C1")
-        
-        store_data["x_C1"] = fid_k_kms
-        store_data["y_C1"] = ynorm/ynorm
-        store_data["y_C1_shaded_low"] = y16/ynorm
-        store_data["y_C1_shaded_high"] = y84/ynorm
-        
-    else:
-        if ii < 3:
-            kk = 1
-        else:
-            kk = 2
-        # icmb = cmb_all[ii]
-        # pars_median = {}
-        # for par in icmb['samples'].index:
-        #     pars_median[par] = np.median(icmb['samples'][icmb['samples'].index[par]])
-        # i_best = icmb['samples'].loglikes.argmax()
-        # pars_median = icmb['samples'].getParamSampleDict(i_best)
-        # _cosmo = camb_cosmo.get_cosmology_from_dictionary(pars_median)
-        # k_kms, zs_out, P_kms = camb_cosmo.get_linP_kms(_cosmo)
-        P_kms = np.load("P_kms_" + str(ii) + ".npy")
-        y16, y50, y84 = np.percentile(P_kms, [16, 50, 84], axis=0)
-        colors = ["C1", "C2", "C6", "C5", "C7"]
-        lss= ["--", "-", "--", "-", "--"]
-        ax[kk].fill_between(fid_k_kms, y16/ynorm, y84/ynorm, alpha=0.2, color=colors[ii], label=cmb_labs[ii], hatch=hatch[ii+1])
-        ax[kk].plot(fid_k_kms, y50/ynorm, lw=2, color=colors[ii], ls=lss[ii])
-
-        
-        store_data["x_" + colors[ii]] = fid_k_kms
-        store_data["y_" + colors[ii]] = y50/ynorm
-        store_data["y_" + colors[ii] + "_shaded_low"] = y16/ynorm
-        store_data["y_" + colors[ii] + "_shaded_high"] = y84/ynorm
-
-for kk in range(3):
-    ax[kk].axhline(1, ls=":", color="k", alpha=0.5)
-    ax[kk].set_xlim(1.5e-5, 0.06)
-    ax[kk].set_ylim(0.85, 1.2)
-    ax[kk].set_xscale("log")
-    # plt.yscale("log")
-    ax[kk].legend(fontsize=ftsize, loc="upper left")
-    ax[kk].tick_params(axis="both", which="major", labelsize=ftsize)
-    
-    x1, x2 = 0.00125, 0.04
-    ax[kk].plot([x1, x2], [0.92, 0.92], lw=2, color="k")
-    ax[kk].text(5e-3, 0.87, r"Ly$\alpha$ $P_\mathrm{1D}$", fontsize=ftsize)
-    x1, x2 = 2.85e-5, 0.0025
-    ax[kk].plot([x1, x2], [0.93, 0.93], lw=2, color="k")
-    ax[kk].text(1.2e-4, 0.87, r"CMB T&E", fontsize=ftsize)
-    
-
-    
-fig.supylabel("$P_\mathrm{lin}(k, z=3)/P^\mathrm{\Lambda CDM}_\mathrm{lin}(k, z=3)$", fontsize=ftsize)
-ax[2].set_xlabel(r"$k\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize)
-plt.tick_params()
-plt.savefig("figs/Plin_extra.pdf", bbox_inches="tight")
-plt.savefig("figs/Plin_extra.png", bbox_inches="tight")
-
-# %%
-import cup1d, os
-
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_22.npy")
-np.save(fname, store_data)
-
-# %%
-# desi_dr12 = {
-#     "Delta2_star":0.664,
-#     "n_star":-2.474,
-#     "r":-0.002,
-#     "Delta2_star_err":0.056,
-#     "n_star_err":0.019,
-# }
-
-# %%
-ftsize = 26
-cmap = plt.colormaps["Blues"]
-col = [0.7, 0.3]
-lw = [3, 2]
-# cmb_all = [
-#     cmb,
-#     # cmb_tau,
-#     cmb_mnu,
-#     cmb_nnu,
-#     cmb_nrun,
-#     cmb_nrun_nrunrun,
-# ]
-# cmb_labs = [
-#     r"$\mathit{Planck}$ T&E: $\Lambda$CDM",
-#     # r"Planck+18 $\Lambda$CDM (no lowE)",
-#     r"$\mathit{Planck}$ T&E: $\sum m_\nu$",
-#     r"$\mathit{Planck}$ T&E: $N_\mathrm{eff}$",
-#     r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}$",
-#     r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$",
-# ]
-
-# g = plots.getSinglePlotter(width_inch=10)
-# g.settings.num_plot_contours = 2
-
-# for ii, icmb in enumerate(cmb_all):
-
-#     new_samples=icmb['samples'].copy()
-
-#     if ii == 0:
-#         filled = False
-#         lwu = 3
-#     else:
-#         filled = False
-#         lwu = 2
-#     g.plot_2d(
-#         new_samples,
-#         ['linP_DL2_star', 'linP_n_star'],
-#         colors=["C"+str(ii+1)],
-#         lws=2,
-#         alphas=[0.8, 0.5],
-#         filled=filled,
-#     )
-
-fig, ax = plt.subplots(figsize=(8, 6))
-
-
-for inum, num in enumerate([0.68, 0.95]):
-    if inum == 0:
-        label = r"DESI $P_\mathrm{1D}$"
-    else:
-        label = None
-    for jj in range(len(dat_mpg[num])):
-        x = dat_mpg[num][jj][0] - blinding["Delta2_star"]
-        y = dat_mpg[num][jj][1] - blinding["n_star"]
-        ax.plot(x, y, color=cmap(col[inum]), label=label, lw=lw[inum], alpha=0.75)
-        ax.fill(x, y, color=cmap(col[inum]), alpha=0.5)
-
-# ax.axhline(y=1,color='k',lw=lw,label=r"DESI-DR1 Ly$\alpha$ (this work)")
-# for ii, icmb in enumerate(cmb_all):
-#     ax.axhline(y=1,color="C"+str(ii+1),lw=lw[0],label=cmb_labs[ii])
-
-
-# ax.set_xlim(0.25, 0.45)
-# ax.set_ylim(-2.36, -2.24)
-ax.set_ylabel(r"$n_\star$", fontsize=ftsize)
-ax.set_xlabel(r"$\Delta^2_\star$", fontsize=ftsize)
-ax.tick_params(axis="both", which="major", labelsize=ftsize)
-
-plt.legend(fontsize=ftsize - 1, loc="upper left", ncol=2)
-plt.tight_layout()
-
-plt.savefig("figs/only_desi.png", bbox_inches="tight")
-plt.savefig("figs/only_desi.pdf", bbox_inches="tight")
-
 # %%
 # cmb["samples"].index
 import matplotlib.lines as mlines
@@ -611,6 +337,28 @@ for isam in range(6):
     plt.savefig("figs/star_planck_mine" + str(isam) + ".png", bbox_inches="tight")
     plt.savefig("figs/star_planck_mine" + str(isam) + ".pdf", bbox_inches="tight")
 
+# %% [markdown]
+# The reusable contour plotter loads these same Planck chains and DESI contour
+# polygons directly, then produces the cumulative sequence shown above.
+
+# %%
+contour_chain_specs = [
+    {"model": "base", "data": "plikHM_TTTEEE_lowl_lowE_linP", "label": r"$\mathit{Planck}$ T&E: $\Lambda$CDM"},
+    {"model": "base_mnu", "data": "plikHM_TTTEEE_lowl_lowE_linP", "label": r"$\mathit{Planck}$ T&E: $\sum m_\nu$"},
+    {"model": "base_nnu", "data": "plikHM_TTTEEE_lowl_lowE_linP", "label": r"$\mathit{Planck}$ T&E: $N_\mathrm{eff}$"},
+    {"model": "base_nrun", "data": "plikHM_TTTEEE_lowl_lowE_linP", "label": r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}$"},
+    {"model": "base_nrun_nrunrun", "data": "plikHM_TTTEEE_lowl_lowE_linP", "label": r"$\mathit{Planck}$ T&E: $\alpha_\mathrm{s}, \,\beta_\mathrm{s}$"},
+    {"model": "base_w_wa", "data": "plikHM_TTTEEE_lowl_lowE_BAO_linP", "label": r"$\mathit{Planck}$ T&E + BAO:" + "\n" + r"$\omega_0\omega_a$CDM"},
+]
+star_contour_plotter = StarContourPlotter().load_data(
+    chain_specs=contour_chain_specs,
+    desi_contours_path=os.path.join(folder, "line_sigmas.npy"),
+    planck_root_dir=root_dir,
+)
+contour_figures = star_contour_plotter.plot_progressive()
+# To create the Figure-21 publication-data file, run:
+# star_contour_plotter.save_data_to_zenodo()
+
 # %%
 
 # %%
@@ -631,10 +379,10 @@ store_data = {
 }
 
 cmb_all = [
-    cmb, 
-    cmb_mnu, 
-    cmb_nnu, 
-    cmb_nrun, 
+    cmb,
+    cmb_mnu,
+    cmb_nnu,
+    cmb_nrun,
     cmb_nrun_nrunrun,
     cmb_w_wa,
 ]
@@ -647,7 +395,7 @@ for ii in range(len(colors)):
         "y": np.mean(cmb_all[ii]["samples"]['linP_n_star']),
         "yerr": np.std(cmb_all[ii]["samples"]['linP_n_star']),
         "r": np.corrcoef(
-                cmb_all[ii]["samples"]['linP_DL2_star'], 
+                cmb_all[ii]["samples"]['linP_DL2_star'],
                 cmb_all[ii]["samples"]['linP_n_star']
             )[0,1],
     }
@@ -703,42 +451,42 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         # else:
         #     percen = np.percentile(new_samples[param_name], [16, 50, 84])
         #     print(
-        #         np.round(percen[1], 4), 
+        #         np.round(percen[1], 4),
         #         np.round(percen[1]-percen[0], 4),
         #         np.round(percen[2]-percen[1], 4)
         #     )
-        #     if (param_name == "nrunrun"): 
+        #     if (param_name == "nrunrun"):
         #         percen = np.percentile(new_samples["nrun"], [16, 50, 84])
         #         print(
-        #             np.round(percen[1], 4), 
+        #             np.round(percen[1], 4),
         #             np.round(percen[1]-percen[0], 4),
         #             np.round(percen[2]-percen[1], 4)
         #         )
-        
+
         p = new_samples.getParams()
 
         # log unnormalised weights
         logw = 0.5 * gaussian_chi2_mock_DESI(
-            p.linP_n_star, 
-            p.linP_DL2_star, 
-            true_neff=desi_dr1["n_star"], 
-            true_DL2=desi_dr1["Delta2_star"], 
+            p.linP_n_star,
+            p.linP_DL2_star,
+            true_neff=desi_dr1["n_star"],
+            true_DL2=desi_dr1["Delta2_star"],
             neff_err=desi_dr1["n_star_err"],
             DL2_err=desi_dr1["Delta2_star_err"],
             r=desi_dr1["r"]
         )
-        
+
         # # numerical stabilisation: subtract max
         # logw -= logw.max()
         # w_unnorm = np.exp(logw)      # safe: values won't overflow
         # w = w_unnorm / w_unnorm.sum()  # normalised weights
-        
+
         # # effective sample size (ESS)
         # ess = 1.0 / np.sum(w**2)
         # print("ESS", ess)
-        
+
         new_samples.reweightAddingLogLikes(logw) #re-weight cut_samples to account for the new likelihood
-        
+
         # samples_DESI.append(new_samples)
         if ii == 0:
             all_chains.append(chain_type[ii]['samples'])
@@ -771,7 +519,7 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         all_labels.append(labels_DESI[ii])
 
     for ii in range(len(all_chains)):
-        print("Sample", ii) 
+        print("Sample", ii)
         if asns:
             print("1 sigma", 'logA', all_chains[ii].getInlineLatex('logA', limit=1))
             print("1 sigma", 'ns', all_chains[ii].getInlineLatex('ns', limit=1))
@@ -783,9 +531,9 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
                 print("1 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=1, err_sig_figs=3))
             else:
                 print("1 sigma", param_name, all_chains[ii].getInlineLatex(param_name, limit=1))
-            if (param_name == "nrunrun"): 
+            if (param_name == "nrunrun"):
                 print("1 sigma", "nrun", all_chains[ii].getInlineLatex("nrun", limit=1))
-    
+
     g = plots.getSubplotPlotter(width_inch=8)
     g.settings.axes_fontsize = fontsize
     g.settings.legend_fontsize = fontsize
@@ -801,9 +549,9 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         else:
             arr_plot = ['linP_DL2_star','linP_n_star', param_name]
 
-    
+
     mm = len(all_labels)
-    
+
     g.triangle_plot(
         all_chains,
         arr_plot,
@@ -821,28 +569,28 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         g.subplots[1,0].collections[ii].set_linestyle(lss2[ii])
         g.subplots[2,0].collections[ii].set_linestyle(lss2[ii])
         g.subplots[2,1].collections[ii].set_linestyle(lss2[ii])
-        if (param_name == "nrunrun"): 
+        if (param_name == "nrunrun"):
             g.subplots[3,0].collections[ii].set_linestyle(lss2[ii])
             g.subplots[3,1].collections[ii].set_linestyle(lss2[ii])
             g.subplots[3,2].collections[ii].set_linestyle(lss2[ii])
-    
 
-    if (param_name != "nrunrun"): 
+
+    if (param_name != "nrunrun"):
         ndim = 3
     else:
         ndim = 4
-        
+
     for jj in range(ndim):
         g.subplots[ndim-1, jj].tick_params(
             axis="both", which="major", labelsize=fontsize
         )
         g.subplots[-1, jj].xaxis.set_major_locator(MaxNLocator(nbins=3))
         g.subplots[-1, jj].xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-    
+
     for jj in range(1, ndim):
         g.subplots[jj, 0].tick_params(
             axis="both", which="major", labelsize=fontsize
-        )            
+        )
         g.subplots[jj, 0].yaxis.set_major_locator(MaxNLocator(nbins=3))
         g.subplots[jj, 0].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
 
@@ -856,7 +604,7 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         g.subplots[-1, 1].set_xlabel(r"$n_\star$", fontsize=fontsize)
         g.subplots[1, 0].set_ylabel(r"$n_\star$", fontsize=fontsize)
 
-    if (param_name != "nrunrun"): 
+    if (param_name != "nrunrun"):
         g.subplots[-1, 2].set_xlabel(latex_param[param_name], fontsize=fontsize)
         g.subplots[2, 0].set_ylabel(latex_param[param_name], fontsize=fontsize)
     else:
@@ -864,7 +612,7 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         g.subplots[-1, 3].set_xlabel(latex_param[param_name], fontsize=fontsize)
         g.subplots[2, 0].set_ylabel(latex_param["nrun"], fontsize=fontsize)
         g.subplots[3, 0].set_ylabel(latex_param[param_name], fontsize=fontsize)
-    
+
 
     for ax in g.subplots[-1]:  # last row of panels
         for label in ax.get_xticklabels():
@@ -879,7 +627,7 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         g.subplots[-1, 0].set_xlim(0.32, 0.39)
         g.subplots[-1, 1].set_xlim(-2.32, -2.275)
         g.subplots[-1, -1].set_xlim(3.046 - 0.45, 3.046 + 0.45)
-        
+
     elif param_name == "mnu":
         pass
         g.subplots[-1, -1].axvline(0.06, ls="--", color = "black")
@@ -888,7 +636,7 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         g.subplots[-1, -1].axvline(0.1, ls="--", color = "black")
         g.subplots[-1, 0].axhline(0.1, ls="--", color = "black")
         g.subplots[-1, 1].axhline(0.1, ls="--", color = "black")
-        
+
         # g.subplots[-1, -1].set_xlim(0.01, 0.4)
         if alt:
             g.subplots[-1, -1].set_xlim(0., 0.08)
@@ -918,15 +666,15 @@ def plot_combine(chain_type, desi_dr1, param_name, fontsize=24, alt=False, all_s
         g.subplots[-2, 0].axhline(0., ls="--", color = "black")
         g.subplots[-2, 1].axhline(0., ls="--", color = "black")
         g.subplots[-2, 2].axvline(0., ls="--", color = "black")
-        
+
         g.subplots[-2, -2].set_xlim(-0.03, 0.03)
         g.subplots[-1, -1].set_xlim(-0.04, 0.04)
         if asns == False:
             g.subplots[0, 0].set_xlim(0.305, 0.405)
             g.subplots[1, 1].set_xlim(-2.41, -2.17)
         # else:
-        
-        
+
+
     plt.tight_layout()
 
     if asns:
@@ -953,7 +701,7 @@ cmb_mnu = planck_chains.get_planck_2018(
 
 # root_dir=os.path.join(get_path_repo("cup1d"), "data", "planck_linP_chains")
 # folder = root_dir + "/crisjagq/base_mnu/desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP/base_mnu_desi-bao-all_planck2018-lowl-TT-clik_planck2018-lowl-EE-clik_planck-NPIPE-highl-CamSpec-TTTEEE_planck-act-dr6-lensing_linP"
-# cmbspa_mnu = {} 
+# cmbspa_mnu = {}
 # cmbspa_mnu["samples"] = loadMCSamples(folder)
 
 cmbspa_mnu = planck_chains.get_spa(
@@ -1192,8 +940,8 @@ for ii in range(len(true_DL2)):
     new_samples=chain_type['samples'].copy()
     p=new_samples.getParams()
     new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
-        p.linP_n_star, 
-        p.linP_DL2_star, 
+        p.linP_n_star,
+        p.linP_DL2_star,
         true_DL2=true_DL2[ii],
         true_neff=true_neff[ii],
         neff_err=neff_err,
@@ -1243,8 +991,8 @@ for ii in range(len(true_DL2)):
     new_samples=chain_type['samples'].copy()
     p=new_samples.getParams()
     new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
-        p.linP_n_star, 
-        p.linP_DL2_star, 
+        p.linP_n_star,
+        p.linP_DL2_star,
         true_DL2=true_DL2[ii],
         true_neff=true_neff[ii],
         neff_err=neff_err,
@@ -1293,7 +1041,7 @@ samples_DESI=[]
 true_DL2 = 0.35
 true_neff = -2.3
 DL2_err = desi_dr1['Delta2_star_err']
-neff_err = desi_dr1['n_star_err'] 
+neff_err = desi_dr1['n_star_err']
 coeff_mult = 0.5
 
 chain_type = cmb_w_wa
@@ -1304,8 +1052,8 @@ for ii in range(1):
     new_samples=chain_type['samples'].copy()
     p=new_samples.getParams()
     new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
-        p.linP_n_star, 
-        p.linP_DL2_star, 
+        p.linP_n_star,
+        p.linP_DL2_star,
         true_DL2=true_DL2,
         true_neff=true_neff,
         neff_err=neff_err,
@@ -1346,8 +1094,8 @@ for ii in range(len(true_DL2)):
     new_samples=chain_type['samples'].copy()
     p=new_samples.getParams()
     new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
-        p.linP_n_star, 
-        p.linP_DL2_star, 
+        p.linP_n_star,
+        p.linP_DL2_star,
         true_DL2=true_DL2[ii],
         true_neff=true_neff[ii],
         neff_err=neff_err,
@@ -1394,8 +1142,8 @@ chain_type = cmb_mnu
 #     new_samples=chain_type['samples'].copy()
 #     p=new_samples.getParams()
 #     new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
-#         p.linP_n_star, 
-#         p.linP_DL2_star, 
+#         p.linP_n_star,
+#         p.linP_DL2_star,
 #         true_DL2=true_DL2[ii],
 #         true_neff=true_neff[ii],
 #         neff_err=neff_err,
@@ -1411,10 +1159,10 @@ for ii in range(1):
     new_samples=chain_type['samples'].copy()
     p=new_samples.getParams()
     new_loglike = 0.5 * gaussian_chi2_mock_DESI(
-        p.linP_n_star, 
-        p.linP_DL2_star, 
-        true_neff=desi_dr1["n_star"], 
-        true_DL2=desi_dr1["Delta2_star"], 
+        p.linP_n_star,
+        p.linP_DL2_star,
+        true_neff=desi_dr1["n_star"],
+        true_DL2=desi_dr1["Delta2_star"],
         neff_err=desi_dr1["n_star_err"],
         DL2_err=desi_dr1["Delta2_star_err"],
         r=desi_dr1["r"]
@@ -1486,8 +1234,8 @@ for ii in range(len(true_DL2)):
     new_samples=chain_type['samples'].copy()
     p=new_samples.getParams()
     new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
-        p.linP_n_star, 
-        p.linP_DL2_star, 
+        p.linP_n_star,
+        p.linP_DL2_star,
         true_DL2=true_DL2[ii],
         true_neff=true_neff[ii],
         neff_err=neff_err,
@@ -1523,7 +1271,7 @@ for ax in axs:
     ax.tick_params(
         axis="both", which="major", labelsize=fontsize
     )
-    
+
 ax_D2S_NS.set_ylabel(r"$n_\star$", fontsize=fontsize)
 ax_D2S_new.set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
 ax_NS_new.set_xlabel(r"$n_\star$", fontsize=fontsize)
@@ -1564,8 +1312,8 @@ for ii in range(len(true_DL2)):
     new_samples=chain_type['samples'].copy()
     p=new_samples.getParams()
     new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
-        p.linP_n_star, 
-        p.linP_DL2_star, 
+        p.linP_n_star,
+        p.linP_DL2_star,
         true_DL2=true_DL2[ii],
         true_neff=true_neff[ii],
         neff_err=neff_err,
@@ -1627,8 +1375,8 @@ for ii in range(len(true_DL2)):
     new_samples=chain_type['samples'].copy()
     p=new_samples.getParams()
     new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
-        p.linP_n_star, 
-        p.linP_DL2_star, 
+        p.linP_n_star,
+        p.linP_DL2_star,
         true_DL2=true_DL2[ii],
         true_neff=true_neff[ii],
         neff_err=neff_err,
@@ -1682,8 +1430,8 @@ for ii in range(len(true_DL2)):
     new_samples=chain_type['samples'].copy()
     p=new_samples.getParams()
     new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
-        p.linP_n_star, 
-        p.linP_DL2_star, 
+        p.linP_n_star,
+        p.linP_DL2_star,
         true_DL2=true_DL2[ii],
         true_neff=true_neff[ii],
         neff_err=neff_err,
@@ -1729,8 +1477,8 @@ for ii in range(len(true_DL2)):
     new_samples=chain_type['samples'].copy()
     p=new_samples.getParams()
     new_loglike = coeff_mult * gaussian_chi2_mock_DESI(
-        p.linP_n_star, 
-        p.linP_DL2_star, 
+        p.linP_n_star,
+        p.linP_DL2_star,
         true_DL2=true_DL2[ii],
         true_neff=true_neff[ii],
         neff_err=neff_err,
