@@ -53,18 +53,13 @@ class PowerRatioPlotter:
         """
         from cup1d.postprocessing.chains import planck
 
-        cmb_chains = []
-        labels = []
-        for spec in chain_specs:
-            cmb_chains.append(
-                planck.get_planck_2018(
-                    model=spec["model"],
-                    data=spec["data"],
-                    root_dir=planck_root_dir,
-                    linP_tag=spec.get("linP_tag"),
-                )
-            )
-            labels.append(spec["label"])
+        chains = planck.load_planck_2018_chains(
+            chain_specs, root_dir=planck_root_dir
+        )
+        cmb_chains = [
+            chains[spec.get("name", spec["model"])] for spec in chain_specs
+        ]
+        labels = [spec["label"] for spec in chain_specs]
 
         blobs = np.load(desi_blobs_path)
         blinding = np.load(blinding_path, allow_pickle=True).item()

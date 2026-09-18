@@ -22,14 +22,11 @@ class StarContourPlotter:
         """
         from cup1d.postprocessing.chains import planck
 
+        chains = planck.load_planck_2018_chains(
+            chain_specs, root_dir=planck_root_dir
+        )
         self.chains = [
-            planck.get_planck_2018(
-                model=spec["model"],
-                data=spec["data"],
-                root_dir=planck_root_dir,
-                linP_tag=spec.get("linP_tag"),
-            )
-            for spec in chain_specs
+            chains[spec.get("name", spec["model"])] for spec in chain_specs
         ]
         self.labels = [spec["label"] for spec in chain_specs]
         self.desi_contours = np.load(Path(desi_contours_path), allow_pickle=True).item()
@@ -74,8 +71,6 @@ class StarContourPlotter:
             axis.set_ylabel(r"$n_\star$", fontsize=self.fontsize)
             axis.tick_params(axis="both", which="major", labelsize=self.fontsize)
             self._add_legend(axis, colors, line_styles, number_of_chains)
-            axis.figure.tight_layout()
-
             if save_directory is not None:
                 stem = save_directory / f"star_planck_mine{number_of_chains - 1}"
                 axis.figure.savefig(stem.with_suffix(".png"), bbox_inches="tight")

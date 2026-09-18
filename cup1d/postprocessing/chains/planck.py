@@ -1,4 +1,6 @@
 import os
+from collections.abc import Iterable
+
 from getdist import loadMCSamples
 from cup1d.utils.utils import get_path_repo
 
@@ -132,6 +134,47 @@ def get_planck_2018(
     return get_planck_results(
         2018, model=model, data=data, root_dir=root_dir, linP_tag=linP_tag
     )
+
+
+def load_planck_2018_chains(chain_specs: Iterable[dict], root_dir=None):
+    """Load a named collection of Planck-2018 chains.
+
+    Each specification must define ``model`` and ``data``. ``name`` is the
+    returned-dictionary key and defaults to ``model``; ``linP_tag`` defaults
+    to ``None``. Other fields, such as a plotting ``label``, are ignored.
+    """
+    chains = {}
+    for spec in chain_specs:
+        name = spec.get("name", spec["model"])
+        if name in chains:
+            raise ValueError(f"Duplicate Planck chain name: {name}")
+        chains[name] = get_planck_2018(
+            model=spec["model"],
+            data=spec["data"],
+            root_dir=root_dir,
+            linP_tag=spec.get("linP_tag"),
+        )
+    return chains
+
+
+def load_spa_chains(chain_specs: Iterable[dict], root_dir=None):
+    """Load a named collection of CMB-SPA chains.
+
+    The specification convention matches :func:`load_planck_2018_chains`.
+    ``linP_tag`` defaults to the CMB-SPA standard, ``"linP"``.
+    """
+    chains = {}
+    for spec in chain_specs:
+        name = spec.get("name", spec["model"])
+        if name in chains:
+            raise ValueError(f"Duplicate CMB-SPA chain name: {name}")
+        chains[name] = get_spa(
+            model=spec["model"],
+            data=spec["data"],
+            root_dir=root_dir,
+            linP_tag=spec.get("linP_tag", "linP"),
+        )
+    return chains
 
 
 def get_spa_results(model, data, root_dir, linP_tag, release="d1"):
