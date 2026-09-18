@@ -49,7 +49,7 @@ class PowerRatioPlotter:
         Each element of ``chain_specs`` must define ``model``, ``data``, and
         ``label``; it may optionally define ``linP_tag``.  The first chain is
         the LCDM reference. ``desi_blobs_path`` points to the DESI ``blobs.npy``
-        file and ``blinding_path`` to its ``blinding.npy`` offsets.
+        file and ``blinding_path`` to its ``blinding_dr1.npy`` offsets.
         """
         from cup1d.postprocessing.chains import planck
 

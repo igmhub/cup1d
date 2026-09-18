@@ -101,12 +101,12 @@ cmbspa_nrunrun = spa_results["cmbspa_nrunrun"]
 # constraint or reweight the CMB chains.
 
 # %%
-base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
 desi_chain_directory = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 
 summary_mpg = np.load(desi_chain_directory + "summary.npy", allow_pickle=True).item()
 blobs = np.load(desi_chain_directory + "blobs.npy")
-blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
+blinding_path = os.path.join(get_path_repo("cup1d"), "data", "blinding_dr1.npy")
+blinding = np.load(blinding_path, allow_pickle=True).item()
 
 delta2_star_samples = blobs["Delta2_star"].reshape(-1) - blinding["Delta2_star"]
 n_star_samples = blobs["n_star"].reshape(-1) - blinding["n_star"]

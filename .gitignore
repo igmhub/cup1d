@@ -12,3 +12,8 @@ __pycache__
 *.npy
 docs/_build/
 docs/generated/
+
+# Keep the DESI DR1 blinding offsets required by the public plotting notebooks.
+!/data/
+/data/*
+!/data/blinding_dr1.npy

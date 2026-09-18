@@ -944,7 +944,7 @@ class Likelihood(object):
             #     "k_kms": _data_k_kms,
             #     "p1d_model": emu_p1d,
             # }
-            # np.save("test_model.npy", dict_save)
+            # np.save("notebooks/tutorials/data/test_model.npy", dict_save)
 
             if len(emu_p1d) == 1:
                 emu_p1d = emu_p1d[0]
@@ -3123,7 +3123,14 @@ class Likelihood(object):
                     )
 
         if plot_more_igm:
-            more_igm = np.load("more_igm_data.npy", allow_pickle=True).item()
+            more_igm_path = os.path.join(
+                get_path_repo("cup1d"),
+                "notebooks",
+                "tutorials",
+                "data",
+                "more_igm_data.npy",
+            )
+            more_igm = np.load(more_igm_path, allow_pickle=True).item()
             ax[0].plot(
                 more_igm["z"],
                 more_igm["mF"][1],

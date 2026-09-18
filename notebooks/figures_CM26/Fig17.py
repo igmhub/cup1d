@@ -1,23 +1,24 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Fig. 17
 #
 # Most correlated cosmological and nuisance parameters
 
-# +
+# %%
 import os
 import numpy as np
 
@@ -25,7 +26,7 @@ from cup1d.utils.utils import get_path_repo
 from cup1d.postprocessing.plots_corner import plots_chain
 
 # blinding to be subtracted from blinded measurement
-fname = os.path.join(get_path_repo("cup1d"), "data", "blinding", "DESI_DR1", "blinding.npy")
+fname = os.path.join(get_path_repo("cup1d"), "data", "blinding_dr1.npy")
 real_blinding = np.load(fname, allow_pickle=True).item()
 
 
@@ -37,17 +38,17 @@ folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/gl
 # for more efficiency, comment everything but the plotting routine of this correction
 store_data = plots_chain(folder, store_data=True, truth=real_blinding)
 
-# +
+# %%
 import cup1d, os
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_17.npy")
 np.save(fname, store_data)
-# -
 
+# %% [markdown]
 # ## Other variations, check out local machine
 
-# +
+# %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 
 variations = {

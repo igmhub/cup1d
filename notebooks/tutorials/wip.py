@@ -120,7 +120,11 @@ data = {
     "len_k_z": lenz,
 }
 
-np.save("P1D_covs.npy", data)
+tutorial_data_path = os.path.join(
+    get_path_repo("cup1d"), "notebooks", "tutorials", "data"
+)
+os.makedirs(tutorial_data_path, exist_ok=True)
+np.save(os.path.join(tutorial_data_path, "P1D_covs.npy"), data)
 
 # %%
 kk = pip.fitter.like.data["DESIY1_QMLE3"].k_kms[0]

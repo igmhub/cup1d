@@ -230,8 +230,8 @@ from cup1d.theory import camb as CAMB_model
 import matplotlib.cm as cm
 
 # %%
-base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
-blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
+blinding_path = os.path.join(get_path_repo("cup1d"), "data", "blinding_dr1.npy")
+blinding = np.load(blinding_path, allow_pickle=True).item()
 
 # %%
 # blinding = {'Delta2_star': 0,

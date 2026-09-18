@@ -42,7 +42,7 @@ desi_chain_directory = (
     / "CH24_mpgcen_gpr"
     / "chain_7"
 )
-blinding_path = repository_path / "notebooks" / "tutorials" / "blinding.npy"
+blinding_path = repository_path / "data" / "blinding_dr1.npy"
 power_file_paths = [
     repository_path / "notebooks" / "planck" / "figs" / f"P_kms_{index}.npy"
     for index in range(5)

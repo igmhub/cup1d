@@ -1,227 +1,129 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: lace
 #     language: python
 #     name: python3
 # ---
 
-# # Analyze the result of global fits
+# %% [markdown]
+# # Analyse a saved fit
 #
-# Local fits are analyzed in compute_ic_at_a_time
-#
-# NEED to be updated, only showing plots after setting IC
+# This notebook reconstructs an analysis from its YAML configuration and uses
+# the maximum-likelihood point saved in `fitter_results.npy`. The YAML file
+# must describe the fit being inspected: the saved results do not contain the
+# complete analysis configuration.
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
-import numpy as np
-import time, os, sys
-import matplotlib.pyplot as plt
+import os
+from pathlib import Path
 
-# our own modules
-from cup1d.configuration.args import Args
-from cup1d.inference.analysis import Analysis
+import numpy as np
+
+from cup1d import Analysis, Args
 from cup1d.utils.utils import get_path_repo
 
-# +
-# emu = "mpg"
-# emu = "nyx"
-# data_label = "DESIY1_QMLE3"
-# data_label = "DESIY1_FFT_dir"
-# type_fit = "global_opt"
 
-# args = Args(data_label=data_label, emulator_label="CH24_"+emu+"cen_gpr")
-# args.set_baseline(fit_type=type_fit, fix_cosmo=True)
-# pip = Analysis(args, out_folder=None)
+# %% [markdown]
+# ## Select the configuration and saved fit
+#
+# Set `fit_directory` to the directory containing `fitter_results.npy`. The
+# default points to the CM2026 baseline configuration and to the standard DR1
+# QMLE3 global fit. Change both settings together when inspecting a variation.
 
-name_variation = None
-args = Args(data_label="DESIY1_QMLE3", emulator_label="CH24_mpgcen_gpr")
-args.set_baseline(fit_type="global_opt", fix_cosmo=True, name_variation=name_variation, inflate_err=True)
+# %%
+repository_path = Path(get_path_repo("cup1d"))
+config_path = repository_path / "configs" / "cm2026" / "cm2026_base.yaml"
 
-ndeg = 0 
-for ii in range(len(pip.fitter.like.data.k_kms)):
-    ndeg += len(pip.fitter.like.data.k_kms[ii])
-print(ndeg, ndeg - len(pip.fitter.like.free_param_names))
+fit_directory = Path(
+    os.environ.get(
+        "CUP1D_FIT_DIRECTORY",
+        "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+        "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7",
+    )
+)
+results_path = fit_directory / "fitter_results.npy"
 
-# -
-
-try:
-    data["P1Ds"].plot_igm()
-except:
-    print("Real data, no true IGM history")
-
-# +
-plot = True
-
-if plot:
-    fname = None
-    # fname = "p1d_qmle3"
-    # fname = "p1d_fftdir"    
-    pip.fitter.like.data.plot_p1d(fname=fname)
+if not results_path.is_file():
+    raise FileNotFoundError(
+        f"Could not find {results_path}. Set CUP1D_FIT_DIRECTORY or edit "
+        "fit_directory in this cell."
+    )
 
 
-# +
-plot = False
+# %% [markdown]
+# ## Reconstruct the analysis and load the maximum-likelihood point
+#
+# `mle_cube` is stored in the unit cube used by the likelihood. Evaluating its
+# chi-squared again checks that the selected configuration matches the fit and
+# makes the point available to the regular fitting interface.
 
-if plot:
-    fname = None
-    # fname = "cov_to_pk_mpg_fftdir"
-    # fname = "cov_to_pk_mpg_qmle3"
-    pip.fitter.like.plot_cov_to_pk(save_directory="figs", fname=fname)
+# %%
+args = Args.from_yaml(config_path, verbose=False)
+analysis = Analysis(args)
 
-# +
-plot = False
+fit_results = np.load(results_path, allow_pickle=True).item()
+mle_cube = np.asarray(fit_results["fitter"]["mle_cube"])
+chi2 = analysis.like.get_chi2(mle_cube)
+analysis.fitter.set_mle(mle_cube, chi2)
 
-if plot:
-
-    pip.fitter.like.plot_correlation_matrix()
-
-# +
-# pip.fitter.like.plot_hull_fid(like_params=pip.fitter.like.free_params)
-# -
-
-# p0 = pip.fitter.like.sampling_point_from_parameters()
-# like_params = pip.fitter.like.parameters_from_sampling_point(p0)
-# pip.fitter.like.plot_igm(cloud=True, free_params=like_params)
-pip.fitter.like.plot_igm(cloud=True)
-# pip.fitter.like.plot_igm()
+print(f"chi2 = {chi2:.3f}")
+print(f"number of free parameters = {len(analysis.like.free_params)}")
 
 
+# %% [markdown]
+# ## Inspect the fitted parameters
+#
+# The likelihood converts the unit-cube point into the physical parameter
+# values used by the model.
+
+# %%
+best_fit_parameters = analysis.like.parameters_from_sampling_point(mle_cube)
+for parameter in best_fit_parameters:
+    print(f"{parameter.name:20s} = {parameter.value:g}")
 
 
+# %% [markdown]
+# ## Compare the best-fit model with the P1D measurements
+#
+# The residual-panel view is useful for locating redshift or wavenumber ranges
+# that dominate the goodness of fit. No figures are saved unless a filename is
+# explicitly supplied to the plotting method.
 
-p0 = pip.fitter.like.sampling_point_from_parameters()
-chi2 = pip.fitter.like.get_chi2(p0)
-chi2
-
-pip.fitter.like.theory.fid_cosmo['linP_params']
-
-pip.fitter.like.plot_p1d(residuals=True, plot_panels=True, values=p0)
-
-pip.fitter.like.plot_igm()
-
-# +
-
-pip.fitter.set_mle(p0, chi2)
-# -
-
-pip.fitter.like.plot_p1d(p0)
-
-diru = None
-plotter = Plotter(pip.fitter, save_directory=diru)
-for zz in pip.fitter.like.data.z:
-    plotter.plot_illustrate_contaminants_cum(p0, np.array([zz]))
-plotter.plot_mle_cosmo()
-
-# #### To unblind
-
-# +
-# pip.fitter.like.apply_unblinding(pip.fitter.mle_cosmo)
-# -
-
-zz = pip.fitter.like.data.z
-plt.plot(zz, pip.fitter.like.theory.model_igm.models["F_model"].get_mean_flux(zz), "o--")
-
-# ### Use plotter
-
-# +
-
-# diru = "allz_snr3_cosmo_global"
-# diru = "allz_snr3_cosmo_andreu2"
-diru=None
-plotter = Plotter(pip.fitter, save_directory=diru)
-plotter.plot_p1d(plot_panels=True, residuals=True)
-
-for zz in like.data.z:
-    plotter.plot_illustrate_contaminants_cum(fitter.mle_cube.copy(), np.array([zz]))
+# %%
+analysis.like.plot_p1d(
+    mle_cube,
+    residuals=True,
+    plot_panels=True,
+    print_chi2=False,
+)
 
 
-plotter.plot_p1d(plot_panels=True, residuals=True)
+# %% [markdown]
+# ## Plot the fitted IGM history
+#
+# For a minimizer result we show the maximum-likelihood history. To show
+# posterior bands, load a sampler chain and pass it as `chain_uformat`.
 
-plotter.plot_igm()
-plotter.plot_p1d_errors()
-plotter.plot_p1d(residuals=True)
-plotter.plot_p1d(residuals=True, plot_panels=True)
-plotter.plot_metal_cont(plot_data=True)
-
-if args.fix_cosmo == False:
-    plotter.plot_mle_cosmo()
-plotter.plots_minimizer()
-
-plotter.plot_metal_cont(plot_data=True)
-plotter.plot_hcd_cont(plot_data=True)
-# -
+# %%
+analysis.like.plot_igm(free_params=best_fit_parameters)
 
 
+# %% [markdown]
+# ## Inspect the covariance used by the likelihood
+#
+# This plot separates the statistical, systematic, and emulator contributions
+# to the P1D covariance where they are available.
 
-# #### Error from Hessian
-
-# +
-# # %%time
-# Hessian
-# err = fitter.like.get_error(fitter.mle_cube.copy())
-# err
-# -
-
-
-
-# #### Rescale fiducial cosmology
-
-# +
-pstar = fitter.like.theory.fid_cosmo["cosmo"].get_linP_params()
-print(pstar['Delta2_star'], pstar['n_star'])
-
-target_params = {
-    'Delta2_star': 0.42,
-     'n_star': -2.33,
-}
-
-fitter.like.theory.rescale_fid_cosmo(target_params)
-
-pstar = fitter.like.theory.fid_cosmo["cosmo"].get_linP_params()
-print(pstar['Delta2_star'], pstar['n_star'])
-# -
-
-
-
-# #### Plot parameters at a function of z, important when multiple nodes
-
-like_params = fitter.like.parameters_from_sampling_point(fitter.mle_cube)
-fitter.like.theory.model_igm.models["F_model"].plot_parameters(data["P1Ds"].z, like_params)
-fitter.like.theory.model_igm.models["T_model"].plot_parameters(data["P1Ds"].z, like_params)
-fitter.like.theory.model_cont.metal_models["Si_mult"].plot_parameters(data["P1Ds"].z, like_params)
-fitter.like.theory.model_cont.metal_models["Si_add"].plot_parameters(data["P1Ds"].z, like_params)
-fitter.like.theory.model_cont.hcd_model.plot_parameters(data["P1Ds"].z, like_params)
-
-# +
-mask = np.arange(11)
-
-like_params = fitter.like.parameters_from_sampling_point(fitter.mle_cube)
-
-fold0 = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/allz_snr3_cosmo_global/"
-folder = fold0 + "taueff"
-oFmodel, ocFmodel = fitter.like.theory.model_igm.models["F_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
-folder = fold0 + "sigT"
-oTmodel, ocTmodel = fitter.like.theory.model_igm.models["T_model"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
-folder = fold0 + "Simult"
-oSimult, ocSimult = fitter.like.theory.model_cont.metal_models["Si_mult"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
-folder = fold0 + "Siadd"
-oSiadd, ocSiadd = fitter.like.theory.model_cont.metal_models["Si_add"].plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
-folder = fold0 + "HCD"
-oHCD, ocHCD = fitter.like.theory.model_cont.hcd_model.plot_parameters(data["P1Ds"].z[mask], like_params, folder=folder)
-
-models = [ocFmodel, ocTmodel, ocSimult, ocSiadd, ocHCD]
-param_attime_all = {}
-for mod in models:
-    for key in mod:
-        param_attime_all[key] = mod[key]
-# -
+# %%
+analysis.like.plot_cov_to_pk()

@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -186,7 +186,7 @@ plt.legend()
 
 plt.axhline(ls=":", color="k")
 
-plt.savefig("residual_ting.png")
+plt.savefig("figs/residual_ting.png")
 
 # %%
 import cup1d, os

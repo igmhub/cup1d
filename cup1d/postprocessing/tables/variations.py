@@ -3,6 +3,8 @@ import math
 import numpy as np
 from scipy.stats import chi2 as chi2_scipy
 
+from cup1d.utils.utils import get_path_repo
+
 
 def match_precision(x, xp, xm, sig=2):
     """
@@ -277,8 +279,10 @@ def table_variations(base):
     )[1, 0]
     blobs = 0
 
-    base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/"
-    blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
+    blinding_path = os.path.join(
+        get_path_repo("cup1d"), "data", "blinding_dr1.npy"
+    )
+    blinding = np.load(blinding_path, allow_pickle=True).item()
 
     for ii, var in enumerate(variations):
         folder = os.path.join(base, variations[var][1])

@@ -46,7 +46,7 @@ class HistoricalLinearPowerPlotter:
                 / "chain_7"
             )
         if blinding_path is None:
-            blinding_path = repository_path / "notebooks" / "tutorials" / "blinding.npy"
+            blinding_path = repository_path / "data" / "blinding_dr1.npy"
 
         desi_chain_directory = Path(desi_chain_directory)
         self.cmb = planck.get_planck_2018(
