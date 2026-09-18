@@ -9,23 +9,35 @@ It uses the LaCE emulator (https://github.com/igmhub/LaCE), and some extra tools
 If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es) or Jonas Chaves-Montero (jchaves@ifae.es).
  
 
+### Documentation
+
+The documentation covers installation, YAML configuration, the package layout,
+tutorials, and the active API. Build it locally with:
+
+```
+python -m pip install -e ".[docs]"
+make docs
+```
+
+Open `docs/_build/html/index.html` after the build completes. The repository
+also includes a Read the Docs configuration for publishing the same site.
+
+
 ### Installation
 
 - Download and install Conda. You can find the instructions here https://docs.anaconda.com/miniconda/miniconda-install/
 
-- Create a new conda environment. It is usually better to follow python version one or two behind. In January 2024, the latest is 3.12, so we recommend 3.11.
+- Create a conda environment
 
 ```
-conda create -n cup1d -c conda-forge python=3.11 camb mpich mpi4py fdasrsf
-conda activate cup1d
-pip install --upgrade pip
+conda create -n cup1d python=3.12
 ```
-- Clone and install LaCE (do so within the environment created above):
+- Clone and install LaCE following the instructions [here](https://github.com/igmhub/LaCE) (do so within the environment created above):
 
 ```
 git clone https://github.com/igmhub/LaCE.git
 cd LacE
-pip install -e .
+make install
 ``` 
 
 - Clone and install cup1d:
@@ -33,7 +45,7 @@ pip install -e .
 ```
 git clone https://github.com/igmhub/cup1d.git
 cd cup1d
-pip install -e .
+make install
 ``` 
 
 #### NERSC users:
@@ -83,7 +95,7 @@ pip install ipykernel
 python -m ipykernel install --user --name cup1d --display-name cup1d
 ```
 
-You can find the main tutorial to run your analyses in `notebooks/tutorials/sample_sim.py`
+You can find the main tutorial to run the DESI DR1 analysis in `notebooks/tutorials/dr1_tutorial.py`
 
 You can also plot many P1D measurements stored in the repo, by looking at `notebooks/p1d_measurements`
 

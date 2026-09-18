@@ -70,14 +70,14 @@ sys.path.append(path_program)
 from cup1d.likelihood.sampler_pipeline import path_sampler
 from matplotlib.ticker import MaxNLocator
 from lace.archive import gadget_archive, nyx_archive
-from cup1d.likelihood import lya_theory
+from cup1d.theory import theory as lya_theory
 from lace.cosmo.camb_cosmo import (
     get_camb_results,
     get_Nyx_cosmology,
     get_cosmology_from_dictionary,
 )
 from lace.cosmo.fit_linP import parameterize_cosmology_kms
-from cup1d.likelihood import CAMB_model
+from cup1d.theory import camb as CAMB_model
 
 
 # %% [markdown]
@@ -537,9 +537,9 @@ print(fid_cosmo["Delta2_star"][ind], fid_cosmo["n_star"][ind])
 #             args.emulator_label = emulator_label
 #             args.add_hires = add_hires
 #             args.use_polyfit = use_polyfit
-#             args.cov_label = cov_label
+#             args.synth_cov_label = cov_label
 
-#             args.drop_sim = drop_sim
+#             args.drop_emu_sim = drop_sim
 #             args.n_igm = n_igm
 #             args.test_sim_label = sim_label
 
@@ -589,9 +589,9 @@ for ii, drop_sim in enumerate(arr_drop_sim):
                 args.emulator_label = emulator_label
                 args.add_hires = add_hires
                 args.use_polyfit = use_polyfit
-                args.cov_label = cov_label
+                args.synth_cov_label = cov_label
 
-                args.drop_sim = drop_sim
+                args.drop_emu_sim = drop_sim
                 args.n_igm = n_igm
                 args.test_sim_label = sim_label
 

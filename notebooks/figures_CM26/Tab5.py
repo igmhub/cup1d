@@ -19,7 +19,7 @@
 # With best-fitting results from all variations
 
 # %%
-from cup1d.plots_and_tables.table_variations import table_variations
+from cup1d.postprocessing.tables.variations import table_variations
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 table_variations(base)
 

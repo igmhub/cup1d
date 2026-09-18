@@ -21,8 +21,8 @@ import numpy as np
 import time, os, sys
 import matplotlib.pyplot as plt
 
-from cup1d.likelihood.cosmologies import set_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.theory.cosmology import set_cosmo
+from cup1d.theory import camb as CAMB_model
 from lace.cosmo import camb_cosmo
 
 

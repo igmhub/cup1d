@@ -27,7 +27,7 @@ mpl.rcParams['savefig.dpi'] = 120
 mpl.rcParams['figure.dpi'] = 120
 
 # %%
-from cup1d.likelihood.pipeline import set_archive
+from cup1d.emulator.archive import set_archive
 
 # %% [markdown]
 # ### Access to P1D archive stored in the LaCE repository

@@ -38,13 +38,14 @@ from cup1d.p1ds import (
     data_Karacayli2024,
     data_Ravoux2023,
 )
-from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
-from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_P1D_hires, set_fid_cosmo, set_like
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.theory import theory as lya_theory
+from cup1d.likelihood import likelihood, emcee_sampler
+from cup1d.likelihood.sampler_pipeline import set_archive, set_p1d, set_p1d_hires, set_fid_cosmo, set_like
+from cup1d.configuration.args import Args
 
-# from cup1d.likelihood import lya_theory
+# from cup1d.theory import theory as lya_theory
 # from cup1d.likelihood import likelihood
-# from cup1d.likelihood import iminuit_minimizer
+# from cup1d.inference import iminuit
 
 # %%
 # set output directory for this test
@@ -95,18 +96,18 @@ cosmo_fid = set_fid_cosmo(cosmo_label=args.cosmo_label)
 
 # %%
 data = {"P1Ds": None, "extra_P1Ds": None}
-data["P1Ds"], true_sim_igm = set_P1D(
+data["P1Ds"], true_sim_igm = set_p1d(
     archive,
     emulator,
     args.data_label,
     cosmo_fid,
-    cov_label=args.cov_label,
+    cov_label=args.synth_cov_label,
     apply_smoothing=False,
     z_min=args.z_min,
     z_max=args.z_max,
 )
 
-data["extra_P1Ds"] = set_P1D_hires(
+data["extra_P1Ds"] = set_p1d_hires(
     archive,
     emulator,
     cosmo_fid,

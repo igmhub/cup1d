@@ -59,7 +59,7 @@ variations=(
     # "Turner24"
     # "kF_kms"
     ################
-    "DESIY1_FFT3_dir_DLA_TAN"
+    "configs/tan2026/DESIY1_FFT3_dir_DLA_TAN.yaml"
 )
 
 source /global/homes/j/jjchaves/miniconda3/bin/activate lace

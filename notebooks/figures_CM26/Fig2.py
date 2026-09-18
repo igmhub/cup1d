@@ -23,13 +23,13 @@
 
 import os
 import cup1d
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
 # -
 
 args = Args(pre_defined="CM2026", system="local")
-# pip = Pipeline(args, out_folder=args.out_folder)
-pip = Pipeline(args, out_folder=None)
+# pip = Analysis(args, out_folder=args.out_folder)
+pip = Analysis(args, out_folder=None)
 
 # store_data = pip.fitter.like.data.plot_p1d(store_data=True, fname=None)
 store_data = pip.fitter.like.plot_cov_to_pk(use_pk_smooth=False, store_data=True)

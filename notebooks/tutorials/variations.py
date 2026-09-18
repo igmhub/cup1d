@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -54,7 +54,7 @@ print(chi2_levels)
 
 # %%
 from lace.cosmo import camb_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.theory import camb as CAMB_model
 def rescale_star(fid_cosmo, new_cosmo, kp_Mpc, ks_Mpc=0.05):
     """Fast computation of blob when running with fixed background"""
 
@@ -188,7 +188,7 @@ elif isinstance(alpha_shape2, MultiPolygon):
 # hull_points = hull_points.reshape(-1, 2)
 
 # %%
-from cup1d.likelihood.cosmologies import set_cosmo
+from cup1d.theory.cosmology import set_cosmo
 
 # %%
 mpg_all = set_cosmo("mpg_0", return_all=True)
@@ -225,8 +225,8 @@ plt.plot(boundary2[:,0], boundary2[:,1], "C1")
 # #### Contours from chains
 
 # %%
-from cup1d.likelihood.cosmologies import set_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.theory.cosmology import set_cosmo
+from cup1d.theory import camb as CAMB_model
 import matplotlib.cm as cm
 
 # %%
@@ -234,9 +234,9 @@ base_notebook = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/
 blinding = np.load(base_notebook + "blinding.npy", allow_pickle=True).item()
 
 # %%
-blinding = {'Delta2_star': 0,
- 'n_star': 0.,
- 'alpha_star': 0.}
+# blinding = {'Delta2_star': 0,
+#  'n_star': 0.,
+#  'alpha_star': 0.}
 
 # %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
@@ -351,6 +351,9 @@ sum_nyx = np.load(folder + "summary.npy", allow_pickle=True).item()
 folder = base + "DESIY1_FFT3_dir/global_opt/CH24_mpgcen_gpr/chain_2/"
 dat_fft3 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
+folder = base + "DESIY1_FFT3_dir/DLA_TAN/CH24_mpgcen_gpr/chain_2/"
+dat_fft3_tan = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
 folder = base + "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_2/"
 dat_qmle = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 sum_qmle = np.load(folder + "summary.npy", allow_pickle=True).item()
@@ -451,8 +454,10 @@ dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 folder = base + "DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr/chain_2/"
 dat_metal_thin = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-folder = base + "DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr/chain_2/"
+folder = base + "DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr/chain_5/"
 dat_Metals_Ma2025 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
+
+
 
 
 # dat_emu_infl
@@ -492,8 +497,8 @@ dat_Metals_Ma2025 = np.load(folder + "line_sigmas.npy", allow_pickle=True).item(
 # dat_kF = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
 # %%
-from cup1d.likelihood.cosmologies import set_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.theory.cosmology import set_cosmo
+from cup1d.theory import camb as CAMB_model
 import matplotlib.cm as cm
 
 from matplotlib.path import Path
@@ -547,7 +552,9 @@ dict_trans = {
     "DESIY1_QMLE3_mpg":"Baseline", 
     
     "DESIY1_QMLE_mpg":"Data: w/ low SNR", 
-    "DESIY1_FFT3_dir_mpg": "Data: FFT",
+    # "DESIY1_FFT3_dir_mpg": "Data: FFT",
+    "DESIY1_FFT3_dir_mpg": "Chaves-Montero+26",
+    "DESIY1_FFT3_dir_mpg_tan": "This work",
     # "DESIY1_FFT_dir_mpg":"Data: FFT w/ low SNR", 
     "zmin": "Data: $z \geq 2.6$",  # restricted zrange
     "zmax": "Data: $z \leq 3.4$",  # restricted zrange
@@ -577,7 +584,7 @@ dict_trans = {
     "metal_thin": "Metals: opt thin",  # no desviation from optically-thin limit ERROR
     
     "metal_trad": "Metals: simple",  # 2 params for metals like eBOSS
-    "Metals_Ma2025": "Metals: Ma+2025",
+    "Metals_Ma2025": "Metals: Ma+2026",
 
     "sim_mpg_central": "mpg-central", 
     "sim_mpg_seed": "mpg-seed",
@@ -605,10 +612,10 @@ fname = [
     "val_sims_model",
     "cosmo2",
     "cosmo_Asns2",
-    # "test",
+    "Tan",
 ]
 
-for image in range(3, 4):
+for image in range(15, 16):
 
     # if image in [3, 4, 5]:
     #     ftsize = 26
@@ -663,6 +670,9 @@ for image in range(3, 4):
         variations = ["DESIY1_QMLE3_mpg", "cosmo_low", "cosmo_high"]
         dats = [dat_mpg_Asns, dat_cosmo_low_Asns, dat_cosmo_high_Asns]
         factx = 1e9
+    elif image == 15:
+        variations = ["DESIY1_FFT3_dir_mpg", "DESIY1_FFT3_dir_mpg_tan"]
+        dats = [dat_fft3, dat_fft3_tan]
     else:
         continue
 
@@ -925,4 +935,3 @@ plt.tight_layout()
 # plt.savefig("figs/validation_2d.pdf")
 # plt.savefig("figs/validation_2d.png")
 # %%
-

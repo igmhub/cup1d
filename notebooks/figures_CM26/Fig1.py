@@ -22,16 +22,15 @@
 # %autoreload 2
 
 import os
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.inference.analysis import Analysis
 # -
 
 # args = Args(pre_defined="CM2026", system="local")
-pip = Pipeline()
+pip = Analysis()
 
 pip.fitter.like.data.plot_p1d()
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_1.npy")
 np.save(fname, store_data)
-
 

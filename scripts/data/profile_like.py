@@ -4,8 +4,8 @@ import sys
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
 from cup1d.utils.utils import get_path_repo
 
 
@@ -46,11 +46,10 @@ def main():
     args.set_baseline(
         fit_type=fit_type,
         fix_cosmo=True,
-        P1D_type=data_label,
         name_variation=name_variation,
     )
     out_folder = os.path.join(args.out_folder, prof_type)
-    pip = Pipeline(args, out_folder=out_folder)
+    pip = Analysis(args, out_folder=out_folder)
 
     sigma_cosmo = {"Delta2_star": 0.027, "n_star": 0.017}
 

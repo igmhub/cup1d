@@ -3,10 +3,10 @@ import os
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
 from cup1d.utils.utils import get_path_repo
-from cup1d.pipeline.set_archive import set_archive
+from cup1d.emulator.archive import set_archive
 
 
 def main():
@@ -24,7 +24,7 @@ def main():
 
     args = Args(
         data_label=data_label,
-        cov_label=cov_label,
+        synth_cov_label=cov_label,
         emulator_label="CH24_" + emu + "cen_gpr",
         true_cosmo_label=data_label,
         fid_cosmo_label=data_label,
@@ -40,12 +40,11 @@ def main():
     else:
         zmin = 2.2
         zmax = 4.2
-        archive_mock = set_archive(training_set=args.nyx_training_set)
+        archive_mock = set_archive(training_set=args.training_set)
 
     args.set_baseline(
         fit_type="global_opt",
         fix_cosmo=False,
-        P1D_type=cov_label,
         name_variation=name_variation,
         z_min=zmin,
         z_max=zmax,
@@ -64,7 +63,7 @@ def main():
             args.out_folder,
             "seed_" + str(args.seed_noise),
         )
-        pip = Pipeline(args, out_folder=out_folder, archive=archive_mock)
+        pip = Analysis(args, out_folder=out_folder, archive=archive_mock)
 
         input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
         print(input_pars)

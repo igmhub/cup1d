@@ -6,9 +6,10 @@ os.environ["OMP_NUM_THREADS"] = "1"
 import numpy as np
 from mpi4py import MPI
 
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.configuration.args import Args
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.pipeline import set_archive, Pipeline
+from cup1d.emulator.archive import set_archive
+from cup1d.inference.analysis import Analysis
 from cup1d.utils.utils import get_path_repo
 
 
@@ -186,7 +187,7 @@ def run_forecast(
     # else:
     #     args.vary_alphas = False
 
-    pip = Pipeline(args, make_plots=False, out_folder=base_out_folder)
+    pip = Analysis(args, make_plots=False, out_folder=base_out_folder)
     # run minimizer on fiducial (may not get to minimum)
     p0 = np.array(list(pip.fitter.like.fid["fit_cube"].values()))
     ## XXX do this by default if p0 is not provided!!

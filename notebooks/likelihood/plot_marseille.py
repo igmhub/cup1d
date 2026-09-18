@@ -32,9 +32,10 @@ from cup1d.p1ds import (
     data_Karacayli2024,
     data_Karacayli2022
 )
-from cup1d.likelihood import lya_theory, likelihood, emcee_sampler
-from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_P1D_hires, set_fid_cosmo, set_like
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.theory import theory as lya_theory
+from cup1d.likelihood import likelihood, emcee_sampler
+from cup1d.likelihood.sampler_pipeline import set_archive, set_p1d, set_p1d_hires, set_fid_cosmo, set_like
+from cup1d.configuration.args import Args
 
 # %%
 # args = Args(emulator_label="Pedersen21")
@@ -96,12 +97,12 @@ cosmo_fid = set_fid_cosmo(cosmo_label=args.cosmo_label)
 
 # %%
 def get_onez_likelihood(z):
-    data, true_sim_igm = set_P1D(
+    data, true_sim_igm = set_p1d(
         archive,
         emulator,
         args.data_label,
         cosmo_fid,
-        cov_label=args.cov_label,
+        cov_label=args.synth_cov_label,
         apply_smoothing=False,
         z_min=z-0.01,
         z_max=z+0.01,
@@ -109,7 +110,7 @@ def get_onez_likelihood(z):
 
     data.cull_data(kmin_kms=lr_kmin_kms,kmax_kms=lr_kmax_kms)
 
-    extra_data = set_P1D_hires(
+    extra_data = set_p1d_hires(
         archive,
         emulator,
         cosmo_fid,

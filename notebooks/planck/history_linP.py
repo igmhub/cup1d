@@ -27,7 +27,7 @@ import numpy as np
 import os
 from getdist import plots
 import matplotlib.pyplot as plt
-from cup1d.planck import planck_chains
+from cup1d.postprocessing.chains import planck as planck_chains
 from cup1d.likelihood import marg_lya_like
 
 from cup1d.utils.utils import get_path_repo
@@ -246,7 +246,7 @@ y_ns = kde_ns(x_ns)
 y_ns /= y_ns.max()
 
 # %%
-from cup1d.likelihood.cosmologies import set_cosmo
+from cup1d.theory.cosmology import set_cosmo
 mpg_all = set_cosmo("mpg_0", return_all=True)
 
 # %% jupyter={"outputs_hidden": false}

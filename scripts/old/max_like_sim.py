@@ -7,7 +7,9 @@ from lace.archive import gadget_archive, nyx_archive
 from lace.emulator.nn_emulator import NNEmulator
 from lace.emulator.gp_emulator import GPEmulator
 from cup1d.data import data_gadget, data_nyx
-from cup1d.likelihood import lya_theory, likelihood, iminuit_minimizer
+from cup1d.theory import theory as lya_theory
+from cup1d.likelihood import likelihood
+from cup1d.inference import iminuit as iminuit_minimizer
 
 
 def parse_args():
@@ -348,19 +350,19 @@ def max_like_sim(args):
     if args.archive is None:
         if args.training_set == "Pedersen21":
             archive = gadget_archive.GadgetArchive(postproc=args.training_set)
-            set_P1D = data_gadget.Gadget_P1D
+            set_p1d = data_gadget.Gadget_P1D
             z_min = 2
             z_max = np.max(archive.list_sim_redshifts)
             sim_igm = "mpg"
         elif args.training_set == "Cabayol23":
             archive = gadget_archive.GadgetArchive(postproc=args.training_set)
-            set_P1D = data_gadget.Gadget_P1D
+            set_p1d = data_gadget.Gadget_P1D
             z_min = 2
             z_max = np.max(archive.list_sim_redshifts)
             sim_igm = "mpg"
         elif args.training_set[:5] == "Nyx23":
             archive = nyx_archive.NyxArchive(nyx_version=args.training_set[6:])
-            set_P1D = data_nyx.Nyx_P1D
+            set_p1d = data_nyx.Nyx_P1D
             z_min = 2.2
             z_max = np.max(archive.list_sim_redshifts)
             sim_igm = "nyx"
@@ -371,7 +373,7 @@ def max_like_sim(args):
         z_min = args.z_min
         z_max = args.z_max
         sim_igm = args.sim_igm
-        set_P1D = args.set_P1D
+        set_p1d = args.set_p1d
 
     if args.test_sim_label not in archive.list_sim:
         print(args.test_sim_label + " is not in part of " + args.training_set)
@@ -414,7 +416,7 @@ def max_like_sim(args):
 
     #######################
     # set target P1D
-    data = set_P1D(
+    data = set_p1d(
         archive=archive,
         sim_label=args.test_sim_label,
         z_min=z_min,
@@ -424,7 +426,7 @@ def max_like_sim(args):
         polyfit_ndeg=polyfit_ndeg,
     )
     if args.add_hires:
-        extra_data = set_P1D(
+        extra_data = set_p1d(
             archive=archive,
             sim_label=args.test_sim_label,
             z_min=z_min,

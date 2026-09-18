@@ -27,18 +27,19 @@ import matplotlib.pyplot as plt
 # our own modules
 from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood import lya_theory, likelihood
-from cup1d.likelihood.fitter import Fitter
+from cup1d.theory import theory as lya_theory
+from cup1d.likelihood import likelihood
+from cup1d.inference.fitter import Fitter
 
-from cup1d.likelihood.pipeline import (
+from cup1d.inference.analysis import (
     set_archive,
-    set_P1D,
+    set_p1d,
     set_cosmo,
-    set_free_like_parameters,
+    set_free_likelihood_parameters,
     set_like,
 )
 
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.configuration.args import Args
 
 # %% [markdown]
 # ## Set emulator
@@ -93,7 +94,7 @@ true_cosmo = camb_cosmo.get_cosmology(
 # true_cosmo = set_cosmo(cosmo_label="mpg_central")
 
 data = {"P1Ds": None}
-data["P1Ds"] = set_P1D(
+data["P1Ds"] = set_p1d(
     args.data_label,
     args,
     archive=archive,
@@ -127,7 +128,7 @@ data["P1Ds"].truth
 # %%
 
 from lace.cosmo import camb_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.theory import camb as CAMB_model
 
 cosmo = camb_cosmo.get_cosmology(
     H0=67,

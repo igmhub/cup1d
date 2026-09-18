@@ -18,7 +18,7 @@
 # Best-fitting constraints on IGM parameters using lace-lyssa
 
 # +
-from cup1d.plots_and_tables.plot_table_igm import plot_table_igm
+from cup1d.postprocessing.tables.igm import plot_table_igm
 
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 # save_fig = "/home/jchaves/Proyectos/projects/lya/cup1d/notebooks/tutorials/figs/test/"

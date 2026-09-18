@@ -18,7 +18,7 @@
 # Best-fitting nuisace parameters
 
 # +
-from cup1d.plots_and_tables.table_nuisance import table_nuisance
+from cup1d.postprocessing.tables.nuisance import table_nuisance
 
 # my local machine
 # folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
@@ -26,5 +26,4 @@ from cup1d.plots_and_tables.table_nuisance import table_nuisance
 folder = "/global/cfs/cdirs/desi/users/jjchaves/P1D_results/DESI_DR1/chain/"
 table_nuisance(folder)
 # -
-
 

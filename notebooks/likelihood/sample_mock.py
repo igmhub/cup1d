@@ -30,7 +30,7 @@ import time
 from lace.emulator import gp_emulator
 from lace.emulator import nn_emulator
 from cup1d.data import mock_data
-from cup1d.likelihood import lya_theory
+from cup1d.theory import theory as lya_theory
 from cup1d.likelihood import likelihood
 from cup1d.likelihood import emcee_sampler
 

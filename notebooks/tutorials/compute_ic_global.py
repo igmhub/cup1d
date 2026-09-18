@@ -24,8 +24,8 @@ import time, os, sys
 import matplotlib.pyplot as plt
 
 # our own modules
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
 from cup1d.utils.utils import get_path_repo
 
 
@@ -40,11 +40,10 @@ args = Args(data_label=data_label, emulator_label=emulator_label)
 args.set_baseline(
     fit_type="global_all", 
     fix_cosmo=True, 
-    P1D_type=data_label, 
     name_variation=name_variation, 
 )
 
-pip = Pipeline(args, out_folder=None)
+pip = Analysis(args, out_folder=None)
 # -
 
 p0 = pip.fitter.like.sampling_point_from_parameters()
@@ -115,12 +114,11 @@ args = Args(data_label=data_label, emulator_label=emulator_label)
 args.set_baseline(
     fit_type="global_opt", 
     fix_cosmo=True, 
-    P1D_type=data_label, 
     name_variation=name_variation,
     ic_global=False
 )
 
-pip = Pipeline(args, out_folder=None)
+pip = Analysis(args, out_folder=None)
 # -
 
 p0 = pip.fitter.like.sampling_point_from_parameters()
@@ -164,11 +162,10 @@ args = Args(data_label=data_label, emulator_label="CH24_mpgcen_gpr")
 args.set_baseline(
     fit_type="global_opt", 
     fix_cosmo=True, 
-    P1D_type=data_label, 
     name_variation=name_variation, 
 )
 
-pip = Pipeline(args, out_folder=None)
+pip = Analysis(args, out_folder=None)
 p0 = pip.fitter.like.sampling_point_from_parameters()
 pip.fitter.like.get_chi2(p0)
 # -
@@ -180,5 +177,3 @@ pip.fitter.like.plot_igm(cloud=True)
 # +
 # pip.run_minimizer(p0, restart=True)
 # -
-
-

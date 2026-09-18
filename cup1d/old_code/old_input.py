@@ -1,0 +1,1506 @@
+import os
+import numpy as np
+from copy import deepcopy
+from dataclasses import dataclass, field
+from typing import Optional
+
+from cup1d.utils.utils import get_path_repo
+
+
+_TRAINING_SETS = {
+    "CH24_mpgcen_gpr": "Cabayol23",
+    "CH24_nyxcen_gpr": "models_Nyx_Sept2025_include_Nyx_fid_rseed",
+}
+
+
+def get_training_set(emulator_label):
+    """Return the simulation archive associated with an emulator."""
+
+    return _TRAINING_SETS.get(
+        emulator_label,
+        "Cabayol23" if "mpg" in emulator_label else "Pedersen21",
+    )
+
+
+class ArgsNewSnapshot:
+    """Analysis arguments loaded directly from a resolved YAML file."""
+
+    _CONT_PARAMS = {
+        "f_Lya_SiIII": [0, -20.0],
+        "s_Lya_SiIII": [0, 2.1],
+        "f_Lya_SiII": [0, -20.0],
+        "s_Lya_SiII": [0, 2.1],
+        "f_SiIIa_SiIIb": [0, -20.0],
+        "s_SiIIa_SiIIb": [0, 0.1],
+        "f_SiIIa_SiIII": [0, 0.0],
+        "f_SiIIb_SiIII": [0, 0.0],
+        "HCD_damp1": [0, -20.0],
+        "HCD_damp2": [0, -20.0],
+        "HCD_damp3": [0, -20.0],
+        "HCD_damp4": [0, -20.0],
+        "HCD_const": [0, 0.0],
+    }
+
+    _SYST_PARAMS = {"R_coeff": [0, 0.0]}
+
+    _CONT_FLAT_PRIORS = {
+        "f_Lya_SiIII": [[-1, 1], [-6, -2]],
+        "s_Lya_SiIII": [[-1, 1], [2, 7]],
+        "f_Lya_SiII": [[-1, 1], [-6, -2]],
+        "s_Lya_SiII": [[-1, 1], [2, 7]],
+        "f_SiIIa_SiIIb": [[-1, 4], [-3, 3]],
+        "s_SiIIa_SiIIb": [[-1, 3], [0, 7.5]],
+        "f_SiIIa_SiIII": [[-1, 2], [-1, 3]],
+        "f_SiIIb_SiIII": [[-1, 1], [-1, 5]],
+        "HCD_damp1": [[-0.5, 0.5], [-10.0, -0.03]],
+        "HCD_damp2": [[-0.5, 0.5], [-10.0, -1.0]],
+        "HCD_damp3": [[-0.5, 0.5], [-10.0, -1.0]],
+        "HCD_damp4": [[-0.5, 0.5], [-10.0, -1.0]],
+        "HCD_const": [[-1, 1], [-0.2, 0.2]],
+    }
+
+    _FIDUCIAL_VALUES = {
+        "fid_igm": {
+            "tau_eff": 0.0,
+            "sigT_kms": 1.0,
+            "gamma": 1.0,
+            "kF_kms": 1.0,
+        },
+        "fid_cont": {
+            "f_Lya_SiIII": -4.0,
+            "s_Lya_SiIII": 5.0,
+            "f_Lya_SiII": -4.0,
+            "s_Lya_SiII": 5.5,
+            "f_SiIIa_SiIIb": 0.5,
+            "s_SiIIa_SiIIb": 4.0,
+            "f_SiIIa_SiIII": 1.0,
+            "f_SiIIb_SiIII": 1.0,
+            "HCD_damp1": -1.4,
+            "HCD_damp2": -6.0,
+            "HCD_damp3": -5.0,
+            "HCD_damp4": -5.0,
+            "HCD_const": 0.0,
+        },
+        "fid_syst": {"R_coeff": 0.0},
+    }
+
+    _NULL_VALUES = {
+        "tau_eff": 0.0,
+        "sigT_kms": 1.0,
+        "gamma": 1.0,
+        "kF_kms": 1.0,
+        "f_Lya_SiIII": -10.0,
+        "s_Lya_SiIII": 2.1,
+        "f_Lya_SiII": -10.0,
+        "s_Lya_SiII": 2.1,
+        "f_SiIIa_SiIIb": -10.0,
+        "s_SiIIa_SiIIb": 0.1,
+        "f_SiIIa_SiIII": 0.0,
+        "f_SiIIb_SiIII": 0.0,
+        "HCD_damp1": -10.0,
+        "HCD_damp2": -10.0,
+        "HCD_damp3": -10.0,
+        "HCD_damp4": -10.0,
+        "HCD_const": 0.0,
+        "R_coeff": 0.0,
+    }
+
+    def __init__(self, synthetic=False, **options):
+        if not options:
+            from cup1d.configuration import (
+                make_cm2026_defaults,
+                make_cm2026_synth_defaults,
+            )
+
+            factory = make_cm2026_synth_defaults if synthetic else make_cm2026_defaults
+            options = factory()
+        for name, value in options.items():
+            setattr(self, name, value)
+        if self.file_ic is not None and not os.path.isabs(self.file_ic):
+            self.file_ic = os.path.join(self.path_ic, self.file_ic)
+        self.training_set = get_training_set(self.emulator_label)
+        self.cont_params = {
+            name: values.copy() for name, values in self._CONT_PARAMS.items()
+        }
+        self.syst_params = {
+            name: values.copy() for name, values in self._SYST_PARAMS.items()
+        }
+        self._set_covariance_redshifts()
+        self._set_parameter_nodes()
+        self._set_fiducial_values()
+        self._set_contaminant_priors()
+
+    def _set_parameter_nodes(self):
+        """Construct IGM and contamination nodes from the analysis settings."""
+
+        for section, names in (
+            (self.fid_igm, self.igm_params),
+            (self.fid_cont, self.cont_params),
+            (self.fid_syst, self.syst_params),
+        ):
+            for name in names:
+                n_nodes = section.get(f"n_{name}", 0)
+                key = f"{name}_znodes"
+                if n_nodes > 0 and key not in section:
+                    if n_nodes == 1:
+                        section[key] = np.asarray([self.z_star])
+                    elif section is self.fid_syst:
+                        section[key] = np.linspace(
+                            self.z_min, self.z_max, n_nodes
+                        )
+                    else:
+                        section[key] = np.geomspace(
+                            self.z_min, self.z_max, n_nodes
+                        )
+
+    def _set_covariance_redshifts(self):
+        """Construct the covariance grid from the analysis redshift settings."""
+
+        self.cov_factor["z"] = np.arange(
+            self.z_min,
+            self.z_max + 0.5 * self.zbin_width,
+            self.zbin_width,
+        )
+        n_redshifts = len(self.cov_factor["z"])
+        for name in ("val_stat", "val_syst", "val_emu", "val_full"):
+            value = self.cov_factor[name]
+            if np.isscalar(value):
+                self.cov_factor[name] = np.full(n_redshifts, value)
+
+    def _set_fiducial_values(self):
+        """Create internal model reference values from the parameter layout."""
+
+        parameter_sections = {
+            "fid_igm": self.igm_params,
+            "fid_cont": self.cont_params,
+            "fid_syst": self.syst_params,
+        }
+        for section, names in parameter_sections.items():
+            values = getattr(self, section)
+            for name in names:
+                n_nodes = values.get(f"n_{name}", 0)
+                reference = (
+                    self._FIDUCIAL_VALUES[section][name]
+                    if n_nodes > 0
+                    else self._NULL_VALUES[name]
+                )
+                if values.get(f"{name}_ztype") == "pivot":
+                    values[name] = [0, reference]
+                else:
+                    nodes = values.get(f"{name}_znodes", [])
+                    values[name] = np.full(len(nodes), reference)
+
+    def _set_contaminant_priors(self):
+        """Set built-in flat priors and ensure they contain reference values."""
+
+        priors = deepcopy(self._CONT_FLAT_PRIORS)
+        variation = getattr(self, "name_variation", None)
+        if variation is not None and variation.startswith("sim_"):
+            for name in ("f_Lya_SiIII", "f_Lya_SiII", "f_SiIIa_SiIIb"):
+                priors[name][-1][0] = -10.5
+            for name in ("HCD_damp1", "HCD_damp2", "HCD_damp3", "HCD_damp4"):
+                priors[name][-1][0] = -10.5
+
+        for name, bounds in priors.items():
+            reference = self.fid_cont[name][-1]
+            if reference < bounds[-1][0]:
+                bounds[-1][0] = reference - 0.1
+            if reference > bounds[-1][1]:
+                bounds[-1][1] = reference + 0.1
+        self.fid_cont["flat_priors"] = priors
+
+    @classmethod
+    def from_yaml(cls, filename, verbose=True, synthetic=False):
+        """Create arguments from one fully resolved YAML configuration."""
+
+        from cup1d.configuration.loader import (
+            apply_overrides,
+            print_resolved_values,
+            read_config,
+            restore_runtime_types,
+        )
+        from cup1d.configuration import (
+            make_cm2026_defaults,
+            make_cm2026_synth_defaults,
+            update_cm2026_derived,
+        )
+
+        factory = make_cm2026_synth_defaults if synthetic else make_cm2026_defaults
+        defaults = factory()
+        overrides = read_config(filename)
+        config = apply_overrides(defaults, overrides, verbose=False)
+        config = update_cm2026_derived(config, overrides)
+        config = restore_runtime_types(config)
+        if verbose:
+            print_resolved_values(config, overrides)
+        return cls(**config)
+
+
+@dataclass
+class Args:
+    """
+    Class to store input arguments
+    """
+
+    data_label: list[str] = field(
+        default_factory=lambda: [
+            "DESIY1_QMLE3",
+        ]
+    )
+    data_bias: float = 1
+    z_min: float = 0
+    z_max: float = 10
+    zbin_width: float = 0.2
+    k_rebin_factor: int = 8
+    emulator_label: str = "CH24_mpgcen_gpr"
+    drop_emu_sim: str | None = None
+    true_cosmo_label: str | None = "Planck18"
+    fid_cosmo_label: str = "Planck18"
+    igm_params: list[str] = field(
+        default_factory=lambda: [
+            "tau_eff",
+            "sigT_kms",
+            "gamma",
+            "kF_kms",
+        ]
+    )
+    cont_params: dict = field(
+        default_factory=lambda: {
+            "f_Lya_SiIII": [0, -20.0],
+            "s_Lya_SiIII": [0, 2.1],
+            "f_Lya_SiII": [0, -20.0],
+            "s_Lya_SiII": [0, 2.1],
+            "f_SiIIa_SiIIb": [0, -20.0],
+            "s_SiIIa_SiIIb": [0, 0.1],
+            "f_SiIIa_SiIII": [0, 0.0],  # these are variations from exp(0)=1
+            "f_SiIIb_SiIII": [0, 0.0],  # these are variations from exp(0)=1
+        }
+    )
+    syst_params: dict = field(
+        default_factory=lambda: {
+            "R_coeff": [0, 0],
+        }
+    )
+    true_igm: dict = field(
+        default_factory=lambda: {
+            "priors": 1.0,
+            "label_mF": "mpg_central",
+            "label_T": "mpg_central",
+            "label_kF": "mpg_central",
+            "n_tau_eff": 0,
+            "n_sigT_kms": 0,
+            "n_gamma": 0,
+            "n_kF_kms": 0,
+        }
+    )
+    fid_igm: dict = field(
+        default_factory=lambda: {
+            "priors": 1.0,
+            "label_mF": "mpg_central",
+            "label_T": "mpg_central",
+            "label_kF": "mpg_central",
+            "n_tau_eff": 0,
+            "n_sigT_kms": 0,
+            "n_gamma": 0,
+            "n_kF_kms": 0,
+        }
+    )
+    true_cont: dict = field(
+        default_factory=lambda: {
+            "hcd_model_type": "new_rogers",
+            "metal_model_type": "McDonald",
+        }
+    )
+    fid_cont: dict = field(
+        default_factory=lambda: {
+            "hcd_model_type": "new_rogers",
+            "metal_model_type": "McDonald",
+        }
+    )
+    true_syst: dict = field(
+        default_factory=lambda: {
+            "R_coeff": [0, 0],
+            "n_R_coeff": 0,
+            "R_coeff_ztype": "pivot",
+            "R_coeff_otype": "const",
+        }
+    )
+    fid_syst: dict = field(
+        default_factory=lambda: {
+            "R_coeff": [0, 0],
+            "n_R_coeff": 0,
+            "R_coeff_ztype": "pivot",
+            "R_coeff_otype": "const",
+        }
+    )
+    apply_smoothing: bool = False
+    synth_cov_label: str = "Chabanier2019"
+    cov_label_hires: str = "Karacayli2022"
+    cov_syst_type: str = "red"
+    z_star: float = 3
+    kp_kms: float = 0.009
+    use_star_priors: Optional[dict] = None
+    add_noise: bool = False
+    seed_noise: int = 0
+    verbose: bool = True
+    ic_correction: bool = False
+    fix_cosmo: bool = False
+    vary_alphas: bool = False
+    prior_Gauss_rms: float | None = None
+    emu_cov_type: str = "full"
+    mcmc: dict = field(
+        default_factory=lambda: {
+            "explore": False,
+            "parallel": True,
+            "n_burn_in": 0,
+            "n_steps": 1,
+            "n_walkers": 1,
+            "thin": 1,
+        }
+    )
+    out_folder: str | None = "."
+    Gauss_priors: dict | None = None
+    system: str | None = None
+    path_out: str | None = None
+    path_ic: str | None = None
+    p1d_fname: str | None = None
+    pre_defined: str | None = None
+    file_ic: str | None = None
+    path_data: str | None = None
+
+    @classmethod
+    def from_yaml(cls, filename):
+        """Create arguments from CM2026 defaults and YAML overrides."""
+
+        from cup1d.configuration.loader import apply_overrides, read_config
+
+        args = cls(pre_defined="CM2026")
+        defaults = vars(args)
+        overrides = read_config(filename)
+        resolved = apply_overrides(defaults, overrides)
+
+        for key, value in resolved.items():
+            setattr(args, key, value)
+
+        return args
+
+    def __post_init__(self, val_null=-20):
+        """Initialize some parameters"""
+        self.check_emulator_label()
+        self.training_set = get_training_set(self.emulator_label)
+
+        if self.true_cont["hcd_model_type"] == "new_rogers":
+            for jj in range(1, 5):
+                self.cont_params["HCD_damp" + str(jj)] = [0, val_null]
+            self.cont_params["HCD_const"] = [0, 0]
+        ##
+        for key in self.cont_params.keys():
+            self.true_cont[key] = self.cont_params[key]
+            self.true_cont["n_" + key] = 0
+            self.true_cont[key + "_ztype"] = "pivot"
+            if key == "HCD_const":
+                self.true_cont[key + "_otype"] = "const"
+            else:
+                self.true_cont[key + "_otype"] = "exp"
+
+        if self.path_out is None:
+            self.path_out = "."
+
+        if self.path_ic is None:
+            self.path_ic = os.path.join(get_path_repo("cup1d"), "data", "ics")
+
+        # # and others
+        # self.true_cont["n_sn"] = 0
+        # self.true_cont["SN"] = [0, -4]
+
+        # self.true_cont["n_agn"] = 0
+        # self.true_cont["AGN"] = [0, -5.5]
+
+        if self.pre_defined == "CM2026":
+            # Baseline model from Chaves-Montero+2026
+            # This option overrides some parameters
+            self.data_label = ["DESIY1_QMLE3"]
+            self.emulator_label = "CH24_mpgcen_gpr"
+            self.emu_cov_type = "full"
+            self.set_baseline(
+                fit_type="global_opt",
+                fix_cosmo=False,
+                name_variation=None,
+            )
+
+    def check_emulator_label(self):
+        avail_emulator_label = [
+            "Pedersen21",
+            "Pedersen21_ext",
+            "Pedersen23",
+            "Pedersen23_ext",
+            "CH24_mpgcen_gpr",
+            "CH24_nyxcen_gpr",
+            "forest_mpg",
+        ]
+        if self.emulator_label not in avail_emulator_label:
+            raise ValueError(
+                "emulator_label " + self.emulator_label + " not implemented"
+            )
+
+    def set_params_zero(self):
+        # IGM parameters
+
+        props_igm = {
+            "tau_eff": "exp",
+            "sigT_kms": "const",
+            "gamma": "const",
+            "kF_kms": "const",
+        }
+
+        # self.fid_cont["z_max"] = {}
+        for prop in props_igm:
+            self.fid_igm["n_" + prop] = 0
+            self.fid_igm[prop + "_ztype"] = "pivot"
+            self.fid_igm[prop + "_otype"] = props_igm[prop]
+            self.fid_igm[prop + "_fixed"] = True
+            # self.fid_igm["z_max"][prop] = 5
+
+        # Contaminants
+        props_cont = {
+            "f_Lya_SiIII": "exp",
+            "s_Lya_SiIII": "exp",
+            "f_Lya_SiII": "exp",
+            "s_Lya_SiII": "exp",
+            "f_SiIIa_SiIIb": "exp",
+            "s_SiIIa_SiIIb": "exp",
+            "f_SiIIa_SiIII": "exp",
+            "f_SiIIb_SiIII": "exp",
+            "HCD_damp1": "exp",
+            "HCD_damp2": "exp",
+            "HCD_damp3": "exp",
+            "HCD_damp4": "exp",
+            "HCD_const": "const",
+        }
+        for prop in props_cont:
+            self.fid_cont["n_" + prop] = 0
+            self.fid_cont[prop + "_ztype"] = "pivot"
+            self.fid_cont[prop + "_otype"] = props_cont[prop]
+            self.fid_cont[prop + "_fixed"] = True
+            # self.fid_cont["z_max"][prop] = 5
+
+        # Systematics
+        self.fid_syst["n_R_coeff"] = 0
+        self.fid_syst["R_coeff_ztype"] = "pivot"
+        self.fid_syst["R_coeff_otype"] = "const"
+        self.fid_syst["R_coeff_fixed"] = True
+        # self.fid_syst["z_max"] = {}
+
+    # def set_ic_file(self, name_variation):
+    #     self.ic_from_file = None
+    #     if self._primary_data_label().startswith("DESIY1"):
+
+    #         path_out_challenge = os.path.join(
+    #             os.path.dirname(get_path_repo("cup1d")),
+    #             "data",
+    #             "out_DESI_DR1",
+    #         )
+
+    #         self.ic_from_file = os.path.join(
+    #             path_out_challenge,
+    #             "ic",
+    #             "allz_snr3_nocosmo_" + fit_type,
+    #             "res.npy",
+    #         )
+
+    #     if (name_variation is not None) and (name_variation.startswith("sim_")):
+    #         self.ic_from_file = None
+
+    def set_fiducial(self, name_variation=None, fit_type=None, val_null=-10):
+        null_vals_params = {
+            "tau_eff": 0,
+            "sigT_kms": 1,
+            "gamma": 1,
+            "kF_kms": 1,
+            "f_Lya_SiIII": val_null,
+            "s_Lya_SiIII": 2.1,
+            "f_Lya_SiII": val_null,
+            "s_Lya_SiII": 2.1,
+            "f_SiIIa_SiIIb": val_null,
+            "s_SiIIa_SiIIb": 0.1,
+            "f_SiIIa_SiIII": 0,
+            "f_SiIIb_SiIII": 0,
+            "HCD_damp1": val_null,
+            "HCD_damp2": val_null,
+            "HCD_damp3": val_null,
+            "HCD_damp4": val_null,
+            "HCD_const": 0,
+            "R_coeff": 0,
+        }
+        fid_vals_igm = {
+            "tau_eff": 0,
+            "sigT_kms": 1,
+            "gamma": 1,
+            "kF_kms": 1,
+        }
+
+        fid_vals_conts = {
+            "f_Lya_SiIII": -4.0,
+            "s_Lya_SiIII": 5.0,
+            "f_Lya_SiII": -4.0,
+            "s_Lya_SiII": 5.5,
+            "f_SiIIa_SiIIb": 0.5,
+            "s_SiIIa_SiIIb": 4.0,
+            "f_SiIIa_SiIII": 1,
+            "f_SiIIb_SiIII": 1,
+            "HCD_damp1": -1.4,
+            "HCD_damp2": -6.0,
+            "HCD_damp3": -5.0,
+            "HCD_damp4": -5.0,
+            "HCD_const": 0.0,
+        }
+        fid_vals_syst = {
+            "R_coeff": 0.0,
+        }
+
+        for key in self.igm_params:
+            if self.fid_igm["n_" + key] == 0:
+                self.fid_igm[key + "_fixed"] = True
+                use_val = null_vals_params[key]
+            else:
+                self.fid_igm[key + "_fixed"] = False
+                use_val = fid_vals_igm[key]
+
+            if self.fid_igm[key + "_ztype"] == "pivot":
+                self.fid_igm[key] = [0, use_val]
+            else:
+                self.fid_igm[key] = (
+                    np.zeros(len(self.fid_igm[key + "_znodes"])) + use_val
+                )
+
+        for key in self.cont_params.keys():
+            if self.fid_cont["n_" + key] == 0:
+                self.fid_cont[key + "_fixed"] = True
+                use_val = null_vals_params[key]
+            else:
+                self.fid_cont[key + "_fixed"] = False
+                use_val = fid_vals_conts[key]
+
+            if self.fid_cont[key + "_ztype"] == "pivot":
+                self.fid_cont[key] = [0, use_val]
+            else:
+                self.fid_cont[key] = (
+                    np.zeros(len(self.fid_cont[key + "_znodes"])) + use_val
+                )
+            # print(key, self.fid_cont[key])
+
+        for key in self.syst_params.keys():
+            if self.fid_syst["n_" + key] == 0:
+                self.fid_syst[key + "_fixed"] = True
+                use_val = null_vals_params[key]
+            else:
+                self.fid_syst[key + "_fixed"] = False
+                use_val = fid_vals_syst[key]
+
+            if self.fid_syst[key + "_ztype"] == "pivot":
+                self.fid_syst[key] = [0, use_val]
+            else:
+                self.fid_syst[key] = (
+                    np.zeros(len(self.fid_syst[key + "_znodes"])) + use_val
+                )
+
+        self.fid_cont["flat_priors"] = {}
+
+        if (name_variation is not None) and (name_variation.startswith("sim_")):
+            self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
+                [-1, 1],
+                [val_null - 0.5, -2],
+            ]
+        else:
+            self.fid_cont["flat_priors"]["f_Lya_SiIII"] = [
+                [-1, 1],
+                [-6, -2],
+            ]
+
+        self.fid_cont["flat_priors"]["s_Lya_SiIII"] = [
+            [-1, 1],
+            [2, 7],
+        ]
+
+        if (name_variation is not None) and (name_variation.startswith("sim_")):
+            self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
+                [-1, 1],
+                [val_null - 0.5, -2],
+            ]
+        else:
+            self.fid_cont["flat_priors"]["f_Lya_SiII"] = [
+                [-1, 1],
+                [-6, -2],
+            ]
+
+        self.fid_cont["flat_priors"]["s_Lya_SiII"] = [
+            [-1, 1],
+            [2, 7],
+        ]
+
+        if (name_variation is not None) and (name_variation.startswith("sim_")):
+            self.fid_cont["flat_priors"]["f_SiIIa_SiIIb"] = [
+                [-1, 4],
+                [val_null - 0.5, 3],
+            ]
+        else:
+            self.fid_cont["flat_priors"]["f_SiIIa_SiIIb"] = [
+                [-1, 4],
+                [-3, 3],
+            ]
+
+        self.fid_cont["flat_priors"]["s_SiIIa_SiIIb"] = [
+            [-1, 3],
+            [0, 7.5],
+        ]
+
+        self.fid_cont["flat_priors"]["f_SiIIa_SiIII"] = [
+            [-1, 2],
+            [-1, 3],
+        ]
+        self.fid_cont["flat_priors"]["f_SiIIb_SiIII"] = [
+            [-1, 1],
+            [-1, 5],
+        ]
+
+        # priors
+        # -0.03, 75% of all fluctuations
+        # self.fid_cont["flat_priors"]["HCD_damp1"] = [[-0.5, 0.5], [-10.0, -1.0]]
+        if (name_variation is not None) and (name_variation.startswith("sim_")):
+            min_hcd = val_null - 0.5
+        else:
+            min_hcd = -10.0
+        self.fid_cont["flat_priors"]["HCD_damp1"] = [
+            [-0.5, 0.5],
+            [min_hcd, -0.03],
+        ]
+        self.fid_cont["flat_priors"]["HCD_damp2"] = [
+            [-0.5, 0.5],
+            [min_hcd, -1.0],
+        ]
+        self.fid_cont["flat_priors"]["HCD_damp3"] = [
+            [-0.5, 0.5],
+            [min_hcd, -1.0],
+        ]
+        self.fid_cont["flat_priors"]["HCD_damp4"] = [
+            [-0.5, 0.5],
+            [min_hcd, -1.0],
+        ]
+        self.fid_cont["flat_priors"]["HCD_const"] = [[-1, 1], [-0.2, 0.2]]
+
+        for key in self.fid_cont:
+            if key in self.fid_cont["flat_priors"]:
+                if self.fid_cont[key][-1] < self.fid_cont["flat_priors"][key][-1][0]:
+                    print(
+                        key,
+                        self.fid_cont["flat_priors"][key][-1][0],
+                        self.fid_cont[key][-1],
+                    )
+                    self.fid_cont["flat_priors"][key][-1][0] = (
+                        self.fid_cont[key][-1] - 0.1
+                    )
+                if self.fid_cont[key][-1] > self.fid_cont["flat_priors"][key][-1][1]:
+                    print(
+                        key,
+                        self.fid_cont["flat_priors"][key][-1][1],
+                        self.fid_cont[key][-1],
+                    )
+                    self.fid_cont["flat_priors"][key][-1][1] = (
+                        self.fid_cont[key][-1] + 0.1
+                    )
+
+    def set_out_folder(self):
+        if self.name_variation is None:
+            tag = self.fit_type
+        else:
+            tag = self.name_variation
+
+        # TBD (fix, we need a different one for each P1D label)
+        self.out_folder = os.path.join(
+            self.path_out,
+            self._primary_data_label(),
+            tag,
+            self.emulator_label,
+        )
+
+    def _primary_data_label(self):
+        """Return the primary dataset label for scalar or list input."""
+
+        if isinstance(self.data_label, str):
+            return self.data_label
+        return self.data_label[0]
+
+    def set_baseline(
+        self,
+        z_min=2.2,
+        z_max=4.2,
+        fit_type="at_a_time",
+        fix_cosmo=True,
+        fid_cosmo_label="Planck18",
+        name_variation=None,
+        mcmc_conf="explore",
+        ic_global=True,
+    ):
+        """
+        Set baseline parameters
+        """
+
+        if fit_type not in [
+            "global_all",  # all params from at_a_time_global
+            "global_opt",  # for opt all
+            "global_igm",  # for opt err
+            "at_a_time_global",  # vary same parameters as in global fits
+        ]:
+            raise ValueError("fit_type " + fit_type + " not implemented")
+
+        ## store input parameters
+        self.z_min = z_min
+        self.z_max = z_max
+        self.fit_type = fit_type
+        self.fix_cosmo = fix_cosmo
+        self.fid_cosmo_label = fid_cosmo_label
+        self.name_variation = name_variation
+        ##
+
+        if mcmc_conf == "test":
+            self.mcmc["explore"] = True
+            self.mcmc["parallel"] = True
+            self.mcmc["n_burn_in"] = 0
+            self.mcmc["n_steps"] = 5
+            self.mcmc["n_walkers"] = 1
+            self.mcmc["thin"] = 1
+        elif mcmc_conf == "explore":
+            self.mcmc["explore"] = True
+            self.mcmc["parallel"] = True
+            self.mcmc["n_burn_in"] = 1500
+            self.mcmc["n_steps"] = 2000
+            self.mcmc["n_walkers"] = 10
+            self.mcmc["thin"] = 20
+        elif mcmc_conf == "full":
+            self.mcmc["explore"] = True
+            self.mcmc["parallel"] = True
+            self.mcmc["n_burn_in"] = 1500
+            self.mcmc["n_steps"] = 4000
+            self.mcmc["n_walkers"] = 10
+            self.mcmc["thin"] = 20
+
+        # reset parameters
+        self.set_params_zero()
+
+        if self.emu_cov_type != "full":
+            if name_variation is not None:
+                raise ValueError(
+                    "name_variation "
+                    + name_variation
+                    + " not implemented with emu_cov_type "
+                    + self.emu_cov_type
+                )
+            if self.emu_cov_type == "diagonal":
+                self.name_variation = "emu_diag"
+            elif self.emu_cov_type == "block":
+                self.name_variation = "emu_block"
+            else:
+                raise ValueError(
+                    "emu_cov_type " + self.emu_cov_type + " not implemented"
+                )
+
+        ## set redshift range
+        if (name_variation is not None) and (name_variation == "zmin"):
+            self.z_min = 2.6
+        if (name_variation is not None) and (name_variation == "zmax"):
+            self.z_max = 3.4
+        ##
+
+        ## set cosmology
+        if (name_variation is not None) and (name_variation == "cosmo"):
+            self.fid_cosmo_label = "DESIDR2_ACT"
+        elif (name_variation is not None) and (name_variation == "cosmo_low"):
+            self.fid_cosmo_label = "Planck18_low_omh2"
+        elif (name_variation is not None) and (name_variation == "cosmo_high"):
+            self.fid_cosmo_label = "Planck18_high_omh2"
+        elif (name_variation is not None) and (name_variation == "cosmo_74"):
+            self.fid_cosmo_label = "Planck18_h74"
+        elif (name_variation is not None) and (name_variation == "cosmo_mnu"):
+            self.fid_cosmo_label = "Planck18_mnu03"
+        elif (name_variation is not None) and (name_variation == "cosmo_mnu_varh"):
+            self.fid_cosmo_label = "Planck18_mnu03_varh"
+        elif (name_variation is not None) and (name_variation == "cosmo_low_3sig"):
+            self.fid_cosmo_label = "Planck18_low3s_omh2"
+        elif (name_variation is not None) and (name_variation == "cosmo_high_3sig"):
+            self.fid_cosmo_label = "Planck18_high3s_omh2"
+        ##
+
+        ## set ic correction for lyssa emu
+        if (name_variation is not None) and (name_variation == "ic_lace-lyssa"):
+            self.ic_correction = True
+        else:
+            self.ic_correction = False
+        ##
+
+        ## set IGM params
+        if ("mpg" in self.emulator_label) | ("Mpg" in self.emulator_label):
+            sim_fid = "mpg_central"
+        elif ("nyx" in self.emulator_label) | ("Nyx" in self.emulator_label):
+            sim_fid = "nyx_central"
+        else:
+            sim_fid = "mpg_central"
+
+        if (name_variation is not None) and (name_variation == "IGM_priors"):
+            self.fid_igm["priors"] = 1.1
+
+        self.fid_igm["label_mF"] = sim_fid
+        self.fid_igm["label_T"] = sim_fid
+        self.fid_igm["label_kF"] = sim_fid
+
+        if (name_variation is not None) and (name_variation == "Turner24"):
+            self.fid_igm["label_mF"] = "Turner24"
+        elif (name_variation is not None) and (name_variation == "Gaikwad21"):
+            self.fid_igm["label_mF"] = "Gaikwad21"
+        elif (name_variation is not None) and (
+            (name_variation == "Gaikwad21") | (name_variation == "Gaikwad21T")
+        ):
+            self.fid_igm["label_T"] = "Gaikwad21"
+        if (name_variation is not None) and (
+            name_variation.startswith("sim_mpg_central_igm")
+        ):
+            self.fit_type = "global_igm"
+            fit_type = self.fit_type
+        ##
+
+        if (name_variation is not None) and (name_variation == "Metals_Ma2025"):
+            self.fid_cont["metal_model_type"] = "SiVid"
+        else:
+            self.fid_cont["metal_model_type"] = "McDonald"
+
+        if (name_variation is not None) and (name_variation == "HCD_BOSS"):
+            self.fid_cont["hcd_model_type"] = "BOSS"
+        else:
+            self.fid_cont["hcd_model_type"] = "new_rogers"
+
+        ## inflate errors
+        self.cov_factor = {
+            "z": np.arange(
+                self.z_min,
+                self.z_max + 0.5 * self.zbin_width,
+                self.zbin_width,
+            ),
+        }
+        # multiply cov by cov_factor**2
+
+        # TBD (fix, we need a different one for each P1D label)
+        primary_label = self._primary_data_label()
+        is_synthetic = primary_label.startswith(("mpg", "nyx", "forecast")) or (
+            primary_label in {"accel2", "sherwood", "challenge_DESIY1"}
+        )
+        covariance_label = self.synth_cov_label if is_synthetic else primary_label
+        if "DESIY1" in covariance_label:
+            inf_stat = 1.05  # needed to get a good fit with QMLE
+            # inf_stat = 1.18 # needed to get a good fit with FFT
+            inf_syst = 1
+            inf_emu = 1
+            inf_full = 1
+        if (name_variation is not None) and ("no_inflate" in name_variation):
+            inf_stat = 1
+        if (name_variation is not None) and ("no_emu_cov" in name_variation):
+            inf_emu = 0
+        if (name_variation is not None) and ("infl_emu_cov" in name_variation):
+            inf_emu = 1.25
+
+        self.cov_factor["val_stat"] = np.ones(len(self.cov_factor["z"])) * inf_stat
+        self.cov_factor["val_syst"] = np.ones(len(self.cov_factor["z"])) * inf_syst
+        self.cov_factor["val_emu"] = np.ones(len(self.cov_factor["z"])) * inf_emu
+        self.cov_factor["val_full"] = np.ones(len(self.cov_factor["z"])) * inf_full
+        ##
+
+        ## bias in the results?
+        if (name_variation is not None) and (name_variation == "bias_eBOSS"):
+            self.data_bias = 0.95
+        else:
+            self.data_bias = 1.0
+
+        props_igm = ["tau_eff", "sigT_kms", "gamma", "kF_kms"]
+        props_cont = [
+            "f_Lya_SiIII",
+            "s_Lya_SiIII",
+            "f_Lya_SiII",
+            "s_Lya_SiII",
+            "f_SiIIa_SiIIb",
+            "s_SiIIa_SiIIb",
+            "f_SiIIa_SiIII",
+            "f_SiIIb_SiIII",
+            "HCD_damp1",
+            "HCD_damp2",
+            "HCD_damp3",
+            "HCD_damp4",
+            "HCD_const",
+        ]
+
+        self.set_out_folder()
+
+        # z at a time
+        #############
+        if fit_type == "at_a_time_global":
+            # for prop in props_cont:
+            #     self.fid_cont["z_max"][prop] = 5
+
+            self.fid_syst["R_coeff_znodes"] = np.array([3.0])
+            self.fid_syst["n_R_coeff"] = 1
+            self.fid_syst["R_coeff_ztype"] = "pivot"
+
+            if name_variation == "Metals_Ma2025":
+                baseline_prop = [
+                    "tau_eff",
+                    "sigT_kms",
+                    "gamma",
+                    "kF_kms",
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    # "f_SiIIa_SiIIb",
+                    # "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "metal_thin":
+                baseline_prop = [
+                    "tau_eff",
+                    "sigT_kms",
+                    "gamma",
+                    "kF_kms",
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+            else:
+                baseline_prop = [
+                    "tau_eff",
+                    "sigT_kms",
+                    "gamma",
+                    "kF_kms",
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+
+            for prop in props_igm:
+                if prop in baseline_prop:
+                    self.fid_igm["n_" + prop] = 1
+                else:
+                    self.fid_igm["n_" + prop] = 0
+                self.fid_igm[prop + "_ztype"] = "pivot"
+
+            for prop in props_cont:
+                if prop in baseline_prop:
+                    self.fid_cont["n_" + prop] = 1
+                else:
+                    self.fid_cont["n_" + prop] = 0
+                self.fid_cont[prop + "_ztype"] = "pivot"
+
+        # global all params
+        #############
+        elif fit_type == "global_all":
+            ## set IC
+            if "mpg" in self.emulator_label:
+                fname = "mpg_ic_at_a_time.npy"
+            else:
+                fname = "nyx_ic_at_a_time.npy"
+            self.file_ic = os.path.join(self.path_ic, fname)
+
+            # for prop in props_cont:
+            #     self.fid_cont["z_max"][prop] = 5
+
+            baseline_prop = [
+                "tau_eff",
+                "sigT_kms",
+                "gamma",
+                "kF_kms",
+                "f_Lya_SiIII",
+                "s_Lya_SiIII",
+                "f_Lya_SiII",
+                "s_Lya_SiII",
+                "f_SiIIa_SiIIb",
+                "s_SiIIa_SiIIb",
+                "f_SiIIa_SiIII",
+                "f_SiIIb_SiIII",
+                "HCD_damp1",
+                "HCD_damp2",
+                "HCD_damp3",
+                "HCD_damp4",
+            ]
+
+            nodes = np.arange(self.z_min, self.z_max + 1e-3, 0.2)
+
+            for prop in props_igm:
+                if prop in baseline_prop:
+                    self.fid_igm["n_" + prop] = 11
+                # elif prop == "kF_kms":
+                #     self.fid_igm["n_" + prop] = 0
+                else:
+                    self.fid_igm["n_" + prop] = 0
+
+                if self.fid_igm["n_" + prop] == 0:
+                    self.fid_igm[prop + "_ztype"] = "pivot"
+                else:
+                    self.fid_igm[prop + "_znodes"] = nodes
+                    self.fid_igm[prop + "_ztype"] = "interp_lin"
+
+            for prop in props_cont:
+                if prop in baseline_prop:
+                    self.fid_cont["n_" + prop] = 11
+                else:
+                    self.fid_cont["n_" + prop] = 0
+
+                if self.fid_cont["n_" + prop] == 0:
+                    self.fid_cont[prop + "_ztype"] = "pivot"
+                else:
+                    self.fid_cont[prop + "_znodes"] = nodes
+                    self.fid_cont[prop + "_ztype"] = "interp_lin"
+
+            self.fid_syst["R_coeff_znodes"] = nodes
+            self.fid_syst["n_R_coeff"] = 11
+            self.fid_syst["R_coeff_ztype"] = "interp_lin"
+
+        #############
+        elif fit_type == "global_opt":
+            ## set IC
+            if "mpg" in self.emulator_label:
+                fname = "mpg_ic_global_red.npy"
+            else:
+                fname = "nyx_ic_global_red.npy"
+            self.file_ic = os.path.join(self.path_ic, fname)
+            if ic_global == False:
+                self.file_ic = None
+
+            if (name_variation is not None) and (name_variation.startswith("sim_")):
+                self.file_ic = None
+            elif (name_variation is not None) and (name_variation == "no_contaminants"):
+                self.file_ic = None
+            ##
+
+            if name_variation == "metal_trad":
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    # "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    # "s_Lya_SiII",
+                    # "f_SiIIa_SiIIb",
+                    # "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "metal_si2":
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    # "f_SiIIa_SiIIb",
+                    # "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "metal_deco":
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    # "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    # "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "metal_thin":
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "Metals_Ma2025":
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    # "f_SiIIa_SiIIb",
+                    # "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "DLAs":
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    # "HCD_damp1",
+                    # "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+            elif name_variation == "HCD0":
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                    "HCD_const",
+                ]
+            elif name_variation == "HCD_BOSS":
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    # "HCD_damp2",
+                    # "HCD_damp3",
+                    # "HCD_damp4",
+                ]
+            elif name_variation == "no_contaminants":
+                baseline_prop = [
+                    # "f_Lya_SiIII",
+                    # "s_Lya_SiIII",
+                    # "f_Lya_SiII",
+                    # "s_Lya_SiII",
+                    # "f_SiIIa_SiIIb",
+                    # "s_SiIIa_SiIIb",
+                    # "f_SiIIa_SiIII",
+                    # "f_SiIIb_SiIII",
+                    # "HCD_damp1",
+                    # "HCD_damp2",
+                    # "HCD_damp3",
+                    # "HCD_damp4",
+                ]
+            else:
+                baseline_prop = [
+                    "f_Lya_SiIII",
+                    "s_Lya_SiIII",
+                    "f_Lya_SiII",
+                    "s_Lya_SiII",
+                    "f_SiIIa_SiIIb",
+                    "s_SiIIa_SiIIb",
+                    "f_SiIIa_SiIII",
+                    "f_SiIIb_SiIII",
+                    "HCD_damp1",
+                    "HCD_damp2",
+                    "HCD_damp3",
+                    "HCD_damp4",
+                ]
+
+            zvar = [
+                "f_Lya_SiIII",
+                "s_Lya_SiIII",
+                "f_Lya_SiII",
+                "s_Lya_SiII",
+                "f_SiIIa_SiIIb",
+                "s_SiIIa_SiIIb",
+                "f_SiIIa_SiIII",
+                "f_SiIIb_SiIII",
+                "HCD_damp1",
+                "HCD_damp2",
+                "HCD_damp3",
+                "HCD_damp4",
+            ]
+
+            ## set IGM
+            if name_variation == "more_igm":
+                nz_igm = 6
+            elif name_variation == "less_igm":
+                nz_igm = 2
+            else:
+                nz_igm = 4
+
+            if (name_variation is not None) and (name_variation == "Gaikwad21"):
+                self.fid_igm["tau_eff_znodes"] = []
+            elif (name_variation is not None) and (name_variation == "Turner24"):
+                self.fid_igm["tau_eff_znodes"] = np.array([3.0])
+            else:
+                self.fid_igm["tau_eff_znodes"] = np.geomspace(
+                    self.z_min, self.z_max, nz_igm
+                )
+                # self.fid_igm["tau_eff_znodes"] = np.linspace(
+                #     self.z_min, self.z_max, nz_igm
+                # )
+
+            if (name_variation is not None) and (
+                (name_variation == "Gaikwad21") | (name_variation == "Gaikwad21T")
+            ):
+                self.fid_igm["sigT_kms_znodes"] = []
+                self.fid_igm["gamma_znodes"] = []
+            else:
+                self.fid_igm["sigT_kms_znodes"] = np.geomspace(
+                    self.z_min, self.z_max, nz_igm
+                )
+                self.fid_igm["gamma_znodes"] = np.geomspace(
+                    self.z_min, self.z_max, nz_igm
+                )
+
+            self.fid_igm["kF_kms_znodes"] = np.geomspace(self.z_min, self.z_max, nz_igm)
+            # self.fid_igm["sigT_kms_znodes"] = np.linspace(
+            #     self.z_min, self.z_max, nz_igm
+            # )
+            # self.fid_igm["gamma_znodes"] = np.linspace(
+            #     self.z_min, self.z_max, nz_igm
+            # )
+            # self.fid_igm["kF_kms_znodes"] = np.linspace(
+            #     self.z_min, self.z_max, nz_igm
+            # )
+
+            # if name_variation == "kF_kms":
+            #     self.fid_igm["kF_kms_znodes"] = []
+
+            for prop in props_igm:
+                self.fid_igm["n_" + prop] = len(self.fid_igm[prop + "_znodes"])
+                if self.fid_igm["n_" + prop] <= 1:
+                    self.fid_igm[prop + "_ztype"] = "pivot"
+                else:
+                    self.fid_igm[prop + "_ztype"] = "interp_lin"
+            ##
+
+            ## set contaminants
+            nodes = np.geomspace(self.z_min, self.z_max, 2)
+            if (name_variation is not None) and (name_variation == "LLS_nz4"):
+                nodes_LLS = np.geomspace(self.z_min, self.z_max, 4)
+            else:
+                nodes_LLS = nodes
+
+            for prop in props_cont:
+                if prop not in baseline_prop:
+                    self.fid_cont["n_" + prop] = 0
+                    continue
+
+                if prop in zvar:
+                    if prop == "HCD_damp1":
+                        self.fid_cont[prop + "_znodes"] = nodes_LLS
+                    else:
+                        self.fid_cont[prop + "_znodes"] = nodes
+                else:
+                    self.fid_cont[prop + "_znodes"] = np.array([3.0])
+
+                self.fid_cont["n_" + prop] = len(self.fid_cont[prop + "_znodes"])
+                if self.fid_cont["n_" + prop] <= 1:
+                    self.fid_cont[prop + "_ztype"] = "pivot"
+                else:
+                    self.fid_cont[prop + "_ztype"] = "interp_lin"
+            ##
+
+            ## set systematic
+            if (name_variation == "no_res") | (name_variation == "no_contaminants"):
+                self.fid_syst["R_coeff_znodes"] = []
+            else:
+                self.fid_syst["R_coeff_znodes"] = np.arange(2.2, 4.2 + 1e-5, 0.2)
+
+            if name_variation == "zmin":
+                self.fid_syst["R_coeff_znodes"] = self.fid_syst["R_coeff_znodes"][
+                    self.fid_syst["R_coeff_znodes"] >= self.z_min
+                ]
+            elif name_variation == "zmax":
+                self.fid_syst["R_coeff_znodes"] = self.fid_syst["R_coeff_znodes"][
+                    self.fid_syst["R_coeff_znodes"] <= self.z_max
+                ]
+            self.fid_syst["n_R_coeff"] = len(self.fid_syst["R_coeff_znodes"])
+            self.fid_syst["R_coeff_ztype"] = "interp_lin"
+
+        #############
+
+        elif fit_type == "global_igm":
+            self.file_ic = None
+            ##
+
+            baseline_prop = [
+                # "f_Lya_SiIII",
+                # "s_Lya_SiIII",
+                # "f_Lya_SiII",
+                # "s_Lya_SiII",
+                # "f_SiIIa_SiIIb",
+                # "s_SiIIa_SiIIb",
+                # "f_SiIIa_SiIII",
+                # "f_SiIIb_SiIII",
+                # "HCD_damp1",
+                # "HCD_damp2",
+                # "HCD_damp3",
+                # "HCD_damp4",
+            ]
+            zvar = [
+                # "f_Lya_SiIII",
+                # "s_Lya_SiIII",
+                # "f_Lya_SiII",
+                # "s_Lya_SiII",
+                # "f_SiIIa_SiIIb",
+                # "s_SiIIa_SiIIb",
+                # "f_SiIIa_SiIII",
+                # "f_SiIIb_SiIII",
+                # "HCD_damp1",
+                # "HCD_damp2",
+                # "HCD_damp3",
+                # "HCD_damp4",
+            ]
+
+            nz_igm = 6
+            if name_variation == "sim_mpg_central_igm0":
+                nz_igm = 0
+
+            self.fid_igm["tau_eff_znodes"] = np.geomspace(
+                self.z_min, self.z_max, nz_igm
+            )
+            self.fid_igm["sigT_kms_znodes"] = np.geomspace(
+                self.z_min, self.z_max, nz_igm
+            )
+            self.fid_igm["gamma_znodes"] = np.geomspace(self.z_min, self.z_max, nz_igm)
+            self.fid_igm["kF_kms_znodes"] = []
+
+            for prop in props_igm:
+                self.fid_igm["n_" + prop] = len(self.fid_igm[prop + "_znodes"])
+                if self.fid_igm["n_" + prop] <= 1:
+                    self.fid_igm[prop + "_ztype"] = "pivot"
+                else:
+                    self.fid_igm[prop + "_ztype"] = "interp_lin"
+            ##
+
+            ## set contaminants
+            nodes = np.geomspace(self.z_min, self.z_max, 2)
+
+            for prop in props_cont:
+                if prop not in baseline_prop:
+                    self.fid_cont["n_" + prop] = 0
+                    continue
+
+                if prop in zvar:
+                    self.fid_cont[prop + "_znodes"] = nodes
+                else:
+                    self.fid_cont[prop + "_znodes"] = np.array([3.0])
+
+                self.fid_cont["n_" + prop] = len(self.fid_cont[prop + "_znodes"])
+                if self.fid_cont["n_" + prop] <= 1:
+                    self.fid_cont[prop + "_ztype"] = "pivot"
+                else:
+                    self.fid_cont[prop + "_ztype"] = "interp_lin"
+            ##
+
+            ## set systematic
+            self.fid_syst["R_coeff_znodes"] = []
+            # self.fid_syst["R_coeff_znodes"] = np.arange(
+            #     2.2, 4.2 + 1e-5, 0.2
+            # )
+            self.fid_syst["n_R_coeff"] = len(self.fid_syst["R_coeff_znodes"])
+            self.fid_syst["R_coeff_ztype"] = "interp_lin"
+
+        #############
+
+        else:
+            raise ValueError("Fit type not recognized")
+
+        self.set_fiducial(name_variation, fit_type=fit_type)
+
+
+# Set Gaussian priors
+# # self.prior_Gauss_rms = 0.1
+# self.prior_Gauss_rms = None
+
+# self.Gauss_priors = {}
+# self.Gauss_priors["ln_tau_0"] = [10]
+# # self.Gauss_priors["ln_sigT_kms_0"] = [0.02]
+# # self.Gauss_priors["ln_gamma_0"] = [0.08]
+# # self.Gauss_priors["ln_kF_0"] = [0.003]
+
+# f_Gprior = {
+#     "Lya_SiIII": 1,
+#     "Lya_SiIIa": 1,
+#     "Lya_SiIIb": 1,
+#     "SiIIa_SiIIb": 3,
+#     "SiIIa_SiIII": 4,
+#     "SiIIb_SiIII": 3,
+# }
+
+# d_Gprior = {
+#     "Lya_SiIII": 1.5,
+#     "Lya_SiIIa": 0.05,
+#     "Lya_SiIIb": 0.05,
+#     "SiIIa_SiIIb": 1,
+#     "SiIIa_SiIII": 0.03,
+#     "SiIIb_SiIII": 1,
+# }
+
+# a_Gprior = {
+#     "Lya_SiIII": 10,
+#     "Lya_SiIIa": 10,
+#     "Lya_SiIIb": 10,
+#     "SiIIa_SiIIb": 2,
+#     "SiIIa_SiIII": 0.05,
+#     "SiIIb_SiIII": 0.01,
+# }
+
+# for metal_line in lines_use:
+#     self.Gauss_priors["ln_x_"+metal_line+"_0"] = [f_Gprior[metal_line]]
+#     self.Gauss_priors["d_"+metal_line+"_0"] = [d_Gprior[metal_line]]
+#     self.Gauss_priors["a_"+metal_line+"_0"] = [a_Gprior[metal_line]]
+# self.Gauss_priors["ln_A_damp_0"] = [0.3]
+# self.Gauss_priors["ln_A_scale_0"] = [1]
+# self.Gauss_priors["R_coeff_0"] = [2]
+
+# self.Gauss_priors = {}

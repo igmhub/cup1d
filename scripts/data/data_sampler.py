@@ -1,14 +1,14 @@
 import os
 import sys
+from pathlib import Path
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
-import numpy as np
 from mpi4py import MPI
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.configuration import Args
+from cup1d.inference import Analysis
+from cup1d.postprocessing.plots_corner import plots_chain
 from cup1d.utils.utils import get_path_repo
-from cup1d.plots_and_tables.plots_corner import plots_chain
 
 
 def main():
@@ -17,89 +17,38 @@ def main():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    emu = "mpg"
-    data_label = "DESIY1_QMLE3"
-    name_variation = sys.argv[1]
-    path_out = "/pscratch/sd/j/jjchaves/data/out_DESI_DR1/"
-
-    if name_variation == "nyx":
-        name_variation = None
-        emu = "nyx"
-    elif name_variation == "DESIY1_QMLE":
-        name_variation = None
-        data_label = "DESIY1_QMLE"
-    elif name_variation == "DESIY1_FFT3_dir":
-        name_variation = None
-        data_label = "DESIY1_FFT3_dir"
-    elif name_variation == "DESIY1_FFT_dir":
-        name_variation = None
-        data_label = "DESIY1_FFT_dir"
-    elif name_variation.startswith("nyx"):
-        if name_variation == "nyx_cosmo_high":
-            name_variation = "cosmo_high"
-            emu = "nyx"
-        elif name_variation == "nyx_cosmo_low":
-            name_variation = "cosmo_low"
-            emu = "nyx"
-
-    if name_variation == "emu_diag":
-        name_variation = None
-        emu_cov_type = "diagonal"
-    elif name_variation == "emu_block":
-        name_variation = None
-        emu_cov_type = "block"
+    configuration = sys.argv[1] if len(sys.argv) > 1 else None
+    if configuration is not None and configuration.endswith(".yaml"):
+        config_path = Path(configuration)
+        if not config_path.is_absolute():
+            config_path = Path(get_path_repo("cup1d")) / config_path
+        args = Args.from_yaml(config_path)
     else:
-        emu_cov_type = "full"
+        args = Args.from_variation(configuration)
 
-    if name_variation == "DESIY1_FFT3_dir_DLA_TAN":
-        name_variation = "DLA_TAN"
-        data_label = "DESIY1_FFT3_dir"
-        p1d_fname = "/pscratch/sd/j/jjchaves/data/in_DESI_DR1/tin_tang/p1d_fft_y1_measurement_kms_tingdla_nocrossexp_snr3noweights_directmetalsubtraction.fits"
-    else:
-        p1d_fname = None
+    analysis = Analysis(args, out_folder=args.out_folder)
+    input_pars = analysis.like.sampling_point_from_parameters().copy()
 
-    if name_variation == "None":
-        name_variation = None
+    for name, value in args.initial_sampling_values.items():
+        matches = [
+            index
+            for index, parameter in enumerate(analysis.like.free_params)
+            if parameter.name == name
+        ]
+        if not matches:
+            raise ValueError(
+                f"Initial sampling value provided for unknown parameter {name}"
+            )
+        input_pars[matches[0]] = value
 
-    args = Args(
-        data_label=data_label,
-        emulator_label="CH24_" + emu + "cen_gpr",
-        path_out=path_out,
-        emu_cov_type=emu_cov_type,
-        p1d_fname=p1d_fname,
-    )
-    args.set_baseline(
-        fit_type="global_opt",
-        fix_cosmo=False,
-        P1D_type=data_label,
-        name_variation=name_variation,
-        # mcmc_conf="test",
-        mcmc_conf="explore",  # variations
-        # mcmc_conf="full", # baseline
-    )
-
-    pip = Pipeline(args, out_folder=args.out_folder)
-    input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
-
-    if name_variation == "Metals_Ma2025":
-        input_pars[18:26] = np.array(
-            [
-                0.1,
-                0.1,
-                0.3,
-                0.3,
-                0.66,
-                0.70,
-                0.52,
-                0.52,
-            ]
-        )
-
-    pip.run_minimizer(input_pars, restart=True)
-    pip.run_sampler()
+    analysis.run_minimizer(input_pars, restart=True)
+    analysis.run_sampler()
 
     if rank == 0:
-        plots_chain(pip.fitter.save_directory, folder_out=pip.fitter.save_directory)
+        plots_chain(
+            analysis.fitter.save_directory,
+            folder_out=analysis.fitter.save_directory,
+        )
 
 
 if __name__ == "__main__":

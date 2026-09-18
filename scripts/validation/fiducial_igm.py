@@ -1,8 +1,9 @@
 import os
 
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.configuration.args import Args
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.pipeline import set_archive, Pipeline
+from cup1d.emulator.archive import set_archive
+from cup1d.inference.analysis import Analysis
 
 
 def main():
@@ -86,7 +87,7 @@ def validate_cosmo(emulator_label, training_set, base_out_folder, suite, nIGM):
             sim_label,
         )
 
-        pip = Pipeline(args, make_plots=False, out_folder=out_folder)
+        pip = Analysis(args, make_plots=False, out_folder=out_folder)
         pip.run_minimizer()
 
 

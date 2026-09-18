@@ -26,9 +26,9 @@ import time, os, sys
 import matplotlib.pyplot as plt
 
 # our own modules
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
-from cup1d.likelihood.plotter import Plotter
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
+from cup1d.postprocessing.plotter import Plotter
 from cup1d.utils.utils import get_path_repo
 
 # +
@@ -48,11 +48,10 @@ args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=e
 args.set_baseline(
     fit_type="at_a_time_global", 
     fix_cosmo=True, 
-    P1D_type=data_label, 
     name_variation=name_variation, 
 )
 
-pip = Pipeline(args, out_folder=None)
+pip = Analysis(args, out_folder=None)
 # -
 
 npoints = []
@@ -69,7 +68,7 @@ out_pnames = []
 for ii in range(1):
     zmask = np.array([pip.fitter.like.data.z[ii]])
 
-    pip = Pipeline(args, out_folder=None)
+    pip = Analysis(args, out_folder=None)
     
     print()
     
@@ -121,6 +120,3 @@ path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_7.npy")
 np.save(fname, store_data)
 # -
-
-
-

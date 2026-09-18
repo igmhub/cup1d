@@ -31,9 +31,9 @@ from lace.emulator import gp_emulator
 from lace.emulator import nn_emulator
 from cup1d.data import data_Chabanier2019
 from cup1d.data import data_Karacayli2022
-from cup1d.likelihood import lya_theory
+from cup1d.theory import theory as lya_theory
 from cup1d.likelihood import likelihood
-from cup1d.likelihood import iminuit_minimizer
+from cup1d.inference import iminuit
 
 # %% [markdown]
 # ### Set up data (eBOSS P1D measurement from Chabanier et al. 2019)

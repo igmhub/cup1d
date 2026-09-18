@@ -5,10 +5,10 @@ import sys
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
 from mpi4py import MPI
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
 from cup1d.utils.utils import get_path_repo
-from cup1d.plots_and_tables.plots_corner import plots_chain
+from cup1d.postprocessing.plots_corner import plots_chain
 
 
 def main():
@@ -38,7 +38,7 @@ def main():
 
     args = Args(
         data_label=data_label,
-        cov_label=cov_label,
+        synth_cov_label=cov_label,
         emulator_label="CH24_" + emu + "cen_gpr",
         true_cosmo_label=data_label,
         apply_smoothing=True,
@@ -51,7 +51,6 @@ def main():
         fit_type=fit_type,
         fix_cosmo=False,
         fid_cosmo_label=data_label,
-        P1D_type=cov_label,
         name_variation=name_variation,
         z_min=zmin,
         z_max=zmax,
@@ -70,7 +69,7 @@ def main():
                 "path_data not defined for data_label = " + data_label
             )
 
-    pip = Pipeline(args)
+    pip = Analysis(args)
 
     input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
 

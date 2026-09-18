@@ -15,8 +15,8 @@
 
 # # Compute star parameters
 
-from cup1d.likelihood.pipeline import set_cosmo
-from cup1d.likelihood import CAMB_model
+from cup1d.theory.cosmology import set_cosmo
+from cup1d.theory import camb as CAMB_model
 
 # +
 
@@ -26,5 +26,3 @@ fid_cosmo = set_cosmo(cosmo_label=fid_cosmo_label)
 blob = CAMB_model.CAMBModel(zs=[3], cosmo=fid_cosmo).get_linP_params()
 blob
 # -
-
-

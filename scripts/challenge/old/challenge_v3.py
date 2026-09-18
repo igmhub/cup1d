@@ -1,9 +1,10 @@
 import time, os, sys
 import glob
 import numpy as np
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.configuration.args import Args
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.likelihood.pipeline import set_archive, Pipeline
+from cup1d.emulator.archive import set_archive
+from cup1d.inference.analysis import Analysis
 
 
 def main():
@@ -85,7 +86,7 @@ def main():
         os.makedirs(dir_out, exist_ok=True)
         print("Output in:", dir_out)
 
-        pip = Pipeline(args, make_plots=False, out_folder=dir_out)
+        pip = Analysis(args, make_plots=False, out_folder=dir_out)
         pip.run_minimizer()
 
 

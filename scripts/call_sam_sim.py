@@ -9,7 +9,7 @@ from itertools import product
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
 from cup1d.likelihood.sampler_pipeline import path_sampler, SamplerPipeline
-from cup1d.likelihood.input_pipeline import Args
+from cup1d.configuration.args import Args
 from cup1d.utils.utils import create_print_function
 
 
@@ -203,10 +203,10 @@ def main():
                 z_min=z_min,
                 z_max=z_max,
                 igm_label=igm_label,
-                drop_sim=drop_sim,
+                drop_emu_sim=drop_sim,
                 n_igm=n_igm,
                 cosmo_label=cosmo_label,
-                cov_label=cov_label,
+                synth_cov_label=cov_label,
                 fix_cosmo=fix_cosmo,
                 add_hires=add_hires,
                 apply_smoothing=apply_smoothing,
@@ -224,9 +224,9 @@ def main():
                     igm_label=args.igm_label,
                     n_igm=args.n_igm,
                     cosmo_label=args.cosmo_label,
-                    cov_label=args.cov_label,
+                    cov_label=args.synth_cov_label,
                     version=args.version,
-                    drop_sim=args.drop_sim,
+                    drop_sim=args.drop_emu_sim,
                     apply_smoothing=args.apply_smoothing,
                     add_hires=args.add_hires,
                     add_noise=args.add_noise,

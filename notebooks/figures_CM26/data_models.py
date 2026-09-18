@@ -24,8 +24,8 @@
 import os
 import numpy as np
 import cup1d
-from cup1d.likelihood.input_pipeline import Args
-from cup1d.likelihood.pipeline import Pipeline
+from cup1d.configuration.args import Args
+from cup1d.inference.analysis import Analysis
 import matplotlib.pyplot as plt
 
 from matplotlib import rcParams
@@ -37,7 +37,7 @@ rcParams["font.family"] = "STIXGeneral"
 # -
 
 args = Args(pre_defined="CM2026", system="local")
-pip = Pipeline(args, out_folder=None)
+pip = Analysis(args, out_folder=None)
 
 # +
 # my local machine
@@ -217,9 +217,5 @@ plt.tight_layout()
 plt.savefig("figs/fig_with_model.pdf")
 plt.savefig("figs/fig_with_model.png")
 # -
-
-
-
-
 
 
