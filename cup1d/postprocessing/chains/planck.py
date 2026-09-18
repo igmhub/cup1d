@@ -50,6 +50,10 @@ def load_samples(file_root):
         else:
             raise IOError("No chains found (not even zipped): " + file_root)
 
+    # Legacy Planck range files predate this GetDist attribute. Current
+    # GetDist accesses it while producing marginal distributions.
+    if not hasattr(samples.ranges, "periodic"):
+        samples.ranges.periodic = set()
     return samples
 
 

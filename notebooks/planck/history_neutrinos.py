@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -22,11 +22,10 @@
 # %load_ext autoreload
 # %autoreload 2
 import numpy as np
-import os
-from getdist import plots,loadMCSamples
+from getdist import plots
 import matplotlib.pyplot as plt
 from cup1d.postprocessing.chains import planck as planck_chains
-from cup1d.likelihood import marg_lya_like
+from cup1d.likelihood import marginal as marg_lya_like
 # because of black magic, getdist needs this strange order of imports
 # %matplotlib inline
 
@@ -62,7 +61,7 @@ chi2_Ch2019=marg_lya_like.gaussian_chi2_Chabanier2019(neff_grid,DL2_grid)
 # %% jupyter={"outputs_hidden": false}
 g = plots.getSinglePlotter(width_inch=8)
 g.plot_2d(wmap9['samples'], ['linP_n_star', 'linP_DL2_star'],lims=[-2.45,-2.15,0.2,0.6])
-plt.contour(neff_grid,DL2_grid,chi2_Mc2005,levels=thresholds[:2],colors='green')
+plt.contour(neff_grid,DL2_grid,chi2_Mc2005["chi2"],levels=thresholds[:2],colors='green')
 plt.axhline(y=1,color='green',label='McDonald 2005')
 plt.axhline(y=1,color='black',label=wmap9['label'])
 plt.title(r'Linear power constraints at ($z=3$, $k_p=0.009$ s/km)')
@@ -75,7 +74,9 @@ plt.legend(loc=4)
 # %% jupyter={"outputs_hidden": false}
 new_samples=wmap9['samples'].copy()
 p=new_samples.getParams()
-new_loglike = 0.5*marg_lya_like.gaussian_chi2_McDonald2005(p.linP_n_star,p.linP_DL2_star)
+new_loglike = 0.5 * marg_lya_like.gaussian_chi2_McDonald2005(
+    p.linP_n_star, p.linP_DL2_star
+)["chi2"]
 new_samples.reweightAddingLogLikes(new_loglike) #re-weight cut_samples to account for the new likelihood
 
 # %% jupyter={"outputs_hidden": false}
