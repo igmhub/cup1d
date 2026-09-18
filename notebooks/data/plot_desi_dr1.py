@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -28,249 +28,117 @@ import numpy as np
 import time, os, sys
 import matplotlib.pyplot as plt
 
-from cup1d.configuration.args import Args
+from cup1d.configuration import Args
 from cup1d.p1ds.factory import set_p1d
-from cup1d.emulator.factory import set_emulator
-
-# %%
-args = Args(emulator_label="CH24_mpgcen_gpr", training_set="Cabayol23")
-emulator = set_emulator(
-    emulator_label=args.emulator_label,
-)
-args.data_label = "DESIY1"
-args.cov_syst_type = "red"
-
-# %%
-
-folder = "/home/jchaves/Proyectos/projects/lya/data/DESI-DR1/"
-# in NERSC
-# /global/cfs/cdirs/desicollab/science/lya/y1-p1d/iron-baseline/qmle_measurement/DataProducts/
-# QMLE /global/cfs/cdirs/desicollab/users/naimgk/my-reductions/data/iron-v3/DataProducts/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate.fits
-# FFT /global/cfs/cdirs/desi/science/lya/y1-p1d/fft_measurement/v0/plots/baseline/notebook/measurement/p1d_fft_y1_measurement_kms.fits
-
-fname_qmle = folder + "/qmle_measurement/DataProducts/v3/desi_y1_baseline_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
-fname_qmle3 = folder + "/qmle_measurement/DataProducts/v3/desi_y1_snr3_p1d_sb1subt_qmle_power_estimate_contcorr_v3.fits"
-fname_fft = folder + "/fft_measurement/p1d_fft_y1_measurement_kms_v7_direct_metal_subtraction.fits"
-
-args.z_min = 2.1
-args.z_max = 4.3
-# args.z_max = 2.9
-
-data = {}
-
-args.p1d_fname=fname_qmle
-data["qmle"] = set_p1d(
-    args,
-    true_cosmo=None,
-    emulator=emulator,
-    cull_data=False
-)
-
-args.p1d_fname= fname_qmle3
-data["qmle3"] = set_p1d(
-    args,
-    true_cosmo=None,
-    emulator=emulator,
-    cull_data=False
-)
-
-args.p1d_fname = fname_fft
-data["fft"] = set_p1d(
-    args,
-    true_cosmo=None,
-    emulator=emulator,
-    cull_data=False
-)
 
 # %% [markdown]
-# ## Comparison of P1D
+# Load the baseline and variations
 
 # %%
-fig, ax = plt.subplots(4, 3, figsize=(10, 8), sharey="row")
-ax = ax.reshape(-1)
 
-for iz in range(len(data["fft"].z)):
-    zlab = str(np.round(data["fft"].z[iz], 2))
-    col = "C"+str(iz)
-    if iz == 0:
-        lab1 = "FFT"
-        lab2 = None
-    elif iz == 1:
-        lab1 = None
-        lab2 = "QMLE3"
-    kuse = data["qmle"].k_kms[iz].copy()
-    y = np.interp(kuse, data["fft"].k_kms[iz], data["fft"].Pk_kms[iz])
-    ax[iz].plot(kuse, y / data["qmle"].Pk_kms[iz]-1, ls="-", alpha=0.75, label=lab1)
-    y = data["qmle3"].Pk_kms[iz]
-    ax[iz].plot(kuse, y / data["qmle"].Pk_kms[iz]-1, ls="-", alpha=0.75, label=lab2)
-    ax[iz].set_title(r"$z=$"+zlab)
-    ax[iz].axhline(0, color="k", ls="--", alpha=0.4)
-    ax[iz].axhline(0.01, color="k", ls=":", alpha=0.4)
-    ax[iz].axhline(-0.01, color="k", ls=":", alpha=0.4)
-    if iz < 2:
-        ax[iz].legend(loc="upper right")
-ax[-1].set_axis_off()
-fig.supxlabel(r"$k[\mathrm{km}^{-1}\mathrm{s}]$")
-fig.supylabel(r"$P_x(k)/P_\mathrm{QMLE}-1$")
-plt.tight_layout()
-# plt.savefig("figs/ratio_w_qmle.pdf")
+baseline_args = Args.from_baseline()
+baseline_data = set_p1d(baseline_args, baseline_args.data_label[0])
+baseline_data.plot_p1d()
 
-# %%
-fig, ax = plt.subplots(4, 3, figsize=(12, 10))
-ax = ax.reshape(-1)
+qmle_args = Args.from_variation("DESIY1_QMLE")
+qmle_data = set_p1d(qmle_args, qmle_args.data_label[0])
+qmle_data.plot_p1d()
 
-for iz in range(len(data["fft"].z)):
-    zlab = str(np.round(data["fft"].z[iz], 2))
-    col = "C"+str(iz)
-    if iz == 0:
-        lab1 = "FFT"
-        lab2 = None
-    elif iz == 1:
-        lab1 = None
-        lab2 = "QMLE3"
-    kuse = data["qmle"].k_kms[iz].copy()
-    # y = np.interp(kuse, data["fft"].k_kms[iz], data["fft"].Pk_kms[iz])
-    # ax[iz].plot(kuse, y / data["qmle"].Pk_kms[iz]-1, ls="-", alpha=0.75, label=lab1)
-    y = data["qmle3"].Pk_kms[iz]
-    y2 = np.sqrt(np.diag(data["qmle3"].cov_Pk_kms[iz]))
-    # y2 = np.sqrt(np.diag(data["qmle3"].cov_Pk_kms[iz]) + np.diag(data["qmle"].cov_Pk_kms[iz]))
-    ax[iz].errorbar(kuse, y / data["qmle"].Pk_kms[iz]-1, y2 / data["qmle"].Pk_kms[iz], ls="-")
-    ax[iz].set_title(r"$z=$"+zlab)
-    ax[iz].axhline(0, color="k", ls="--", alpha=0.4)
-    ax[iz].axhline(0.01, color="k", ls=":", alpha=0.4)
-    ax[iz].axhline(-0.01, color="k", ls=":", alpha=0.4)
-    # if iz < 2:
-    #     ax[iz].legend(loc="upper right")
-ax[-1].set_axis_off()
-fig.supxlabel(r"$k[\mathrm{km}^{-1}\mathrm{s}]$")
-fig.supylabel(r"$P_\mathrm{QMLE3}(k)/P_\mathrm{QMLE}-1$")
-plt.tight_layout()
-# plt.savefig("figs/ratio_w_qmle.pdf")
+fft3_dir_args = Args.from_variation("DESIY1_FFT3_dir")
+fft3_dir_data = set_p1d(fft3_dir_args, fft3_dir_args.data_label[0])
+fft3_dir_data.plot_p1d()
 
 # %% [markdown]
-# ## Comparison cov matrix
+# Compare the fractional P1D difference of QMLE and FFT3_dir with respect to
+# the baseline. FFT3_dir is interpolated onto the baseline k grid over their
+# common k range.
 
 # %%
-fig, ax = plt.subplots(4, 3, figsize=(12, 10))
-ax = ax.reshape(-1)
+variations = {
+    "QMLE": qmle_data,
+    "FFT3_dir": fft3_dir_data,
+}
 
-for iz in range(len(data["fft"].z)):
-    zlab = str(np.round(data["fft"].z[iz], 2))
-    col = "C"+str(iz)
-    if iz == 0:
-        lab1 = "FFT"
-        lab2 = None
-    elif iz == 1:
-        lab1 = None
-        lab2 = "QMLE3"
-    kuse = data["qmle"].k_kms[iz].copy()
-    # y = np.interp(kuse, data["fft"].k_kms[iz], data["fft"].Pk_kms[iz])
-    # ax[iz].plot(kuse, y / data["qmle"].Pk_kms[iz]-1, ls="-", alpha=0.75, label=lab1)
-    y1 = np.sqrt(np.diag(data["qmle"].cov_Pk_kms[iz]))
-    y2 = np.sqrt(np.diag(data["qmle3"].cov_Pk_kms[iz]))
-    ax[iz].plot(kuse, y2 / y1, ls="-")
-    ax[iz].set_title(r"$z=$"+zlab)
-    ax[iz].axhline(1, color="k", ls="--", alpha=0.4)
-    ax[iz].axhline(np.mean(y2/y1), color="C1", ls="-", alpha=0.4)
-    # ax[iz].axhline(0.01, color="k", ls=":", alpha=0.4)
-    # ax[iz].axhline(-0.01, color="k", ls=":", alpha=0.4)
-    # if iz < 2:
-    #     ax[iz].legend(loc="upper right")
-ax[-1].set_axis_off()
-fig.supxlabel(r"$k[\mathrm{km}^{-1}\mathrm{s}]$")
-fig.supylabel(r"$\sigma_\mathrm{QMLE3}(k)/\sigma_\mathrm{QMLE}-1$")
+fig, axes = plt.subplots(4, 3, figsize=(10, 10))
+axes = axes.reshape(-1)
+
+for iz, z in enumerate(baseline_data.z):
+    axis = axes[iz]
+    k_baseline = baseline_data.k_kms[iz]
+    p_baseline = baseline_data.Pk_kms[iz]
+    for label, variation_data in variations.items():
+        k_variation = variation_data.k_kms[iz]
+        mask = (k_baseline >= k_variation.min()) & (k_baseline <= k_variation.max())
+        p_variation = np.interp(
+            k_baseline[mask], k_variation, variation_data.Pk_kms[iz]
+        )
+        axis.plot(k_baseline[mask], p_variation / p_baseline[mask] - 1, label=label)
+    axis.set_title(rf"$z={z:.1f}$")
+    axis.axhline(0, color="k", ls="--", alpha=0.4)
+    axis.axhline(0.01, color="k", ls=":", alpha=0.4)
+    axis.axhline(-0.01, color="k", ls=":", alpha=0.4)
+
+for axis in axes[len(baseline_data.z) :]:
+    axis.set_axis_off()
+axes[0].legend(loc="upper right")
+fig.supxlabel(r"$k[\mathrm{km}^{-1}\,\mathrm{s}]$")
+fig.supylabel(r"$P_\mathrm{variation}(k) / P_\mathrm{baseline}(k) - 1$")
 plt.tight_layout()
-plt.savefig("figs/ratio_sigma_qmle.pdf")
 
 # %% [markdown]
-# ## SNR
+# Compare the P1D uncertainty, $\sigma_P = \sqrt{\mathrm{diag}(C)}$, for each
+# variation relative to the baseline over the common k range.
 
 # %%
-fig, ax = plt.subplots(4, 3, figsize=(12, 10), sharey="row")
-ax = ax.reshape(-1)
+fig, axes = plt.subplots(4, 3, figsize=(10, 10))
+axes = axes.reshape(-1)
 
-for iz in range(len(data["fft"].z)):
-    zlab = str(np.round(data["fft"].z[iz], 2))
-    col = "C"+str(iz)
-    if iz == 0:
-        lab1 = "QMLE"
-        lab2 = None
-        lab3 = None
-    elif iz == 1:
-        lab1 = None
-        lab2 = "QMLE3"
-        lab3 = None
-    elif iz == 2:
-        lab1 = None
-        lab2 = None
-        lab3 = "FFT"
-    kuse = data["qmle"].k_kms[iz].copy()
-    # y = np.interp(kuse, data["fft"].k_kms[iz], data["fft"].Pk_kms[iz])
-    # ax[iz].plot(kuse, y / data["qmle"].Pk_kms[iz]-1, ls="-", alpha=0.75, label=lab1)
-    y1 = data["qmle"].Pk_kms[iz]/np.sqrt(np.diag(data["qmle"].cov_Pk_kms[iz]))
-    ax[iz].plot(kuse, y1, ls="-", label=lab1, alpha=0.8)
-    ax[iz].axhline(np.mean(y1), color="C0", ls="--", alpha=0.4)
-    
-    y2 = data["qmle3"].Pk_kms[iz]/np.sqrt(np.diag(data["qmle3"].cov_Pk_kms[iz]))
-    ax[iz].plot(kuse, y2, ls="-", label=lab2, alpha=0.8)
-    ax[iz].axhline(np.mean(y2), color="C1", ls="--", alpha=0.4)
-    
-    y3 = data["fft"].Pk_kms[iz]/np.sqrt(np.diag(data["fft"].cov_Pk_kms[iz]))
-    ax[iz].plot(data["fft"].k_kms[iz], y3, ls="-", label=lab3, alpha=0.8)
-    ax[iz].axhline(np.mean(y3), color="C2", ls="--", alpha=0.4)
-    
-    ax[iz].set_title(r"$z=$"+zlab)
-    # ax[iz].axhline(1, color="k", ls="--", alpha=0.4)
-    # ax[iz].axhline(0.01, color="k", ls=":", alpha=0.4)
-    # ax[iz].axhline(-0.01, color="k", ls=":", alpha=0.4)
-    if iz < 3:
-        ax[iz].legend(loc="upper right")
-ax[-1].set_axis_off()
-fig.supxlabel(r"$k[\mathrm{km}^{-1}\mathrm{s}]$")
-fig.supylabel(r"SNR")
+for iz, z in enumerate(baseline_data.z):
+    axis = axes[iz]
+    k_baseline = baseline_data.k_kms[iz]
+    sigma_baseline = np.sqrt(np.diag(baseline_data.cov_Pk_kms[iz]))
+    for label, variation_data in variations.items():
+        k_variation = variation_data.k_kms[iz]
+        mask = (k_baseline >= k_variation.min()) & (k_baseline <= k_variation.max())
+        sigma_variation = np.interp(
+            k_baseline[mask],
+            k_variation,
+            np.sqrt(np.diag(variation_data.cov_Pk_kms[iz])),
+        )
+        axis.plot(
+            k_baseline[mask],
+            sigma_variation / sigma_baseline[mask],
+            label=label,
+        )
+    axis.set_title(rf"$z={z:.1f}$")
+    axis.axhline(1, color="k", ls="--", alpha=0.4)
+
+for axis in axes[len(baseline_data.z) :]:
+    axis.set_axis_off()
+axes[0].legend(loc="upper right")
+fig.supxlabel(r"$k[\mathrm{km}^{-1}\,\mathrm{s}]$")
+fig.supylabel(r"$\sigma_{P,\mathrm{variation}} / \sigma_{P,\mathrm{baseline}}$")
 plt.tight_layout()
-plt.savefig("figs/snr_all.pdf")
 
 # %% [markdown]
-# ## Covariance matrix
+# ## Covariance components
+#
+# For each measurement separately, show the statistical and every individual
+# systematic contribution to $\sigma_P / P$. Each output figure contains one
+# panel per redshift bin.
 
 # %%
 from cup1d.postprocessing.plotter import plot_cov
+from cup1d.p1ds.observations.data_DESIY1 import set_p1d_filename
 
-plot_cov(fname_qmle, save_directory='figs')
-
-
-
-# %% [markdown]
-# ## Contributions to QMLE P1D
-
-# %%
-
-from astropy.io import fits
+for label, args in {
+    "Baseline (QMLE3)": baseline_args,
+    "QMLE": qmle_args,
+    "FFT3_dir": fft3_dir_args,
+}.items():
+    print(label)
+    plot_cov(set_p1d_filename(args.data_label[0]))
 
 
-hdu = fits.open(fname_qmle)
-_ = (hdu[1].data["Z"] == 2.2) & (hdu[1].data["K"] < 0.04)
-plt.plot(hdu[1].data["K"][_], hdu[1].data["PLYA"][_])
-plt.plot(hdu[1].data["K"][_], hdu[1].data["PRAW"][_])
-plt.plot(hdu[1].data["K"][_], hdu[1].data["PNOISE"][_])
-plt.plot(hdu[1].data["K"][_], hdu[1].data["ThetaP"][_])
-plt.plot(hdu[1].data["K"][_], hdu[1].data["PRAW"][_] - hdu[1].data["PNOISE"][_])
-plt.plot(hdu[1].data["K"][_], hdu[1].data["PFID"][_])
-
-# %% [markdown]
-# ## Syst to stat ratio
-
-# %%
-hdu = fits.open(fname_qmle)
-
-rat = np.diag(hdu[5].data)/np.diag(hdu[4].data)
-zu = np.unique(hdu[1].data["Z"])
-for zz in zu:
-    _ = (hdu[1].data["Z"] == zz)
-    plt.plot(hdu[1].data["K"][_], rat[_], label=str(zz))
-plt.legend(ncol=3)
-plt.xscale("log")
-plt.yscale("log")
 
 # %%

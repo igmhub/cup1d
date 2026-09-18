@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: lace
 #     language: python
@@ -21,3 +21,5 @@ from cup1d.p1ds.observations import data_PD2013
 
 data = data_PD2013.P1D_PD2013()
 data.plot_p1d()
+
+# %%
