@@ -1061,7 +1061,7 @@ elif choose_desiy1:
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
 
-data["P1Ds"] = set_P1D(
+data["P1Ds"] = set_p1d(
     args,
     archive=archive,
     true_cosmo=true_cosmo,
@@ -1069,7 +1069,7 @@ data["P1Ds"] = set_P1D(
     cull_data=False
 )
 if args.data_label_hires is not None:
-    data["extra_P1Ds"] = set_P1D(
+    data["extra_P1Ds"] = set_p1d(
         args,
         archive=archive,
         true_cosmo=true_cosmo,

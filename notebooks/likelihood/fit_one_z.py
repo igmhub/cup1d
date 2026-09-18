@@ -33,9 +33,9 @@ from cup1d.inference.fitter import Fitter
 
 from cup1d.inference.analysis import (
     set_archive,
-    set_P1D,
+    set_p1d,
     set_cosmo,
-    set_free_like_parameters,
+    set_free_likelihood_parameters,
     set_like,
 )
 from cup1d.p1ds.observations.data_DESIY1 import P1D_DESIY1
@@ -118,7 +118,7 @@ args.n_dla=1
 args.n_sn=0
 args.n_agn=0
 
-free_parameters = set_free_like_parameters(args)
+free_parameters = set_free_likelihood_parameters(args)
 free_parameters
 
 
@@ -137,7 +137,7 @@ def fit_one_z(zmin,zmax,show_all_plots=True):
     # add high-res P1D
     if add_hr:
         args.data_label_hires = "Karacayli2022"
-        data["extra_P1Ds"] = set_P1D(
+        data["extra_P1Ds"] = set_p1d(
                 args.data_label_hires,
                 args,
                 archive=archive,

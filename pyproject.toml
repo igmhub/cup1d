@@ -31,9 +31,6 @@ dependencies = [
     "astropy",
     "PyYAML",
 ]
-
-[project.optional-dependencies]
-test = ["pytest>=9"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
@@ -43,6 +40,12 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.12",
 ]
+
+[project.optional-dependencies]
+test = ["pytest>=9"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.setuptools.dynamic]
 version = {attr = "cup1d.__version__"}

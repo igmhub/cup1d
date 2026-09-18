@@ -1,0 +1,9 @@
+# Tan2026 override for the Ting--Tang DLA analysis of the DESI FFT measurement.
+# The measurement path is intentionally explicit: this analysis requires a
+# file that is not part of the standard cup1d data installation.
+data_label:
+  - DESIY1_FFT3_dir
+p1d_fname: /pscratch/sd/j/jjchaves/data/in_DESI_DR1/tin_tang/p1d_fft_y1_measurement_kms_tingdla_nocrossexp_snr3noweights_directmetalsubtraction.fits
+name_variation: DLA_TAN
+out_folder: ./DESIY1_FFT3_dir/DLA_TAN/CH24_mpgcen_gpr
+pre_defined: null

@@ -164,19 +164,19 @@ def main():
 
     # read archive from outside
     if training_set == "Pedersen21":
-        # set_P1D = data_gadget.Gadget_P1D
+        # set_p1d = data_gadget.Gadget_P1D
         # get_cosmo = camb_cosmo.get_cosmology_from_dictionary
         archive = gadget_archive.GadgetArchive(postproc=training_set)
         z_min = 2
         z_max = np.max(archive.list_sim_redshifts)
     elif training_set == "Cabayol23":
-        # set_P1D = data_gadget.Gadget_P1D
+        # set_p1d = data_gadget.Gadget_P1D
         # get_cosmo = camb_cosmo.get_cosmology_from_dictionary
         archive = gadget_archive.GadgetArchive(postproc=training_set)
         z_min = 2
         z_max = np.max(archive.list_sim_redshifts)
     elif training_set[:5] == "Nyx23":
-        # set_P1D = data_nyx.Nyx_P1D
+        # set_p1d = data_nyx.Nyx_P1D
         # get_cosmo = camb_cosmo.get_Nyx_cosmology
         archive = nyx_archive.NyxArchive(nyx_version=training_set[6:])
         z_min = 2.2

@@ -44,9 +44,9 @@ from cup1d.postprocessing.plotter import Plotter
 
 from cup1d.inference.analysis import (
     set_archive,
-    set_P1D,
+    set_p1d,
     set_cosmo,
-    set_free_like_parameters,
+    set_free_likelihood_parameters,
     set_like,
 )
 from cup1d.p1ds.observations.data_DESIY1 import P1D_DESIY1
@@ -106,7 +106,7 @@ true_cosmo = set_cosmo(cosmo_label=true_sim_label)
 # you do not need to provide the archive for obs data 
 data = {"P1Ds": None, "extra_P1Ds": None}
 
-data["P1Ds"] = set_P1D(
+data["P1Ds"] = set_p1d(
     args,
     archive=archive,
     true_cosmo=true_cosmo,
@@ -152,7 +152,7 @@ args.n_sigT=1
 args.n_gamma=1
 args.n_kF=1
 
-free_parameters = set_free_like_parameters(args, emulator.emulator_label)
+free_parameters = set_free_likelihood_parameters(args, emulator.emulator_label)
 free_parameters
 
 # %% [markdown]

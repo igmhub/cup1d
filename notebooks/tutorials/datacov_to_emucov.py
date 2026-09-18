@@ -43,9 +43,9 @@ from cup1d.inference.fitter import Fitter
 
 from cup1d.inference.analysis import (
     set_archive,
-    set_P1D,
+    set_p1d,
     set_cosmo,
-    set_free_like_parameters,
+    set_free_likelihood_parameters,
     set_like,
 )
 from cup1d.p1ds.observations.data_DESIY1 import P1D_DESIY1
@@ -174,7 +174,7 @@ if choose_challenge == True:
         true_sim_label=true_sim_label
     )
 else:
-    data["P1Ds"] = set_P1D(
+    data["P1Ds"] = set_p1d(
         args.data_label,
         args,
         archive=archive,
@@ -183,7 +183,7 @@ else:
         cull_data=False
     )
     if args.data_label_hires is not None:
-        data["extra_P1Ds"] = set_P1D(
+        data["extra_P1Ds"] = set_p1d(
             args.data_label_hires,
             args,
             archive=archive,
@@ -258,7 +258,7 @@ args.n_dla=0
 args.n_sn=0
 
 
-free_parameters = set_free_like_parameters(args)
+free_parameters = set_free_likelihood_parameters(args)
 free_parameters
 
 # %% [markdown]

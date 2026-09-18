@@ -130,19 +130,19 @@ def main():
     # read archive from outside
     if training_set == "Pedersen21":
         archive = gadget_archive.GadgetArchive(postproc=training_set)
-        set_P1D = data_gadget.Gadget_P1D
+        set_p1d = data_gadget.Gadget_P1D
         z_min = 2
         z_max = np.max(archive.list_sim_redshifts)
         sim_igm = "mpg"
     elif training_set == "Cabayol23":
         archive = gadget_archive.GadgetArchive(postproc=training_set)
-        set_P1D = data_gadget.Gadget_P1D
+        set_p1d = data_gadget.Gadget_P1D
         z_min = 2
         z_max = np.max(archive.list_sim_redshifts)
         sim_igm = "mpg"
     elif training_set[:5] == "Nyx23":
         archive = nyx_archive.NyxArchive(nyx_version=training_set[6:])
-        set_P1D = data_nyx.Nyx_P1D
+        set_p1d = data_nyx.Nyx_P1D
         z_min = 2.2
         z_max = np.max(archive.list_sim_redshifts)
         sim_igm = "nyx"
@@ -161,7 +161,7 @@ def main():
                 args.z_min = z_min
                 args.z_max = z_max
                 args.sim_igm = sim_igm
-                args.set_P1D = set_P1D
+                args.set_p1d = set_p1d
 
                 args.training_set = training_set
                 args.emulator_label = emulator_label

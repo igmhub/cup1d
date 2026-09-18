@@ -5,8 +5,8 @@ from mpi4py import MPI
 
 from cup1d.theory.factory import set_theory
 from cup1d.emulator.factory import set_emulator
-from cup1d.likelihood.parameters import set_free_like_parameters
-from cup1d.p1ds.factory import is_synthetic_data_label, set_P1D
+from cup1d.likelihood.parameters import set_free_likelihood_parameters
+from cup1d.p1ds.factory import is_synthetic_data_label, set_p1d
 from cup1d.configuration.args import Args
 from cup1d.likelihood.likelihood import Likelihood
 from cup1d.inference.fitter import Fitter
@@ -99,7 +99,7 @@ class Analysis(object):
         else:
             self.emulator = emulator
 
-        free_parameters = set_free_like_parameters(
+        free_parameters = set_free_likelihood_parameters(
             self.args, emulator_label=self.args.emulator_label
         )
 
@@ -125,7 +125,7 @@ class Analysis(object):
                 fprint("Setting P1Ds")
                 for data_label in self.args.data_label:
                     fprint("Setting P1D for", data_label)
-                    self.data[data_label] = set_P1D(
+                    self.data[data_label] = set_p1d(
                         self.args, data_label, theory=true_theory, archive=archive
                     )
 

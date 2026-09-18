@@ -31,9 +31,9 @@ from cup1d.postprocessing.plotter import Plotter
 
 from cup1d.inference.analysis import (
     set_archive,
-    set_P1D,
+    set_p1d,
     set_cosmo,
-    set_free_like_parameters,
+    set_free_likelihood_parameters,
     set_like,
     Analysis,
 )

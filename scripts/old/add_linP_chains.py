@@ -1,8 +1,8 @@
 import numpy as np
 import os
 import time
-from cup1d.planck import planck_chains
-from cup1d.planck import add_linP_params
+from cup1d.postprocessing.chains import planck as planck_chains
+from cup1d.theory import linear_power as add_linP_params
 
 # point to original Planck chains
 root_dir=os.environ['PLANCK_CHAINS']

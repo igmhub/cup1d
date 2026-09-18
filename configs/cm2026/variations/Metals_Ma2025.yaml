@@ -17,3 +17,12 @@ fid_cont:
 out_folder: ./DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr
 pre_defined: null
 name_variation: Metals_Ma2025
+initial_sampling_values:
+  f_Lya_SiIII_0: 0.1
+  f_Lya_SiIII_1: 0.1
+  s_Lya_SiIII_0: 0.3
+  s_Lya_SiIII_1: 0.3
+  f_Lya_SiII_0: 0.66
+  f_Lya_SiII_1: 0.70
+  s_Lya_SiII_0: 0.52
+  s_Lya_SiII_1: 0.52

@@ -28,7 +28,7 @@ def is_synthetic_data_label(data_label):
     )
 
 
-def set_P1D(args, data_label, archive=None, theory=None):
+def set_p1d(args, data_label, archive=None, theory=None):
     """Set P1D data
 
     Parameters

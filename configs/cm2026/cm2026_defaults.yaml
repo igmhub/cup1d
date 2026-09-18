@@ -255,6 +255,9 @@ mcmc:
   n_walkers: 10
   # Keep one sample for every this many sampler steps.
   thin: 20
+# Optional starting values in unit-cube coordinates, keyed by likelihood
+# parameter name. This is normally empty.
+initial_sampling_values: {}
 # Initial-condition filename, resolved relative to `path_ic`.
 file_ic: mpg_ic_global_red.npy
 # Directory containing initial-condition corrections.

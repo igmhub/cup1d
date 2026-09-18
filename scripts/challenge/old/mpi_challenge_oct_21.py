@@ -12,9 +12,9 @@ from cup1d.inference.fitter import Fitter
 
 from cup1d.inference.analysis import (
     set_archive,
-    set_P1D,
+    set_p1d,
     set_cosmo,
-    set_free_like_parameters,
+    set_free_likelihood_parameters,
     set_like,
 )
 
@@ -157,7 +157,7 @@ def main():
         args.n_dla = 0
         args.n_sn = 0
 
-        free_parameters = set_free_like_parameters(args)
+        free_parameters = set_free_likelihood_parameters(args)
 
         like = set_like(
             data["P1Ds"],

@@ -27,7 +27,7 @@ import numpy as np
 import os
 from getdist import plots,loadMCSamples
 import matplotlib.pyplot as plt
-from cup1d.planck import planck_chains
+from cup1d.postprocessing.chains import planck as planck_chains
 from cup1d.likelihood import marg_lya_like
 # because of black magic, getdist needs this strange order of imports
 # %matplotlib inline

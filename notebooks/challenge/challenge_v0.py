@@ -37,7 +37,7 @@ from cup1d.p1ds import (
 )
 from cup1d.theory import theory as lya_theory
 from cup1d.likelihood import likelihood, emcee_sampler
-from cup1d.likelihood.sampler_pipeline import set_archive, set_P1D, set_fid_cosmo, set_like
+from cup1d.likelihood.sampler_pipeline import set_archive, set_p1d, set_fid_cosmo, set_like
 from cup1d.configuration.args import Args
 # -
 
@@ -75,7 +75,7 @@ emulator = set_emulator(
 cosmo_fid = set_fid_cosmo(cosmo_label=args.cosmo_label)
 
 data = {"P1Ds": None, "extra_P1Ds": None}
-data["P1Ds"], true_sim_igm = set_P1D(
+data["P1Ds"], true_sim_igm = set_p1d(
     archive,
     emulator,
     args.data_label,

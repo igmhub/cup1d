@@ -53,7 +53,16 @@ _CONFIG_GROUPS = (
     ("Instrumental systematics", ("fid_syst", "ic_correction")),
     ("Covariance", ("cov_syst_type", "emu_cov_type", "cov_factor")),
     ("Priors", ("use_star_priors", "prior_Gauss_rms", "Gauss_priors")),
-    ("Inference", ("fit_type", "mcmc", "file_ic", "path_ic")),
+    (
+        "Inference",
+        (
+            "fit_type",
+            "mcmc",
+            "initial_sampling_values",
+            "file_ic",
+            "path_ic",
+        ),
+    ),
     (
         "Output and runtime",
         (

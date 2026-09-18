@@ -29,7 +29,7 @@ import time, os, sys
 import matplotlib.pyplot as plt
 
 from cup1d.configuration.args import Args
-from cup1d.p1ds.factory import set_P1D
+from cup1d.p1ds.factory import set_p1d
 from cup1d.emulator.factory import set_emulator
 
 # %%
@@ -59,7 +59,7 @@ args.z_max = 4.3
 data = {}
 
 args.p1d_fname=fname_qmle
-data["qmle"] = set_P1D(
+data["qmle"] = set_p1d(
     args,
     true_cosmo=None,
     emulator=emulator,
@@ -67,7 +67,7 @@ data["qmle"] = set_P1D(
 )
 
 args.p1d_fname= fname_qmle3
-data["qmle3"] = set_P1D(
+data["qmle3"] = set_p1d(
     args,
     true_cosmo=None,
     emulator=emulator,
@@ -75,7 +75,7 @@ data["qmle3"] = set_P1D(
 )
 
 args.p1d_fname = fname_fft
-data["fft"] = set_P1D(
+data["fft"] = set_p1d(
     args,
     true_cosmo=None,
     emulator=emulator,
