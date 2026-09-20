@@ -122,3 +122,5 @@ analysis.like.plot_igm(free_params=best_fit_parameters)
 
 # %%
 analysis.like.plot_cov_to_pk()
+
+# %%

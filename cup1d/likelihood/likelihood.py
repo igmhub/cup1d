@@ -2908,6 +2908,10 @@ class Likelihood(object):
                 zs, like_params=free_params
             )
 
+        # External IGM measurements are overlaid below for the relevant
+        # quantities, independently of the selected panel layout.
+        gal21, tu24 = others_igm()
+
         if plot_type == "all":
             fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
             arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
@@ -2939,7 +2943,6 @@ class Likelihood(object):
                 r"$T_0[K]/10^4$",
                 r"$\gamma$",
             ]
-            gal21, tu24 = others_igm()
 
         ax = ax.reshape(-1)
 
