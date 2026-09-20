@@ -107,7 +107,9 @@ analysis.like.plot_p1d(mle_cube, residuals=True, plot_panels=True, print_chi2=Fa
 # %% [markdown]
 # ## Plot the fitted IGM history
 #
-# For a minimizer result we show the maximum-likelihood history. To show
+# For a minimizer result we show the maximum-likelihood history. The plot also
+# overlays Gaikwad et al. (2021) and Turner et al. (2024) mean-flux data as
+# tau_eff, and the Gaikwad temperature measurements as sigma_T. To show
 # posterior bands, load a sampler chain and pass it as `chain_uformat`.
 
 # %%
