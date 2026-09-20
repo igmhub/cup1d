@@ -27,6 +27,7 @@ from cup1d.utils.fit_ellipse import fit_ellipse, plot_ellipse
 from scipy.interpolate import griddata
 import matplotlib.patches as mpatches
 from scipy.stats import chi2 as chi2_scipy
+from cup1d.utils.utils import get_path_repo
 
 
 from matplotlib import rcParams
@@ -838,9 +839,12 @@ var_deg = [550-26, 681-26, 670-26]
 fit_type = "global_opt"
 x0 = 0
 y0 = 0
+tutorial_output_path = os.path.join(
+    get_path_repo("cup1d"), "data", "tutorials", "out_pl"
+)
 for ii, var in enumerate(variations):
     print()
-    file = "out_pl/"+ var + ".npy"
+    file = os.path.join(tutorial_output_path, var + ".npy")
     out_dict = np.load(file, allow_pickle=True).item()
     
     prob = chi2_scipy.sf(out_dict['chi2'], var_deg[ii]) * 100

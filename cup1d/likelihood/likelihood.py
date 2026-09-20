@@ -117,7 +117,13 @@ class Likelihood(object):
                     self.set_ic_from_z_at_time(args.file_ic, verbose=True)
             else:
                 if self.rank == 0:
-                    print("No best fit found to set ICs:", args.file_ic)
+                    print(
+                        f"Initial-condition file not found: {args.file_ic}\n"
+                        "Generate at-a-time initial conditions with:\n"
+                        "  python scripts/create_at_a_time_initial_conditions.py "
+                        "configs/cm2026/variations/at_a_time_global_QMLE3.yaml",
+                        flush=True,
+                    )
 
     def set_Gauss_priors(self):
         """
@@ -945,7 +951,7 @@ class Likelihood(object):
             #     "k_kms": _data_k_kms,
             #     "p1d_model": emu_p1d,
             # }
-            # np.save("notebooks/tutorials/data/test_model.npy", dict_save)
+            # np.save("data/tutorials/data/test_model.npy", dict_save)
 
             if len(emu_p1d) == 1:
                 emu_p1d = emu_p1d[0]
@@ -3173,7 +3179,7 @@ class Likelihood(object):
         if plot_more_igm:
             more_igm_path = os.path.join(
                 get_path_repo("cup1d"),
-                "notebooks",
+                "data",
                 "tutorials",
                 "data",
                 "more_igm_data.npy",

@@ -1,0 +1,48 @@
+# Independent-redshift counterpart of at_a_time_global_QMLE3.yaml for the
+# DESI DR1 FFT3 direct-estimator P1D. Statistical errors are not inflated.
+data_label:
+  - DESIY1_FFT3_dir
+fix_cosmo: true
+fit_type: at_a_time_global
+out_folder: ./DESIY1_FFT3_dir/at_a_time_global/CH24_mpgcen_gpr
+pre_defined: null
+fid_igm:
+  n_tau_eff: 1
+  tau_eff_ztype: pivot
+  n_sigT_kms: 1
+  sigT_kms_ztype: pivot
+  n_gamma: 1
+  gamma_ztype: pivot
+  n_kF_kms: 1
+  kF_kms_ztype: pivot
+fid_cont:
+  n_f_Lya_SiIII: 1
+  f_Lya_SiIII_ztype: pivot
+  n_s_Lya_SiIII: 1
+  s_Lya_SiIII_ztype: pivot
+  n_f_Lya_SiII: 1
+  f_Lya_SiII_ztype: pivot
+  n_s_Lya_SiII: 1
+  s_Lya_SiII_ztype: pivot
+  n_f_SiIIa_SiIIb: 1
+  f_SiIIa_SiIIb_ztype: pivot
+  n_s_SiIIa_SiIIb: 1
+  s_SiIIa_SiIIb_ztype: pivot
+  n_f_SiIIa_SiIII: 1
+  f_SiIIa_SiIII_ztype: pivot
+  n_f_SiIIb_SiIII: 1
+  f_SiIIb_SiIII_ztype: pivot
+  n_HCD_damp1: 1
+  HCD_damp1_ztype: pivot
+  n_HCD_damp2: 1
+  HCD_damp2_ztype: pivot
+  n_HCD_damp3: 1
+  HCD_damp3_ztype: pivot
+  n_HCD_damp4: 1
+  HCD_damp4_ztype: pivot
+fid_syst:
+  n_R_coeff: 1
+  R_coeff_ztype: pivot
+cov_factor:
+  # Do not inflate the statistical covariance for these local fits.
+  val_stat: 1.0

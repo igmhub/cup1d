@@ -84,15 +84,23 @@ def reformat_cube(args, data, emulator, out_mle_cube, weak_priors=None):
 
 
 def print_results(like, out_chi2, out_mle_cube):
+    """Print goodness-of-fit statistics for independent redshift-bin fits."""
+
+    if len(like.data) != 1:
+        raise ValueError("print_results requires exactly one P1D data set")
+    data = next(iter(like.data.values()))
+    if len(out_chi2) > len(data.z):
+        raise ValueError("More fit results than available P1D redshift bins")
+
     ndeg_all = 0
     props = []
     chi2_all = 0
-    print("$z$ & $\chi^2$ & ndeg & prob\\ \hline")
+    print(r"$z$ & $\chi^2$ & ndeg & prob\\ \hline")
     for ii in range(len(out_chi2)):
-        ndeg = len(like.data.k_kms[ii]) - len(out_mle_cube[ii])
+        ndeg = len(data.k_kms[ii]) - len(out_mle_cube[ii])
         prob = chi2_scipy.sf(out_chi2[ii], ndeg)
         print(
-            like.data.z[ii],
+            data.z[ii],
             "&",
             np.round(out_chi2[ii], 2),
             "&",
@@ -106,7 +114,7 @@ def print_results(like, out_chi2, out_mle_cube):
         props.append(prob)
 
     prob = chi2_scipy.sf(chi2_all, ndeg_all)
-    print("\hline")
+    print(r"\hline")
     print(
         "All",
         "&",
@@ -116,6 +124,6 @@ def print_results(like, out_chi2, out_mle_cube):
         "&",
         np.round(prob * 100, 2),
         "\\\\",
-        "\hline",
+        r"\hline",
     )
     print("Prob", prob * 100)

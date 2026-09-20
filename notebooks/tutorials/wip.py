@@ -121,7 +121,7 @@ data = {
 }
 
 tutorial_data_path = os.path.join(
-    get_path_repo("cup1d"), "notebooks", "tutorials", "data"
+    get_path_repo("cup1d"), "data", "tutorials", "data"
 )
 os.makedirs(tutorial_data_path, exist_ok=True)
 np.save(os.path.join(tutorial_data_path, "P1D_covs.npy"), data)

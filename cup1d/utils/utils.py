@@ -61,9 +61,9 @@ def split_string(s):
 # Function to generate n discrete colors from any continuous colormap
 def get_discrete_cmap(n, base_cmap="jet"):
     """Returns a colormap with n discrete colors."""
-    cmap = plt.cm.get_cmap(
-        base_cmap, n
-    )  # Sample n colors from the base colormap
+    # ``matplotlib.cm.get_cmap`` was removed in Matplotlib 3.10.  The pyplot
+    # interface remains supported and accepts the requested lookup-table size.
+    cmap = plt.get_cmap(base_cmap, lut=n)
     return ListedColormap(cmap(np.linspace(0, 1, n)))
 
 

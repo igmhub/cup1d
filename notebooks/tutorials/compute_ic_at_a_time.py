@@ -14,213 +14,159 @@
 # ---
 
 # %% [markdown]
-# # Compute IC from fits at a time
+# # Inspect independent-redshift fits
+#
+# Initial conditions (ICs) for an analysis are generated with the YAML-driven
+# script, rather than by this notebook:
+#
+# ```bash
+# python scripts/create_at_a_time_initial_conditions.py \
+#     configs/cm2026/variations/at_a_time_global_QMLE3.yaml
+# ```
+#
+# The script fits every redshift bin, prints the goodness-of-fit summary, and
+# saves the appropriate `mpg_ic_at_a_time.npy` or `nyx_ic_at_a_time.npy` file.
+# This notebook is an interactive companion for inspecting one or a few local
+# fits and their contamination contributions; it does not write IC files.
+
+# %% [markdown]
+# Load the analysis classes and the plotting tools used for the interactive
+# diagnostics below.
 
 # %%
 # %load_ext autoreload
 # %autoreload 2
 
+from pathlib import Path
+
 import numpy as np
-import time, os, sys
 import matplotlib.pyplot as plt
 
-# our own modules
-from cup1d.configuration.args import Args
-from cup1d.inference.analysis import Analysis
+from cup1d import Analysis, Args
 from cup1d.postprocessing.plotter import Plotter
 from cup1d.utils.utils import get_path_repo
 
 
-# %%
-data_label = ["DESIY1_QMLE3"]
-name_variation = None
-p1d_fname = None
-
-
-data_label = ["DESIY1_FFT3_dir"]
-name_variation = None
-p1d_fname = None
-# name_variation = "DLA_TAN"
-# p1d_fname = "/home/jchaves/Proyectos/projects/lya/data/in_DESI_DR1/ting_tan/p1d_fft_y1_measurement_kms_tingdla_nocrossexp_snr3noweights_directmetalsubtraction.fits"
-
-
-emulator_label = "CH24_mpgcen_gpr"
-# emulator_label = "CH24_nyxcen_gpr"
-
-# emu_cov_type = "block"
-# emu_cov_type = "diagonal"
-emu_cov_type = "full"
-# name_variation = "Ma2025"
-name_variation = "no_inflate"
-
-args = Args(
-    data_label=data_label,
-    emulator_label=emulator_label,
-    emu_cov_type=emu_cov_type,
-    p1d_fname=p1d_fname,
-)
-
-args.set_baseline(
-    fit_type="at_a_time_global",
-    fix_cosmo=True,
-    name_variation=name_variation,
-)
-
-pip = Analysis(args, out_folder=None)
+# %% [markdown]
+# Select the P1D estimator and load its local-fit YAML configuration. The
+# QMLE3 and FFT3_dir configurations both keep the background cosmology fixed,
+# use one pivot parameter per fitted component, and do not inflate the
+# statistical covariance errors.
 
 # %%
-key = "DESIY1_FFT3_dir"
+# Choose either the QMLE3 or FFT3 direct-estimator local-fit configuration.
+# Both use one pivot parameter per fitted IGM/contaminant component and do not
+# inflate the statistical covariance.
+data_label = "DESIY1_QMLE3"
+# data_label = "DESIY1_FFT3_dir"
+
+config_directory = Path(get_path_repo("cup1d")) / "configs" / "cm2026" / "variations"
+config_files = {
+    "DESIY1_QMLE3": "at_a_time_global_QMLE3.yaml",
+    "DESIY1_FFT3_dir": "at_a_time_global_FFT3_dir.yaml",
+}
+config_path = config_directory / config_files[data_label]
+
+args = Args.from_yaml(config_path, verbose=False)
+analysis = Analysis(args)
+
+# %% [markdown]
+# Count the available P1D measurements in each redshift bin. These counts are
+# useful for interpreting the local-fit goodness of fit.
+
+# %%
+key = args.data_label[0]
 
 npoints = []
-for ii in range(len(pip.fitter.like.data[key].z)):
-    npoints.append(len(pip.fitter.like.data[key].k_kms[ii]))
+for ii in range(len(analysis.data[key].z)):
+    npoints.append(len(analysis.data[key].k_kms[ii]))
 npoints = np.array(npoints)
 npoints
 
 # %% [markdown]
-# ### Do fits
+# ## Fit selected redshift bins
+#
+# The production script fits every bin. Keep the short range below while
+# interactively testing a single bin, or replace it with `range(len(...))` to
+# inspect every local fit in this notebook.
 
 # %%
 out_mle = []
 out_mle_cube = []
 out_chi2 = []
 out_pnames = []
-# for ii in range(len(pip.fitter.like.data.z)):
+# for ii in range(len(analysis.data[key].z)):
 for ii in range(1):
-    zmask = np.array([pip.fitter.like.data[key].z[ii]])
+    zmask = np.array([analysis.data[key].z[ii]])
 
-    pip = Analysis(args, out_folder=None)
-    
+    analysis = Analysis(args, out_folder=None)
+
     print()
-    
+
     f_space_len = 14
     s_space_len = 5
-    for p in pip.fitter.like.free_params:            
+    for p in analysis.like.free_params:
         print(
-            p.name, (f_space_len-len(p.name)) * " ", "\t", 
-            np.round(p.value, 3), (s_space_len-len(str(np.round(p.value, 3)))) * " ", '\t', 
-            np.round(p.min_value, 3), (s_space_len-len(str(np.round(p.min_value, 3)))) * " ", '\t', 
-            np.round(p.max_value, 3), (s_space_len-len(str(np.round(p.max_value, 3)))) * " ", '\t', 
-            p.Gauss_priors_width
+            p.name,
+            (f_space_len - len(p.name)) * " ",
+            "\t",
+            np.round(p.value, 3),
+            (s_space_len - len(str(np.round(p.value, 3)))) * " ",
+            "\t",
+            np.round(p.min_value, 3),
+            (s_space_len - len(str(np.round(p.min_value, 3)))) * " ",
+            "\t",
+            np.round(p.max_value, 3),
+            (s_space_len - len(str(np.round(p.max_value, 3)))) * " ",
+            "\t",
+            p.Gauss_priors_width,
         )
 
-    
     print()
-    
+
     print(ii, zmask)
-    # p0 = np.array(list(pip.fitter.like.fid["fit_cube"].values()))
-    pip.fitter.run_minimizer(log_func_minimize=pip.fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True)
-    out_pnames.append(pip.fitter.like.free_param_names)
-    out_mle.append(pip.fitter.mle)
-    out_mle_cube.append(pip.fitter.mle_cube)
-    out_chi2.append(pip.fitter.mle_chi2)
+    p0 = analysis.like.sampling_point_from_parameters().copy()
+    analysis.run_minimizer(
+        p0,
+        zmask=zmask,
+        restart=True,
+    )
+    out_pnames.append(analysis.like.free_param_names)
+    out_mle.append(analysis.fitter.mle)
+    out_mle_cube.append(analysis.fitter.mle_cube)
+    out_chi2.append(analysis.fitter.mle_chi2)
+
+# %% [markdown]
+# ## Inspect contamination contributions
+#
+# This diagnostic figure compares the P1D residual after selectively removing
+# contamination terms. It is not part of the IC-generation script. Set
+# `zenodo_filename` only when deliberately exporting the plotted arrays.
 
 # %%
-# pip.fitter.like.theory.model_cont.metal_models["Si_mult"].fid_vals
+# diru = "figs"
+diru = None
+plotter = Plotter(analysis.fitter, save_directory=diru, zmask=zmask)
 
-# %%
-p0 = pip.fitter.mle_cube
-
-# %%
-pip.fitter.like.get_chi2(pip.fitter.mle_cube, zmask=zmask)
-
-# %%
-chi2_z22 = {
-    "full": 29.34193443427515,
-    "no HCD": 50.562410331579215,
-    "no SiII-SiIII": 40.0704405056536,
-    "no SiII-SiII": 58.36565506912524,
-    "no Lya-SiII": 75.86759701563147,
-    "no Lya-SiIII": 661.8034659063873,
-    "no cont": 764.4559241510051,
-}
-for key in chi2_z22:
-    print(key, np.round(chi2_z22[key] - chi2_z22["full"], 1))
-
-# %%
-# diru = 'figs'
-diru=None
-plotter = Plotter(pip.fitter, save_directory=diru, zmask=zmask)
-
-# %%
-pip.fitter.like.data
-
-# %%
-
-plotter.plot_illustrate_contaminants_cum(out_mle_cube[0].copy(), zmask, fontsize=20)
-# %%
-store_data = plotter.plot_illustrate_contaminants_each(out_mle_cube[0].copy(), zmask, fontsize=22, store_data=True)
+store_data = plotter.plot_illustrate_contaminants_each(
+    out_mle_cube[0].copy(),
+    zmask,
+    fontsize=22,
+    store_data=True,
+    zenodo_filename=None,
+)
 # %%
 # store_data_ting = store_data
 store_data_orig = store_data
 
-# %%
-for ii in range(2):
-    if ii == 0:
-        store_data = store_data_ting
-        lab = "Ting"
-        mar = "s"
-    else:
-        store_data = store_data_orig
-        lab = "Corentin"
-        mar = "o"
-
-    plt.errorbar(
-        store_data["x"],
-        store_data["y4_blue"],
-        store_data["yerr4_blue"],
-        ls=":",
-        marker=mar,
-        label="Residual w/o HCD term: " + lab,
-        alpha=0.8,
-    )
-    plt.plot(
-        store_data["x"], store_data["y4_orange"], label="HCD term: " + lab, alpha=0.8
-    )
-
-
-plt.xlabel("k [s/km]")
-plt.ylabel("Residual")
-
-plt.legend()
-
-plt.axhline(ls=":", color="k")
-
-plt.savefig("figs/residual_ting.png")
+# %% [markdown]
+# ## Summarize the local fits
+#
+# This prints a compact LaTeX-ready table of the fitted redshift bins. The
+# script prints the equivalent summary after it has processed all bins.
 
 # %%
-import cup1d, os
-
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_7.npy")
-np.save(fname, store_data)
-
-# %%
-
-# %%
-
-# %%
-fname = os.path.join(
-    os.path.dirname(get_path_repo("cup1d")), "data", "ics", "mpg_ic_at_a_time.npy"
-    # os.path.dirname(get_path_repo("cup1d")), "data", "ics", "nyx_ic_at_a_time.npy"
-)
-dir_out = {
-    "z":pip.fitter.like.data.z,
-    "pnames":out_pnames,
-    "mle_cube":out_mle_cube,
-    "mle":out_mle,
-    "chi2":out_chi2,
-}
-np.save(fname, dir_out)
-
-# %%
-# inflate 5%
 from cup1d.postprocessing.show_results import print_results
-print_results(pip.fitter.like, out_chi2, out_mle_cube)
-
-# %%
-# no inflate
-from cup1d.postprocessing.show_results import print_results
-print_results(pip.fitter.like, out_chi2, out_mle_cube)
+print_results(analysis.like, out_chi2, out_mle_cube)
 
 # %%
