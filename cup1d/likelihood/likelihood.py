@@ -1183,7 +1183,7 @@ class Likelihood(object):
                         label="z=" + str(np.round(z, 2)),
                     )
 
-                    ind = self.data.full_zs == z
+                    ind = data.full_zs == z
                     for kk in range(n_perturb):
                         axs.plot(
                             k_kms,
@@ -1203,12 +1203,12 @@ class Likelihood(object):
                     if glob_full:
                         _ndeg = ndeg - n_param_glob_full
 
-                    prob = chi2_scipy.sf(chi2_all[ii, iz], _ndeg)
+                    prob = chi2_scipy.sf(chi2_all[key][iz], _ndeg)
 
                     if print_chi2:
                         label = (
                             r"$\chi^2=$"
-                            + str(np.round(chi2_all[ii, iz], 2))
+                            + str(np.round(chi2_all[key][iz], 2))
                             + r", $n_\mathrm{deg}$="
                             + str(_ndeg)
                             + ", prob="
@@ -1220,7 +1220,7 @@ class Likelihood(object):
                             r"$z=$"
                             + str(np.round(z, 2))
                             + r", $\chi^2=$"
-                            + str(np.round(chi2_all[ii, iz], 2))
+                            + str(np.round(chi2_all[key][iz], 2))
                             + r", $n_\mathrm{data}$="
                             + str(ndeg)
                         )
@@ -1257,7 +1257,7 @@ class Likelihood(object):
                         label="z=" + str(np.round(z, 2)),
                     )
 
-                    ind = self.data.full_zs == z
+                    ind = data.full_zs == z
                     for kk in range(n_perturb):
                         ax[ii].plot(
                             k_kms,
@@ -1439,18 +1439,22 @@ class Likelihood(object):
         if (zmask is not None) | (plot_realizations == False):
             n_perturb = 0
 
-        # if zmask is None:
-        #     _data_z = self.data.z
-        #     _data_k_kms = self.data.k_kms
-        # else:
-        #     _data_z = []
-        #     _data_k_kms = []
-        #     for iz in range(len(self.data.z)):
-        #         _ = np.argwhere(np.abs(zmask - self.data.z[iz]) < 1e-3)
-        #         if len(_) != 0:
-        #             _data_z.append(self.data.z[iz])
-        #             _data_k_kms.append(self.data.k_kms[iz])
-        #     _data_z = np.array(_data_z)
+        # These arrays determine the panel layout and are also used by the
+        # legacy ``z_at_time`` path. A likelihood normally has one P1D data
+        # set; use its redshift grid rather than the old pre-dictionary
+        # ``self.data.z`` interface.
+        primary_data = next(iter(self.data.values()))
+        if zmask is None:
+            _data_z = primary_data.z
+            _data_k_kms = primary_data.k_kms
+        else:
+            _data_z = []
+            _data_k_kms = []
+            for iz, redshift in enumerate(primary_data.z):
+                if np.any(np.isclose(zmask, redshift, atol=1e-3)):
+                    _data_z.append(redshift)
+                    _data_k_kms.append(primary_data.k_kms[iz])
+            _data_z = np.asarray(_data_z)
 
         # z at time fits or full fit
         if z_at_time is False:
@@ -1683,7 +1687,7 @@ class Likelihood(object):
                         label="z=" + str(np.round(z, 2)),
                     )
 
-                    ind = self.data.full_zs == z
+                    ind = data.full_zs == z
                     for kk in range(n_perturb):
                         axs.plot(
                             k_kms,
@@ -1703,12 +1707,12 @@ class Likelihood(object):
                     if glob_full:
                         _ndeg = ndeg - n_param_glob_full
 
-                    prob = chi2_scipy.sf(chi2_all[ii, iz], _ndeg)
+                    prob = chi2_scipy.sf(chi2_all[key][iz], _ndeg)
 
                     if print_chi2:
                         label = (
                             r"$\chi^2=$"
-                            + str(np.round(chi2_all[ii, iz], 2))
+                            + str(np.round(chi2_all[key][iz], 2))
                             + r", $n_\mathrm{deg}$="
                             + str(_ndeg)
                             + ", prob="
@@ -1720,7 +1724,7 @@ class Likelihood(object):
                             r"$z=$"
                             + str(np.round(z, 2))
                             + r", $\chi^2=$"
-                            + str(np.round(chi2_all[ii, iz], 2))
+                            + str(np.round(chi2_all[key][iz], 2))
                             + r", $n_\mathrm{data}$="
                             + str(ndeg)
                         )
@@ -2750,7 +2754,8 @@ class Likelihood(object):
         #     pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
         #     pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
 
-        zs = np.linspace(self.data.z.min(), self.data.z.max(), 100)
+        primary_data = next(iter(self.data.values()))
+        zs = np.linspace(primary_data.z.min(), primary_data.z.max(), 100)
         p0 = self.sampling_point_from_parameters()
 
         out = {}
@@ -2808,7 +2813,7 @@ class Likelihood(object):
             if zmask is not None:
                 zs2 = zmask
             else:
-                zs2 = self.data.z
+                zs2 = primary_data.z
 
             pars_chain = {}
             pars_chain["z"] = zs
@@ -2878,7 +2883,7 @@ class Likelihood(object):
             if zmask is not None:
                 zs = zmask
             else:
-                zs = self.data.z
+                zs = primary_data.z
             pars_test = {}
             pars_test["z"] = zs
             pars_test["tau_eff"] = self.theory.model_igm.models["F_model"].get_tau_eff(

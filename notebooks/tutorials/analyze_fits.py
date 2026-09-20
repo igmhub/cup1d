@@ -101,12 +101,7 @@ for parameter in best_fit_parameters:
 # explicitly supplied to the plotting method.
 
 # %%
-analysis.like.plot_p1d(
-    mle_cube,
-    residuals=True,
-    plot_panels=True,
-    print_chi2=False,
-)
+analysis.like.plot_p1d(mle_cube, residuals=True, plot_panels=True, print_chi2=False)
 
 
 # %% [markdown]
