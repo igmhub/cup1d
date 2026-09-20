@@ -8,6 +8,7 @@ from scipy.optimize import minimize
 from scipy.linalg import block_diag
 
 from lace.cosmo import camb_cosmo
+from lace.cosmo.thermal_broadening import thermal_broadening_kms
 from cup1d.utils.utils import is_number_string
 from cup1d.utils import rebinning
 
@@ -2912,8 +2913,15 @@ class Likelihood(object):
         # quantities, independently of the selected panel layout.
         gal21, tu24 = others_igm()
 
+        legend_ax = None
+        empty_ax = None
         if plot_type == "all":
-            fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
+            fig, axes = plt.subplots(2, 3, figsize=(9, 6), sharex="col")
+            # Reserve the right column for a readable legend rather than
+            # covering the tau_eff history with it.
+            ax = np.array([axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]])
+            legend_ax = axes[0, 2]
+            empty_ax = axes[1, 2]
             arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
             latex_labs = [
                 r"$\tau_\mathrm{eff}$",
@@ -2944,7 +2952,7 @@ class Likelihood(object):
                 r"$\gamma$",
             ]
 
-        ax = ax.reshape(-1)
+        ax = np.asarray(ax).reshape(-1)
 
         for ii in range(len(arr_labs)):
             # if self.truth is not None:
@@ -3059,7 +3067,39 @@ class Likelihood(object):
                         )
                         out["out_data"]["y" + str(ii) + "_blue_dots"] = yy
 
-            if arr_labs[ii] == "mF":
+            if arr_labs[ii] == "tau_eff":
+                ax[ii].errorbar(
+                    gal21["z"],
+                    gal21["tau_eff"],
+                    yerr=gal21["tau_eff_err"],
+                    fmt="--",
+                    color="C1",
+                    label="Gaikwad+2021",
+                    alpha=0.75,
+                    lw=2,
+                )
+                ax[ii].errorbar(
+                    tu24["z"],
+                    tu24["tau_eff"],
+                    yerr=tu24["tau_eff_err"],
+                    fmt="-.",
+                    color="C2",
+                    label="Turner+2024",
+                    alpha=0.75,
+                    lw=2,
+                )
+            elif arr_labs[ii] == "sigT_kms":
+                ax[ii].errorbar(
+                    gal21["z"],
+                    gal21["sigT_kms"],
+                    yerr=gal21["sigT_kms_err"],
+                    fmt="--",
+                    color="C1",
+                    label="Gaikwad+2021",
+                    alpha=0.75,
+                    lw=2,
+                )
+            elif arr_labs[ii] == "mF":
                 # norm = (1 + gal21["z"]) ** nexp_mF
                 norm = 1
                 ax[ii].errorbar(
@@ -3203,18 +3243,31 @@ class Likelihood(object):
         for ii in range(len(arr_labs)):
             ax[ii].set_ylabel(latex_labs[ii], fontsize=ftsize)
             if ii == 0:
-                if arr_labs[ii] != "mF":
+                if arr_labs[ii] == "tau_eff":
                     ax[ii].set_yscale("log")
-                ax[ii].legend(fontsize=ftsize, loc="lower left", ncol=1)
+                if legend_ax is None:
+                    ax[ii].legend(fontsize=ftsize, loc="lower left", ncol=1)
 
             if (ii == 2) | (ii == len(arr_labs) - 1):
                 ax[ii].set_xlabel(r"$z$", fontsize=ftsize)
 
             ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
             ax[ii].tick_params(axis="both", which="minor", labelsize=ftsize - 2)
-            ax[ii].yaxis.set_major_locator(MaxNLocator(nbins=3, prune=None))
+            # A linear locator is inappropriate for the logarithmic
+            # tau_eff panel, where it replaces Matplotlib's log ticks.
+            if arr_labs[ii] != "tau_eff":
+                ax[ii].yaxis.set_major_locator(MaxNLocator(nbins=3, prune=None))
 
-        if pre_xylims:
+        if legend_ax is not None:
+            handles, labels = ax[0].get_legend_handles_labels()
+            legend_ax.legend(handles, labels, fontsize=ftsize, loc="center")
+            legend_ax.set_axis_off()
+            empty_ax.set_axis_off()
+
+        # These limits were designed for the three-panel mean-flux,
+        # temperature, and gamma figure. Applying them to the four-panel
+        # tau_eff/sigma_T view clips the plotted histories.
+        if pre_xylims and plot_type == "tau_sigT":
             ax[0].set_ylim(0.35, 0.9)
             ax[1].set_ylim(0.0, 3.2)
             ax[2].set_ylim(0.8, 2.2)
@@ -3593,6 +3646,15 @@ def others_igm():
         "gamma": gamma,
         "gamma_err": dgamma,
     }
+    # Derived quantities use the same conventions as the IGM model. Error
+    # propagation is first order: tau_eff = -ln(mean flux), and thermal
+    # broadening is proportional to sqrt(T0).
+    gal21["tau_eff"] = -np.log(gal21["mF"])
+    gal21["tau_eff_err"] = gal21["mF_err"] / gal21["mF"]
+    gal21["sigT_kms"] = thermal_broadening_kms(gal21["T0"] * 1e4)
+    gal21["sigT_kms_err"] = (
+        gal21["sigT_kms"] * gal21["T0_err"] / (2 * gal21["T0"])
+    )
 
     # Turner 2024
     z_tu24 = np.array(
@@ -3678,5 +3740,7 @@ def others_igm():
     )
 
     tu24 = {"z": z_tu24, "mF": mF_tu24, "mF_err": emF_tu24}
+    tu24["tau_eff"] = -np.log(tu24["mF"])
+    tu24["tau_eff_err"] = tu24["mF_err"] / tu24["mF"]
 
     return gal21, tu24
