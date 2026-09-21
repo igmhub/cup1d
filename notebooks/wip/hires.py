@@ -40,7 +40,7 @@ args = Args.from_yaml(config_file, verbose=False)
 analysis = Analysis(args)
 
 # %% [markdown]
-# ## Plot P1D data 
+# ## Plot P1D data
 #
 # Get parameters from a point of the parameter space close to the best fit
 

@@ -1,18 +1,44 @@
 Tutorials
 =========
 
-The primary end-to-end example is
-``notebooks/tutorials/dr1.py``. It constructs the CM2026 baseline,
-builds an :class:`cup1d.inference.Analysis`, evaluates the likelihood, and
-shows post-processing access through the analysis object.
+The primary end-to-end example is ``notebooks/tutorials/dr1.py``. Start here:
+it loads the CM2026 baseline YAML, builds an
+:class:`cup1d.inference.analysis.Analysis`, evaluates the DESI DR1 likelihood,
+and demonstrates fitting and post-processing through the analysis object.
+
+Notebook organization
+---------------------
+
+``notebooks/tutorials``
+   Supported introductory workflows. Alongside the main DR1 tutorial, this
+   directory contains focused forecast, mock, and Cobaya examples.
+
+``notebooks/data/observations`` and ``notebooks/data/mocks``
+   Inspection and comparison of observational P1D measurements and synthetic
+   data products.
+
+``notebooks/likelihood``
+   Likelihood diagnostics, initial-condition generation, compressed-parameter
+   calculations, and inspection of completed fits.
+
+``notebooks/igm`` and ``notebooks/contaminants``
+   Focused plots of IGM histories, metal contamination, HCD models, and other
+   nuisance components.
+
+``notebooks/planck``
+   Planck-chain loading, importance sampling, historical comparisons, and
+   cosmological figures.
+
+``notebooks/figures_CM26``
+   Scripts and paired notebooks used to reproduce CM2026 figures and tables.
+
+``notebooks/wip`` and ``notebooks/old``
+   Work in progress and preserved legacy material. These are not supported as
+   introductory tutorials.
 
 Notebook sources are maintained as Python files. To generate Jupyter notebooks
 after installing ``jupytext``:
 
 .. code-block:: console
 
-   jupytext --to ipynb notebooks/*/*.py
-
-Further examples are grouped by purpose under ``notebooks/tutorials``,
-``notebooks/emulator``, ``notebooks/p1d_measurements``, and
-``notebooks/validation``.
+   jupytext --sync notebooks/tutorials/dr1.py

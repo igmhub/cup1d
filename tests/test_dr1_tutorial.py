@@ -5,7 +5,8 @@ import numpy as np
 from cup1d import Analysis, Args
 
 
-EXPECTED_CHI_SQUARED = np.float64(655.1284792810345)
+# Reference after adopting the LaCE cosmology interface in ``Theory``.
+EXPECTED_CHI_SQUARED = np.float64(655.2820094791965)
 
 
 def test_dr1_baseline_chi_squared(tmp_path):
