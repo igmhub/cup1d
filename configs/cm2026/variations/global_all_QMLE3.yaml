@@ -1,0 +1,48 @@
+# Diagnostic global-all setup. It reads mpg_ic_at_a_time.npy and exposes one
+# free node at every DR1 redshift.
+data_label:
+  - DESIY1_QMLE3
+fix_cosmo: true
+fit_type: global_all
+file_ic: mpg_ic_at_a_time.npy
+out_folder: ./DESIY1_QMLE3/global_all/CH24_mpgcen_gpr
+pre_defined: null
+fid_igm:
+  n_tau_eff: 11
+  n_sigT_kms: 11
+  n_gamma: 11
+  n_kF_kms: 11
+  tau_eff_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  sigT_kms_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  gamma_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  kF_kms_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+fid_cont:
+  f_Lya_SiIII_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  s_Lya_SiIII_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  f_Lya_SiII_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  s_Lya_SiII_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  f_SiIIa_SiIIb_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  s_SiIIa_SiIIb_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  f_SiIIa_SiIII_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  f_SiIIb_SiIII_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  HCD_damp1_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  HCD_damp2_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  HCD_damp3_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  HCD_damp4_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  n_f_Lya_SiIII: 11
+  n_s_Lya_SiIII: 11
+  n_f_Lya_SiII: 11
+  n_s_Lya_SiII: 11
+  n_f_SiIIa_SiIIb: 11
+  n_s_SiIIa_SiIIb: 11
+  n_f_SiIIa_SiIII: 11
+  n_f_SiIIb_SiIII: 11
+  n_HCD_damp1: 11
+  n_HCD_damp2: 11
+  n_HCD_damp3: 11
+  n_HCD_damp4: 11
+fid_syst:
+  R_coeff_znodes: [2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2]
+  n_R_coeff: 11
+cov_factor:
+  val_stat: 1.0

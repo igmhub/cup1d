@@ -28,6 +28,10 @@ dependencies = [
     "matplotlib",
     "emcee",
     "getdist",
+    "mpi4py",
+    "corner",
+    "alphashape",
+    "shapely",
     "astropy",
     "PyYAML",
 ]

@@ -12,6 +12,7 @@ Configuration and analysis
    cup1d.configuration.loader
    cup1d.inference.analysis
    cup1d.inference.fitter
+   cup1d.inference.initial_conditions
 
 Data, emulator, and theory
 --------------------------
@@ -38,6 +39,7 @@ Models and likelihood
    cup1d.models.igm.model_igm
    cup1d.models.contaminants.model_contaminants
    cup1d.models.contaminants.model_systematics
+   cup1d.likelihood.likelihood
    cup1d.likelihood.parameter
    cup1d.likelihood.parameters
    cup1d.likelihood.marginal
@@ -49,5 +51,11 @@ Post-processing and utilities
    :toctree: generated
 
    cup1d.postprocessing.plotter
+   cup1d.postprocessing.emulator_priors
+   cup1d.postprocessing.variation_plotter
+   cup1d.postprocessing.power_ratios
+   cup1d.postprocessing.star_contours
+   cup1d.postprocessing.historical_linear_power
+   cup1d.postprocessing.importance_sampling
    cup1d.postprocessing.chains.planck
    cup1d.utils.rebinning

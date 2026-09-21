@@ -102,4 +102,5 @@ class Forecast_P1D(BaseMockP1D):
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=data_from_obs.full_cov_Pk_kms,
             full_cov_stat_kms=data_from_obs.full_cov_stat_Pk_kms,
+            theory=theory,
         )

@@ -94,7 +94,10 @@ def plot_table_igm(
     )
 
     z, mF, T0, gamma = out["tab_out"]
-    # np.save("more_igm_data.npy", {"z": z, "mF": mF, "T0": T0, "gamma": gamma})
+    # np.save(
+    #     "data/tutorials/data/more_igm_data.npy",
+    #     {"z": z, "mF": mF, "T0": T0, "gamma": gamma},
+    # )
     # print(z)
     # print(mF)
 

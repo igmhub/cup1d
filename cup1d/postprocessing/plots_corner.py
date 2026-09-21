@@ -107,7 +107,6 @@ def plots_chain(
             show_correlation=False,
             show_range=False,
         )
-        return
     except:
         print("Could not plot corr_compressed")
 

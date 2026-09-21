@@ -6,139 +6,167 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.19.5
 #   kernelspec:
-#     display_name: cup1d
+#     display_name: lace
 #     language: python
-#     name: cup1d
+#     name: python3
 # ---
 
 # %% [markdown]
 # # User interface: the compressed likelihood
 #
-# This notebook focuses on the final product, and how we expect most (non-experts) users to use our compressed likelihood. 
+# This notebook illustrates how to use a compressed Ly-alpha likelihood.  It is
+# intended for users who want to compare a cosmological model with a published
+# constraint without re-running the full P1D analysis.
 #
-# By compressed likelihood we mean a likelihood that has already marginalized over nuisance (astro) parameters, and that uses a reduced set of parameters to describe the cosmological model. 
-#
-# The compressed likelihood doesn't know about redshift bins, or band powers, it doesn't know about mean flux, temperature or redshift or reionization.
+# A compressed likelihood has already marginalized over the astrophysical and
+# instrumental nuisance parameters.  It retains only a small set of parameters
+# describing the linear matter power, so it no longer contains redshift bins,
+# band powers, mean-flux parameters, thermal-history parameters, or
+# reionization parameters.
 
 # %% [markdown]
 # Summary:
-#     - Given an input cosmological model, it computes the parameters describing the linear power spectrum (linP).
-#     - Given a set of linP parameters, it calls a precomputed object with the likelihood for these parameters. For this notebook, the precomputed object is just a Gaussian fit to ($\Delta_p^2$,$n_{\rm eff}$), i.e., amplitude and slope of the linaer power at $z=3$ and $k_p= 0.009 s/km$.
+# - Given an input cosmological model, it computes the parameters describing
+#   the linear power spectrum (linP).
+# - Given a set of linP parameters, it evaluates a precomputed likelihood.
+#   Here these are Gaussian approximations in ($\Delta_\star^2$, $n_\star$): the
+#   amplitude and slope of the linear power at $z_\star=3$ and
+#   $k_\star=0.009\,\mathrm{s/km}$.
 
 # %% jupyter={"outputs_hidden": false}
 # %matplotlib inline
-import numpy as np
-import os
 import matplotlib.pyplot as plt
-from cup1d.likelihood import marg_lya_like
-from lace.cosmo import camb_cosmo
-from lace.cosmo import fit_linP
+import numpy as np
+
+from cup1d.likelihood import marginal
+from lace.cosmo import cosmology
 
 # %% [markdown]
 # ## Plot marginalised likelihoods
 #
-# This is the likelihood that has already been marginalized over nuisance parameters, and is of course, experiment specific. At this point it has lost all information about nuisance parameters, or data points. 
-#
-# Here we use Gaussian approximations to some published likelihoods.
+# Each constraint is experiment-specific and has been marginalized over its
+# nuisance parameters.  The functions below provide Gaussian approximations to
+# published constraints; they are useful for quick comparisons, but they do
+# not replace the full likelihood of the corresponding analysis.
 
 # %% [markdown]
-# ### Compare McDonald et al. (2005) vs Chabanier et al. (2019)
+# ### Compare published constraints, including DESI DR1
 #
-# Note that we approximate the likelihood from McDonald as a Gaussian, not a good approximation!
+# McDonald et al. (2005) is only approximately Gaussian.  The DESI DR1
+# Gaussian is defined by $\Delta_\star^2=0.379\pm0.032$,
+# $n_\star=-2.309\pm0.019$, and their correlation $r=-0.1738$, all at the
+# common pivot.
 
 # %%
-# create grid (note j in number of elements, crazy python)
-neff_grid,DL2_grid = np.mgrid[-2.5:-2.1:200j, 0.2:0.7:200j]
-chi2_McDonald2005=marg_lya_like.gaussian_chi2_McDonald2005(neff_grid,DL2_grid)
-chi2_PalanqueDelabrouille2015=marg_lya_like.gaussian_chi2_PalanqueDelabrouille2015(neff_grid,DL2_grid)
-chi2_Chabanier2019=marg_lya_like.gaussian_chi2_Chabanier2019(neff_grid,DL2_grid)
+# Define a common grid and evaluate every compressed likelihood on it.
+z_star = 3.0
+k_star_kms = 0.009
+n_star_grid, delta2_star_grid = np.mgrid[-2.5:-2.1:200j, 0.2:0.7:200j]
+
+likelihoods = {
+    "McDonald 2005": ("tab:green", marginal.gaussian_chi2_McDonald2005),
+    "Palanque-Delabrouille 2015": (
+        "tab:red",
+        marginal.gaussian_chi2_PalanqueDelabrouille2015,
+    ),
+    "Chabanier 2019": ("tab:blue", marginal.gaussian_chi2_Chabanier2019),
+    "DESI DR1": ("tab:purple", marginal.gaussian_chi2_DESI_DR1),
+}
+likelihood_results = {
+    name: (color, likelihood(n_star_grid, delta2_star_grid))
+    for name, (color, likelihood) in likelihoods.items()
+}
 
 # %% jupyter={"outputs_hidden": false}
-thresholds = [2.30,6.17,11.8]
-plt.figure(figsize=[10,8])
-plt.contour(neff_grid,DL2_grid,chi2_McDonald2005,levels=thresholds,colors='green')
-plt.contour(neff_grid,DL2_grid,chi2_PalanqueDelabrouille2015,levels=thresholds,colors='red')
-plt.contour(neff_grid,DL2_grid,chi2_Chabanier2019,levels=thresholds,colors='blue')
-# hack to get legend entry for contours above
-plt.axhline(y=0.8,color='green',label='McDonald 2005')
-plt.axhline(y=0.8,color='red',label='Palanque-Delabrouille 2019')
-plt.axhline(y=0.8,color='blue',label='Chabanier 2019')
-plt.ylim(np.min(DL2_grid),np.max(DL2_grid))
-plt.grid()                 
-plt.legend(loc=2)
-plt.title(r'Linear power constraints at ($z=3$, $k_p=0.009$ s/km)')
-plt.xlabel(r'$n_p$')
-plt.ylabel(r'$\Delta_p^2$')
+# Plot the 68%, 95%, and 99.7% contours.  Each function returns both its
+# metadata and the grid of delta-chi-squared values under the ``chi2`` key.
+thresholds = [2.30, 6.17, 11.8]
+fig, ax = plt.subplots(figsize=(10, 8))
+for name, (color, result) in likelihood_results.items():
+    ax.contour(
+        n_star_grid, delta2_star_grid, result["chi2"], levels=thresholds, colors=color
+    )
+    ax.plot([], [], color=color, label=name)
+ax.set_ylim(delta2_star_grid.min(), delta2_star_grid.max())
+ax.grid()
+ax.legend(loc="upper left")
+ax.set_title(r"Linear-power constraints at ($z_\star=3$, $k_\star=0.009$ s/km)")
+ax.set_xlabel(r"$n_\star$")
+ax.set_ylabel(r"$\Delta_\star^2$")
 
 # %% [markdown]
-# ### Replicate Figure 11 in Palanque-Delabrouille et al. (2015)
+# ### Palanque-Delabrouille et al. (2015) view
 #
+# This zoomed view shows the Gaussian approximation used for that published
+# result.  It is not intended as an exact reproduction of the original figure.
 
 # %% jupyter={"outputs_hidden": false}
-plt.figure(figsize=[8,8])
-plt.contour(DL2_grid,neff_grid,chi2_PalanqueDelabrouille2015,levels=thresholds,colors='green')
-# hack to get legend entry for contours above
-plt.axhline(y=0.8,color='green',label='Palanque-Delabrouille et al. 2015')
-plt.xlim(0.14,0.44)
-plt.ylim(-2.41,-2.29)
-plt.grid()                 
-plt.legend(loc=2)
-plt.title(r'Linear power constraints at ($z=3$, $k_p=0.009$ s/km)')
-plt.xlabel(r'$\Delta_p^2$')
-plt.ylabel(r'$n_p$')
+fig, ax = plt.subplots(figsize=(8, 8))
+result = likelihood_results["Palanque-Delabrouille 2015"][1]
+ax.contour(delta2_star_grid, n_star_grid, result["chi2"], levels=thresholds, colors="tab:red")
+ax.plot([], [], color="tab:red", label="Palanque-Delabrouille et al. 2015")
+ax.set(xlim=(0.14, 0.44), ylim=(-2.41, -2.29))
+ax.grid()
+ax.legend(loc="upper left")
+ax.set_title(r"Linear-power constraints at ($z_\star=3$, $k_\star=0.009$ s/km)")
+ax.set_xlabel(r"$\Delta_\star^2$")
+ax.set_ylabel(r"$n_\star$")
 
 # %% [markdown]
-# ### Replicate Figure 20 in Chabanier et al. (2019)
+# ### Chabanier et al. (2019) view
 #
+# This is the corresponding zoomed view for the Chabanier et al. constraint.
 
 # %% jupyter={"outputs_hidden": false}
-plt.figure(figsize=[10,6])
-plt.contour(DL2_grid,neff_grid,chi2_Chabanier2019,levels=thresholds[:2],colors='blue')
-# hack to get legend entry for contours above
-plt.axhline(y=0.8,color='blue',label='Chabanier et al. 2019')
-plt.xlim(0.24,0.42)
-plt.ylim(-2.36,-2.3)
-plt.grid()                 
-plt.legend(loc=2)
-plt.title(r'Linear power constraints at ($z=3$, $k_p=0.009$ s/km)')
-plt.xlabel(r'$\Delta_p^2$')
-plt.ylabel(r'$n_p$')
+fig, ax = plt.subplots(figsize=(10, 6))
+result = likelihood_results["Chabanier 2019"][1]
+ax.contour(delta2_star_grid, n_star_grid, result["chi2"], levels=thresholds[:2], colors="tab:blue")
+ax.plot([], [], color="tab:blue", label="Chabanier et al. 2019")
+ax.set(xlim=(0.24, 0.42), ylim=(-2.36, -2.3))
+ax.grid()
+ax.legend(loc="upper left")
+ax.set_title(r"Linear-power constraints at ($z_\star=3$, $k_\star=0.009$ s/km)")
+ax.set_xlabel(r"$\Delta_\star^2$")
+ax.set_ylabel(r"$n_\star$")
 
 # %% [markdown]
-# ## Compute predictions from Planck model
+# ## Compute a prediction from a Planck18 cosmology
+#
+# The following cells use LaCE to calculate the same two linear-power
+# parameters for a fiducial Planck18 cosmology, at precisely the pivot used by
+# the compressed likelihoods above.
 
 # %% jupyter={"outputs_hidden": false}
-# setup cosmology, roughly inspired by Planck 2018
-cosmo = camb_cosmo.get_cosmology()
-# print relevant information about the cosmology object
-camb_cosmo.print_info(cosmo)
+# Instantiate the current LaCE Planck18 cosmology interface.
+fiducial_cosmology = cosmology.Cosmology(cosmo_label="Planck18")
 
 # %% [markdown]
-# ### Compute parameters describing the linear power spectrum around $z_\star=3$, $k_p=0.009$ s/km
+# ### Compute linear-power parameters at $z_\star=3$ and $k_\star=0.009$ s/km
 
 # %% jupyter={"outputs_hidden": false}
-z_star=3.0
-kp_kms=0.009
-params=fit_linP.parameterize_cosmology_kms(cosmo=cosmo,camb_results=None,z_star=z_star,kp_kms=kp_kms)
-print('Lya parameters for massless cosmology',params)
+# Ask LaCE directly for the local linear-power parameters at the common pivot.
+planck_star_params = fiducial_cosmology.get_linP_kms_params(z_star, k_star_kms)
+print("Ly-alpha parameters for the Planck18 cosmology", planck_star_params)
 
 # %% jupyter={"outputs_hidden": false}
-plt.figure(figsize=[10,8])
-plt.contour(DL2_grid,neff_grid,chi2_PalanqueDelabrouille2015,levels=thresholds,colors='green')
-plt.contour(DL2_grid,neff_grid,chi2_Chabanier2019,levels=thresholds,colors='blue')
-# hack to get legend entry for contours above
-plt.axhline(y=0.8,color='blue',label='Chabanier 2019')
-plt.axhline(y=0.8,color='green',label='Palanque-Delabrouille 2015')
-# add point from fiducial cosmology
-plt.plot(params['Delta2_star'],params['n_star'],'o',color='red',label='Planck 2018')
-plt.xlim(0.2,0.45)
-plt.ylim(-2.4,-2.28)
-plt.grid()                 
-plt.legend(loc=2)
-plt.title(r'Linear power constraints at ($z=3$, $k_p=0.009$ s/km)')
-plt.xlabel(r'$\Delta_p^2$')
-plt.ylabel(r'$n_p$')
-
-# %%
+# Compare the Planck18 prediction with the two recent compressed constraints.
+fig, ax = plt.subplots(figsize=(10, 8))
+for name in ("Chabanier 2019", "DESI DR1"):
+    color, result = likelihood_results[name]
+    ax.contour(delta2_star_grid, n_star_grid, result["chi2"], levels=thresholds, colors=color)
+    ax.plot([], [], color=color, label=name)
+ax.plot(
+    planck_star_params["Delta2_star"],
+    planck_star_params["n_star"],
+    "o",
+    color="tab:red",
+    label="Planck18",
+)
+ax.set(xlim=(0.2, 0.45), ylim=(-2.4, -2.28))
+ax.grid()
+ax.legend(loc="upper left")
+ax.set_title(r"Linear-power constraints at ($z_\star=3$, $k_\star=0.009$ s/km)")
+ax.set_xlabel(r"$\Delta_\star^2$")
+ax.set_ylabel(r"$n_\star$")

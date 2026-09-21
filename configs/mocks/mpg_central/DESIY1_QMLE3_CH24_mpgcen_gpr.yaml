@@ -1,0 +1,32 @@
+# Synthetic mock based on the MPG central simulation and DESI DR1 covariance.
+data_label:
+  - mpg_central
+# Simulation labels are not yet accepted by Lace's Cosmology class. Use the
+# supported reference cosmology while taking the mock P1D from mpg_central.
+true_cosmo_label: Planck18
+synth_cov_label: DESIY1_QMLE3
+apply_smoothing: true
+fix_cosmo: false
+fit_type: global_opt
+# Start from the model defaults, rather than DR1-derived initial conditions.
+file_ic: null
+add_noise: false
+seed_noise: 0
+# Start contaminant coefficients at their null-model values instead of the
+# DR1-informed values used by the observational baseline.
+fid_cont:
+  f_Lya_SiIII: -10.0
+  s_Lya_SiIII: 2.1
+  f_Lya_SiII: -10.0
+  s_Lya_SiII: 2.1
+  f_SiIIa_SiIIb: -10.0
+  s_SiIIa_SiIIb: 0.1
+  f_SiIIa_SiIII: 0.0
+  f_SiIIb_SiIII: 0.0
+  HCD_damp1: -10.0
+  HCD_damp2: -10.0
+  HCD_damp3: -10.0
+  HCD_damp4: -10.0
+  HCD_const: 0.0
+out_folder: ./mock_mpg_central/global_opt/CH24_mpgcen_gpr
+pre_defined: null

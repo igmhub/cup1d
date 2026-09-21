@@ -1645,8 +1645,20 @@ class Plotter(object):
             plt.show()
 
     def plot_illustrate_contaminants_each(
-        self, values, zmask, fontsize=18, store_data=False
+        self,
+        values,
+        zmask,
+        fontsize=18,
+        store_data=False,
+        zenodo_filename=None,
     ):
+        """Plot residuals after removing individual contamination terms.
+
+        Set ``zenodo_filename`` (for example, ``"fig_7.npy"``) to save the
+        plotted arrays in ``data/zenodo``. Nothing is written by default.
+        """
+
+        collect_data = store_data or zenodo_filename is not None
         _data_z = []
         _data_k_kms = []
         _data_Pk_kms = []
@@ -1803,11 +1815,11 @@ class Plotter(object):
         )
         ax = ax.reshape(-1)
 
-        if store_data:
+        if collect_data:
             out_data = {}
 
         for ii in range(len(emu_p1d)):
-            if store_data:
+            if collect_data:
                 out_data["x"] = _data_k_kms[0]
                 out_data["y" + str(ii) + "_blue"] = _data_Pk_kms[0] / emu_p1d[ii] - 1
                 out_data["yerr" + str(ii) + "_blue"] = _data_ePk_kms[0] / emu_p1d[ii]
@@ -1883,6 +1895,11 @@ class Plotter(object):
             plt.savefig(name + ".png")
         else:
             plt.show()
+
+        if zenodo_filename is not None:
+            zenodo_directory = os.path.join(get_path_repo("cup1d"), "data", "zenodo")
+            os.makedirs(zenodo_directory, exist_ok=True)
+            np.save(os.path.join(zenodo_directory, zenodo_filename), out_data)
 
         if store_data:
             return out_data

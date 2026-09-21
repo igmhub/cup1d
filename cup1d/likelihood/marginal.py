@@ -129,9 +129,11 @@ def gaussian_chi2_Walther2024(neff, DL2, ana_type="priors"):
     return results
 
 
-def gaussian_chi2_ChavesMontero2026(neff, DL2):
-    """Compute Gaussian Delta chi^2 for a particular point(s) (neff,DL2),
-    using the measurement from Chaves-Montero et al. (2026).
+def gaussian_chi2_DESI_DR1(neff, DL2):
+    """Compute the Gaussian DESI DR1 compressed-likelihood chi-squared.
+
+    The likelihood is defined at ``z_star = 3.0`` and
+    ``k_star_kms = 0.009`` using the published amplitude--slope covariance.
     """
     # DL2 = k^3 P(k) / (2 pi^2), at z=3
     DL2_val = 0.379
@@ -152,3 +154,7 @@ def gaussian_chi2_ChavesMontero2026(neff, DL2):
         ),
     }
     return results
+
+
+# Kept while downstream notebooks migrate to the dataset-based name.
+gaussian_chi2_ChavesMontero2026 = gaussian_chi2_DESI_DR1

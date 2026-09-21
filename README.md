@@ -4,9 +4,14 @@
 
 ## Cosmology using P1D - small-scale clustering of the Lyman alpha forest
 
-This repository contains some tools to perform the last steps of a cosmological analysis of the 1D power spectrum (P1D) of the Lyman alpha forest. 
+This repository provides the data, theory, likelihood, inference, and
+post-processing tools used for cosmological analyses of the one-dimensional
+Lyman-alpha forest power spectrum (P1D). It supports observational data,
+synthetic mocks, and forecasts through a common YAML-based interface.
 
-It uses the LaCE emulator (https://github.com/igmhub/LaCE), and some extra tools to run MCMC analyses on cosmological and IGM parameters for a mock P1D measurement.
+It uses the [LaCE emulator](https://github.com/igmhub/LaCE) and supports
+minimization and MCMC analyses of cosmological, IGM, contamination, and
+instrumental-systematic parameters.
 
 If you would like to collaborate, please email Andreu Font-Ribera (afont@ifae.es) or Jonas Chaves-Montero (jchaves@ifae.es).
  
@@ -41,7 +46,7 @@ conda create -n cup1d python=3.12
 
 ```
 git clone https://github.com/igmhub/LaCE.git
-cd LacE
+cd LaCE
 make install
 ``` 
 
@@ -87,10 +92,31 @@ python LaCE/scripts/save_nyx_IGM.py
 ### Notebooks / tutorials
 
 
-- All notebooks in the repository are in .py format. To generate the .ipynb version, run:
+The main entry point is
+[`notebooks/tutorials/dr1.py`](notebooks/tutorials/dr1.py), which runs the
+baseline DESI DR1 analysis from its YAML configuration. The same directory
+also contains compact tutorials for forecasts, mocks, and the Cobaya
+likelihood interface.
+
+The remaining notebooks are organized by purpose:
+
+- `notebooks/data/observations` and `notebooks/data/mocks`: inspect input P1D
+  measurements and synthetic data.
+- `notebooks/likelihood`: likelihood diagnostics, initial-condition fits, and
+  fit inspection.
+- `notebooks/igm` and `notebooks/contaminants`: visualize physical and
+  nuisance-model components.
+- `notebooks/planck`: load Planck chains, perform importance sampling, and
+  reproduce cosmological comparison figures.
+- `notebooks/figures_CM26`: reproduce CM2026 figures and tables.
+- `notebooks/wip` and `notebooks/old`: unfinished and preserved legacy work;
+  these are not part of the supported tutorial path.
+
+Notebook sources are paired with Jupyter files through Jupytext. To synchronize
+a notebook after editing its Python source, run:
 
 ```
-jupytext --to ipynb notebooks/*/*.py
+jupytext --sync notebooks/tutorials/dr1.py
 ```
 
 - If you want to use notebooks via JupyterHub, you'll also need to download `ipykernel`:
@@ -100,15 +126,29 @@ pip install ipykernel
 python -m ipykernel install --user --name cup1d --display-name cup1d
 ```
 
-You can find the main tutorial to run the DESI DR1 analysis in `notebooks/tutorials/dr1_tutorial.py`
+### YAML configurations
 
-You can also plot many P1D measurements stored in the repo, by looking at `notebooks/p1d_measurements`
+CM2026 defaults and sparse variations live under `configs/cm2026`. Dedicated
+configurations for forecasts, mocks, high-resolution combinations, and other
+papers live in their corresponding directories under `configs`.
 
-You can also redo old neutrino mass constraints by importance sampling WMAP and Planck chains, following `notebooks/planck`
+```python
+from cup1d import Analysis, Args
 
-You can also play with the LaCE emulator with the notebooks in `notebooks/emulator`
+args = Args.from_yaml("configs/cm2026/cm2026_base.yaml", verbose=False)
+analysis = Analysis(args)
+```
+
+See the [configuration documentation](https://igmhubcup1d.readthedocs.io/en/latest/configuration.html)
+for layering rules and synthetic-data examples.
 
 
-### Forecasting script
+### Running tests
 
-You can use the script scripts/sam_sim.py to run your own analyses. It is fully parallelized using MPI.
+Install the test dependencies and run the complete suite without specifying
+individual files:
+
+```bash
+python -m pip install -e ".[test]"
+pytest -q
+```

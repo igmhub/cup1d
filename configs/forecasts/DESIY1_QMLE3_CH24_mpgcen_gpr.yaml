@@ -1,0 +1,29 @@
+# Synthetic DESI DR1 forecast generated from the fiducial theory model.
+# The forecast uses the DESIY1_QMLE3 redshift, k, and covariance grids.
+data_label:
+  - forecast_DESIY1_QMLE3
+true_cosmo_label: Planck18
+fix_cosmo: false
+fit_type: global_opt
+# Start from the synthetic fiducial model, not DR1-derived global ICs.
+file_ic: null
+add_noise: false
+seed_noise: 0
+# Start contaminant coefficients at their null-model values instead of the
+# DR1-informed values used by the observational baseline.
+fid_cont:
+  f_Lya_SiIII: -10.0
+  s_Lya_SiIII: 2.1
+  f_Lya_SiII: -10.0
+  s_Lya_SiII: 2.1
+  f_SiIIa_SiIIb: -10.0
+  s_SiIIa_SiIIb: 0.1
+  f_SiIIa_SiIII: 0.0
+  f_SiIIb_SiIII: 0.0
+  HCD_damp1: -10.0
+  HCD_damp2: -10.0
+  HCD_damp3: -10.0
+  HCD_damp4: -10.0
+  HCD_const: 0.0
+out_folder: ./forecast_DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr
+pre_defined: null

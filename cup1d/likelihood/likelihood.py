@@ -8,8 +8,8 @@ from scipy.optimize import minimize
 from scipy.linalg import block_diag
 
 from lace.cosmo import camb_cosmo
+from lace.cosmo.thermal_broadening import thermal_broadening_kms
 from cup1d.utils.utils import is_number_string
-from cup1d.utils.compute_hessian import get_hessian
 from cup1d.utils import rebinning
 
 from cup1d.utils.utils import split_string
@@ -117,7 +117,13 @@ class Likelihood(object):
                     self.set_ic_from_z_at_time(args.file_ic, verbose=True)
             else:
                 if self.rank == 0:
-                    print("No best fit found to set ICs:", args.file_ic)
+                    print(
+                        f"Initial-condition file not found: {args.file_ic}\n"
+                        "Generate at-a-time initial conditions with:\n"
+                        "  python scripts/create_at_a_time_initial_conditions.py "
+                        "configs/cm2026/variations/at_a_time_global_QMLE3.yaml",
+                        flush=True,
+                    )
 
     def set_Gauss_priors(self):
         """
@@ -250,7 +256,7 @@ class Likelihood(object):
                 # also add emulator covariance to stat + syst covariance
 
                 # data k_kms to Mpc
-                dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(data.z[ii])
+                dkms_dMpc = self.theory.fid_cosmo["cosmo"].get_dkms_dMpc(data.z[ii])
                 k_Mpc = data.k_kms[ii] * dkms_dMpc
 
                 # initialize emulator covariance
@@ -337,7 +343,7 @@ class Likelihood(object):
                 else:
                     full_emu_cov = np.zeros_like(cov)
                     for i0 in range(cov.shape[0]):
-                        dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
+                        dkms_dMpc = self.theory.fid_cosmo["cosmo"].get_dkms_dMpc(
                             data.full_zs[i0]
                         )
                         full_k_kms0 = data.full_k_kms[i0] * dkms_dMpc
@@ -358,7 +364,7 @@ class Likelihood(object):
                         )
 
                         for i1 in range(cov.shape[0]):
-                            dkms_dMpc = self.theory.fid_cosmo["cosmo"].dkms_dMpc(
+                            dkms_dMpc = self.theory.fid_cosmo["cosmo"].get_dkms_dMpc(
                                 data.full_zs[i1]
                             )
                             full_k_kms1 = data.full_k_kms[i1] * dkms_dMpc
@@ -508,18 +514,19 @@ class Likelihood(object):
         """Store true cosmology from the simulation used to make mock data"""
 
         # access true cosmology used in mock data
-        if hasattr(self.data, "truth") == False:
+        primary_data = next(iter(self.data.values()))
+        if not hasattr(primary_data, "truth"):
             if self.rank == 0:
                 print("will not store truth, working with real data")
             self.truth = None
             return
 
         self.truth = {}
-        for par in self.data.truth:
-            self.truth[par] = self.data.truth[par]
+        for par in primary_data.truth:
+            self.truth[par] = primary_data.truth[par]
 
         # make sure that we compare the correct zs
-        ztruth = self.data.truth["igm"]["z"]
+        ztruth = primary_data.truth["igm"]["z"]
         zfid = self.theory.model_igm.fid_igm["z"]
         mask_z = np.zeros(len(ztruth), dtype=int) - 1
         for ii in range(len(mask_z)):
@@ -532,13 +539,13 @@ class Likelihood(object):
 
         # equal_IGM for each IGM differently!!!
         equal_IGM = True
-        for key in self.data.truth["igm"]:
+        for key in primary_data.truth["igm"]:
             if key not in self.theory.model_igm.fid_igm:
                 continue
             lenz = self.theory.model_igm.fid_igm[key].shape[0]
             if (
                 np.allclose(
-                    np.array(self.data.truth["igm"][key])[mask_z],
+                    np.array(primary_data.truth["igm"][key])[mask_z],
                     self.theory.model_igm.fid_igm[key],
                 )
                 == False
@@ -594,7 +601,7 @@ class Likelihood(object):
 
         self.fid = {}
 
-        sim_cosmo = self.theory.fid_cosmo["cosmo"].cosmo
+        sim_cosmo = self.theory.fid_cosmo["cosmo"].CAMBparams
 
         self.fid["cosmo"] = {}
         self.fid["cosmo"]["ombh2"] = sim_cosmo.ombh2
@@ -606,7 +613,7 @@ class Likelihood(object):
         self.fid["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
 
         blob_params = ["Delta2_star", "n_star", "alpha_star"]
-        blob = self.theory.fid_cosmo["cosmo"].get_linP_params()
+        blob = self.theory.fid_cosmo["linP_params"]
 
         self.fid["igm"] = self.theory.model_igm.fid_igm
         self.fid["fit"] = {}
@@ -686,28 +693,6 @@ class Likelihood(object):
             return chi2_total, chi2_eachz
         else:
             return chi2_total
-
-    def get_error(self, p0):
-        # get hessian to compute errors
-        hess = get_hessian(self.minus_log_prob, p0)
-        ihess = np.linalg.inv(hess)
-
-        for par in self.free_params:
-            if par.name == "As":
-                scale_As = par.max_value - par.min_value
-            elif par.name == "ns":
-                scale_ns = par.max_value - par.min_value
-
-        scaled_cov = np.zeros((2, 2))
-        scaled_cov[0, 0] = ihess[0, 0] * scale_As**2
-        scaled_cov[1, 1] = ihess[1, 1] * scale_ns**2
-        scaled_cov[1, 0] = ihess[1, 0] * scale_As * scale_ns
-        scaled_cov[0, 1] = ihess[0, 1] * scale_As * scale_ns
-
-        like_params = self.parameters_from_sampling_point(p0)
-        err = self.theory.err_star(scaled_cov, like_params)
-
-        return {"err_Delta2star": err[0], "err_nstar": err[1]}
 
     def get_log_like(
         self,
@@ -967,7 +952,7 @@ class Likelihood(object):
             #     "k_kms": _data_k_kms,
             #     "p1d_model": emu_p1d,
             # }
-            # np.save("test_model.npy", dict_save)
+            # np.save("data/tutorials/data/test_model.npy", dict_save)
 
             if len(emu_p1d) == 1:
                 emu_p1d = emu_p1d[0]
@@ -1206,7 +1191,7 @@ class Likelihood(object):
                         label="z=" + str(np.round(z, 2)),
                     )
 
-                    ind = self.data.full_zs == z
+                    ind = data.full_zs == z
                     for kk in range(n_perturb):
                         axs.plot(
                             k_kms,
@@ -1226,12 +1211,12 @@ class Likelihood(object):
                     if glob_full:
                         _ndeg = ndeg - n_param_glob_full
 
-                    prob = chi2_scipy.sf(chi2_all[ii, iz], _ndeg)
+                    prob = chi2_scipy.sf(chi2_all[key][iz], _ndeg)
 
                     if print_chi2:
                         label = (
                             r"$\chi^2=$"
-                            + str(np.round(chi2_all[ii, iz], 2))
+                            + str(np.round(chi2_all[key][iz], 2))
                             + r", $n_\mathrm{deg}$="
                             + str(_ndeg)
                             + ", prob="
@@ -1243,7 +1228,7 @@ class Likelihood(object):
                             r"$z=$"
                             + str(np.round(z, 2))
                             + r", $\chi^2=$"
-                            + str(np.round(chi2_all[ii, iz], 2))
+                            + str(np.round(chi2_all[key][iz], 2))
                             + r", $n_\mathrm{data}$="
                             + str(ndeg)
                         )
@@ -1280,7 +1265,7 @@ class Likelihood(object):
                         label="z=" + str(np.round(z, 2)),
                     )
 
-                    ind = self.data.full_zs == z
+                    ind = data.full_zs == z
                     for kk in range(n_perturb):
                         ax[ii].plot(
                             k_kms,
@@ -1462,18 +1447,22 @@ class Likelihood(object):
         if (zmask is not None) | (plot_realizations == False):
             n_perturb = 0
 
-        # if zmask is None:
-        #     _data_z = self.data.z
-        #     _data_k_kms = self.data.k_kms
-        # else:
-        #     _data_z = []
-        #     _data_k_kms = []
-        #     for iz in range(len(self.data.z)):
-        #         _ = np.argwhere(np.abs(zmask - self.data.z[iz]) < 1e-3)
-        #         if len(_) != 0:
-        #             _data_z.append(self.data.z[iz])
-        #             _data_k_kms.append(self.data.k_kms[iz])
-        #     _data_z = np.array(_data_z)
+        # These arrays determine the panel layout and are also used by the
+        # legacy ``z_at_time`` path. A likelihood normally has one P1D data
+        # set; use its redshift grid rather than the old pre-dictionary
+        # ``self.data.z`` interface.
+        primary_data = next(iter(self.data.values()))
+        if zmask is None:
+            _data_z = primary_data.z
+            _data_k_kms = primary_data.k_kms
+        else:
+            _data_z = []
+            _data_k_kms = []
+            for iz, redshift in enumerate(primary_data.z):
+                if np.any(np.isclose(zmask, redshift, atol=1e-3)):
+                    _data_z.append(redshift)
+                    _data_k_kms.append(primary_data.k_kms[iz])
+            _data_z = np.asarray(_data_z)
 
         # z at time fits or full fit
         if z_at_time is False:
@@ -1706,7 +1695,7 @@ class Likelihood(object):
                         label="z=" + str(np.round(z, 2)),
                     )
 
-                    ind = self.data.full_zs == z
+                    ind = data.full_zs == z
                     for kk in range(n_perturb):
                         axs.plot(
                             k_kms,
@@ -1726,12 +1715,12 @@ class Likelihood(object):
                     if glob_full:
                         _ndeg = ndeg - n_param_glob_full
 
-                    prob = chi2_scipy.sf(chi2_all[ii, iz], _ndeg)
+                    prob = chi2_scipy.sf(chi2_all[key][iz], _ndeg)
 
                     if print_chi2:
                         label = (
                             r"$\chi^2=$"
-                            + str(np.round(chi2_all[ii, iz], 2))
+                            + str(np.round(chi2_all[key][iz], 2))
                             + r", $n_\mathrm{deg}$="
                             + str(_ndeg)
                             + ", prob="
@@ -1743,7 +1732,7 @@ class Likelihood(object):
                             r"$z=$"
                             + str(np.round(z, 2))
                             + r", $\chi^2=$"
-                            + str(np.round(chi2_all[ii, iz], 2))
+                            + str(np.round(chi2_all[key][iz], 2))
                             + r", $n_\mathrm{data}$="
                             + str(ndeg)
                         )
@@ -2761,8 +2750,10 @@ class Likelihood(object):
         plot_more_igm=False,
         variation_label="baseline",
         store_data=False,
+        plot_external_data=True,
+        plot_truth=False,
     ):
-        """Plot IGM histories"""
+        """Plot IGM histories and optional external measurements or truth."""
 
         # true IGM parameters
         # if self.truth is not None:
@@ -2773,7 +2764,8 @@ class Likelihood(object):
         #     pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
         #     pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
 
-        zs = np.linspace(self.data.z.min(), self.data.z.max(), 100)
+        primary_data = next(iter(self.data.values()))
+        zs = np.linspace(primary_data.z.min(), primary_data.z.max(), 100)
         p0 = self.sampling_point_from_parameters()
 
         out = {}
@@ -2831,7 +2823,7 @@ class Likelihood(object):
             if zmask is not None:
                 zs2 = zmask
             else:
-                zs2 = self.data.z
+                zs2 = primary_data.z
 
             pars_chain = {}
             pars_chain["z"] = zs
@@ -2901,7 +2893,7 @@ class Likelihood(object):
             if zmask is not None:
                 zs = zmask
             else:
-                zs = self.data.z
+                zs = primary_data.z
             pars_test = {}
             pars_test["z"] = zs
             pars_test["tau_eff"] = self.theory.model_igm.models["F_model"].get_tau_eff(
@@ -2926,8 +2918,20 @@ class Likelihood(object):
                 zs, like_params=free_params
             )
 
+        # External IGM measurements are optional so synthetic-data plots can
+        # show only the fit and its known truth.
+        if plot_external_data:
+            gal21, tu24 = others_igm()
+
+        legend_ax = None
+        empty_ax = None
         if plot_type == "all":
-            fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
+            fig, axes = plt.subplots(2, 3, figsize=(9, 6), sharex="col")
+            # Reserve the right column for a readable legend rather than
+            # covering the tau_eff history with it.
+            ax = np.array([axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]])
+            legend_ax = axes[0, 2]
+            empty_ax = axes[1, 2]
             arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
             latex_labs = [
                 r"$\tau_\mathrm{eff}$",
@@ -2957,20 +2961,23 @@ class Likelihood(object):
                 r"$T_0[K]/10^4$",
                 r"$\gamma$",
             ]
-            gal21, tu24 = others_igm()
 
-        ax = ax.reshape(-1)
+        ax = np.asarray(ax).reshape(-1)
 
         for ii in range(len(arr_labs)):
-            # if self.truth is not None:
-            #     _ = pars_true[arr_labs[ii]] != 0
-            #     ax[ii].plot(
-            #         pars_true["z"][_],
-            #         pars_true[arr_labs[ii]][_],
-            #         "C0:o",
-            #         alpha=0.75,
-            #         label="true",
-            #     )
+            if plot_truth and self.truth is not None:
+                truth_igm = self.truth["igm"]
+                if arr_labs[ii] in truth_igm:
+                    truth_values = np.asarray(truth_igm[arr_labs[ii]])
+                    truth_z = np.asarray(truth_igm["z"])
+                    mask = truth_values != 0
+                    ax[ii].plot(
+                        truth_z[mask],
+                        truth_values[mask],
+                        "C3:o",
+                        alpha=0.8,
+                        label="Truth",
+                    )
 
             if cloud:
                 for jj, sim_label in enumerate(self.theory.emu_igm_all):
@@ -3074,7 +3081,39 @@ class Likelihood(object):
                         )
                         out["out_data"]["y" + str(ii) + "_blue_dots"] = yy
 
-            if arr_labs[ii] == "mF":
+            if plot_external_data and arr_labs[ii] == "tau_eff":
+                ax[ii].errorbar(
+                    gal21["z"],
+                    gal21["tau_eff"],
+                    yerr=gal21["tau_eff_err"],
+                    fmt="--",
+                    color="C1",
+                    label="Gaikwad+2021",
+                    alpha=0.75,
+                    lw=2,
+                )
+                ax[ii].errorbar(
+                    tu24["z"],
+                    tu24["tau_eff"],
+                    yerr=tu24["tau_eff_err"],
+                    fmt="-.",
+                    color="C2",
+                    label="Turner+2024",
+                    alpha=0.75,
+                    lw=2,
+                )
+            elif plot_external_data and arr_labs[ii] == "sigT_kms":
+                ax[ii].errorbar(
+                    gal21["z"],
+                    gal21["sigT_kms"],
+                    yerr=gal21["sigT_kms_err"],
+                    fmt="--",
+                    color="C1",
+                    label="Gaikwad+2021",
+                    alpha=0.75,
+                    lw=2,
+                )
+            elif plot_external_data and arr_labs[ii] == "mF":
                 # norm = (1 + gal21["z"]) ** nexp_mF
                 norm = 1
                 ax[ii].errorbar(
@@ -3109,7 +3148,7 @@ class Likelihood(object):
                     out["out_data"]["x" + str(ii) + "_tur24"] = tu24["z"]
                     out["out_data"]["y" + str(ii) + "_tur24"] = norm * tu24["mF"]
                     out["out_data"]["yerr" + str(ii) + "_tur24"] = norm * tu24["mF_err"]
-            elif arr_labs[ii] == "T0":
+            elif plot_external_data and arr_labs[ii] == "T0":
                 ax[ii].errorbar(
                     gal21["z"],
                     gal21["T0"],
@@ -3126,7 +3165,7 @@ class Likelihood(object):
                     out["out_data"]["yerr" + str(ii) + "_gal21"] = (
                         norm * gal21["T0_err"]
                     )
-            elif arr_labs[ii] == "gamma":
+            elif plot_external_data and arr_labs[ii] == "gamma":
                 ax[ii].errorbar(
                     gal21["z"],
                     gal21["gamma"],
@@ -3146,7 +3185,14 @@ class Likelihood(object):
                     )
 
         if plot_more_igm:
-            more_igm = np.load("more_igm_data.npy", allow_pickle=True).item()
+            more_igm_path = os.path.join(
+                get_path_repo("cup1d"),
+                "data",
+                "tutorials",
+                "data",
+                "more_igm_data.npy",
+            )
+            more_igm = np.load(more_igm_path, allow_pickle=True).item()
             ax[0].plot(
                 more_igm["z"],
                 more_igm["mF"][1],
@@ -3211,18 +3257,31 @@ class Likelihood(object):
         for ii in range(len(arr_labs)):
             ax[ii].set_ylabel(latex_labs[ii], fontsize=ftsize)
             if ii == 0:
-                if arr_labs[ii] != "mF":
+                if arr_labs[ii] == "tau_eff":
                     ax[ii].set_yscale("log")
-                ax[ii].legend(fontsize=ftsize, loc="lower left", ncol=1)
+                if legend_ax is None:
+                    ax[ii].legend(fontsize=ftsize, loc="lower left", ncol=1)
 
             if (ii == 2) | (ii == len(arr_labs) - 1):
                 ax[ii].set_xlabel(r"$z$", fontsize=ftsize)
 
             ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
             ax[ii].tick_params(axis="both", which="minor", labelsize=ftsize - 2)
-            ax[ii].yaxis.set_major_locator(MaxNLocator(nbins=3, prune=None))
+            # A linear locator is inappropriate for the logarithmic
+            # tau_eff panel, where it replaces Matplotlib's log ticks.
+            if arr_labs[ii] != "tau_eff":
+                ax[ii].yaxis.set_major_locator(MaxNLocator(nbins=3, prune=None))
 
-        if pre_xylims:
+        if legend_ax is not None:
+            handles, labels = ax[0].get_legend_handles_labels()
+            legend_ax.legend(handles, labels, fontsize=ftsize, loc="center")
+            legend_ax.set_axis_off()
+            empty_ax.set_axis_off()
+
+        # These limits were designed for the three-panel mean-flux,
+        # temperature, and gamma figure. Applying them to the four-panel
+        # tau_eff/sigma_T view clips the plotted histories.
+        if pre_xylims and plot_type == "tau_sigT":
             ax[0].set_ylim(0.35, 0.9)
             ax[1].set_ylim(0.0, 3.2)
             ax[2].set_ylim(0.8, 2.2)
@@ -3601,6 +3660,15 @@ def others_igm():
         "gamma": gamma,
         "gamma_err": dgamma,
     }
+    # Derived quantities use the same conventions as the IGM model. Error
+    # propagation is first order: tau_eff = -ln(mean flux), and thermal
+    # broadening is proportional to sqrt(T0).
+    gal21["tau_eff"] = -np.log(gal21["mF"])
+    gal21["tau_eff_err"] = gal21["mF_err"] / gal21["mF"]
+    gal21["sigT_kms"] = thermal_broadening_kms(gal21["T0"] * 1e4)
+    gal21["sigT_kms_err"] = (
+        gal21["sigT_kms"] * gal21["T0_err"] / (2 * gal21["T0"])
+    )
 
     # Turner 2024
     z_tu24 = np.array(
@@ -3686,5 +3754,7 @@ def others_igm():
     )
 
     tu24 = {"z": z_tu24, "mF": mF_tu24, "mF_err": emF_tu24}
+    tu24["tau_eff"] = -np.log(tu24["mF"])
+    tu24["tau_eff_err"] = tu24["mF_err"] / tu24["mF"]
 
     return gal21, tu24
