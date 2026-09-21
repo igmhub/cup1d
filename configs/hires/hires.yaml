@@ -1,0 +1,11 @@
+# Combine the DESI DR1 baseline P1D with the Karacayli et al. (2022)
+# high-resolution measurement. All other settings use CM2026 defaults.
+data_label:
+  - DESIY1_QMLE3
+  - Karacayli2022
+# Match the historical ``no_res`` setup: do not vary spectrograph-resolution
+# corrections, leaving them at their fiducial (zero-correction) values.
+fid_syst:
+  n_R_coeff: 0
+  R_coeff_ztype: pivot
+  R_coeff_fixed: true
