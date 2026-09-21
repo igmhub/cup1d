@@ -148,11 +148,37 @@ class Args:
             values = getattr(self, section)
             for name in names:
                 n_nodes = values.get(f"n_{name}", 0)
+                if name in values:
+                    self._preserve_configured_fiducial_values(
+                        values, name, n_nodes
+                    )
+                    continue
                 reference = self._FIDUCIAL_VALUES[section][name] if n_nodes > 0 else self._NULL_VALUES[name]
                 if values.get(f"{name}_ztype") == "pivot":
                     values[name] = [0, reference]
                 else:
                     values[name] = np.full(len(values.get(f"{name}_znodes", [])), reference)
+
+    @staticmethod
+    def _preserve_configured_fiducial_values(values, name, n_nodes):
+        """Normalize an explicitly configured physical model reference value."""
+
+        configured = np.asarray(values[name])
+        if values.get(f"{name}_ztype") == "pivot":
+            if configured.size != 1:
+                raise ValueError(
+                    f"Pivot parameter {name} requires one configured value"
+                )
+            values[name] = [0, configured.item()]
+        elif configured.size == 1:
+            values[name] = np.full(n_nodes, configured.item())
+        elif configured.size == n_nodes:
+            values[name] = configured
+        else:
+            raise ValueError(
+                f"Configured {name} has {configured.size} values for "
+                f"{n_nodes} redshift nodes"
+            )
 
     def _set_contaminant_priors(self):
         """Set built-in flat priors and ensure they contain reference values."""

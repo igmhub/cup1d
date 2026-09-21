@@ -2,7 +2,7 @@ Tutorials
 =========
 
 The primary end-to-end example is
-``notebooks/tutorials/dr1_tutorial.py``. It constructs the CM2026 baseline,
+``notebooks/tutorials/dr1.py``. It constructs the CM2026 baseline,
 builds an :class:`cup1d.inference.Analysis`, evaluates the likelihood, and
 shows post-processing access through the analysis object.
 

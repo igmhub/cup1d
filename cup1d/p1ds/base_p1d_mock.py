@@ -156,7 +156,18 @@ class BaseMockP1D(BaseDataP1D):
         for par in cosmo_params:
             self.truth["linP"][par] = theory.fid_cosmo["linP_params"][par]
 
-        self.truth["igm"] = theory.model_igm.fid_igm
+        truth_z = np.asarray(zs)
+        self.truth["igm"] = {
+            "z": truth_z,
+            "tau_eff": theory.model_igm.models["F_model"].get_tau_eff(
+                truth_z
+            ),
+            "gamma": theory.model_igm.models["T_model"].get_gamma(truth_z),
+            "sigT_kms": theory.model_igm.models["T_model"].get_sigT_kms(
+                truth_z
+            ),
+            "kF_kms": theory.model_igm.models["P_model"].get_kF_kms(truth_z),
+        }
         # self.truth["cont"] = theory.model_cont.get_dict_cont()
 
     # def _get_cosmo(self, nyx_version="Jul2024"):

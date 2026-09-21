@@ -514,18 +514,19 @@ class Likelihood(object):
         """Store true cosmology from the simulation used to make mock data"""
 
         # access true cosmology used in mock data
-        if hasattr(self.data, "truth") == False:
+        primary_data = next(iter(self.data.values()))
+        if not hasattr(primary_data, "truth"):
             if self.rank == 0:
                 print("will not store truth, working with real data")
             self.truth = None
             return
 
         self.truth = {}
-        for par in self.data.truth:
-            self.truth[par] = self.data.truth[par]
+        for par in primary_data.truth:
+            self.truth[par] = primary_data.truth[par]
 
         # make sure that we compare the correct zs
-        ztruth = self.data.truth["igm"]["z"]
+        ztruth = primary_data.truth["igm"]["z"]
         zfid = self.theory.model_igm.fid_igm["z"]
         mask_z = np.zeros(len(ztruth), dtype=int) - 1
         for ii in range(len(mask_z)):
@@ -538,13 +539,13 @@ class Likelihood(object):
 
         # equal_IGM for each IGM differently!!!
         equal_IGM = True
-        for key in self.data.truth["igm"]:
+        for key in primary_data.truth["igm"]:
             if key not in self.theory.model_igm.fid_igm:
                 continue
             lenz = self.theory.model_igm.fid_igm[key].shape[0]
             if (
                 np.allclose(
-                    np.array(self.data.truth["igm"][key])[mask_z],
+                    np.array(primary_data.truth["igm"][key])[mask_z],
                     self.theory.model_igm.fid_igm[key],
                 )
                 == False
@@ -2749,8 +2750,10 @@ class Likelihood(object):
         plot_more_igm=False,
         variation_label="baseline",
         store_data=False,
+        plot_external_data=True,
+        plot_truth=False,
     ):
-        """Plot IGM histories"""
+        """Plot IGM histories and optional external measurements or truth."""
 
         # true IGM parameters
         # if self.truth is not None:
@@ -2915,9 +2918,10 @@ class Likelihood(object):
                 zs, like_params=free_params
             )
 
-        # External IGM measurements are overlaid below for the relevant
-        # quantities, independently of the selected panel layout.
-        gal21, tu24 = others_igm()
+        # External IGM measurements are optional so synthetic-data plots can
+        # show only the fit and its known truth.
+        if plot_external_data:
+            gal21, tu24 = others_igm()
 
         legend_ax = None
         empty_ax = None
@@ -2961,15 +2965,19 @@ class Likelihood(object):
         ax = np.asarray(ax).reshape(-1)
 
         for ii in range(len(arr_labs)):
-            # if self.truth is not None:
-            #     _ = pars_true[arr_labs[ii]] != 0
-            #     ax[ii].plot(
-            #         pars_true["z"][_],
-            #         pars_true[arr_labs[ii]][_],
-            #         "C0:o",
-            #         alpha=0.75,
-            #         label="true",
-            #     )
+            if plot_truth and self.truth is not None:
+                truth_igm = self.truth["igm"]
+                if arr_labs[ii] in truth_igm:
+                    truth_values = np.asarray(truth_igm[arr_labs[ii]])
+                    truth_z = np.asarray(truth_igm["z"])
+                    mask = truth_values != 0
+                    ax[ii].plot(
+                        truth_z[mask],
+                        truth_values[mask],
+                        "C3:o",
+                        alpha=0.8,
+                        label="Truth",
+                    )
 
             if cloud:
                 for jj, sim_label in enumerate(self.theory.emu_igm_all):
@@ -3073,7 +3081,7 @@ class Likelihood(object):
                         )
                         out["out_data"]["y" + str(ii) + "_blue_dots"] = yy
 
-            if arr_labs[ii] == "tau_eff":
+            if plot_external_data and arr_labs[ii] == "tau_eff":
                 ax[ii].errorbar(
                     gal21["z"],
                     gal21["tau_eff"],
@@ -3094,7 +3102,7 @@ class Likelihood(object):
                     alpha=0.75,
                     lw=2,
                 )
-            elif arr_labs[ii] == "sigT_kms":
+            elif plot_external_data and arr_labs[ii] == "sigT_kms":
                 ax[ii].errorbar(
                     gal21["z"],
                     gal21["sigT_kms"],
@@ -3105,7 +3113,7 @@ class Likelihood(object):
                     alpha=0.75,
                     lw=2,
                 )
-            elif arr_labs[ii] == "mF":
+            elif plot_external_data and arr_labs[ii] == "mF":
                 # norm = (1 + gal21["z"]) ** nexp_mF
                 norm = 1
                 ax[ii].errorbar(
@@ -3140,7 +3148,7 @@ class Likelihood(object):
                     out["out_data"]["x" + str(ii) + "_tur24"] = tu24["z"]
                     out["out_data"]["y" + str(ii) + "_tur24"] = norm * tu24["mF"]
                     out["out_data"]["yerr" + str(ii) + "_tur24"] = norm * tu24["mF_err"]
-            elif arr_labs[ii] == "T0":
+            elif plot_external_data and arr_labs[ii] == "T0":
                 ax[ii].errorbar(
                     gal21["z"],
                     gal21["T0"],
@@ -3157,7 +3165,7 @@ class Likelihood(object):
                     out["out_data"]["yerr" + str(ii) + "_gal21"] = (
                         norm * gal21["T0_err"]
                     )
-            elif arr_labs[ii] == "gamma":
+            elif plot_external_data and arr_labs[ii] == "gamma":
                 ax[ii].errorbar(
                     gal21["z"],
                     gal21["gamma"],

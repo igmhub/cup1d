@@ -100,7 +100,7 @@ pip install ipykernel
 python -m ipykernel install --user --name cup1d --display-name cup1d
 ```
 
-You can find the main tutorial to run the DESI DR1 analysis in `notebooks/tutorials/dr1_tutorial.py`
+You can find the main tutorial to run the DESI DR1 analysis in `notebooks/tutorials/dr1.py`
 
 You can also plot many P1D measurements stored in the repo, by looking at `notebooks/p1d_measurements`
 
