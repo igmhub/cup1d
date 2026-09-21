@@ -1,0 +1,10 @@
+# Reduced global fit used to generate mpg_ic_global_red.npy.
+# ``file_ic: null`` replaces the legacy ``ic_global=False``: do not read the
+# global IC file being regenerated.
+data_label:
+  - DESIY1_QMLE3
+fix_cosmo: true
+fit_type: global_opt
+file_ic: null
+out_folder: ./DESIY1_QMLE3/global_opt_ic/CH24_mpgcen_gpr
+pre_defined: null

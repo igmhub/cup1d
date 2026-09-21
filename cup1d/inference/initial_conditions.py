@@ -20,6 +20,15 @@ def get_at_a_time_ic_path(emulator_label):
     )
 
 
+def get_global_ic_path(emulator_label):
+    """Return the standard global-fit initial-condition path."""
+
+    emulator_family = "nyx" if "nyx" in emulator_label.lower() else "mpg"
+    return Path(get_path_repo("cup1d")) / "data" / "ics" / (
+        f"{emulator_family}_ic_global_red.npy"
+    )
+
+
 def generate_at_a_time_initial_conditions(
     config_path,
     output_path=None,
@@ -97,4 +106,57 @@ def generate_at_a_time_initial_conditions(
     if verbose:
         print(f"Saved initial conditions to {output_path}", flush=True)
         print_results(final_analysis.like, output["chi2"], output["mle_cube"])
+    return output_path
+
+
+def generate_global_initial_conditions(
+    config_path,
+    output_path=None,
+    overwrite=False,
+    verbose=True,
+):
+    """Run the reduced global fit and save its initial conditions.
+
+    The associated YAML must set ``file_ic: null``. This is the YAML-native
+    counterpart of the legacy ``ic_global=False`` option: a global IC file is
+    being created, so it must not first be used as input.
+    """
+
+    args = Args.from_yaml(config_path, verbose=False)
+    if args.fit_type != "global_opt":
+        raise ValueError(
+            "Global IC generation requires fit_type: global_opt"
+        )
+    if args.file_ic is not None:
+        raise ValueError(
+            "Global IC generation requires file_ic: null so an existing "
+            "global IC is not used as input"
+        )
+
+    output_path = (
+        get_global_ic_path(args.emulator_label)
+        if output_path is None
+        else Path(output_path)
+    )
+    output_path = output_path.expanduser()
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    if rank == 0 and output_path.exists() and not overwrite:
+        raise FileExistsError(
+            f"{output_path} already exists. Pass overwrite=True to replace it."
+        )
+
+    analysis = Analysis(args)
+    initial_point = analysis.like.sampling_point_from_parameters().copy()
+    if rank == 0 and verbose:
+        print("Running reduced global fit to generate global ICs", flush=True)
+    analysis.run_minimizer(initial_point, restart=True)
+
+    if rank != 0:
+        return None
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    analysis.save_global_ic(output_path)
+    if verbose:
+        print(f"Saved global initial conditions to {output_path}", flush=True)
+        print(f"chi2 = {analysis.fitter.mle_chi2:.3f}", flush=True)
     return output_path
