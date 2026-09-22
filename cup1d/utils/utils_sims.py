@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from lace.configuration import get_nyx_path
 from cup1d.utils.utils import is_number_string
 from cup1d.utils.utils import get_path_repo
 
@@ -66,10 +67,11 @@ def get_training_hc(
             repo, "data", "sim_suites", "Australia20", "IGM_histories.npy"
         )
     elif sim_suite == "nyx":
+        nyx_path = get_nyx_path()
         cosmo_fname = os.path.join(
-            os.environ["NYX_PATH"], "nyx_emu_cosmo_" + nyx_version + ".npy"
+            nyx_path, "nyx_emu_cosmo_" + nyx_version + ".npy"
         )
-        igm_fname = os.path.join(os.environ["NYX_PATH"], "IGM_histories.npy")
+        igm_fname = os.path.join(nyx_path, "IGM_histories.npy")
     else:
         raise ValueError(f"sim_suite {sim_suite} not recognized")
 

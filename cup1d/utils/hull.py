@@ -2,6 +2,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
+from lace.configuration import get_nyx_path
 
 from cup1d.utils.utils import get_path_repo
 
@@ -206,7 +207,7 @@ class Hull(object):
 
     def save_hull(self, suite, mpg_version="Cabayol23", nyx_version="Jul2024"):
         if suite == "nyx":
-            folder = os.environ["NYX_PATH"]
+            folder = get_nyx_path()
             fname = os.path.join(folder, "hull_Nyx23_" + nyx_version + ".npy")
         elif suite == "mpg":
             folder = os.path.join(get_path_repo("cup1d"), "data", "hull")
@@ -216,7 +217,7 @@ class Hull(object):
 
     def load_hull(self, suite, mpg_version="Cabayol23", nyx_version="Jul2024"):
         if suite == "nyx":
-            folder = os.environ["NYX_PATH"]
+            folder = get_nyx_path()
             fname = os.path.join(folder, "hull_Nyx23_" + nyx_version + ".npy")
         elif suite == "mpg":
             folder = os.path.join(get_path_repo("cup1d"), "data", "hull")

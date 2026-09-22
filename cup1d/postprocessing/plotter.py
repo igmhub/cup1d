@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from corner import corner
 import numpy as np
 import os
+from lace.configuration import get_nyx_path
 from cup1d.configuration.args import Args
 from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
 
@@ -199,7 +200,7 @@ class Plotter(object):
             )
         elif suite_emu == "nyx":
             fname = os.path.join(
-                os.environ["NYX_PATH"], "nyx_emu_cosmo_" + nyx_version + ".npy"
+                get_nyx_path(), "nyx_emu_cosmo_" + nyx_version + ".npy"
             )
         else:
             ValueError("cosmo_label should be 'mpg' or 'nyx'")

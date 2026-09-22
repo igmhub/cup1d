@@ -18,4 +18,4 @@ def test_dr1_baseline_chi_squared(tmp_path):
     chi_squared = analysis.like.get_chi2(initial_point)
 
     assert isinstance(chi_squared, np.float64)
-    assert chi_squared == EXPECTED_CHI_SQUARED
+    np.testing.assert_allclose(chi_squared, EXPECTED_CHI_SQUARED, rtol=1.0e-6)

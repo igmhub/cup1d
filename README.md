@@ -68,18 +68,14 @@ MPICC="cc -shared" pip install --force-reinstall --no-cache-dir --no-binary=mpi4
 
 #### Nyx users:
 
-- You may need to add the Nyx path as an environment variable in your notebook kernel. The first is done by writing in the kernel.json file:
+LaCE uses `/global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/`
+as the default Nyx directory at NERSC. On another machine, configure the local
+Nyx directory once:
 
-```
- "env": {
-  "NYX_PATH":"path_to_Nyx"
- }
-```
+```python
+from lace.configuration import set_nyx_path
 
-You also need to add the Nyx path as an environment variable. The Nyx data is located at NERSC in 
-
-```
-NYX_PATH="/global/cfs/cdirs/desi/science/lya/y1-p1d/likelihood_files/nyx_files/"
+set_nyx_path("/path/to/nyx_files")
 ```
 
 - Before running cup1d, please precompute all cosmological information needed using CAMB and save IGM histories. This is done by running the following scripts. *You do not need to do it* if you are in NERSC.

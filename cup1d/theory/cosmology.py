@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from lace.cosmo import camb_cosmo
+from lace.configuration import get_nyx_path
 from cup1d.utils.utils import get_path_repo
 
 
@@ -52,7 +53,7 @@ def set_cosmo(
             get_cosmo = camb_cosmo.get_cosmology_from_dictionary
         elif cosmo_label[:3] == "nyx":
             fname = os.path.join(
-                os.environ["NYX_PATH"], "nyx_emu_cosmo_" + nyx_version + ".npy"
+                get_nyx_path(), "nyx_emu_cosmo_" + nyx_version + ".npy"
             )
             get_cosmo = camb_cosmo.get_Nyx_cosmology
 

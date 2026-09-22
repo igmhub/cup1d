@@ -1,4 +1,5 @@
 from lace.archive.nyx_archive import NyxArchive
+from lace.configuration import get_nyx_path
 import numpy as np
 import os
 
@@ -38,7 +39,7 @@ def main():
 
     # Write to file using the same format as LaCE file
 
-    with open(os.environ["NYX_PATH"] + "/fiducial_igm_evolution.txt", "w") as f:
+    with open(get_nyx_path() / "fiducial_igm_evolution.txt", "w") as f:
         f.write("# list[z, tau_eff, gamma, sigt_kms, kF_kms]")
         f.write("\n")
         for ii in range(5):

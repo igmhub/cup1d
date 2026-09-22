@@ -172,7 +172,7 @@ class BaseMockP1D(BaseDataP1D):
 
     # def _get_cosmo(self, nyx_version="Jul2024"):
     #     # get cosmology
-    #     fname = os.environ["NYX_PATH"] + "nyx_emu_cosmo_" + nyx_version + ".npy"
+    #     fname = get_nyx_path() / ("nyx_emu_cosmo_" + nyx_version + ".npy")
     #     data_cosmo = np.load(fname, allow_pickle=True)
 
     #     true_cosmo = None
@@ -189,7 +189,7 @@ class BaseMockP1D(BaseDataP1D):
 
     # def _get_igm(self):
     #     """Load IGM history"""
-    #     fname = os.environ["NYX_PATH"] + "/IGM_histories.npy"
+    #     fname = get_nyx_path() / "IGM_histories.npy"
     #     igm_hist = np.load(fname, allow_pickle=True).item()
     #     if self.input_sim not in igm_hist:
     #         raise ValueError(

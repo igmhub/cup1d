@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from lace.configuration import get_nyx_path
 from cup1d.models.igm.mean_flux_class import MeanFlux
 from cup1d.models.igm.pressure_class import Pressure
 from cup1d.models.igm.thermal_class import Thermal
@@ -119,12 +120,7 @@ class IGM(object):
                 + r" script save_mpg_IGM.py"
             )
 
-        try:
-            fname = os.path.join(os.environ["NYX_PATH"], "IGM_histories.npy")
-        except:
-            raise ValueError(
-                "NYX_PATH not set, please set it as explained in the README of the repo"
-            )
+        fname = os.path.join(get_nyx_path(), "IGM_histories.npy")
 
         try:
             self.igm_hist_nyx = np.load(fname, allow_pickle=True).item()
