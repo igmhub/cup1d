@@ -29,6 +29,12 @@ Notebook organization
    Planck-chain loading, importance sampling, historical comparisons, and
    cosmological figures.
 
+``notebooks/cosmo``
+   Cosmological compression and scaling studies. ``plots_cosmo_scaling.py``
+   compares changed backgrounds before and after matching star parameters,
+   using LaCE cosmologies and ForestFlow's P1D projection. Figure and local
+   Zenodo-data saving are opt-in.
+
 ``notebooks/figures_CM26``
    Scripts and paired notebooks used to reproduce CM2026 figures and tables.
 
