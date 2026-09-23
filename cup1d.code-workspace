@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../LaCE"
+		},
+		{
+			"path": "../ForestFlow"
+		}
+	],
+	"settings": {}
+}

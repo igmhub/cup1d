@@ -25,7 +25,6 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import os
 from pathlib import Path
 
 import numpy as np
@@ -46,18 +45,14 @@ repository_path = Path(get_path_repo("cup1d"))
 config_path = repository_path / "configs" / "cm2026" / "cm2026_base.yaml"
 
 fit_directory = Path(
-    os.environ.get(
-        "CUP1D_FIT_DIRECTORY",
-        "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-        "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7",
-    )
+    "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+    "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7"
 )
 results_path = fit_directory / "fitter_results.npy"
 
 if not results_path.is_file():
     raise FileNotFoundError(
-        f"Could not find {results_path}. Set CUP1D_FIT_DIRECTORY or edit "
-        "fit_directory in this cell."
+        f"Could not find {results_path}. Edit fit_directory in this cell."
     )
 
 

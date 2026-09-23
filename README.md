@@ -81,8 +81,8 @@ set_nyx_path("/path/to/nyx_files")
 - Before running cup1d, please precompute all cosmological information needed using CAMB and save IGM histories. This is done by running the following scripts. *You do not need to do it* if you are in NERSC.
 
 ```
-python LaCE/scripts/save_nyx_emu_cosmo.py
-python LaCE/scripts/save_nyx_IGM.py
+python ../LaCE/scripts/developers/save_nyx_emu_cosmo.py
+python ../LaCE/scripts/developers/save_nyx_IGM.py
 ```
 
 ### Notebooks / tutorials

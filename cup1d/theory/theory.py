@@ -195,9 +195,8 @@ class Theory:
         }
         try:
             return rescale_cosmology.RescaledCosmology(fiducial_cosmo, new_params_dict)
-        except AssertionError as error:
-            if str(error) != "background not fixed":
-                raise
+        except rescale_cosmology.IncompatibleBackgroundError:
+            pass
 
         cosmo_params_dict = fiducial_cosmo.input_cosmo_params_dict.copy()
         cosmo_params_dict.update(new_params_dict)
