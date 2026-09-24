@@ -5,6 +5,8 @@ import numpy as np
 import os
 from lace.configuration import get_nyx_path
 from cup1d.configuration.args import Args
+from cup1d.postprocessing import p1d as p1d_plots
+from cup1d.postprocessing.igm import plot_likelihood_igm
 from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
 
 
@@ -76,7 +78,8 @@ class Plotter(object):
         self.like_params = self.fitter.like.parameters_from_sampling_point(
             self.mle_values
         )
-        # self.mle_results = self.fitter.like.plot_p1d(
+        # self.mle_results = p1d_plots.plot_p1d(
+        #     self.fitter.like,
         #     values=self.mle_values,
         #     plot_every_iz=1,
         #     return_all=True,
@@ -927,10 +930,6 @@ class Plotter(object):
         if values is None:
             values = self.mle_values
 
-        if plot_panels:
-            if residuals == False:
-                plot_panels = False
-
         if self.save_directory is not None:
             if rand_posterior is None:
                 fname = "P1D_mle"
@@ -945,7 +944,8 @@ class Plotter(object):
         else:
             plot_fname = None
 
-        self.fitter.like.plot_p1d(
+        p1d_plots.plot_p1d(
+            self.fitter.like,
             values=values,
             plot_every_iz=plot_every_iz,
             residuals=residuals,
@@ -971,12 +971,10 @@ class Plotter(object):
         else:
             plot_fname = None
 
-        z_at_time = False
-        if zmask is not None:
-            if len(zmask) == 1:
-                z_at_time = True
+        z_at_time = np.ndim(values) == 2
 
-        self.fitter.like.plot_p1d_errors(
+        p1d_plots.plot_p1d_errors(
+            self.fitter.like,
             values=values,
             plot_fname=plot_fname,
             zmask=zmask,
@@ -995,7 +993,8 @@ class Plotter(object):
         else:
             plot_fname = None
 
-        self.fitter.like.plot_p1d(
+        p1d_plots.plot_p1d(
+            self.fitter.like,
             values=None,
             plot_every_iz=plot_every_iz,
             residuals=residuals,
@@ -1041,7 +1040,8 @@ class Plotter(object):
         if value is None:
             value = self.mle_values
 
-        self.fitter.like.plot_igm(
+        plot_likelihood_igm(
+            self.fitter.like,
             cloud=cloud,
             free_params=self.like_params,
             save_directory=self.save_directory,

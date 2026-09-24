@@ -1,5 +1,6 @@
 /data/
 cup1d.egg-info/
+cup1d/_version.py
 chain_*/
 .ipynb_checkpoints
 *.ipynb

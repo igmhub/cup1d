@@ -5,7 +5,6 @@ from itertools import product
 
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
-from lace.cosmo import camb_cosmo
 from cup1d.data import data_gadget, data_nyx
 from cup1d.scripts.sam_sim import sam_sim, path_sampler
 from cup1d.utils.utils import get_path_repo

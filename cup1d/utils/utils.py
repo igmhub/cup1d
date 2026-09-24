@@ -1,8 +1,6 @@
 import os
 import re
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
 
 
 def purge_chains(ln_prop_chains, nsplit=4, abs_diff=15):
@@ -60,11 +58,10 @@ def split_string(s):
 
 # Function to generate n discrete colors from any continuous colormap
 def get_discrete_cmap(n, base_cmap="jet"):
-    """Returns a colormap with n discrete colors."""
-    # ``matplotlib.cm.get_cmap`` was removed in Matplotlib 3.10.  The pyplot
-    # interface remains supported and accepts the requested lookup-table size.
-    cmap = plt.get_cmap(base_cmap, lut=n)
-    return ListedColormap(cmap(np.linspace(0, 1, n)))
+    """Delegate to :func:`cup1d.postprocessing.style.get_discrete_cmap`."""
+    from cup1d.postprocessing.style import get_discrete_cmap as _plot
+
+    return _plot(n, base_cmap)
 
 
 def mpi_hello_world():

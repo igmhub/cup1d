@@ -38,9 +38,10 @@ def match_star_parameters(background, target, z_star, k_star_kms, match_running=
     selects As/ns/nrun; LaCE performs the actual spectrum rescaling and fit.
     """
     current = background.get_linP_kms_params(z_star, k_star_kms)
-    primordial = background.CAMBparams.InitPower
+    primordial = background.get_primordial_params()
     log_pivot = np.log(
-        k_star_kms * background.get_dkms_dMpc(z_star) / primordial.pivot_scalar
+        k_star_kms * background.get_dkms_dMpc(z_star)
+        / primordial["pivot_scalar"]
     )
     dnrun = target["alpha_star"] - current["alpha_star"] if match_running else 0.0
     dns = target["n_star"] - current["n_star"] - dnrun * log_pivot
@@ -52,9 +53,9 @@ def match_star_parameters(background, target, z_star, k_star_kms, match_running=
     result = RescaledCosmology(
         background,
         dict(
-            As=primordial.As * np.exp(dlog_as),
-            ns=primordial.ns + dns,
-            nrun=primordial.nrun + dnrun,
+            As=primordial["As"] * np.exp(dlog_as),
+            ns=primordial["ns"] + dns,
+            nrun=primordial["nrun"] + dnrun,
         ),
     )
     fitted = result.get_linP_kms_params(z_star, k_star_kms)
@@ -214,7 +215,7 @@ class CosmoScalingPlotter:
             if parameter == "mnu":
                 probe = Cosmology(cosmo_params_dict=parameters)
                 parameters["omch2"] += (
-                    self.fiducial.CAMBparams.omnuh2 - probe.CAMBparams.omnuh2
+                    self.fiducial.get_background_params()["omnuh2"] - probe.get_background_params()["omnuh2"]
                 )
             key = tuple(sorted(parameters.items()))
             if key not in self._backgrounds:

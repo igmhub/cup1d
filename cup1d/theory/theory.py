@@ -112,9 +112,10 @@ class Theory:
         # logarithm of ratio of pivot points
         ln_kp_ks = np.log(kp_Mpc / ks_Mpc)
 
-        fid_As = self.fid_cosmo["cosmo"].CAMBparams.InitPower.As
-        fid_ns = self.fid_cosmo["cosmo"].CAMBparams.InitPower.ns
-        fid_nrun = self.fid_cosmo["cosmo"].CAMBparams.InitPower.nrun
+        primordial = self.fid_cosmo["cosmo"].get_primordial_params()
+        fid_As = primordial["As"]
+        fid_ns = primordial["ns"]
+        fid_nrun = primordial["nrun"]
 
         fid_Astar = self.fid_cosmo["linP_params"]["Delta2_star"]
         fid_nstar = self.fid_cosmo["linP_params"]["n_star"]
@@ -498,25 +499,27 @@ class Theory:
         """Return all likelihood parameters, including fixed parameters."""
 
         # LaCE provides the fiducial values; Args provides the prior limits.
-        camb_params = self.fid_cosmo["cosmo"].CAMBparams
+        cosmology = self.fid_cosmo["cosmo"]
+        background = cosmology.get_background_params()
+        primordial = cosmology.get_primordial_params()
         params = [
             LikelihoodParameter(
-                "ombh2", *self.cosmo_priors["ombh2"], camb_params.ombh2
+                "ombh2", *self.cosmo_priors["ombh2"], background["ombh2"]
             ),
             LikelihoodParameter(
-                "omch2", *self.cosmo_priors["omch2"], camb_params.omch2
+                "omch2", *self.cosmo_priors["omch2"], background["omch2"]
             ),
             LikelihoodParameter(
                 "As",
                 self.cosmo_priors["As"][0],
                 self.cosmo_priors["As"][1],
-                camb_params.InitPower.As,
+                primordial["As"],
             ),
             LikelihoodParameter(
                 "ns",
                 self.cosmo_priors["ns"][0],
                 self.cosmo_priors["ns"][1],
-                camb_params.InitPower.ns,
+                primordial["ns"],
             ),
             LikelihoodParameter(
                 "mnu",
@@ -527,9 +530,9 @@ class Theory:
                 "nrun",
                 self.cosmo_priors["nrun"][0],
                 self.cosmo_priors["nrun"][1],
-                camb_params.InitPower.nrun,
+                primordial["nrun"],
             ),
-            LikelihoodParameter("H0", *self.cosmo_priors["H0"], camb_params.H0),
+            LikelihoodParameter("H0", *self.cosmo_priors["H0"], cosmology.get_H0()),
         ]
 
         for model in self.model_igm.models:

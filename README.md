@@ -108,12 +108,14 @@ The remaining notebooks are organized by purpose:
 - `notebooks/wip` and `notebooks/old`: unfinished and preserved legacy work;
   these are not part of the supported tutorial path.
 
-Notebook sources are paired with Jupyter files through Jupytext. To synchronize
-a notebook after editing its Python source, run:
+Notebook sources are paired with Jupyter files through Jupytext. After `make install`, install Jupytext once and generate or refresh every notebook:
 
 ```
-jupytext --sync notebooks/tutorials/dr1.py
+python -m pip install jupytext
+make notebooks
 ```
+
+Run this from the cup1d repository root. The target searches only `cup1d/notebooks/`, recursively, and skips Jupyter checkpoint files. To update a single pair after editing it, use `jupytext --sync notebooks/tutorials/dr1.py`.
 
 - If you want to use notebooks via JupyterHub, you'll also need to download `ipykernel`:
 
@@ -141,10 +143,12 @@ for layering rules and synthetic-data examples.
 
 ### Running tests
 
-Install the test dependencies and run the complete suite without specifying
-individual files:
+Run the complete test suite with:
 
 ```bash
-python -m pip install -e ".[test]"
-pytest -q
+make test
 ```
+
+### Versioning
+
+Package versions are derived from Git. Tagged releases use the tag; development builds include the commit distance and short SHA (for example, `1.2.0.dev4+gabc1234`). A dirty working tree adds `.dirty`. Source archives without Git metadata report `0+unknown`.

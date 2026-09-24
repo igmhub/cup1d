@@ -26,7 +26,9 @@ steps:
    Analysis orchestration, fitting, minimization, and sampling.
 
 ``postprocessing``
-   Chain handling, plotting, tables, and other derived products.
+   Chain handling, plotting, tables, and other derived products. All active
+   plotting implementations live here, with compatibility wrappers on the
+   scientific classes. See :doc:`plotting`.
 
 ``old_code``
    Preserved legacy implementations that are not part of the active API.

@@ -1,11 +1,15 @@
 """Plotting, chain inspection, and result tables."""
 
-__all__ = ["EmulatorPriorPlotter", "Plotter", "VariationPlotter"]
+__all__ = ["EmulatorPriorPlotter", "Plotter", "VariationPlotter", "P1DPlotter", "plot_p1d"]
 
 
 def __getattr__(name):
     """Import optional plotting support only when it is requested."""
 
+    if name in {"P1DPlotter", "plot_p1d"}:
+        from cup1d.postprocessing import p1d
+
+        return getattr(p1d, name)
     if name == "Plotter":
         from cup1d.postprocessing.plotter import Plotter
 

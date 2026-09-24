@@ -1,10 +1,8 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from warnings import warn
 
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
 from lace.utils.smoothing_manager import apply_smoothing
-from lace.cosmo import camb_cosmo
 
 
 class BaseMockP1D(BaseDataP1D):
@@ -97,59 +95,28 @@ class BaseMockP1D(BaseDataP1D):
         return list_data_Mpc
 
     def plot_igm(self):
-        """Plot IGM histories"""
+        """Delegate to :func:`cup1d.postprocessing.igm.plot_mock_igm`."""
+        from cup1d.postprocessing.igm import plot_mock_igm as _plot
 
-        # true IGM parameters
-        pars_true = {}
-        pars_true["z"] = self.truth["igm"]["z"]
-        pars_true["tau_eff"] = self.truth["igm"]["tau_eff"]
-        pars_true["gamma"] = self.truth["igm"]["gamma"]
-        pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
-        pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
-
-        fig, ax = plt.subplots(2, 2, figsize=(6, 6), sharex=True)
-        ax = ax.reshape(-1)
-
-        arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
-        latex_labs = [
-            r"$\tau_\mathrm{eff}$",
-            r"$\gamma$",
-            r"$\sigma_T$",
-            r"$k_F$",
-        ]
-
-        for ii in range(len(arr_labs)):
-            _ = pars_true[arr_labs[ii]] != 0
-            ax[ii].plot(
-                pars_true["z"][_],
-                pars_true[arr_labs[ii]][_],
-                "o:",
-                label="true",
-            )
-
-            ax[ii].set_ylabel(latex_labs[ii])
-            if ii == 0:
-                ax[ii].set_yscale("log")
-
-            if (ii == 2) | (ii == 3):
-                ax[ii].set_xlabel(r"$z$")
-
-        plt.tight_layout()
+        return _plot(self)
 
     def set_truth(self, theory, zs):
         # setup fiducial cosmology
         self.truth = {}
 
-        sim_cosmo = theory.fid_cosmo["cosmo"].CAMBparams
+        sim_cosmo = theory.fid_cosmo["cosmo"]
+        background = sim_cosmo.get_background_params()
+        primordial = sim_cosmo.get_primordial_params()
 
-        self.truth["cosmo"] = {}
-        self.truth["cosmo"]["ombh2"] = sim_cosmo.ombh2
-        self.truth["cosmo"]["omch2"] = sim_cosmo.omch2
-        self.truth["cosmo"]["As"] = sim_cosmo.InitPower.As
-        self.truth["cosmo"]["ns"] = sim_cosmo.InitPower.ns
-        self.truth["cosmo"]["nrun"] = sim_cosmo.InitPower.nrun
-        self.truth["cosmo"]["H0"] = sim_cosmo.H0
-        self.truth["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
+        self.truth["cosmo"] = {
+            "ombh2": background["ombh2"],
+            "omch2": background["omch2"],
+            "As": primordial["As"],
+            "ns": primordial["ns"],
+            "nrun": primordial["nrun"],
+            "H0": sim_cosmo.get_H0(),
+            "mnu": sim_cosmo.get_mnu(),
+        }
 
         self.truth["linP"] = {}
         cosmo_params = ["Delta2_star", "n_star", "alpha_star"]

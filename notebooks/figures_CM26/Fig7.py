@@ -1,23 +1,24 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Fig. 7
 #
 # Contribution of different contaminants
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
@@ -31,7 +32,7 @@ from cup1d.inference.analysis import Analysis
 from cup1d.postprocessing.plotter import Plotter
 from cup1d.utils.utils import get_path_repo
 
-# +
+# %%
 
 data_label = "DESIY1_QMLE3"
 name_variation = None
@@ -52,14 +53,15 @@ args.set_baseline(
 )
 
 pip = Analysis(args, out_folder=None)
-# -
 
+# %%
 npoints = []
 for ii in range(len(pip.fitter.like.data.z)):
     npoints.append(len(pip.fitter.like.data.k_kms[ii]))
 npoints = np.array(npoints)
 npoints
 
+# %%
 out_mle = []
 out_mle_cube = []
 out_chi2 = []
@@ -94,8 +96,10 @@ for ii in range(1):
     out_mle_cube.append(pip.fitter.mle_cube)
     out_chi2.append(pip.fitter.mle_chi2)
 
+# %%
 pip.fitter.like.get_chi2(pip.fitter.mle_cube, zmask=zmask)
 
+# %%
 chi2_z22 = {
     "full": 29.34193443427515,
     "no HCD": 50.562410331579215,
@@ -108,15 +112,16 @@ chi2_z22 = {
 for key in chi2_z22:
     print(key, np.round(chi2_z22[key] - chi2_z22["full"], 1))
 
+# %%
 diru = 'figs'
 # diru=None
 plotter = Plotter(pip.fitter, save_directory=diru, zmask=zmask)
 
+# %%
 store_data = plotter.plot_illustrate_contaminants_each(out_mle_cube[0].copy(), zmask, fontsize=22, store_data=True)
-# +
+# %%
 import cup1d, os
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_7.npy")
 np.save(fname, store_data)
-# -

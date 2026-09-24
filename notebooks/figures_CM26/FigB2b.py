@@ -1,23 +1,24 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Fig B2b
 #
 # Performance of lace-lyssa in reproducing P1D predictions from MP-Gadget simulations
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 import numpy as np
@@ -31,7 +32,7 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-# +
+# %%
 archive = nyx_archive.NyxArchive(nyx_version="models_Nyx_Sept2025_include_Nyx_fid_rseed")
 central = archive.get_testing_data("nyx_central")
 seed = archive.get_testing_data("nyx_seed")
@@ -43,7 +44,7 @@ train = False
 emulator_label = "CH24_nyxcen_gpr"
 emulator = GPEmulator(emulator_label=emulator_label, archive=archive, train=train, drop_sim=None)
 
-# +
+# %%
 testing_data = archive.get_testing_data("nyx_0")
 
 _k_Mpc = testing_data[0]['k_Mpc']
@@ -93,7 +94,7 @@ for jj, isim in enumerate(archive.list_sim_cube):
         popt, _ = curve_fit(emulator.func_poly, k_fit, yfit)
         p1d_Mpc_sm[jj, i2] = norm * np.exp(emulator.func_poly(k_fit, *popt))
 
-# +
+# %%
 store_data = {}
 
 
@@ -138,12 +139,11 @@ plt.tight_layout()
 # plt.savefig("figs/nyx_l1o.pdf")
 # plt.savefig("figs/nyx_l1o.png")
 
-# +
+# %%
 import cup1d, os
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "fig_B2b.npy")
 np.save(fname, store_data)
-# -
-
+# %%
 

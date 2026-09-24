@@ -72,10 +72,10 @@ class EmulatorPriorPlotter:
     def _set_fiducial_cosmology(self):
         """Set the CAMB-derived reference used for the fast mapping."""
 
-        from lace.cosmo import camb_cosmo
+        from lace.cosmo.cosmology import Cosmology
         from cup1d.theory.camb import CAMBModel
 
-        cosmology = camb_cosmo.get_cosmology(
+        cosmology = Cosmology(cosmo_params_dict=dict(
             H0=67.66,
             mnu=0.0,
             omch2=0.119,
@@ -86,7 +86,7 @@ class EmulatorPriorPlotter:
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
         model = CAMBModel(
             zs=[self.z_star],
             cosmo=cosmology,

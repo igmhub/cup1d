@@ -142,38 +142,7 @@ class HCD_Model_McDonald2005(object):
         cmap=None,
         smooth_k=False,
     ):
-        """Plot the contamination model"""
+        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_hcd_contamination`."""
+        from cup1d.postprocessing.contaminants import plot_hcd_contamination as _plot
 
-        from matplotlib import pyplot as plt
-
-        # plot for fiducial value
-        if ln_A_damp_coeff is None:
-            ln_A_damp_coeff = self.ln_A_damp_coeff
-
-        hcd_model = HCD_Model_McDonald2005(ln_A_damp_coeff=ln_A_damp_coeff)
-
-        for ii in range(0, len(z), plot_every_iz):
-            if smooth_k:
-                k_use = np.logspace(
-                    np.log10(k_kms[ii][0]), np.log10(k_kms[ii][-1]), 200
-                )
-            else:
-                k_use = k_kms[ii]
-
-            cont = hcd_model.get_contamination(z[ii], k_use)
-            if isinstance(cont, int):
-                cont = np.ones_like(k_use)
-            if cmap is None:
-                plt.plot(k_use, cont, label="z=" + str(z[ii]))
-            else:
-                plt.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
-
-        plt.axhline(1, color="k", linestyle=":")
-
-        plt.legend()
-        plt.xscale("log")
-        plt.xlabel(r"$k$ [1/Mpc]")
-        plt.ylabel("HCD contamination")
-        plt.tight_layout()
-
-        return
+        return _plot(self, z, k_kms, ln_A_damp_coeff, plot_every_iz, cmap, smooth_k)

@@ -1,5 +1,4 @@
-from lace.cosmo import camb_cosmo
-from lace.cosmo import fit_linP
+from lace.cosmo.cosmology import Cosmology
 
 
 def get_linP_params(
@@ -9,17 +8,11 @@ def get_linP_params(
     - z_star, kp_kms set the pivot point"""
 
     # create CAMB cosmology object from input params dictionary
-    cosmo = camb_cosmo.get_cosmology_from_dictionary(params)
+    cosmo = Cosmology(cosmo_params_dict=params)
     if verbose:
-        camb_cosmo.print_info(cosmo)
+        cosmo.print_info()
 
     # compute linear power and fit power law at pivot point
-    linP_params = fit_linP.parameterize_cosmology_kms(
-        cosmo,
-        camb_results=None,
-        z_star=z_star,
-        kp_kms=kp_kms,
-        camb_kmax_Mpc_fast=camb_kmax_Mpc_fast,
-    )
+    linP_params = cosmo.get_linP_kms_params(z_star, kp_kms)
 
     return linP_params

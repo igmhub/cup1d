@@ -19,3 +19,20 @@ def test_dr1_baseline_chi_squared(tmp_path):
 
     assert isinstance(chi_squared, np.float64)
     np.testing.assert_allclose(chi_squared, EXPECTED_CHI_SQUARED, rtol=1.0e-6)
+
+    # Plotting must use the same model arrays and leave the fit unchanged.
+    import matplotlib.pyplot as plt
+
+    prediction = analysis.like.get_p1d_kms(initial_point)[0]
+    primary = next(iter(analysis.like.data.values()))
+    selected_z = primary.z[1:3]
+    output = analysis.like.plot_p1d(
+        initial_point, residuals=True, plot_panels=True,
+        zmask=selected_z, return_all=True, show=False,
+    )
+    for key, plotted in output.items():
+        for z, model in zip(plotted['zs'], plotted['p1d_model']):
+            index = np.flatnonzero(np.isclose(analysis.like.data[key].z, z))[0]
+            np.testing.assert_allclose(model, np.asarray(prediction[key][index]).reshape(-1))
+    np.testing.assert_allclose(analysis.like.get_chi2(initial_point), chi_squared, rtol=1e-12)
+    plt.close('all')

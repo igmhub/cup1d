@@ -1,23 +1,24 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Fig. 8
 #
 # One redshift at a time fits
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
@@ -30,7 +31,7 @@ from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
 from cup1d.utils.utils import get_path_repo
 
-# +
+# %%
 data_label = "DESIY1_QMLE3"
 name_variation = None
 emulator_label = "CH24_mpgcen_gpr"
@@ -45,12 +46,12 @@ args.set_baseline(
 )
 
 pip = Analysis(args, out_folder=None)
-# -
 
+# %%
 p0 = pip.fitter.like.sampling_point_from_parameters()
 pip.fitter.like.get_chi2(p0, zmask=[2.2])
 
-# +
+# %%
 # Fig. 8
 
 n_param_glob_full = 17
@@ -77,7 +78,7 @@ out_data = pip.fitter.like.plot_p1d(
     store_data=True
 )
 
-# +
+# %%
 import cup1d, os
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")

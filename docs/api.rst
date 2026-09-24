@@ -51,6 +51,14 @@ Post-processing and utilities
    :toctree: generated
 
    cup1d.postprocessing.plotter
+   cup1d.postprocessing.p1d
+   cup1d.postprocessing.likelihood
+   cup1d.postprocessing.igm
+   cup1d.postprocessing.contaminants
+   cup1d.postprocessing.inference
+   cup1d.postprocessing.geometry
+   cup1d.postprocessing.style
+   cup1d.postprocessing.data.simulations
    cup1d.postprocessing.emulator_priors
    cup1d.postprocessing.variation_plotter
    cup1d.postprocessing.power_ratios

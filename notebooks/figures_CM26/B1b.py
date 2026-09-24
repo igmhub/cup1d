@@ -1,23 +1,24 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Fig B1b
 #
 # Performance of P1D smooth model in reproducing P1D predictions from lyssa simulations
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 import numpy as np
@@ -31,7 +32,7 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-# +
+# %%
 archive = nyx_archive.NyxArchive(
     nyx_version="models_Nyx_Sept2025_include_Nyx_fid_rseed"
 )
@@ -46,7 +47,7 @@ emulator = GPEmulator(
     emulator_label=emulator_label, archive=archive, train=train, drop_sim=None
 )
 
-# +
+# %%
 kmax_Mpc = emulator.kmax_Mpc
 kmax_Mpc_use = 4
 
@@ -81,7 +82,7 @@ for ii in range(nsam):
     popt, _ = curve_fit(emulator.func_poly, k_fit, yfit)
     p1d_Mpc_sm[ii] = norm * np.exp(emulator.func_poly(k_fit, *popt))
 
-# +
+# %%
 store_data = {}
 
 
@@ -133,7 +134,7 @@ plt.tight_layout()
 # plt.savefig("figs/nyx_smooth.pdf")
 # plt.savefig("figs/nyx_smooth.png")
 
-# +
+# %%
 import cup1d, os
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")

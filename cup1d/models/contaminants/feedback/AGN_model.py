@@ -1,7 +1,6 @@
 import numpy as np
 import copy
 import os
-from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
 from cup1d.likelihood import parameter as likelihood_parameter
 from cup1d.utils.utils import get_discrete_cmap, get_path_repo
@@ -171,113 +170,21 @@ class AGN_Model(object):
         zrange=[0, 10],
         name=None,
     ):
-        """Plot the contamination model"""
+        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_agn_contamination`."""
+        from cup1d.postprocessing.contaminants import plot_agn_contamination as _plot
 
-        # plot for fiducial value
-        if ln_AGN_coeff is None:
-            ln_AGN_coeff = self.ln_AGN_coeff
-
-        if cmap is None:
-            cmap = get_discrete_cmap(len(z))
-
-        agn_model = AGN_Model(ln_AGN_coeff=ln_AGN_coeff)
-
-        yrange = [1, 1]
-        fig1, ax1 = plt.subplots(figsize=(8, 6))
-        fig2, ax2 = plt.subplots(
-            len(z), sharex=True, sharey=True, figsize=(8, len(z) * 4)
+        return _plot(
+            self,
+            z,
+            k_kms,
+            ln_AGN_coeff,
+            plot_every_iz,
+            cmap,
+            smooth_k,
+            dict_data,
+            zrange,
+            name,
         )
-        if len(z) == 1:
-            ax2 = [ax2]
-
-        for ii in range(0, len(z), plot_every_iz):
-            if dict_data is not None:
-                indz = np.argwhere(np.abs(dict_data["zs"] - z[ii]) < 1.0e-3)[
-                    :, 0
-                ]
-                if len(indz) != 1:
-                    continue
-                else:
-                    indz = indz[0]
-
-            if (z[ii] > zrange[1]) | (z[ii] < zrange[0]):
-                continue
-
-            if smooth_k:
-                k_use = np.logspace(
-                    np.log10(k_kms[ii][0]), np.log10(k_kms[ii][-1]), 200
-                )
-            else:
-                k_use = k_kms[ii]
-            cont = agn_model.get_contamination(z[ii], k_use)
-            if isinstance(cont, int):
-                cont = np.ones_like(k_use)
-
-            ax1.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
-            ax2[ii].plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
-
-            yrange[0] = min(yrange[0], np.min(cont))
-            yrange[1] = max(yrange[1], np.max(cont))
-
-            if dict_data is not None:
-                yy = (
-                    dict_data["p1d_data"][indz]
-                    / dict_data["p1d_model"][indz]
-                    * cont
-                )
-                err_yy = (
-                    dict_data["p1d_err"][indz]
-                    / dict_data["p1d_model"][indz]
-                    * cont
-                )
-
-                ax1.errorbar(
-                    dict_data["k_kms"][indz],
-                    yy,
-                    err_yy,
-                    marker="o",
-                    linestyle=":",
-                    color=cmap(ii),
-                    alpha=0.5,
-                )
-                ax2[ii].errorbar(
-                    dict_data["k_kms"][indz],
-                    yy,
-                    err_yy,
-                    marker="o",
-                    linestyle=":",
-                    color=cmap(ii),
-                    alpha=0.5,
-                )
-
-        ax1.axhline(1, color="k", linestyle=":")
-        ax1.legend(ncol=4)
-        ax1.set_ylim(yrange[0] * 0.95, yrange[1] * 1.05)
-        ax1.set_xscale("log")
-        ax1.set_xlabel(r"$k$ [1/Mpc]")
-        ax1.set_ylabel(r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,AGN}$")
-        for ax in ax2:
-            ax.axhline(1, color="k", linestyle=":")
-            ax.legend()
-            ax.set_ylim(yrange[0] * 0.95, yrange[1] * 1.05)
-            ax.set_xlabel(r"$k$ [1/Mpc]")
-            ax.set_ylabel(r"$P_\mathrm{1D}/P_\mathrm{1D}^\mathrm{no\,AGN}$")
-            ax.set_xscale("log")
-
-        fig1.tight_layout()
-        fig2.tight_layout()
-
-        if name is None:
-            fig1.show()
-            fig2.show()
-        else:
-            if len(z) != 1:
-                fig1.savefig(name + "_all.pdf")
-                fig1.savefig(name + "_all.png")
-            fig2.savefig(name + "_z.pdf")
-            fig2.savefig(name + "_z.png")
-
-        return
 
 
 def _load_agn_file():

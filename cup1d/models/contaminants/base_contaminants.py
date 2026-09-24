@@ -278,72 +278,10 @@ class Contaminant(object):
                 print("new", name, self.coeffs[name])
 
     def plot_parameters(self, z, like_params, folder=None):
-        """Plot likelihood parameters"""
+        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_parameters`."""
+        from cup1d.postprocessing.contaminants import plot_parameters as _plot
 
-        from matplotlib import pyplot as plt
-
-        fig, ax = plt.subplots(
-            len(self.coeffs), 1, sharex=True, figsize=(8, 3 * len(self.coeffs))
-        )
-        if len(self.coeffs) == 1:
-            ax = [ax]
-
-        try:
-            len_p = len(like_params[0])
-        except:
-            z_at_time = False
-        else:
-            z_at_time = True
-
-        vals_out = {}
-        coeffs_out = {}
-
-        for ii, key in enumerate(self.coeffs.keys()):
-            if z_at_time == False:
-                vals = self.get_value(key, z, like_params=like_params)
-                coeffs_out[key] = self.get_coeff(key, like_params=like_params)
-            else:
-                vals = []
-                coeffs_out[key] = []
-                for jj in range(len(z)):
-                    vals.append(
-                        self.get_value(key, z[jj], like_params=like_params[jj])
-                    )
-                    coeffs_out[key].append(
-                        self.get_coeff(key, like_params=like_params[jj])[0]
-                    )
-                vals = np.array(vals)
-
-            if key in self.null_vals:
-                if np.all(vals == self.null_vals[key]):
-                    continue
-            elif key == "HCD_const":
-                if np.all(vals == 0):
-                    continue
-
-            if self.prop_coeffs[key + "_otype"] == "exp":
-                vals = np.log(vals)
-
-            vals_out[key] = vals
-
-            _ = vals != self.null_vals[key]
-            ax[ii].plot(z[_], vals[_], "o-", label="data")
-            xz = np.log((1 + z) / (1 + self.z_0))
-            if np.any(_):
-                res = np.polyfit(xz[_], vals[_], 1)
-                ax[ii].plot(z[_], res[0] * xz[_] + res[1], "--", label="fit")
-                ax[ii].set_ylabel(key)
-
-        ax[0].legend()
-        ax[-1].set_xlabel("z")
-
-        plt.tight_layout()
-        plt.show()
-        if folder is not None:
-            fig.savefig(folder + ".png")
-            fig.savefig(folder + ".pdf")
-
-        return vals_out, coeffs_out
+        return _plot(self, z, like_params, folder)
 
     # def plot_contamination(
     #     self,

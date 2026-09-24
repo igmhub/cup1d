@@ -211,7 +211,7 @@ class BaseDataP1D(object):
 
         from cup1d.postprocessing.data import p1d
 
-        p1d.plot_p1d(
+        return p1d.plot_p1d(
             self.z,
             self.k_kms,
             self.Pk_kms,

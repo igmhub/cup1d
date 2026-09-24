@@ -1,6 +1,5 @@
 import numpy as np
-from lace.cosmo import camb_cosmo
-from lace.cosmo import fit_linP
+from lace.cosmo.cosmology import Cosmology
 from cup1d.likelihood import parameter as likelihood_parameter
 
 
@@ -18,7 +17,7 @@ class CAMBModel(object):
 
         # setup CAMB cosmology object
         if cosmo is None:
-            self.cosmo = camb_cosmo.get_cosmology()
+            self.cosmo = Cosmology()
         else:
             self.cosmo = cosmo
 
@@ -37,13 +36,15 @@ class CAMBModel(object):
         # should clarify role of min/max given that these are also
         # set in the likelihood
 
+        background = self.cosmo.get_background_params()
+        primordial = self.cosmo.get_primordial_params()
         params = []
         params.append(
             likelihood_parameter.LikelihoodParameter(
                 name="ombh2",
                 min_value=0.018,
                 max_value=0.026,
-                value=self.cosmo.ombh2,
+                value=background["ombh2"],
             )
         )
         params.append(
@@ -51,7 +52,7 @@ class CAMBModel(object):
                 name="omch2",
                 min_value=0.10,
                 max_value=0.14,
-                value=self.cosmo.omch2,
+                value=background["omch2"],
             )
         )
         if cosmo_priors is not None:
@@ -66,7 +67,7 @@ class CAMBModel(object):
                 name="As",
                 min_value=min_val,
                 max_value=max_val,
-                value=self.cosmo.InitPower.As,
+                value=primordial["As"],
             )
         )
 
@@ -82,7 +83,7 @@ class CAMBModel(object):
                 name="ns",
                 min_value=min_val,
                 max_value=max_val,
-                value=self.cosmo.InitPower.ns,
+                value=primordial["ns"],
             )
         )
         params.append(
@@ -90,7 +91,7 @@ class CAMBModel(object):
                 name="mnu",
                 min_value=0.0,
                 max_value=1.0,
-                value=camb_cosmo.get_mnu(self.cosmo),
+                value=self.cosmo.get_mnu(),
             )
         )
 
@@ -105,12 +106,12 @@ class CAMBModel(object):
                 name="nrun",
                 min_value=min_val,
                 max_value=max_val,
-                value=self.cosmo.InitPower.nrun,
+                value=primordial["nrun"],
             )
         )
         params.append(
             likelihood_parameter.LikelihoodParameter(
-                name="H0", min_value=50, max_value=100, value=self.cosmo.H0
+                name="H0", min_value=50, max_value=100, value=self.cosmo.get_H0()
             )
         )
 
@@ -121,9 +122,7 @@ class CAMBModel(object):
         It returns a CAMB.results object."""
 
         if self.cached_camb_results is None:
-            self.cached_camb_results = camb_cosmo.get_camb_results(
-                self.cosmo, zs=self.zs, fast_camb=self.fast_camb
-            )
+            self.cached_camb_results = self.cosmo.get_CAMBdata()
 
         return self.cached_camb_results
 
@@ -132,10 +131,9 @@ class CAMBModel(object):
         It returns (k_Mpc, zs, linP_Mpc)."""
 
         if self.cached_linP_Mpc is None:
-            camb_results = self.get_camb_results()
-            self.cached_linP_Mpc = camb_cosmo.get_linP_Mpc(
-                pars=self.cosmo, zs=self.zs, camb_results=camb_results
-            )
+            k_Mpc = np.logspace(-4, np.log10(self.cosmo.get_kmax_linP_Mpc()), 1000)
+            linP_Mpc = self.cosmo.get_linP_Mpc(np.asarray(self.zs), k_Mpc)
+            self.cached_linP_Mpc = (k_Mpc, list(self.zs), linP_Mpc)
 
         return self.cached_linP_Mpc
 
@@ -143,12 +141,8 @@ class CAMBModel(object):
         """Linear power parameters at (z_star,kp_kms) for this cosmology"""
 
         if self.cached_linP_params is None:
-            self.cached_linP_params = fit_linP.parameterize_cosmology_kms(
-                self.cosmo,
-                self.get_camb_results(),
-                self.z_star,
-                self.kp_kms,
-                fast_camb=self.fast_camb,
+            self.cached_linP_params = self.cosmo.get_linP_kms_params(
+                self.z_star, self.kp_kms
             )
 
         return self.cached_linP_params
@@ -157,41 +151,14 @@ class CAMBModel(object):
         """Get linear power parameters to call emulator, at each z.
         Amplitude, slope and running around pivot point kp_Mpc."""
 
-        ## Get the P(k) at each z
-        k_Mpc, z, pk_Mpc = self.get_linP_Mpc()
-
-        # specify wavenumber range to fit
-        kmin_Mpc = 0.5 * kp_Mpc
-        kmax_Mpc = 2.0 * kp_Mpc
-
-        linP_params = []
-        ## Fit the emulator call params
-        for pk_z in pk_Mpc:
-            linP_Mpc = fit_linP.fit_polynomial(
-                kmin_Mpc / kp_Mpc,
-                kmax_Mpc / kp_Mpc,
-                k_Mpc / kp_Mpc,
-                pk_z,
-                deg=2,
-            )
-            # translate the polynomial to our parameters
-            ln_A_p = linP_Mpc[0]
-            Delta2_p = np.exp(ln_A_p) * kp_Mpc**3 / (2 * np.pi**2)
-            n_p = linP_Mpc[1]
-            # note that the curvature is alpha/2
-            alpha_p = 2.0 * linP_Mpc[2]
-            linP_z = {"Delta2_p": Delta2_p, "n_p": n_p, "alpha_p": alpha_p}
-            linP_params.append(linP_z)
-
-        return linP_params
+        return [
+            self.cosmo.get_linP_Mpc_params(z, kp_Mpc) for z in self.zs
+        ]
 
     def dkms_dMpc(self, z):
         """Return H(z)/(1+z) to convert Mpc to km/s"""
 
-        # get CAMB results objects (might be cached already)
-        camb_results = self.get_camb_results()
-        H_z = camb_results.hubble_parameter(z)
-        return H_z / (1 + z)
+        return self.cosmo.get_dkms_dMpc(z)
 
     def get_M_of_zs(self):
         """Return M(z)=H(z)/(1+z) for each z"""
@@ -216,9 +183,9 @@ class CAMBModel(object):
                     camb_param_dict[inpar.name] = inpar.value
                     continue
 
-        # set cosmology object (use fiducial for parameters not provided)
-        new_cosmo = camb_cosmo.get_cosmology_from_dictionary(
-            camb_param_dict, cosmo_fid=self.cosmo
-        )
+        # Preserve every unspecified fiducial parameter.
+        new_params = dict(self.cosmo.input_cosmo_params_dict)
+        new_params.update(camb_param_dict)
+        new_cosmo = Cosmology(cosmo_params_dict=new_params)
 
         return CAMBModel(zs=zs, cosmo=new_cosmo)
