@@ -1,6 +1,5 @@
 import os
 from astropy.io import fits
-import matplotlib.pyplot as plt
 import numpy as np
 
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D

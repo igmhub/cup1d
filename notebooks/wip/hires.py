@@ -45,9 +45,9 @@ analysis = Analysis(args)
 # Get parameters from a point of the parameter space close to the best fit
 
 # %%
-p0 = analysis.like.sampling_point_from_parameters().copy()
-free_params = analysis.like.parameters_from_sampling_point(p0)
-analysis.like.get_chi2(p0)
+p0 = analysis.fitter.sampling_point_from_parameters().copy()
+free_params = analysis.fitter.parameters_from_sampling_point(p0)
+analysis.like.get_chi2(free_params)
 
 # %%
 # kmax_kms = 0.05
@@ -245,15 +245,15 @@ pd = np.array(
 
 # %%
 p0 = pa
-# p0 = analysis.like.sampling_point_from_parameters().copy()
-free_params = analysis.like.parameters_from_sampling_point(p0)
-analysis.like.get_chi2(p0)
+# p0 = analysis.fitter.sampling_point_from_parameters().copy()
+free_params = analysis.fitter.parameters_from_sampling_point(p0)
+analysis.like.get_chi2(free_params)
 
 # %% [markdown]
 # Plot model for these parameters
 
 # %%
-analysis.like.plot_p1d(p0)
+analysis.like.plot_p1d(free_params)
 
 # %% [markdown]
 # ### Get predictions from the model
@@ -261,8 +261,8 @@ analysis.like.plot_p1d(p0)
 # %%
 # list of model parameters
 
-for par in analysis.like.free_params:
-    print(par.name, par.value, par.min_value, par.max_value)
+for par in analysis.like.free_params.values():
+    print(par["name"], par["value"], par["min_value"], par["max_value"])
 
 # %% [markdown]
 # ## Run minimizer
@@ -274,15 +274,15 @@ for par in analysis.like.free_params:
 analysis.run_minimizer(p0)
 
 # %%
-p0 = analysis.like.sampling_point_from_parameters().copy()
-free_params = analysis.like.parameters_from_sampling_point(p0)
-analysis.like.get_chi2(p0)
+p0 = analysis.fitter.sampling_point_from_parameters().copy()
+free_params = analysis.fitter.parameters_from_sampling_point(p0)
+analysis.like.get_chi2(free_params)
 
 # %% [markdown]
 # Evaluate for the new best fit
 
 # %%
 p1 = analysis.fitter.mle_cube
-analysis.like.plot_p1d(p1)
+analysis.like.plot_p1d(analysis.fitter.parameters_from_sampling_point(p1))
 
 # %%

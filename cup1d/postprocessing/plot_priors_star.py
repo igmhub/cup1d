@@ -3,7 +3,7 @@ from cup1d.theory.camb import CAMBModel
 from cup1d.theory.cosmology import set_cosmo
 import numpy as np
 
-from lace.cosmo import camb_cosmo
+from lace.cosmo.cosmology import Cosmology
 
 
 # grid of As and ns values without priors
@@ -17,7 +17,7 @@ n_grid2 = n_grid.reshape(-1)
 
 # get corresponding compressed parameters
 
-pl_cosmo = camb_cosmo.get_cosmology(
+pl_cosmo = Cosmology(cosmo_params_dict=dict(
     H0=67.66,
     mnu=0.0,
     omch2=0.119,
@@ -28,7 +28,7 @@ pl_cosmo = camb_cosmo.get_cosmology(
     nrun=0.0,
     pivot_scalar=0.05,
     w=-1,
-)
+))
 cmodel = CAMBModel([3], pl_cosmo)
 res = cmodel.get_linP_params()
 pl_dstar = res["Delta2_star"]
@@ -39,7 +39,7 @@ dstar = np.zeros(mm)
 nstar = np.zeros(mm)
 for ii in range(mm):
     # print(A_grid2[ii], n_grid2[ii])
-    _cosmo = camb_cosmo.get_cosmology(
+    _cosmo = Cosmology(cosmo_params_dict=dict(
         H0=67.66,
         mnu=0.0,
         omch2=0.119,
@@ -50,7 +50,7 @@ for ii in range(mm):
         nrun=0.0,
         pivot_scalar=0.05,
         w=-1,
-    )
+    ))
     cmodel = CAMBModel([3], _cosmo)
     res = cmodel.get_linP_params()
     # print(res)

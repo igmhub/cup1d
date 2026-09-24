@@ -74,7 +74,7 @@ def plot_table_igm(
         base + folder + "fitter_results.npy", allow_pickle=True
     ).item()
     p0 = data["fitter"]["mle_cube"]
-    free_params = pip.fitter.like.parameters_from_sampling_point(p0)
+    free_params = pip.fitter.parameters_from_sampling_point(p0)
 
     chain = np.load(base + folder + "chain.npy")
 

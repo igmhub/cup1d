@@ -48,23 +48,23 @@ def main():
     )
     pip = Analysis(args, out_folder=args.out_folder)
 
-    input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
+    input_pars = pip.fitter.sampling_point_from_parameters().copy()
 
     print("starting minimization")
     # type_minimizer = "NM"
     # if type_minimizer == "NM":
     #     pip.fitter.run_minimizer(
-    #         pip.fitter.like.minus_log_prob,
+    #         pip.fitter.minus_log_prob,
     #         p0=input_pars,
     #         restart=True,
     #         # burn_in=True,
     #     )
     # else:
     #     pip.fitter.run_minimizer_da(
-    #         pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
+    #         pip.fitter.minus_log_prob, p0=input_pars, restart=True
     #     )
     pip.fitter.run_minimizer(
-        pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
+        pip.fitter.minus_log_prob, p0=input_pars, restart=True
     )
 
     out_dict = {

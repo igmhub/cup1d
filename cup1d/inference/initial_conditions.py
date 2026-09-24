@@ -84,7 +84,7 @@ def generate_at_a_time_initial_conditions(
             print(f"Fitting redshift bin {index}: z = {redshift:.2f}", flush=True)
 
         local_analysis = Analysis(args)
-        initial_point = local_analysis.like.sampling_point_from_parameters().copy()
+        initial_point = local_analysis.fitter.sampling_point_from_parameters().copy()
         local_analysis.run_minimizer(
             initial_point,
             zmask=np.asarray([redshift]),
@@ -147,7 +147,7 @@ def generate_global_initial_conditions(
         )
 
     analysis = Analysis(args)
-    initial_point = analysis.like.sampling_point_from_parameters().copy()
+    initial_point = analysis.fitter.sampling_point_from_parameters().copy()
     if rank == 0 and verbose:
         print("Running reduced global fit to generate global ICs", flush=True)
     analysis.run_minimizer(initial_point, restart=True)

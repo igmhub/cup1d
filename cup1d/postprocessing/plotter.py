@@ -5,6 +5,8 @@ import numpy as np
 import os
 from lace.configuration import get_nyx_path
 from cup1d.configuration.args import Args
+from cup1d.postprocessing import p1d as p1d_plots
+from cup1d.postprocessing.igm import plot_likelihood_igm
 from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
 
 
@@ -56,8 +58,29 @@ class Plotter(object):
             # add sampler results to fitter
             self.fitter.mle_cube = data["fitter"]["mle_cube"]
             self.fitter.mle_cosmo = data["fitter"]["mle_cosmo"]
-            self.fitter.mle = data["fitter"]["mle"]
+            self.fitter.mle = {
+                self.fitter.param_dict_rev.get(name, name): value
+                for name, value in data["fitter"]["mle"].items()
+            }
+            self.fitter.truth = (
+                None
+                if data.get("truth") is None
+                else {
+                    self.fitter.param_dict_rev.get(name, name): value
+                    for name, value in data["truth"].items()
+                }
+            )
             self.fitter.lnprop_mle = data["fitter"]["lnprob_mle"]
+            for name in (
+                "mle_errors",
+                "mle_covariance",
+                "mle_cosmo_errors",
+                "mle_cosmo_covariance",
+                "mle_cosmo_correlation",
+                "mle_error_method",
+            ):
+                if name in data["fitter"]:
+                    setattr(self.fitter, name, data["fitter"][name])
             if "lnprob" in data["fitter"].keys():
                 self.fitter.lnprob = data["fitter"]["lnprob"]
                 self.fitter.chain = data["fitter"]["chain"]
@@ -73,10 +96,11 @@ class Plotter(object):
             os.makedirs(save_directory, exist_ok=True)
 
         self.mle_values = self.fitter.get_best_fit(stat_best_fit="mle")
-        self.like_params = self.fitter.like.parameters_from_sampling_point(
+        self.like_params = self.fitter.parameters_from_sampling_point(
             self.mle_values
         )
-        # self.mle_results = self.fitter.like.plot_p1d(
+        # self.mle_results = p1d_plots.plot_p1d(
+        #     self.fitter.like,
         #     values=self.mle_values,
         #     plot_every_iz=1,
         #     return_all=True,
@@ -222,8 +246,15 @@ class Plotter(object):
             alpha_star[ii] = data_cosmo[key]["star_params"]["alpha_star"]
         return labs, delta2_star, n_star, alpha_star, suite_emu, data_cosmo
 
-    def plot_mle_cosmo(self, fontsize=16):
-        """Plot MLE cosmology"""
+    def plot_mle_cosmo(
+        self, fontsize=16, plot_errors=False, nsigma=1, error_method="gauss_newton"
+    ):
+        """Plot MLE cosmology and, optionally, its local Gaussian errors."""
+
+        if nsigma <= 0:
+            raise ValueError("nsigma must be positive")
+        if plot_errors and not hasattr(self.fitter, "mle_cosmo_covariance"):
+            self.fitter.estimate_mle_errors(method=error_method)
 
         (
             labs,
@@ -298,6 +329,43 @@ class Plotter(object):
                     continue
 
             ax[0].scatter(Delta2_star, n_star, marker=marker, color=color, label=label)
+            if ii == 0 and plot_errors:
+                from matplotlib.patches import Ellipse
+
+                covariance = np.asarray(self.fitter.mle_cosmo_covariance)
+                values = np.asarray(
+                    [
+                        Delta2_star,
+                        n_star,
+                        alpha_star if suite_emu != "mpg" else 0.0,
+                    ]
+                )
+
+                def add_error_ellipse(axis, indices):
+                    projected = covariance[np.ix_(indices, indices)]
+                    eigenvalues, eigenvectors = np.linalg.eigh(projected)
+                    if np.any(eigenvalues < 0):
+                        raise ValueError("MLE cosmology covariance is not positive semidefinite")
+                    order = np.argsort(eigenvalues)[::-1]
+                    eigenvalues = eigenvalues[order]
+                    eigenvectors = eigenvectors[:, order]
+                    angle = np.degrees(
+                        np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0])
+                    )
+                    axis.add_patch(
+                        Ellipse(
+                            values[list(indices)],
+                            width=2 * nsigma * np.sqrt(eigenvalues[0]),
+                            height=2 * nsigma * np.sqrt(eigenvalues[1]),
+                            angle=angle,
+                            facecolor="C1", edgecolor="C1", alpha=0.2, zorder=1,
+                        )
+                    )
+
+                add_error_ellipse(ax[0], (0, 1))
+                if suite_emu != "mpg":
+                    add_error_ellipse(ax[1], (0, 2))
+                    add_error_ellipse(ax[2], (1, 2))
             if suite_emu != "mpg":
                 ax[1].scatter(
                     Delta2_star,
@@ -350,8 +418,8 @@ class Plotter(object):
         )
         if only_cosmo:
             yesplot = ["$\\Delta^2_\\star$", "$n_\\star$"]
-            for param in self.fitter.like.free_params:
-                if param.name == "nrun":
+            for name in self.fitter.like.free_params:
+                if name == "nrun":
                     yesplot.append("$\\alpha_\\star$")
         else:
             diff = np.max(params_plot, axis=0) - np.min(params_plot, axis=0)
@@ -373,14 +441,14 @@ class Plotter(object):
         if self.fitter.truth is not None:
             c.add_truth(
                 Truth(
-                    location=self.fitter.truth,
+                    location=self.fitter.get_truth_latex(),
                     line_style="--",
                     color="C1",
                 )
             )
         c.add_truth(
             Truth(
-                location=self.fitter.mle,
+                location=self.fitter.get_mle_latex(),
                 line_style=":",
                 color="C2",
             )
@@ -427,11 +495,11 @@ class Plotter(object):
         for ii, par in enumerate(yesplot):
             _ = np.argwhere(np.array(strings_plot) == par)[0, 0]
             chain[:, ii] = params_plot[:, _]
-            if self.fitter.truth is not None:
-                if par in self.fitter.truth:
-                    truth[ii] = self.fitter.truth[par]
-            if par in self.fitter.mle:
-                MLE[ii] = self.fitter.mle[par]
+            name = self.fitter.param_dict_rev.get(par, par)
+            if self.fitter.truth is not None and name in self.fitter.truth:
+                truth[ii] = self.fitter.truth[name]
+            if name in self.fitter.mle:
+                MLE[ii] = self.fitter.mle[name]
             if par == "$A_s$":
                 chain[:, ii] *= 1e9
                 truth[ii] *= 1e9
@@ -463,9 +531,12 @@ class Plotter(object):
                     continue
 
                 pars = self.fitter.chain_priors[:, :, _].reshape(-1)
-                chain_priors[:, ii] = self.fitter.like.free_params[ii].value_from_cube(
-                    pars
+                name = next(
+                    name
+                    for name in self.fitter.like.free_params
+                    if self.fitter.param_dict[name] == par
                 )
+                chain_priors[:, ii] = self.fitter.value_from_cube(name, pars)
 
             corner(
                 chain_priors,
@@ -512,25 +583,25 @@ class Plotter(object):
         ## show flat priors for all parameters
         if self.fitter.chain_priors is None:
             for xi in range(ndim):
-                for par in self.fitter.like.free_params:
-                    if self.fitter.param_dict[par.name] == yesplot[xi]:
+                for name, parameter in self.fitter.like.free_params.items():
+                    if self.fitter.param_dict[name] == yesplot[xi]:
                         for yi in range(xi, ndim):
                             axes[yi, xi].axvline(
-                                par.min_value, color="r", linestyle="-"
+                                parameter["min_value"], color="r", linestyle="-"
                             )
                             axes[yi, xi].axvline(
-                                par.max_value, color="r", linestyle="-"
+                                parameter["max_value"], color="r", linestyle="-"
                             )
                         break
             for yi in range(ndim):
-                for par in self.fitter.like.free_params:
-                    if self.fitter.param_dict[par.name] == yesplot[yi]:
+                for name, parameter in self.fitter.like.free_params.items():
+                    if self.fitter.param_dict[name] == yesplot[yi]:
                         for xi in range(yi):
                             axes[yi, xi].axhline(
-                                par.min_value, color="r", linestyle="-"
+                                parameter["min_value"], color="r", linestyle="-"
                             )
                             axes[yi, xi].axhline(
-                                par.max_value, color="r", linestyle="-"
+                                parameter["max_value"], color="r", linestyle="-"
                             )
                         break
 
@@ -712,11 +783,11 @@ class Plotter(object):
             _ = np.argwhere(np.array(strings_plot) == par)[0, 0]
             chain[:, ii] = params_plot[:, _]
 
-            if self.fitter.truth is not None:
-                if par in self.fitter.truth:
-                    truth[ii] = self.fitter.truth[par]
-            if par in self.fitter.mle:
-                MLE[ii] = self.fitter.mle[par]
+            name = self.fitter.param_dict_rev.get(par, par)
+            if self.fitter.truth is not None and name in self.fitter.truth:
+                truth[ii] = self.fitter.truth[name]
+            if name in self.fitter.mle:
+                MLE[ii] = self.fitter.mle[name]
 
             # need to conver units
             par_notex = self.fitter.param_dict_rev[par]
@@ -762,9 +833,12 @@ class Plotter(object):
                     continue
 
                 pars = self.fitter.chain_priors[:, :, _].reshape(-1)
-                chain_priors[:, ii] = self.fitter.like.free_params[ii].value_from_cube(
-                    pars
+                name = next(
+                    name
+                    for name in self.fitter.like.free_params
+                    if self.fitter.param_dict[name] == par
                 )
+                chain_priors[:, ii] = self.fitter.value_from_cube(name, pars)
 
                 par_notex = self.fitter.param_dict_rev[par]
                 for pp in igm_params:
@@ -822,25 +896,25 @@ class Plotter(object):
         ## show flat priors for all parameters
         if self.fitter.chain_priors is None:
             for xi in range(ndim):
-                for par in self.fitter.like.free_params:
-                    if self.fitter.param_dict[par.name] == yesplot[xi]:
+                for name, parameter in self.fitter.like.free_params.items():
+                    if self.fitter.param_dict[name] == yesplot[xi]:
                         for yi in range(xi, ndim):
                             axes[yi, xi].axvline(
-                                par.min_value, color="r", linestyle="-"
+                                parameter["min_value"], color="r", linestyle="-"
                             )
                             axes[yi, xi].axvline(
-                                par.max_value, color="r", linestyle="-"
+                                parameter["max_value"], color="r", linestyle="-"
                             )
                         break
             for yi in range(ndim):
-                for par in self.fitter.like.free_params:
-                    if self.fitter.param_dict[par.name] == yesplot[yi]:
+                for name, parameter in self.fitter.like.free_params.items():
+                    if self.fitter.param_dict[name] == yesplot[yi]:
                         for xi in range(yi):
                             axes[yi, xi].axhline(
-                                par.min_value, color="r", linestyle="-"
+                                parameter["min_value"], color="r", linestyle="-"
                             )
                             axes[yi, xi].axhline(
-                                par.max_value, color="r", linestyle="-"
+                                parameter["max_value"], color="r", linestyle="-"
                             )
                         break
 
@@ -926,10 +1000,15 @@ class Plotter(object):
         ## Get best fit values for each parameter
         if values is None:
             values = self.mle_values
-
-        if plot_panels:
-            if residuals == False:
-                plot_panels = False
+        if z_at_time:
+            values = [self.fitter.parameters_from_sampling_point(row) for row in values]
+        else:
+            values = self.fitter.parameters_from_sampling_point(values)
+        if rand_posterior is not None:
+            rand_posterior = [
+                self.fitter.parameters_from_sampling_point(row)
+                for row in rand_posterior
+            ]
 
         if self.save_directory is not None:
             if rand_posterior is None:
@@ -945,7 +1024,8 @@ class Plotter(object):
         else:
             plot_fname = None
 
-        self.fitter.like.plot_p1d(
+        p1d_plots.plot_p1d(
+            self.fitter.like,
             values=values,
             plot_every_iz=plot_every_iz,
             residuals=residuals,
@@ -971,12 +1051,10 @@ class Plotter(object):
         else:
             plot_fname = None
 
-        z_at_time = False
-        if zmask is not None:
-            if len(zmask) == 1:
-                z_at_time = True
+        z_at_time = np.ndim(values) == 2
 
-        self.fitter.like.plot_p1d_errors(
+        p1d_plots.plot_p1d_errors(
+            self.fitter.like,
             values=values,
             plot_fname=plot_fname,
             zmask=zmask,
@@ -995,7 +1073,8 @@ class Plotter(object):
         else:
             plot_fname = None
 
-        self.fitter.like.plot_p1d(
+        p1d_plots.plot_p1d(
+            self.fitter.like,
             values=None,
             plot_every_iz=plot_every_iz,
             residuals=residuals,
@@ -1013,14 +1092,14 @@ class Plotter(object):
         plt.figure()
 
         for ip in range(self.fitter.ndim):
-            param = self.fitter.like.free_params[ip]
+            name = self.fitter.like.free_param_names[ip]
             if cube:
                 values = chain[:, ip]
-                title = param.name + " in cube"
+                title = name + " in cube"
             else:
                 cube_values = chain[:, ip]
-                values = param.value_from_cube(cube_values)
-                title = param.name
+                values = self.fitter.value_from_cube(name, cube_values)
+                title = name
 
             plt.hist(values, 100, color="k", histtype="step")
             plt.title(title)
@@ -1041,7 +1120,8 @@ class Plotter(object):
         if value is None:
             value = self.mle_values
 
-        self.fitter.like.plot_igm(
+        plot_likelihood_igm(
+            self.fitter.like,
             cloud=cloud,
             free_params=self.like_params,
             save_directory=self.save_directory,
@@ -1061,7 +1141,7 @@ class Plotter(object):
         #     pars_samp["sigT_kms"] = np.zeros((nn, len(z)))
         #     pars_samp["kF_kms"] = np.zeros((nn, len(z)))
         #     for ii in range(nn):
-        #         like_params = self.fitter.like.parameters_from_sampling_point(
+        #         like_params = self.fitter.parameters_from_sampling_point(
         #             rand_sample[ii]
         #         )
         #         models = self.fitter.like.theory.update_igm_models(like_params)
@@ -1170,14 +1250,13 @@ class Plotter(object):
         list_params = {}
         Npar_damp = 0
         Npar_scale = 0
-        for p in self.fitter.like.free_params:
-            if ("A_damp" in p.name) | ("A_scale" in p.name):
-                key = self.fitter.param_dict[p.name]
-                list_params[p.name] = self.fitter.mle[key]
-                print(p.name, self.fitter.mle[key])
-            if "A_damp" in p.name:
+        for name in self.fitter.like.free_params:
+            if ("A_damp" in name) | ("A_scale" in name):
+                list_params[name] = self.fitter.mle[name]
+                print(name, self.fitter.mle[name])
+            if "A_damp" in name:
                 Npar_damp += 1
-            elif "A_scale" in p.name:
+            elif "A_scale" in name:
                 Npar_scale += 1
 
         Npar = len(list_params)
@@ -1258,15 +1337,13 @@ class Plotter(object):
 
             x_list_params = {}
             a_list_params = {}
-            for p in self.fitter.like.free_params:
-                if "ln_x_" + metal + "_" in p.name:
-                    key = self.fitter.param_dict[p.name]
-                    x_list_params[p.name] = self.fitter.mle[key]
-                    print(p.name, self.fitter.mle[key])
-                if "ln_a_" + metal + "_" in p.name:
-                    key = self.fitter.param_dict[p.name]
-                    a_list_params[p.name] = self.fitter.mle[key]
-                    print(p.name, self.fitter.mle[key])
+            for name in self.fitter.like.free_params:
+                if "ln_x_" + metal + "_" in name:
+                    x_list_params[name] = self.fitter.mle[name]
+                    print(name, self.fitter.mle[name])
+                if "ln_a_" + metal + "_" in name:
+                    a_list_params[name] = self.fitter.mle[name]
+                    print(name, self.fitter.mle[name])
 
             x_Npar = len(x_list_params)
             ln_X_coeff = np.zeros(x_Npar)
@@ -1326,11 +1403,10 @@ class Plotter(object):
             dict_data = None
 
         list_params = {}
-        for p in self.fitter.like.free_params:
-            if "ln_AGN" in p.name:
-                key = self.fitter.param_dict[p.name]
-                list_params[p.name] = self.fitter.mle[key]
-                print(p.name, self.fitter.mle[key])
+        for name in self.fitter.like.free_params:
+            if "ln_AGN" in name:
+                list_params[name] = self.fitter.mle[name]
+                print(name, self.fitter.mle[name])
 
         Npar = len(list_params)
         if Npar == 0:
@@ -1373,11 +1449,10 @@ class Plotter(object):
             dict_data = None
 
         list_params = {}
-        for p in self.fitter.like.free_params:
-            if "R_coeff" in p.name:
-                key = self.fitter.param_dict[p.name]
-                list_params[p.name] = self.fitter.mle[key]
-                print(p.name, self.fitter.mle[key])
+        for name in self.fitter.like.free_params:
+            if "R_coeff" in name:
+                list_params[name] = self.fitter.mle[name]
+                print(name, self.fitter.mle[name])
 
         Npar = len(list_params)
         if Npar == 0:
@@ -1411,7 +1486,7 @@ class Plotter(object):
         if p0 is None:
             p0 = self.fitter.mle_cube
 
-        like_params = self.fitter.like.parameters_from_sampling_point(p0)
+        like_params = self.fitter.parameters_from_sampling_point(p0)
 
         if zmask is not None:
             _z = zmask
@@ -1545,7 +1620,10 @@ class Plotter(object):
                 except:
                     pass
 
-            cont = self.fitter.like.get_p1d_kms(zs=zmask, values=_values, remove=remove)
+            parameters = self.fitter.parameters_from_sampling_point(_values)
+            cont = self.fitter.like.theory.get_p1d_kms(
+                _data_z, _data_k_kms, like_params=parameters, remove=remove
+            )
 
             contaminants.append(cont[0])
 
@@ -1793,7 +1871,10 @@ class Plotter(object):
                 except:
                     pass
 
-            cont, _ = self.fitter.like.get_p1d_kms(values=_values, remove=remove)
+            parameters = self.fitter.parameters_from_sampling_point(_values)
+            cont, _ = self.fitter.like.get_p1d_kms(
+                parameters=parameters, remove=remove
+            )
 
             contaminants.append(cont[key_data][indz])
 
@@ -1984,7 +2065,10 @@ class Plotter(object):
                     )[0, 0]
                     _values[ind] = 0.0
 
-            _res = self.fitter.like.get_p1d_kms(_data_z, _data_k_kms, _values)
+            parameters = self.fitter.parameters_from_sampling_point(_values)
+            _res = self.fitter.like.theory.get_p1d_kms(
+                _data_z, _data_k_kms, like_params=parameters
+            )
             if len(_res[0]) == 1:
                 _res = _res[0][0]
             else:
@@ -2048,7 +2132,10 @@ class Plotter(object):
                     )[0, 0]
                     _values[ind] = 0.0
 
-            _res = self.fitter.like.get_p1d_kms(_data_z, _data_k_kms, _values)
+            parameters = self.fitter.parameters_from_sampling_point(_values)
+            _res = self.fitter.like.theory.get_p1d_kms(
+                _data_z, _data_k_kms, like_params=parameters
+            )
             if len(_res[0]) == 1:
                 _res = _res[0][0]
             else:

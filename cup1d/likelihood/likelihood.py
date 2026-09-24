@@ -4,10 +4,8 @@ import math
 import copy
 from mpi4py import MPI
 from scipy.stats.distributions import chi2 as chi2_scipy
-from scipy.optimize import minimize
 from scipy.linalg import block_diag
 
-from lace.cosmo import camb_cosmo
 from lace.cosmo.thermal_broadening import thermal_broadening_kms
 from cup1d.utils.utils import is_number_string
 from cup1d.utils import rebinning
@@ -15,14 +13,10 @@ from cup1d.utils import rebinning
 from cup1d.utils.utils import split_string
 from cup1d.utils.utils import get_path_repo
 from cup1d.utils import blinding
+from cup1d.likelihood import parameter as parameter_space
 
 
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-from matplotlib import rcParams
 
-rcParams["mathtext.fontset"] = "stix"
-rcParams["font.family"] = "STIXGeneral"
 
 
 class Likelihood(object):
@@ -131,15 +125,12 @@ class Likelihood(object):
         """
 
         self.Gauss_priors = np.ones((len(self.free_params)))
-        for ii, par_like in enumerate(self.free_params):
+        for ii, (name, parameter) in enumerate(self.free_params.items()):
             if self.prior_Gauss_rms is not None:
-                _prior = self.prior_Gauss_rms
-            elif par_like.Gauss_priors_width is not None:
-                _fid = par_like.value
-                _width = par_like.Gauss_priors_width
-                _low = par_like.get_value_in_cube(_fid - 0.5 * _width)
-                _high = par_like.get_value_in_cube(_fid + 0.5 * _width)
-                _prior = _high - _low
+                width = parameter["max_value"] - parameter["min_value"]
+                _prior = self.prior_Gauss_rms * width
+            elif parameter["Gauss_priors_width"] is not None:
+                _prior = parameter["Gauss_priors_width"]
             else:
                 _prior = 1e4  # so we get zero
 
@@ -415,99 +406,38 @@ class Likelihood(object):
                 self.emu_full_cov_Pk_kms[key] = full_emu_cov
 
     def set_free_parameters(self, free_param_names, free_param_limits):
-        """Setup likelihood parameters that we want to vary"""
+        """Select free parameters into an ordered name-to-properties mapping."""
 
-        if free_param_limits is not None:
-            assert len(free_param_limits) == len(
-                free_param_names
-            ), "wrong number of parameter limits"
+        if free_param_limits is not None and len(free_param_limits) != len(
+            free_param_names
+        ):
+            raise ValueError("wrong number of parameter limits")
 
-        # get all parameters in theory, free or not
-        params = self.theory.get_parameters()
-
-        ## select free parameters, make sure ordering
-        ## in self.free_params is same as in free_param_names
-        # for par in params:
-        #     if par.name not in free_param_names:
-        #         print(par.name)
-
-        # setup list of likelihood free parameters
-        self.free_params = []
-        # iterate over free parameters
-        for par in free_param_names:
-            found = False
-            for p in params:
-                if p.name == par:
-                    if free_param_limits is not None:
-                        ## Set min and max of each parameter if
-                        ## a list is given. otherwise leave as default
-                        ind = free_param_names.index(par.name)
-                        par.min_value = free_param_limits[ind][0]
-                        par.max_value = free_param_limits[ind][1]
-                    self.free_params.append(p)
-                    found = True
-                    break
-            if found == False:
-                raise ValueError(
-                    "Could not find free parameter {} in theory".format(par)
+        parameters = self.theory.get_parameters()
+        self.free_params = {}
+        for index, name in enumerate(free_param_names):
+            if name not in parameters:
+                raise ValueError(f"Could not find free parameter {name} in theory")
+            parameter = copy.deepcopy(parameters[name])
+            if free_param_limits is not None:
+                parameter["min_value"], parameter["max_value"] = (
+                    free_param_limits[index]
                 )
+            self.free_params[name] = parameter
 
-        if self.verbose and (self.rank == 0):
-            print("likelihood setup with {} free parameters".format(Nfree))
+        self.free_param_names = list(self.free_params)
+        if self.verbose and self.rank == 0:
+            print(f"likelihood setup with {len(self.free_params)} free parameters")
 
-        return
+    def cosmology_params(self, parameters):
+        """Return the cosmological subset of a physical parameter mapping."""
 
-    def sampling_point_from_parameters(self):
-        """Translate likelihood parameters to array of values (in cube)"""
-
-        values = np.zeros(len(self.free_params))
-        for ii, par in enumerate(self.free_params):
-            values[ii] = par.value_in_cube()
-
-        return values
-
-    def parameters_from_sampling_point(self, values):
-        """Translate input array of values (in cube) to likelihood parameters"""
-
-        if values is None:
-            return []
-
-        assert len(values) == len(self.free_params), "size mismatch"
-        Npar = len(values)
-        like_params = []
-        for ip in range(Npar):
-            par = self.free_params[ip].get_new_parameter(values[ip])
-            like_params.append(par)
-
-        return like_params
-
-    def cosmology_params_from_sampling_point(self, values):
-        """For a given point in sampling space, return a list of
-        cosmology params"""
-
-        like_params = self.parameters_from_sampling_point(values)
-
-        ## Dictionary of cosmology parameters
-        cosmo_dict = {}
-
-        for like_param in like_params:
-            if like_param.name == "ombh2":
-                cosmo_dict["ombh2"] = like_param.value
-            elif like_param.name == "omch2":
-                cosmo_dict["omch2"] = like_param.value
-            elif like_param.name == "cosmomc_theta":
-                cosmo_dict["cosmomc_theta"] = like_param.value
-            elif like_param.name == "As":
-                cosmo_dict["As"] = like_param.value
-            elif like_param.name == "ns":
-                cosmo_dict["ns"] = like_param.value
-            elif like_param.name == "mnu":
-                cosmo_dict["mnu"] = like_param.value
-            elif like_param.name == "nrun":
-                cosmo_dict["nrun"] = like_param.value
-
-        assert len(cosmo_dict) > 0, "No cosmology parameters found in sampling space"
-
+        names = {"ombh2", "omch2", "cosmomc_theta", "As", "ns", "mnu", "nrun"}
+        cosmo_dict = {
+            name: value for name, value in parameters.items() if name in names
+        }
+        if not cosmo_dict:
+            raise ValueError("No cosmology parameters found")
         return cosmo_dict
 
     def set_truth(self):
@@ -556,61 +486,62 @@ class Likelihood(object):
         self.truth["like_params"] = {}
         self.truth["like_params_cube"] = {}
         pname2 = {"As": "Delta2_star", "ns": "n_star", "nrun": "alpha_star"}
-        for par in self.free_params:
+        for name, parameter in self.free_params.items():
             if (
-                ("tau" in par.name)
-                | ("sigT" in par.name)
-                | ("gamma" in par.name)
-                | ("kF" in par.name)
+                ("tau" in name)
+                | ("sigT" in name)
+                | ("gamma" in name)
+                | ("kF" in name)
             ):
                 if equal_IGM:
-                    if "tau" in par.name:
-                        self.truth["like_params"][par.name] = 1
-                        self.truth["like_params_cube"][par.name] = (
-                            par.get_value_in_cube(self.truth["like_params"][par.name])
+                    if "tau" in name:
+                        self.truth["like_params"][name] = 1
+                        self.truth["like_params_cube"][name] = (
+                            parameter_space.value_in_cube(self.free_params, name, self.truth["like_params"][name])
                         )
                     else:
-                        self.truth["like_params"][par.name] = 0
-                        self.truth["like_params_cube"][par.name] = (
-                            par.get_value_in_cube(self.truth["like_params"][par.name])
+                        self.truth["like_params"][name] = 0
+                        self.truth["like_params_cube"][name] = (
+                            parameter_space.value_in_cube(self.free_params, name, self.truth["like_params"][name])
                         )
                 else:
-                    self.truth["like_params"][par.name] = np.infty
-                    self.truth["like_params_cube"][par.name] = np.infty
-            elif (par.name == "As") | (par.name == "ns") | (par.name == "nrun"):
-                self.truth["like_params"][par.name] = self.truth["cosmo"][par.name]
-                self.truth["like_params_cube"][par.name] = par.get_value_in_cube(
-                    self.truth["like_params"][par.name]
-                )
-                self.truth["like_params"][pname2[par.name]] = self.truth["linP"][
-                    pname2[par.name]
+                    self.truth["like_params"][name] = np.infty
+                    self.truth["like_params_cube"][name] = np.infty
+            elif (name == "As") | (name == "ns") | (name == "nrun"):
+                self.truth["like_params"][name] = self.truth["cosmo"][name]
+                self.truth["like_params_cube"][name] = parameter_space.value_in_cube(self.free_params, name, self.truth["like_params"][name])
+                self.truth["like_params"][pname2[name]] = self.truth["linP"][
+                    pname2[name]
                 ]
             # else:
-            #     if par.name not in self.truth["cont"]:
-            #         print("could not find {} in truth".format(par.name))
+            #     if name not in self.truth["cont"]:
+            #         print("could not find {} in truth".format(name))
             #         continue
-            #     self.truth["like_params"][par.name] = self.truth["cont"][
-            #         par.name
+            #     self.truth["like_params"][name] = self.truth["cont"][
+            #         name
             #     ]
             #     self.truth["like_params_cube"][
-            #         par.name
-            #     ] = par.get_value_in_cube(self.truth["cont"][par.name])
+            #         name
+            #     ] = parameter_space.value_in_cube(self.free_params, name, self.truth["cont"][name])
 
     def set_model(self):
         """Store fiducial cosmology assumed for the fit"""
 
         self.fid = {}
 
-        sim_cosmo = self.theory.fid_cosmo["cosmo"].CAMBparams
+        sim_cosmo = self.theory.fid_cosmo["cosmo"]
+        background = sim_cosmo.get_background_params()
+        primordial = sim_cosmo.get_primordial_params()
 
-        self.fid["cosmo"] = {}
-        self.fid["cosmo"]["ombh2"] = sim_cosmo.ombh2
-        self.fid["cosmo"]["omch2"] = sim_cosmo.omch2
-        self.fid["cosmo"]["As"] = sim_cosmo.InitPower.As
-        self.fid["cosmo"]["ns"] = sim_cosmo.InitPower.ns
-        self.fid["cosmo"]["nrun"] = sim_cosmo.InitPower.nrun
-        self.fid["cosmo"]["H0"] = sim_cosmo.H0
-        self.fid["cosmo"]["mnu"] = camb_cosmo.get_mnu(sim_cosmo)
+        self.fid["cosmo"] = {
+            "ombh2": background["ombh2"],
+            "omch2": background["omch2"],
+            "As": primordial["As"],
+            "ns": primordial["ns"],
+            "nrun": primordial["nrun"],
+            "H0": sim_cosmo.get_H0(),
+            "mnu": sim_cosmo.get_mnu(),
+        }
 
         blob_params = ["Delta2_star", "n_star", "alpha_star"]
         blob = self.theory.fid_cosmo["linP_params"]
@@ -621,16 +552,16 @@ class Likelihood(object):
         self.fid["linP"] = {}
 
         pname2 = {"As": "Delta2_star", "ns": "n_star", "nrun": "alpha_star"}
-        for par in self.free_params:
-            self.fid["fit"][par.name] = par.value
-            self.fid["fit_cube"][par.name] = par.get_value_in_cube(par.value)
-            if (par.name == "As") | (par.name == "ns") | (par.name == "nrun"):
-                self.fid["fit"][pname2[par.name]] = blob[pname2[par.name]]
-                self.fid["linP"][pname2[par.name]] = blob[pname2[par.name]]
+        for name, parameter in self.free_params.items():
+            self.fid["fit"][name] = parameter["value"]
+            self.fid["fit_cube"][name] = parameter_space.value_in_cube(self.free_params, name, parameter["value"])
+            if (name == "As") | (name == "ns") | (name == "nrun"):
+                self.fid["fit"][pname2[name]] = blob[pname2[name]]
+                self.fid["linP"][pname2[name]] = blob[pname2[name]]
 
     def get_p1d_kms(
         self,
-        values=None,
+        parameters=None,
         return_covar=False,
         return_blob=False,
         return_emu_params=False,
@@ -639,11 +570,7 @@ class Likelihood(object):
     ):
         """Compute theoretical prediction for P1D"""
 
-        # translate sampling point (in unit cube) to parameter values
-        if values is not None:
-            like_params = self.parameters_from_sampling_point(values)
-        else:
-            like_params = []
+        like_params = {} if parameters is None else parameters
 
         all_p1ds = {}
         other_stuff = {}
@@ -675,12 +602,12 @@ class Likelihood(object):
 
         return all_p1ds, other_stuff
 
-    def get_chi2(self, values=None, return_all=False, zmask=None):
+    def get_chi2(self, parameters=None, return_all=False, zmask=None):
         """Compute chi2 using data and theory, without adding
         emulator covariance"""
 
         log_like, log_like_all = self.get_log_like(
-            values, ignore_log_det_cov=True, zmask=zmask
+            parameters, ignore_log_det_cov=True, zmask=zmask
         )
 
         chi2_eachz = {}
@@ -696,7 +623,7 @@ class Likelihood(object):
 
     def get_log_like(
         self,
-        values=None,
+        parameters=None,
         ignore_log_det_cov=True,
         return_blob=False,
         zmask=None,
@@ -710,13 +637,8 @@ class Likelihood(object):
             blob = (0, 0, 0, 0, 0, 0)
             null_out.append(blob)
 
-        # check that we are within unit cube
-        if values is not None:
-            if (values > 1.0).any() | (values < 0.0).any():
-                return null_out
-
-        # evaluate model
-        _res = self.get_p1d_kms(values, return_blob=return_blob)
+        # evaluate model in physical parameter space
+        _res = self.get_p1d_kms(parameters, return_blob=return_blob)
         if _res is None:
             return null_out
         else:
@@ -787,105 +709,81 @@ class Likelihood(object):
 
         return max(self.min_log_like, log_like)
 
+    def parameters_in_bounds(self, parameters):
+        """Return whether all physical values lie within their prior bounds."""
+
+        return all(
+            parameter["min_value"] <= parameters[name] <= parameter["max_value"]
+            for name, parameter in self.free_params.items()
+        )
+
+    def get_log_prior(self, parameters):
+        """Compute the prior directly in physical parameter units."""
+
+        if not self.parameters_in_bounds(parameters):
+            return self.min_log_like
+        if self.Gauss_priors is None:
+            return 0.0
+        fiducial = np.asarray(
+            [parameter["value"] for parameter in self.free_params.values()]
+        )
+        values = np.asarray([parameters[name] for name in self.free_params])
+        return -np.sum(
+            (fiducial - values) ** 2 / (2 * self.Gauss_priors**2)
+        )
+
     def compute_log_prob(
-        self, values, return_blob=False, ignore_log_det_cov=True, zmask=None
+        self, parameters, return_blob=False, ignore_log_det_cov=True, zmask=None
     ):
-        """Compute log likelihood plus log priors for input values
-        - if return_blob==True, it will return also extra information"""
+        """Compute posterior probability for physical parameter values."""
 
-        # Always force parameter to be within range (for now)
-        if (np.max(values) > 1.0) or (np.min(values) < 0.0):
+        if not self.parameters_in_bounds(parameters):
             if return_blob:
-                dummy_blob = self.theory.get_blob()
-                return self.min_log_like, dummy_blob
-            else:
-                return self.min_log_like
+                return self.min_log_like, self.theory.get_blob()
+            return self.min_log_like
 
-        # compute log_prior
-        if self.Gauss_priors is not None:
-            log_prior = self.get_log_prior(values)
-        else:
-            log_prior = 0
-
-        # compute log_like (option to ignore emulator covariance)
+        log_prior = self.get_log_prior(parameters)
         if return_blob:
-            log_like, chi2_all, blob = self.get_log_like(
-                values,
+            log_like, _, blob = self.get_log_like(
+                parameters,
                 ignore_log_det_cov=ignore_log_det_cov,
                 return_blob=True,
                 zmask=zmask,
             )
         else:
-            log_like, chi2_all = self.get_log_like(
-                values,
+            log_like, _ = self.get_log_like(
+                parameters,
                 ignore_log_det_cov=ignore_log_det_cov,
                 return_blob=False,
                 zmask=zmask,
             )
-
-        # regulate log-like (not NaN, not tiny)
         log_like = self.regulate_log_like(log_like)
-
         if return_blob:
             return log_like + log_prior, blob
-        else:
-            return log_like + log_prior
+        return log_like + log_prior
 
-    def log_prob(self, values, ignore_log_det_cov=True, zmask=None):
-        """Return log likelihood plus log priors"""
+    def log_prob(self, parameters, ignore_log_det_cov=True, zmask=None):
+        """Return posterior probability for physical parameter values."""
 
         return self.compute_log_prob(
-            values,
+            parameters,
             return_blob=False,
             ignore_log_det_cov=ignore_log_det_cov,
             zmask=zmask,
         )
 
-    def log_prob_and_blobs(self, values, ignore_log_det_cov=True, zmask=None):
-        """Function used by emcee to get both log_prob and extra information"""
+    def log_prob_and_blobs(
+        self, parameters, ignore_log_det_cov=True, zmask=None
+    ):
+        """Return posterior probability and flattened theory blobs."""
 
         lnprob, blob = self.compute_log_prob(
-            values,
+            parameters,
             return_blob=True,
             ignore_log_det_cov=ignore_log_det_cov,
             zmask=zmask,
         )
-        # unpack tuple
-        out = lnprob, *blob
-        return out
-
-    def get_log_prior(self, values):
-        """Compute logarithm of prior"""
-
-        assert len(values) == len(self.free_params), "size mismatch"
-
-        # Always force parameter to be within range (for now)
-        if max(values) > 1:
-            return self.min_log_like
-        if min(values) < 0:
-            return self.min_log_like
-
-        fid_values = [p.value_in_cube() for p in self.free_params]
-        log_prior = -np.sum(
-            (np.array(fid_values) - values) ** 2 / (2 * self.Gauss_priors**2)
-        )
-        return log_prior
-
-    def minus_log_prob(self, values, zmask=None, ind_fix=None, pfix=None):
-        """Return minus log_prob (needed to maximise posterior)"""
-
-        if ind_fix is not None:
-            values[ind_fix] = pfix
-
-        return -1.0 * self.log_prob(values, zmask=zmask)
-
-    def maximise_posterior(self, initial_values=None, method="nelder-mead", tol=1e-4):
-        """Run scipy minimizer to find maximum of posterior"""
-
-        if not initial_values:
-            initial_values = np.ones(len(self.free_params)) * 0.5
-
-        return minimize(self.minus_log_prob, x0=initial_values, method=method, tol=tol)
+        return lnprob, *blob
 
     def old_plot_p1d(
         self,
@@ -913,504 +811,35 @@ class Likelihood(object):
         ylims=None,
         store_data=False,
     ):
-        """Plot P1D in theory vs data. If plot_every_iz >1,
-        plot only few redshift bins"""
+        """Delegate to :func:`cup1d.postprocessing.likelihood.old_plot_p1d`."""
+        from cup1d.postprocessing.likelihood import old_plot_p1d as _plot
 
-        if store_data:
-            out_data = {}
-
-        if (zmask is not None) | (plot_realizations == False):
-            n_perturb = 0
-
-        if zmask is None:
-            _data_z = self.data.z
-            _data_k_kms = self.data.k_kms
-        else:
-            _data_z = []
-            _data_k_kms = []
-            for iz in range(len(self.data.z)):
-                _ = np.argwhere(np.abs(zmask - self.data.z[iz]) < 1e-3)
-                if len(_) != 0:
-                    _data_z.append(self.data.z[iz])
-                    _data_k_kms.append(self.data.k_kms[iz])
-            _data_z = np.array(_data_z)
-
-        # z at time fits or full fit
-        if z_at_time is False:
-            _res = self.get_p1d_kms(
-                _data_z, _data_k_kms, values, return_covar=return_covar
-            )
-            if _res is None:
-                return print("Prior out of range")
-            if return_covar:
-                emu_p1d, emu_cov = _res
-            else:
-                emu_p1d = _res
-
-            # dict_save = {
-            #     "z": _data_z,
-            #     "k_kms": _data_k_kms,
-            #     "p1d_model": emu_p1d,
-            # }
-            # np.save("data/tutorials/data/test_model.npy", dict_save)
-
-            if len(emu_p1d) == 1:
-                emu_p1d = emu_p1d[0]
-
-            # the sum of chi2_all may be different from chi2 due to covariance
-            chi2, chi2_all = self.get_chi2(values=values, return_all=True, zmask=zmask)
-
-            if chi2_nozcov:
-                chi2 = np.sum(chi2_all)
-
-        else:
-            emu_p1d = []
-            chi2_all = []
-            ndeg_all = []
-            for iz in range(len(_data_z)):
-                _res = self.get_p1d_kms(
-                    _data_z[iz],
-                    _data_k_kms[iz],
-                    values[iz],
-                    return_covar=return_covar,
-                )
-                _ = np.argwhere(values[iz] != 0)[:, 0]
-                # print(iz, len(_data_k_kms[iz]), len(_))
-                ndeg_all.append(len(_data_k_kms[iz]) - len(_))
-                if _res is None:
-                    return print("Prior out of range for z = ", _data_z[iz])
-                if return_covar:
-                    emu_p1d.append(_res[0])
-                else:
-                    if len(_res) == 1:
-                        emu_p1d.append(_res[0])
-                    else:
-                        emu_p1d.append(_res)
-
-                _chi2, _ = self.get_chi2(
-                    values=values[iz],
-                    return_all=True,
-                    zmask=np.array([_data_z[iz]]),
-                )
-                chi2_all.append(_chi2)
-            chi2 = np.sum(chi2_all)
-
-        # if rand_posterior is not None:
-        #     Nz = len(self.data.z)
-        #     rand_emu = np.zeros((rand_posterior.shape[0], Nz, len(k_emu_kms)))
-        #     for ii in range(rand_posterior.shape[0]):
-        #         rand_emu[ii] = self.get_p1d_kms(
-        #             self.data.z, k_emu_kms, rand_posterior[ii]
-        #         )
-        #     err_posterior = np.std(rand_emu, axis=0)
-
-        #     if self.extra_data is not None:
-        #         Nz = len(self.extra_data.z)
-        #         rand_emu_extra = np.zeros(
-        #             (rand_posterior.shape[0], Nz, len(k_emu_kms_extra))
-        #         )
-        #         for ii in range(rand_posterior.shape[0]):
-        #             rand_emu_extra[ii] = self.get_p1d_kms(
-        #                 self.extra_data.z, k_emu_kms_extra, rand_posterior[ii]
-        #             )
-        #         err_posterior_extra = np.std(rand_emu_extra, axis=0)
-
-        if self.extra_data is None:
-            if plot_panels:
-                nrows = len(_data_z) // 3
-                if len(_data_z) % 3 != 0:
-                    nrows += 1
-                if nrows == 0:
-                    nrows = 1
-                fig, ax = plt.subplots(
-                    nrows, 3, figsize=(12, nrows * 2), sharex=True, sharey="row"
-                )
-                if len(_data_z) == 1:
-                    ax = [ax]
-                else:
-                    ax = ax.reshape(-1)
-                    if len(_data_z) % 2 != 0:
-                        ax[-1].axis("off")
-
-                length = 1
-            else:
-                fig, ax = plt.subplots(1, 1, figsize=(14, 8))
-                length = 1
-                ax = [ax]
-        else:
-            fig, ax = plt.subplots(2, 1, figsize=(8, 8))
-            length = 2
-
-        # figure out y range for plot
-        ymin = 1e10
-        ymax = -1e10
-
-        # print chi2
-        if z_at_time is False:
-            n_free_p = len(self.free_params)
-            ndeg = 0
-            for iz in range(len(self.data.k_kms)):
-                ndeg += np.sum(self.data.Pk_kms[iz] != 0)
-            if self.extra_data is not None:
-                for iz in range(len(self.extra_data.k_kms)):
-                    ndeg += np.sum(self.extra_data.Pk_kms[iz] != 0)
-            _ndeg = ndeg - n_free_p
-            if fix_cosmo:
-                _ndeg -= 2
-        else:
-            _ndeg = np.sum(ndeg_all)
-        prob = chi2_scipy.sf(chi2, _ndeg)
-        if self.rank == 0:
-            print(prob * 100)
-
-        if prob > 0.0001:
-            str_chi2 = str(np.round(prob * 100, 2))
-        else:
-            str_chi2 = str(np.round(prob * 100, 4))
-        label = (
-            r"$\chi^2=$"
-            + str(np.round(chi2, 2))
-            + r", $n_\mathrm{deg}$="
-            + str(_ndeg)
-            + ", prob="
-            + str_chi2
-            + "%"
+        return _plot(
+            self,
+            values,
+            plot_every_iz,
+            residuals,
+            plot_fname,
+            rand_posterior,
+            show,
+            return_covar,
+            print_ratio,
+            print_chi2,
+            return_all,
+            collapse,
+            plot_realizations,
+            zmask,
+            n_perturb,
+            plot_panels,
+            z_at_time,
+            fontsize,
+            glob_full,
+            fix_cosmo,
+            n_param_glob_full,
+            chi2_nozcov,
+            ylims,
+            store_data,
         )
-
-        fig.suptitle(label, fontsize=fontsize)
-
-        out = {}
-
-        for ii in range(length):
-            if ii == 0:
-                data = self.data
-                emu_p1d_use = emu_p1d
-                if return_covar:
-                    emu_cov_use = emu_cov
-                if rand_posterior is not None:
-                    err_posterior_use = err_posterior
-                out["zs"] = []
-                out["k_kms"] = []
-                out["p1d_data"] = []
-                out["p1d_model"] = []
-                out["p1d_err"] = []
-                out["chi2"] = []
-                out["prob"] = []
-            else:
-                data = self.extra_data
-                emu_p1d_use = emu_p1d_extra
-                if return_covar:
-                    emu_cov_use = emu_cov_extra
-                if rand_posterior is not None:
-                    err_posterior_use = err_posterior_extra
-                out["extra_zs"] = []
-                out["extra_k_kms"] = []
-                out["extra_p1d_data"] = []
-                out["extra_p1d_model"] = []
-                out["extra_p1d_err"] = []
-                out["extra_chi2"] = []
-                out["extra_prob"] = []
-
-            if n_perturb > 0:
-                full_emu_p1d = np.concatenate(emu_p1d_use)
-                perturb = np.random.multivariate_normal(
-                    full_emu_p1d, self.full_cov_Pk_kms, n_perturb
-                )
-
-            zs = data.z
-            Nz = len(zs)
-
-            # plot only few redshifts for clarity
-            for iz in range(0, Nz, plot_every_iz):
-                if zmask is not None:
-                    indemu = np.argwhere(np.abs(zmask - zs[iz]) < 1e-3)[:, 0]
-                    if len(indemu) == 0:
-                        continue
-                    else:
-                        indemu = indemu[0]
-                else:
-                    indemu = iz
-                # access data for this redshift
-                z = zs[iz]
-                k_kms = data.k_kms[iz]
-                p1d_data = data.Pk_kms[iz]
-                p1d_cov = self.cov_Pk_kms[iz]
-                p1d_err = np.sqrt(np.diag(p1d_cov))
-                p1d_theory = emu_p1d_use[indemu]
-                if len(p1d_theory) == 1:
-                    p1d_theory = p1d_theory[0]
-
-                if rand_posterior is None:
-                    if return_covar:
-                        cov_theory = emu_cov_use[iz]
-                        err_theory = np.sqrt(np.diag(cov_theory))
-                else:
-                    err_theory = err_posterior_use[iz]
-
-                # plot everything
-                if Nz > 1:
-                    col = plt.cm.jet(iz / (Nz - 1))
-                    if collapse:
-                        yshift = 0
-                    else:
-                        yshift = 4 * iz / (Nz - 1)
-                else:
-                    col = "C0"
-                    yshift = 0
-
-                if plot_panels:
-                    col = "C0"
-                    yshift = 0
-
-                if residuals:
-                    if plot_panels:
-                        axs = ax[indemu]
-                        yshift = 0
-                    else:
-                        axs = ax[ii]
-
-                    try:
-                        axs = axs[0]
-                    except:
-                        pass
-
-                    axs.tick_params(axis="both", which="major", labelsize=fontsize)
-
-                    if store_data:
-                        out_data["x" + str(iz)] = k_kms
-                        out_data["y" + str(iz)] = p1d_data / p1d_theory + yshift
-                        out_data["yerr" + str(iz)] = p1d_err / p1d_theory
-                    # shift data in y axis for clarity
-                    axs.errorbar(
-                        k_kms,
-                        p1d_data / p1d_theory + yshift,
-                        color=col,
-                        yerr=p1d_err / p1d_theory,
-                        fmt="o",
-                        ms="4",
-                        label="z=" + str(np.round(z, 2)),
-                    )
-
-                    ind = data.full_zs == z
-                    for kk in range(n_perturb):
-                        axs.plot(
-                            k_kms,
-                            perturb[kk, ind] / p1d_theory + yshift,
-                            color=col,
-                            alpha=0.025,
-                        )
-
-                    # print chi2
-                    xpos = k_kms[0]
-                    ndeg = np.sum(p1d_data != 0)
-                    # get degrees of freedom
-                    if z_at_time:
-                        _ndeg = ndeg_all[iz]
-                    else:
-                        _ndeg = ndeg - n_free_p
-                    if glob_full:
-                        _ndeg = ndeg - n_param_glob_full
-
-                    prob = chi2_scipy.sf(chi2_all[key][iz], _ndeg)
-
-                    if print_chi2:
-                        label = (
-                            r"$\chi^2=$"
-                            + str(np.round(chi2_all[key][iz], 2))
-                            + r", $n_\mathrm{deg}$="
-                            + str(_ndeg)
-                            + ", prob="
-                            + str(np.round(prob * 100, 2))
-                            + "%"
-                        )
-                    else:
-                        label = (
-                            r"$z=$"
-                            + str(np.round(z, 2))
-                            + r", $\chi^2=$"
-                            + str(np.round(chi2_all[key][iz], 2))
-                            + r", $n_\mathrm{data}$="
-                            + str(ndeg)
-                        )
-
-                    if print_chi2:
-                        if plot_panels == False:
-                            ypos = 0.75 + yshift
-                            axs.text(xpos, ypos, label, fontsize=fontsize - 4)
-
-                    if print_ratio:
-                        if self.rank == 0:
-                            print(p1d_data / p1d_theory)
-                    ymin = min(ymin, min(p1d_data / p1d_theory + yshift))
-                    ymax = max(ymax, max(p1d_data / p1d_theory + yshift))
-
-                    axs.axhline(1, color="k", linestyle=":", alpha=0.5)
-
-                    if return_covar | (rand_posterior is not None):
-                        axs.fill_between(
-                            k_kms,
-                            (p1d_theory + err_theory) / p1d_theory + yshift,
-                            (p1d_theory - err_theory) / p1d_theory + yshift,
-                            alpha=0.35,
-                            color=col,
-                        )
-                else:
-                    ax[ii].errorbar(
-                        k_kms,
-                        p1d_data * k_kms / np.pi,
-                        color=col,
-                        yerr=p1d_err * k_kms / np.pi,
-                        fmt="o",
-                        ms="4",
-                        label="z=" + str(np.round(z, 2)),
-                    )
-
-                    ind = data.full_zs == z
-                    for kk in range(n_perturb):
-                        ax[ii].plot(
-                            k_kms,
-                            perturb[kk, ind] * k_kms / np.pi,
-                            color=col,
-                            alpha=0.05,
-                        )
-
-                    # print chi2
-                    xpos = k_kms[-1] + 0.001
-                    ypos = (p1d_theory * k_kms / np.pi)[-1]
-                    ndeg = np.sum(p1d_data != 0)
-                    prob = chi2_scipy.sf(chi2_all[ii, iz], ndeg - n_free_p)
-
-                    if print_chi2:
-                        label = (
-                            r"$\chi^2=$"
-                            + str(np.round(chi2_all[ii, iz], 2))
-                            + r", $n_\mathrm{deg}$="
-                            + str(ndeg - n_free_p)
-                            + ", prob="
-                            + str(np.round(prob * 100, 2))
-                            + "%"
-                        )
-                    else:
-                        label = (
-                            r"$\chi^2=$"
-                            + str(np.round(chi2_all[ii, iz], 2))
-                            + r", $n_\mathrm{data}$="
-                            + str(ndeg)
-                        )
-
-                    ax[ii].text(xpos, ypos, label, fontsize=fontsize - 4)
-
-                    ax[ii].plot(
-                        k_kms,
-                        (p1d_theory * k_kms) / np.pi,
-                        color=col,
-                        linestyle="dashed",
-                    )
-                    if return_covar | (rand_posterior is not None):
-                        ax[ii].fill_between(
-                            k_kms,
-                            (p1d_theory + err_theory) * k_kms / np.pi,
-                            (p1d_theory - err_theory) * k_kms / np.pi,
-                            alpha=0.35,
-                            color=col,
-                        )
-                    ymin = min(ymin, min(p1d_data * k_kms / np.pi))
-                    ymax = max(ymax, max(p1d_data * k_kms / np.pi))
-
-                if residuals & plot_panels:
-                    if print_chi2:
-                        axs.legend(loc="upper right", fontsize=fontsize - 4)
-                    ymin = 1 - min((p1d_data - p1d_err) / p1d_theory + yshift)
-                    ymax = 1 - max((p1d_data + p1d_err) / p1d_theory + yshift)
-                    y2plot = 1.05 * np.max([np.abs(ymin), np.abs(ymax)])
-                    if iz % 2 == 1:
-                        axs.set_ylim(1 - y2plot, 1 + y2plot)
-                    elif iz == len(zs) - 1:
-                        axs.set_ylim(1 - y2plot, 1 + y2plot)
-
-                    # if print_chi2:
-                    axs.text(
-                        0.05,
-                        0.05,
-                        label,
-                        fontsize=fontsize - 4,
-                        transform=axs.transAxes,
-                    )
-
-                if ii == 0:
-                    out["zs"].append(z)
-                    out["k_kms"].append(k_kms)
-                    out["p1d_data"].append(p1d_data)
-                    out["p1d_model"].append(p1d_theory)
-                    out["p1d_err"].append(p1d_err)
-                    out["chi2"].append(chi2_all[ii, iz])
-                    out["prob"].append(prob)
-                else:
-                    out["extra_zs"].append(z)
-                    out["extra_k_kms"].append(k_kms)
-                    out["extra_p1d_data"].append(p1d_data)
-                    out["extra_p1d_model"].append(p1d_theory)
-                    out["extra_p1d_err"].append(p1d_err)
-                    out["extra_chi2"].append(chi2_all[ii, iz])
-                    out["extra_prob"].append(prob)
-
-            # ax[ii].plot(k_kms[0], 1, linestyle="-", label="Data", color="k")
-            # ax[ii].plot(k_kms[0], 1, linestyle="--", label="Fit", color="k")
-            if residuals:
-                if plot_panels == False:
-                    axs.legend(fontsize=fontsize)
-            else:
-                ax[ii].legend(loc="lower right", ncol=4, fontsize=fontsize - 4)
-
-            # ax[ii].set_xlim(min(k_kms[0]) - 0.001, max(k_kms[-1]) + 0.001)
-            # if plot_panels == False:
-            # ax[ii].set_xlabel(r"$k_\parallel$ [s/km]")
-            # else:
-            # ax[-1].set_xlabel(r"$k_\parallel$ [s/km]")
-
-            if residuals:
-                if plot_panels == False:
-                    ax[ii].set_ylabel(
-                        r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$",
-                        fontsize=fontsize,
-                    )
-                    ax[ii].set_ylim(ymin - 0.3, ymax + 0.3)
-            else:
-                ax[ii].set_ylim(0.8 * ymin, 1.3 * ymax)
-                ax[ii].set_yscale("log")
-                ax[ii].set_ylabel(
-                    r"$k_\parallel \, P_{\rm 1D}(z, k_\parallel) / \pi$",
-                    fontsize=fontsize,
-                )
-
-        if ylims is not None:
-            ax[0].set_ylim(ylims[0, 0], ylims[0, 1])
-            ax[3].set_ylim(ylims[1, 0], ylims[1, 1])
-            ax[6].set_ylim(ylims[2, 0], ylims[2, 1])
-            ax[9].set_ylim(ylims[3, 0], ylims[3, 1])
-
-        fig.supxlabel(r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize)
-        fig.supylabel(
-            r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$",
-            fontsize=fontsize,
-        )
-
-        plt.tight_layout()
-
-        plt.subplots_adjust(wspace=0.05, hspace=0.1)
-        if plot_fname is not None:
-            plt.savefig(plot_fname + ".pdf")
-            plt.savefig(plot_fname + ".png")
-        else:
-            if show:
-                plt.show()
-
-        if return_all:
-            return out
-        elif store_data:
-            return out_data
-        else:
-            return
 
     def plot_p1d(
         self,
@@ -1438,474 +867,35 @@ class Likelihood(object):
         ylims=None,
         store_data=False,
     ):
-        """Plot P1D in theory vs data. If plot_every_iz >1,
-        plot only few redshift bins"""
+        """Delegate to :func:`cup1d.postprocessing.likelihood.plot_p1d`."""
+        from cup1d.postprocessing.likelihood import plot_p1d as _plot
 
-        if store_data:
-            out_data = {}
-
-        if (zmask is not None) | (plot_realizations == False):
-            n_perturb = 0
-
-        # These arrays determine the panel layout and are also used by the
-        # legacy ``z_at_time`` path. A likelihood normally has one P1D data
-        # set; use its redshift grid rather than the old pre-dictionary
-        # ``self.data.z`` interface.
-        primary_data = next(iter(self.data.values()))
-        if zmask is None:
-            _data_z = primary_data.z
-            _data_k_kms = primary_data.k_kms
-        else:
-            _data_z = []
-            _data_k_kms = []
-            for iz, redshift in enumerate(primary_data.z):
-                if np.any(np.isclose(zmask, redshift, atol=1e-3)):
-                    _data_z.append(redshift)
-                    _data_k_kms.append(primary_data.k_kms[iz])
-            _data_z = np.asarray(_data_z)
-
-        # z at time fits or full fit
-        if z_at_time is False:
-            _res = self.get_p1d_kms(values, return_covar=return_covar)
-            if _res is None:
-                return print("Prior out of range")
-            if return_covar:
-                emu_p1d, emu_cov = _res
-            else:
-                emu_p1d = _res
-
-            if len(emu_p1d) == 1:
-                emu_p1d = emu_p1d[0]
-
-            # the sum of chi2_all may be different from chi2 due to covariance
-            chi2, chi2_all = self.get_chi2(values=values, return_all=True, zmask=zmask)
-
-            if chi2_nozcov:
-                chi2 = np.sum(chi2_all)
-
-        else:
-            emu_p1d = []
-            chi2_all = []
-            ndeg_all = []
-            for iz in range(len(_data_z)):
-                _res = self.get_p1d_kms(
-                    _data_z[iz],
-                    _data_k_kms[iz],
-                    values[iz],
-                    return_covar=return_covar,
-                )
-                _ = np.argwhere(values[iz] != 0)[:, 0]
-                # print(iz, len(_data_k_kms[iz]), len(_))
-                ndeg_all.append(len(_data_k_kms[iz]) - len(_))
-                if _res is None:
-                    return print("Prior out of range for z = ", _data_z[iz])
-                if return_covar:
-                    emu_p1d.append(_res[0])
-                else:
-                    if len(_res) == 1:
-                        emu_p1d.append(_res[0])
-                    else:
-                        emu_p1d.append(_res)
-
-                _chi2, _ = self.get_chi2(
-                    values=values[iz],
-                    return_all=True,
-                    zmask=np.array([_data_z[iz]]),
-                )
-                chi2_all.append(_chi2)
-            chi2 = np.sum(chi2_all)
-            # account for extra_data
-            chi2_all = np.array([chi2_all])
-
-        # if rand_posterior is not None:
-        #     Nz = len(self.data.z)
-        #     rand_emu = np.zeros((rand_posterior.shape[0], Nz, len(k_emu_kms)))
-        #     for ii in range(rand_posterior.shape[0]):
-        #         rand_emu[ii] = self.get_p1d_kms(
-        #             self.data.z, k_emu_kms, rand_posterior[ii]
-        #         )
-        #     err_posterior = np.std(rand_emu, axis=0)
-
-        #     if self.extra_data is not None:
-        #         Nz = len(self.extra_data.z)
-        #         rand_emu_extra = np.zeros(
-        #             (rand_posterior.shape[0], Nz, len(k_emu_kms_extra))
-        #         )
-        #         for ii in range(rand_posterior.shape[0]):
-        #             rand_emu_extra[ii] = self.get_p1d_kms(
-        #                 self.extra_data.z, k_emu_kms_extra, rand_posterior[ii]
-        #             )
-        #         err_posterior_extra = np.std(rand_emu_extra, axis=0)
-
-        if plot_panels:
-            nrows = len(_data_z) // 3
-            if len(_data_z) % 3 != 0:
-                nrows += 1
-            if nrows == 0:
-                nrows = 1
-            fig, ax = plt.subplots(
-                nrows, 3, figsize=(12, nrows * 2), sharex=True, sharey="row"
-            )
-            if len(_data_z) == 1:
-                ax = [ax]
-            else:
-                ax = ax.reshape(-1)
-                if len(_data_z) % 2 != 0:
-                    ax[-1].axis("off")
-
-            length = 1
-        else:
-            fig, ax = plt.subplots(len(self.data), 1, figsize=(16, 14), sharex=True)
-            ax = np.atleast_1d(ax)
-
-        # figure out y range for plot
-        ymin = 1e10
-        ymax = -1e10
-
-        # print chi2
-        if z_at_time is False:
-            n_free_p = len(self.free_params)
-            ndeg = 0
-            for key in self.data:
-                data = self.data[key]
-                for iz in range(len(data.k_kms)):
-                    ndeg += np.sum(data.Pk_kms[iz] != 0)
-            _ndeg = ndeg - n_free_p
-            if fix_cosmo:
-                _ndeg -= 2
-        else:
-            _ndeg = np.sum(ndeg_all)
-        prob = chi2_scipy.sf(chi2, _ndeg)
-        if self.rank == 0:
-            print(prob * 100)
-
-        if prob > 0.0001:
-            str_chi2 = str(np.round(prob * 100, 2))
-        else:
-            str_chi2 = str(np.round(prob * 100, 4))
-        label = (
-            r"$\chi^2=$"
-            + str(np.round(chi2, 2))
-            + r", $n_\mathrm{deg}$="
-            + str(_ndeg)
-            + ", prob="
-            + str_chi2
-            + "%"
+        return _plot(
+            self,
+            values,
+            plot_every_iz,
+            residuals,
+            plot_fname,
+            rand_posterior,
+            show,
+            return_covar,
+            print_ratio,
+            print_chi2,
+            return_all,
+            collapse,
+            plot_realizations,
+            zmask,
+            n_perturb,
+            plot_panels,
+            z_at_time,
+            fontsize,
+            glob_full,
+            fix_cosmo,
+            n_param_glob_full,
+            chi2_nozcov,
+            ylims,
+            store_data,
         )
-
-        fig.suptitle(label, fontsize=fontsize)
-
-        out = {}
-
-        for ii, key in enumerate(self.data):
-            data = self.data[key]
-            # TBD (fix 0)
-            emu_p1d_use = emu_p1d[0][key]
-            if return_covar:
-                emu_cov_use = emu_cov[key]
-            if rand_posterior is not None:
-                err_posterior_use = err_posterior
-            out[key] = {}
-
-            out[key]["zs"] = []
-            out[key]["k_kms"] = []
-            out[key]["p1d_data"] = []
-            out[key]["p1d_model"] = []
-            out[key]["p1d_err"] = []
-            out[key]["chi2"] = []
-            out[key]["prob"] = []
-
-            if n_perturb > 0:
-                full_emu_p1d = np.concatenate(emu_p1d_use)
-                perturb = np.random.multivariate_normal(
-                    full_emu_p1d, self.full_cov_Pk_kms, n_perturb
-                )
-
-            zs = data.z
-            Nz = len(zs)
-
-            # plot only few redshifts for clarity
-            for iz in range(0, Nz, plot_every_iz):
-                if zmask is not None:
-                    indemu = np.argwhere(np.abs(zmask - zs[iz]) < 1e-3)[:, 0]
-                    if len(indemu) == 0:
-                        continue
-                    else:
-                        indemu = indemu[0]
-                else:
-                    indemu = iz
-                # access data for this redshift
-                z = zs[iz]
-                k_kms = data.k_kms[iz]
-                p1d_data = data.Pk_kms[iz]
-                p1d_cov = self.cov_Pk_kms[key][iz]
-                p1d_err = np.sqrt(np.diag(p1d_cov))
-                p1d_theory = emu_p1d_use[indemu]
-                if len(p1d_theory) == 1:
-                    p1d_theory = p1d_theory[0]
-
-                if rand_posterior is None:
-                    if return_covar:
-                        cov_theory = emu_cov_use[iz]
-                        err_theory = np.sqrt(np.diag(cov_theory))
-                else:
-                    err_theory = err_posterior_use[iz]
-
-                # plot everything
-                if Nz > 1:
-                    col = plt.cm.jet(iz / (Nz - 1))
-                    if collapse:
-                        yshift = 0
-                    else:
-                        yshift = 4 * iz / (Nz - 1)
-                else:
-                    col = "C0"
-                    yshift = 0
-
-                if plot_panels:
-                    col = "C0"
-                    yshift = 0
-
-                if residuals:
-                    if plot_panels:
-                        axs = ax[indemu]
-                        yshift = 0
-                    else:
-                        axs = ax[ii]
-
-                    try:
-                        axs = axs[0]
-                    except:
-                        pass
-
-                    axs.tick_params(axis="both", which="major", labelsize=fontsize)
-
-                    if store_data:
-                        out_data["x" + str(iz)] = k_kms
-                        out_data["y" + str(iz)] = p1d_data / p1d_theory + yshift
-                        out_data["yerr" + str(iz)] = p1d_err / p1d_theory
-                    # shift data in y axis for clarity
-                    axs.errorbar(
-                        k_kms,
-                        p1d_data / p1d_theory + yshift,
-                        color=col,
-                        yerr=p1d_err / p1d_theory,
-                        fmt="o",
-                        ms="4",
-                        label="z=" + str(np.round(z, 2)),
-                    )
-
-                    ind = data.full_zs == z
-                    for kk in range(n_perturb):
-                        axs.plot(
-                            k_kms,
-                            perturb[kk, ind] / p1d_theory + yshift,
-                            color=col,
-                            alpha=0.025,
-                        )
-
-                    # print chi2
-                    xpos = k_kms[0]
-                    ndeg = np.sum(p1d_data != 0)
-                    # get degrees of freedom
-                    if z_at_time:
-                        _ndeg = ndeg_all[iz]
-                    else:
-                        _ndeg = ndeg - n_free_p
-                    if glob_full:
-                        _ndeg = ndeg - n_param_glob_full
-
-                    prob = chi2_scipy.sf(chi2_all[key][iz], _ndeg)
-
-                    if print_chi2:
-                        label = (
-                            r"$\chi^2=$"
-                            + str(np.round(chi2_all[key][iz], 2))
-                            + r", $n_\mathrm{deg}$="
-                            + str(_ndeg)
-                            + ", prob="
-                            + str(np.round(prob * 100, 2))
-                            + "%"
-                        )
-                    else:
-                        label = (
-                            r"$z=$"
-                            + str(np.round(z, 2))
-                            + r", $\chi^2=$"
-                            + str(np.round(chi2_all[key][iz], 2))
-                            + r", $n_\mathrm{data}$="
-                            + str(ndeg)
-                        )
-
-                    if print_chi2:
-                        if plot_panels == False:
-                            ypos = 0.75 + yshift
-                            axs.text(xpos, ypos, label, fontsize=fontsize - 4)
-
-                    if print_ratio:
-                        if self.rank == 0:
-                            print(p1d_data / p1d_theory)
-                    ymin = min(ymin, min(p1d_data / p1d_theory + yshift))
-                    ymax = max(ymax, max(p1d_data / p1d_theory + yshift))
-
-                    axs.axhline(1, color="k", linestyle=":", alpha=0.5)
-
-                    if return_covar | (rand_posterior is not None):
-                        axs.fill_between(
-                            k_kms,
-                            (p1d_theory + err_theory) / p1d_theory + yshift,
-                            (p1d_theory - err_theory) / p1d_theory + yshift,
-                            alpha=0.35,
-                            color=col,
-                        )
-                else:
-                    ax[ii].errorbar(
-                        k_kms,
-                        p1d_data * k_kms / np.pi,
-                        color=col,
-                        yerr=p1d_err * k_kms / np.pi,
-                        fmt="o",
-                        ms="4",
-                        label="z=" + str(np.round(z, 2)),
-                    )
-
-                    ind = data.full_zs == z
-                    for kk in range(n_perturb):
-                        ax[ii].plot(
-                            k_kms,
-                            perturb[kk, ind] * k_kms / np.pi,
-                            color=col,
-                            alpha=0.05,
-                        )
-
-                    # print chi2
-                    xpos = k_kms[-1] + 0.001
-                    ypos = (p1d_theory * k_kms / np.pi)[-1]
-                    ndeg = np.sum(p1d_data != 0)
-                    prob = chi2_scipy.sf(chi2_all[key][iz], ndeg - n_free_p)
-
-                    if print_chi2:
-                        label = (
-                            r"$\chi^2=$"
-                            + str(np.round(chi2_all[key][iz], 2))
-                            + r", $n_\mathrm{deg}$="
-                            + str(ndeg - n_free_p)
-                            + ", prob="
-                            + str(np.round(prob * 100, 2))
-                            + "%"
-                        )
-                    else:
-                        label = (
-                            r"$\chi^2=$"
-                            + str(np.round(chi2_all[key][iz], 2))
-                            + r", $n_\mathrm{data}$="
-                            + str(ndeg)
-                        )
-
-                    ax[ii].text(xpos, ypos, label, fontsize=fontsize - 4)
-
-                    ax[ii].plot(
-                        k_kms,
-                        (p1d_theory * k_kms) / np.pi,
-                        color=col,
-                        linestyle="dashed",
-                    )
-                    if return_covar | (rand_posterior is not None):
-                        ax[ii].fill_between(
-                            k_kms,
-                            (p1d_theory + err_theory) * k_kms / np.pi,
-                            (p1d_theory - err_theory) * k_kms / np.pi,
-                            alpha=0.35,
-                            color=col,
-                        )
-                    ymin = min(ymin, min(p1d_data * k_kms / np.pi))
-                    ymax = max(ymax, max(p1d_data * k_kms / np.pi))
-
-                if residuals & plot_panels:
-                    if print_chi2:
-                        axs.legend(loc="upper right", fontsize=fontsize - 4)
-                    ymin = 1 - min((p1d_data - p1d_err) / p1d_theory + yshift)
-                    ymax = 1 - max((p1d_data + p1d_err) / p1d_theory + yshift)
-                    y2plot = 1.05 * np.max([np.abs(ymin), np.abs(ymax)])
-                    if iz % 2 == 1:
-                        axs.set_ylim(1 - y2plot, 1 + y2plot)
-                    elif iz == len(zs) - 1:
-                        axs.set_ylim(1 - y2plot, 1 + y2plot)
-
-                    # if print_chi2:
-                    axs.text(
-                        0.05,
-                        0.05,
-                        label,
-                        fontsize=fontsize - 4,
-                        transform=axs.transAxes,
-                    )
-
-                out[key]["zs"].append(z)
-                out[key]["k_kms"].append(k_kms)
-                out[key]["p1d_data"].append(p1d_data)
-                out[key]["p1d_model"].append(p1d_theory)
-                out[key]["p1d_err"].append(p1d_err)
-                out[key]["chi2"].append(chi2_all[key][iz])
-                out[key]["prob"].append(prob)
-
-            # ax[ii].plot(k_kms[0], 1, linestyle="-", label="Data", color="k")
-            # ax[ii].plot(k_kms[0], 1, linestyle="--", label="Fit", color="k")
-            if residuals:
-                if plot_panels == False:
-                    axs.legend(fontsize=fontsize)
-            else:
-                ax[ii].legend(loc="lower right", ncol=4, fontsize=fontsize - 4)
-
-            # ax[ii].set_xlim(min(k_kms[0]) - 0.001, max(k_kms[-1]) + 0.001)
-            # if plot_panels == False:
-            # ax[ii].set_xlabel(r"$k_\parallel$ [s/km]")
-            # else:
-            # ax[-1].set_xlabel(r"$k_\parallel$ [s/km]")
-
-            if residuals:
-                if plot_panels == False:
-                    ax[ii].set_ylabel(
-                        r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$",
-                        fontsize=fontsize,
-                    )
-                    ax[ii].set_ylim(ymin - 0.3, ymax + 0.3)
-            else:
-                ax[ii].set_ylim(0.8 * ymin, 1.3 * ymax)
-                ax[ii].set_yscale("log")
-                ax[ii].set_ylabel(
-                    r"$k_\parallel \, P_{\rm 1D}(z, k_\parallel) / \pi$",
-                    fontsize=fontsize,
-                )
-
-        if ylims is not None:
-            ax[0].set_ylim(ylims[0, 0], ylims[0, 1])
-            ax[3].set_ylim(ylims[1, 0], ylims[1, 1])
-            ax[6].set_ylim(ylims[2, 0], ylims[2, 1])
-            ax[9].set_ylim(ylims[3, 0], ylims[3, 1])
-
-        fig.supxlabel(r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=fontsize)
-        fig.supylabel(
-            r"$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$",
-            fontsize=fontsize,
-        )
-
-        plt.tight_layout()
-
-        plt.subplots_adjust(wspace=0.05, hspace=0.1)
-        if plot_fname is not None:
-            plt.savefig(plot_fname + ".pdf")
-            plt.savefig(plot_fname + ".png")
-        else:
-            if show:
-                plt.show()
-
-        if return_all:
-            return out
-        elif store_data:
-            return out_data
-        else:
-            return
 
     def plot_p1d_errors(
         self,
@@ -1916,162 +906,10 @@ class Likelihood(object):
         z_at_time=False,
         fontsize=16,
     ):
-        """Plot P1D in theory vs data. If plot_every_iz >1,
-        plot only few redshift bins"""
+        """Delegate to :func:`cup1d.postprocessing.likelihood.plot_p1d_errors`."""
+        from cup1d.postprocessing.likelihood import plot_p1d_errors as _plot
 
-        import scipy.stats as stats
-
-        if zmask is None:
-            _data_z = self.data.z
-            _data_k_kms = self.data.k_kms
-        else:
-            _data_z = []
-            _data_k_kms = []
-            for iz in range(len(self.data.z)):
-                _ = np.argwhere(np.abs(zmask - self.data.z[iz]) < 1e-3)
-                if len(_) != 0:
-                    _data_z.append(self.data.z[iz])
-                    _data_k_kms.append(self.data.k_kms[iz])
-            _data_z = np.array(_data_z)
-
-        # z at time fits or full fit
-        if z_at_time is False:
-            _res = self.get_p1d_kms(_data_z, _data_k_kms, values, return_covar=False)
-            if _res is None:
-                if self.rank == 0:
-                    return print("Prior out of range")
-            emu_p1d = _res
-
-            # the sum of chi2_all may be different from chi2 due to covariance
-            chi2, chi2_all = self.get_chi2(values=values, return_all=True, zmask=zmask)
-        else:
-            emu_p1d = []
-            for iz in range(len(_data_z)):
-                _res = self.get_p1d_kms(
-                    _data_z[iz],
-                    _data_k_kms[iz],
-                    values[iz],
-                    return_covar=False,
-                )
-                # print(iz, _data_z[iz], _res)
-                if _res is None:
-                    if self.rank == 0:
-                        return print("Prior out of range for z = ", _data_z[iz])
-                if len(_res) == 1:
-                    emu_p1d.append(_res[0])
-                else:
-                    emu_p1d.append(_res)
-
-        if self.extra_data is not None:
-            _res = self.get_p1d_kms(
-                self.extra_data.z,
-                self.extra_data.k_kms,
-                values,
-                return_covar=return_covar,
-            )
-            if _res is None:
-                if self.rank == 0:
-                    return print("Prior out of range")
-            if return_covar:
-                emu_p1d_extra, emu_cov_extra = _res
-            else:
-                emu_p1d_extra = _res
-
-        fig, ax = plt.subplots(
-            len(_data_z) // 2 + len(_data_z) % 2,
-            2,
-            figsize=(12, len(_data_z)),
-            sharex=True,
-            sharey=True,
-        )
-        if len(_data_z) == 1:
-            ax = [ax]
-        else:
-            ax = ax.reshape(-1)
-        length = 1
-        # if (len(_data_z) % 2 + 1) != 0:
-        #     ax[-1].axis("off")
-
-        out = {}
-        bins = np.linspace(-5, 5, 50)
-        out["bins"] = bins
-
-        data = self.data
-        emu_p1d_use = emu_p1d
-        out["zs"] = []
-        out["(d-m)/err"] = []
-
-        mu = 0
-        sigma = 1
-        x = np.linspace(mu - 5 * sigma, mu + 5 * sigma, 100)
-
-        zs = data.z
-        Nz = len(zs)
-
-        for iz in range(0, Nz):
-            if zmask is not None:
-                indemu = np.argwhere(np.abs(zmask - zs[iz]) < 1e-3)[:, 0]
-                if len(indemu) == 0:
-                    continue
-                else:
-                    indemu = indemu[0]
-            else:
-                indemu = iz
-
-            # access data for this redshift
-            z = zs[iz]
-            k_kms = data.k_kms[iz]
-            p1d_data = data.Pk_kms[iz]
-            p1d_cov = self.cov_Pk_kms[iz]
-            p1d_err = np.sqrt(np.diag(p1d_cov))
-
-            if len(emu_p1d_use) == 1:
-                if len(emu_p1d_use[0]) == 1:
-                    p1d_theory = emu_p1d_use[0][0]
-                else:
-                    p1d_theory = emu_p1d_use[0][indemu]
-            else:
-                p1d_theory = emu_p1d_use[indemu]
-
-            dme = (p1d_data - p1d_theory) / p1d_err
-
-            ax[iz].tick_params(axis="both", which="major", labelsize=fontsize - 4)
-            ax[iz].hist(
-                dme,
-                label="z=" + str(np.round(z, 2)),
-                bins=bins,
-                color="C0",
-                density=True,
-            )
-
-            ax[iz].plot(x, stats.norm.pdf(x, mu, sigma), color="C1")
-
-            out["zs"].append(z)
-            out["(d-m)/err"].append(dme)
-
-            ax[iz].legend()
-
-        dme = np.concatenate(out["(d-m)/err"])
-        if self.rank == 0:
-            print("dme, mean", np.mean(dme))
-            print("dme, std", np.std(dme))
-        ax[iz + 1].hist(dme, label="All", bins=bins, density=True)
-        ax[iz + 1].plot(x, stats.norm.pdf(x, mu, sigma), color="C1")
-        ax[iz + 1].legend()
-
-        fig.supxlabel(r"(d-m)/err", fontsize=fontsize)
-        fig.supylabel(r"$PDF$", fontsize=fontsize)
-
-        plt.tight_layout()
-        # plt.savefig("test.pdf")
-        if plot_fname is not None:
-            plt.savefig(plot_fname + ".pdf")
-            plt.savefig(plot_fname + ".png")
-        else:
-            if show:
-                plt.show()
-
-        return out
+        return _plot(self, values, plot_fname, show, zmask, z_at_time, fontsize)
 
     # def overplot_emulator_calls(
     #     self,
@@ -2156,113 +994,10 @@ class Likelihood(object):
         nelem=5000,
         store_data=False,
     ):
-        if store_data:
-            out_data = {}
+        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_hcd_cont`."""
+        from cup1d.postprocessing.contaminants import plot_hcd_cont as _plot
 
-        if chain is not None:
-            if len(chain.shape) == 3:
-                chain_use = chain.reshape(-1, chain.shape[-1])
-            else:
-                chain_use = chain.copy()
-            ind = np.random.permutation(np.arange(0, chain_use.shape[0]))[:nelem]
-            chain_use = chain_use[ind]
-
-        ind = np.argwhere(self.data.z == zstar)[0][0]
-        k_kms_inter = np.linspace(
-            self.data.k_kms[ind].min(), self.data.k_kms[ind].max(), 500
-        )
-
-        labels = ["LLS", "sub-DLA", "small DLA", "large DLA", "All"]
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ls = ["--", "-.", (0, (2, 2, 2, 2)), ":", "-"]
-
-        for ii in range(5):
-            par_plot = "HCD_damp" + str(ii + 1)
-            # print(par_plot)
-
-            if chain is None:
-                free_params = self.parameters_from_sampling_point(p0)
-                for par in free_params:
-                    if ii + 1 <= 4:
-                        if "HCD_damp" in par.name:
-                            # print(par.name, par.value)
-                            if par.name.startswith(par_plot):
-                                pass
-                            else:
-                                par.value = -20
-
-                hcd_cont = self.theory.model_cont.hcd_model.get_contamination(
-                    z=np.array([zstar]),
-                    k_kms=[k_kms_inter],
-                    like_params=free_params,
-                )
-                ax.plot(
-                    k_kms_inter,
-                    hcd_cont,
-                    label=labels[ii],
-                    alpha=0.75,
-                    ls=ls[ii],
-                    lw=3,
-                    color="C" + str(ii),
-                )
-            else:
-                all_hcd_cont = np.zeros((nelem, len(k_kms_inter)))
-
-                for jj in range(nelem):
-                    free_params = self.parameters_from_sampling_point(chain_use[jj])
-                    for par in free_params:
-                        if ii + 1 <= 4:
-                            if "HCD_damp" in par.name:
-                                if par.name.startswith(par_plot):
-                                    pass
-                                else:
-                                    par.value = -20
-                    all_hcd_cont[jj, :] = (
-                        self.theory.model_cont.hcd_model.get_contamination(
-                            z=np.array([zstar]),
-                            k_kms=[k_kms_inter],
-                            like_params=free_params,
-                        )
-                    )
-                hcd_cont = np.percentile(all_hcd_cont, [16, 50, 84], axis=0)
-
-                if store_data:
-                    out_data["x"] = k_kms_inter
-                    out_data["y" + str(ii)] = hcd_cont
-
-                ax.plot(
-                    k_kms_inter,
-                    hcd_cont[1],
-                    label=labels[ii],
-                    alpha=0.75,
-                    ls=ls[ii],
-                    lw=3,
-                    color="C" + str(ii),
-                )
-                ax.fill_between(
-                    k_kms_inter,
-                    hcd_cont[0],
-                    hcd_cont[2],
-                    alpha=0.3,
-                    color="C" + str(ii),
-                )
-        ax.axhline(1, color="k", ls=":", lw=2)
-        ax.set_ylabel(r"$C_\mathrm{HCD}$", fontsize=ftsize)
-        ax.set_xlabel(r"$k_\parallel\, [\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize)
-        ax.tick_params(axis="both", which="major", labelsize=ftsize)
-        ax.legend(fontsize=ftsize - 2)
-
-        plt.tight_layout()
-
-        if save_directory is not None:
-            name = os.path.join(save_directory, "cont_hcd")
-            plt.savefig(name + ".pdf")
-            plt.savefig(name + ".png")
-        else:
-            plt.show()
-
-        if store_data:
-            return out_data
+        return _plot(self, zstar, p0, chain, save_directory, ftsize, nelem, store_data)
 
     def plot_metal_cont_add(
         self,
@@ -2273,105 +1008,18 @@ class Likelihood(object):
         nelem=5000,
         store_data=False,
     ):
-        if store_data:
-            out_data = {}
+        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_metal_cont_add`."""
+        from cup1d.postprocessing.contaminants import plot_metal_cont_add as _plot
 
-        if chain is not None:
-            if len(chain.shape) == 3:
-                chain_use = chain.reshape(-1, chain.shape[-1])
-            else:
-                chain_use = chain.copy()
-            ind = np.random.permutation(np.arange(0, chain_use.shape[0]))[:nelem]
-            chain_use = chain_use[ind]
-
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ls = ["-", "--", "-.", ":"]
-        for ii, zstar in enumerate([2.2, 2.8, 3.4, 4.0]):
-            ind = np.argwhere(self.data.z == zstar)[0][0]
-            k_kms_inter = np.linspace(
-                self.data.k_kms[ind].min(), self.data.k_kms[ind].max(), 500
-            )
-            k_kms = self.data.k_kms[ind].copy()
-            mF = self.theory.model_igm.models["F_model"].get_mean_flux(
-                zstar, like_params=free_params
-            )
-
-            if chain is None:
-                si_add_cont_all = self.theory.model_cont.metal_models[
-                    "Si_add"
-                ].get_contamination(
-                    z=np.array([zstar]),
-                    k_kms=[k_kms_inter],
-                    mF=np.array([mF]),
-                    like_params=free_params,
-                )
-                ax.plot(
-                    k_kms_inter,
-                    si_add_cont_all[0],
-                    label=r"$z=$" + str(zstar),
-                    alpha=0.75,
-                    ls=ls[ii],
-                    lw=4,
-                    color="C" + str(ii),
-                )
-            else:
-                all_si_add_cont = np.zeros((nelem, len(k_kms_inter)))
-                for jj in range(nelem):
-                    free_params = self.parameters_from_sampling_point(chain_use[jj])
-                    all_si_add_cont[jj, :] = self.theory.model_cont.metal_models[
-                        "Si_add"
-                    ].get_contamination(
-                        z=np.array([zstar]),
-                        k_kms=[k_kms_inter],
-                        mF=np.array([mF]),
-                        like_params=free_params,
-                    )[
-                        0
-                    ]
-                si_add_cont = np.percentile(all_si_add_cont, [16, 50, 84], axis=0)
-
-                if store_data:
-                    out_data["x"] = k_kms_inter
-                    out_data["y" + str(ii)] = si_add_cont
-
-                ax.plot(
-                    k_kms_inter,
-                    si_add_cont[1],
-                    label=r"$z=$" + str(zstar),
-                    alpha=0.75,
-                    ls=ls[ii],
-                    lw=2,
-                    color="C" + str(ii),
-                )
-                ax.fill_between(
-                    k_kms_inter,
-                    si_add_cont[0],
-                    si_add_cont[2],
-                    alpha=0.3,
-                    color="C" + str(ii),
-                )
-
-        ax.axhline(0, color="k", ls=":", lw=2)
-        ax.legend(fontsize=ftsize - 4, loc="upper right")
-        ax.tick_params(axis="both", which="major", labelsize=ftsize)
-        ax.set_ylabel(
-            r"$C_\mathrm{SiII-SiII}\,[\mathrm{km}\,\mathrm{s}^{-1}]$",
-            fontsize=ftsize,
+        return _plot(
+            self,
+            free_params,
+            chain,
+            save_directory,
+            ftsize,
+            nelem,
+            store_data,
         )
-        ax.set_xlabel(r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize)
-        ax.set_ylim(-0.2, 3)
-
-        plt.tight_layout()
-
-        if save_directory is not None:
-            name = os.path.join(save_directory, "cont_metal_add")
-            plt.savefig(name + ".pdf", bbox_inches="tight")
-            plt.savefig(name + ".png", bbox_inches="tight")
-        else:
-            plt.show()
-
-        if store_data:
-            return out_data
 
     def plot_metal_cont_mult(
         self,
@@ -2383,355 +1031,19 @@ class Likelihood(object):
         nelem=5000,
         store_data=False,
     ):
-        """Plot metallicity contours"""
+        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_metal_cont_mult`."""
+        from cup1d.postprocessing.contaminants import plot_metal_cont_mult as _plot
 
-        if store_data:
-            out_data = {}
-
-        if chain is not None:
-            if len(chain.shape) == 3:
-                chain_use = chain.reshape(-1, chain.shape[-1])
-            else:
-                chain_use = chain.copy()
-            ind = np.random.permutation(np.arange(0, chain_use.shape[0]))[:nelem]
-            chain_use = chain_use[ind]
-
-        ind = np.argwhere(self.data.z == zstar)[0][0]
-        k_kms_inter = np.linspace(
-            self.data.k_kms[ind].min(), self.data.k_kms[ind].max(), 500
+        return _plot(
+            self,
+            free_params,
+            chain,
+            zstar,
+            save_directory,
+            ftsize,
+            nelem,
+            store_data,
         )
-        # k_kms = self.data.k_kms[ind].copy()
-
-        # dat_si_mult_cont_all = self.theory.model_cont.metal_models[
-        #     "Si_mult"
-        # ].get_contamination(
-        #     z=np.array([zstar]),
-        #     k_kms=[k_kms],
-        #     mF=np.array([mF]),
-        #     like_params=free_params,
-        # )
-
-        if chain is None:
-            mF = self.theory.model_igm.models["F_model"].get_mean_flux(
-                zstar, like_params=free_params
-            )
-
-            si_mult_cont_all = self.theory.model_cont.metal_models[
-                "Si_mult"
-            ].get_contamination(
-                z=np.array([zstar]),
-                k_kms=[k_kms_inter],
-                mF=np.array([mF]),
-                like_params=free_params,
-            )
-
-            remove = {
-                "SiIII_Lya": 1,
-                "SiIIa_Lya": 0,
-                "SiIIb_Lya": 0,
-                "SiIIc_Lya": 0,
-                "SiIII_SiIIa": 0,
-                "SiIII_SiIIb": 0,
-                "SiIII_SiIIc": 0,
-                "SiIIc_SiIIb": 0,
-                "SiIIc_SiIIa": 0,
-                "SiIIb_SiIIa": 0,
-            }
-
-            si_mult_cont_SiIII = self.theory.model_cont.metal_models[
-                "Si_mult"
-            ].get_contamination(
-                z=np.array([zstar]),
-                k_kms=[k_kms_inter],
-                mF=np.array([mF]),
-                like_params=free_params,
-                remove=remove,
-            )
-
-            remove = {
-                "SiIII_Lya": 0,
-                "SiIIa_Lya": 1,
-                "SiIIb_Lya": 1,
-                "SiIIc_Lya": 0,
-                "SiIII_SiIIa": 0,
-                "SiIII_SiIIb": 0,
-                "SiIII_SiIIc": 0,
-                "SiIIc_SiIIb": 0,
-                "SiIIc_SiIIa": 0,
-                "SiIIb_SiIIa": 0,
-            }
-
-            si_mult_cont_SiII = self.theory.model_cont.metal_models[
-                "Si_mult"
-            ].get_contamination(
-                z=np.array([zstar]),
-                k_kms=[k_kms_inter],
-                mF=np.array([mF]),
-                like_params=free_params,
-                remove=remove,
-            )
-
-            remove = {
-                "SiIII_Lya": 0,
-                "SiIIa_Lya": 0,
-                "SiIIb_Lya": 0,
-                "SiIIc_Lya": 0,
-                "SiIII_SiIIa": 1,
-                "SiIII_SiIIb": 1,
-                "SiIII_SiIIc": 0,
-                "SiIIc_SiIIb": 0,
-                "SiIIc_SiIIa": 0,
-                "SiIIb_SiIIa": 0,
-            }
-
-            si_mult_cont_Si23 = self.theory.model_cont.metal_models[
-                "Si_mult"
-            ].get_contamination(
-                z=np.array([zstar]),
-                k_kms=[k_kms_inter],
-                mF=np.array([mF]),
-                like_params=free_params,
-                remove=remove,
-            )
-
-            fig, ax = plt.subplots(4, figsize=(8, 6), sharey=True, sharex=True)
-            ax[0].plot(
-                k_kms_inter,
-                si_mult_cont_SiIII[0],
-                label=r"Ly$\alpha$-SiIII",
-                alpha=0.75,
-                ls="-",
-                lw=3,
-                color="C0",
-            )
-            ax[1].plot(
-                k_kms_inter,
-                si_mult_cont_SiII[0],
-                label=r"Ly$\alpha$-SiII",
-                alpha=0.75,
-                ls="-",
-                lw=3,
-                color="C1",
-            )
-            ax[2].plot(
-                k_kms_inter,
-                si_mult_cont_Si23[0],
-                label=r"SiII-SiIII",
-                alpha=0.75,
-                ls="-",
-                lw=3,
-                color="C2",
-            )
-            ax[3].plot(
-                k_kms_inter,
-                si_mult_cont_all[0],
-                label=r"All",
-                alpha=0.75,
-                ls="-",
-                lw=3,
-                color="C3",
-            )
-        else:
-            si_mult_cont_all = np.zeros((nelem, len(k_kms_inter)))
-            si_mult_cont_SiIII = np.zeros((nelem, len(k_kms_inter)))
-            si_mult_cont_SiII = np.zeros((nelem, len(k_kms_inter)))
-            si_mult_cont_Si23 = np.zeros((nelem, len(k_kms_inter)))
-
-            for jj in range(nelem):
-                free_params = self.parameters_from_sampling_point(chain_use[jj])
-
-                mF = self.theory.model_igm.models["F_model"].get_mean_flux(
-                    zstar, like_params=free_params
-                )
-
-                si_mult_cont_all[jj] = self.theory.model_cont.metal_models[
-                    "Si_mult"
-                ].get_contamination(
-                    z=np.array([zstar]),
-                    k_kms=[k_kms_inter],
-                    mF=np.array([mF]),
-                    like_params=free_params,
-                )[
-                    0
-                ]
-
-                remove = {
-                    "SiIII_Lya": 1,
-                    "SiIIa_Lya": 0,
-                    "SiIIb_Lya": 0,
-                    "SiIIc_Lya": 0,
-                    "SiIII_SiIIa": 0,
-                    "SiIII_SiIIb": 0,
-                    "SiIII_SiIIc": 0,
-                    "SiIIc_SiIIb": 0,
-                    "SiIIc_SiIIa": 0,
-                    "SiIIb_SiIIa": 0,
-                }
-
-                si_mult_cont_SiIII[jj] = self.theory.model_cont.metal_models[
-                    "Si_mult"
-                ].get_contamination(
-                    z=np.array([zstar]),
-                    k_kms=[k_kms_inter],
-                    mF=np.array([mF]),
-                    like_params=free_params,
-                    remove=remove,
-                )[
-                    0
-                ]
-
-                remove = {
-                    "SiIII_Lya": 0,
-                    "SiIIa_Lya": 1,
-                    "SiIIb_Lya": 1,
-                    "SiIIc_Lya": 0,
-                    "SiIII_SiIIa": 0,
-                    "SiIII_SiIIb": 0,
-                    "SiIII_SiIIc": 0,
-                    "SiIIc_SiIIb": 0,
-                    "SiIIc_SiIIa": 0,
-                    "SiIIb_SiIIa": 0,
-                }
-
-                si_mult_cont_SiII[jj] = self.theory.model_cont.metal_models[
-                    "Si_mult"
-                ].get_contamination(
-                    z=np.array([zstar]),
-                    k_kms=[k_kms_inter],
-                    mF=np.array([mF]),
-                    like_params=free_params,
-                    remove=remove,
-                )[
-                    0
-                ]
-
-                remove = {
-                    "SiIII_Lya": 0,
-                    "SiIIa_Lya": 0,
-                    "SiIIb_Lya": 0,
-                    "SiIIc_Lya": 0,
-                    "SiIII_SiIIa": 1,
-                    "SiIII_SiIIb": 1,
-                    "SiIII_SiIIc": 0,
-                    "SiIIc_SiIIb": 0,
-                    "SiIIc_SiIIa": 0,
-                    "SiIIb_SiIIa": 0,
-                }
-
-                si_mult_cont_Si23[jj] = self.theory.model_cont.metal_models[
-                    "Si_mult"
-                ].get_contamination(
-                    z=np.array([zstar]),
-                    k_kms=[k_kms_inter],
-                    mF=np.array([mF]),
-                    like_params=free_params,
-                    remove=remove,
-                )[
-                    0
-                ]
-
-            per_siIII = np.percentile(si_mult_cont_SiIII, [16, 50, 84], axis=0)
-            per_siII = np.percentile(si_mult_cont_SiII, [16, 50, 84], axis=0)
-            per_si23 = np.percentile(si_mult_cont_Si23, [16, 50, 84], axis=0)
-            per_siall = np.percentile(si_mult_cont_all, [16, 50, 84], axis=0)
-
-            if store_data:
-                out_data["x"] = k_kms_inter
-                out_data["y_blue"] = per_siIII
-                out_data["y_orange"] = per_siII
-                out_data["y_green"] = per_si23
-                out_data["y_red"] = per_siall
-
-            fig, ax = plt.subplots(4, figsize=(8, 6), sharey=True, sharex=True)
-            ax[0].plot(
-                k_kms_inter,
-                per_siIII[1],
-                label=r"Ly$\alpha$-SiIII",
-                alpha=0.75,
-                ls="-",
-                lw=2,
-                color="C0",
-            )
-            ax[0].fill_between(
-                k_kms_inter,
-                per_siIII[0],
-                per_siIII[2],
-                alpha=0.3,
-                color="C0",
-            )
-
-            ax[1].plot(
-                k_kms_inter,
-                per_siII[1],
-                label=r"Ly$\alpha$-SiII",
-                alpha=0.75,
-                ls="-",
-                lw=2,
-                color="C1",
-            )
-            ax[1].fill_between(
-                k_kms_inter,
-                per_siII[0],
-                per_siII[2],
-                alpha=0.3,
-                color="C1",
-            )
-
-            ax[2].plot(
-                k_kms_inter,
-                per_si23[1],
-                label=r"SiII-SiIII",
-                alpha=0.75,
-                ls="-",
-                lw=2,
-                color="C2",
-            )
-            ax[2].fill_between(
-                k_kms_inter,
-                per_si23[0],
-                per_si23[2],
-                alpha=0.3,
-                color="C2",
-            )
-
-            ax[3].plot(
-                k_kms_inter,
-                per_siall[1],
-                label=r"All",
-                alpha=0.75,
-                ls="-",
-                lw=2,
-                color="C3",
-            )
-            ax[3].fill_between(
-                k_kms_inter,
-                per_siall[0],
-                per_siall[2],
-                alpha=0.3,
-                color="C3",
-            )
-
-        # ax[3].scatter(k_kms, dat_si_mult_cont_all[0], s=30, color="C3")
-        for ii in range(4):
-            ax[ii].axhline(1, color="k", ls=":", lw=2)
-            ax[ii].legend(fontsize=ftsize - 4, loc="lower right")
-            ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
-        fig.supylabel(r"$C_\mathrm{metal}$", fontsize=ftsize)
-        ax[-1].set_xlabel(
-            r"$k_\parallel\,[\mathrm{km}^{-1} \mathrm{s}]$", fontsize=ftsize
-        )
-
-        plt.tight_layout()
-
-        if save_directory is not None:
-            name = os.path.join(save_directory, "cont_metal_mult")
-            plt.savefig(name + ".pdf")
-            plt.savefig(name + ".png")
-        else:
-            plt.show()
-
-        if store_data:
-            return out_data
 
     def plot_igm(
         self,
@@ -2753,731 +1065,66 @@ class Likelihood(object):
         plot_external_data=True,
         plot_truth=False,
     ):
-        """Plot IGM histories and optional external measurements or truth."""
+        """Delegate to :func:`cup1d.postprocessing.igm.plot_likelihood_igm`."""
+        from cup1d.postprocessing.igm import plot_likelihood_igm as _plot
 
-        # true IGM parameters
-        # if self.truth is not None:
-        #     pars_true = {}
-        #     pars_true["z"] = self.truth["igm"]["z"]
-        #     pars_true["tau_eff"] = self.truth["igm"]["tau_eff"]
-        #     pars_true["gamma"] = self.truth["igm"]["gamma"]
-        #     pars_true["sigT_kms"] = self.truth["igm"]["sigT_kms"]
-        #     pars_true["kF_kms"] = self.truth["igm"]["kF_kms"]
-
-        primary_data = next(iter(self.data.values()))
-        zs = np.linspace(primary_data.z.min(), primary_data.z.max(), 100)
-        p0 = self.sampling_point_from_parameters()
-
-        out = {}
-        out["tab_out"] = []
-        if store_data:
-            out["out_data"] = {}
-
-        for ii in range(3):
-            if ii == 0:
-                p0[:] = 0.5
-            elif ii == 1:
-                p0[:] = 0
-            elif ii == 2:
-                p0[:] = 1
-            fid_params = self.parameters_from_sampling_point(p0)
-            pars = {}
-            pars["z"] = zs
-            pars["tau_eff"] = self.theory.model_igm.models["F_model"].get_tau_eff(
-                zs, like_params=fid_params
-            )
-            pars["mF"] = self.theory.model_igm.models["F_model"].get_mean_flux(
-                zs, like_params=fid_params
-            )
-            pars["gamma"] = self.theory.model_igm.models["T_model"].get_gamma(
-                zs, like_params=fid_params
-            )
-            pars["sigT_kms"] = self.theory.model_igm.models["T_model"].get_sigT_kms(
-                zs, like_params=fid_params
-            )
-            pars["T0"] = (
-                self.theory.model_igm.models["T_model"].get_T0(
-                    zs, like_params=fid_params
-                )
-                / 1e4
-            )
-            pars["kF_kms"] = self.theory.model_igm.models["P_model"].get_kF_kms(
-                zs, like_params=fid_params
-            )
-            if ii == 0:
-                pars_fid = pars.copy()
-            elif ii == 1:
-                pars_min = pars.copy()
-            elif ii == 2:
-                pars_max = pars.copy()
-
-        chain = None
-        if chain_uformat is not None:
-            if len(chain_uformat.shape) == 3:
-                chain = chain_uformat.reshape(-1, chain_uformat.shape[-1])
-            else:
-                chain = chain_uformat.copy()
-            ind = np.random.permutation(np.arange(0, chain.shape[0]))[:nelem]
-            chain = chain[ind]
-
-            if zmask is not None:
-                zs2 = zmask
-            else:
-                zs2 = primary_data.z
-
-            pars_chain = {}
-            pars_chain["z"] = zs
-            pars_chain["tau_eff"] = np.zeros((chain.shape[0], zs.shape[0]))
-            pars_chain["mF"] = np.zeros((chain.shape[0], zs.shape[0]))
-            pars_chain["gamma"] = np.zeros((chain.shape[0], zs.shape[0]))
-            pars_chain["sigT_kms"] = np.zeros((chain.shape[0], zs.shape[0]))
-            pars_chain["T0"] = np.zeros((chain.shape[0], zs.shape[0]))
-
-            pars_chain2 = {}
-            pars_chain2["z"] = zs2
-            # pars_chain2["tau_eff"] = np.zeros((chain.shape[0], zs2.shape[0]))
-            pars_chain2["mF"] = np.zeros((chain.shape[0], zs2.shape[0]))
-            pars_chain2["gamma"] = np.zeros((chain.shape[0], zs2.shape[0]))
-            # pars_chain2["sigT_kms"] = np.zeros((chain.shape[0], zs2.shape[0]))
-            pars_chain2["T0"] = np.zeros((chain.shape[0], zs2.shape[0]))
-
-            for ii in range(chain.shape[0]):
-                chain_params = self.parameters_from_sampling_point(chain[ii, :])
-                # pars_chain["tau_eff"][ii] = self.theory.model_igm.models[
-                #     "F_model"
-                # ].get_tau_eff(zs, like_params=chain_params)
-                pars_chain["mF"][ii] = self.theory.model_igm.models[
-                    "F_model"
-                ].get_mean_flux(zs, like_params=chain_params)
-                pars_chain["gamma"][ii] = self.theory.model_igm.models[
-                    "T_model"
-                ].get_gamma(zs, like_params=chain_params)
-                # pars_chain["sigT_kms"][ii] = self.theory.model_igm.models[
-                #     "T_model"
-                # ].get_sigT_kms(zs, like_params=chain_params)
-                pars_chain["T0"][ii] = (
-                    self.theory.model_igm.models["T_model"].get_T0(
-                        zs, like_params=chain_params
-                    )
-                    / 1e4
-                )
-
-                pars_chain2["mF"][ii] = self.theory.model_igm.models[
-                    "F_model"
-                ].get_mean_flux(zs2, like_params=chain_params)
-                pars_chain2["gamma"][ii] = self.theory.model_igm.models[
-                    "T_model"
-                ].get_gamma(zs2, like_params=chain_params)
-                pars_chain2["T0"][ii] = (
-                    self.theory.model_igm.models["T_model"].get_T0(
-                        zs2, like_params=chain_params
-                    )
-                    / 1e4
-                )
-
-            out["tab_out"].append(zs2)
-            out["tab_out"].append(
-                np.percentile(pars_chain2["mF"], [16, 50, 84], axis=0)
-            )
-            out["tab_out"].append(
-                np.percentile(pars_chain2["T0"], [16, 50, 84], axis=0)
-            )
-            out["tab_out"].append(
-                np.percentile(pars_chain2["gamma"], [16, 50, 84], axis=0)
-            )
-            # print(np.percentile(pars_chain2["mF"], [16, 50, 84], axis=0))
-            # print(np.percentile(pars_chain["mF"], [16, 50, 84], axis=0))
-            pars_chain2 = 0
-
-        if free_params is not None:
-            if zmask is not None:
-                zs = zmask
-            else:
-                zs = primary_data.z
-            pars_test = {}
-            pars_test["z"] = zs
-            pars_test["tau_eff"] = self.theory.model_igm.models["F_model"].get_tau_eff(
-                zs, like_params=free_params
-            )
-            pars_test["mF"] = self.theory.model_igm.models["F_model"].get_mean_flux(
-                zs, like_params=free_params
-            )
-            pars_test["gamma"] = self.theory.model_igm.models["T_model"].get_gamma(
-                zs, like_params=free_params
-            )
-            pars_test["sigT_kms"] = self.theory.model_igm.models[
-                "T_model"
-            ].get_sigT_kms(zs, like_params=free_params)
-            pars_test["T0"] = (
-                self.theory.model_igm.models["T_model"].get_T0(
-                    zs, like_params=free_params
-                )
-                / 1e4
-            )
-            pars_test["kF_kms"] = self.theory.model_igm.models["P_model"].get_kF_kms(
-                zs, like_params=free_params
-            )
-
-        # External IGM measurements are optional so synthetic-data plots can
-        # show only the fit and its known truth.
-        if plot_external_data:
-            gal21, tu24 = others_igm()
-
-        legend_ax = None
-        empty_ax = None
-        if plot_type == "all":
-            fig, axes = plt.subplots(2, 3, figsize=(9, 6), sharex="col")
-            # Reserve the right column for a readable legend rather than
-            # covering the tau_eff history with it.
-            ax = np.array([axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]])
-            legend_ax = axes[0, 2]
-            empty_ax = axes[1, 2]
-            arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
-            latex_labs = [
-                r"$\tau_\mathrm{eff}$",
-                r"$\gamma$",
-                r"$\sigma_\mathrm{T} [\mathrm{km\,s^{-1}}]$",
-                r"$k_F$ [km/s]",
-            ]
-        elif plot_type == "tau_sigT":
-            fig, ax = plt.subplots(
-                3,
-                1,
-                figsize=(8, 10),
-                sharex=True,
-                gridspec_kw={"height_ratios": [3, 1, 1]},
-            )
-            # arr_labs = ["tau_eff", "sigT_kms", "gamma"]
-            # latex_labs = [
-            #     r"$\tau_\mathrm{eff}$",
-            #     r"$\sigma_\mathrm{T}\,\left[\mathrm{km\,s^{-1}}\right]$",
-            #     r"$\gamma$",
-            # ]
-            arr_labs = ["mF", "T0", "gamma"]
-            nexp_mF = 1
-            latex_labs = [
-                # r"$(1+z)\bar{F}$",
-                r"$\bar{F}$",
-                r"$T_0[K]/10^4$",
-                r"$\gamma$",
-            ]
-
-        ax = np.asarray(ax).reshape(-1)
-
-        for ii in range(len(arr_labs)):
-            if plot_truth and self.truth is not None:
-                truth_igm = self.truth["igm"]
-                if arr_labs[ii] in truth_igm:
-                    truth_values = np.asarray(truth_igm[arr_labs[ii]])
-                    truth_z = np.asarray(truth_igm["z"])
-                    mask = truth_values != 0
-                    ax[ii].plot(
-                        truth_z[mask],
-                        truth_values[mask],
-                        "C3:o",
-                        alpha=0.8,
-                        label="Truth",
-                    )
-
-            if cloud:
-                for jj, sim_label in enumerate(self.theory.emu_igm_all):
-                    if is_number_string(sim_label[-1]) == False:
-                        continue
-                    if jj == 0:
-                        lab = "Training data"
-                        alpha = 0.75
-                    else:
-                        lab = None
-                        alpha = 0.1
-
-                    _ = np.argwhere(
-                        self.theory.emu_igm_all[sim_label][arr_labs[ii]] != 0
-                    )[:, 0]
-                    if len(_) > 0:
-                        ax[ii].scatter(
-                            self.theory.emu_igm_all[sim_label]["z"][_],
-                            self.theory.emu_igm_all[sim_label][arr_labs[ii]][_],
-                            marker=".",
-                            color="C1",
-                            alpha=alpha,
-                            label=lab,
-                            s=10,
-                        )
-
-            if chain is not None:
-                _ = pars_fid[arr_labs[ii]] != 0
-                norm = 1
-                ax[ii].fill_between(
-                    pars_fid["z"][_],
-                    norm * np.percentile(pars_chain[arr_labs[ii]][:, _], 5, axis=0),
-                    norm * np.percentile(pars_chain[arr_labs[ii]][:, _], 95, axis=0),
-                    color="lightblue",
-                    alpha=0.5,
-                )
-                ax[ii].fill_between(
-                    pars_fid["z"][_],
-                    norm * np.percentile(pars_chain[arr_labs[ii]][:, _], 16, axis=0),
-                    norm * np.percentile(pars_chain[arr_labs[ii]][:, _], 84, axis=0),
-                    color="C0",
-                    alpha=0.5,
-                )
-
-                if store_data:
-                    out["out_data"]["x" + str(ii) + "_blue_areas"] = pars_fid["z"][_]
-                    out["out_data"]["y" + str(ii) + "_blue_areas"] = np.percentile(
-                        pars_chain[arr_labs[ii]][:, _], [5, 16, 84, 95], axis=0
-                    )
-
-            if free_params is not None:
-                _ = pars_test[arr_labs[ii]] != 0
-                if arr_labs[ii] == "mF":
-                    # norm = (1 + pars_test["z"][_]) ** nexp_mF
-                    norm = 1
-                else:
-                    norm = 1
-
-                ax[ii].plot(
-                    pars_test["z"][_],
-                    norm * pars_test[arr_labs[ii]][_],
-                    "C0:",
-                    label=variation_label,
-                    alpha=1,
-                    lw=3,
-                )
-
-                if store_data:
-                    out["out_data"]["x" + str(ii) + "_blue_dotted"] = pars_test["z"][_]
-                    out["out_data"]["y" + str(ii) + "_blue_dotted"] = pars_test[
-                        arr_labs[ii]
-                    ][_]
-
-                if arr_labs[ii] == "mF":
-                    lab = "tau_eff_znodes"
-                elif arr_labs[ii] == "T0":
-                    lab = "sigT_kms_znodes"
-                else:
-                    lab = arr_labs[ii] + "_znodes"
-                if lab in self.args.fid_igm:
-                    yy = np.interp(
-                        self.args.fid_igm[lab],
-                        pars_test["z"][_],
-                        pars_test[arr_labs[ii]][_],
-                    )
-                    if arr_labs[ii] == "mF":
-                        # norm = (1 + self.args.fid_igm[lab]) ** nexp_mF
-                        norm = 1
-                    else:
-                        norm = 1
-                    ax[ii].scatter(
-                        self.args.fid_igm[lab],
-                        norm * yy,
-                        marker="o",
-                        color="C0",
-                    )
-
-                    if store_data:
-                        out["out_data"]["x" + str(ii) + "_blue_dots"] = (
-                            self.args.fid_igm[lab]
-                        )
-                        out["out_data"]["y" + str(ii) + "_blue_dots"] = yy
-
-            if plot_external_data and arr_labs[ii] == "tau_eff":
-                ax[ii].errorbar(
-                    gal21["z"],
-                    gal21["tau_eff"],
-                    yerr=gal21["tau_eff_err"],
-                    fmt="--",
-                    color="C1",
-                    label="Gaikwad+2021",
-                    alpha=0.75,
-                    lw=2,
-                )
-                ax[ii].errorbar(
-                    tu24["z"],
-                    tu24["tau_eff"],
-                    yerr=tu24["tau_eff_err"],
-                    fmt="-.",
-                    color="C2",
-                    label="Turner+2024",
-                    alpha=0.75,
-                    lw=2,
-                )
-            elif plot_external_data and arr_labs[ii] == "sigT_kms":
-                ax[ii].errorbar(
-                    gal21["z"],
-                    gal21["sigT_kms"],
-                    yerr=gal21["sigT_kms_err"],
-                    fmt="--",
-                    color="C1",
-                    label="Gaikwad+2021",
-                    alpha=0.75,
-                    lw=2,
-                )
-            elif plot_external_data and arr_labs[ii] == "mF":
-                # norm = (1 + gal21["z"]) ** nexp_mF
-                norm = 1
-                ax[ii].errorbar(
-                    gal21["z"],
-                    norm * gal21["mF"],
-                    yerr=norm * gal21["mF_err"],
-                    fmt="--",
-                    color="C1",
-                    label="Gaikwad+2021",
-                    alpha=0.75,
-                    lw=2,
-                )
-                if store_data:
-                    out["out_data"]["x" + str(ii) + "_gal21"] = gal21["z"]
-                    out["out_data"]["y" + str(ii) + "_gal21"] = norm * gal21["mF"]
-                    out["out_data"]["yerr" + str(ii) + "_gal21"] = (
-                        norm * gal21["mF_err"]
-                    )
-                # norm = (1 + tu24["z"]) ** nexp_mF
-                norm = 1
-                ax[ii].errorbar(
-                    tu24["z"],
-                    norm * tu24["mF"],
-                    yerr=norm * tu24["mF_err"],
-                    fmt="-.",
-                    color="C2",
-                    label="Turner+2024",
-                    alpha=0.75,
-                    lw=2,
-                )
-                if store_data:
-                    out["out_data"]["x" + str(ii) + "_tur24"] = tu24["z"]
-                    out["out_data"]["y" + str(ii) + "_tur24"] = norm * tu24["mF"]
-                    out["out_data"]["yerr" + str(ii) + "_tur24"] = norm * tu24["mF_err"]
-            elif plot_external_data and arr_labs[ii] == "T0":
-                ax[ii].errorbar(
-                    gal21["z"],
-                    gal21["T0"],
-                    yerr=gal21["T0_err"],
-                    fmt="--",
-                    color="C1",
-                    label="Galdwick+2021",
-                    alpha=0.75,
-                    lw=2,
-                )
-                if store_data:
-                    out["out_data"]["x" + str(ii) + "_gal21"] = gal21["z"]
-                    out["out_data"]["y" + str(ii) + "_gal21"] = norm * gal21["T0"]
-                    out["out_data"]["yerr" + str(ii) + "_gal21"] = (
-                        norm * gal21["T0_err"]
-                    )
-            elif plot_external_data and arr_labs[ii] == "gamma":
-                ax[ii].errorbar(
-                    gal21["z"],
-                    gal21["gamma"],
-                    yerr=gal21["gamma_err"],
-                    fmt="--",
-                    color="C1",
-                    label="Galdwick+2021",
-                    alpha=0.75,
-                    lw=2,
-                )
-
-                if store_data:
-                    out["out_data"]["x" + str(ii) + "_gal21"] = gal21["z"]
-                    out["out_data"]["y" + str(ii) + "_gal21"] = norm * gal21["gamma"]
-                    out["out_data"]["yerr" + str(ii) + "_gal21"] = (
-                        norm * gal21["gamma_err"]
-                    )
-
-        if plot_more_igm:
-            more_igm_path = os.path.join(
-                get_path_repo("cup1d"),
-                "data",
-                "tutorials",
-                "data",
-                "more_igm_data.npy",
-            )
-            more_igm = np.load(more_igm_path, allow_pickle=True).item()
-            ax[0].plot(
-                more_igm["z"],
-                more_igm["mF"][1],
-                "C5--",
-                alpha=0.5,
-                lw=3,
-                label=r"IGM $n_z=6$",
-            )
-            ax[1].plot(more_igm["z"], more_igm["T0"][1], "C5--", alpha=0.5, lw=3)
-            ax[2].plot(more_igm["z"], more_igm["gamma"][1], "C5--", alpha=0.5, lw=3)
-
-            if store_data:
-                out["out_data"]["x_brown"] = more_igm["z"]
-                out["out_data"]["y0_brown"] = more_igm["mF"][1]
-                out["out_data"]["y1_brown"] = more_igm["T0"][1]
-                out["out_data"]["y2_brown"] = more_igm["gamma"][1]
-
-        if plot_fid:
-            for ii in range(len(arr_labs)):
-                for kk in range(3):
-                    if kk == 0:
-                        pars = pars_fid.copy()
-                        label = lab_fid
-                        lsk = "-"
-                        alpha = 0.5
-                        lw = 1.5
-                    elif kk == 1:
-                        pars = pars_min.copy()
-                        label = None
-                        lsk = "-"
-                        alpha = 0.3
-                        lw = 1
-                    elif kk == 2:
-                        pars = pars_max.copy()
-                        label = None
-                        lsk = "-"
-                        alpha = 0.3
-                        lw = 1
-
-                    _ = pars[arr_labs[ii]] != 0
-                    if arr_labs[ii] == "mF":
-                        # norm = (1 + pars["z"][_]) ** nexp_mF
-                        norm = 1
-                    else:
-                        norm = 1
-
-                    ax[ii].plot(
-                        pars["z"][_],
-                        norm * pars[arr_labs[ii]][_],
-                        "C3" + lsk,
-                        label=label,
-                        alpha=alpha,
-                        lw=lw,
-                    )
-
-                    if store_data:
-                        out["out_data"]["x" + str(ii) + "_red"] = pars["z"][_]
-                        out["out_data"]["y" + str(ii) + "_red"] = (
-                            norm * pars[arr_labs[ii]][_]
-                        )
-
-        for ii in range(len(arr_labs)):
-            ax[ii].set_ylabel(latex_labs[ii], fontsize=ftsize)
-            if ii == 0:
-                if arr_labs[ii] == "tau_eff":
-                    ax[ii].set_yscale("log")
-                if legend_ax is None:
-                    ax[ii].legend(fontsize=ftsize, loc="lower left", ncol=1)
-
-            if (ii == 2) | (ii == len(arr_labs) - 1):
-                ax[ii].set_xlabel(r"$z$", fontsize=ftsize)
-
-            ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
-            ax[ii].tick_params(axis="both", which="minor", labelsize=ftsize - 2)
-            # A linear locator is inappropriate for the logarithmic
-            # tau_eff panel, where it replaces Matplotlib's log ticks.
-            if arr_labs[ii] != "tau_eff":
-                ax[ii].yaxis.set_major_locator(MaxNLocator(nbins=3, prune=None))
-
-        if legend_ax is not None:
-            handles, labels = ax[0].get_legend_handles_labels()
-            legend_ax.legend(handles, labels, fontsize=ftsize, loc="center")
-            legend_ax.set_axis_off()
-            empty_ax.set_axis_off()
-
-        # These limits were designed for the three-panel mean-flux,
-        # temperature, and gamma figure. Applying them to the four-panel
-        # tau_eff/sigma_T view clips the plotted histories.
-        if pre_xylims and plot_type == "tau_sigT":
-            ax[0].set_ylim(0.35, 0.9)
-            ax[1].set_ylim(0.0, 3.2)
-            ax[2].set_ylim(0.8, 2.2)
-        fig.suptitle(title, fontsize=ftsize + 2)
-        plt.tight_layout()
-
-        if save_directory is not None:
-            name = os.path.join(save_directory, "IGM_histories")
-            plt.savefig(name + ".pdf")
-            plt.savefig(name + ".png")
-        else:
-            plt.show()
-
-        return out
+        return _plot(
+            self,
+            cloud,
+            chain_uformat,
+            free_params,
+            save_directory,
+            zmask,
+            plot_type,
+            plot_fid,
+            lab_fid,
+            ftsize,
+            nelem,
+            title,
+            pre_xylims,
+            plot_more_igm,
+            variation_label,
+            store_data,
+            plot_external_data,
+            plot_truth,
+        )
 
     def plot_cov_terms(self, save_directory=None):
-        npanels = int(np.round(np.sqrt(len(self.cov_Pk_kms))))
-        fig, ax = plt.subplots(
-            npanels + 1, npanels, sharex=True, sharey=True, figsize=(10, 8)
-        )
-        ax = ax.reshape(-1)
-        for ii in range(len(self.cov_Pk_kms)):
-            cov_stat = np.diag(self.data.covstat_Pk_kms[ii])
-            cov_syst = np.diag(self.data.cov_Pk_kms[ii]) - cov_stat
-            cov_emu = np.diag(self.cov_emu_Pk_kms[ii])
-            cov_tot = np.diag(self.cov_Pk_kms[ii])
-            ax[ii].plot(self.data.k_kms[ii], cov_stat / cov_tot, label=r"$x$ = Stat")
-            ax[ii].plot(self.data.k_kms[ii], cov_syst / cov_tot, label=r"$x$ = Syst")
-            ax[ii].plot(self.data.k_kms[ii], cov_emu / cov_tot, label=r"$x$ = Emu")
-            ax[ii].text(0.0, 0.1, "z=" + str(self.data.z[ii]))
-        if len(ax) > len(self.cov_Pk_kms):
-            for ii in range(len(self.cov_Pk_kms), len(ax)):
-                ax[ii].axis("off")
-        ax[0].legend()
-        fig.supxlabel(r"$k\,[\mathrm{km}^{-1}\mathrm{s}]$")
-        fig.supylabel(r"$\sigma^2_x/\sigma^2_\mathrm{total}$")
-        plt.tight_layout()
+        """Delegate to :func:`cup1d.postprocessing.likelihood.plot_cov_terms`."""
+        from cup1d.postprocessing.likelihood import plot_cov_terms as _plot
 
-        if save_directory is not None:
-            name = os.path.join(save_directory, "cov_terms")
-            plt.savefig(name + ".pdf")
-            plt.savefig(name + ".png")
-        else:
-            plt.show()
+        return _plot(self, save_directory)
 
     def plot_cov_to_pk(
         self, use_pk_smooth=True, fname=None, ftsize=18, store_data=False
     ):
-        key = list(self.data.keys())[0]
-        nz = len(self.data[key].z)
-        npanels = int(np.round(np.sqrt(nz)))
+        """Delegate to :func:`cup1d.postprocessing.likelihood.plot_cov_to_pk`."""
+        from cup1d.postprocessing.likelihood import plot_cov_to_pk as _plot
 
-        fig, ax = plt.subplots(
-            npanels + 1, npanels, sharex=True, sharey="row", figsize=(10, 8)
-        )
-        ax = ax.reshape(-1)
-
-        if store_data:
-            out_data = {}
-        for ii in range(nz):
-            cov_stat = np.diag(self.data[key].covstat_Pk_kms[ii])
-            cov_syst = np.diag(self.data[key].cov_Pk_kms[ii]) - cov_stat
-
-            ind = np.argmin(np.abs(self.cov_factor["z"] - self.data[key].z[ii]))
-            # inflate errors stat
-            cov_stat = cov_stat * self.cov_factor["val_stat"][ind] ** 2
-            # inflate errors syst
-            cov_syst = cov_syst * self.cov_factor["val_syst"][ind] ** 2
-
-            cov_emu = np.diag(self.cov_emu_Pk_kms[key][ii])
-            cov_tot = np.diag(self.cov_Pk_kms[key][ii])
-            if use_pk_smooth:
-                pk = self.data[key].Pksmooth_kms[ii].copy()
-            else:
-                pk = self.data[key].Pk_kms[ii].copy()
-
-            if store_data:
-                out_data["x" + str(ii)] = self.data[key].k_kms[ii]
-                out_data["y" + str(ii) + "_blue"] = np.sqrt(cov_stat) / pk
-                out_data["y" + str(ii) + "_orange"] = np.sqrt(cov_syst) / pk
-                out_data["y" + str(ii) + "_green"] = np.sqrt(cov_emu) / pk
-                out_data["y" + str(ii) + "_red"] = np.sqrt(cov_tot) / pk
-
-            ax[ii].plot(
-                self.data[key].k_kms[ii],
-                np.sqrt(cov_stat) / pk,
-                ls="-",
-                lw=3,
-            )
-            ax[ii].plot(
-                self.data[key].k_kms[ii],
-                np.sqrt(cov_syst) / pk,
-                ls=":",
-                lw=3,
-            )
-            ax[ii].plot(
-                self.data[key].k_kms[ii],
-                np.sqrt(cov_emu) / pk,
-                ls="--",
-                lw=3,
-            )
-            ax[ii].plot(
-                self.data[key].k_kms[ii],
-                np.sqrt(cov_tot) / pk,
-                ls="-.",
-                lw=3,
-            )
-            ax[ii].text(
-                0.05,
-                0.95,
-                "z=" + str(self.data[key].z[ii]),
-                ha="left",
-                va="top",
-                transform=ax[ii].transAxes,
-                fontsize=ftsize,
-            )
-            ax[ii].tick_params(axis="both", which="major", labelsize=ftsize)
-        if len(ax) > nz:
-            for ii in range(nz, len(ax)):
-                ax[ii].axis("off")
-
-        labs = ["stat", "syst", "emu", "total"]
-        lss = ["-", ":", "--", "-."]
-        for ii in range(4):
-            ax[-1].plot(
-                [0, 0],
-                [0, 0],
-                label=r"$\sigma_x = \sigma_\mathrm{" + labs[ii] + "}$",
-                ls=lss[ii],
-                lw=3,
-            )
-        ax[-1].legend(fontsize=ftsize, loc="upper left")
-        fig.supxlabel(
-            r"$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$", fontsize=ftsize + 2
-        )
-        fig.supylabel(r"$\sigma_x/P_\mathrm{1D}$", fontsize=ftsize + 2)
-        ax[0].set_ylim(0.0, 0.06)
-        ax[3].set_ylim(0.0, 0.06)
-        plt.tight_layout()
-
-        if fname is not None:
-            plt.savefig(fname + ".pdf")
-            plt.savefig(fname + ".png")
-        else:
-            plt.show()
-
-        if store_data:
-            return out_data
+        return _plot(self, use_pk_smooth, fname, ftsize, store_data)
 
     def plot_correlation_matrix(self, save_directory=None):
-        def correlation_from_covariance(covariance):
-            v = np.sqrt(np.diag(covariance))
-            outer_v = np.outer(v, v)
-            correlation = covariance / outer_v
-            correlation[covariance == 0] = 0
-            return correlation
+        """Delegate to :func:`cup1d.postprocessing.likelihood.plot_correlation_matrix`."""
+        from cup1d.postprocessing.likelihood import plot_correlation_matrix as _plot
 
-        def is_pos_def(x):
-            return np.all(np.linalg.eigvals(x) > 0)
+        return _plot(self, save_directory)
 
-        plt.imshow(correlation_from_covariance(self.full_cov_Pk_kms))
-        plt.colorbar()
+    def plot_hull_fid(self, like_params=None):
+        """Delegate to :func:`cup1d.postprocessing.likelihood.plot_hull_fid`."""
+        from cup1d.postprocessing.likelihood import plot_hull_fid as _plot
 
-        if save_directory is not None:
-            name = os.path.join(save_directory, "correlation")
-            plt.savefig(name + ".pdf")
-            plt.savefig(name + ".png")
-        else:
-            plt.show()
-
-    def plot_hull_fid(self, like_params=[]):
-        emu_call, M_of_z = self.theory.get_emulator_calls(
-            self.data.z, like_params=like_params
-        )
-        p1 = np.zeros(
-            (
-                self.theory.hull.nz,
-                len(self.theory.hull.params),
-            )
-        )
-        for jj, key in enumerate(self.theory.hull.params):
-            p1[:, jj] = emu_call[key]
-
-        self.theory.hull.plot_hulls(p1)
+        return _plot(self, like_params)
 
     def set_ic_from_z_at_time(self, fname, verbose=True):
         """Set the initial conditions for the likelihood from a fit"""
 
         dir_out = np.load(fname, allow_pickle=True).item()
 
-        # make a copy of free params, and set their values to the best-fit
-        free_params = self.free_params.copy()
-        for jj, p in enumerate(free_params):
-            if p.name in ["As", "ns"]:
+        # Update the physical fiducial values from the saved best fit.
+        for name, parameter in self.free_params.items():
+            if name in ["As", "ns"]:
                 continue
-            pname, iistr = split_string(p.name)
+            pname, iistr = split_string(name)
             ii = int(iistr)
 
             if (pname + "_znodes") in self.args.fid_igm:
@@ -3487,53 +1134,56 @@ class Likelihood(object):
             elif (pname + "_znodes") in self.args.fid_syst:
                 znode = self.args.fid_syst[pname + "_znodes"][ii]
             else:
-                raise ValueError("Could not find znode for " + p.name)
+                raise ValueError("Could not find znode for " + name)
 
             iz = np.argmin(np.abs(dir_out["z"] - znode))
             # print(iz, znode, dir_out["z"][iz])
             # print(dir_out["pnames"][iz], pname + "_0")
             iname = np.argwhere(np.array(dir_out["pnames"][iz]) == (pname + "_0"))[0, 0]
-            p.value = list(dir_out["mle"][iz].values())[iname]
+            parameter["value"] = dir_out["mle"][iz][pname + "_0"]
 
             if verbose and (self.rank == 0):
                 print(
-                    p.name,
+                    name,
                     "\t",
-                    np.round(p.value, 3),
+                    np.round(parameter["value"], 3),
                     "\t",
-                    np.round(p.min_value, 3),
+                    np.round(parameter["min_value"], 3),
                     "\t",
-                    np.round(p.max_value, 3),
+                    np.round(parameter["max_value"], 3),
                     "\t",
-                    p.Gauss_priors_width,
-                    p.fixed,
+                    parameter["Gauss_priors_width"],
+                    parameter["fixed"],
                 )
 
         # reset the coefficients of the models
+        parameter_values = {
+            name: parameter["value"]
+            for name, parameter in self.free_params.items()
+        }
         self.theory.model_igm.models["F_model"].reset_coeffs(
-            free_params, rank=self.rank
+            parameter_values, rank=self.rank
         )
         self.theory.model_igm.models["T_model"].reset_coeffs(
-            free_params, rank=self.rank
+            parameter_values, rank=self.rank
         )
-        self.theory.model_cont.hcd_model.reset_coeffs(free_params, rank=self.rank)
+        self.theory.model_cont.hcd_model.reset_coeffs(parameter_values, rank=self.rank)
         self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(
-            free_params, rank=self.rank
+            parameter_values, rank=self.rank
         )
         self.theory.model_cont.metal_models["Si_add"].reset_coeffs(
-            free_params, rank=self.rank
+            parameter_values, rank=self.rank
         )
 
     def set_ic_global(self, fname, verbose=True):
         """Set the initial conditions for the likelihood from a fit"""
         dir_out = np.load(fname, allow_pickle=True).item()
 
-        # make a copy of free params, and set their values to the best-fit
-        free_params = self.free_params.copy()
-        for jj, p in enumerate(free_params):
-            if p.name in ["As", "ns"]:
+        # Update the physical fiducial values from the saved best fit.
+        for name, parameter in self.free_params.items():
+            if name in ["As", "ns"]:
                 continue
-            pname, iistr = split_string(p.name)
+            pname, iistr = split_string(name)
             ii = int(iistr)
 
             if (pname + "_znodes") in self.args.fid_igm:
@@ -3550,30 +1200,34 @@ class Likelihood(object):
                     pname + "_znodes not found in either fid_igm, fid_cont, or fid_syst"
                 )
 
-            p.fixed = isfixed
+            parameter["fixed"] = isfixed
 
             if (pname not in dir_out) and (pname == "HCD_const"):
-                p.value = 0
+                parameter["value"] = 0
             else:
                 _z = dir_out[pname]["z"]
                 _val = dir_out[pname]["val"]
-                p.value = np.interp(znode, _z, _val)
+                parameter["value"] = np.interp(znode, _z, _val)
 
             if verbose and (self.rank == 0):
                 print(
-                    p.name,
+                    name,
                     "\t",
-                    np.round(p.value, 3),
+                    np.round(parameter["value"], 3),
                     "\t",
-                    np.round(p.min_value, 3),
+                    np.round(parameter["min_value"], 3),
                     "\t",
-                    np.round(p.max_value, 3),
+                    np.round(parameter["max_value"], 3),
                     "\t",
-                    p.Gauss_priors_width,
-                    p.fixed,
+                    parameter["Gauss_priors_width"],
+                    parameter["fixed"],
                 )
 
         # reset the coefficients of the models
+        parameter_values = {
+            name: parameter["value"]
+            for name, parameter in self.free_params.items()
+        }
         # self.theory.model_igm.models["F_model"].reset_coeffs(
         #     free_params, rank=self.rank
         # )
@@ -3582,10 +1236,10 @@ class Likelihood(object):
         # )
         for model in self.theory.model_igm.models:
             self.theory.model_igm.models[model].reset_coeffs(
-                free_params, rank=self.rank
+                parameter_values, rank=self.rank
             )
 
-        self.theory.model_cont.hcd_model.reset_coeffs(free_params, rank=self.rank)
+        self.theory.model_cont.hcd_model.reset_coeffs(parameter_values, rank=self.rank)
 
         # self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(
         #     free_params, rank=self.rank
@@ -3596,7 +1250,7 @@ class Likelihood(object):
 
         for model in self.theory.model_cont.metal_models:
             self.theory.model_cont.metal_models[model].reset_coeffs(
-                free_params, rank=self.rank
+                parameter_values, rank=self.rank
             )
 
 

@@ -1,23 +1,24 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Figure B1a
 #
 # Cosmic variance in lyssa
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
@@ -36,16 +37,18 @@ from matplotlib import rcParams
 
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
-# -
 
+# %%
 archive = nyx_archive.NyxArchive(nyx_version="models_Nyx_Sept2025_include_Nyx_fid_rseed")
 
+# %%
 emulator_label = "CH24_nyxcen_gpr"
 emulator = GPEmulator(
     emulator_label=emulator_label, 
     train=False,
 )
 
+# %%
 for kk in range(2):
     if kk == 0:
         sim_lab = "nyx_seed"
@@ -92,9 +95,9 @@ for kk in range(2):
         p1d_Mpc_sim_seed = p1d_Mpc_sim.copy()
         p1d_Mpc_sm_seed = p1d_Mpc_sm.copy()
 
+# %%
 
-
-# +
+# %%
 store_data = {}
 
 fig, ax = plt.subplots(1, figsize=(8, 6))
@@ -138,7 +141,7 @@ plt.tight_layout()
 # plt.savefig("figs/smooth_cen_seed.png")
 # plt.savefig("figs/smooth_cen_seed.pdf")
 
-# +
+# %%
 import cup1d, os
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")

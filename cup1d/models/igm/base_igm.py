@@ -223,12 +223,13 @@ class IGM_model(object):
                 else:
                     _value = values[ii]
 
-                par = likelihood_parameter.LikelihoodParameter(
+                par = likelihood_parameter.make_parameter(
                     name=name,
                     value=_value,
                     min_value=xmin,
                     max_value=xmax,
                     Gauss_priors_width=Gwidth,
+                    hessian_transform=self.prop_coeffs[key + "_otype"],
                 )
                 self.params[name] = par
 
@@ -242,7 +243,7 @@ class IGM_model(object):
             raise ValueError("mismatch between number of params and coeffs")
         return n_params
 
-    def get_value(self, name, z, like_params=[]):
+    def get_value(self, name, z, like_params=None):
         coeff = self.get_coeff(name, like_params=like_params)
 
         if self.prop_coeffs[name + "_ztype"] == "pivot":
@@ -286,16 +287,16 @@ class IGM_model(object):
         """Return likelihood parameters"""
         return self.params
 
-    def get_coeff(self, name, like_params=[]):
+    def get_coeff(self, name, like_params=None):
         if like_params:
             coeff = self.coeffs[name].copy()
             Npar = 0
             array_names = []
             array_values = []
-            for par in like_params:
-                if (name + "_") in par.name:
-                    array_names.append(par.name)
-                    array_values.append(par.value)
+            for par_name, par_value in like_params.items():
+                if (name + "_") in par_name:
+                    array_names.append(par_name)
+                    array_values.append(par_value)
                     Npar += 1
             array_names = np.array(array_names)
             array_values = np.array(array_values)
@@ -326,10 +327,10 @@ class IGM_model(object):
                 print("orig", name, self.coeffs[name])
             array_names = []
             array_values = []
-            for par in like_params:
-                if (name + "_") in par.name:
-                    array_names.append(par.name)
-                    array_values.append(par.value)
+            for par_name, par_value in like_params.items():
+                if (name + "_") in par_name:
+                    array_names.append(par_name)
+                    array_values.append(par_value)
                     Npar += 1
             array_names = np.array(array_names)
             array_values = np.array(array_values)
@@ -352,100 +353,7 @@ class IGM_model(object):
                 print("new", name, self.coeffs[name])
 
     def plot_parameters(self, z, like_params, folder=None):
-        """Plot likelihood parameters"""
+        """Delegate to :func:`cup1d.postprocessing.igm.plot_parameters`."""
+        from cup1d.postprocessing.igm import plot_parameters as _plot
 
-        from matplotlib import pyplot as plt
-
-        fig, ax = plt.subplots(
-            len(self.coeffs), 1, sharex=True, figsize=(8, 3 * len(self.coeffs))
-        )
-        if len(self.coeffs) == 1:
-            ax = [ax]
-
-        try:
-            len_p = len(like_params[0])
-        except:
-            z_at_time = False
-        else:
-            z_at_time = True
-
-        vals_out = {}
-        coeffs_out = {}
-
-        for ii, key in enumerate(self.coeffs.keys()):
-            if z_at_time == False:
-                if key == "tau_eff":
-                    vals = self.get_tau_eff(z, like_params=like_params)
-                elif key == "gamma":
-                    vals = self.get_gamma(z, like_params=like_params)
-                elif key == "sigT_kms":
-                    vals = self.get_sigT_kms(z, like_params=like_params)
-                elif key == "kF_kms":
-                    vals = self.get_kF_kms(z, like_params=like_params)
-                else:
-                    raise ValueError(
-                        "key must be tau_eff, gamma, sigT_kms, or kF_kms"
-                    )
-                coeffs_out[key] = self.get_coeff(key, like_params=like_params)
-            else:
-                vals = []
-                coeffs_out[key] = []
-                for jj in range(len(z)):
-                    if key == "tau_eff":
-                        vals.append(
-                            self.get_tau_eff(z[jj], like_params=like_params[jj])
-                        )
-                    elif key == "gamma":
-                        vals.append(
-                            self.get_gamma(z[jj], like_params=like_params[jj])
-                        )
-                    elif key == "sigT_kms":
-                        vals.append(
-                            self.get_sigT_kms(
-                                z[jj], like_params=like_params[jj]
-                            )
-                        )
-                    elif key == "kF_kms":
-                        vals.append(
-                            self.get_kF_kms(z[jj], like_params=like_params[jj])
-                        )
-                    else:
-                        raise ValueError(
-                            "key must be tau_eff, gamma, sigT_kms, or kF_kms"
-                        )
-                    coeffs_out[key].append(
-                        self.get_coeff(key, like_params=like_params[jj])[0]
-                    )
-                vals = np.array(vals)
-
-            if key == "tau_eff":
-                fid_vals = self.get_tau_eff(z)
-            elif key == "gamma":
-                fid_vals = self.get_gamma(z)
-            elif key == "sigT_kms":
-                fid_vals = self.get_sigT_kms(z)
-            elif key == "kF_kms":
-                fid_vals = self.get_kF_kms(z)
-
-            if self.prop_coeffs[key + "_otype"] == "exp":
-                vals = np.log(vals)
-                fid_vals = np.log(fid_vals)
-
-            vals_out[key] = vals
-
-            ax[ii].plot(z, vals, "o-", label="data")
-            res = np.polyfit(z, vals, 1)
-            ax[ii].plot(z, res[0] * z + res[1], "--", label="fit")
-            ax[ii].plot(z, fid_vals, "-.", label="fid")
-            ax[ii].set_ylabel(key)
-        ax[0].legend()
-        ax[-1].set_xlabel("z")
-
-        plt.tight_layout()
-        plt.show()
-
-        if folder is not None:
-            fig.savefig(folder + ".png")
-            fig.savefig(folder + ".pdf")
-
-        return vals_out, coeffs_out
+        return _plot(self, z, like_params, folder)

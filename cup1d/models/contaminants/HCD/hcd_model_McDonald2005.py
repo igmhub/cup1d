@@ -41,7 +41,7 @@ class HCD_Model_McDonald2005(object):
     def set_parameters(self):
         """Setup likelihood parameters in the HCD model"""
 
-        self.params = []
+        self.params = {}
         Npar = len(self.ln_A_damp_coeff)
         for i in range(Npar):
             name = "ln_A_damp_" + str(i)
@@ -56,10 +56,10 @@ class HCD_Model_McDonald2005(object):
                 xmax = 10
             # note non-trivial order in coefficients
             value = self.ln_A_damp_coeff[Npar - i - 1]
-            par = likelihood_parameter.LikelihoodParameter(
-                name=name, value=value, min_value=xmin, max_value=xmax
+            par = likelihood_parameter.make_parameter(
+                name=name, value=value, min_value=xmin, max_value=xmax, hessian_transform="exp"
             )
-            self.params.append(par)
+            self.params[name] = par
 
         return
 
@@ -68,7 +68,7 @@ class HCD_Model_McDonald2005(object):
         assert len(self.ln_A_damp_coeff) == len(self.params), "size mismatch"
         return len(self.ln_A_damp_coeff)
 
-    def get_A_damp(self, z, like_params=[]):
+    def get_A_damp(self, z, like_params=None):
         """Amplitude of HCD contamination around z_0"""
 
         ln_A_damp_coeff = self.get_A_damp_coeffs(like_params=like_params)
@@ -80,7 +80,7 @@ class HCD_Model_McDonald2005(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Multiplicative contamination caused by HCDs"""
         A_damp = self.get_A_damp(z, like_params=like_params)
         if A_damp == 0:
@@ -95,7 +95,7 @@ class HCD_Model_McDonald2005(object):
         """Return likelihood parameters for the HCD model"""
         return self.params
 
-    def get_A_damp_coeffs(self, like_params=[]):
+    def get_A_damp_coeffs(self, like_params=None):
         """Return list of mean flux coefficients"""
 
         if like_params:
@@ -103,11 +103,11 @@ class HCD_Model_McDonald2005(object):
             Npar = 0
             array_names = []
             array_values = []
-            for par in like_params:
-                if "ln_A_damp" in par.name:
+            for par_name, par_value in like_params.items():
+                if "ln_A_damp" in par_name:
                     Npar += 1
-                    array_names.append(par.name)
-                    array_values.append(par.value)
+                    array_names.append(par_name)
+                    array_values.append(par_value)
             array_names = np.array(array_names)
             array_values = np.array(array_values)
 
@@ -121,10 +121,10 @@ class HCD_Model_McDonald2005(object):
                 )
 
             for ip in range(Npar):
-                _ = np.argwhere(self.params[ip].name == array_names)[:, 0]
+                _ = np.argwhere(list(self.params)[ip] == array_names)[:, 0]
                 if len(_) != 1:
                     raise ValueError(
-                        "could not update parameter" + self.params[ip].name
+                        "could not update parameter" + list(self.params)[ip]
                     )
                 else:
                     ln_A_damp_coeff[Npar - ip - 1] = array_values[_[0]]
@@ -142,38 +142,7 @@ class HCD_Model_McDonald2005(object):
         cmap=None,
         smooth_k=False,
     ):
-        """Plot the contamination model"""
+        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_hcd_contamination`."""
+        from cup1d.postprocessing.contaminants import plot_hcd_contamination as _plot
 
-        from matplotlib import pyplot as plt
-
-        # plot for fiducial value
-        if ln_A_damp_coeff is None:
-            ln_A_damp_coeff = self.ln_A_damp_coeff
-
-        hcd_model = HCD_Model_McDonald2005(ln_A_damp_coeff=ln_A_damp_coeff)
-
-        for ii in range(0, len(z), plot_every_iz):
-            if smooth_k:
-                k_use = np.logspace(
-                    np.log10(k_kms[ii][0]), np.log10(k_kms[ii][-1]), 200
-                )
-            else:
-                k_use = k_kms[ii]
-
-            cont = hcd_model.get_contamination(z[ii], k_use)
-            if isinstance(cont, int):
-                cont = np.ones_like(k_use)
-            if cmap is None:
-                plt.plot(k_use, cont, label="z=" + str(z[ii]))
-            else:
-                plt.plot(k_use, cont, color=cmap(ii), label="z=" + str(z[ii]))
-
-        plt.axhline(1, color="k", linestyle=":")
-
-        plt.legend()
-        plt.xscale("log")
-        plt.xlabel(r"$k$ [1/Mpc]")
-        plt.ylabel("HCD contamination")
-        plt.tight_layout()
-
-        return
+        return _plot(self, z, k_kms, ln_A_damp_coeff, plot_every_iz, cmap, smooth_k)

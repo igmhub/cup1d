@@ -1,6 +1,6 @@
 """Statistical likelihood and its parameter definitions."""
 
-__all__ = ["Likelihood", "LikelihoodParameter"]
+__all__ = ["Likelihood", "make_parameter", "LikelihoodParameter"]
 
 
 def __getattr__(name):
@@ -10,8 +10,8 @@ def __getattr__(name):
         from cup1d.likelihood.likelihood import Likelihood
 
         return Likelihood
-    if name == "LikelihoodParameter":
-        from cup1d.likelihood.parameter import LikelihoodParameter
+    if name in {"make_parameter", "LikelihoodParameter"}:
+        from cup1d.likelihood.parameter import make_parameter
 
-        return LikelihoodParameter
+        return make_parameter
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

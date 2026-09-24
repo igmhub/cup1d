@@ -36,7 +36,7 @@
 #   $k_\star=0.009\,\mathrm{s/km}$.
 
 # %% jupyter={"outputs_hidden": false}
-# %matplotlib inline
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -170,3 +170,5 @@ ax.legend(loc="upper left")
 ax.set_title(r"Linear-power constraints at ($z_\star=3$, $k_\star=0.009$ s/km)")
 ax.set_xlabel(r"$\Delta_\star^2$")
 ax.set_ylabel(r"$n_\star$")
+
+# %%

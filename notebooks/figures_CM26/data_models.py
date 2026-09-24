@@ -1,23 +1,24 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Extract best-fitting models
 #
 # In this notebook, we extract the different terms of the best-fitting model to DESI DR1
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
@@ -34,12 +35,12 @@ from matplotlib import colormaps
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-# -
 
+# %%
 args = Args(pre_defined="CM2026", system="local")
 pip = Analysis(args, out_folder=None)
 
-# +
+# %%
 # my local machine
 folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 # nersc
@@ -52,14 +53,15 @@ chain = chain.reshape(-1, 53)
 data = np.load(folder + "fitter_results.npy", allow_pickle=True).item()
 p0 = data["fitter"]["mle_cube"]
 
-# +
+# %%
 
-free_params = pip.fitter.like.parameters_from_sampling_point(p0)
-pip.fitter.like.get_chi2(p0)
-# -
+free_params = pip.fitter.parameters_from_sampling_point(p0)
+pip.fitter.like.get_chi2(free_params)
 
+# %% [markdown]
 # #### Extract measurements
 
+# %%
 out_data = {}
 out_data["zs"] = pip.fitter.like.data.z
 out_data["k_kms"] = pip.fitter.like.data.k_kms
@@ -67,9 +69,11 @@ out_data["data_Pk_kms"] = pip.fitter.like.data.Pk_kms
 out_data["cov_Pk_kms"] = pip.fitter.like.cov_Pk_kms
 out_data["full_cov_Pk_kms"] = pip.fitter.like.full_cov_Pk_kms
 
+# %%
 nn = 10000
 ind = np.random.permutation(np.arange(chain.shape[0]))[:nn]
 
+# %%
 chain_res = {
     "p1d_kms": np.zeros((nn, len(out_data["k_kms"]), len(out_data["k_kms"][-1]))),
     "p1d_emu_kms": np.zeros((nn, len(out_data["k_kms"]), len(out_data["k_kms"][-1]))),
@@ -79,12 +83,13 @@ chain_res = {
     "C_res": np.zeros((nn, len(out_data["k_kms"]), len(out_data["k_kms"][-1]))),
 }
 
+# %%
 for ii in range(ind.shape[0]):
 # for ii in range(100):
     if ii % 100 == 0:
         print(ii)
 
-    like_params = pip.fitter.like.parameters_from_sampling_point(chain[ind[ii], :])
+    like_params = pip.fitter.parameters_from_sampling_point(chain[ind[ii], :])
     results = pip.fitter.like.theory.get_p1d_kms(
         pip.fitter.like.data.z,
         pip.fitter.like.data.k_kms,
@@ -104,7 +109,7 @@ for ii in range(ind.shape[0]):
                 continue
             chain_res[par][ii, jj, :nelem] = p1d_conts[jj][par]
 
-# +
+# %%
 out_data['model_p1d_kms'] = []
 out_data['lya_p1d_kms'] = []
 out_data['C_mul_metals'] = []
@@ -139,21 +144,24 @@ for jj in range(chain_res["C_HCD"].shape[1]):
     out_data["C_res"].append(np.mean(chain_res["C_res"][:, jj, _], axis=0))
     out_data["err_C_res"].append(np.std(chain_res["C_res"][:, jj, _], axis=0))
 
-# +
+# %%
 out_data["README"] = "model_p1d_kms = [(C_mul_metals * C_HCD * lya_p1d_kms + C_add_metals) * C_res]"
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
 fname = os.path.join(path_out, "data_model_contaminants_systematics.npy")
 np.save(fname, out_data)
-# -
 
+# %%
 out_data = np.load(fname, allow_pickle=True).item()
 out_data.keys()
 
+# %%
 out_data["README"]
 
+# %% [markdown]
 # ## Figures
 
+# %%
 Nz = len(out_data["zs"])
 fig, ax = plt.subplots(Nz, figsize=(12, Nz*2), sharex=True, sharey=True)
 for ii in range(Nz):
@@ -171,6 +179,7 @@ for ii in range(Nz):
     ax[ii].errorbar(out_data["k_kms"][ii], out_data[par][ii], out_data["err_" + par][ii])
     ax[ii].set_ylabel(out_data["zs"][ii])
 
+# %%
 Nz = len(out_data["zs"])
 fig, ax = plt.subplots(Nz, figsize=(12, Nz*2), sharex=True)
 for ii in range(Nz):
@@ -191,7 +200,7 @@ for ii in range(Nz):
     )
     ax[ii].set_ylabel(out_data["zs"][ii])
 
-# +
+# %%
 fig, ax = plt.subplots(figsize=(12, 10))
 fontsize=20
 
@@ -216,6 +225,5 @@ ax.set_ylabel(r"$\mathrm{\pi}^{-1}k_\parallel\,P(k)$", fontsize=fontsize)
 plt.tight_layout()
 plt.savefig("figs/fig_with_model.pdf")
 plt.savefig("figs/fig_with_model.png")
-# -
-
+# %%
 

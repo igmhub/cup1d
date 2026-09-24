@@ -1,27 +1,27 @@
 import os
 import numpy as np
-from lace.cosmo import camb_cosmo
+from lace.cosmo.cosmology import Cosmology
 from lace.configuration import get_nyx_path
 from cup1d.utils.utils import get_path_repo
 
 
 def get_cosmology_from_label(cosmo_label="default"):
     if cosmo_label == "default":
-        return camb_cosmo.get_cosmology()
+        return Cosmology()
     elif cosmo_label == "low_omch2":
-        return camb_cosmo.get_cosmology(omch2=0.11)
+        return Cosmology(cosmo_params_dict=dict(omch2=0.11))
     elif cosmo_label == "high_omch2":
-        return camb_cosmo.get_cosmology(omch2=0.13)
+        return Cosmology(cosmo_params_dict=dict(omch2=0.13))
     elif cosmo_label == "omch2_0115":
-        return camb_cosmo.get_cosmology(omch2=0.115)
+        return Cosmology(cosmo_params_dict=dict(omch2=0.115))
     elif cosmo_label == "omch2_0125":
-        return camb_cosmo.get_cosmology(omch2=0.125)
+        return Cosmology(cosmo_params_dict=dict(omch2=0.125))
     elif cosmo_label == "mnu_03":
-        return camb_cosmo.get_cosmology(mnu=0.3)
+        return Cosmology(cosmo_params_dict=dict(mnu=0.3))
     elif cosmo_label == "mnu_06":
-        return camb_cosmo.get_cosmology(mnu=0.6)
+        return Cosmology(cosmo_params_dict=dict(mnu=0.6))
     elif cosmo_label == "SHOES":
-        return camb_cosmo.get_cosmology(H0=73.0)
+        return Cosmology(cosmo_params_dict=dict(H0=73.0))
     else:
         raise ValueError("implement cosmo_label " + cosmo_label)
 
@@ -50,12 +50,22 @@ def set_cosmo(
                 "Australia20",
                 "mpg_emu_cosmo.npy",
             )
-            get_cosmo = camb_cosmo.get_cosmology_from_dictionary
+            get_cosmo = lambda params: Cosmology(cosmo_params_dict=params)
         elif cosmo_label[:3] == "nyx":
             fname = os.path.join(
                 get_nyx_path(), "nyx_emu_cosmo_" + nyx_version + ".npy"
             )
-            get_cosmo = camb_cosmo.get_Nyx_cosmology
+            get_cosmo = lambda params: Cosmology(
+                cosmo_params_dict={
+                    "H0": params["H_0"],
+                    "ombh2": 0.02233,
+                    "omch2": params["omega_m"] - 0.02233,
+                    "mnu": 0.0,
+                    "As": params["A_s"],
+                    "ns": params["n_s"],
+                    "nrun": params.get("nrun", 0.0),
+                }
+            )
 
         try:
             data_cosmo = np.load(fname, allow_pickle=True).item()
@@ -70,7 +80,7 @@ def set_cosmo(
 
     elif cosmo_label == "Planck18":
         # Tab 2 of https://arxiv.org/abs/1807.06209, TT,TE,EE+lowE+lensing+BAO
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=67.66,
             mnu=0.0,
             omch2=0.119,
@@ -81,9 +91,9 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif cosmo_label == "Planck18_high_omh2":
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=67.66,
             mnu=0.0,
             omch2=0.1309,  # 10% higher
@@ -94,10 +104,10 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif cosmo_label == "Planck18_high3s_omh2":
         err_omch2 = 0.0009
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=67.66,
             mnu=0.0,
             omch2=0.119 + err_omch2 * 3,  # 3 sigma higher
@@ -108,10 +118,10 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif cosmo_label == "Planck18_high1s_omh2":
         err_omch2 = 0.0009
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=67.66,
             mnu=0.0,
             omch2=0.119 + err_omch2,  # 1 sigma higher
@@ -122,9 +132,9 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif cosmo_label == "Planck18_low_omh2":
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=67.66,
             mnu=0.0,
             omch2=0.1071,  # 10% smaller
@@ -135,10 +145,10 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif cosmo_label == "Planck18_low3s_omh2":
         err_omch2 = 0.0009
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=67.66,
             mnu=0.0,
             omch2=0.119 - err_omch2 * 3,  # 3 sigma lower
@@ -149,10 +159,10 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif cosmo_label == "Planck18_low1s_omh2":
         err_omch2 = 0.0009
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=67.66,
             mnu=0.0,
             omch2=0.119 - err_omch2,  # 1 sigma lower
@@ -163,9 +173,9 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif cosmo_label == "Planck18_h74":
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=74.00,
             mnu=0.0,
             omch2=0.119,
@@ -176,11 +186,11 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif cosmo_label == "Planck18_mnu03":
         # at fixed omh2, vary omch2
         omnuh2 = 0.00322433285312557  # for mnu 0.3 eV
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=67.66,
             mnu=0.3,
             omch2=0.119 - omnuh2,
@@ -191,11 +201,11 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif cosmo_label == "Planck18_mnu03_varh":
         ## at fixed Om, for that, vary h
         # define cosmology first to get omnuh2
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=67.66,
             mnu=0.3,
             omch2=0.119,
@@ -206,12 +216,13 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
-        OmegaM_planck = (cosmo.omch2 + cosmo.ombh2) / cosmo.h**2
-        omh2_nu = cosmo.omch2 + cosmo.ombh2 + cosmo.omnuh2
+        ))
+        background = cosmo.get_background_params()
+        OmegaM_planck = (background["omch2"] + background["ombh2"]) / cosmo.get_h()**2
+        omh2_nu = background["omch2"] + background["ombh2"] + background["omnuh2"]
         h_nu = np.sqrt(omh2_nu / OmegaM_planck)
 
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=h_nu * 100,
             mnu=0.3,
             omch2=0.119,
@@ -222,7 +233,7 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif cosmo_label == "DESIDR2_ACT":
         # ACT https://arxiv.org/pdf/2503.14452, Table 5 (P-ACT)
         # omch2 = 0.1193
@@ -238,7 +249,7 @@ def set_cosmo(
         w0 = -0.764
         wa = -0.77
 
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=h * 100,
             mnu=0.0,
             omch2=omch2,
@@ -250,9 +261,9 @@ def set_cosmo(
             pivot_scalar=0.05,
             w=w0,
             wa=wa,
-        )
+        ))
     elif cosmo_label == "Planck18_nyx":
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=67.66,
             mnu=0.0,
             omch2=0.119,
@@ -263,9 +274,9 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif cosmo_label == "Planck18_mpg":
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=67.0,
             mnu=0.0,
             omch2=0.119,
@@ -276,7 +287,7 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif (cosmo_label == "ACCEL2_6144_160") | (cosmo_label == "accel2"):
         # https://arxiv.org/pdf/2407.04473
         # Planck15 ΛCDM Planck TT,TE,EE+lowP (approx...)
@@ -285,7 +296,7 @@ def set_cosmo(
         h = 0.675
         omch2 = (Omegam - Omegab) * h**2
         ombh2 = Omegab * h**2
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=h * 100,
             mnu=0.0,
             omch2=omch2,
@@ -296,7 +307,7 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     elif (cosmo_label == "Sherwood_2048_40") | (cosmo_label == "sherwood"):
         # https://academic.oup.com/mnras/article/464/1/897/2236089
         # Planck13 ΛCDM Planck+WP+highL+BAO
@@ -305,7 +316,7 @@ def set_cosmo(
         h = 0.678
         omch2 = (Omegam - Omegab) * h**2
         ombh2 = Omegab * h**2
-        cosmo = camb_cosmo.get_cosmology(
+        cosmo = Cosmology(cosmo_params_dict=dict(
             H0=h * 100,
             mnu=0.0,
             omch2=omch2,
@@ -316,7 +327,7 @@ def set_cosmo(
             nrun=0.0,
             pivot_scalar=0.05,
             w=-1,
-        )
+        ))
     else:
         raise ValueError(f"cosmo_label {cosmo_label} not implemented")
 

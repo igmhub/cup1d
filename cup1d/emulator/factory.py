@@ -4,30 +4,11 @@ def set_emulator(
     archive=None,
     training_set="Cabayol23",
 ):
+    """Load a supported LaCE or legacy ForestFlow emulator.
+
+    ``archive``, ``training_set``, and ``drop_emu_sim`` are retained only for
+    backwards-compatible calls; current emulator implementations do not use them.
     """
-    Set emulator
-    """
-
-    # only read archive if using old emulator
-    if emulator_label not in [
-        "CH24_mpg_gp",
-        "CH24_nyx_gp",
-        "CH24_mpgcen_gpr",
-        "CH24_nyxcen_gpr",
-        "forest_mpg",
-    ]:
-        read_archive = True
-    else:
-        read_archive = False
-
-    if read_archive:
-        if archive is None:
-            from cup1d.emulator.archive import set_archive
-
-            archive = set_archive(training_set)
-    else:
-        archive = None
-    #######################
 
     if emulator_label == "forest_mpg":
         from cup1d.emulator.interface import P1D_emulator
@@ -38,8 +19,6 @@ def set_emulator(
 
         emulator = emulator_manager.set_emulator(
             emulator_label=emulator_label,
-            archive=archive,
-            drop_sim=drop_emu_sim,
         )
 
     return emulator

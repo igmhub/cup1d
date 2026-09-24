@@ -177,7 +177,7 @@ class Contaminants(object):
 
     #     return dict_out
 
-    def get_contamination(self, z, k_kms, mF, M_of_z, like_params=[], remove=None):
+    def get_contamination(self, z, k_kms, mF, M_of_z, like_params=None, remove=None):
         # include multiplicative metal contamination
         cont_all = {}
 

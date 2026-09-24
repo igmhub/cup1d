@@ -1,23 +1,24 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Figure 19
 #
 # Best-fitting constraints on IGM parameters
 
-# +
+# %%
 from cup1d.postprocessing.tables.igm import plot_table_igm
 
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
@@ -27,7 +28,7 @@ store_data = plot_table_igm(base, name_variation=None, save_fig=None, chain="7",
 # store_data = plot_table_igm(base, name_variation="nyx", save_fig=save_fig, chain="3", store_data=True)
 # plot_table_igm(base, name_variation="more_igm", save_fig=save_fig, chain="2")
 
-# +
+# %%
 import cup1d, os
 
 path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")

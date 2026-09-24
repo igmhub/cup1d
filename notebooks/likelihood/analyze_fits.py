@@ -25,7 +25,6 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import os
 from pathlib import Path
 
 import numpy as np
@@ -46,18 +45,14 @@ repository_path = Path(get_path_repo("cup1d"))
 config_path = repository_path / "configs" / "cm2026" / "cm2026_base.yaml"
 
 fit_directory = Path(
-    os.environ.get(
-        "CUP1D_FIT_DIRECTORY",
-        "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
-        "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7",
-    )
+    "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+    "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7"
 )
 results_path = fit_directory / "fitter_results.npy"
 
 if not results_path.is_file():
     raise FileNotFoundError(
-        f"Could not find {results_path}. Set CUP1D_FIT_DIRECTORY or edit "
-        "fit_directory in this cell."
+        f"Could not find {results_path}. Edit fit_directory in this cell."
     )
 
 
@@ -74,7 +69,8 @@ analysis = Analysis(args)
 
 fit_results = np.load(results_path, allow_pickle=True).item()
 mle_cube = np.asarray(fit_results["fitter"]["mle_cube"])
-chi2 = analysis.like.get_chi2(mle_cube)
+best_fit_parameters = analysis.fitter.parameters_from_sampling_point(mle_cube)
+chi2 = analysis.like.get_chi2(best_fit_parameters)
 analysis.fitter.set_mle(mle_cube, chi2)
 
 print(f"chi2 = {chi2:.3f}")
@@ -88,9 +84,8 @@ print(f"number of free parameters = {len(analysis.like.free_params)}")
 # values used by the model.
 
 # %%
-best_fit_parameters = analysis.like.parameters_from_sampling_point(mle_cube)
-for parameter in best_fit_parameters:
-    print(f"{parameter.name:20s} = {parameter.value:g}")
+for name, value in best_fit_parameters.items():
+    print(f"{name:20s} = {value:g}")
 
 
 # %% [markdown]
@@ -101,7 +96,7 @@ for parameter in best_fit_parameters:
 # explicitly supplied to the plotting method.
 
 # %%
-analysis.like.plot_p1d(mle_cube, residuals=True, plot_panels=True, print_chi2=False)
+analysis.like.plot_p1d(best_fit_parameters, residuals=True, plot_panels=True, print_chi2=False)
 
 
 # %% [markdown]

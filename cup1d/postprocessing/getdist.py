@@ -60,7 +60,7 @@ def read_chain_for_getdist(
     run["sampler"] = sampler
 
     print("figure out free parameters for", label)
-    param_names = [param.name for param in sampler.like.free_params]
+    param_names = list(sampler.like.free_params)
     if "n_star" in param_names:
         print("sampling compressed parameters")
         blob_names = None
@@ -93,8 +93,8 @@ def read_chain_for_getdist(
 
     # figure out range of allowed values
     ranges = {}
-    for par in sampler.like.free_params:
-        ranges[par.name] = [par.min_value, par.max_value]
+    for name, parameter in sampler.like.free_params.items():
+        ranges[name] = [parameter["min_value"], parameter["max_value"]]
 
     # setup getdist object
     samples = MCSamples(

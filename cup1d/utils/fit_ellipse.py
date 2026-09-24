@@ -1,6 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.patches import Ellipse
 
 
 def rho_from_axes(a, b, theta):
@@ -98,47 +96,7 @@ def plot_ellipse(
     label="ellipse",
 ):
     # Covariance matrix
-    cov = np.array(
-        [
-            [sigma1**2, rho * sigma1 * sigma2],
-            [rho * sigma1 * sigma2, sigma2**2],
-        ]
-    )
+    """Delegate to :func:`cup1d.postprocessing.geometry.plot_ellipse`."""
+    from cup1d.postprocessing.geometry import plot_ellipse as _plot
 
-    # Eigen-decomposition for ellipse axes
-    eigvals, eigvecs = np.linalg.eigh(cov)
-
-    # Sort eigenvalues
-    order = eigvals.argsort()[::-1]
-    eigvals, eigvecs = eigvals[order], eigvecs[:, order]
-
-    # 68% chi-square value for 2 dof
-    chi2_val = 2.30
-
-    # Width and height of ellipse (2*sqrt because diameter)
-    width, height = 2 * np.sqrt(eigvals * chi2_val)
-
-    # Angle of ellipse (in degrees)
-    angle = np.degrees(np.arctan2(*eigvecs[:, 0][::-1]))
-    # print("angle")
-    # angle = np.degrees(0.14250882064032286) * 2
-
-    # Plot
-    if ax is None:
-        fig, ax = plt.subplots()
-    else:
-        fig = None
-
-    ellipse = Ellipse(
-        xy=mean,
-        width=width,
-        height=height,
-        angle=angle,
-        edgecolor=color,
-        facecolor="none",
-        lw=2,
-        label=label,
-    )
-    ax.add_patch(ellipse)
-
-    ax.scatter(*mean, c=color, marker="x")
+    return _plot(sigma1, sigma2, rho, mean, ax, color, label)

@@ -136,12 +136,13 @@ class Contaminant(object):
                 else:
                     _value = values[ii]
 
-                par = likelihood_parameter.LikelihoodParameter(
+                par = likelihood_parameter.make_parameter(
                     name=name,
                     value=_value,
                     min_value=xmin,
                     max_value=xmax,
                     Gauss_priors_width=Gwidth,
+                    hessian_transform=self.prop_coeffs[key + "_otype"],
                 )
                 self.params[name] = par
 
@@ -155,7 +156,7 @@ class Contaminant(object):
             raise ValueError("mismatch between number of params and coeffs")
         return n_params
 
-    def get_value(self, name, z, like_params=[]):
+    def get_value(self, name, z, like_params=None):
         coeff = self.get_coeff(name, like_params=like_params)
         # print(name, coeff, self.prop_coeffs[name + "_otype"])
 
@@ -212,16 +213,16 @@ class Contaminant(object):
         """Return likelihood parameters"""
         return self.params
 
-    def get_coeff(self, name, like_params=[]):
+    def get_coeff(self, name, like_params=None):
         if like_params:
             coeff = self.coeffs[name].copy()
             Npar = 0
             array_names = []
             array_values = []
-            for par in like_params:
-                if (name + "_") in par.name:
-                    array_names.append(par.name)
-                    array_values.append(par.value)
+            for par_name, par_value in like_params.items():
+                if (name + "_") in par_name:
+                    array_names.append(par_name)
+                    array_values.append(par_value)
                     Npar += 1
             array_names = np.array(array_names)
             array_values = np.array(array_values)
@@ -252,10 +253,10 @@ class Contaminant(object):
                 print("orig", name, self.coeffs[name])
             array_names = []
             array_values = []
-            for par in like_params:
-                if (name + "_") in par.name:
-                    array_names.append(par.name)
-                    array_values.append(par.value)
+            for par_name, par_value in like_params.items():
+                if (name + "_") in par_name:
+                    array_names.append(par_name)
+                    array_values.append(par_value)
                     Npar += 1
             array_names = np.array(array_names)
             array_values = np.array(array_values)
@@ -278,72 +279,10 @@ class Contaminant(object):
                 print("new", name, self.coeffs[name])
 
     def plot_parameters(self, z, like_params, folder=None):
-        """Plot likelihood parameters"""
+        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_parameters`."""
+        from cup1d.postprocessing.contaminants import plot_parameters as _plot
 
-        from matplotlib import pyplot as plt
-
-        fig, ax = plt.subplots(
-            len(self.coeffs), 1, sharex=True, figsize=(8, 3 * len(self.coeffs))
-        )
-        if len(self.coeffs) == 1:
-            ax = [ax]
-
-        try:
-            len_p = len(like_params[0])
-        except:
-            z_at_time = False
-        else:
-            z_at_time = True
-
-        vals_out = {}
-        coeffs_out = {}
-
-        for ii, key in enumerate(self.coeffs.keys()):
-            if z_at_time == False:
-                vals = self.get_value(key, z, like_params=like_params)
-                coeffs_out[key] = self.get_coeff(key, like_params=like_params)
-            else:
-                vals = []
-                coeffs_out[key] = []
-                for jj in range(len(z)):
-                    vals.append(
-                        self.get_value(key, z[jj], like_params=like_params[jj])
-                    )
-                    coeffs_out[key].append(
-                        self.get_coeff(key, like_params=like_params[jj])[0]
-                    )
-                vals = np.array(vals)
-
-            if key in self.null_vals:
-                if np.all(vals == self.null_vals[key]):
-                    continue
-            elif key == "HCD_const":
-                if np.all(vals == 0):
-                    continue
-
-            if self.prop_coeffs[key + "_otype"] == "exp":
-                vals = np.log(vals)
-
-            vals_out[key] = vals
-
-            _ = vals != self.null_vals[key]
-            ax[ii].plot(z[_], vals[_], "o-", label="data")
-            xz = np.log((1 + z) / (1 + self.z_0))
-            if np.any(_):
-                res = np.polyfit(xz[_], vals[_], 1)
-                ax[ii].plot(z[_], res[0] * xz[_] + res[1], "--", label="fit")
-                ax[ii].set_ylabel(key)
-
-        ax[0].legend()
-        ax[-1].set_xlabel("z")
-
-        plt.tight_layout()
-        plt.show()
-        if folder is not None:
-            fig.savefig(folder + ".png")
-            fig.savefig(folder + ".pdf")
-
-        return vals_out, coeffs_out
+        return _plot(self, z, like_params, folder)
 
     # def plot_contamination(
     #     self,

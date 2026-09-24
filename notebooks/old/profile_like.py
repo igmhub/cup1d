@@ -1,21 +1,22 @@
 # ---
 # jupyter:
 #   jupytext:
-#     formats: ipynb,py
+#     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.5
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
+# %% [markdown]
 # # Profile likelihood
 
-# +
+# %%
 # %load_ext autoreload
 # %autoreload 2
 
@@ -33,7 +34,7 @@ from matplotlib import rcParams
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-# +
+# %%
 cont = np.array([0, 1, 2, 3, 4, 5])
 prob_levels = np.zeros(len(cont))
 chi2_levels = np.zeros(len(cont))
@@ -47,11 +48,11 @@ for ii in range(len(cont)):
 
 print(prob_levels)
 print(chi2_levels)
-# -
 
+# %% [markdown]
 # ### Get data
 
-# +
+# %%
 fit_type = "global_opt"
 data_lab = "DESIY1_QMLE3"
 # data_lab = "DESIY1_QMLE"
@@ -145,21 +146,22 @@ min_chi2 = np.min([chi2[_].min(), data_cen['best_chi2']])
 print(min_chi2, data_cen['best_chi2']-min_chi2, chi2[_].min()-min_chi2, np.argmin(chi2))
 
 np.sum(chi2 == 0)
-# -
 
+# %%
 data_cen['best_chi2']
 
+# %%
 data_cen["mle"]
 
 
-# +
+# %%
 def fix_key(s):
     # Re-encode the string so we see escape codes again
     return s.encode('unicode_escape').decode().replace('\\\\', '\\')
 
 fixed = {fix_key(k): v for k, v in data_cen["mle"].items()}
 
-# +
+# %%
 plot = True
 
 if plot:
@@ -191,7 +193,7 @@ if plot:
     plt.tight_layout()
     # plt.savefig("figs/HCD_cosmo.pdf")
 
-# +
+# %%
 plot = False
 
 if plot:
@@ -249,28 +251,28 @@ if plot:
         plt.savefig("fig_corr/"+str(jj)+".png")
         plt.close()
 
-# +
+# %%
 # data_cen["mle"]
-# -
+# %%
+
+# %%
 
 
-
-
-
-# +
+# %%
 # data_cen["mle"]
 # data_cen["mle_cube"]
-# -
 
+# %%
 print(data_cen["mle_cosmo_cen"])
 print(params[np.argmin(chi2)])
 mle[np.argmin(chi2)]
 
+# %%
 
-
+# %% [markdown]
 # ## Get 1D errors
 
-# +
+# %%
 out_dict = {}
 n2d = int(np.sqrt(nelem))
 
@@ -308,7 +310,7 @@ out_dict["n_star"] = y_min
 out_dict["err_n_star"] = yerr
 out_dict["chi2"] = min_chi2
 
-# +
+# %%
 plot = True
 
 if plot:
@@ -335,7 +337,7 @@ if plot:
     # plt.savefig("figs/pl1d_D2s_qmle3.pdf")
     # plt.savefig("figs/pl1d_D2s_qmle3.png")
 
-# +
+# %%
 plot = True
 
 if plot:
@@ -360,11 +362,11 @@ if plot:
     plt.ylim(0, 20)
     # plt.savefig("figs/pl1d_ns_qmle3.pdf")
     # plt.savefig("figs/pl1d_ns_qmle3.png")
-# -
 
+# %% [markdown]
 # #### Get correlation from 2d-ellipse
 
-# +
+# %%
 ind = chi2 != 0
 nelem = 50
 grid = np.meshgrid(
@@ -429,7 +431,7 @@ ind3 = np.argsort(chi2[ind])
 print((params[ind])[ind3[:3]].mean(axis=0))
 print((params[ind])[ind3[:3]])
 
-# +
+# %%
 
 fact1 = 1
 fact2 = 1
@@ -444,11 +446,11 @@ plt.scatter(out_dict["Delta2_star"], out_dict["n_star"], marker="x", color="k")
 
 # plt.xlim(0.4, 0.63)
 # plt.ylim(-2.34, -2.2)
-# -
 
+# %%
 print(out_dict["err_Delta2_star"], out_dict["err_n_star"])
 
-# +
+# %%
 fig, ax = plt.subplots(1, figsize=(8, 6))
 ftsize = 20
 
@@ -556,18 +558,20 @@ if variation is not None:
 else:
     plt.savefig("figs/pl_qmle3.pdf")
     plt.savefig("figs/pl_qmle3.png")
-# -
 
 
+# %% [markdown]
 # ## All together
 
+# %%
 
-
+# %%
 out_dict.keys()
 
+# %% [markdown]
 # #### with errors
 
-# +
+# %%
 
 ftsize = 22
 ls = ["-", "--"]
@@ -705,22 +709,21 @@ for image in range(2, 3):
     plt.savefig("figs/variations_2d_"+fname[image]+".png")
 
 
-# +
+# %%
 0.027 * 14
 
 0.38
 
-# +
+# %%
 0.017 * 14
 
 0.2
 
 
-# -
-
+# %% [markdown]
 # #### No errors
 
-# +
+# %%
 def format_last_column(values):
     """Format last column with trailing zeros or LaTeX scientific notation."""
     formatted = []
@@ -753,11 +756,11 @@ def format_column(values, sigfigs=2, force_decimals=True, one_decimal=False, two
 
 
 
-# -
 
+# %%
 from matplotlib import colormaps
 
-# +
+# %%
 base_folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 data_lab = "DESIY1_QMLE3"
 
@@ -919,24 +922,26 @@ ax.tick_params(
 
 plt.legend(fontsize=ftsize-8, loc="upper right", ncol=1)
 plt.tight_layout()
-# -
+# %%
+
+# %%
+
+# %%
 
 
-
-
-
-
-
+# %% [markdown]
 # ### Validation
 
+# %%
 
-
+# %%
 from cup1d.theory.cosmology import set_cosmo
 from cup1d.theory import camb as CAMB_model
 
+# %% [markdown]
 # 26 params
 
-# +
+# %%
 fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 20
 ls = ["-", "--"]
@@ -1008,19 +1013,21 @@ plt.legend(fontsize=ftsize-2)
 plt.tight_layout()
 # plt.savefig("figs/validation_2d.pdf")
 # plt.savefig("figs/validation_2d.png")
-# -
 
+# %% [markdown]
 # # Profile above, MCMC below
 
+# %% [markdown]
 # #### Contours from chains
 
+# %%
 from cup1d.theory.cosmology import set_cosmo
 from cup1d.theory import camb as CAMB_model
 import matplotlib.cm as cm
 
+# %%
 
-
-# +
+# %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/"
 folder = base + "sim_mpg_central/CH24_mpgcen_gpr/chain_2/"
 dat_mpg_sim = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
@@ -1042,23 +1049,23 @@ dat_nyx_sim = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 folder = base + "sim_sherwood/CH24_mpgcen_gpr/chain_1/"
 dat_sherwood = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-# +
+# %%
 print(sum_mpg_sim["delta2_star_err"]/sum_mpg_igm["delta2_star_err"])
 print(sum_mpg_sim["n_star_err"]/sum_mpg_igm["n_star_err"])
 
 print(sum_mpg_sim["delta2_star_err"]/sum_mpg_igm0["delta2_star_err"])
 print(sum_mpg_sim["n_star_err"]/sum_mpg_igm0["n_star_err"])
 
-# +
+# %%
 
 print(1-sum_qmle["delta2_star_err"]/sum_mpg["delta2_star_err"])
 print(1-sum_qmle["n_star_err"]/sum_mpg["n_star_err"])
 
-# +
+# %%
 
 print(sum_nyx["delta2_star_err"]/sum_mpg["delta2_star_err"])
 print(sum_nyx["n_star_err"]/sum_mpg["n_star_err"])
-# +
+# %%
 base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
 
 folder = base + "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"
@@ -1175,13 +1182,13 @@ dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 # folder = base + "DESIY1_QMLE3/kF_kms/CH24_mpgcen_gpr/chain_2/"
 # dat_kF = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 
-# -
+# %%
 from cup1d.theory.cosmology import set_cosmo
 from cup1d.theory import camb as CAMB_model
 import matplotlib.cm as cm
 
 
-# +
+# %%
 
 ls = ["-", "--"]
 
@@ -1395,13 +1402,13 @@ for image in range(7, 8):
     plt.tight_layout()
     plt.savefig("figs/vars/variations_"+fname[image]+".pdf")
     plt.savefig("figs/vars/variations_"+fname[image]+".png")
-# -
 
 
+# %% [markdown]
 # from matplotlib.patches import Ellipse
 
 
-# +
+# %%
 fig, ax = plt.subplots(figsize=(8, 6))
 ftsize = 20
 ls = ["-", "--"]
@@ -1516,4 +1523,3 @@ plt.legend(fontsize=ftsize-2, loc="upper right")
 plt.tight_layout()
 # plt.savefig("figs/validation_2d.pdf")
 # plt.savefig("figs/validation_2d.png")
-# -

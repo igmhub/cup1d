@@ -1,12 +1,13 @@
 import os, sys, time, subprocess, textwrap
+from pathlib import Path
 import numpy as np
 from itertools import product
 
 # our own modules
 from lace.archive import gadget_archive, nyx_archive
-from lace.cosmo import camb_cosmo
 from cup1d.data import data_gadget, data_nyx
 from cup1d.scripts.sam_sim import sam_sim, path_sampler
+from cup1d.utils.utils import get_path_repo
 
 
 class Args:
@@ -70,8 +71,8 @@ def generate_batch_script(
         #SBATCH --nodes={n_nodes}
         #SBATCH --ntasks-per-node={n_tasks}
         #SBATCH --constraint=cpu
-        #SBATCH --output={out_path}output{seed}.log
-        #SBATCH --error={out_path}error{seed}.log
+        #SBATCH --output={out_path / f'output{seed}.log'}
+        #SBATCH --error={out_path / f'error{seed}.log'}
 
         mpiexec -n {n_tasks} python {python_script_path}\
         --training_set {args.training_set}\
@@ -117,11 +118,10 @@ def launch_batch_script(slurm_script):
 def main():
     qos = "debug"
 
-    python_script_path = (
-        os.environ["CUP1D_PATH"] + "src/cup1d/scripts/sam_sim.py"
-    )
-
-    out_path = os.environ["CUP1D_PATH"] + "src/cup1d/scripts/nersc/runs/"
+    repository_path = Path(get_path_repo("cup1d"))
+    python_script_path = repository_path / "scripts" / "sam_sim.py"
+    out_path = repository_path / "scripts" / "nersc" / "runs"
+    out_path.mkdir(parents=True, exist_ok=True)
 
     list_training_set = ["Pedersen21", "Cabayol23", "Nyx23_Oct2023"]
     emulator_label = [
@@ -235,12 +235,7 @@ def main():
             args.drop_sim = drop_sim
             args.n_igm = n_igm
 
-            slurm_script_path = (
-                os.environ["CUP1D_PATH"]
-                + "src/cup1d/scripts/nersc/runs/slurm"
-                + str(seed)
-                + ".sub"
-            )
+            slurm_script_path = out_path / f"slurm{seed}.sub"
 
             # check if job has been run
             if override:

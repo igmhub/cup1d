@@ -243,6 +243,8 @@ Gauss_priors: null
 fit_type: global_opt
 # Sampler configuration.
 mcmc:
+  # Base seed for MCMC walker initialization; null uses fresh entropy.
+  seed: null
   # Whether walkers explore around the initial position.
   explore: true
   # Whether likelihood evaluations use parallel execution.
@@ -261,7 +263,7 @@ initial_sampling_values: {}
 # Initial-condition filename, resolved relative to `path_ic`.
 file_ic: mpg_ic_global_red.npy
 # Directory containing initial-condition corrections.
-path_ic: /home/jchaves/Proyectos/projects/lya/cup1d/data/ics
+path_ic: null  # Resolved to the installed cup1d package data directory.
 
 ## Output and runtime
 # Directory in which analysis products are written.

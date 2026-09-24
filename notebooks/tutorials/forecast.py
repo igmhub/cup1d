@@ -7,6 +7,10 @@
 #       format_name: percent
 #       format_version: '1.3'
 #       jupytext_version: 1.19.5
+#   kernelspec:
+#     display_name: lace
+#     language: python
+#     name: python3
 # ---
 
 # %% [markdown]
@@ -50,10 +54,11 @@ analysis = Analysis(args)
 # with the corresponding model prediction.
 
 # %%
-initial_point = analysis.like.sampling_point_from_parameters().copy()
-initial_chi2 = analysis.like.get_chi2(initial_point)
+initial_point = analysis.fitter.sampling_point_from_parameters().copy()
+initial_parameters = analysis.fitter.parameters_from_sampling_point(initial_point)
+initial_chi2 = analysis.like.get_chi2(initial_parameters)
 print(f"Initial chi2 = {initial_chi2:.3f}")
-analysis.like.plot_p1d(initial_point, residuals=True, plot_panels=True)
+analysis.like.plot_p1d(initial_parameters, residuals=True, plot_panels=True)
 
 
 # %% [markdown]
@@ -74,7 +79,8 @@ print(f"Best-fit chi2 = {analysis.fitter.mle_chi2:.3f}")
 # Plot the forecast P1D and the model evaluated at the best-fit parameters.
 
 # %%
-analysis.like.plot_p1d(best_fit_point, residuals=True, plot_panels=True)
+best_fit_parameters = analysis.fitter.parameters_from_sampling_point(best_fit_point)
+analysis.like.plot_p1d(best_fit_parameters, residuals=True, plot_panels=True)
 
 
 # %% [markdown]
@@ -84,7 +90,7 @@ analysis.like.plot_p1d(best_fit_point, residuals=True, plot_panels=True)
 # the forecast. External observational measurements are omitted.
 
 # %%
-best_fit_parameters = analysis.like.parameters_from_sampling_point(best_fit_point)
+best_fit_parameters = analysis.fitter.parameters_from_sampling_point(best_fit_point)
 analysis.like.plot_igm(
     free_params=best_fit_parameters,
     plot_external_data=False,
@@ -103,6 +109,9 @@ analysis.like.plot_igm(
 from cup1d.postprocessing import Plotter
 
 plotter = Plotter(analysis.fitter)
-plotter.plot_mle_cosmo()
+plotter.plot_mle_cosmo(plot_errors=True, error_method="gauss_newton")
+
+# %%
+analysis.fitter.mle_cosmo_errors
 
 # %%

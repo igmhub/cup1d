@@ -71,7 +71,7 @@ def main():
 
     pip = Analysis(args)
 
-    input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
+    input_pars = pip.fitter.sampling_point_from_parameters().copy()
 
     print("starting minimization")
     pip.run_minimizer(input_pars, restart=True)

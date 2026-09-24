@@ -48,14 +48,14 @@ class MeanFlux(IGM_model):
             fid_igm=fid_igm,
         )
 
-    def get_tau_eff(self, z, like_params=[], name_par="tau_eff"):
+    def get_tau_eff(self, z, like_params=None, name_par="tau_eff"):
         """Effective optical depth at the input redshift"""
 
         tau_eff = self.get_value(name_par, z, like_params=like_params)
         tau_eff *= self.fid_interp[name_par](z)
         return tau_eff
 
-    def get_mean_flux(self, z, like_params=[]):
+    def get_mean_flux(self, z, like_params=None):
         """Mean transmitted flux fraction at the input redshift"""
         tau = self.get_tau_eff(z, like_params=like_params)
         return np.exp(-tau)
