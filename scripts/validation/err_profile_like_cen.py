@@ -65,11 +65,11 @@ def main():
         )
         pip = Analysis(args, out_folder=out_folder, archive=archive_mock)
 
-        input_pars = pip.fitter.like.sampling_point_from_parameters().copy()
+        input_pars = pip.fitter.sampling_point_from_parameters().copy()
         print(input_pars)
 
         pip.fitter.run_minimizer(
-            pip.fitter.like.minus_log_prob, p0=input_pars, restart=True
+            pip.fitter.minus_log_prob, p0=input_pars, restart=True
         )
 
         out_dict = {

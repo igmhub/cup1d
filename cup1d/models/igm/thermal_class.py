@@ -49,14 +49,14 @@ class Thermal(IGM_model):
             fid_igm=fid_igm,
         )
 
-    def get_sigT_kms(self, z, like_params=[], name_par="sigT_kms"):
+    def get_sigT_kms(self, z, like_params=None, name_par="sigT_kms"):
         """sigT_kms at the input redshift"""
 
         sigT_kms = self.get_value(name_par, z, like_params=like_params)
         sigT_kms *= self.fid_interp[name_par](z)
         return sigT_kms
 
-    def get_T0(self, z, like_params=[], name_par="sigT_kms"):
+    def get_T0(self, z, like_params=None, name_par="sigT_kms"):
         """T_0 at the input redshift"""
 
         sigT_kms = self.get_sigT_kms(
@@ -65,7 +65,7 @@ class Thermal(IGM_model):
         T0 = thermal_broadening.T0_from_broadening_kms(sigT_kms)
         return T0
 
-    def get_gamma(self, z, like_params=[], name_par="gamma"):
+    def get_gamma(self, z, like_params=None, name_par="gamma"):
         """gamma at the input redshift"""
 
         gamma = self.get_value(name_par, z, like_params=like_params)

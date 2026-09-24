@@ -43,15 +43,15 @@ analysis = Analysis(args)
 # Get parameters from a point of the parameter space close to the best fit
 
 # %%
-p0 = analysis.like.sampling_point_from_parameters().copy()
-free_params = analysis.like.parameters_from_sampling_point(p0)
-analysis.like.get_chi2(p0)
+p0 = analysis.fitter.sampling_point_from_parameters().copy()
+free_params = analysis.fitter.parameters_from_sampling_point(p0)
+analysis.like.get_chi2(free_params)
 
 # %% [markdown]
 # Plot model for these parameters
 
 # %%
-analysis.like.plot_p1d(p0)
+analysis.like.plot_p1d(free_params)
 
 # %% [markdown]
 # #### If you want to extract the data
@@ -104,8 +104,8 @@ print(
 # %%
 # list of model parameters
 
-for par in analysis.like.free_params:
-    print(par.name, par.value, par.min_value, par.max_value)
+for par in analysis.like.free_params.values():
+    print(par["name"], par["value"], par["min_value"], par["max_value"])
 
 # %% [markdown]
 # #### Evaluate the model for some input parameters
@@ -114,7 +114,10 @@ for par in analysis.like.free_params:
 # evaluate model for the initial value of the input parameters
 zs = analysis.data[key].z
 k_kms = analysis.data[key].k_kms
-ini_free_params = analysis.like.free_params
+ini_free_params = {
+    name: parameter["value"]
+    for name, parameter in analysis.like.free_params.items()
+}
 
 ini_model_Pk_kms = analysis.theory.get_p1d_kms(
     zs, k_kms, like_params=ini_free_params
@@ -125,17 +128,8 @@ ini_model_Pk_kms = analysis.theory.get_p1d_kms(
 zs = analysis.data[key].z
 k_kms = analysis.data[key].k_kms
 
-new_free_params = []
-for par in analysis.like.free_params:
-    old_value = par.value
-    new_par = par.get_new_parameter(0.5)
-    if par.name == "As":
-        # increase by 10%
-        new_par.value = old_value * 1.1
-    else:
-        # same value as before
-        new_par.value = old_value
-    new_free_params.append(new_par)
+new_free_params = ini_free_params.copy()
+new_free_params["As"] *= 1.1
 
 new_As_model_Pk_kms = analysis.theory.get_p1d_kms(
     zs, k_kms, like_params=new_free_params
@@ -182,9 +176,9 @@ new_Delta2_star/ini_Delta2_star
 # Get value of parameters close to best fit again
 
 # %%
-p0 = analysis.like.sampling_point_from_parameters().copy()
-free_params = analysis.like.parameters_from_sampling_point(p0)
-analysis.like.get_chi2(p0)
+p0 = analysis.fitter.sampling_point_from_parameters().copy()
+free_params = analysis.fitter.parameters_from_sampling_point(p0)
+analysis.like.get_chi2(free_params)
 
 # %% [markdown]
 # Run minimizer starting from this point, it should stop the minimization soon
@@ -197,7 +191,7 @@ analysis.run_minimizer(p0)
 
 # %%
 p1 = analysis.fitter.mle_cube
-analysis.like.plot_p1d(p1)
+analysis.like.plot_p1d(analysis.fitter.parameters_from_sampling_point(p1))
 
 # %% [markdown]
 # Read chain
@@ -224,5 +218,29 @@ results_unblind = apply_unblinding(analysis.like.blind, results)
 # %%
 for par in results_unblind:
     print(np.median(results_unblind[par]))
+
+# %% [markdown]
+# Compare the unblinded sampler samples with the unblinded MLE. The blinding
+# offsets are additive, so they are removed from the MLE location but not from
+# its covariance-derived errors.
+
+# %%
+analysis.fitter.estimate_mle_errors(method="gauss_newton")
+mle_cosmo_unblind = apply_unblinding(
+    analysis.like.blind, analysis.fitter.mle_cosmo.copy()
+)
+from cup1d.postprocessing import plot_cosmo_sampler_and_fit
+
+samples = np.column_stack(
+    [results_unblind["Delta2_star"], results_unblind["n_star"]]
+)
+fig = plot_cosmo_sampler_and_fit(
+    samples,
+    mle_cosmo_unblind,
+    analysis.fitter.mle_cosmo_covariance[:2, :2],
+    sampler_label="Sampler contours",
+    fit_label="Minimizer",
+)
+plt.show()
 
 # %%

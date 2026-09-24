@@ -223,12 +223,13 @@ class IGM_model(object):
                 else:
                     _value = values[ii]
 
-                par = likelihood_parameter.LikelihoodParameter(
+                par = likelihood_parameter.make_parameter(
                     name=name,
                     value=_value,
                     min_value=xmin,
                     max_value=xmax,
                     Gauss_priors_width=Gwidth,
+                    hessian_transform=self.prop_coeffs[key + "_otype"],
                 )
                 self.params[name] = par
 
@@ -242,7 +243,7 @@ class IGM_model(object):
             raise ValueError("mismatch between number of params and coeffs")
         return n_params
 
-    def get_value(self, name, z, like_params=[]):
+    def get_value(self, name, z, like_params=None):
         coeff = self.get_coeff(name, like_params=like_params)
 
         if self.prop_coeffs[name + "_ztype"] == "pivot":
@@ -286,16 +287,16 @@ class IGM_model(object):
         """Return likelihood parameters"""
         return self.params
 
-    def get_coeff(self, name, like_params=[]):
+    def get_coeff(self, name, like_params=None):
         if like_params:
             coeff = self.coeffs[name].copy()
             Npar = 0
             array_names = []
             array_values = []
-            for par in like_params:
-                if (name + "_") in par.name:
-                    array_names.append(par.name)
-                    array_values.append(par.value)
+            for par_name, par_value in like_params.items():
+                if (name + "_") in par_name:
+                    array_names.append(par_name)
+                    array_values.append(par_value)
                     Npar += 1
             array_names = np.array(array_names)
             array_values = np.array(array_values)
@@ -326,10 +327,10 @@ class IGM_model(object):
                 print("orig", name, self.coeffs[name])
             array_names = []
             array_values = []
-            for par in like_params:
-                if (name + "_") in par.name:
-                    array_names.append(par.name)
-                    array_values.append(par.value)
+            for par_name, par_value in like_params.items():
+                if (name + "_") in par_name:
+                    array_names.append(par_name)
+                    array_values.append(par_value)
                     Npar += 1
             array_names = np.array(array_names)
             array_values = np.array(array_values)

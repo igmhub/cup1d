@@ -1,6 +1,8 @@
 """Contaminants plotting implementations; scientific objects retain compatibility wrappers."""
 
 import numpy as np
+
+from cup1d.likelihood import parameter as parameter_space
 import matplotlib.pyplot as plt
 import os
 from cup1d.postprocessing.style import get_discrete_cmap
@@ -41,15 +43,11 @@ def plot_hcd_cont(
         # print(par_plot)
 
         if chain is None:
-            free_params = self.parameters_from_sampling_point(p0)
-            for par in free_params:
-                if ii + 1 <= 4:
-                    if "HCD_damp" in par.name:
-                        # print(par.name, par.value)
-                        if par.name.startswith(par_plot):
-                            pass
-                        else:
-                            par.value = -20
+            free_params = parameter_space.values_from_cube(self.free_params, p0)
+            for name in free_params:
+                if ii + 1 <= 4 and "HCD_damp" in name:
+                    if not name.startswith(par_plot):
+                        free_params[name] = -20
 
             hcd_cont = self.theory.model_cont.hcd_model.get_contamination(
                 z=np.array([zstar]),
@@ -69,14 +67,11 @@ def plot_hcd_cont(
             all_hcd_cont = np.zeros((nelem, len(k_kms_inter)))
 
             for jj in range(nelem):
-                free_params = self.parameters_from_sampling_point(chain_use[jj])
-                for par in free_params:
-                    if ii + 1 <= 4:
-                        if "HCD_damp" in par.name:
-                            if par.name.startswith(par_plot):
-                                pass
-                            else:
-                                par.value = -20
+                free_params = parameter_space.values_from_cube(self.free_params, chain_use[jj])
+                for name in free_params:
+                    if ii + 1 <= 4 and "HCD_damp" in name:
+                        if not name.startswith(par_plot):
+                            free_params[name] = -20
                 all_hcd_cont[jj, :] = (
                     self.theory.model_cont.hcd_model.get_contamination(
                         z=np.array([zstar]),
@@ -178,7 +173,7 @@ def plot_metal_cont_add(
         else:
             all_si_add_cont = np.zeros((nelem, len(k_kms_inter)))
             for jj in range(nelem):
-                free_params = self.parameters_from_sampling_point(chain_use[jj])
+                free_params = parameter_space.values_from_cube(self.free_params, chain_use[jj])
                 all_si_add_cont[jj, :] = self.theory.model_cont.metal_models[
                     "Si_add"
                 ].get_contamination(
@@ -400,7 +395,7 @@ def plot_metal_cont_mult(
         si_mult_cont_Si23 = np.zeros((nelem, len(k_kms_inter)))
 
         for jj in range(nelem):
-            free_params = self.parameters_from_sampling_point(chain_use[jj])
+            free_params = parameter_space.values_from_cube(self.free_params, chain_use[jj])
 
             mF = self.theory.model_igm.models["F_model"].get_mean_flux(
                 zstar, like_params=free_params

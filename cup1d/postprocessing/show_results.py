@@ -1,10 +1,12 @@
 import numpy as np
+
+from cup1d.likelihood import parameter as parameter_space
 import matplotlib.pyplot as plt
 from scipy.stats import chi2 as chi2_scipy
 
 
 def get_parameters(par, z, like, mle_cube):
-    like_params = like.parameters_from_sampling_point(mle_cube)
+    like_params = parameter_space.values_from_cube(like.free_params, mle_cube)
 
     models = [
         like.theory.model_igm.models["F_model"],
@@ -47,22 +49,22 @@ def reformat_cube(args, data, emulator, out_mle_cube, weak_priors=None):
         )
 
         if weak_priors is not None:
-            for par in like2.free_params:
-                if par.name not in list_fix:
-                    par.value = weak_priors[par.name + "_cen"][ii]
-                    par.min_value = (
-                        weak_priors[par.name + "_cen"][ii]
-                        - 2 * weak_priors[par.name + "_std"]
+            for name, parameter in like2.free_params.items():
+                if name not in list_fix:
+                    parameter["value"] = weak_priors[name + "_cen"][ii]
+                    parameter["min_value"] = (
+                        weak_priors[name + "_cen"][ii]
+                        - 2 * weak_priors[name + "_std"]
                     )
-                    par.max_value = (
-                        weak_priors[par.name + "_cen"][ii]
-                        + 2 * weak_priors[par.name + "_std"]
+                    parameter["max_value"] = (
+                        weak_priors[name + "_cen"][ii]
+                        + 2 * weak_priors[name + "_std"]
                     )
                 else:
-                    if (par.value < par.max_value) & (
-                        par.value > par.min_value
+                    if (parameter["value"] < parameter["max_value"]) & (
+                        parameter["value"] > parameter["min_value"]
                     ):
-                        par.value = weak_priors[par.name + "_cen"][ii]
+                        parameter["value"] = weak_priors[name + "_cen"][ii]
 
         _cube = np.zeros(len(like1.free_param_names))
         for jj, prop in enumerate(like1.free_param_names):
@@ -70,11 +72,9 @@ def reformat_cube(args, data, emulator, out_mle_cube, weak_priors=None):
                 ind = np.argwhere(prop == np.array(like2.free_param_names))[
                     0, 0
                 ]
-                value = like2.free_params[ind].value_from_cube(
-                    out_mle_cube[ii][ind]
-                )
-                in_cube = like1.free_params[jj].get_value_in_cube(value)
-                print(prop, like1.free_params[jj].name)
+                value = parameter_space.value_from_cube(like2.free_params, prop, out_mle_cube[ii][ind])
+                in_cube = parameter_space.value_in_cube(like1.free_params, prop, value)
+                print(prop)
                 if in_cube < 0:
                     in_cube = 0
                 _cube[jj] = in_cube

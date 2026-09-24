@@ -30,20 +30,45 @@ def get_hessian(func, p0, hh=1e-4):
     hessian = np.zeros((nelem, nelem))
     func_p0 = func(p0)
     for ii in range(nelem):
-        for jj in range(nelem):
-            if ii == jj:
-                xhh = mod_elem(nelem, ii, hh)
-                hessian[ii, jj] = (
-                    func(p0 + xhh) + func(p0 - xhh) - 2 * func_p0
-                ) / hh**2
-            else:
-                xhh = mod_elem(nelem, ii, hh)
-                yhh = mod_elem(nelem, jj, hh)
-                hessian[ii, jj] = (
-                    func(p0 + xhh + yhh)
-                    + func(p0 - xhh - yhh)
-                    - func(p0 - xhh + yhh)
-                    - func(p0 + xhh - yhh)
-                ) / (4 * hh**2)
+        xhh = mod_elem(nelem, ii, hh)
+        hessian[ii, ii] = (
+            func(p0 + xhh) + func(p0 - xhh) - 2 * func_p0
+        ) / hh**2
+        for jj in range(ii + 1, nelem):
+            yhh = mod_elem(nelem, jj, hh)
+            value = (
+                func(p0 + xhh + yhh)
+                + func(p0 - xhh - yhh)
+                - func(p0 - xhh + yhh)
+                - func(p0 + xhh - yhh)
+            ) / (4 * hh**2)
+            hessian[ii, jj] = value
+            hessian[jj, ii] = value
 
+    return hessian
+
+
+def get_hessian_rows(func, p0, indices, hh=1e-4):
+    """Return finite-difference Hessian rows for selected coordinates."""
+
+    p0 = np.asarray(p0)
+    hessian = np.zeros((len(p0), len(p0)))
+    center = func(p0)
+    for ii in indices:
+        direction_i = np.zeros(len(p0))
+        direction_i[ii] = hh
+        hessian[ii, ii] = (
+            func(p0 + direction_i) + func(p0 - direction_i) - 2 * center
+        ) / hh**2
+        for jj in range(len(p0)):
+            if jj == ii:
+                continue
+            direction_j = np.zeros(len(p0))
+            direction_j[jj] = hh
+            hessian[ii, jj] = (
+                func(p0 + direction_i + direction_j)
+                + func(p0 - direction_i - direction_j)
+                - func(p0 - direction_i + direction_j)
+                - func(p0 + direction_i - direction_j)
+            ) / (4 * hh**2)
     return hessian

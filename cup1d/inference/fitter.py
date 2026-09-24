@@ -1,10 +1,14 @@
+import copy
 import os
 import time
 from scipy.optimize import minimize
+from scipy.linalg import block_diag
 import numpy as np
 from mpi4py import MPI
 
 from cup1d.utils import blinding
+from cup1d.utils.compute_hessian import get_hessian, get_hessian_rows
+from cup1d.likelihood import parameter as parameter_space
 
 # our own modules
 from cup1d.utils.utils import create_print_function, purge_chains
@@ -128,9 +132,9 @@ class Fitter(object):
         )
 
         ## Set up list of parameter names in tex format for plotting
-        self.paramstrings = []
-        for param in self.like.free_params:
-            self.paramstrings.append(param_dict[param.name])
+        self.paramstrings = [
+            param_dict[name] for name in self.like.free_params
+        ]
 
         # when running on simulated data, we can store true cosmo values
         self.set_truth()
@@ -138,6 +142,330 @@ class Fitter(object):
         # Figure out what extra information will be provided as blobs
         self.blobs_dtype = self.like.theory.get_blobs_dtype()
         self.mle = None
+
+    def sampling_point_from_parameters(self, parameters=None):
+        """Convert physical values to the optimizer unit cube."""
+
+        return parameter_space.values_to_cube(self.like.free_params, parameters)
+
+    def parameters_from_sampling_point(self, values):
+        """Convert optimizer coordinates to physical values."""
+
+        return parameter_space.values_from_cube(self.like.free_params, values)
+
+    def value_in_cube(self, name, value=None):
+        return parameter_space.value_in_cube(self.like.free_params, name, value)
+
+    def value_from_cube(self, name, value):
+        return parameter_space.value_from_cube(self.like.free_params, name, value)
+
+    def error_from_cube(self, name, error):
+        return parameter_space.error_from_cube(self.like.free_params, name, error)
+
+    def get_mle_latex(self):
+        """Return MLE values keyed by presentation-only LaTeX labels."""
+
+        return {
+            self.param_dict.get(name, name): value
+            for name, value in self.mle.items()
+        }
+
+    def get_truth_latex(self):
+        """Return truth values keyed by presentation-only LaTeX labels."""
+
+        if self.truth is None:
+            return None
+        return {
+            self.param_dict.get(name, name): value
+            for name, value in self.truth.items()
+        }
+
+    def _prediction_vector_and_icov(self, values, zmask=None):
+        """Return the model vector and matching fixed inverse covariance."""
+
+        parameters = self.parameters_from_sampling_point(values)
+        result = self.like.get_p1d_kms(parameters)
+        if result is None:
+            raise ValueError("cannot estimate errors outside the emulator domain")
+        predictions = result[0]
+        model_vectors = []
+        covariance_blocks = []
+        for key, data in self.like.data.items():
+            if zmask is None:
+                indices = np.arange(len(data.z))
+            else:
+                indices = np.flatnonzero(
+                    np.any(
+                        np.isclose(
+                            np.asarray(data.z)[:, None],
+                            np.atleast_1d(zmask)[None, :],
+                            atol=1.0e-3,
+                            rtol=0,
+                        ),
+                        axis=1,
+                    )
+                )
+            if len(indices) == 0:
+                continue
+            model_vectors.append(
+                np.concatenate(
+                    [np.asarray(predictions[key][index]).reshape(-1) for index in indices]
+                )
+            )
+            full_icov = self.like.full_icov_Pk_kms[key]
+            if full_icov is not None and zmask is None:
+                covariance_blocks.append(full_icov)
+            else:
+                covariance_blocks.append(
+                    block_diag(*[self.like.icov_Pk_kms[key][index] for index in indices])
+                )
+        if not model_vectors:
+            raise ValueError("zmask does not select any data bins")
+        return np.concatenate(model_vectors), block_diag(*covariance_blocks)
+
+    def _gauss_newton_hessian(self, hessian_step, zmask=None):
+        """Approximate posterior curvature from first model derivatives."""
+
+        parameters = list(self.like.free_params.values())
+        exponential = np.asarray([
+            parameter.get("hessian_transform") == "exp"
+            for parameter in parameters
+        ])
+        hessian_point = self.mle_cube.copy()
+        amplitude_min = np.exp([parameter["min_value"] for parameter in parameters])
+        amplitude_max = np.exp([parameter["max_value"] for parameter in parameters])
+        log_width = np.asarray([
+            parameter["max_value"] - parameter["min_value"]
+            for parameter in parameters
+        ])
+        amplitude_range = amplitude_max - amplitude_min
+        if np.any(exponential):
+            log_values = np.asarray([
+                parameter_space.value_from_cube(self.like.free_params, name, value)
+                for name, value in zip(self.like.free_params, self.mle_cube)
+            ])
+            hessian_point[exponential] = (
+                np.exp(log_values[exponential]) - amplitude_min[exponential]
+            ) / amplitude_range[exponential]
+
+        def hessian_to_cube(point):
+            cube = np.asarray(point).copy()
+            amplitudes = amplitude_min[exponential] + (
+                point[exponential] * amplitude_range[exponential]
+            )
+            cube[exponential] = (
+                np.log(amplitudes)
+                - np.asarray([parameter["min_value"] for parameter in parameters])[exponential]
+            ) / log_width[exponential]
+            return cube
+
+        cube_scale = np.ones(self.ndim)
+        if np.any(exponential):
+            amplitudes = amplitude_min[exponential] + (
+                hessian_point[exponential] * amplitude_range[exponential]
+            )
+            cube_scale[exponential] = amplitude_range[exponential] / (
+                log_width[exponential] * amplitudes
+            )
+
+        model, inverse_covariance = self._prediction_vector_and_icov(
+            hessian_to_cube(hessian_point), zmask=zmask
+        )
+        jacobian = np.empty((model.size, self.ndim))
+        for index in range(self.ndim):
+            step = min(
+                hessian_step, hessian_point[index], 1.0 - hessian_point[index]
+            )
+            direction = np.zeros(self.ndim)
+            if step > 0:
+                direction[index] = step
+                plus, _ = self._prediction_vector_and_icov(
+                    hessian_to_cube(hessian_point + direction), zmask=zmask
+                )
+                minus, _ = self._prediction_vector_and_icov(
+                    hessian_to_cube(hessian_point - direction), zmask=zmask
+                )
+                jacobian[:, index] = (plus - minus) / (2 * step)
+            elif self.mle_cube[index] < 1.0:
+                step = min(hessian_step, 1.0 - self.mle_cube[index])
+                direction[index] = step
+                plus, _ = self._prediction_vector_and_icov(
+                    hessian_to_cube(hessian_point + direction), zmask=zmask
+                )
+                jacobian[:, index] = (plus - model) / step
+            else:
+                step = min(hessian_step, self.mle_cube[index])
+                direction[index] = step
+                minus, _ = self._prediction_vector_and_icov(
+                    hessian_to_cube(hessian_point - direction), zmask=zmask
+                )
+                jacobian[:, index] = (model - minus) / step
+        hessian = jacobian.T @ inverse_covariance @ jacobian
+        hessian = hessian * np.outer(cube_scale, cube_scale)
+        priors = self.like.Gauss_priors
+        if priors is not None:
+            scales = np.asarray([
+                parameter["max_value"] - parameter["min_value"]
+                for parameter in self.like.free_params.values()
+            ])
+            hessian += np.diag((scales / priors) ** 2)
+        return hessian
+
+    def estimate_mle_errors(
+        self, hessian_step=1.0e-4, zmask=None, method="finite_difference"
+    ):
+        """Estimate local MLE errors from the negative-log-posterior Hessian.
+
+        The covariance is evaluated in the unit cube and propagated to
+        physical likelihood parameters and compressed linear-power parameters.
+        """
+
+        if not hasattr(self, "mle_cube"):
+            raise ValueError("run a minimizer or set an MLE before estimating errors")
+        if hessian_step <= 0:
+            raise ValueError("hessian_step must be positive")
+
+        if method == "finite_difference":
+            objective = lambda point: self.minus_log_prob(point, zmask=zmask)
+            hessian = get_hessian(objective, self.mle_cube, hh=hessian_step)
+        elif method == "gauss_newton":
+            hessian = self._gauss_newton_hessian(hessian_step, zmask=zmask)
+        elif method == "hybrid":
+            hessian = self._gauss_newton_hessian(hessian_step, zmask=zmask)
+            cosmology_names = set(
+                self.like.theory.fid_cosmo["cosmo"].input_cosmo_params_dict
+            )
+            indices = [
+                index
+                for index, name in enumerate(self.like.free_params)
+                if name in cosmology_names
+            ]
+            objective = lambda point: self.minus_log_prob(point, zmask=zmask)
+            exact_rows = get_hessian_rows(
+                objective, self.mle_cube, indices, hh=hessian_step
+            )
+            hessian[indices, :] = exact_rows[indices, :]
+            hessian[:, indices] = exact_rows[indices, :].T
+        else:
+            raise ValueError(
+                "method must be 'finite_difference', 'gauss_newton', or 'hybrid'"
+            )
+        hessian = 0.5 * (hessian + hessian.T)
+        eigenvalues, eigenvectors = np.linalg.eigh(hessian)
+        if not np.all(np.isfinite(eigenvalues)):
+            raise ValueError(f"{method} curvature contains non-finite values")
+        curvature_scale = max(1.0, np.max(np.abs(eigenvalues)))
+        # Distinguish numerical null modes from physically weak directions.
+        # The latter matter here: nuisance parameters at a hard prior boundary
+        # may vary inward and must remain marginalized in cosmology errors.
+        tolerance = np.finfo(float).eps * max(self.ndim, 1) * curvature_scale
+        if np.min(eigenvalues) < -tolerance:
+            raise ValueError(
+                f"{method} curvature has a negative eigenvalue "
+                f"({np.min(eigenvalues):.3e}); the MLE is not locally convex."
+            )
+        null_modes = eigenvalues <= tolerance
+        inverse_eigenvalues = np.zeros_like(eigenvalues)
+        inverse_eigenvalues[~null_modes] = 1.0 / eigenvalues[~null_modes]
+
+        self.mle_error_method = method
+        self.mle_hessian = hessian
+        self.mle_hessian_rank = int(np.count_nonzero(~null_modes))
+        self.mle_covariance_cube = (
+            eigenvectors * inverse_eigenvalues
+        ) @ eigenvectors.T
+        self.mle_null_modes = eigenvectors[:, null_modes]
+        scales = np.asarray([
+            parameter["max_value"] - parameter["min_value"]
+            for parameter in self.like.free_params.values()
+        ])
+        self.mle_covariance = self.mle_covariance_cube * np.outer(scales, scales)
+        null_weight = np.sum(self.mle_null_modes**2, axis=1)
+        self.mle_errors = {
+            name: (
+                np.inf
+                if null_weight[index] > 1.0e-10
+                else np.sqrt(self.mle_covariance[index, index])
+            )
+            for index, name in enumerate(self.like.free_params)
+        }
+
+        def star_parameters(point):
+            parameters = self.parameters_from_sampling_point(point)
+            return np.asarray(self.like.theory.get_blob_for_parameters(parameters)[:3])
+
+        central_star = star_parameters(self.mle_cube)
+        jacobian = np.zeros((3, self.ndim))
+        cosmology_names = set(
+            self.like.theory.fid_cosmo["cosmo"].input_cosmo_params_dict
+        )
+        for index, name in enumerate(self.like.free_params):
+            if name not in cosmology_names:
+                continue
+            step = min(hessian_step, self.mle_cube[index], 1.0 - self.mle_cube[index])
+            direction = np.zeros(self.ndim)
+            if step > 0:
+                direction[index] = step
+                jacobian[:, index] = (
+                    star_parameters(self.mle_cube + direction)
+                    - star_parameters(self.mle_cube - direction)
+                ) / (2 * step)
+            elif self.mle_cube[index] < 1.0:
+                step = min(hessian_step, 1.0 - self.mle_cube[index])
+                direction[index] = step
+                jacobian[:, index] = (
+                    star_parameters(self.mle_cube + direction) - central_star
+                ) / step
+            else:
+                step = min(hessian_step, self.mle_cube[index])
+                direction[index] = step
+                jacobian[:, index] = (
+                    central_star - star_parameters(self.mle_cube - direction)
+                ) / step
+
+        # Null nuisance modes are handled by the pseudoinverse above. Their
+        # numerical projections onto cosmology after a coordinate transform do
+        # not by themselves invalidate the finite identifiable-subspace error.
+
+        self.mle_cosmo_covariance = (
+            jacobian @ self.mle_covariance_cube @ jacobian.T
+        )
+        errors = np.sqrt(np.diag(self.mle_cosmo_covariance))
+        self.mle_cosmo_correlation = self.mle_cosmo_covariance / np.outer(
+            errors, errors
+        )
+        cosmo_names = ("Delta2_star", "n_star", "alpha_star")
+        self.mle_cosmo_errors = {
+            name: errors[index]
+            for index, name in enumerate(cosmo_names)
+        }
+        return self.mle_errors
+
+    def get_chi2(self, values, **kwargs):
+        """Evaluate chi-squared from optimizer coordinates."""
+
+        parameters = self.parameters_from_sampling_point(values)
+        return self.like.get_chi2(parameters, **kwargs)
+
+    def log_prob(self, values, **kwargs):
+        """Evaluate posterior probability from sampler coordinates."""
+
+        parameters = self.parameters_from_sampling_point(values)
+        return self.like.log_prob(parameters, **kwargs)
+
+    def log_prob_and_blobs(self, values, **kwargs):
+        """Evaluate posterior and blobs from sampler coordinates."""
+
+        parameters = self.parameters_from_sampling_point(values)
+        return self.like.log_prob_and_blobs(parameters, **kwargs)
+
+    def minus_log_prob(self, values, zmask=None, ind_fix=None, pfix=None):
+        """Negative posterior in optimizer coordinates."""
+
+        values = np.asarray(values).copy()
+        if ind_fix is not None:
+            values[ind_fix] = pfix
+        return -self.log_prob(values, zmask=zmask)
 
     def set_truth(self):
         """Set up dictionary with true values of cosmological
@@ -151,13 +479,8 @@ class Fitter(object):
             self.truth = None
             return
 
-        # store truth for all parameters, with LaTeX keywords
-        self.truth = {}
-        for param in like_truth["like_params"]:
-            if param in param_dict:
-                self.truth[param_dict[param]] = like_truth["like_params"][param]
-            else:
-                self.truth[param] = like_truth["like_params"][param]
+        # Keep persisted truth keyed by canonical parameter names.
+        self.truth = dict(like_truth["like_params"])
 
     def run_sampler(
         self,
@@ -177,7 +500,7 @@ class Fitter(object):
         import emcee
 
         if log_func is None:
-            _log_func = self.like.log_prob_and_blobs
+            _log_func = self.log_prob_and_blobs
         else:
             _log_func = log_func
 
@@ -289,6 +612,9 @@ class Fitter(object):
         restart=False,
         neval=1000,
         chi2_tol=0.1,
+        estimate_errors=False,
+        hessian_step=1.0e-4,
+        error_method="finite_difference",
     ):
         """Minimizer"""
 
@@ -301,8 +627,8 @@ class Fitter(object):
                     return log_func_minimize
             else:
                 ind_fix = []
-                for ii, par in enumerate(self.like.free_params):
-                    if par.fixed:
+                for ii, parameter in enumerate(self.like.free_params.values()):
+                    if parameter["fixed"]:
                         ind_fix.append(ii)
                 ind_fix = np.array(ind_fix)
                 pfix = pini[ind_fix]
@@ -372,7 +698,7 @@ class Fitter(object):
                 pnext0 = pnext.copy()
             mle_cube = pnext0
 
-        chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
+        chi2 = self.get_chi2(mle_cube, zmask=zmask)
         chi2_ini = chi2 * 1
 
         self.print("Starting NM minimization, chi2=", chi2)
@@ -398,10 +724,9 @@ class Fitter(object):
             )
             # self.print(res)
 
-            _chi2 = self.like.get_chi2(res.x, zmask=zmask)
+            _chi2 = self.get_chi2(res.x, zmask=zmask)
             diff_chi = _chi2 - chi2
 
-            self._seed_sampler(sampler)
             self.print(
                 "Step, rep, time",
                 ii,
@@ -409,7 +734,6 @@ class Fitter(object):
                 np.round(time.time() - start1, 2),
                 np.round(time.time() - start, 2),
             )
-            self._seed_sampler(sampler)
             self.print(
                 "Minimization improved (ini, last, now, diff):",
                 np.round(chi2_ini, 4),
@@ -439,11 +763,10 @@ class Fitter(object):
             ii += 1
 
         mle_cube = res.x
-        chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
+        chi2 = self.get_chi2(mle_cube, zmask=zmask)
         self.print("Passed out:", chi2)
         _ = (mle_cube > 0.95) | (mle_cube < 0.05)
         if np.sum(_) > 0:
-            self._seed_sampler(sampler)
             self.print(
                 "Almost out of bounds:",
             )
@@ -451,11 +774,17 @@ class Fitter(object):
             for ii in range(len(_)):
                 ind = _[ii]
                 self.print(
-                    self.like.free_params[ind].name,
+                    self.like.free_param_names[ind],
                     mle_cube[ind],
-                    self.like.free_params[ind].value_from_cube(mle_cube[ind]),
+                    self.value_from_cube(
+                        self.like.free_param_names[ind], mle_cube[ind]
+                    ),
                 )
         self.set_mle(mle_cube, chi2)
+        if estimate_errors:
+            self.estimate_mle_errors(
+                hessian_step=hessian_step, zmask=zmask, method=error_method
+            )
 
     def run_minimizer_da(
         self,
@@ -464,6 +793,8 @@ class Fitter(object):
         zmask=None,
         mask_pars=None,
         restart=True,
+        estimate_errors=False,
+        hessian_step=1.0e-4,
     ):
         """Minimizer using dual annealing"""
 
@@ -478,8 +809,8 @@ class Fitter(object):
                     return log_func_minimize
             else:
                 ind_fix = []
-                for ii, par in enumerate(self.like.free_params):
-                    if par.fixed:
+                for ii, parameter in enumerate(self.like.free_params.values()):
+                    if parameter["fixed"]:
                         ind_fix.append(ii)
                 ind_fix = np.array(ind_fix)
                 pfix = pini[ind_fix]
@@ -509,7 +840,7 @@ class Fitter(object):
         mle_cube[mle_cube <= 0] = 0.05
         mle_cube[mle_cube >= 1] = 0.95
 
-        chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
+        chi2 = self.get_chi2(mle_cube, zmask=zmask)
         chi2_ini = chi2 * 1
 
         self.print("Starting DA minimization")
@@ -528,7 +859,7 @@ class Fitter(object):
         )
         self.print(res)
 
-        _chi2 = self.like.get_chi2(res.x, zmask=zmask)
+        _chi2 = self.get_chi2(res.x, zmask=zmask)
 
         if _chi2 < chi2:
             chi2 = _chi2.copy()
@@ -543,6 +874,10 @@ class Fitter(object):
         )
 
         self.set_mle(mle_cube, chi2)
+        if estimate_errors:
+            self.estimate_mle_errors(
+                hessian_step=hessian_step, zmask=zmask, method=error_method
+            )
 
     def set_mle(self, mle_cube, mle_chi2):
         """Set the maximum likelihood solution"""
@@ -557,15 +892,12 @@ class Fitter(object):
             self.mle_chi2 = mle_chi2
 
         self.mle_cube = mle_cube
-        mle_no_cube = mle_cube.copy()
-        for ii, par_i in enumerate(self.like.free_params):
-            scale_i = par_i.max_value - par_i.min_value
-            mle_no_cube[ii] = par_i.value_from_cube(mle_cube[ii])
+        like_pars = self.parameters_from_sampling_point(self.mle_cube)
+        mle_no_cube = np.asarray(list(like_pars.values()))
 
         self.print("Fit params cube:", self.mle_cube)
         self.print("Fit params no cube:", mle_no_cube)
 
-        like_pars = self.like.parameters_from_sampling_point(self.mle_cube)
         star_pars = self.like.theory.get_blob_for_parameters(like_pars)
         self.mle_cosmo = {}
         self.mle_cosmo["Delta2_star"] = star_pars[0]
@@ -574,17 +906,13 @@ class Fitter(object):
         # apply blinding
         self.mle_cosmo = blinding.apply_blinding(self.like.blind, self.mle_cosmo)
 
-        self.lnprop_mle, *blobs = self.like.log_prob_and_blobs(self.mle_cube)
+        self.lnprop_mle, *blobs = self.log_prob_and_blobs(self.mle_cube)
 
-        self.mle = {}
-        for ii, par in enumerate(self.paramstrings):
-            self.mle[par] = mle_no_cube[ii]
-        for par in self.mle_cosmo:
-            self.mle[par] = self.mle_cosmo[par]
+        self.mle = dict(like_pars)
+        self.mle.update(self.mle_cosmo)
 
-        if "A_s" not in self.paramstrings[0]:
+        if "As" not in self.like.free_params:
             return
-        self.mle = blinding.apply_blinding(self.like.blind, self.mle)
 
         for key in self.like.blind:
             if self.like.blind[key] != 0:
@@ -690,8 +1018,9 @@ class Fitter(object):
         if cube == False:
             cube_values = np.zeros_like(chain)
             for ip in range(chain.shape[-1]):
-                cube_values[..., ip] = self.like.free_params[ip].value_from_cube(
-                    chain[..., ip]
+                name = self.like.free_param_names[ip]
+                cube_values[..., ip] = self.value_from_cube(
+                    name, chain[..., ip]
                 )
 
             return cube_values, lnprob, blobs
@@ -840,16 +1169,9 @@ class Fitter(object):
         # dict_out["like"]["cosmo_fid_label"] = self.like.fid
         # dict_out["like"]["emu_cov_factor"] = self.like.emu_cov_factor
         dict_out["like"]["free_param_names"] = self.like.free_param_names
-        dict_out["like"]["free_params"] = {}
-        for par in self.like.free_params:
-            dict_out["like"]["free_params"][par.name] = {}
-            dict_out["like"]["free_params"][par.name]["value"] = par.value
-            dict_out["like"]["free_params"][par.name]["min_value"] = par.min_value
-            dict_out["like"]["free_params"][par.name]["max_value"] = par.max_value
-            dict_out["like"]["free_params"][par.name]["fixed"] = par.fixed
-            dict_out["like"]["free_params"][par.name][
-                "Gauss_priors_width"
-            ] = par.Gauss_priors_width
+        dict_out["like"]["free_params"] = copy.deepcopy(
+            self.like.free_params
+        )
 
         # SAMPLER
         if save_chains:
@@ -862,9 +1184,9 @@ class Fitter(object):
 
         # IGM
         if self.mle_cube is not None:
-            like_params = self.like.parameters_from_sampling_point(self.mle_cube)
+            like_params = self.parameters_from_sampling_point(self.mle_cube)
         else:
-            like_params = self.like.parameters_from_sampling_point()
+            like_params = self.parameters_from_sampling_point()
         dict_out["IGM"] = {}
         zs = dict_out["data"]["zs"]
         dict_out["IGM"]["z"] = zs
@@ -921,6 +1243,13 @@ class Fitter(object):
         dict_out["fitter"] = {}
         dict_out["fitter"]["mle_cube"] = self.mle_cube
         dict_out["fitter"]["mle_cosmo"] = self.mle_cosmo
+        if hasattr(self, "mle_errors"):
+            dict_out["fitter"]["mle_errors"] = self.mle_errors
+            dict_out["fitter"]["mle_covariance"] = self.mle_covariance
+            dict_out["fitter"]["mle_cosmo_errors"] = self.mle_cosmo_errors
+            dict_out["fitter"]["mle_cosmo_covariance"] = self.mle_cosmo_covariance
+            dict_out["fitter"]["mle_cosmo_correlation"] = self.mle_cosmo_correlation
+            dict_out["fitter"]["mle_error_method"] = self.mle_error_method
         dict_out["fitter"]["mle"] = self.mle
         dict_out["fitter"]["lnprob_mle"] = self.lnprop_mle
 
@@ -934,10 +1263,11 @@ class Fitter(object):
 
             dict_out["fitter"]["chain_from_cube"] = {}
             for ip in range(self.chain.shape[-1]):
-                param = self.like.free_params[ip]
-                dict_out["fitter"]["chain_from_cube"][param.name] = np.zeros(2)
-                dict_out["fitter"]["chain_from_cube"][param.name][0] = param.min_value
-                dict_out["fitter"]["chain_from_cube"][param.name][1] = param.max_value
+                name = self.like.free_param_names[ip]
+                parameter = self.like.free_params[name]
+                dict_out["fitter"]["chain_from_cube"][name] = np.asarray(
+                    [parameter["min_value"], parameter["max_value"]]
+                )
 
             dict_out["fitter"]["chain_names_latex"] = self.paramstrings
             dict_out["fitter"]["blobs_names"] = blob_strings_orig

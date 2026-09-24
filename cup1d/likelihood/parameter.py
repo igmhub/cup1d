@@ -1,79 +1,86 @@
+"""Plain-dictionary likelihood parameter definitions."""
+
 import numpy as np
 
 
-class LikelihoodParameter(object):
-    """Base class for likelihood parameter"""
+def make_parameter(
+    name,
+    min_value,
+    max_value,
+    value=None,
+    Gauss_priors_width=None,
+    fixed=False,
+    hessian_transform=None,
+):
+    """Return the canonical dictionary describing one model parameter."""
 
-    def __init__(
-        self,
-        name,
-        min_value,
-        max_value,
-        value=None,
-        Gauss_priors_width=None,
-        fixed=False,
-    ):
-        """Base class for parameter used in likelihood"""
-        self.name = name
-        self.min_value = min_value
-        self.max_value = max_value
-        self.value = value
-        self.Gauss_priors_width = Gauss_priors_width
-        self.fixed = False
-        return
+    return {
+        "name": name,
+        "value": value,
+        "min_value": min_value,
+        "max_value": max_value,
+        "Gauss_priors_width": Gauss_priors_width,
+        "fixed": fixed,
+        "hessian_transform": hessian_transform,
+    }
 
-    def value_in_cube(self):
-        """Normalize parameter value to [0,1]."""
-        assert self.value is not None, "value not set in parameter " + self.name
-        return (self.value - self.min_value) / (self.max_value - self.min_value)
 
-    def get_value_in_cube(self, value):
-        """Normalize parameter value to [0,1]."""
-        return (value - self.min_value) / (self.max_value - self.min_value)
+# Compatibility for callers that imported the former constructor. This is a
+# function alias, not a parameter class: calls now return plain dictionaries.
+LikelihoodParameter = make_parameter
 
-    def set_from_cube(self, x):
-        """Set parameter value from value in cube [0,1]."""
-        value = self.value_from_cube(x)
-        self.value = value
-        return
 
-    def set_without_cube(self, value):
-        """Set parameter value without cube"""
-        ## Check to make sure parameter is within min/max
-        assert self.min_value < value < self.max_value, (
-            "Parameter name: %s" % self.name
-        )
-        self.value = value
-        return
+def info_str(parameter, all_info=False):
+    """Return a compact description of a parameter dictionary."""
 
-    def info_str(self, all_info=False):
-        """Return a string with parameter name and value, for debugging"""
+    info = f"{parameter['name']} = {parameter['value']}"
+    if all_info:
+        info += f" , {parameter['min_value']} , {parameter['max_value']}"
+    return info
 
-        info = self.name + " = " + str(self.value)
-        if all_info:
-            info += " , " + str(self.min_value) + " , " + str(self.max_value)
 
-        return info
+def value_in_cube(parameters, name, value=None):
+    """Normalize one physical value using a parameter-property mapping."""
 
-    def value_from_cube(self, x):
-        """Given the value in range (xmin,xmax), return absolute value"""
+    parameter = parameters[name]
+    value = parameter["value"] if value is None else value
+    if value is None:
+        raise ValueError(f"value not set for parameter {name}")
+    width = parameter["max_value"] - parameter["min_value"]
+    return (value - parameter["min_value"]) / width
 
-        return self.min_value + x * (self.max_value - self.min_value)
 
-    def err_from_cube(self, err):
-        """Return scaled covariance"""
+def value_from_cube(parameters, name, value):
+    """Convert one unit-cube coordinate to physical units."""
 
-        return err * (self.max_value - self.min_value)
+    parameter = parameters[name]
+    width = parameter["max_value"] - parameter["min_value"]
+    return parameter["min_value"] + value * width
 
-    def get_new_parameter(self, value_in_cube):
-        """Return copy of parameter, with updated value from cube"""
 
-        par = LikelihoodParameter(
-            name=self.name,
-            min_value=self.min_value,
-            max_value=self.max_value,
-            Gauss_priors_width=self.Gauss_priors_width,
-        )
-        par.set_from_cube(value_in_cube)
+def error_from_cube(parameters, name, error):
+    """Convert one unit-cube uncertainty to physical units."""
 
-        return par
+    parameter = parameters[name]
+    return error * (parameter["max_value"] - parameter["min_value"])
+
+
+def values_to_cube(parameters, values=None):
+    """Return an ordered unit-cube array from physical parameter values."""
+
+    if values is None:
+        values = {name: parameter["value"] for name, parameter in parameters.items()}
+    return np.asarray(
+        [value_in_cube(parameters, name, values[name]) for name in parameters]
+    )
+
+
+def values_from_cube(parameters, values):
+    """Return an ordered mapping of names to physical values."""
+
+    if len(values) != len(parameters):
+        raise ValueError("sampling-point size mismatch")
+    return {
+        name: value_from_cube(parameters, name, values[index])
+        for index, name in enumerate(parameters)
+    }

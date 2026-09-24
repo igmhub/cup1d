@@ -56,8 +56,9 @@ from cup1d.utils.utils import get_path_repo
 config_dir = Path(get_path_repo("cup1d")) / "configs" / "cm2026" / "variations"
 all_args = Args.from_yaml(config_dir / "global_all_QMLE3.yaml", verbose=False)
 all_analysis = Analysis(all_args)
-all_initial_point = all_analysis.like.sampling_point_from_parameters().copy()
-all_initial_chi2 = all_analysis.like.get_chi2(all_initial_point)
+all_initial_point = all_analysis.fitter.sampling_point_from_parameters().copy()
+all_initial_parameters = all_analysis.fitter.parameters_from_sampling_point(all_initial_point)
+all_initial_chi2 = all_analysis.like.get_chi2(all_initial_parameters)
 print(f"All-node initial chi2 = {all_initial_chi2:.3f}")
 
 
@@ -66,7 +67,7 @@ print(f"All-node initial chi2 = {all_initial_chi2:.3f}")
 
 # %%
 all_analysis.like.plot_p1d(
-    all_initial_point,
+    all_initial_parameters,
     residuals=True,
     plot_panels=True,
     print_chi2=False,
@@ -85,8 +86,9 @@ global_args = Args.from_yaml(
     config_dir / "global_opt_ic_QMLE3.yaml", verbose=False
 )
 global_analysis = Analysis(global_args)
-global_initial_point = global_analysis.like.sampling_point_from_parameters().copy()
-global_initial_chi2 = global_analysis.like.get_chi2(global_initial_point)
+global_initial_point = global_analysis.fitter.sampling_point_from_parameters().copy()
+global_initial_parameters = global_analysis.fitter.parameters_from_sampling_point(global_initial_point)
+global_initial_chi2 = global_analysis.like.get_chi2(global_initial_parameters)
 print(f"Reduced global initial chi2 = {global_initial_chi2:.3f}")
 
 
@@ -105,7 +107,7 @@ print(f"Reduced global minimized chi2 = {global_analysis.fitter.mle_chi2:.3f}")
 
 # %%
 global_analysis.like.plot_p1d(
-    global_point,
+    global_analysis.fitter.parameters_from_sampling_point(global_point),
     residuals=True,
     plot_panels=True,
     print_chi2=False,

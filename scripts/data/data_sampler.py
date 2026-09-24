@@ -27,7 +27,7 @@ def main():
         args = Args.from_variation(configuration)
 
     analysis = Analysis(args, out_folder=args.out_folder)
-    input_pars = analysis.like.sampling_point_from_parameters().copy()
+    input_pars = analysis.fitter.sampling_point_from_parameters().copy()
 
     for name, value in args.initial_sampling_values.items():
         matches = [

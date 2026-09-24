@@ -105,27 +105,22 @@ for ii in range(1):
 
     f_space_len = 14
     s_space_len = 5
-    for p in analysis.like.free_params:
+    for p in analysis.like.free_params.values():
         print(
-            p.name,
-            (f_space_len - len(p.name)) * " ",
-            "\t",
-            np.round(p.value, 3),
-            (s_space_len - len(str(np.round(p.value, 3)))) * " ",
-            "\t",
-            np.round(p.min_value, 3),
-            (s_space_len - len(str(np.round(p.min_value, 3)))) * " ",
-            "\t",
-            np.round(p.max_value, 3),
-            (s_space_len - len(str(np.round(p.max_value, 3)))) * " ",
-            "\t",
-            p.Gauss_priors_width,
+            p["name"], (f_space_len - len(p["name"])) * " ", "\t",
+            np.round(p["value"], 3),
+            (s_space_len - len(str(np.round(p["value"], 3)))) * " ", "\t",
+            np.round(p["min_value"], 3),
+            (s_space_len - len(str(np.round(p["min_value"], 3)))) * " ", "\t",
+            np.round(p["max_value"], 3),
+            (s_space_len - len(str(np.round(p["max_value"], 3)))) * " ", "\t",
+            p["Gauss_priors_width"],
         )
 
     print()
 
     print(ii, zmask)
-    p0 = analysis.like.sampling_point_from_parameters().copy()
+    p0 = analysis.fitter.sampling_point_from_parameters().copy()
     analysis.run_minimizer(
         p0,
         zmask=zmask,

@@ -167,7 +167,7 @@ def plot_correlation_matrix(self, save_directory=None):
         plt.show()
 
 
-def plot_hull_fid(self, like_params=[]):
+def plot_hull_fid(self, like_params=None):
     emu_call, M_of_z = self.theory.get_emulator_calls(
         self.data.z, like_params=like_params
     )

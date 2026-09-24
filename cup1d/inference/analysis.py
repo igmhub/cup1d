@@ -227,6 +227,9 @@ class Analysis(object):
         zmask=None,
         restart=False,
         type_minimizer="NM",
+        estimate_errors=False,
+        hessian_step=1.0e-4,
+        error_method="finite_difference",
     ):
         """
         Run the minimizer (only rank 0)
@@ -244,18 +247,24 @@ class Analysis(object):
 
             if type_minimizer == "NM":
                 self.fitter.run_minimizer(
-                    log_func_minimize=self.fitter.like.minus_log_prob,
+                    log_func_minimize=self.fitter.minus_log_prob,
                     p0=p0,
                     zmask=zmask,
                     mask_pars=mask_pars,
                     restart=restart,
+                    estimate_errors=estimate_errors,
+                    hessian_step=hessian_step,
+                    error_method=error_method,
                 )
             elif type_minimizer == "DA":
                 self.fitter.run_minimizer_da(
-                    log_func_minimize=self.fitter.like.minus_log_prob,
+                    log_func_minimize=self.fitter.minus_log_prob,
                     p0=p0,
                     zmask=zmask,
                     restart=restart,
+                    estimate_errors=estimate_errors,
+                    hessian_step=hessian_step,
+                    error_method=error_method,
                 )
             else:
                 raise ValueError("type_minimizer must be 'NM' or 'DA'")
@@ -327,11 +336,10 @@ class Analysis(object):
 
     def save_global_ic(self, fname):
         out_dict = {}
-        vals = np.array(list(self.fitter.mle.values()))
-        for jj, p in enumerate(self.fitter.like.free_params):
-            if (p.name == "As") or (p.name == "ns"):
+        for name in self.fitter.like.free_params:
+            if name in ["As", "ns"]:
                 continue
-            pname, iistr = split_string(p.name)
+            pname, iistr = split_string(name)
             ii = int(iistr)
             if pname in self.fitter.like.args.fid_igm:
                 znode = self.fitter.like.args.fid_igm[pname + "_znodes"][ii]
@@ -341,12 +349,12 @@ class Analysis(object):
                 znode = self.fitter.like.args.fid_syst[pname + "_znodes"][ii]
             else:
                 raise ValueError("pname not found:", pname)
-            # print(pname, znode, vals[jj])
+            # print(pname, znode, self.fitter.mle[name])
 
             if pname not in out_dict:
                 out_dict[pname] = {"z": [], "val": []}
             out_dict[pname]["z"].append(znode)
-            out_dict[pname]["val"].append(vals[jj])
+            out_dict[pname]["val"].append(self.fitter.mle[name])
 
         for key in out_dict:
             out_dict[key]["z"] = np.array(out_dict[key]["z"])

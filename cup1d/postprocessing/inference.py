@@ -3,6 +3,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from cup1d.likelihood import parameter as parameter_space
+
 
 def plot_best_fit(self, plot_every_iz=1, residuals=True):
     """Plot best-fit P1D vs data.
@@ -14,8 +16,9 @@ def plot_best_fit(self, plot_every_iz=1, residuals=True):
         print("best-fit values =", best_fit_values)
 
     # plt.title("iminuit best fit")
+    parameters = parameter_space.values_from_cube(self.like.free_params, best_fit_values)
     self.like.plot_p1d(
-        values=best_fit_values,
+        values=parameters,
         plot_every_iz=plot_every_iz,
         residuals=residuals,
     )
@@ -61,12 +64,10 @@ def plot_ellipses(self, pname_x, pname_y, nsig=2, cube_values=False):
 
     # rescale from cube values (unless asked not to)
     if not cube_values:
-        par_x = self.like.free_params[ix]
-        val_x = par_x.value_from_cube(val_x)
-        sig_x = sig_x * (par_x.max_value - par_x.min_value)
-        par_y = self.like.free_params[iy]
-        val_y = par_y.value_from_cube(val_y)
-        sig_y = sig_y * (par_y.max_value - par_y.min_value)
+        val_x = self.value_from_cube(pname_x, val_x)
+        sig_x = self.error_from_cube(pname_x, sig_x)
+        val_y = self.value_from_cube(pname_y, val_y)
+        sig_y = self.error_from_cube(pname_y, sig_y)
         # multiply As by 10^9 for now, otherwise ellipse crashes
         if pname_x == "As":
             val_x *= 1e9

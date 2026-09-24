@@ -3,6 +3,7 @@ from iminuit import Minuit
 
 # our own modules
 from cup1d.likelihood import likelihood
+from cup1d.likelihood import parameter as parameter_space
 
 
 class IminuitMinimizer(object):
@@ -19,11 +20,17 @@ class IminuitMinimizer(object):
             ini_values = 0.5 * np.ones(len(self.like.free_params))
 
         # setup iminuit object (errordef=0.5 if using log-likelihood)
-        self.minimizer = Minuit(like.minus_log_prob, ini_values)
+        self.minimizer = Minuit(self.minus_log_prob, ini_values)
         # self.minimizer = Minuit(like.get_chi2, ini_values)
         self.minimizer.errordef = 0.5
         # error only used to set initial parameter step
         self.minimizer.errors = error
+
+    def minus_log_prob(self, values):
+        """Negative posterior for an iminuit point in unit-cube coordinates."""
+
+        parameters = parameter_space.values_from_cube(self.like.free_params, values)
+        return -self.like.log_prob(parameters)
 
     def minimize(self, compute_hesse=True):
         """Run migrad optimizer, and optionally compute Hessian matrix"""
@@ -49,14 +56,12 @@ class IminuitMinimizer(object):
     def parameter_by_name(self, pname):
         """Find parameter in list of likelihood free parameters"""
 
-        return [p for p in self.like.free_params if p.name == pname][0]
+        return self.like.free_params[pname]
 
     def index_by_name(self, pname):
         """Find parameter index in list of likelihood free parameters"""
 
-        return [
-            i for i, p in enumerate(self.like.free_params) if p.name == pname
-        ][0]
+        return self.like.free_param_names.index(pname)
 
     def best_fit_value(self, pname, return_hesse=False):
         """Return best-fit value for pname parameter (assuming it was run).
@@ -69,13 +74,12 @@ class IminuitMinimizer(object):
 
         # get index for this parameter, and normalize value
         ipar = self.index_by_name(pname)
-        par = self.like.free_params[ipar]
-        par_value = par.value_from_cube(cube_values[ipar])
+        par_value = parameter_space.value_from_cube(self.like.free_params, pname, cube_values[ipar])
 
         # check if you were asked for errors as well
         if return_hesse:
             cube_errors = self.minimizer.errors
-            par_error = cube_errors[ipar] * (par.max_value - par.min_value)
+            par_error = parameter_space.error_from_cube(self.like.free_params, pname, cube_errors[ipar])
             return par_value, par_error
         else:
             return par_value

@@ -4,7 +4,6 @@ import math
 import copy
 from mpi4py import MPI
 from scipy.stats.distributions import chi2 as chi2_scipy
-from scipy.optimize import minimize
 from scipy.linalg import block_diag
 
 from lace.cosmo.thermal_broadening import thermal_broadening_kms
@@ -14,6 +13,7 @@ from cup1d.utils import rebinning
 from cup1d.utils.utils import split_string
 from cup1d.utils.utils import get_path_repo
 from cup1d.utils import blinding
+from cup1d.likelihood import parameter as parameter_space
 
 
 
@@ -125,15 +125,12 @@ class Likelihood(object):
         """
 
         self.Gauss_priors = np.ones((len(self.free_params)))
-        for ii, par_like in enumerate(self.free_params):
+        for ii, (name, parameter) in enumerate(self.free_params.items()):
             if self.prior_Gauss_rms is not None:
-                _prior = self.prior_Gauss_rms
-            elif par_like.Gauss_priors_width is not None:
-                _fid = par_like.value
-                _width = par_like.Gauss_priors_width
-                _low = par_like.get_value_in_cube(_fid - 0.5 * _width)
-                _high = par_like.get_value_in_cube(_fid + 0.5 * _width)
-                _prior = _high - _low
+                width = parameter["max_value"] - parameter["min_value"]
+                _prior = self.prior_Gauss_rms * width
+            elif parameter["Gauss_priors_width"] is not None:
+                _prior = parameter["Gauss_priors_width"]
             else:
                 _prior = 1e4  # so we get zero
 
@@ -409,99 +406,38 @@ class Likelihood(object):
                 self.emu_full_cov_Pk_kms[key] = full_emu_cov
 
     def set_free_parameters(self, free_param_names, free_param_limits):
-        """Setup likelihood parameters that we want to vary"""
+        """Select free parameters into an ordered name-to-properties mapping."""
 
-        if free_param_limits is not None:
-            assert len(free_param_limits) == len(
-                free_param_names
-            ), "wrong number of parameter limits"
+        if free_param_limits is not None and len(free_param_limits) != len(
+            free_param_names
+        ):
+            raise ValueError("wrong number of parameter limits")
 
-        # get all parameters in theory, free or not
-        params = self.theory.get_parameters()
-
-        ## select free parameters, make sure ordering
-        ## in self.free_params is same as in free_param_names
-        # for par in params:
-        #     if par.name not in free_param_names:
-        #         print(par.name)
-
-        # setup list of likelihood free parameters
-        self.free_params = []
-        # iterate over free parameters
-        for par in free_param_names:
-            found = False
-            for p in params:
-                if p.name == par:
-                    if free_param_limits is not None:
-                        ## Set min and max of each parameter if
-                        ## a list is given. otherwise leave as default
-                        ind = free_param_names.index(par.name)
-                        par.min_value = free_param_limits[ind][0]
-                        par.max_value = free_param_limits[ind][1]
-                    self.free_params.append(p)
-                    found = True
-                    break
-            if found == False:
-                raise ValueError(
-                    "Could not find free parameter {} in theory".format(par)
+        parameters = self.theory.get_parameters()
+        self.free_params = {}
+        for index, name in enumerate(free_param_names):
+            if name not in parameters:
+                raise ValueError(f"Could not find free parameter {name} in theory")
+            parameter = copy.deepcopy(parameters[name])
+            if free_param_limits is not None:
+                parameter["min_value"], parameter["max_value"] = (
+                    free_param_limits[index]
                 )
+            self.free_params[name] = parameter
 
-        if self.verbose and (self.rank == 0):
-            print("likelihood setup with {} free parameters".format(Nfree))
+        self.free_param_names = list(self.free_params)
+        if self.verbose and self.rank == 0:
+            print(f"likelihood setup with {len(self.free_params)} free parameters")
 
-        return
+    def cosmology_params(self, parameters):
+        """Return the cosmological subset of a physical parameter mapping."""
 
-    def sampling_point_from_parameters(self):
-        """Translate likelihood parameters to array of values (in cube)"""
-
-        values = np.zeros(len(self.free_params))
-        for ii, par in enumerate(self.free_params):
-            values[ii] = par.value_in_cube()
-
-        return values
-
-    def parameters_from_sampling_point(self, values):
-        """Translate input array of values (in cube) to likelihood parameters"""
-
-        if values is None:
-            return []
-
-        assert len(values) == len(self.free_params), "size mismatch"
-        Npar = len(values)
-        like_params = []
-        for ip in range(Npar):
-            par = self.free_params[ip].get_new_parameter(values[ip])
-            like_params.append(par)
-
-        return like_params
-
-    def cosmology_params_from_sampling_point(self, values):
-        """For a given point in sampling space, return a list of
-        cosmology params"""
-
-        like_params = self.parameters_from_sampling_point(values)
-
-        ## Dictionary of cosmology parameters
-        cosmo_dict = {}
-
-        for like_param in like_params:
-            if like_param.name == "ombh2":
-                cosmo_dict["ombh2"] = like_param.value
-            elif like_param.name == "omch2":
-                cosmo_dict["omch2"] = like_param.value
-            elif like_param.name == "cosmomc_theta":
-                cosmo_dict["cosmomc_theta"] = like_param.value
-            elif like_param.name == "As":
-                cosmo_dict["As"] = like_param.value
-            elif like_param.name == "ns":
-                cosmo_dict["ns"] = like_param.value
-            elif like_param.name == "mnu":
-                cosmo_dict["mnu"] = like_param.value
-            elif like_param.name == "nrun":
-                cosmo_dict["nrun"] = like_param.value
-
-        assert len(cosmo_dict) > 0, "No cosmology parameters found in sampling space"
-
+        names = {"ombh2", "omch2", "cosmomc_theta", "As", "ns", "mnu", "nrun"}
+        cosmo_dict = {
+            name: value for name, value in parameters.items() if name in names
+        }
+        if not cosmo_dict:
+            raise ValueError("No cosmology parameters found")
         return cosmo_dict
 
     def set_truth(self):
@@ -550,45 +486,43 @@ class Likelihood(object):
         self.truth["like_params"] = {}
         self.truth["like_params_cube"] = {}
         pname2 = {"As": "Delta2_star", "ns": "n_star", "nrun": "alpha_star"}
-        for par in self.free_params:
+        for name, parameter in self.free_params.items():
             if (
-                ("tau" in par.name)
-                | ("sigT" in par.name)
-                | ("gamma" in par.name)
-                | ("kF" in par.name)
+                ("tau" in name)
+                | ("sigT" in name)
+                | ("gamma" in name)
+                | ("kF" in name)
             ):
                 if equal_IGM:
-                    if "tau" in par.name:
-                        self.truth["like_params"][par.name] = 1
-                        self.truth["like_params_cube"][par.name] = (
-                            par.get_value_in_cube(self.truth["like_params"][par.name])
+                    if "tau" in name:
+                        self.truth["like_params"][name] = 1
+                        self.truth["like_params_cube"][name] = (
+                            parameter_space.value_in_cube(self.free_params, name, self.truth["like_params"][name])
                         )
                     else:
-                        self.truth["like_params"][par.name] = 0
-                        self.truth["like_params_cube"][par.name] = (
-                            par.get_value_in_cube(self.truth["like_params"][par.name])
+                        self.truth["like_params"][name] = 0
+                        self.truth["like_params_cube"][name] = (
+                            parameter_space.value_in_cube(self.free_params, name, self.truth["like_params"][name])
                         )
                 else:
-                    self.truth["like_params"][par.name] = np.infty
-                    self.truth["like_params_cube"][par.name] = np.infty
-            elif (par.name == "As") | (par.name == "ns") | (par.name == "nrun"):
-                self.truth["like_params"][par.name] = self.truth["cosmo"][par.name]
-                self.truth["like_params_cube"][par.name] = par.get_value_in_cube(
-                    self.truth["like_params"][par.name]
-                )
-                self.truth["like_params"][pname2[par.name]] = self.truth["linP"][
-                    pname2[par.name]
+                    self.truth["like_params"][name] = np.infty
+                    self.truth["like_params_cube"][name] = np.infty
+            elif (name == "As") | (name == "ns") | (name == "nrun"):
+                self.truth["like_params"][name] = self.truth["cosmo"][name]
+                self.truth["like_params_cube"][name] = parameter_space.value_in_cube(self.free_params, name, self.truth["like_params"][name])
+                self.truth["like_params"][pname2[name]] = self.truth["linP"][
+                    pname2[name]
                 ]
             # else:
-            #     if par.name not in self.truth["cont"]:
-            #         print("could not find {} in truth".format(par.name))
+            #     if name not in self.truth["cont"]:
+            #         print("could not find {} in truth".format(name))
             #         continue
-            #     self.truth["like_params"][par.name] = self.truth["cont"][
-            #         par.name
+            #     self.truth["like_params"][name] = self.truth["cont"][
+            #         name
             #     ]
             #     self.truth["like_params_cube"][
-            #         par.name
-            #     ] = par.get_value_in_cube(self.truth["cont"][par.name])
+            #         name
+            #     ] = parameter_space.value_in_cube(self.free_params, name, self.truth["cont"][name])
 
     def set_model(self):
         """Store fiducial cosmology assumed for the fit"""
@@ -618,16 +552,16 @@ class Likelihood(object):
         self.fid["linP"] = {}
 
         pname2 = {"As": "Delta2_star", "ns": "n_star", "nrun": "alpha_star"}
-        for par in self.free_params:
-            self.fid["fit"][par.name] = par.value
-            self.fid["fit_cube"][par.name] = par.get_value_in_cube(par.value)
-            if (par.name == "As") | (par.name == "ns") | (par.name == "nrun"):
-                self.fid["fit"][pname2[par.name]] = blob[pname2[par.name]]
-                self.fid["linP"][pname2[par.name]] = blob[pname2[par.name]]
+        for name, parameter in self.free_params.items():
+            self.fid["fit"][name] = parameter["value"]
+            self.fid["fit_cube"][name] = parameter_space.value_in_cube(self.free_params, name, parameter["value"])
+            if (name == "As") | (name == "ns") | (name == "nrun"):
+                self.fid["fit"][pname2[name]] = blob[pname2[name]]
+                self.fid["linP"][pname2[name]] = blob[pname2[name]]
 
     def get_p1d_kms(
         self,
-        values=None,
+        parameters=None,
         return_covar=False,
         return_blob=False,
         return_emu_params=False,
@@ -636,11 +570,7 @@ class Likelihood(object):
     ):
         """Compute theoretical prediction for P1D"""
 
-        # translate sampling point (in unit cube) to parameter values
-        if values is not None:
-            like_params = self.parameters_from_sampling_point(values)
-        else:
-            like_params = []
+        like_params = {} if parameters is None else parameters
 
         all_p1ds = {}
         other_stuff = {}
@@ -672,12 +602,12 @@ class Likelihood(object):
 
         return all_p1ds, other_stuff
 
-    def get_chi2(self, values=None, return_all=False, zmask=None):
+    def get_chi2(self, parameters=None, return_all=False, zmask=None):
         """Compute chi2 using data and theory, without adding
         emulator covariance"""
 
         log_like, log_like_all = self.get_log_like(
-            values, ignore_log_det_cov=True, zmask=zmask
+            parameters, ignore_log_det_cov=True, zmask=zmask
         )
 
         chi2_eachz = {}
@@ -693,7 +623,7 @@ class Likelihood(object):
 
     def get_log_like(
         self,
-        values=None,
+        parameters=None,
         ignore_log_det_cov=True,
         return_blob=False,
         zmask=None,
@@ -707,13 +637,8 @@ class Likelihood(object):
             blob = (0, 0, 0, 0, 0, 0)
             null_out.append(blob)
 
-        # check that we are within unit cube
-        if values is not None:
-            if (values > 1.0).any() | (values < 0.0).any():
-                return null_out
-
-        # evaluate model
-        _res = self.get_p1d_kms(values, return_blob=return_blob)
+        # evaluate model in physical parameter space
+        _res = self.get_p1d_kms(parameters, return_blob=return_blob)
         if _res is None:
             return null_out
         else:
@@ -784,105 +709,81 @@ class Likelihood(object):
 
         return max(self.min_log_like, log_like)
 
+    def parameters_in_bounds(self, parameters):
+        """Return whether all physical values lie within their prior bounds."""
+
+        return all(
+            parameter["min_value"] <= parameters[name] <= parameter["max_value"]
+            for name, parameter in self.free_params.items()
+        )
+
+    def get_log_prior(self, parameters):
+        """Compute the prior directly in physical parameter units."""
+
+        if not self.parameters_in_bounds(parameters):
+            return self.min_log_like
+        if self.Gauss_priors is None:
+            return 0.0
+        fiducial = np.asarray(
+            [parameter["value"] for parameter in self.free_params.values()]
+        )
+        values = np.asarray([parameters[name] for name in self.free_params])
+        return -np.sum(
+            (fiducial - values) ** 2 / (2 * self.Gauss_priors**2)
+        )
+
     def compute_log_prob(
-        self, values, return_blob=False, ignore_log_det_cov=True, zmask=None
+        self, parameters, return_blob=False, ignore_log_det_cov=True, zmask=None
     ):
-        """Compute log likelihood plus log priors for input values
-        - if return_blob==True, it will return also extra information"""
+        """Compute posterior probability for physical parameter values."""
 
-        # Always force parameter to be within range (for now)
-        if (np.max(values) > 1.0) or (np.min(values) < 0.0):
+        if not self.parameters_in_bounds(parameters):
             if return_blob:
-                dummy_blob = self.theory.get_blob()
-                return self.min_log_like, dummy_blob
-            else:
-                return self.min_log_like
+                return self.min_log_like, self.theory.get_blob()
+            return self.min_log_like
 
-        # compute log_prior
-        if self.Gauss_priors is not None:
-            log_prior = self.get_log_prior(values)
-        else:
-            log_prior = 0
-
-        # compute log_like (option to ignore emulator covariance)
+        log_prior = self.get_log_prior(parameters)
         if return_blob:
-            log_like, chi2_all, blob = self.get_log_like(
-                values,
+            log_like, _, blob = self.get_log_like(
+                parameters,
                 ignore_log_det_cov=ignore_log_det_cov,
                 return_blob=True,
                 zmask=zmask,
             )
         else:
-            log_like, chi2_all = self.get_log_like(
-                values,
+            log_like, _ = self.get_log_like(
+                parameters,
                 ignore_log_det_cov=ignore_log_det_cov,
                 return_blob=False,
                 zmask=zmask,
             )
-
-        # regulate log-like (not NaN, not tiny)
         log_like = self.regulate_log_like(log_like)
-
         if return_blob:
             return log_like + log_prior, blob
-        else:
-            return log_like + log_prior
+        return log_like + log_prior
 
-    def log_prob(self, values, ignore_log_det_cov=True, zmask=None):
-        """Return log likelihood plus log priors"""
+    def log_prob(self, parameters, ignore_log_det_cov=True, zmask=None):
+        """Return posterior probability for physical parameter values."""
 
         return self.compute_log_prob(
-            values,
+            parameters,
             return_blob=False,
             ignore_log_det_cov=ignore_log_det_cov,
             zmask=zmask,
         )
 
-    def log_prob_and_blobs(self, values, ignore_log_det_cov=True, zmask=None):
-        """Function used by emcee to get both log_prob and extra information"""
+    def log_prob_and_blobs(
+        self, parameters, ignore_log_det_cov=True, zmask=None
+    ):
+        """Return posterior probability and flattened theory blobs."""
 
         lnprob, blob = self.compute_log_prob(
-            values,
+            parameters,
             return_blob=True,
             ignore_log_det_cov=ignore_log_det_cov,
             zmask=zmask,
         )
-        # unpack tuple
-        out = lnprob, *blob
-        return out
-
-    def get_log_prior(self, values):
-        """Compute logarithm of prior"""
-
-        assert len(values) == len(self.free_params), "size mismatch"
-
-        # Always force parameter to be within range (for now)
-        if max(values) > 1:
-            return self.min_log_like
-        if min(values) < 0:
-            return self.min_log_like
-
-        fid_values = [p.value_in_cube() for p in self.free_params]
-        log_prior = -np.sum(
-            (np.array(fid_values) - values) ** 2 / (2 * self.Gauss_priors**2)
-        )
-        return log_prior
-
-    def minus_log_prob(self, values, zmask=None, ind_fix=None, pfix=None):
-        """Return minus log_prob (needed to maximise posterior)"""
-
-        if ind_fix is not None:
-            values[ind_fix] = pfix
-
-        return -1.0 * self.log_prob(values, zmask=zmask)
-
-    def maximise_posterior(self, initial_values=None, method="nelder-mead", tol=1e-4):
-        """Run scipy minimizer to find maximum of posterior"""
-
-        if not initial_values:
-            initial_values = np.ones(len(self.free_params)) * 0.5
-
-        return minimize(self.minus_log_prob, x0=initial_values, method=method, tol=tol)
+        return lnprob, *blob
 
     def old_plot_p1d(
         self,
@@ -1208,7 +1109,7 @@ class Likelihood(object):
 
         return _plot(self, save_directory)
 
-    def plot_hull_fid(self, like_params=[]):
+    def plot_hull_fid(self, like_params=None):
         """Delegate to :func:`cup1d.postprocessing.likelihood.plot_hull_fid`."""
         from cup1d.postprocessing.likelihood import plot_hull_fid as _plot
 
@@ -1219,12 +1120,11 @@ class Likelihood(object):
 
         dir_out = np.load(fname, allow_pickle=True).item()
 
-        # make a copy of free params, and set their values to the best-fit
-        free_params = self.free_params.copy()
-        for jj, p in enumerate(free_params):
-            if p.name in ["As", "ns"]:
+        # Update the physical fiducial values from the saved best fit.
+        for name, parameter in self.free_params.items():
+            if name in ["As", "ns"]:
                 continue
-            pname, iistr = split_string(p.name)
+            pname, iistr = split_string(name)
             ii = int(iistr)
 
             if (pname + "_znodes") in self.args.fid_igm:
@@ -1234,53 +1134,56 @@ class Likelihood(object):
             elif (pname + "_znodes") in self.args.fid_syst:
                 znode = self.args.fid_syst[pname + "_znodes"][ii]
             else:
-                raise ValueError("Could not find znode for " + p.name)
+                raise ValueError("Could not find znode for " + name)
 
             iz = np.argmin(np.abs(dir_out["z"] - znode))
             # print(iz, znode, dir_out["z"][iz])
             # print(dir_out["pnames"][iz], pname + "_0")
             iname = np.argwhere(np.array(dir_out["pnames"][iz]) == (pname + "_0"))[0, 0]
-            p.value = list(dir_out["mle"][iz].values())[iname]
+            parameter["value"] = dir_out["mle"][iz][pname + "_0"]
 
             if verbose and (self.rank == 0):
                 print(
-                    p.name,
+                    name,
                     "\t",
-                    np.round(p.value, 3),
+                    np.round(parameter["value"], 3),
                     "\t",
-                    np.round(p.min_value, 3),
+                    np.round(parameter["min_value"], 3),
                     "\t",
-                    np.round(p.max_value, 3),
+                    np.round(parameter["max_value"], 3),
                     "\t",
-                    p.Gauss_priors_width,
-                    p.fixed,
+                    parameter["Gauss_priors_width"],
+                    parameter["fixed"],
                 )
 
         # reset the coefficients of the models
+        parameter_values = {
+            name: parameter["value"]
+            for name, parameter in self.free_params.items()
+        }
         self.theory.model_igm.models["F_model"].reset_coeffs(
-            free_params, rank=self.rank
+            parameter_values, rank=self.rank
         )
         self.theory.model_igm.models["T_model"].reset_coeffs(
-            free_params, rank=self.rank
+            parameter_values, rank=self.rank
         )
-        self.theory.model_cont.hcd_model.reset_coeffs(free_params, rank=self.rank)
+        self.theory.model_cont.hcd_model.reset_coeffs(parameter_values, rank=self.rank)
         self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(
-            free_params, rank=self.rank
+            parameter_values, rank=self.rank
         )
         self.theory.model_cont.metal_models["Si_add"].reset_coeffs(
-            free_params, rank=self.rank
+            parameter_values, rank=self.rank
         )
 
     def set_ic_global(self, fname, verbose=True):
         """Set the initial conditions for the likelihood from a fit"""
         dir_out = np.load(fname, allow_pickle=True).item()
 
-        # make a copy of free params, and set their values to the best-fit
-        free_params = self.free_params.copy()
-        for jj, p in enumerate(free_params):
-            if p.name in ["As", "ns"]:
+        # Update the physical fiducial values from the saved best fit.
+        for name, parameter in self.free_params.items():
+            if name in ["As", "ns"]:
                 continue
-            pname, iistr = split_string(p.name)
+            pname, iistr = split_string(name)
             ii = int(iistr)
 
             if (pname + "_znodes") in self.args.fid_igm:
@@ -1297,30 +1200,34 @@ class Likelihood(object):
                     pname + "_znodes not found in either fid_igm, fid_cont, or fid_syst"
                 )
 
-            p.fixed = isfixed
+            parameter["fixed"] = isfixed
 
             if (pname not in dir_out) and (pname == "HCD_const"):
-                p.value = 0
+                parameter["value"] = 0
             else:
                 _z = dir_out[pname]["z"]
                 _val = dir_out[pname]["val"]
-                p.value = np.interp(znode, _z, _val)
+                parameter["value"] = np.interp(znode, _z, _val)
 
             if verbose and (self.rank == 0):
                 print(
-                    p.name,
+                    name,
                     "\t",
-                    np.round(p.value, 3),
+                    np.round(parameter["value"], 3),
                     "\t",
-                    np.round(p.min_value, 3),
+                    np.round(parameter["min_value"], 3),
                     "\t",
-                    np.round(p.max_value, 3),
+                    np.round(parameter["max_value"], 3),
                     "\t",
-                    p.Gauss_priors_width,
-                    p.fixed,
+                    parameter["Gauss_priors_width"],
+                    parameter["fixed"],
                 )
 
         # reset the coefficients of the models
+        parameter_values = {
+            name: parameter["value"]
+            for name, parameter in self.free_params.items()
+        }
         # self.theory.model_igm.models["F_model"].reset_coeffs(
         #     free_params, rank=self.rank
         # )
@@ -1329,10 +1236,10 @@ class Likelihood(object):
         # )
         for model in self.theory.model_igm.models:
             self.theory.model_igm.models[model].reset_coeffs(
-                free_params, rank=self.rank
+                parameter_values, rank=self.rank
             )
 
-        self.theory.model_cont.hcd_model.reset_coeffs(free_params, rank=self.rank)
+        self.theory.model_cont.hcd_model.reset_coeffs(parameter_values, rank=self.rank)
 
         # self.theory.model_cont.metal_models["Si_mult"].reset_coeffs(
         #     free_params, rank=self.rank
@@ -1343,7 +1250,7 @@ class Likelihood(object):
 
         for model in self.theory.model_cont.metal_models:
             self.theory.model_cont.metal_models[model].reset_coeffs(
-                free_params, rank=self.rank
+                parameter_values, rank=self.rank
             )
 
 

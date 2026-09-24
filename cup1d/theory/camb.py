@@ -40,7 +40,7 @@ class CAMBModel(object):
         primordial = self.cosmo.get_primordial_params()
         params = []
         params.append(
-            likelihood_parameter.LikelihoodParameter(
+            likelihood_parameter.make_parameter(
                 name="ombh2",
                 min_value=0.018,
                 max_value=0.026,
@@ -48,7 +48,7 @@ class CAMBModel(object):
             )
         )
         params.append(
-            likelihood_parameter.LikelihoodParameter(
+            likelihood_parameter.make_parameter(
                 name="omch2",
                 min_value=0.10,
                 max_value=0.14,
@@ -63,7 +63,7 @@ class CAMBModel(object):
             max_val = 3.60e-09
         # print(min_val, max_val)
         params.append(
-            likelihood_parameter.LikelihoodParameter(
+            likelihood_parameter.make_parameter(
                 name="As",
                 min_value=min_val,
                 max_value=max_val,
@@ -79,7 +79,7 @@ class CAMBModel(object):
             max_val = 1.10
         # print(min_val, max_val)
         params.append(
-            likelihood_parameter.LikelihoodParameter(
+            likelihood_parameter.make_parameter(
                 name="ns",
                 min_value=min_val,
                 max_value=max_val,
@@ -87,7 +87,7 @@ class CAMBModel(object):
             )
         )
         params.append(
-            likelihood_parameter.LikelihoodParameter(
+            likelihood_parameter.make_parameter(
                 name="mnu",
                 min_value=0.0,
                 max_value=1.0,
@@ -102,7 +102,7 @@ class CAMBModel(object):
             min_val = -0.05
             max_val = 0.05
         params.append(
-            likelihood_parameter.LikelihoodParameter(
+            likelihood_parameter.make_parameter(
                 name="nrun",
                 min_value=min_val,
                 max_value=max_val,
@@ -110,12 +110,12 @@ class CAMBModel(object):
             )
         )
         params.append(
-            likelihood_parameter.LikelihoodParameter(
+            likelihood_parameter.make_parameter(
                 name="H0", min_value=50, max_value=100, value=self.cosmo.get_H0()
             )
         )
 
-        return params
+        return {parameter["name"]: parameter for parameter in params}
 
     def get_camb_results(self):
         """Check if we have called CAMB.get_results yet, to save time.
@@ -175,13 +175,10 @@ class CAMBModel(object):
         # store a dictionary with parameters set to input values
         camb_param_dict = {}
 
-        # loop over list of likelihood parameters own by this object
-        for mypar in self.get_likelihood_parameters():
-            # loop over input parameters
-            for inpar in like_params:
-                if inpar.name == mypar.name:
-                    camb_param_dict[inpar.name] = inpar.value
-                    continue
+        known_parameters = self.get_likelihood_parameters()
+        for name, value in like_params.items():
+            if name in known_parameters:
+                camb_param_dict[name] = value
 
         # Preserve every unspecified fiducial parameter.
         new_params = dict(self.cosmo.input_cosmo_params_dict)

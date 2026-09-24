@@ -52,7 +52,7 @@ class AGN_Model(object):
     def set_parameters(self):
         """Setup likelihood parameters in the HCD model"""
 
-        self.params = []
+        self.params = {}
         Npar = len(self.ln_AGN_coeff)
         for i in range(Npar):
             name = "ln_AGN_" + str(i)
@@ -65,10 +65,10 @@ class AGN_Model(object):
                 xmax = 10
             # note non-trivial order in coefficients
             value = self.ln_AGN_coeff[Npar - i - 1]
-            par = likelihood_parameter.LikelihoodParameter(
-                name=name, value=value, min_value=xmin, max_value=xmax
+            par = likelihood_parameter.make_parameter(
+                name=name, value=value, min_value=xmin, max_value=xmax, hessian_transform="exp"
             )
-            self.params.append(par)
+            self.params[name] = par
 
         return
 
@@ -77,7 +77,7 @@ class AGN_Model(object):
         assert len(self.ln_AGN_coeff) == len(self.params), "size mismatch"
         return len(self.ln_AGN_coeff)
 
-    def get_AGN_damp(self, z, like_params=[]):
+    def get_AGN_damp(self, z, like_params=None):
         """Amplitude of AGN contamination around z_0"""
 
         ln_AGN_coeff = self.get_AGN_coeffs(like_params=like_params)
@@ -89,7 +89,7 @@ class AGN_Model(object):
         ln_out = ln_poly(xz)
         return np.exp(ln_out)
 
-    def get_contamination(self, z, k_kms, like_params=[]):
+    def get_contamination(self, z, k_kms, like_params=None):
         """Multiplicative contamination caused by AGNs"""
 
         fAGN = self.get_AGN_damp(z, like_params=like_params)
@@ -122,7 +122,7 @@ class AGN_Model(object):
         """Return likelihood parameters for the HCD model"""
         return self.params
 
-    def get_AGN_coeffs(self, like_params=[]):
+    def get_AGN_coeffs(self, like_params=None):
         """Return list of mean flux coefficients"""
 
         if like_params:
@@ -130,11 +130,11 @@ class AGN_Model(object):
             Npar = 0
             array_names = []
             array_values = []
-            for par in like_params:
-                if "ln_AGN" in par.name:
+            for par_name, par_value in like_params.items():
+                if "ln_AGN" in par_name:
                     Npar += 1
-                    array_names.append(par.name)
-                    array_values.append(par.value)
+                    array_names.append(par_name)
+                    array_values.append(par_value)
             array_names = np.array(array_names)
             array_values = np.array(array_values)
 
@@ -146,10 +146,10 @@ class AGN_Model(object):
                 raise ValueError("number of params mismatch in get_AGN_coeffs")
 
             for ip in range(Npar):
-                _ = np.argwhere(self.params[ip].name == array_names)[:, 0]
+                _ = np.argwhere(list(self.params)[ip] == array_names)[:, 0]
                 if len(_) != 1:
                     raise ValueError(
-                        "could not update parameter" + self.params[ip].name
+                        "could not update parameter" + list(self.params)[ip]
                     )
                 else:
                     ln_AGN_coeff[Npar - ip - 1] = array_values[_[0]]

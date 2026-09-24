@@ -175,7 +175,10 @@ def test_completed_fit_plotter_calls_new_renderer(tmp_path):
     from cup1d.postprocessing import Plotter
 
     plotter = object.__new__(Plotter)
-    plotter.fitter = SimpleNamespace(like=SmallLikelihood(nz=1))
+    plotter.fitter = SimpleNamespace(
+        like=SmallLikelihood(nz=1),
+        parameters_from_sampling_point=lambda values: values,
+    )
     plotter.mle_values = np.array([.5])
     plotter.save_directory = str(tmp_path)
     plotter.plot_p1d(residuals=True, plot_panels=True)

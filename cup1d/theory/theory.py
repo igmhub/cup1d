@@ -3,7 +3,7 @@ import numpy as np
 from lace.cosmo import cosmology
 from lace.cosmo import rescale_cosmology
 
-from cup1d.likelihood.parameter import LikelihoodParameter
+from cup1d.likelihood.parameter import make_parameter
 from cup1d.models.contaminants.model_contaminants import Contaminants
 from cup1d.models.contaminants.model_systematics import Systematics
 from cup1d.models.igm.model_igm import IGM
@@ -180,7 +180,7 @@ class Theory:
                 if bounds is not None:
                     self.cosmo_priors[name] = np.asarray(bounds, dtype=float)
 
-    def get_cosmology(self, like_params=()):
+    def get_cosmology(self, like_params=None):
         """Return the LaCE cosmology corresponding to likelihood parameters.
 
         ``RescaledCosmology`` validates whether the requested parameters
@@ -189,10 +189,11 @@ class Theory:
         """
 
         fiducial_cosmo = self.fid_cosmo["cosmo"]
+        like_params = {} if like_params is None else like_params
         new_params_dict = {
-            parameter.name: parameter.value
-            for parameter in like_params
-            if parameter.name in fiducial_cosmo.input_cosmo_params_dict
+            name: value
+            for name, value in like_params.items()
+            if name in fiducial_cosmo.input_cosmo_params_dict
         }
         try:
             return rescale_cosmology.RescaledCosmology(fiducial_cosmo, new_params_dict)
@@ -203,7 +204,7 @@ class Theory:
         cosmo_params_dict.update(new_params_dict)
         return cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
 
-    def get_linP_Mpc_params(self, zs, like_params=()):
+    def get_linP_Mpc_params(self, zs, like_params=None):
         """Get emulator linear-power parameters directly from LaCE."""
 
         cosmo = self.get_cosmology(like_params)
@@ -212,7 +213,7 @@ class Theory:
         ]
 
     def get_emulator_calls(
-        self, zs, like_params=(), return_M_of_z=True, return_blob=False
+        self, zs, like_params=None, return_M_of_z=True, return_blob=False
     ):
         """Build emulator inputs and velocity-to-comoving conversions."""
 
@@ -322,7 +323,7 @@ class Theory:
         self,
         zs,
         k_kms,
-        like_params=(),
+        like_params=None,
         return_covar=False,
         return_blob=True,
         return_emu_params=False,
@@ -334,6 +335,7 @@ class Theory:
         """Emulate the P1D in velocity units for the requested redshifts."""
 
         zs = np.atleast_1d(zs)
+        like_params = {} if like_params is None else like_params
 
         emu_call, M_of_z, blob = self.get_emulator_calls(
             zs,
@@ -384,9 +386,9 @@ class Theory:
 
         if "forest" in self.emulator.emulator_label:
             new_cosmo_params = {}
-            for par in like_params:
-                if par.name in ["As", "ns", "nrun"]:
-                    new_cosmo_params[par.name] = par.value
+            for name, value in like_params.items():
+                if name in ["As", "ns", "nrun"]:
+                    new_cosmo_params[name] = value
             self.emulator.set_linear_theory(zs, new_cosmo_params=new_cosmo_params)
             _res = self.emulator.emulate_p1d_Mpc(zs, kin_Mpc, emu_call)
         else:
@@ -409,8 +411,8 @@ class Theory:
 
         # check if need to apply systematics
         apply_syst = False
-        for par in like_params:
-            if par.name.startswith("R_coeff"):
+        for name in like_params:
+            if name.startswith("R_coeff"):
                 apply_syst = True
 
         if apply_syst:
@@ -503,36 +505,36 @@ class Theory:
         background = cosmology.get_background_params()
         primordial = cosmology.get_primordial_params()
         params = [
-            LikelihoodParameter(
+            make_parameter(
                 "ombh2", *self.cosmo_priors["ombh2"], background["ombh2"]
             ),
-            LikelihoodParameter(
+            make_parameter(
                 "omch2", *self.cosmo_priors["omch2"], background["omch2"]
             ),
-            LikelihoodParameter(
+            make_parameter(
                 "As",
                 self.cosmo_priors["As"][0],
                 self.cosmo_priors["As"][1],
                 primordial["As"],
             ),
-            LikelihoodParameter(
+            make_parameter(
                 "ns",
                 self.cosmo_priors["ns"][0],
                 self.cosmo_priors["ns"][1],
                 primordial["ns"],
             ),
-            LikelihoodParameter(
+            make_parameter(
                 "mnu",
                 *self.cosmo_priors["mnu"],
                 self.fid_cosmo["cosmo"].background_params["mnu"],
             ),
-            LikelihoodParameter(
+            make_parameter(
                 "nrun",
                 self.cosmo_priors["nrun"][0],
                 self.cosmo_priors["nrun"][1],
                 primordial["nrun"],
             ),
-            LikelihoodParameter("H0", *self.cosmo_priors["H0"], cosmology.get_H0()),
+            make_parameter("H0", *self.cosmo_priors["H0"], cosmology.get_H0()),
         ]
 
         for model in self.model_igm.models:
@@ -550,9 +552,15 @@ class Theory:
         for key in self.model_syst.resolution_model.params:
             params.append(self.model_syst.resolution_model.params[key])
 
+        parameters = {parameter["name"]: parameter for parameter in params}
+        if len(parameters) != len(params):
+            raise ValueError("Theory parameter names must be unique")
+
         if self.verbose:
             print("got parameters")
-            for par in params:
-                print(par.info_str())
+            for parameter in parameters.values():
+                print(
+                    f"{parameter['name']} = {parameter['value']}"
+                )
 
-        return params
+        return parameters

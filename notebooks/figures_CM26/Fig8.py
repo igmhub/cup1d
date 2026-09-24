@@ -48,8 +48,9 @@ args.set_baseline(
 pip = Analysis(args, out_folder=None)
 
 # %%
-p0 = pip.fitter.like.sampling_point_from_parameters()
-pip.fitter.like.get_chi2(p0, zmask=[2.2])
+p0 = pip.fitter.sampling_point_from_parameters()
+free_params = pip.fitter.parameters_from_sampling_point(p0)
+pip.fitter.like.get_chi2(free_params, zmask=[2.2])
 
 # %%
 # Fig. 8
@@ -66,7 +67,7 @@ ylims=np.array([
 pname = None
 # pname = "figs/residual_full_global"
 out_data = pip.fitter.like.plot_p1d(
-    p0,
+    free_params,
     residuals=True,
     plot_panels=True,
     glob_full=True,

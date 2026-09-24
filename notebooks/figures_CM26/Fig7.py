@@ -76,13 +76,13 @@ for ii in range(1):
     
     f_space_len = 14
     s_space_len = 5
-    for p in pip.fitter.like.free_params:            
+    for p in pip.fitter.like.free_params.values():
         print(
-            p.name, (f_space_len-len(p.name)) * " ", "\t", 
-            np.round(p.value, 3), (s_space_len-len(str(np.round(p.value, 3)))) * " ", '\t', 
-            np.round(p.min_value, 3), (s_space_len-len(str(np.round(p.min_value, 3)))) * " ", '\t', 
-            np.round(p.max_value, 3), (s_space_len-len(str(np.round(p.max_value, 3)))) * " ", '\t', 
-            p.Gauss_priors_width
+            p["name"], (f_space_len-len(p["name"])) * " ", "\t",
+            np.round(p["value"], 3), (s_space_len-len(str(np.round(p["value"], 3)))) * " ", "\t",
+            np.round(p["min_value"], 3), (s_space_len-len(str(np.round(p["min_value"], 3)))) * " ", "\t",
+            np.round(p["max_value"], 3), (s_space_len-len(str(np.round(p["max_value"], 3)))) * " ", "\t",
+            p["Gauss_priors_width"],
         )
 
     
@@ -90,14 +90,14 @@ for ii in range(1):
     
     print(ii, zmask)
     p0 = np.array(list(pip.fitter.like.fid["fit_cube"].values()))
-    pip.fitter.run_minimizer(log_func_minimize=pip.fitter.like.minus_log_prob, p0=p0, zmask=zmask, restart=True)
+    pip.fitter.run_minimizer(log_func_minimize=pip.fitter.minus_log_prob, p0=p0, zmask=zmask, restart=True)
     out_pnames.append(pip.fitter.like.free_param_names)
     out_mle.append(pip.fitter.mle)
     out_mle_cube.append(pip.fitter.mle_cube)
     out_chi2.append(pip.fitter.mle_chi2)
 
 # %%
-pip.fitter.like.get_chi2(pip.fitter.mle_cube, zmask=zmask)
+pip.fitter.get_chi2(pip.fitter.mle_cube, zmask=zmask)
 
 # %%
 chi2_z22 = {

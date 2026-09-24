@@ -55,8 +55,8 @@ p0 = data["fitter"]["mle_cube"]
 
 # %%
 
-free_params = pip.fitter.like.parameters_from_sampling_point(p0)
-pip.fitter.like.get_chi2(p0)
+free_params = pip.fitter.parameters_from_sampling_point(p0)
+pip.fitter.like.get_chi2(free_params)
 
 # %% [markdown]
 # #### Extract measurements
@@ -89,7 +89,7 @@ for ii in range(ind.shape[0]):
     if ii % 100 == 0:
         print(ii)
 
-    like_params = pip.fitter.like.parameters_from_sampling_point(chain[ind[ii], :])
+    like_params = pip.fitter.parameters_from_sampling_point(chain[ind[ii], :])
     results = pip.fitter.like.theory.get_p1d_kms(
         pip.fitter.like.data.z,
         pip.fitter.like.data.k_kms,

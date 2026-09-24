@@ -40,8 +40,8 @@ folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/gl
 
 data = np.load(folder + "fitter_results.npy", allow_pickle=True).item()
 p0 = data["fitter"]["mle_cube"]
-free_params = pip.fitter.like.parameters_from_sampling_point(p0)
-pip.fitter.like.get_chi2(p0)
+free_params = pip.fitter.parameters_from_sampling_point(p0)
+pip.fitter.like.get_chi2(free_params)
 
 # %%
 ylims=np.array([
@@ -52,7 +52,7 @@ ylims=np.array([
 ])
 
 out_data = pip.fitter.like.plot_p1d(
-    p0, 
+    free_params,
     residuals=True, 
     plot_panels=True, 
     print_chi2=False, 

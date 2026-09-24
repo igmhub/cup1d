@@ -1,6 +1,8 @@
 """Igm plotting implementations; scientific objects retain compatibility wrappers."""
 
 import numpy as np
+
+from cup1d.likelihood import parameter as parameter_space
 import matplotlib.pyplot as plt
 import os
 from matplotlib.ticker import MaxNLocator
@@ -40,7 +42,7 @@ def plot_likelihood_igm(
 
     primary_data = next(iter(self.data.values()))
     zs = np.linspace(primary_data.z.min(), primary_data.z.max(), 100)
-    p0 = self.sampling_point_from_parameters()
+    p0 = parameter_space.values_to_cube(self.free_params)
 
     out = {}
     out["tab_out"] = []
@@ -54,7 +56,7 @@ def plot_likelihood_igm(
             p0[:] = 0
         elif ii == 2:
             p0[:] = 1
-        fid_params = self.parameters_from_sampling_point(p0)
+        fid_params = parameter_space.values_from_cube(self.free_params, p0)
         pars = {}
         pars["z"] = zs
         pars["tau_eff"] = self.theory.model_igm.models["F_model"].get_tau_eff(
@@ -116,7 +118,7 @@ def plot_likelihood_igm(
         pars_chain2["T0"] = np.zeros((chain.shape[0], zs2.shape[0]))
 
         for ii in range(chain.shape[0]):
-            chain_params = self.parameters_from_sampling_point(chain[ii, :])
+            chain_params = parameter_space.values_from_cube(self.free_params, chain[ii, :])
             # pars_chain["tau_eff"][ii] = self.theory.model_igm.models[
             #     "F_model"
             # ].get_tau_eff(zs, like_params=chain_params)

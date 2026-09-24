@@ -4,6 +4,7 @@ The likelihood owns predictions and chi-squared calculations. This module
 only selects their outputs and converts them into figures.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 import warnings
 
@@ -48,7 +49,7 @@ class P1DPlotter:
         self.like = likelihood
 
     def _predict(self, values):
-        result = self.like.get_p1d_kms(values=values)
+        result = self.like.get_p1d_kms(values)
         if result is None:
             raise ValueError("Cannot plot P1D: the sampling point is outside the model domain.")
         return result[0]
@@ -72,30 +73,53 @@ class P1DPlotter:
         points = {}
         if z_at_time:
             redshifts = list(dict.fromkeys(
-                float(self.like.data[key].z[i]) for key, indices in selected.items() for i in indices
+                float(self.like.data[key].z[i])
+                for key, indices in selected.items() for i in indices
             ))
-            array = np.asarray(values)
-            if array.shape != (len(redshifts), len(self.like.free_params)):
-                raise ValueError("z_at_time requires one sampling point per selected redshift.")
-            points = dict(zip(redshifts, array))
+            if (
+                isinstance(values, (list, tuple))
+                and len(values) == len(redshifts)
+                and all(isinstance(point, Mapping) for point in values)
+            ):
+                points = dict(zip(redshifts, values))
+            else:
+                array = np.asarray(values)
+                if array.shape != (len(redshifts), len(self.like.free_params)):
+                    raise ValueError(
+                        "z_at_time requires one sampling point per selected redshift."
+                    )
+                points = dict(zip(redshifts, array))
             predictions = {z: self._predict(point) for z, point in points.items()}
-            per_z = {z: self.like.get_chi2(values=point, return_all=True, zmask=np.array([z]))[1]
-                     for z, point in points.items()}
-            chi2_bins = {key: {i: per_z[float(self.like.data[key].z[i])][key][i] for i in indices}
-                         for key, indices in selected.items()}
+            per_z = {
+                z: self.like.get_chi2(
+                    point, return_all=True, zmask=np.array([z])
+                )[1]
+                for z, point in points.items()
+            }
+            chi2_bins = {
+                key: {
+                    i: per_z[float(self.like.data[key].z[i])][key][i]
+                    for i in indices
+                }
+                for key, indices in selected.items()
+            }
             total_chi2 = sum(sum(v.values()) for v in chi2_bins.values())
         else:
             prediction = self._predict(values)
-            total_chi2, chi2_bins = self.like.get_chi2(values=values, return_all=True, zmask=mask)
+            total_chi2, chi2_bins = self.like.get_chi2(values, return_all=True, zmask=mask)
             predictions = None
             if chi2_nozcov:
                 total_chi2 = sum(chi2_bins[key][i] for key, indices in selected.items() for i in indices)
 
         posterior = None
         if rand_posterior is not None:
-            samples = np.asarray(rand_posterior)
-            if samples.ndim != 2 or samples.shape[0] == 0 or samples.shape[1] != len(self.like.free_params):
-                raise ValueError("rand_posterior must have shape (n_samples, n_free_parameters).")
+            if (isinstance(rand_posterior, (list, tuple)) and rand_posterior
+                    and all(isinstance(sample, Mapping) for sample in rand_posterior)):
+                samples = rand_posterior
+            else:
+                samples = np.asarray(rand_posterior)
+                if samples.ndim != 2 or samples.shape[0] == 0 or samples.shape[1] != len(self.like.free_params):
+                    raise ValueError("rand_posterior must have shape (n_samples, n_free_parameters).")
             posterior = [self._predict(sample) for sample in samples]
 
         bins = []
@@ -110,7 +134,14 @@ class P1DPlotter:
             for i in indices:
                 ndata = np.count_nonzero(data.Pk_kms[i])
                 total_ndata += ndata
-                nparameters = np.count_nonzero(points[float(data.z[i])]) if z_at_time else n_free
+                if z_at_time:
+                    point = points[float(data.z[i])]
+                    if isinstance(point, Mapping):
+                        nparameters = np.count_nonzero(list(point.values()))
+                    else:
+                        nparameters = np.count_nonzero(point)
+                else:
+                    nparameters = n_free
                 dof = ndata - nparameters
                 per_redshift_dof += dof
                 if glob_full:

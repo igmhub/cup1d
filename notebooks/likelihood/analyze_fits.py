@@ -69,7 +69,8 @@ analysis = Analysis(args)
 
 fit_results = np.load(results_path, allow_pickle=True).item()
 mle_cube = np.asarray(fit_results["fitter"]["mle_cube"])
-chi2 = analysis.like.get_chi2(mle_cube)
+best_fit_parameters = analysis.fitter.parameters_from_sampling_point(mle_cube)
+chi2 = analysis.like.get_chi2(best_fit_parameters)
 analysis.fitter.set_mle(mle_cube, chi2)
 
 print(f"chi2 = {chi2:.3f}")
@@ -83,9 +84,8 @@ print(f"number of free parameters = {len(analysis.like.free_params)}")
 # values used by the model.
 
 # %%
-best_fit_parameters = analysis.like.parameters_from_sampling_point(mle_cube)
-for parameter in best_fit_parameters:
-    print(f"{parameter.name:20s} = {parameter.value:g}")
+for name, value in best_fit_parameters.items():
+    print(f"{name:20s} = {value:g}")
 
 
 # %% [markdown]
@@ -96,7 +96,7 @@ for parameter in best_fit_parameters:
 # explicitly supplied to the plotting method.
 
 # %%
-analysis.like.plot_p1d(mle_cube, residuals=True, plot_panels=True, print_chi2=False)
+analysis.like.plot_p1d(best_fit_parameters, residuals=True, plot_panels=True, print_chi2=False)
 
 
 # %% [markdown]
