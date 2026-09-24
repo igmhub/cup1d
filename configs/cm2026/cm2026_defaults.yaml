@@ -243,6 +243,8 @@ Gauss_priors: null
 fit_type: global_opt
 # Sampler configuration.
 mcmc:
+  # Base seed for MCMC walker initialization; null uses fresh entropy.
+  seed: null
   # Whether walkers explore around the initial position.
   explore: true
   # Whether likelihood evaluations use parallel execution.

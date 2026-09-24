@@ -56,11 +56,11 @@ class BaseMockP1D(BaseDataP1D):
         No correlation among redshifts right now
         """
 
-        np.random.seed(seed)
+        rng = np.random.default_rng(seed)
         Pk_iz_perturb = []
 
         for iz in range(len(Pk_kms)):
-            _ = np.random.multivariate_normal(Pk_kms[iz], cov_Pk_kms[iz], nsamples)
+            _ = rng.multivariate_normal(Pk_kms[iz], cov_Pk_kms[iz], nsamples)
             if nsamples == 1:
                 Pk_iz_perturb.append(_[0])
             else:

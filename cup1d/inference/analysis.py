@@ -85,8 +85,6 @@ class Analysis(object):
                 self.fprint("Setting emulator")
                 self.emulator = set_emulator(
                     emulator_label=self.args.emulator_label,
-                    drop_emu_sim=self.args.drop_emu_sim,
-                    training_set=self.args.training_set,
                 )
                 self.fprint("Done setting emulator")
                 self.fprint("----------")
@@ -176,6 +174,8 @@ class Analysis(object):
             parallel=self.args.mcmc["parallel"],
             explore=self.args.mcmc["explore"],
             fix_cosmology=self.args.fix_cosmo,
+            random_seed=self.args.mcmc["seed"],
+            verbose=self.args.verbose,
         )
 
         #######################

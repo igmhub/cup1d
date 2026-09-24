@@ -33,6 +33,7 @@ class Fitter(object):
         parallel=False,
         explore=False,
         fix_cosmology=False,
+        random_seed=None,
     ):
         """Setup sampler from likelihood, or use default.
         If read_chain_file is provided, read pre-computed chain.
@@ -55,6 +56,10 @@ class Fitter(object):
             self.size = 1
 
         self.fix_cosmology = fix_cosmology
+        self.random_seed = random_seed
+        self.rng = np.random.default_rng(
+            np.random.SeedSequence(random_seed, spawn_key=(self.rank,))
+        )
 
         self.print = create_print_function(self.verbose)
 
@@ -102,7 +107,7 @@ class Fitter(object):
             # nwalkers = self.comm.recv(source=0, tag=self.rank * 13)
             self.save_directory = self.comm.recv(source=0, tag=self.rank * 15)
 
-        # print(
+        # self.print(
         #     "rank", self.rank, "nwalkers", self.nwalkers, "nsteps", self.nsteps
         # )
 
@@ -191,9 +196,9 @@ class Fitter(object):
                 log_func,
                 blobs_dtype=self.blobs_dtype,
             )
-            print(
+            self._seed_sampler(sampler)
+            self.print(
                 f"Running MCMC with {self.nwalkers} walkers, {self.ndim} dimensions, and {self.nsteps}, {self.nburn}.",
-                flush=True,
             )
             for sample in sampler.sample(p0, iterations=self.nburn + self.nsteps):
                 if sampler.iteration % 100 == 0:
@@ -216,12 +221,12 @@ class Fitter(object):
             # MPIPool does not work for me in nersc for whatever reason
             # I need to get creative
 
-            np.random.seed(self.rank)
             p0 = self.get_initial_walkers(pini=pini)
             sampler = emcee.EnsembleSampler(
                 self.nwalkers, self.ndim, log_func, blobs_dtype=self.blobs_dtype
             )
 
+            self._seed_sampler(sampler)
             for sample in sampler.sample(
                 p0,
                 iterations=self.nburn + self.nsteps,
@@ -233,7 +238,7 @@ class Fitter(object):
                         % (sampler.iteration, self.nsteps + self.nburn)
                     )
 
-            print(f"Rank {self.rank} done", flush=True)
+            self.print(f"Rank {self.rank} done")
             _lnprob = sampler.get_log_prob(
                 flat=False, discard=self.nburn, thin=self.thin
             )
@@ -342,7 +347,7 @@ class Fitter(object):
             for it in range(niter):
                 if it == 0:
                     pnext0 = mle_cube.copy()
-                print("it, pnext0", it, pnext0[:2], flush=True)
+                self.print("it, pnext0", it, pnext0[:2])
                 for ii in range(nsamples):
                     pini = pnext0 + (arr_p0[ii, :] - 0.5) * sig / (ii + 1)
                     pini[pini <= 0] = 0.05
@@ -360,7 +365,7 @@ class Fitter(object):
                             "maxfev": neval,
                         },
                     )
-                    print("ITER", it, ii, res.fun, pini[:2], res.x[:2], flush=True)
+                    self.print("ITER", it, ii, res.fun, pini[:2], res.x[:2])
                     if res.fun < _chi2:
                         _chi2 = res.fun
                         pnext = res.x
@@ -370,7 +375,7 @@ class Fitter(object):
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
         chi2_ini = chi2 * 1
 
-        print("Starting NM minimization, chi2=", chi2, flush=True)
+        self.print("Starting NM minimization, chi2=", chi2)
         keep = True
         ii = 0
         rep = 0
@@ -391,26 +396,26 @@ class Fitter(object):
                     "maxfev": neval,
                 },
             )
-            # print(res, flush=True)
+            # self.print(res)
 
             _chi2 = self.like.get_chi2(res.x, zmask=zmask)
             diff_chi = _chi2 - chi2
 
-            print(
+            self._seed_sampler(sampler)
+            self.print(
                 "Step, rep, time",
                 ii,
                 rep,
                 np.round(time.time() - start1, 2),
                 np.round(time.time() - start, 2),
-                flush=True,
             )
-            print(
+            self._seed_sampler(sampler)
+            self.print(
                 "Minimization improved (ini, last, now, diff):",
                 np.round(chi2_ini, 4),
                 np.round(chi2, 4),
                 np.round(_chi2, 4),
                 np.round(diff_chi, 4),
-                flush=True,
             )
 
             if res.success:
@@ -435,16 +440,17 @@ class Fitter(object):
 
         mle_cube = res.x
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
-        print("Passed out:", chi2)
+        self.print("Passed out:", chi2)
         _ = (mle_cube > 0.95) | (mle_cube < 0.05)
         if np.sum(_) > 0:
-            print(
+            self._seed_sampler(sampler)
+            self.print(
                 "Almost out of bounds:",
             )
             _ = np.argwhere((mle_cube > 0.95) | (mle_cube < 0.05))[:, 0]
             for ii in range(len(_)):
                 ind = _[ii]
-                print(
+                self.print(
                     self.like.free_params[ind].name,
                     mle_cube[ind],
                     self.like.free_params[ind].value_from_cube(mle_cube[ind]),
@@ -506,7 +512,7 @@ class Fitter(object):
         chi2 = self.like.get_chi2(mle_cube, zmask=zmask)
         chi2_ini = chi2 * 1
 
-        print("Starting DA minimization", flush=True)
+        self.print("Starting DA minimization")
 
         start = time.time()
         res = dual_annealing(
@@ -520,7 +526,7 @@ class Fitter(object):
                 "options": {"fatol": 0.1, "xatol": 0},
             },
         )
-        print(res, flush=True)
+        self.print(res)
 
         _chi2 = self.like.get_chi2(res.x, zmask=zmask)
 
@@ -528,13 +534,12 @@ class Fitter(object):
             chi2 = _chi2.copy()
             mle_cube = res.x.copy()
 
-        print("Step took:", np.round(time.time() - start, 2), flush=True)
-        print(
+        self.print("Step took:", np.round(time.time() - start, 2))
+        self.print(
             "Minimization improved:",
             np.round(chi2_ini, 4),
             np.round(chi2, 4),
             np.round(chi2_ini - chi2, 4),
-            flush=True,
         )
 
         self.set_mle(mle_cube, chi2)
@@ -544,7 +549,7 @@ class Fitter(object):
 
         if hasattr(self, "mle_chi2"):
             if mle_chi2 < self.mle_chi2:
-                print("updating mle from ", self.mle_chi2, "to", mle_chi2)
+                self.print("updating mle from ", self.mle_chi2, "to", mle_chi2)
                 self.mle_chi2 = mle_chi2
             else:
                 return
@@ -557,8 +562,8 @@ class Fitter(object):
             scale_i = par_i.max_value - par_i.min_value
             mle_no_cube[ii] = par_i.value_from_cube(mle_cube[ii])
 
-        print("Fit params cube:", self.mle_cube, flush=True)
-        print("Fit params no cube:", mle_no_cube, flush=True)
+        self.print("Fit params cube:", self.mle_cube)
+        self.print("Fit params no cube:", mle_no_cube)
 
         like_pars = self.like.parameters_from_sampling_point(self.mle_cube)
         star_pars = self.like.theory.get_blob_for_parameters(like_pars)
@@ -583,16 +588,16 @@ class Fitter(object):
 
         for key in self.like.blind:
             if self.like.blind[key] != 0:
-                print("Results are blinded")
+                self.print("Results are blinded")
             else:
-                print("Results are not blinded")
+                self.print("Results are not blinded")
 
         for par in self.mle_cosmo:
             if par == "Delta2_star":
                 if self.like.truth is not None:
-                    print("MLE, Truth, MLE/Truth - 1")
+                    self.print("MLE, Truth, MLE/Truth - 1")
                 else:
-                    print("MLE")
+                    self.print("MLE")
 
             val = np.round(self.mle_cosmo[par], 5)
             if self.like.truth is not None:
@@ -602,9 +607,15 @@ class Fitter(object):
                         self.mle_cosmo[par] / self.like.truth["like_params"][par] - 1,
                         5,
                     )
-                    print(par, val, true, rat)
+                    self.print(par, val, true, rat)
             else:
-                print(par, val)
+                self.print(par, val)
+
+    def _seed_sampler(self, sampler):
+        """Seed emcee proposal moves from this fitter’s local generator."""
+
+        seed = int(self.rng.integers(0, np.iinfo(np.uint32).max))
+        sampler.random_state = np.random.RandomState(seed).get_state()
 
     def get_initial_walkers(self, pini=None, rms=0.01):
         """Setup initial states of walkers in sensible points
@@ -616,7 +627,7 @@ class Fitter(object):
 
         self.print("set %d walkers with %d dimensions" % (nwalkers, ndim))
 
-        p0 = np.random.rand(ndim * nwalkers).reshape((nwalkers, ndim))
+        p0 = self.rng.random(ndim * nwalkers).reshape((nwalkers, ndim))
         for ii in range(ndim):
             if pini is None:
                 p0[:, ii] = 0.5 + p0[:, ii] * rms
@@ -936,5 +947,5 @@ class Fitter(object):
                 dict_out["fitter"]["chain_names"].append(param_dict_rev[key])
 
         out_file = self.save_directory + "/fitter_results.npy"
-        print("Saving data to " + out_file)
+        self.print("Saving data to " + out_file)
         np.save(out_file, dict_out)
