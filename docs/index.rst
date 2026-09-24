@@ -11,6 +11,7 @@ LaCE emulator and supports observational, mock, and forecast analyses.
 
    installation
    configuration
+   architecture
    package_layout
    plotting
    tutorials
