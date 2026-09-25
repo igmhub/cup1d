@@ -3,16 +3,26 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from cup1d import Analysis, Args
+from lace.configuration import get_data_path
 
 
 # Reference after adopting the LaCE cosmology interface in ``Theory``.
 EXPECTED_CHI_SQUARED = np.float64(655.2820094791965)
 
 
+@pytest.mark.external_model
 def test_dr1_baseline_chi_squared(tmp_path):
     """The initial DR1 likelihood must reproduce the reference chi-squared."""
+
+    model_directory = get_data_path() / "GPmodels" / "CH24_mpgcen_gpr"
+    if not model_directory.is_dir():
+        pytest.skip(
+            "DR1 baseline regression requires the external LaCE model bundle at "
+            f"{model_directory}"
+        )
 
     arguments = Args.from_baseline(verbose=False)
     analysis = Analysis(arguments, out_folder=str(tmp_path))

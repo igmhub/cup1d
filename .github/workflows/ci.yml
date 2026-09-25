@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -23,6 +24,6 @@ jobs:
       - name: Install package
         run: python -m pip install -e ".[test,docs]"
       - name: Test
-        run: pytest -q
+        run: pytest -q -m "not external_model"
       - name: Build documentation
         run: python -m sphinx -W --keep-going -b html docs docs/_build/html
