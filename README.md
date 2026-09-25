@@ -94,6 +94,9 @@ baseline DESI DR1 analysis from its YAML configuration. The same directory
 also contains compact tutorials for forecasts, mocks, and the Cobaya
 likelihood interface.
 
+The [end-to-end workflow](https://igmhubcup1d.readthedocs.io/en/latest/workflow.html)
+documents the complete YAML-to-likelihood-to-inference-to-results path.
+
 The remaining notebooks are organized by purpose:
 
 - `notebooks/data/observations` and `notebooks/data/mocks`: inspect input P1D

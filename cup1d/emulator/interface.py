@@ -15,17 +15,17 @@ class P1D_emulator:
 
         self.emulator = P3DEmulator(key=name_emu)
 
-        self.kp_Mpc = 0.7
+        self.kp_iMpc = 0.7
         self.list_sim_cube = []
         for ii in range(30):
             self.list_sim_cube.append(f"mpg_{ii}")
         self.zmax = 4.1  # data at z>4 is noisy
-        self.kmax_Mpc = 4.0
+        self.kmax_iMpc = 4.0
         self.emu_params = self.emulator.input_labels
         self.emulator_label = name_emu
 
         self.arr_z = None
-        self.arr_k_Mpc = None
+        self.arr_k_iMpc = None
         self.cosmo_params_dict = None
         self.model_Arinyo = None
         self.linear = None
@@ -69,6 +69,14 @@ class P1D_emulator:
         )
 
         return list_P1D_Mpc
+
+    def emulate_P1D_Mpc(self, zs, kin_iMpc, in_params):
+        """Return P1D_Mpc for wavenumbers ``kin_iMpc`` in Mpc^-1."""
+        return self.emulate_p1d_Mpc(zs, kin_iMpc, in_params)
+
+    kp_Mpc = property(lambda self: self.kp_iMpc, lambda self, value: setattr(self, "kp_iMpc", value))
+    kmax_Mpc = property(lambda self: self.kmax_iMpc, lambda self, value: setattr(self, "kmax_iMpc", value))
+    arr_k_Mpc = property(lambda self: self.arr_k_iMpc, lambda self, value: setattr(self, "arr_k_iMpc", value))
 
 
 def same_cosmo(cosmo_params_dict, new_cosmo_params):

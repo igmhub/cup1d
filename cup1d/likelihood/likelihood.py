@@ -559,6 +559,25 @@ class Likelihood(object):
                 self.fid["fit"][pname2[name]] = blob[pname2[name]]
                 self.fid["linP"][pname2[name]] = blob[pname2[name]]
 
+    def get_P1D_kms(
+        self,
+        parameters=None,
+        return_covar=False,
+        return_blob=False,
+        return_emu_params=False,
+        apply_hull=True,
+        remove=None,
+    ):
+        """Compute P1D in km/s using the canonical public name."""
+        return self.get_p1d_kms(
+            parameters=parameters,
+            return_covar=return_covar,
+            return_blob=return_blob,
+            return_emu_params=return_emu_params,
+            apply_hull=apply_hull,
+            remove=remove,
+        )
+
     def get_p1d_kms(
         self,
         parameters=None,
@@ -575,7 +594,7 @@ class Likelihood(object):
         all_p1ds = {}
         other_stuff = {}
         for key in self.Rebin_data.zs:
-            _results = self.theory.get_p1d_kms(
+            _results = self.theory.get_P1D_kms(
                 self.Rebin_data.zs[key],
                 self.Rebin_data.k_kms[key],
                 like_params=like_params,
