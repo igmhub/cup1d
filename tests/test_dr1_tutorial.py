@@ -1,5 +1,7 @@
 """Regression test for the baseline DR1 tutorial analysis."""
 
+from pathlib import Path
+
 import numpy as np
 
 from cup1d import Analysis, Args
@@ -40,6 +42,43 @@ def test_dr1_baseline_chi_squared(tmp_path):
 
     assert isinstance(chi_squared, np.float64)
     np.testing.assert_allclose(chi_squared, EXPECTED_CHI_SQUARED, rtol=1.0e-6)
+
+    # Result files contain only the YAML reference, fit state, and sampler paths.
+    analysis.fitter.set_mle(initial_point, chi_squared, force=True)
+    minimizer_path = analysis.fitter.save_minimizer_results()
+    minimizer_payload = np.load(minimizer_path, allow_pickle=True).item()
+    assert minimizer_path.name == "minimizer_results.npy"
+    assert set(minimizer_payload) == {
+        "format_version", "result_type", "config_path", "config_loader",
+        "synthetic", "parameter_names", "fit",
+    }
+    assert {
+        "mle_cube", "mle_chi2", "mle_cosmo_errors",
+        "mle_cosmo_covariance", "mle_cosmo_correlation",
+    } <= set(minimizer_payload["fit"])
+    assert minimizer_payload["fit"]["mle_error_method"] == "gauss_newton"
+
+    analysis.fitter.chain = np.zeros((2, 2, analysis.fitter.ndim))
+    analysis.fitter.lnprob = np.zeros((2, 2))
+    analysis.fitter.blobs = np.zeros((2, 2), dtype=analysis.fitter.blobs_dtype)
+    sampler_path = analysis.fitter.save_sampler_results()
+    sampler_payload = np.load(sampler_path, allow_pickle=True).item()
+    assert sampler_path.name == "sampler_results.npy"
+    for key in ("chain_path", "blobs_path", "lnprob_path"):
+        assert key in sampler_payload
+        assert Path(sampler_payload[key]).exists()
+
+    directories_before_load = {
+        path.name for path in tmp_path.iterdir() if path.is_dir()
+    }
+    restored = Analysis.from_results(minimizer_path)
+    directories_after_load = {
+        path.name for path in tmp_path.iterdir() if path.is_dir()
+    }
+    assert directories_after_load == directories_before_load
+    np.testing.assert_allclose(restored.fitter.mle_cube, initial_point)
+    np.testing.assert_allclose(restored.fitter.mle_chi2, chi_squared)
+    assert restored.fitter.mle == analysis.fitter.mle
 
     # Plotting must use the same model arrays and leave the fit unchanged.
     import matplotlib.pyplot as plt

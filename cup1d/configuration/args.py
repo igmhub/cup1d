@@ -95,6 +95,7 @@ class Args:
             update_cm2026_derived,
         )
 
+        self.synthetic = synthetic
         factory = make_cm2026_synth_defaults if synthetic else make_cm2026_defaults
         defaults = factory()
         # Keep stable broad limits out of the baseline YAML while allowing a
@@ -204,9 +205,12 @@ class Args:
 
         overrides = read_config(filename)
         overrides = _merge_overrides(overrides, options)
-        return cls._from_overrides(
+        args = cls._from_overrides(
             overrides, verbose=verbose, synthetic=synthetic
         )
+        args.config_path = str(Path(filename).expanduser().resolve())
+        args.config_loader = "yaml"
+        return args
 
     @classmethod
     def from_baseline(cls, verbose=False, synthetic=False, **options):
@@ -256,14 +260,22 @@ class Args:
         from cup1d.configuration.loader import read_config
 
         config_dir = _cm2026_config_dir()
+        variation_path = Path(name).expanduser()
+        if variation_path.suffix not in {".yaml", ".yml"}:
+            variation_path = config_dir / "variations" / f"{name}.yaml"
+        else:
+            variation_path = variation_path.resolve()
         overrides = _merge_overrides(
             read_config(config_dir / "cm2026_base.yaml"),
-            read_config(config_dir / "variations" / f"{name}.yaml"),
+            read_config(variation_path),
         )
         overrides = _merge_overrides(overrides, options)
-        return cls._from_overrides(
+        args = cls._from_overrides(
             overrides, verbose=verbose, synthetic=synthetic
         )
+        args.config_path = str(variation_path.resolve())
+        args.config_loader = "variation"
+        return args
 
 
 def _merge_overrides(base, updates):
