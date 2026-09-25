@@ -1,6 +1,8 @@
 import os
 import numpy as np
 
+from cup1d.conventions import validate_p1d_contract
+
 from cup1d.utils.utils import get_path_repo
 
 
@@ -146,20 +148,24 @@ class BaseDataP1D(object):
 
         (
             self.z,
-            self.k_kms,
-            self.Pk_kms,
-            self.cov_Pk_kms,
+            self.k_ikms,
+            self.P1D_kms,
+            self.cov_P1D_kms,
             self.full_zs,
-            self.full_Pk_kms,
-            self.full_cov_Pk_kms,
-            self.full_cov_stat_Pk_kms,
-            self.Pksmooth_kms,
-            self.covstat_Pk_kms,
-            self.k_kms_min,
-            self.k_kms_max,
+            self.full_P1D_kms,
+            self.full_cov_P1D_kms,
+            self.full_cov_stat_P1D_kms,
+            self.P1Dsmooth_kms,
+            self.covstat_P1D_kms,
+            self.k_ikms_min,
+            self.k_ikms_max,
         ) = res
 
-        self.full_k_kms = np.concatenate(self.k_kms)
+        self.full_k_ikms = np.concatenate(self.k_ikms)
+        for k_ikms, P1D_kms, cov_P1D_kms in zip(
+            self.k_ikms, self.P1D_kms, self.cov_P1D_kms
+        ):
+            validate_p1d_contract(k_ikms, P1D_kms, cov_P1D_kms)
 
         # decide if applying blinding
         self.apply_blinding = False
@@ -167,10 +173,27 @@ class BaseDataP1D(object):
             if self.blinding is not None:
                 self.apply_blinding = True
 
-    def get_Pk_iz(self, iz):
-        """Return P1D in units of km/s for redshift bin iz"""
+    # Compatibility properties for releases and stored analysis code predating
+    # the explicit inverse-unit convention.
+    k_kms = property(lambda self: self.k_ikms, lambda self, value: setattr(self, "k_ikms", value))
+    Pk_kms = property(lambda self: self.P1D_kms, lambda self, value: setattr(self, "P1D_kms", value))
+    cov_Pk_kms = property(lambda self: self.cov_P1D_kms, lambda self, value: setattr(self, "cov_P1D_kms", value))
+    full_Pk_kms = property(lambda self: self.full_P1D_kms, lambda self, value: setattr(self, "full_P1D_kms", value))
+    full_cov_Pk_kms = property(lambda self: self.full_cov_P1D_kms, lambda self, value: setattr(self, "full_cov_P1D_kms", value))
+    full_cov_stat_Pk_kms = property(lambda self: self.full_cov_stat_P1D_kms, lambda self, value: setattr(self, "full_cov_stat_P1D_kms", value))
+    Pksmooth_kms = property(lambda self: self.P1Dsmooth_kms, lambda self, value: setattr(self, "P1Dsmooth_kms", value))
+    covstat_Pk_kms = property(lambda self: self.covstat_P1D_kms, lambda self, value: setattr(self, "covstat_P1D_kms", value))
+    k_kms_min = property(lambda self: self.k_ikms_min, lambda self, value: setattr(self, "k_ikms_min", value))
+    k_kms_max = property(lambda self: self.k_ikms_max, lambda self, value: setattr(self, "k_ikms_max", value))
+    full_k_kms = property(lambda self: self.full_k_ikms, lambda self, value: setattr(self, "full_k_ikms", value))
 
-        return self.Pk_kms[iz]
+    def get_P1D_iz(self, iz):
+        """Return P1D in km/s for redshift-bin index ``iz``."""
+        return self.P1D_kms[iz]
+
+    def get_Pk_iz(self, iz):
+        """Compatibility alias for :meth:`get_P1D_iz`."""
+        return self.get_P1D_iz(iz)
 
     def get_cov_iz(self, iz):
         """Return covariance of P1D in units of (km/s)^2 for redshift bin iz"""

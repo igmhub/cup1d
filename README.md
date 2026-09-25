@@ -32,6 +32,14 @@ make docs
 Open `docs/_build/html/index.html` after the build completes. The repository
 also includes a Read the Docs configuration for publishing the same site.
 
+### Relationship between the three packages
+
+The supported installation order is LaCE, ForestFlow, then cup1d. Install LaCE
+for all cup1d analyses; install ForestFlow as well when using its P3D emulator.
+The sibling projects are installed explicitly from their IGMHub repositories
+rather than declared under potentially ambiguous PyPI package names. The CI
+workflow uses this same installation policy.
+
 
 ### Installation
 
@@ -93,6 +101,9 @@ The main entry point is
 baseline DESI DR1 analysis from its YAML configuration. The same directory
 also contains compact tutorials for forecasts, mocks, and the Cobaya
 likelihood interface.
+
+The [end-to-end workflow](https://igmhubcup1d.readthedocs.io/en/latest/workflow.html)
+documents the complete YAML-to-likelihood-to-inference-to-results path.
 
 The remaining notebooks are organized by purpose:
 

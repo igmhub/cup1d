@@ -243,4 +243,16 @@ fig = plot_cosmo_sampler_and_fit(
 )
 plt.show()
 
+# %% [markdown]
+# ## Reload the saved minimizer result
+#
+# The YAML configuration rebuilds the likelihood, after which the saved fit
+# state is restored. Loading does not create another output directory.
+
 # %%
+minimizer_results = os.path.join(
+    analysis.fitter.save_directory, "minimizer_results.npy"
+)
+restored_analysis = Analysis.from_results(minimizer_results)
+print(restored_analysis.fitter.mle_chi2)
+print(restored_analysis.fitter.mle)

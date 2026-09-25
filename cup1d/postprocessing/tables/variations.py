@@ -7,7 +7,7 @@ from cup1d.utils.utils import get_path_repo
 
 
 def match_precision(x, xp, xm, sig=2):
-    """
+    r"""
     Return LaTeX string "$x^{+xp}_{-xm}$" with x and errors rounded so that
     errors have `sig` significant figures.
     If x is positive, add LaTeX thin space prefix for alignment: '\;\;\,'.
@@ -42,7 +42,7 @@ def format_last(val):
 
 
 def make_latex_table(table, color_threshold=[0.9655, 2.2957], colors=["yellow", "red"]):
-    """
+    r"""
     Print aligned LaTeX rows from `table`.
     Each row: [name, x1, x1p, x1m, x2, x2p, x2m, val3, val4, val5]
     - columns 2 & 3: $value^{+err}_{-err}$; positive values get '\;\;\,' padding
@@ -177,7 +177,7 @@ def table_variations(base):
             "DESIY1_QMLE3/data_syst_diag/CH24_mpgcen_gpr/chain_2/",
         ],
         "no_inflate": [
-            "Cov: w/o 5\% err",
+            r"Cov: w/o 5\% err",
             "DESIY1_QMLE3/no_inflate/CH24_mpgcen_gpr/chain_2/",
         ],
         "no_emu_cov": [
@@ -193,11 +193,11 @@ def table_variations(base):
             "DESIY1_QMLE3/emu_block/CH24_mpgcen_gpr/chain_3/",
         ],
         "emu_infl": [
-            "Cov: emu infl 25\%",
+            r"Cov: emu infl 25\%",
             "DESIY1_QMLE3/infl_emu_cov/CH24_mpgcen_gpr/chain_2/",
         ],
         "bias_eBOSS": [
-            "Syst: 5\% eBOSS",
+            r"Syst: 5\% eBOSS",
             "DESIY1_QMLE3/bias_eBOSS/CH24_mpgcen_gpr/chain_2/",
         ],
         "DESIY1_QMLE3_nyx": [
@@ -205,7 +205,7 @@ def table_variations(base):
             "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_3/",
         ],
         "cosmo": [
-            "Cosmo: $\omega_0\omega_a$CDM",
+            r"Cosmo: $\omega_0\omega_a$CDM",
             "DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr/chain_3/",
         ],
         "cosmo_h74": [
@@ -217,11 +217,11 @@ def table_variations(base):
             "DESIY1_QMLE3/cosmo_mnu_varh/CH24_mpgcen_gpr/chain_2/",
         ],
         "cosmo_high": [
-            "Cosmo: high $\Omega_\mathrm{cdm}h^2$",
+            r"Cosmo: high $\Omega_\mathrm{cdm}h^2$",
             "DESIY1_QMLE3/cosmo_high_3sig/CH24_mpgcen_gpr/chain_1/",
         ],
         "cosmo_low": [
-            "Cosmo: low $\Omega_\mathrm{cdm}h^2$",
+            r"Cosmo: low $\Omega_\mathrm{cdm}h^2$",
             "DESIY1_QMLE3/cosmo_low_3sig/CH24_mpgcen_gpr/chain_1/",
         ],
         "more_igm": [

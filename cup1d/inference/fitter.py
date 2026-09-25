@@ -1,5 +1,6 @@
 import copy
 import os
+from pathlib import Path
 import time
 from scipy.optimize import minimize
 from scipy.linalg import block_diag
@@ -38,6 +39,7 @@ class Fitter(object):
         explore=False,
         fix_cosmology=False,
         random_seed=None,
+        create_output=True,
     ):
         """Setup sampler from likelihood, or use default.
         If read_chain_file is provided, read pre-computed chain.
@@ -80,7 +82,10 @@ class Fitter(object):
             self.nwalkers = nwalkers
 
         if self.rank == 0:
-            self._setup_chain_folder(rootdir, subfolder)
+            if create_output:
+                self._setup_chain_folder(rootdir, subfolder)
+            else:
+                self.save_directory = None
 
             # number of walkers
             # if nwalkers is not None:
@@ -592,13 +597,13 @@ class Fitter(object):
                 self.chain = np.concatenate(chain, axis=1)
                 self.blobs = np.concatenate(blobs, axis=1)
 
-                map_ind = np.argmax(self.lnprob.reshape(-1))
-                map_chi2 = -2.0 * self.lnprob.reshape(-1)[map_ind]
-                map_chain = self.chain.reshape(-1, self.chain.shape[-1])[map_ind]
-                self.set_mle(map_chain, map_chi2)
-
-                # apply masking (only to star parameters)
-                self.blobs = blinding.apply_blinding(self.like.blind, self.blobs)
+        if self.rank == 0:
+            map_ind = np.argmax(self.lnprob.reshape(-1))
+            map_chi2 = -2.0 * self.lnprob.reshape(-1)[map_ind]
+            map_chain = self.chain.reshape(-1, self.chain.shape[-1])[map_ind]
+            self.set_mle(map_chain, map_chi2, force=True)
+            # Blinding affects only derived star-parameter blobs.
+            self.blobs = blinding.apply_blinding(self.like.blind, self.blobs)
 
         return sampler
 
@@ -879,10 +884,10 @@ class Fitter(object):
                 hessian_step=hessian_step, zmask=zmask, method=error_method
             )
 
-    def set_mle(self, mle_cube, mle_chi2):
+    def set_mle(self, mle_cube, mle_chi2, force=False):
         """Set the maximum likelihood solution"""
 
-        if hasattr(self, "mle_chi2"):
+        if hasattr(self, "mle_chi2") and not force:
             if mle_chi2 < self.mle_chi2:
                 self.print("updating mle from ", self.mle_chi2, "to", mle_chi2)
                 self.mle_chi2 = mle_chi2
@@ -890,6 +895,11 @@ class Fitter(object):
                 return
         else:
             self.mle_chi2 = mle_chi2
+
+        # Error estimates belong to the previous MLE and must not survive a move.
+        for name in self._PERSISTED_FIT_ATTRIBUTES:
+            if hasattr(self, name):
+                delattr(self, name)
 
         self.mle_cube = mle_cube
         like_pars = self.parameters_from_sampling_point(self.mle_cube)
@@ -1134,148 +1144,140 @@ class Fitter(object):
 
         return best_values
 
+    _PERSISTED_FIT_ATTRIBUTES = (
+        "mle_error_method",
+        "mle_hessian",
+        "mle_hessian_rank",
+        "mle_covariance_cube",
+        "mle_null_modes",
+        "mle_covariance",
+        "mle_errors",
+        "mle_cosmo_errors",
+        "mle_cosmo_covariance",
+        "mle_cosmo_correlation",
+    )
+
+    def _configuration_reference(self):
+        """Return the YAML information required to reconstruct this fit."""
+
+        config_path = getattr(self.like.args, "config_path", None)
+        if config_path is None:
+            raise ValueError(
+                "Cannot save reconstructable results because Args was not "
+                "created from a YAML file"
+            )
+        return {
+            "config_path": str(Path(config_path).expanduser().resolve()),
+            "config_loader": getattr(self.like.args, "config_loader", "yaml"),
+            "synthetic": bool(getattr(self.like.args, "synthetic", False)),
+        }
+
+    def _fit_result(self):
+        """Return only state produced by fitting, not YAML-derived inputs."""
+
+        if self.mle is None or not hasattr(self, "mle_cube"):
+            raise ValueError("No fitted result is available to save")
+        result = {
+            "mle_cube": np.asarray(self.mle_cube).copy(),
+            "mle_chi2": float(self.mle_chi2),
+        }
+        for name in self._PERSISTED_FIT_ATTRIBUTES:
+            if hasattr(self, name):
+                result[name] = copy.deepcopy(getattr(self, name))
+        return result
+
+    def _result_payload(self, result_type):
+        return {
+            "format_version": 1,
+            "result_type": result_type,
+            **self._configuration_reference(),
+            "parameter_names": list(self.like.free_param_names),
+            "fit": self._fit_result(),
+        }
+
+    def save_minimizer_results(self):
+        """Save a compact, YAML-backed standalone minimizer result."""
+
+        if self.save_directory is None:
+            raise ValueError("This fitter has no output directory")
+        if not hasattr(self, "mle_cosmo_errors"):
+            self.estimate_mle_errors(method="gauss_newton")
+        out_file = Path(self.save_directory) / "minimizer_results.npy"
+        payload = self._result_payload("minimizer")
+        self.print(f"Saving data to {out_file}")
+        np.save(out_file, payload)
+        return out_file
+
+    def save_sampler_results(self):
+        """Save sampler arrays separately and reference them from its result."""
+
+        if self.save_directory is None:
+            raise ValueError("This fitter has no output directory")
+        missing = [
+            name for name in ("chain", "blobs", "lnprob")
+            if not hasattr(self, name)
+        ]
+        if missing:
+            raise ValueError(
+                "Cannot save sampler results without " + ", ".join(missing)
+            )
+
+        directory = Path(self.save_directory).resolve()
+        paths = {
+            "chain_path": directory / "chain.npy",
+            "blobs_path": directory / "blobs.npy",
+            "lnprob_path": directory / "lnprob.npy",
+        }
+        np.save(paths["chain_path"], self.chain)
+        np.save(paths["blobs_path"], self.blobs)
+        np.save(paths["lnprob_path"], self.lnprob)
+
+        payload = self._result_payload("sampler")
+        payload.update({name: str(path) for name, path in paths.items()})
+        out_file = directory / "sampler_results.npy"
+        self.print(f"Saving data to {out_file}")
+        np.save(out_file, payload)
+        return out_file
+
+    def restore_results(self, payload, result_path):
+        """Restore fitter state from a validated result payload."""
+
+        expected_names = list(self.like.free_param_names)
+        if payload.get("parameter_names") != expected_names:
+            raise ValueError(
+                "Saved parameter names do not match those reconstructed "
+                "from the YAML configuration"
+            )
+        fit = payload["fit"]
+        cube = np.asarray(fit["mle_cube"], dtype=float)
+        if cube.shape != (self.ndim,):
+            raise ValueError(
+                f"Saved MLE has shape {cube.shape}; expected {(self.ndim,)}"
+            )
+        self.set_mle(cube, float(fit["mle_chi2"]))
+        for name in self._PERSISTED_FIT_ATTRIBUTES:
+            if name in fit:
+                setattr(self, name, copy.deepcopy(fit[name]))
+
+        result_path = Path(result_path).expanduser().resolve()
+        self.save_directory = str(result_path.parent)
+        self.results_path = str(result_path)
+        self.result_type = payload["result_type"]
+        if self.result_type == "sampler":
+            for attribute, key in (
+                ("chain", "chain_path"),
+                ("blobs", "blobs_path"),
+                ("lnprob", "lnprob_path"),
+            ):
+                array_path = Path(payload[key]).expanduser()
+                if not array_path.is_absolute():
+                    array_path = result_path.parent / array_path
+                setattr(self, attribute, np.load(array_path, allow_pickle=False))
+        return self
+
     def save_fitter(self, save_chains=False):
-        """Write flat chain to file"""
-
-        dict_out = {}
-
-        # ARGS
-        # dict_out["args"] = {}
-        # for key in self.like.args:
-        #     dict_out["args"][key] = self.like.args[key]
-
-        # DATA
-        key = list(self.like.data.keys())[0]
-        data = self.like.data[key]
-        dict_out["data"] = {}
-        dict_out["data"]["data_label"] = data.data_label
-        dict_out["data"]["zs"] = data.z
-        dict_out["data"]["k_kms"] = data.k_kms
-        dict_out["data"]["Pk_kms"] = data.Pk_kms
-        dict_out["data"]["cov_Pk_kms"] = data.cov_Pk_kms
-        if data.full_Pk_kms is not None:
-            dict_out["data"]["full_Pk_kms"] = data.full_Pk_kms
-            dict_out["data"]["full_cov_Pk_kms"] = data.full_cov_Pk_kms
-
-        # EMULATOR
-        dict_out["emulator"] = {}
-        dict_out["emulator"][
-            "emulator_label"
-        ] = self.like.theory.emulator.emulator_label
-        dict_out["emulator"]["kmax_Mpc"] = self.like.theory.emulator.kmax_Mpc
-
-        # LIKELIHOOD
-        dict_out["like"] = {}
-        # dict_out["like"]["cosmo_fid_label"] = self.like.fid
-        # dict_out["like"]["emu_cov_factor"] = self.like.emu_cov_factor
-        dict_out["like"]["free_param_names"] = self.like.free_param_names
-        dict_out["like"]["free_params"] = copy.deepcopy(
-            self.like.free_params
-        )
-
-        # SAMPLER
-        if save_chains:
-            dict_out["sampler"] = {}
-            for key in self.like.args.mcmc:
-                dict_out["sampler"][key] = self.like.args.mcmc[key]
-
-        # TRUTH
-        dict_out["truth"] = self.truth
-
-        # IGM
-        if self.mle_cube is not None:
-            like_params = self.parameters_from_sampling_point(self.mle_cube)
-        else:
-            like_params = self.parameters_from_sampling_point()
-        dict_out["IGM"] = {}
-        zs = dict_out["data"]["zs"]
-        dict_out["IGM"]["z"] = zs
-        dict_out["IGM"]["tau_eff"] = self.like.theory.model_igm.models[
-            "F_model"
-        ].get_tau_eff(zs, like_params=like_params)
-        dict_out["IGM"]["gamma"] = self.like.theory.model_igm.models[
-            "T_model"
-        ].get_gamma(zs, like_params=like_params)
-        dict_out["IGM"]["sigT_kms"] = self.like.theory.model_igm.models[
-            "T_model"
-        ].get_sigT_kms(zs, like_params=like_params)
-        dict_out["IGM"]["kF_kms"] = self.like.theory.model_igm.models[
-            "P_model"
-        ].get_kF_kms(zs, like_params=like_params)
-
-        # NUISANCE
-        dict_out["nuisance"] = {}
-        # dict_out["nuisance"]["z"] = zs
-        # # HCD
-        # hcd_model = self.like.args["hcd_model_type"]
-        # dict_out["nuisance"]["HCD"] = {}
-        # dict_out["nuisance"]["HCD"]["hcd_model_type"] = hcd_model
-        # dict_out["nuisance"]["HCD"][
-        #     "A_damp"
-        # ] = self.like.theory.model_cont.hcd_model.get_A_damp(
-        #     zs, like_params=like_params
-        # )
-        # if hcd_model == "new":
-        #     dict_out["nuisance"]["HCD"][
-        #         "A_scale"
-        #     ] = self.like.theory.model_cont.hcd_model.get_A_scale(
-        #         zs, like_params=like_params
-        #     )
-        # # AGN
-        # dict_out["nuisance"][
-        #     "AGN"
-        # ] = self.like.theory.model_cont.agn_model.get_AGN_damp(
-        #     zs, like_params=like_params
-        # )
-        # # Metals
-        # metal_models = self.like.theory.model_cont.metal_models
-        # for model_name in metal_models:
-        #     X_model = metal_models[model_name]
-        #     f = X_model.get_amplitude(zs, like_params=like_params)
-        #     adamp = X_model.get_damping(zs, like_params=like_params)
-        #     alpha = X_model.get_exp_damping(zs, like_params=like_params)
-        #     dict_out["nuisance"][X_model.metal_label] = {}
-        #     dict_out["nuisance"][X_model.metal_label]["f"] = f
-        #     dict_out["nuisance"][X_model.metal_label]["d"] = adamp
-        #     dict_out["nuisance"][X_model.metal_label]["a"] = alpha
-
-        # FITTER
-        dict_out["fitter"] = {}
-        dict_out["fitter"]["mle_cube"] = self.mle_cube
-        dict_out["fitter"]["mle_cosmo"] = self.mle_cosmo
-        if hasattr(self, "mle_errors"):
-            dict_out["fitter"]["mle_errors"] = self.mle_errors
-            dict_out["fitter"]["mle_covariance"] = self.mle_covariance
-            dict_out["fitter"]["mle_cosmo_errors"] = self.mle_cosmo_errors
-            dict_out["fitter"]["mle_cosmo_covariance"] = self.mle_cosmo_covariance
-            dict_out["fitter"]["mle_cosmo_correlation"] = self.mle_cosmo_correlation
-            dict_out["fitter"]["mle_error_method"] = self.mle_error_method
-        dict_out["fitter"]["mle"] = self.mle
-        dict_out["fitter"]["lnprob_mle"] = self.lnprop_mle
+        """Compatibility wrapper for the split result-file interface."""
 
         if save_chains:
-            out_file = self.save_directory + "/lnprob.npy"
-            np.save(out_file, self.lnprob)
-            out_file = self.save_directory + "/chain.npy"
-            np.save(out_file, self.chain)
-            out_file = self.save_directory + "/blobs.npy"
-            np.save(out_file, self.blobs)
-
-            dict_out["fitter"]["chain_from_cube"] = {}
-            for ip in range(self.chain.shape[-1]):
-                name = self.like.free_param_names[ip]
-                parameter = self.like.free_params[name]
-                dict_out["fitter"]["chain_from_cube"][name] = np.asarray(
-                    [parameter["min_value"], parameter["max_value"]]
-                )
-
-            dict_out["fitter"]["chain_names_latex"] = self.paramstrings
-            dict_out["fitter"]["blobs_names"] = blob_strings_orig
-            dict_out["fitter"]["blobs_names_latex"] = blob_strings
-            dict_out["fitter"]["chain_names"] = []
-            for key in dict_out["fitter"]["chain_names_latex"]:
-                dict_out["fitter"]["chain_names"].append(param_dict_rev[key])
-
-        out_file = self.save_directory + "/fitter_results.npy"
-        self.print("Saving data to " + out_file)
-        np.save(out_file, dict_out)
+            return self.save_sampler_results()
+        return self.save_minimizer_results()

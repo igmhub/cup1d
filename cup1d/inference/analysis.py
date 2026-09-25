@@ -1,5 +1,6 @@
 import os
 import time
+from pathlib import Path
 import numpy as np
 from mpi4py import MPI
 
@@ -55,6 +56,7 @@ class Analysis(object):
         emulator=None,
         out_folder=None,
         system="local",
+        create_output=True,
     ):
         """Set analysis."""
 
@@ -176,9 +178,53 @@ class Analysis(object):
             fix_cosmology=self.args.fix_cosmo,
             random_seed=self.args.mcmc["seed"],
             verbose=self.args.verbose,
+            create_output=create_output,
         )
 
         #######################
+
+    @classmethod
+    def from_results(cls, filename, **analysis_options):
+        """Reconstruct an analysis and restore a saved fit or sampler run.
+
+        The likelihood is rebuilt from the YAML recorded in the result file.
+        Loading does not create a new output directory.
+        """
+
+        result_path = Path(filename).expanduser().resolve()
+        payload = np.load(result_path, allow_pickle=True).item()
+        if not isinstance(payload, dict) or payload.get("format_version") != 1:
+            raise ValueError(f"Unsupported result file: {result_path}")
+        result_type = payload.get("result_type")
+        if result_type not in {"minimizer", "sampler"}:
+            raise ValueError(f"Unknown result type: {result_type!r}")
+
+        config_path = Path(payload["config_path"]).expanduser()
+        if not config_path.exists():
+            raise FileNotFoundError(
+                f"YAML configuration recorded by the result does not exist: "
+                f"{config_path}"
+            )
+        synthetic = bool(payload.get("synthetic", False))
+        if payload.get("config_loader") == "variation":
+            args = Args.from_variation(
+                config_path, verbose=False, synthetic=synthetic
+            )
+        else:
+            args = Args.from_yaml(
+                config_path, verbose=False, synthetic=synthetic
+            )
+        if "args" in analysis_options or "create_output" in analysis_options:
+            raise TypeError(
+                "from_results reconstructs args from YAML and controls "
+                "create_output"
+            )
+        analysis = cls(
+            args=args, create_output=False, **analysis_options
+        )
+        analysis.fitter.restore_results(payload, result_path)
+        analysis.results_path = str(result_path)
+        return analysis
 
     def set_emcee_options(
         self,
@@ -270,7 +316,10 @@ class Analysis(object):
                 raise ValueError("type_minimizer must be 'NM' or 'DA'")
 
             # save fit
-            self.fitter.save_fitter(save_chains=save_chains)
+            if save_chains or hasattr(self.fitter, "chain"):
+                self.fitter.save_sampler_results()
+            else:
+                self.fitter.save_minimizer_results()
 
             if make_plots:
                 from cup1d.postprocessing.plotter import Plotter
@@ -321,7 +370,7 @@ class Analysis(object):
 
             self.fprint("----------")
             self.fprint("Saving data")
-            self.fitter.save_fitter(save_chains=True)
+            self.fitter.save_sampler_results()
 
             # plot fit
             if make_plots:

@@ -46,7 +46,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=9"]
+test = ["pytest>=8"]
 docs = [
     "sphinx>=7",
     "numpydoc>=1.6",
@@ -55,6 +55,9 @@ docs = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "external_model: regression tests requiring an external LaCE model bundle",
+]
 
 [tool.setuptools.packages.find]
 include = ["cup1d","cup1d.*"]
@@ -65,5 +68,6 @@ cup1d = ["configuration/*.yaml"]
 
 [project.urls]
 Homepage="https://github.com/igmhub/cup1d"
+Documentation="https://igmhubcup1d.readthedocs.io/en/latest/"
 Repository="https://github.com/igmhub/cup1d.git"
 Issues="https://github.com/igmhub/cup1d/issues"

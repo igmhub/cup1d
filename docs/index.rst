@@ -10,8 +10,10 @@ LaCE emulator and supports observational, mock, and forecast analyses.
    :caption: User guide
 
    installation
+   conventions
    configuration
    architecture
+   workflow
    package_layout
    plotting
    tutorials

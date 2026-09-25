@@ -319,6 +319,33 @@ class Theory:
 
         return self.get_blob(self.get_cosmology(like_params))
 
+    def get_P1D_kms(
+        self,
+        zs,
+        k_ikms,
+        like_params=None,
+        return_covar=False,
+        return_blob=True,
+        return_emu_params=False,
+        apply_hull=True,
+        hires=False,
+        remove=None,
+        return_contaminants=False,
+    ):
+        """Emulate P1D in km/s with explicitly named inverse-km/s input."""
+        return self.get_p1d_kms(
+            zs,
+            k_ikms,
+            like_params=like_params,
+            return_covar=return_covar,
+            return_blob=return_blob,
+            return_emu_params=return_emu_params,
+            apply_hull=apply_hull,
+            hires=hires,
+            remove=remove,
+            return_contaminants=return_contaminants,
+        )
+
     def get_p1d_kms(
         self,
         zs,
@@ -390,7 +417,7 @@ class Theory:
                 if name in ["As", "ns", "nrun"]:
                     new_cosmo_params[name] = value
             self.emulator.set_linear_theory(zs, new_cosmo_params=new_cosmo_params)
-            _res = self.emulator.emulate_p1d_Mpc(zs, kin_Mpc, emu_call)
+            _res = self.emulator.emulate_P1D_Mpc(zs, kin_Mpc, emu_call)
         else:
             _res = self.emulator.emulate_p1d_Mpc(emu_call, kin_Mpc)
         p1d_Mpc = _res
