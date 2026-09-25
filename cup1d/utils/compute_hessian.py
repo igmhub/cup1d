@@ -1,4 +1,4 @@
-"""
+r"""
 For convenience, we decided to use the inverse of the Hessian in order to get a first estimation of the error without doing the $\chi^2$ scan. We estimate it as follows.
 
 \begin{itemize}
