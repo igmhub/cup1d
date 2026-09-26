@@ -206,6 +206,59 @@ class Contaminant(object):
         else:
             raise ValueError("prop_coeffs must be const or exp for", name)
 
+    def get_value_batch(self, name, z, like_params):
+        """Evaluate one coefficient history for a columnar parameter batch.
+
+        Parameters are arrays of shape ``(n_batch,)`` and the returned array
+        has shape ``(n_batch, n_z)``.  This supports the pivot and linear
+        spline histories used by production cup1d configurations.
+        """
+
+        z = np.atleast_1d(np.asarray(z, dtype=float))
+        first = next(iter(like_params.values()), None)
+        if first is None:
+            raise ValueError("like_params must contain a batched parameter")
+        n_batch = len(np.asarray(first))
+        coeff = np.broadcast_to(
+            np.asarray(self.coeffs[name], dtype=float),
+            (n_batch, len(self.coeffs[name])),
+        ).copy()
+        for index in range(self.n_pars[name]):
+            parameter_name = name + "_" + str(index)
+            if parameter_name not in like_params:
+                continue
+            value = np.asarray(like_params[parameter_name], dtype=float)
+            if value.shape != (n_batch,):
+                raise ValueError(
+                    f"batched parameter {parameter_name} has shape {value.shape}; "
+                    f"expected ({n_batch},)"
+                )
+            target = -(index + 1) if self.prop_coeffs[name + "_ztype"] == "pivot" else index
+            coeff[:, target] = value
+
+        ztype = self.prop_coeffs[name + "_ztype"]
+        if ztype == "pivot":
+            xz = np.log((1 + z) / (1 + self.z_0))
+            ln_out = np.zeros((n_batch, len(z)))
+            for coefficient in coeff.T:
+                ln_out = ln_out * xz[None, :] + coefficient[:, None]
+        elif ztype.endswith("_lin") or ztype.endswith("_spl"):
+            nodes = self.prop_coeffs[name + "_znodes"]
+            if ztype.endswith("_lin"):
+                ln_out = np.asarray(
+                    [np.interp(z, nodes, row) for row in coeff], dtype=float
+                )
+            else:
+                spline = make_interp_spline(nodes, coeff.T, k=1, axis=0)
+                ln_out = np.asarray(spline(z)).T
+        else:
+            raise NotImplementedError(
+                f"batched {ztype} histories are not supported for {name}"
+            )
+        if self.prop_coeffs[name + "_otype"] == "exp":
+            return np.exp(ln_out)
+        return ln_out
+
     def get_parameter(self, name):
         return self.params[name]
 

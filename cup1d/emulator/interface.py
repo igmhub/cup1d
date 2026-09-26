@@ -11,9 +11,9 @@ from forestflow.model_p3d_arinyo import ArinyoModel
 
 
 class P1D_emulator:
-    def __init__(self, name_emu="forest_mpg"):
+    def __init__(self, name_emu="forest_mpg", compile_model=True):
 
-        self.emulator = P3DEmulator(key=name_emu)
+        self.emulator = P3DEmulator(key=name_emu, compile_model=compile_model)
 
         self.kp_iMpc = 0.7
         self.list_sim_cube = []
@@ -29,6 +29,7 @@ class P1D_emulator:
         self.cosmo_params_dict = None
         self.model_Arinyo = None
         self.linear = None
+        self._prediction_cache = None
 
     def set_cosmo(self, cosmo_params_dict):
         self.cosmo_params_dict = cosmo_params_dict
@@ -50,6 +51,50 @@ class P1D_emulator:
             zuse, new_cosmo_params=new_cosmo_params
         )
 
+    def _prediction_key(self, parameters, latent_index=None):
+        """Return a stable key for one set of emulator inputs."""
+
+        values = tuple(float(parameters[name]) for name in self.emu_params)
+        return (latent_index, values) if latent_index is not None else values
+
+    def prime_prediction_cache(self, emulator_calls):
+        """Evaluate many redshift inputs in one ForestFlow network batch."""
+
+        unique_inputs = {}
+        for emulator_call in emulator_calls:
+            n_redshifts = np.asarray(emulator_call[self.emu_params[0]]).size
+            for index in range(n_redshifts):
+                parameters = {
+                    name: np.asarray(emulator_call[name]).reshape(-1)[index]
+                    for name in self.emu_params
+                }
+                key = self._prediction_key(parameters, latent_index=index)
+                unique_inputs.setdefault(key, parameters)
+
+        if not unique_inputs:
+            self._prediction_cache = {}
+            return
+
+        self._prediction_cache = {}
+        items = list(unique_inputs.items())
+        for start in range(0, len(items), 128):
+            chunk = items[start : start + 128]
+            keys = [item[0] for item in chunk]
+            predictions = self.emulator.evaluate(
+                [item[1] for item in chunk],
+                latent_indices=[key[0] for key in keys],
+            )
+            for index, key in enumerate(keys):
+                self._prediction_cache[key] = {
+                    name: np.asarray(predictions[name]).reshape(-1)[index]
+                    for name in self.emulator.output_labels
+                }
+
+    def clear_prediction_cache(self):
+        """Discard predictions retained for one batched likelihood call."""
+
+        self._prediction_cache = None
+
     def emulate_p1d_Mpc(self, zs, kin_Mpc, in_params):
 
         list_dicts = []
@@ -59,7 +104,19 @@ class P1D_emulator:
             for par in self.emu_params:
                 in_par_only[par] = in_params[par][ii]
             list_dicts.append(in_par_only)
-        out_emu = self.emulator.evaluate(list_dicts)
+        if self._prediction_cache is None:
+            out_emu = self.emulator.evaluate(list_dicts)
+        else:
+            cached = [
+                self._prediction_cache[
+                    self._prediction_key(parameters, latent_index=index)
+                ]
+                for index, parameters in enumerate(list_dicts)
+            ]
+            out_emu = {
+                name: np.asarray([prediction[name] for prediction in cached])
+                for name in self.emulator.output_labels
+            }
 
         list_P1D_Mpc = self.model_Arinyo.P1D_Mpc(
             self.linear,
@@ -69,6 +126,22 @@ class P1D_emulator:
         )
 
         return list_P1D_Mpc
+
+    def emulate_p1d_Mpc_batch(self, zs, kin_Mpc, in_params, cosmo_params_batch):
+        """Evaluate ForestFlow for ``(batch, redshift, k)`` inputs.
+
+        The cINN is evaluated once over flattened batch/redshift rows. Linear
+        theory remains one inexpensive rescaling per cosmology because each
+        Arinyo integration owns a distinct linear grid.
+        """
+        zs = np.atleast_1d(zs)
+        n_batch, n_z, n_k = np.asarray(kin_Mpc).shape
+        calls = [{name: np.asarray(in_params[name])[ib, iz] for name in self.emu_params}
+                 for ib in range(n_batch) for iz in range(n_z)]
+        output = self.emulator.evaluate(calls, latent_indices=np.tile(np.arange(n_z), n_batch))
+        arinyo = {name: np.asarray(values).reshape(n_batch, n_z) for name, values in output.items()}
+        linear = self.model_Arinyo.linear_theory_batch(zs, cosmo_params_batch)
+        return self.model_Arinyo.P1D_Mpc(linear, zs, kin_Mpc, arinyo)
 
     def emulate_P1D_Mpc(self, zs, kin_iMpc, in_params):
         """Return P1D_Mpc for wavenumbers ``kin_iMpc`` in Mpc^-1."""

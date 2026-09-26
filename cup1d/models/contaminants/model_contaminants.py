@@ -178,6 +178,9 @@ class Contaminants(object):
     #     return dict_out
 
     def get_contamination(self, z, k_kms, mF, M_of_z, like_params=None, remove=None):
+        """Return scalar or batched contaminants based on parameter shape."""
+        if isinstance(like_params, dict) and like_params and all(np.asarray(value).ndim == 1 for value in like_params.values()):
+            return self.get_contamination_batch(z, k_kms, mF, M_of_z, like_params, remove=remove)
         # include multiplicative metal contamination
         cont_all = {}
 
@@ -311,6 +314,28 @@ class Contaminants(object):
         #         add_cont_total.append(_cont_add_metals[iz])
 
         return cont_all
+
+
+    def get_contamination_batch(self, z, k_kms, mF, M_of_z, like_params, remove=None):
+        """Combine batched contaminants; outputs are lists of ``(batch, k_z)``."""
+        z = np.atleast_1d(z)
+        n_batch = len(next(iter(like_params.values())))
+        mult = [np.ones((n_batch, len(k_kms[iz]))) for iz in range(len(z))]
+        add = [np.zeros((n_batch, len(k_kms[iz]))) for iz in range(len(z))]
+        for name, model in self.metal_models.items():
+            if not hasattr(model, "get_contamination_batch"):
+                raise NotImplementedError(f"batched metal model unavailable: {name}")
+            correction = model.get_contamination_batch(z, k_kms, mF, like_params, remove=remove)
+            for iz in range(len(z)):
+                if name in self.metal_add:
+                    add[iz] += correction[iz]
+                else:
+                    mult[iz] *= correction[iz]
+        if not hasattr(self.hcd_model, "get_contamination_batch"):
+            raise NotImplementedError("batched HCD model unavailable")
+        hcd = self.hcd_model.get_contamination_batch(z, k_kms, like_params)
+        ic = [np.broadcast_to(np.asarray(ref_nyx_ic_correction(k_kms, z)[iz]), (n_batch, len(k_kms[iz]))) if self.ic_correction else np.ones_like(mult[iz]) for iz in range(len(z))]
+        return {"cont_mul_metals": mult, "cont_add_metals": add, "cont_HCD": hcd, "cont_SN": [np.ones_like(item) for item in mult], "cont_AGN": [np.ones_like(item) for item in mult], "IC_corr": ic}
 
 
 def ref_nyx_ic_correction(k_kms, z):

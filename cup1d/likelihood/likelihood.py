@@ -662,7 +662,8 @@ class Likelihood(object):
             return null_out
         else:
             if return_blob:
-                emu_p1d, blob = _res
+                emu_p1d, extra = _res
+                blob = next(iter(extra.values()))[0]
             else:
                 emu_p1d = _res[0]
 
@@ -803,6 +804,159 @@ class Likelihood(object):
             zmask=zmask,
         )
         return lnprob, *blob
+
+    def _parameter_batch_rows(self, parameters_batch):
+        """Validate a columnar parameter batch and expose scalar compatibility rows.
+
+        New callers should provide ``{name: array(n_batch)}``, which avoids
+        creating parameter dictionaries in the sampler/fitter layer.  The
+        scalar rows are retained temporarily because cosmology and several
+        legacy contaminant models have scalar-only APIs.
+        """
+
+        if isinstance(parameters_batch, dict):
+            if not parameters_batch:
+                return []
+            arrays = {}
+            n_batch = None
+            for name, values in parameters_batch.items():
+                values = np.asarray(values, dtype=float)
+                if values.ndim != 1:
+                    raise ValueError(
+                        f"batched parameter {name} must have shape (n_batch,), "
+                        f"got {values.shape}"
+                    )
+                if n_batch is None:
+                    n_batch = len(values)
+                elif len(values) != n_batch:
+                    raise ValueError(
+                        f"batched parameter {name} has length {len(values)}, "
+                        f"expected {n_batch}"
+                    )
+                arrays[name] = values
+            return [
+                {name: values[index] for name, values in arrays.items()}
+                for index in range(n_batch)
+            ]
+        return list(parameters_batch)
+
+    def log_prob_and_blobs_batch(
+        self, parameters_batch, ignore_log_det_cov=True, zmask=None
+    ):
+        """Evaluate posterior values for a batch of physical parameters.
+
+        Emulator calls are coalesced before model evaluation. Predictions are
+        then stacked so covariance contractions are evaluated over the entire
+        batch with NumPy rather than one point at a time.
+        """
+
+        parameter_columns = parameters_batch if isinstance(parameters_batch, dict) else None
+        parameters_batch = self._parameter_batch_rows(parameters_batch)
+        n_points = len(parameters_batch)
+        in_bounds = np.asarray(
+            [self.parameters_in_bounds(parameters) for parameters in parameters_batch]
+        )
+        valid_indices = np.flatnonzero(in_bounds)
+        blobs = [self.theory.get_blob()] * n_points
+        batched_predictions = None
+        # Columnar callers use one complete forward-model evaluation per data
+        # group. Legacy list-of-dictionaries callers retain the compatibility
+        # path below.
+        if parameter_columns is not None and len(valid_indices):
+            valid_columns = {name: np.asarray(values)[in_bounds] for name, values in parameter_columns.items()}
+            batched_predictions = {}
+            for key, redshifts in self.Rebin_data.zs.items():
+                fine_prediction = self.theory.get_p1d_kms(
+                    redshifts, self.Rebin_data.k_kms[key], valid_columns
+                )
+                batched_predictions[key] = self.Rebin_data.rebinning_batch(key, fine_prediction)
+            first_redshifts = next(iter(self.Rebin_data.zs.values()))
+            _, _, valid_blobs = self.theory.get_emulator_calls(
+                first_redshifts, valid_columns, return_M_of_z=True, return_blob=True
+            )
+            for local_index, index in enumerate(valid_indices):
+                blobs[index] = tuple(valid_blobs[local_index])
+        else:
+            predictions = [None] * n_points
+            for index, parameters in enumerate(parameters_batch):
+                if not in_bounds[index]:
+                    continue
+                result = self.get_p1d_kms(parameters, return_blob=True)
+                if result is None:
+                    continue
+                predictions[index] = result[0]
+                extra = result[1]
+                blobs[index] = next(iter(extra.values()))[0]
+            valid_indices = np.flatnonzero([prediction is not None for prediction in predictions])
+
+        log_like = np.full(n_points, self.min_log_like, dtype=float)
+        if len(valid_indices):
+            batch_log_like = np.zeros(len(valid_indices))
+            for key in self.Rebin_data.zs:
+                data = self.data[key]
+                inverse_covariance = self.icov_Pk_kms[key]
+                full_inverse_covariance = self.full_icov_Pk_kms[key]
+                if full_inverse_covariance is not None and zmask is None:
+                    model = (
+                        np.concatenate(batched_predictions[key], axis=1)
+                        if batched_predictions is not None
+                        else np.stack([np.concatenate(predictions[index][key]) for index in valid_indices])
+                    )
+                    residual = data.full_Pk_kms[None, :] - model
+                    chi2 = np.einsum(
+                        "bi,ij,bj->b",
+                        residual,
+                        full_inverse_covariance,
+                        residual,
+                        optimize=True,
+                    )
+                    batch_log_like -= 0.5 * chi2
+                    if not ignore_log_det_cov:
+                        batch_log_like -= 0.5 * np.log(
+                            np.abs(1 / np.linalg.det(full_inverse_covariance))
+                        )
+                    continue
+
+                for redshift_index, redshift in enumerate(data.z):
+                    if zmask is not None and not np.any(
+                        np.abs(zmask - redshift) < 1.0e-3
+                    ):
+                        continue
+                    model = (
+                        batched_predictions[key][redshift_index]
+                        if batched_predictions is not None
+                        else np.stack([predictions[index][key][redshift_index] for index in valid_indices])
+                    )
+                    residual = data.Pk_kms[redshift_index][None, :] - model
+                    chi2 = np.einsum(
+                        "bi,ij,bj->b",
+                        residual,
+                        inverse_covariance[redshift_index],
+                        residual,
+                        optimize=True,
+                    )
+                    batch_log_like -= 0.5 * chi2
+                    if not ignore_log_det_cov:
+                        batch_log_like -= 0.5 * np.log(
+                            np.abs(
+                                1
+                                / np.linalg.det(
+                                    inverse_covariance[redshift_index]
+                                )
+                            )
+                        )
+            log_like[valid_indices] = np.maximum(
+                batch_log_like, self.min_log_like
+            )
+
+        log_prior = np.asarray(
+            [self.get_log_prior(parameters) for parameters in parameters_batch]
+        )
+        posterior = log_like + log_prior
+        posterior[~in_bounds] = self.min_log_like
+        return [
+            (posterior[index], *blobs[index]) for index in range(n_points)
+        ]
 
     def old_plot_p1d(
         self,

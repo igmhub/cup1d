@@ -79,6 +79,42 @@ class Rebinning(object):
             Pk_kms_origk.append(_Pk_kms)
         return Pk_kms_origk
 
+    def rebinning_batch(self, key, Pk_kms_newk):
+        """Rebin a batch of P1D predictions without looping over walkers.
+
+        ``Pk_kms_newk`` is a list over redshift bins. Item ``iz`` has shape
+        ``(n_batch, n_k_fine[iz])`` and the returned item has shape
+        ``(n_batch, n_k_data[iz])``. Keeping a list over redshift preserves
+        the ragged k grids used by the observational data.
+        """
+
+        if len(Pk_kms_newk) != len(self.zs[key]):
+            raise ValueError(
+                f"expected {len(self.zs[key])} redshift predictions for {key}; "
+                f"got {len(Pk_kms_newk)}"
+            )
+        rebinned = []
+        n_batch = None
+        for iz, prediction in enumerate(Pk_kms_newk):
+            prediction = np.asarray(prediction, dtype=float)
+            if prediction.ndim != 2:
+                raise ValueError(
+                    "batched prediction must have shape (n_batch, n_k); "
+                    f"redshift {iz} has shape {prediction.shape}"
+                )
+            if prediction.shape[1] != self.cover[key][iz].shape[1]:
+                raise ValueError(
+                    f"redshift {iz} has {prediction.shape[1]} k bins, expected "
+                    f"{self.cover[key][iz].shape[1]}"
+                )
+            if n_batch is None:
+                n_batch = prediction.shape[0]
+            elif prediction.shape[0] != n_batch:
+                raise ValueError("all redshift predictions must share n_batch")
+            weights = self.cover[key][iz] / self.sum_cover[key][iz][:, None]
+            rebinned.append(prediction @ weights.T)
+        return rebinned
+
 
 # def rebinning(key, zs, Pk_kms_finek):
 #     """For rebinning Pk predictions"""

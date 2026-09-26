@@ -46,6 +46,123 @@ def test_dr1_baseline_chi_squared(tmp_path):
         analysis.fitter.sampling_point_from_parameters(physical), initial_point
     )
 
+    assert analysis.fitter.blobs_dtype is float
+    assert analysis.fitter.blob_names == [
+        "Delta2_star", "n_star", "alpha_star", "f_star", "g_star", "H0"
+    ]
+
+    batch_points = np.vstack(
+        [initial_point, initial_point + 1.0e-4, initial_point - 1.0e-4]
+    )
+    batch_results = analysis.fitter.log_prob_and_blobs_batch(batch_points)
+    scalar_results = [
+        analysis.fitter.log_prob_and_blobs(point) for point in batch_points
+    ]
+    for batched, scalar in zip(batch_results, scalar_results):
+        np.testing.assert_allclose(batched[0], scalar[0], rtol=1.0e-12)
+        assert batched[1:] == scalar[1:]
+
+    invalid_point = initial_point.copy()
+    invalid_point[0] = -0.1
+    mixed_results = analysis.fitter.log_prob_and_blobs_batch(
+        np.vstack([batch_points[0], invalid_point, batch_points[1]])
+    )
+    np.testing.assert_allclose(mixed_results[0][0], scalar_results[0][0])
+    assert mixed_results[1][0] == analysis.like.min_log_like
+    np.testing.assert_allclose(mixed_results[2][0], scalar_results[1][0])
+
+    # Batch theory inputs retain explicit batch and redshift axes and agree
+    # with the established scalar construction point by point.
+    parameter_columns = analysis.fitter.parameters_from_sampling_points(batch_points)
+    zs = next(iter(analysis.like.Rebin_data.zs.values()))
+    emu_batch, M_batch, blobs_batch = analysis.like.theory.get_emulator_calls(
+        zs, parameter_columns, return_M_of_z=True, return_blob=True
+    )
+    assert M_batch.shape == (len(batch_points), len(zs))
+    assert blobs_batch.shape == (len(batch_points), 6)
+    for index, point in enumerate(batch_points):
+        scalar_parameters = analysis.fitter.parameters_from_sampling_point(point)
+        emu_scalar, M_scalar, blob_scalar = analysis.like.theory.get_emulator_calls(
+            zs, scalar_parameters, return_M_of_z=True, return_blob=True
+        )
+        np.testing.assert_allclose(M_batch[index], M_scalar)
+        np.testing.assert_allclose(blobs_batch[index], blob_scalar)
+        for name in emu_scalar:
+            if name == "mF_fid":
+                continue
+            np.testing.assert_allclose(emu_batch[name][index], emu_scalar[name])
+
+    k_kms = next(iter(analysis.like.Rebin_data.k_kms.values()))
+    hcd_batch = analysis.like.theory.model_cont.hcd_model.get_contamination_batch(
+        zs, k_kms, parameter_columns
+    )
+    resolution_batch = analysis.like.theory.model_syst.resolution_model.get_contamination_batch(
+        zs, k_kms, parameter_columns
+    )
+    for index, point in enumerate(batch_points):
+        scalar_parameters = analysis.fitter.parameters_from_sampling_point(point)
+        hcd_scalar = analysis.like.theory.model_cont.hcd_model.get_contamination(
+            zs, k_kms, scalar_parameters
+        )
+        resolution_scalar = analysis.like.theory.model_syst.resolution_model.get_contamination(
+            zs, k_kms, scalar_parameters
+        )
+        for iz in range(len(zs)):
+            np.testing.assert_allclose(hcd_batch[iz][index], hcd_scalar[iz])
+            np.testing.assert_allclose(resolution_batch[iz][index], resolution_scalar[iz])
+
+    si_add = analysis.like.theory.model_cont.metal_models["Si_add"]
+    si_add_batch = si_add.get_contamination_batch(
+        zs, k_kms, emu_batch["mF"], parameter_columns
+    )
+    for index, point in enumerate(batch_points):
+        scalar_parameters = analysis.fitter.parameters_from_sampling_point(point)
+        scalar_emu = analysis.like.theory.get_emulator_calls(
+            zs, scalar_parameters, return_M_of_z=False
+        )
+        si_add_scalar = si_add.get_contamination(
+            zs, k_kms, scalar_emu["mF"], scalar_parameters
+        )
+        for iz in range(len(zs)):
+            np.testing.assert_allclose(si_add_batch[iz][index], si_add_scalar[iz])
+
+    si_mult = analysis.like.theory.model_cont.metal_models["Si_mult"]
+    si_mult_batch = si_mult.get_contamination_batch(
+        zs, k_kms, emu_batch["mF"], parameter_columns
+    )
+    for index, point in enumerate(batch_points):
+        scalar_parameters = analysis.fitter.parameters_from_sampling_point(point)
+        scalar_emu = analysis.like.theory.get_emulator_calls(
+            zs, scalar_parameters, return_M_of_z=False
+        )
+        si_mult_scalar = si_mult.get_contamination(
+            zs, k_kms, scalar_emu["mF"], scalar_parameters
+        )
+        for iz in range(len(zs)):
+            np.testing.assert_allclose(si_mult_batch[iz][index], si_mult_scalar[iz])
+
+    theory_batch = analysis.like.theory.get_p1d_kms(zs, k_kms, parameter_columns)
+    for index, point in enumerate(batch_points):
+        scalar_parameters = analysis.fitter.parameters_from_sampling_point(point)
+        theory_scalar = analysis.like.theory.get_p1d_kms(
+            zs, k_kms, scalar_parameters, return_blob=False
+        )
+        for iz in range(len(zs)):
+            np.testing.assert_allclose(theory_batch[iz][index], theory_scalar[iz])
+
+    import emcee
+
+    sampler = emcee.EnsembleSampler(
+        len(batch_points),
+        analysis.fitter.ndim,
+        analysis.fitter.log_prob_and_blobs_batch,
+        vectorize=True,
+        blobs_dtype=analysis.fitter.blobs_dtype,
+    )
+    _, dense_blobs = sampler.compute_log_prob(batch_points)
+    assert dense_blobs.shape == (len(batch_points), 6)
+    assert dense_blobs.dtype == float
+
     assert not hasattr(analysis.like, "sampling_point_from_parameters")
     chi_squared = analysis.fitter.get_chi2(initial_point)
     np.testing.assert_allclose(analysis.like.get_chi2(physical), chi_squared)
@@ -70,7 +187,10 @@ def test_dr1_baseline_chi_squared(tmp_path):
 
     analysis.fitter.chain = np.zeros((2, 2, analysis.fitter.ndim))
     analysis.fitter.lnprob = np.zeros((2, 2))
-    analysis.fitter.blobs = np.zeros((2, 2), dtype=analysis.fitter.blobs_dtype)
+    analysis.fitter.blobs = np.zeros(
+        (2, 2, len(analysis.fitter.blob_names)),
+        dtype=analysis.fitter.blobs_dtype,
+    )
     sampler_path = analysis.fitter.save_sampler_results()
     sampler_payload = np.load(sampler_path, allow_pickle=True).item()
     assert sampler_path.name == "sampler_results.npy"

@@ -3,6 +3,7 @@ import numpy as np
 from lace.configuration import get_nyx_path
 from cup1d.utils.utils import is_number_string
 from cup1d.utils.utils import get_path_repo
+from cup1d.utils.various_dicts import get_blob_value
 
 
 def get_training_hc(
@@ -172,7 +173,11 @@ def load_chains_for_cosmopower(fname):
     _chain = data["fitter"]["chain"].reshape(
         -1, data["fitter"]["chain"].shape[-1]
     )
-    _blobs = data["fitter"]["blobs"].reshape(-1)
+    _blobs = np.asarray(data["fitter"]["blobs"])
+    if _blobs.dtype.names is None:
+        _blobs = _blobs.reshape(-1, _blobs.shape[-1])
+    else:
+        _blobs = _blobs.reshape(-1)
     if "nrun" in sampling_params:
         nstar = 3
     else:
@@ -186,7 +191,7 @@ def load_chains_for_cosmopower(fname):
         all_params_names.append(sampling_params[ii])
 
     for ii in range(nstar):
-        all_params[:, -nstar + ii] = _blobs[star_params[ii]]
+        all_params[:, -nstar + ii] = get_blob_value(_blobs, star_params[ii])
         all_params_names.append(star_params[ii])
 
     df = pd.DataFrame(all_params, columns=all_params_names)

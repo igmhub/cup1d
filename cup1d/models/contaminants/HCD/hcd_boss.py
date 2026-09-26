@@ -89,3 +89,14 @@ class HCD_BOSS(Contaminant):
             dla_corr = dla_corr[0]
 
         return dla_corr
+
+    def get_contamination_batch(self, z, k_kms, like_params):
+        """HCD correction with output items shaped ``(batch, k_z)``."""
+        z = np.atleast_1d(np.asarray(z, dtype=float))
+        values = self.get_value_batch("HCD_damp1", z, like_params)
+        null = np.exp(self.null_vals["HCD_damp1"])
+        values = np.where(values <= null, 0.0, values)
+        return [
+            fun_cont(values[:, iz, None], np.asarray(k_kms[iz])[None, :])
+            for iz in range(len(z))
+        ]

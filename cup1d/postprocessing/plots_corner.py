@@ -18,7 +18,7 @@ from scipy.stats import chi2 as chi2_scipy
 rcParams["mathtext.fontset"] = "stix"
 rcParams["font.family"] = "STIXGeneral"
 
-from cup1d.utils.various_dicts import param_dict
+from cup1d.utils.various_dicts import get_blob_value, param_dict
 
 
 def prepare_data(folder_in, truth={"Delta2_star": 0, "n_star": 0}, nburn_extra=0):
@@ -42,8 +42,8 @@ def prepare_data(folder_in, truth={"Delta2_star": 0, "n_star": 0}, nburn_extra=0
     nelem = (chain.shape[0] - nburn_extra) * chain.shape[1]
     ndim = chain.shape[-1]
     dat = np.zeros((nelem, ndim))
-    dat[:, 0] = blobs["Delta2_star"][nburn_extra:, :].reshape(-1) - truth["Delta2_star"]
-    dat[:, 1] = blobs["n_star"][nburn_extra:, :].reshape(-1) - truth["n_star"]
+    dat[:, 0] = get_blob_value(blobs, "Delta2_star")[nburn_extra:, :].reshape(-1) - truth["Delta2_star"]
+    dat[:, 1] = get_blob_value(blobs, "n_star")[nburn_extra:, :].reshape(-1) - truth["n_star"]
     if ndim > 2:
         dat[:, 2:] = chain[nburn_extra:, :, 2:].reshape(-1, ndim - 2)
     dat_Asns = chain[nburn_extra:, :, :2].reshape(-1, 2)

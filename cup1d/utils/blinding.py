@@ -1,5 +1,5 @@
 import numpy as np
-from cup1d.utils.various_dicts import conv_strings
+from cup1d.utils.various_dicts import blob_strings_orig, conv_strings
 
 
 def set_blinding(apply_blinding, seed):
@@ -19,6 +19,11 @@ def set_blinding(apply_blinding, seed):
 def apply_blinding(blind, dict_cosmo):
     """Apply blinding to the dict_cosmo"""
 
+    if isinstance(dict_cosmo, np.ndarray) and dict_cosmo.dtype.names is None:
+        for key, offset in blind.items():
+            dict_cosmo[..., blob_strings_orig.index(key)] += offset
+        return dict_cosmo
+
     for key in blind:
 
         try:
@@ -37,6 +42,11 @@ def apply_blinding(blind, dict_cosmo):
 
 def apply_unblinding(blind, dict_cosmo):
     """Apply blinding to the dict_cosmo"""
+
+    if isinstance(dict_cosmo, np.ndarray) and dict_cosmo.dtype.names is None:
+        for key, offset in blind.items():
+            dict_cosmo[..., blob_strings_orig.index(key)] -= offset
+        return dict_cosmo
 
     for key in blind:
 

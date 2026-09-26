@@ -145,7 +145,10 @@ class Fitter(object):
         self.set_truth()
 
         # Figure out what extra information will be provided as blobs
-        self.blobs_dtype = self.like.theory.get_blobs_dtype()
+        self.blob_names = [
+            name for name, _ in self.like.theory.get_blobs_dtype()
+        ]
+        self.blobs_dtype = float
         self.mle = None
 
     def sampling_point_from_parameters(self, parameters=None):
@@ -157,6 +160,15 @@ class Fitter(object):
         """Convert optimizer coordinates to physical values."""
 
         return parameter_space.values_from_cube(self.like.free_params, values)
+
+    def parameters_from_sampling_points(self, values):
+        """Convert cube points to columnar physical parameter arrays.
+
+        Each returned mapping value has shape ``(n_batch,)``. This is the
+        batch counterpart of :meth:`parameters_from_sampling_point`.
+        """
+
+        return parameter_space.values_from_cube_batch(self.like.free_params, values)
 
     def value_in_cube(self, name, value=None):
         return parameter_space.value_in_cube(self.like.free_params, name, value)
@@ -464,6 +476,18 @@ class Fitter(object):
         parameters = self.parameters_from_sampling_point(values)
         return self.like.log_prob_and_blobs(parameters, **kwargs)
 
+    def log_prob_and_blobs_batch(self, values, **kwargs):
+        """Evaluate an array of sampler coordinates in one likelihood batch."""
+
+        values = np.asarray(values)
+        if values.ndim != 2 or values.shape[1] != self.ndim:
+            raise ValueError(
+                f"expected sampling points with shape (n, {self.ndim}); "
+                f"got {values.shape}"
+            )
+        parameters = self.parameters_from_sampling_points(values)
+        return self.like.log_prob_and_blobs_batch(parameters, **kwargs)
+
     def minus_log_prob(self, values, zmask=None, ind_fix=None, pfix=None):
         """Negative posterior in optimizer coordinates."""
 
@@ -494,18 +518,28 @@ class Fitter(object):
         zmask=None,
         timeout=None,
         force_timeout=False,
+        vectorize=None,
     ):
         """Set up sampler, run burn in, run chains,
         return chains
             - timeout is the time in hours to run the
               sampler for
+            - vectorize batches the default likelihood across walkers
             - force_timeout will continue to run the chains
               until timeout, regardless of convergence"""
 
         import emcee
 
+        if vectorize is None:
+            emulator_label = self.like.theory.emulator.emulator_label
+            vectorize = "forest" not in emulator_label
+        use_vectorized = vectorize and log_func is None
         if log_func is None:
-            _log_func = self.log_prob_and_blobs
+            _log_func = (
+                self.log_prob_and_blobs_batch
+                if use_vectorized
+                else self.log_prob_and_blobs
+            )
         else:
             _log_func = log_func
 
@@ -523,6 +557,7 @@ class Fitter(object):
                 self.ndim,
                 log_func,
                 blobs_dtype=self.blobs_dtype,
+                vectorize=use_vectorized,
             )
             self._seed_sampler(sampler)
             self.print(
@@ -551,7 +586,11 @@ class Fitter(object):
 
             p0 = self.get_initial_walkers(pini=pini)
             sampler = emcee.EnsembleSampler(
-                self.nwalkers, self.ndim, log_func, blobs_dtype=self.blobs_dtype
+                self.nwalkers,
+                self.ndim,
+                log_func,
+                blobs_dtype=self.blobs_dtype,
+                vectorize=use_vectorized,
             )
 
             self._seed_sampler(sampler)
@@ -791,6 +830,58 @@ class Fitter(object):
                 hessian_step=hessian_step, zmask=zmask, method=error_method
             )
 
+    def run_minimizer_pso(
+        self,
+        p0=None,
+        zmask=None,
+        n_particles=32,
+        iters=100,
+        options=None,
+        vectorize=True,
+        estimate_errors=False,
+        hessian_step=1.0e-4,
+        error_method="finite_difference",
+    ):
+        """Minimize with global-best PSO.
+
+        When ``vectorize`` is true, each swarm iteration evaluates all
+        particles in one batched likelihood call. Set it false to use the
+        scalar likelihood once per particle, primarily for benchmarking.
+        """
+        from pyswarms.single import GlobalBestPSO
+        if n_particles < 2 or iters < 1:
+            raise ValueError("n_particles must be at least 2 and iters positive")
+        if options is None:
+            options = {"c1": 1.5, "c2": 1.5, "w": 0.7}
+        initial = np.full(self.ndim, 0.5) if p0 is None else np.asarray(p0, dtype=float)
+        if initial.shape != (self.ndim,):
+            raise ValueError(f"p0 must have shape ({self.ndim},)")
+        rng = np.random.default_rng(42)
+        init_pos = np.clip(initial + rng.normal(0.0, 0.1, (n_particles, self.ndim)), 0.0, 1.0)
+        init_pos[0] = initial
+        def objective(points):
+            if vectorize:
+                results = self.log_prob_and_blobs_batch(points, zmask=zmask)
+            else:
+                results = [
+                    self.log_prob_and_blobs(point, zmask=zmask)
+                    for point in points
+                ]
+            return -np.asarray([result[0] for result in results], dtype=float)
+        optimizer = GlobalBestPSO(
+            n_particles=n_particles, dimensions=self.ndim, options=options,
+            bounds=(np.zeros(self.ndim), np.ones(self.ndim)), init_pos=init_pos,
+            bh_strategy="periodic",
+        )
+        cost, position = optimizer.optimize(objective, iters=iters, verbose=False)
+        chi2 = self.get_chi2(position, zmask=zmask)
+        self.pso_cost = float(cost)
+        self.pso_position = np.asarray(position)
+        self.set_mle(self.pso_position, chi2)
+        if estimate_errors:
+            self.estimate_mle_errors(hessian_step=hessian_step, zmask=zmask, method=error_method)
+        return optimizer
+
     def run_minimizer_da(
         self,
         log_func_minimize=None,
@@ -1011,7 +1102,11 @@ class Fitter(object):
         if collapse:
             lnprob = self.lnprob[extra_nburn:, mask].reshape(-1)
             chain = self.chain[extra_nburn:, mask, :].reshape(-1, self.chain.shape[-1])
-            blobs = self.blobs[extra_nburn:, mask].reshape(-1)
+            selected_blobs = self.blobs[extra_nburn:, mask]
+            if selected_blobs.dtype.names is None:
+                blobs = selected_blobs.reshape(-1, selected_blobs.shape[-1])
+            else:
+                blobs = selected_blobs.reshape(-1)
         else:
             lnprob = self.lnprob[extra_nburn:, mask]
             chain = self.chain[extra_nburn:, mask, :]
@@ -1063,8 +1158,13 @@ class Fitter(object):
             all_params = np.zeros((*chain.shape[:-1], chain.shape[-1] + 6))
 
             all_params[..., : chain.shape[-1]] = chain
-            for ii in range(6):
-                all_params[..., chain.shape[-1] + ii] = blobs[blob_strings_orig[ii]]
+            if blobs.dtype.names is None:
+                all_params[..., chain.shape[-1] :] = blobs
+            else:
+                for ii in range(6):
+                    all_params[..., chain.shape[-1] + ii] = blobs[
+                        blob_strings_orig[ii]
+                    ]
 
             # Ordered strings for all parameters
             all_strings = self.paramstrings + blob_strings

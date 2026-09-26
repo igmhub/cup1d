@@ -155,6 +155,29 @@ blob_strings_orig = [
     "H0",
 ]
 
+
+def get_blob_values(blobs, names=None):
+    """Return named blob columns from dense or legacy structured arrays."""
+
+    import numpy as np
+
+    names = blob_strings_orig if names is None else list(names)
+    array = np.asarray(blobs)
+    if array.dtype.names is not None:
+        return np.stack([array[name] for name in names], axis=-1)
+    if array.shape[-1] != len(blob_strings_orig):
+        raise ValueError(
+            f"expected {len(blob_strings_orig)} blob columns; got {array.shape}"
+        )
+    indices = [blob_strings_orig.index(name) for name in names]
+    return array[..., indices]
+
+
+def get_blob_value(blobs, name):
+    """Return one named blob column from either supported storage format."""
+
+    return get_blob_values(blobs, [name])[..., 0]
+
 conv_strings = {
     "Delta2_star": r"$\Delta^2_\star$",
     "n_star": r"$n_\star$",

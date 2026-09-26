@@ -84,3 +84,23 @@ def values_from_cube(parameters, values):
         name: value_from_cube(parameters, name, values[index])
         for index, name in enumerate(parameters)
     }
+
+
+def values_from_cube_batch(parameters, values):
+    """Convert unit-cube points to a columnar physical-parameter mapping.
+
+    ``values`` has shape ``(n_batch, n_parameters)``. The result maps every
+    parameter to a one-dimensional ``(n_batch,)`` array, avoiding one Python
+    dictionary per walker in batch-aware callers.
+    """
+
+    values = np.asarray(values, dtype=float)
+    if values.ndim != 2 or values.shape[1] != len(parameters):
+        raise ValueError(
+            "expected unit-cube points with shape "
+            f"(n_batch, {len(parameters)}); got {values.shape}"
+        )
+    return {
+        name: value_from_cube(parameters, name, values[:, index])
+        for index, name in enumerate(parameters)
+    }

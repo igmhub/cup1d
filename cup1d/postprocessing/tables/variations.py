@@ -4,6 +4,7 @@ import numpy as np
 from scipy.stats import chi2 as chi2_scipy
 
 from cup1d.utils.utils import get_path_repo
+from cup1d.utils.various_dicts import get_blob_value
 
 
 def match_precision(x, xp, xm, sig=2):
@@ -275,7 +276,7 @@ def table_variations(base):
     table = []
     blobs = np.load(os.path.join(base, variations["DESIY1_QMLE3_mpg"][1], "blobs.npy"))
     corr_fid = np.corrcoef(
-        blobs["Delta2_star"].reshape(-1), blobs["n_star"].reshape(-1)
+        get_blob_value(blobs, "Delta2_star").reshape(-1), get_blob_value(blobs, "n_star").reshape(-1)
     )[1, 0]
     blobs = 0
 

@@ -91,6 +91,22 @@ class HCD_Model_McDonald2005(object):
         f_HCD = 0.018 + 1 / (15000 * k_kms - 8.9)
         return 1 + A_damp * f_HCD
 
+    def get_contamination_batch(self, z, k_kms, like_params):
+        """McDonald HCD correction with items shaped ``(batch, k_z)``."""
+        z = np.atleast_1d(np.asarray(z, dtype=float))
+        n_batch = len(next(iter(like_params.values())))
+        coeff = np.broadcast_to(np.asarray(self.ln_A_damp_coeff, dtype=float), (n_batch, len(self.ln_A_damp_coeff))).copy()
+        for index in range(len(self.ln_A_damp_coeff)):
+            name = f"ln_A_damp_{index}"
+            if name in like_params:
+                coeff[:, -(index + 1)] = np.asarray(like_params[name])
+        xz = np.log((1 + z) / (1 + self.z_0))
+        log_amplitude = np.zeros((n_batch, len(z)))
+        for coefficient in coeff.T:
+            log_amplitude = log_amplitude * xz[None, :] + coefficient[:, None]
+        amplitude = np.where(coeff[:, -1, None] <= self.null_value, 0.0, np.exp(log_amplitude))
+        return [1 + amplitude[:, iz, None] * (0.018 + 1 / (15000 * np.asarray(k_kms[iz])[None, :] - 8.9)) for iz in range(len(z))]
+
     def get_parameters(self):
         """Return likelihood parameters for the HCD model"""
         return self.params

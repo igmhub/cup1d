@@ -276,6 +276,7 @@ class Analysis(object):
         estimate_errors=False,
         hessian_step=1.0e-4,
         error_method="finite_difference",
+        vectorize=True,
     ):
         """
         Run the minimizer (only rank 0)
@@ -302,6 +303,12 @@ class Analysis(object):
                     hessian_step=hessian_step,
                     error_method=error_method,
                 )
+            elif type_minimizer == "PSO":
+                self.fitter.run_minimizer_pso(
+                    p0=p0, zmask=zmask, vectorize=vectorize,
+                    estimate_errors=estimate_errors, hessian_step=hessian_step,
+                    error_method=error_method,
+                )
             elif type_minimizer == "DA":
                 self.fitter.run_minimizer_da(
                     log_func_minimize=self.fitter.minus_log_prob,
@@ -313,7 +320,7 @@ class Analysis(object):
                     error_method=error_method,
                 )
             else:
-                raise ValueError("type_minimizer must be 'NM' or 'DA'")
+                raise ValueError("type_minimizer must be 'NM', 'DA', or 'PSO'")
 
             # save fit
             if save_chains or hasattr(self.fitter, "chain"):
@@ -339,7 +346,9 @@ class Analysis(object):
             # get testing_data from task 0
             self.fitter.mle_cube = comm.recv(source=0, tag=(rank + 1) * 13)
 
-    def run_sampler(self, pini=None, make_plots=False, zmask=None):
+    def run_sampler(
+        self, pini=None, make_plots=False, zmask=None, vectorize=None
+    ):
         """
         Run the sampler (after minimizer)
         """
@@ -361,7 +370,7 @@ class Analysis(object):
         if pini is None:
             pini = self.fitter.mle_cube
 
-        self.fitter.run_sampler(pini=pini, zmask=zmask)
+        self.fitter.run_sampler(pini=pini, zmask=zmask, vectorize=vectorize)
 
         if rank == 0:
             end = time.time()

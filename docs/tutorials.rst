@@ -19,7 +19,8 @@ Notebook organization
 
 ``notebooks/likelihood``
    Likelihood diagnostics, initial-condition generation, compressed-parameter
-   calculations, and inspection of completed fits.
+   calculations, and inspection of completed fits. ``inference_methods.py``
+   compares baseline Nelder--Mead, PSO, and scalar versus batched sampling.
 
 ``notebooks/igm`` and ``notebooks/contaminants``
    Focused plots of IGM histories, metal contamination, HCD models, and other

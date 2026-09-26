@@ -138,3 +138,21 @@ class HCD_Model_Rogers(Contaminant):
             dla_corr = dla_corr[0]
 
         return dla_corr
+
+    def get_contamination_batch(self, z, k_kms, like_params):
+        """Rogers HCD correction with output items ``(batch, k_z)``."""
+        z = np.atleast_1d(np.asarray(z, dtype=float))
+        values = {key: self.get_value_batch(key, z, like_params) for key in self.list_coeffs}
+        for key in self.null_vals:
+            null = self.null_vals[key] if self.prop_coeffs[key + "_otype"] == "const" else np.exp(self.null_vals[key])
+            values[key] = np.where(values[key] <= null, 0.0, values[key])
+        output = []
+        for iz, redshift in enumerate(z):
+            k = np.asarray(k_kms[iz])[None, :]
+            cont = 1 + values["HCD_const"][:, iz, None]
+            for it in range(4):
+                a_z = self.a_0[it] * ((1 + redshift) / (1 + self.z_0)) ** self.a_1[it]
+                b_z = self.b_0[it] * ((1 + redshift) / (1 + self.z_0)) ** self.b_1[it]
+                cont = cont + values[f"HCD_damp{it + 1}"][:, iz, None] * fun_damping(k, a_z, b_z)
+            output.append(cont)
+        return output

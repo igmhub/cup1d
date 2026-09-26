@@ -89,9 +89,22 @@ the authoritative configuration.
 
    analysis.run_sampler()
 
+``Analysis.run_minimizer(type_minimizer="PSO")`` runs global-best particle
+swarm optimization. By default its particles are evaluated together through
+the vectorized likelihood; pass ``vectorize=False`` to benchmark or force
+scalar particle evaluations. ``NM`` remains the default local minimizer.
+
+By default, emcee submits each LaCE walker sub-ensemble as one likelihood
+batch. ForestFlow uses compiled scalar calls on CPU because they benchmark
+faster there. Pass ``vectorize=True`` explicitly to batch ForestFlow over
+walkers and redshifts for an accelerator run, or ``vectorize=False`` to force
+the scalar path.
+
 The sampler starts from the MLE unless ``pini`` is supplied. It writes
 ``chain.npy``, ``blobs.npy``, ``lnprob.npy``, and
-``sampler_results.npy``. Sampler and standalone minimizer results remain
+``sampler_results.npy``. ``blobs.npy`` is a dense float array whose last
+dimension follows ``analysis.fitter.blob_names``; legacy structured blob arrays
+remain readable by the postprocessing compatibility helpers. Sampler and standalone minimizer results remain
 distinct because the best sampled point is minimized again and may differ
 from the earlier fit.
 
