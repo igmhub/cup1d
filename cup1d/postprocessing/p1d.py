@@ -184,7 +184,10 @@ class P1DPlotter:
 def _axes(bins, panels):
     if panels:
         rows = (len(bins) + 2) // 3
-        fig, axes = plt.subplots(rows, 3, squeeze=False, figsize=(12, rows * 2.5), sharex=True)
+        fig, axes = plt.subplots(
+            rows, 3, squeeze=False, figsize=(12, rows * 2.5),
+            sharex=True, sharey="row",
+        )
         axes = axes.ravel()
         for ax in axes[len(bins):]:
             ax.set_visible(False)
@@ -205,7 +208,7 @@ def _bin_label(item, print_chi2):
 def plot_p1d_spectra(bins, *, panels=False, fontsize=20, print_chi2=True):
     """Render prepared bins as dimensionless spectra; return figure and axes."""
     fig, axes = _axes(bins, panels)
-    for item, ax in zip(bins, axes):
+    for index, (item, ax) in enumerate(zip(bins, axes)):
         factor = item.k / np.pi
         ax.errorbar(item.k, item.data * factor, yerr=item.error * factor,
                     color=item.color, fmt='o', ms=4, label=f'z={item.z:g}')
@@ -222,7 +225,8 @@ def plot_p1d_spectra(bins, *, panels=False, fontsize=20, print_chi2=True):
             ax.text(item.k[-1] + .001, (item.model * factor)[-1],
                     _bin_label(item, print_chi2), fontsize=fontsize - 4)
         ax.set_yscale('log')
-        ax.set_ylabel(r'$k_\parallel P_{\rm 1D}/\pi$', fontsize=fontsize)
+        if not panels or index % 3 == 0:
+            ax.set_ylabel(r'$k_\parallel P_{\rm 1D}/\pi$', fontsize=fontsize)
         ax.legend(loc='lower right', ncol=1 if panels else 4, fontsize=fontsize - 4)
     return fig, axes
 
@@ -230,7 +234,7 @@ def plot_p1d_spectra(bins, *, panels=False, fontsize=20, print_chi2=True):
 def plot_p1d_residuals(bins, *, panels=False, fontsize=20, print_chi2=True):
     """Render data/model ratios; return figure and axes."""
     fig, axes = _axes(bins, panels)
-    for item, ax in zip(bins, axes):
+    for index, (item, ax) in enumerate(zip(bins, axes)):
         if np.any(item.model == 0):
             raise ValueError(f"Cannot plot residuals for {item.key}, z={item.z}: model contains zeros.")
         ratio = item.data / item.model + item.shift
@@ -249,7 +253,8 @@ def plot_p1d_residuals(bins, *, panels=False, fontsize=20, print_chi2=True):
             ax.text(.05, .05, _bin_label(item, print_chi2), transform=ax.transAxes, fontsize=fontsize - 4)
         elif print_chi2:
             ax.text(item.k[0], .75 + item.shift, _bin_label(item, True), fontsize=fontsize - 4)
-        ax.set_ylabel(r'$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$', fontsize=fontsize)
+        if not panels or index % 3 == 0:
+            ax.set_ylabel(r'$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$', fontsize=fontsize)
         ax.legend(fontsize=fontsize - 4)
     return fig, axes
 

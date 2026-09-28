@@ -69,7 +69,7 @@ analysis = Analysis(args)
 
 fit_results = np.load(results_path, allow_pickle=True).item()
 mle_cube = np.asarray(fit_results["fitter"]["mle_cube"])
-best_fit_parameters = analysis.fitter.parameters_from_sampling_point(mle_cube)
+best_fit_parameters = analysis.fitter._point_from_cube(mle_cube)
 chi2 = analysis.like.get_chi2(best_fit_parameters)
 analysis.fitter.set_mle(mle_cube, chi2)
 

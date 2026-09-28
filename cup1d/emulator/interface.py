@@ -4,6 +4,7 @@ The LaCE emulators are compatible by default, this module is for other emulators
 """
 
 import numpy as np
+from threadpoolctl import threadpool_limits
 
 from lace.cosmo import cosmology
 from forestflow.P3D_cINN import P3DEmulator
@@ -57,6 +58,15 @@ class P1D_emulator:
         values = tuple(float(parameters[name]) for name in self.emu_params)
         return (latent_index, values) if latent_index is not None else values
 
+    def _evaluate_emulator(self, emulator_calls, **kwargs):
+        """Evaluate ForestFlow efficiently for cup1d's small CPU batches."""
+
+        # A likelihood point is independent work. For the small network
+        # batches used here, thread start-up costs more than it saves; sampler
+        # or MPI parallelism remains available across likelihood points.
+        with threadpool_limits(limits=1):
+            return self.emulator.evaluate(emulator_calls, **kwargs)
+
     def prime_prediction_cache(self, emulator_calls):
         """Evaluate many redshift inputs in one ForestFlow network batch."""
 
@@ -68,7 +78,7 @@ class P1D_emulator:
                     name: np.asarray(emulator_call[name]).reshape(-1)[index]
                     for name in self.emu_params
                 }
-                key = self._prediction_key(parameters, latent_index=index)
+                key = self._prediction_key(parameters)
                 unique_inputs.setdefault(key, parameters)
 
         if not unique_inputs:
@@ -80,10 +90,7 @@ class P1D_emulator:
         for start in range(0, len(items), 128):
             chunk = items[start : start + 128]
             keys = [item[0] for item in chunk]
-            predictions = self.emulator.evaluate(
-                [item[1] for item in chunk],
-                latent_indices=[key[0] for key in keys],
-            )
+            predictions = self._evaluate_emulator([item[1] for item in chunk])
             for index, key in enumerate(keys):
                 self._prediction_cache[key] = {
                     name: np.asarray(predictions[name]).reshape(-1)[index]
@@ -105,13 +112,13 @@ class P1D_emulator:
                 in_par_only[par] = in_params[par][ii]
             list_dicts.append(in_par_only)
         if self._prediction_cache is None:
-            out_emu = self.emulator.evaluate(list_dicts)
+            out_emu = self._evaluate_emulator(list_dicts)
         else:
             cached = [
                 self._prediction_cache[
-                    self._prediction_key(parameters, latent_index=index)
+                    self._prediction_key(parameters)
                 ]
-                for index, parameters in enumerate(list_dicts)
+                for parameters in list_dicts
             ]
             out_emu = {
                 name: np.asarray([prediction[name] for prediction in cached])
@@ -138,7 +145,9 @@ class P1D_emulator:
         n_batch, n_z, n_k = np.asarray(kin_Mpc).shape
         calls = [{name: np.asarray(in_params[name])[ib, iz] for name in self.emu_params}
                  for ib in range(n_batch) for iz in range(n_z)]
-        output = self.emulator.evaluate(calls, latent_indices=np.tile(np.arange(n_z), n_batch))
+        output = self._evaluate_emulator(
+            calls, latent_indices=np.tile(np.arange(n_z), n_batch)
+        )
         arinyo = {name: np.asarray(values).reshape(n_batch, n_z) for name, values in output.items()}
         linear = self.model_Arinyo.linear_theory_batch(zs, cosmo_params_batch)
         return self.model_Arinyo.P1D_Mpc(linear, zs, kin_Mpc, arinyo)

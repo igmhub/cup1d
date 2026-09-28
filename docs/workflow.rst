@@ -89,10 +89,12 @@ the authoritative configuration.
 
    analysis.run_sampler()
 
-``Analysis.run_minimizer(type_minimizer="PSO")`` runs global-best particle
-swarm optimization. By default its particles are evaluated together through
-the vectorized likelihood; pass ``vectorize=False`` to benchmark or force
-scalar particle evaluations. ``NM`` remains the default local minimizer.
+``Analysis.run_minimizer(type_minimizer="PSO")`` runs particle-swarm
+optimization. ``pso_type="global"`` (the default) shares the swarm-wide best
+position, while ``pso_type="local"`` preserves local neighborhoods longer.
+By default particles are evaluated together through the vectorized likelihood;
+pass ``vectorize=False`` to benchmark or force scalar particle evaluations.
+``NM`` remains the default local minimizer.
 
 By default, emcee submits each LaCE walker sub-ensemble as one likelihood
 batch. ForestFlow uses compiled scalar calls on CPU because they benchmark

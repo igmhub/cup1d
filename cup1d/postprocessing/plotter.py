@@ -5,6 +5,7 @@ import numpy as np
 import os
 from lace.configuration import get_nyx_path
 from cup1d.configuration.args import Args
+from cup1d.likelihood import parameter as parameter_space
 from cup1d.postprocessing import p1d as p1d_plots
 from cup1d.postprocessing.igm import plot_likelihood_igm
 from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
@@ -58,10 +59,17 @@ class Plotter(object):
             # add sampler results to fitter
             self.fitter.mle_cube = data["fitter"]["mle_cube"]
             self.fitter.mle_cosmo = data["fitter"]["mle_cosmo"]
-            self.fitter.mle = {
+            loaded_mle = {
                 self.fitter.param_dict_rev.get(name, name): value
                 for name, value in data["fitter"]["mle"].items()
             }
+            physical_mle = {
+                name: value for name, value in loaded_mle.items()
+                if name in self.fitter.like.free_params
+            }
+            self.fitter.mle = parameter_space.point_from_values(
+                self.fitter.like.free_params, physical_mle
+            )
             self.fitter.truth = (
                 None
                 if data.get("truth") is None
@@ -498,8 +506,8 @@ class Plotter(object):
             name = self.fitter.param_dict_rev.get(par, par)
             if self.fitter.truth is not None and name in self.fitter.truth:
                 truth[ii] = self.fitter.truth[name]
-            if name in self.fitter.mle:
-                MLE[ii] = self.fitter.mle[name]
+            if name in self.fitter.mle or name in self.fitter.mle_cosmo:
+                MLE[ii] = self.fitter.get_mle_value(name)
             if par == "$A_s$":
                 chain[:, ii] *= 1e9
                 truth[ii] *= 1e9
@@ -786,8 +794,8 @@ class Plotter(object):
             name = self.fitter.param_dict_rev.get(par, par)
             if self.fitter.truth is not None and name in self.fitter.truth:
                 truth[ii] = self.fitter.truth[name]
-            if name in self.fitter.mle:
-                MLE[ii] = self.fitter.mle[name]
+            if name in self.fitter.mle or name in self.fitter.mle_cosmo:
+                MLE[ii] = self.fitter.get_mle_value(name)
 
             # need to conver units
             par_notex = self.fitter.param_dict_rev[par]
@@ -1252,8 +1260,8 @@ class Plotter(object):
         Npar_scale = 0
         for name in self.fitter.like.free_params:
             if ("A_damp" in name) | ("A_scale" in name):
-                list_params[name] = self.fitter.mle[name]
-                print(name, self.fitter.mle[name])
+                list_params[name] = self.fitter.get_mle_value(name)
+                print(name, self.fitter.get_mle_value(name))
             if "A_damp" in name:
                 Npar_damp += 1
             elif "A_scale" in name:
@@ -1339,11 +1347,11 @@ class Plotter(object):
             a_list_params = {}
             for name in self.fitter.like.free_params:
                 if "ln_x_" + metal + "_" in name:
-                    x_list_params[name] = self.fitter.mle[name]
-                    print(name, self.fitter.mle[name])
+                    x_list_params[name] = self.fitter.get_mle_value(name)
+                    print(name, self.fitter.get_mle_value(name))
                 if "ln_a_" + metal + "_" in name:
-                    a_list_params[name] = self.fitter.mle[name]
-                    print(name, self.fitter.mle[name])
+                    a_list_params[name] = self.fitter.get_mle_value(name)
+                    print(name, self.fitter.get_mle_value(name))
 
             x_Npar = len(x_list_params)
             ln_X_coeff = np.zeros(x_Npar)
@@ -1405,8 +1413,8 @@ class Plotter(object):
         list_params = {}
         for name in self.fitter.like.free_params:
             if "ln_AGN" in name:
-                list_params[name] = self.fitter.mle[name]
-                print(name, self.fitter.mle[name])
+                list_params[name] = self.fitter.get_mle_value(name)
+                print(name, self.fitter.get_mle_value(name))
 
         Npar = len(list_params)
         if Npar == 0:
@@ -1451,8 +1459,8 @@ class Plotter(object):
         list_params = {}
         for name in self.fitter.like.free_params:
             if "R_coeff" in name:
-                list_params[name] = self.fitter.mle[name]
-                print(name, self.fitter.mle[name])
+                list_params[name] = self.fitter.get_mle_value(name)
+                print(name, self.fitter.get_mle_value(name))
 
         Npar = len(list_params)
         if Npar == 0:

@@ -589,10 +589,27 @@ class Likelihood(object):
     ):
         """Compute theoretical prediction for P1D"""
 
-        like_params = {} if parameters is None else parameters
+        # Public callers supply a full named point; theory receives scalar
+        # values through this private boundary adapter.
+        like_params = (
+            {} if parameters is None
+            else parameter_space.values_from_point(self.free_params, parameters)
+        )
 
         all_p1ds = {}
         other_stuff = {}
+        forest_emulator = self.theory.emulator
+        use_forest_cache = "forest" in forest_emulator.emulator_label
+        if use_forest_cache:
+            # Several data sets commonly contain identical redshifts. Prime
+            # ForestFlow once for their union instead of repeating cINN calls.
+            emulator_calls = [
+                self.theory.get_emulator_calls(
+                    self.Rebin_data.zs[key], like_params=like_params
+                )[0]
+                for key in self.Rebin_data.zs
+            ]
+            forest_emulator.prime_prediction_cache(emulator_calls)
         for key in self.Rebin_data.zs:
             _results = self.theory.get_P1D_kms(
                 self.Rebin_data.zs[key],
@@ -605,6 +622,8 @@ class Likelihood(object):
                 remove=remove,
             )
             if _results is None:
+                if use_forest_cache:
+                    forest_emulator.clear_prediction_cache()
                 return None
 
             if return_blob | return_emu_params:
@@ -619,6 +638,8 @@ class Likelihood(object):
                 for ii in range(1, len(_results)):
                     other_stuff[key].append(_results[ii])
 
+        if use_forest_cache:
+            forest_emulator.clear_prediction_cache()
         return all_p1ds, other_stuff
 
     def get_chi2(self, parameters=None, return_all=False, zmask=None):
@@ -732,6 +753,7 @@ class Likelihood(object):
     def parameters_in_bounds(self, parameters):
         """Return whether all physical values lie within their prior bounds."""
 
+        parameters = parameter_space.values_from_point(self.free_params, parameters)
         return all(
             parameter["min_value"] <= parameters[name] <= parameter["max_value"]
             for name, parameter in self.free_params.items()
@@ -740,6 +762,7 @@ class Likelihood(object):
     def get_log_prior(self, parameters):
         """Compute the prior directly in physical parameter units."""
 
+        parameters = parameter_space.values_from_point(self.free_params, parameters)
         if not self.parameters_in_bounds(parameters):
             return self.min_log_like
         if self.Gauss_priors is None:
@@ -755,8 +778,9 @@ class Likelihood(object):
     def compute_log_prob(
         self, parameters, return_blob=False, ignore_log_det_cov=True, zmask=None
     ):
-        """Compute posterior probability for physical parameter values."""
+        """Compute posterior probability for a public point or private values."""
 
+        parameters = parameter_space.values_from_point(self.free_params, parameters)
         if not self.parameters_in_bounds(parameters):
             if return_blob:
                 return self.min_log_like, self.theory.get_blob()

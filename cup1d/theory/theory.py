@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 import numpy as np
 
 from lace.cosmo import base_cosmology
@@ -95,6 +97,28 @@ class Theory:
             self.hull_hires = self.hull
         self.set_cosmo_priors()
 
+    @staticmethod
+    def _parameter_values(like_params):
+        """Unwrap a public parameter point into values used by theory models.
+
+        Public cup1d calls accept a named parameter point, where each entry
+        may include ``value``, prior limits, and other metadata. Theory and
+        its component models only need the numerical values. Values-only
+        scalar mappings and columnar batch mappings remain supported for
+        internal/vectorized use.
+        """
+
+        if like_params is None:
+            return None
+        if not isinstance(like_params, Mapping):
+            raise TypeError("like_params must be a mapping of parameter names")
+        return {
+            name: value["value"]
+            if isinstance(value, Mapping) and "value" in value
+            else value
+            for name, value in like_params.items()
+        }
+
     def set_cosmo_priors(self, extra_factor=1.25):
         """Resolve cosmological prior limits for the fiducial cosmology.
 
@@ -190,6 +214,7 @@ class Theory:
         """
 
         fiducial_cosmo = self.fid_cosmo["cosmo"]
+        like_params = self._parameter_values(like_params)
         like_params = {} if like_params is None else like_params
         new_params_dict = {
             name: value
@@ -217,7 +242,7 @@ class Theory:
     def _is_columnar_parameter_mapping(like_params):
         """Return whether a parameter mapping carries a leading batch axis."""
 
-        if not isinstance(like_params, dict) or not like_params:
+        if not isinstance(like_params, Mapping) or not like_params:
             return False
         dimensions = {np.asarray(value).ndim for value in like_params.values()}
         if dimensions == {0}:
@@ -243,6 +268,7 @@ class Theory:
         leading ``(n_batch, n_z)`` axes.
         """
 
+        like_params = self._parameter_values(like_params)
         if self._is_columnar_parameter_mapping(like_params):
             emu_call, M_of_z, blobs = self.get_emulator_calls_batch(zs, like_params)
             if return_M_of_z:
@@ -313,7 +339,8 @@ class Theory:
         """
 
         zs = np.atleast_1d(np.asarray(zs, dtype=float))
-        if not isinstance(like_params, dict) or not like_params:
+        like_params = self._parameter_values(like_params)
+        if not isinstance(like_params, Mapping) or not like_params:
             raise ValueError("like_params must be a non-empty columnar mapping")
         n_batch = None
         for name, values in like_params.items():
@@ -417,7 +444,7 @@ class Theory:
         )
 
     def get_blob_for_parameters(self, like_params):
-        """Return a blob for likelihood parameters via the LaCE flow."""
+        """Return a blob for a public parameter point or values-only mapping."""
 
         return self.get_blob(self.get_cosmology(like_params))
 
@@ -455,6 +482,7 @@ class Theory:
         mapping with values shaped ``(n_batch,)`` returns a list over redshift
         whose items have shape ``(n_batch, n_k_z)``.
         """
+        like_params = self._parameter_values(like_params)
         if self._is_columnar_parameter_mapping(like_params):
             unsupported = set(kwargs) - {"remove"}
             if unsupported:

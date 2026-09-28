@@ -45,6 +45,49 @@ def test_dr1_baseline_chi_squared(tmp_path):
     np.testing.assert_allclose(
         analysis.fitter.sampling_point_from_parameters(physical), initial_point
     )
+    initial_definitions = analysis.fitter.initial_parameters()
+    assert initial_definitions == analysis.like.free_params
+    assert initial_definitions is not analysis.like.free_params
+    assert all(
+        initial_definitions[name] is not analysis.like.free_params[name]
+        for name in initial_definitions
+    )
+    np.testing.assert_allclose(
+        analysis.fitter.sampling_point_from_parameters(initial_definitions),
+        initial_point,
+    )
+    np.testing.assert_allclose(
+        analysis.fitter.point_to_unit_cube(initial_definitions), initial_point
+    )
+    np.testing.assert_allclose(
+        analysis.fitter.get_chi2(initial_definitions),
+        analysis.fitter.get_chi2(initial_point),
+    )
+    np.testing.assert_allclose(
+        analysis.like.get_chi2(initial_definitions),
+        analysis.fitter.get_chi2(initial_point),
+    )
+    np.testing.assert_allclose(
+        analysis.like.log_prob(initial_definitions),
+        analysis.fitter.log_prob(initial_point),
+    )
+
+    # Theory is also a public boundary: it accepts the full named parameter
+    # point directly, while retaining the values-only mapping for internals.
+    zs_direct = next(iter(analysis.like.Rebin_data.zs.values()))
+    k_direct = next(iter(analysis.like.Rebin_data.k_kms.values()))
+    model_from_point = analysis.theory.get_p1d_kms(
+        zs_direct, k_direct, like_params=initial_definitions, return_blob=False
+    )
+    model_from_values = analysis.theory.get_p1d_kms(
+        zs_direct, k_direct, like_params=physical, return_blob=False
+    )
+    for point_model, value_model in zip(model_from_point, model_from_values):
+        np.testing.assert_allclose(point_model, value_model)
+    np.testing.assert_allclose(
+        analysis.theory.get_blob_for_parameters(initial_definitions),
+        analysis.theory.get_blob_for_parameters(physical),
+    )
 
     assert analysis.fitter.blobs_dtype is float
     assert analysis.fitter.blob_names == [

@@ -166,6 +166,10 @@ def plot_likelihood_igm(
         pars_chain2 = 0
 
     if free_params is not None:
+        # ``Likelihood.plot_igm`` is public and therefore accepts a complete
+        # named point. The individual IGM component models are internal and
+        # operate on a values-only mapping.
+        free_params = parameter_space.values_from_point(self.free_params, free_params)
         if zmask is not None:
             zs = zmask
         else:
@@ -202,14 +206,12 @@ def plot_likelihood_igm(
         gal21, tu24 = others_igm()
 
     legend_ax = None
-    empty_ax = None
     if plot_type == "all":
-        fig, axes = plt.subplots(2, 3, figsize=(9, 6), sharex="col")
-        # Reserve the right column for a readable legend rather than
-        # covering the tau_eff history with it.
-        ax = np.array([axes[0, 0], axes[0, 1], axes[1, 0], axes[1, 1]])
-        legend_ax = axes[0, 2]
-        empty_ax = axes[1, 2]
+        # Four histories fill a 2x2 grid.  The shared legend belongs in the
+        # upper-right (gamma) panel rather than consuming a fifth axis.
+        fig, axes = plt.subplots(2, 2, figsize=(10, 6), sharex="col")
+        ax = axes.ravel()
+        legend_ax = axes[0, 1]
         arr_labs = ["tau_eff", "gamma", "sigT_kms", "kF_kms"]
         latex_labs = [
             r"$\tau_\mathrm{eff}$",
@@ -552,9 +554,7 @@ def plot_likelihood_igm(
 
     if legend_ax is not None:
         handles, labels = ax[0].get_legend_handles_labels()
-        legend_ax.legend(handles, labels, fontsize=ftsize, loc="center")
-        legend_ax.set_axis_off()
-        empty_ax.set_axis_off()
+        legend_ax.legend(handles, labels, fontsize=ftsize, loc="upper right")
 
     # These limits were designed for the three-panel mean-flux,
     # temperature, and gamma figure. Applying them to the four-panel

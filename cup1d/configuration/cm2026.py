@@ -25,6 +25,7 @@ _CONFIG_GROUPS = (
             "z_max",
             "zbin_width",
             "k_rebin_factor",
+            "kmax_ikms",
             "p1d_fname",
             "path_data",
         ),

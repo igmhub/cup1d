@@ -65,7 +65,7 @@ def main():
         )
         pip = Analysis(args, out_folder=out_folder, archive=archive_mock)
 
-        input_pars = pip.fitter.sampling_point_from_parameters().copy()
+        input_pars = pip.fitter.initial_parameters()
         print(input_pars)
 
         pip.fitter.run_minimizer(

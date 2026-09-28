@@ -277,6 +277,7 @@ class Analysis(object):
         hessian_step=1.0e-4,
         error_method="finite_difference",
         vectorize=True,
+        pso_type="global",
     ):
         """
         Run the minimizer (only rank 0)
@@ -305,7 +306,8 @@ class Analysis(object):
                 )
             elif type_minimizer == "PSO":
                 self.fitter.run_minimizer_pso(
-                    p0=p0, zmask=zmask, vectorize=vectorize,
+                    p0=p0, zmask=zmask, vectorize=vectorize, pso_type=pso_type,
+                    restart=restart,
                     estimate_errors=estimate_errors, hessian_step=hessian_step,
                     error_method=error_method,
                 )
@@ -412,7 +414,7 @@ class Analysis(object):
             if pname not in out_dict:
                 out_dict[pname] = {"z": [], "val": []}
             out_dict[pname]["z"].append(znode)
-            out_dict[pname]["val"].append(self.fitter.mle[name])
+            out_dict[pname]["val"].append(self.fitter.get_mle_value(name))
 
         for key in out_dict:
             out_dict[key]["z"] = np.array(out_dict[key]["z"])

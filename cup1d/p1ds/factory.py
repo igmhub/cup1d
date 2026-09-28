@@ -153,7 +153,14 @@ def set_p1d(args, data_label, archive=None, theory=None):
     elif data_label == "Karacayli2024":
         data = data_Karacayli2024.P1D_Karacayli2024(z_min=args.z_min, z_max=args.z_max)
     elif data_label == "Karacayli2022":
-        data = data_Karacayli2022.P1D_Karacayli2022(z_min=args.z_min, z_max=args.z_max)
+        # The HIRES reader applies its scale selection before constructing the
+        # per-redshift and full covariance arrays, keeping them consistent.
+        kmax_ikms = getattr(args, "kmax_ikms", None)
+        data = data_Karacayli2022.P1D_Karacayli2022(
+            kmax_kms=0.1 if kmax_ikms is None else kmax_ikms,
+            z_min=args.z_min,
+            z_max=args.z_max,
+        )
     elif data_label == "Walther2018":
         data = data_Walther2018.P1D_Walther2018(z_min=args.z_min, z_max=args.z_max)
     elif data_label.startswith("DESIY1"):

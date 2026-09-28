@@ -78,7 +78,7 @@ def main():
         )
         pip = Analysis(args, out_folder=args.out_folder)
 
-        input_pars = pip.fitter.sampling_point_from_parameters().copy()
+        input_pars = pip.fitter.initial_parameters()
 
         # print("starting minimization")
         # type_minimizer = "NM"

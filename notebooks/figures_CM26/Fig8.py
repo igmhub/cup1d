@@ -48,8 +48,8 @@ args.set_baseline(
 pip = Analysis(args, out_folder=None)
 
 # %%
-p0 = pip.fitter.sampling_point_from_parameters()
-free_params = pip.fitter.parameters_from_sampling_point(p0)
+p0 = pip.fitter.initial_parameters()
+free_params = p0
 pip.fitter.like.get_chi2(free_params, zmask=[2.2])
 
 # %%

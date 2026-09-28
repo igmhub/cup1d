@@ -1,5 +1,7 @@
 """Plain-dictionary likelihood parameter definitions."""
 
+from collections.abc import Mapping
+
 import numpy as np
 
 
@@ -65,14 +67,47 @@ def error_from_cube(parameters, name, error):
     return error * (parameter["max_value"] - parameter["min_value"])
 
 
+
+def values_from_point(parameters, point):
+    """Privately unwrap a public named parameter point into scalar values."""
+
+    if point is None:
+        return None
+    values = {}
+    for name in parameters:
+        value = point[name]
+        values[name] = value["value"] if isinstance(value, Mapping) else value
+    return values
+
+
+def point_from_values(parameters, values):
+    """Return a full named parameter point with updated physical values."""
+
+    import copy
+
+    point = copy.deepcopy(parameters)
+    for name, value in values.items():
+        if name in point:
+            point[name]["value"] = value
+    return point
+
 def values_to_cube(parameters, values=None):
-    """Return an ordered unit-cube array from physical parameter values."""
+    """Return an ordered unit-cube array from physical parameter values.
+
+    ``values`` may map names directly to physical values or to complete
+    parameter dictionaries such as ``Likelihood.free_params``. The latter is
+    the user-facing form and supplies each value under its ``"value"`` key.
+    """
 
     if values is None:
         values = {name: parameter["value"] for name, parameter in parameters.items()}
-    return np.asarray(
-        [value_in_cube(parameters, name, values[name]) for name in parameters]
-    )
+    cube_values = []
+    for name in parameters:
+        value = values[name]
+        if isinstance(value, Mapping):
+            value = value["value"]
+        cube_values.append(value_in_cube(parameters, name, value))
+    return np.asarray(cube_values)
 
 
 def values_from_cube(parameters, values):

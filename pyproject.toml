@@ -25,6 +25,7 @@ dependencies = [
     "numpy",
     "pandas",
     "scipy",
+    "threadpoolctl",
     "matplotlib",
     "emcee",
     "getdist",
