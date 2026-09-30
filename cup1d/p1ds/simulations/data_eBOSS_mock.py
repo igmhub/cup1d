@@ -1,6 +1,5 @@
 # P1D data from fiducial eBOSS mock, created using nyx_central
 
-import os
 import numpy as np
 
 from cup1d.p1ds.base_p1d_mock import BaseMockP1D

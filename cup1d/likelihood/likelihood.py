@@ -3,11 +3,9 @@ import os
 import math
 import copy
 from mpi4py import MPI
-from scipy.stats.distributions import chi2 as chi2_scipy
-from scipy.linalg import block_diag
+from scipy.linalg import block_diag, cho_factor, cho_solve
 
 from lace.cosmo.thermal_broadening import thermal_broadening_kms
-from cup1d.utils.utils import is_number_string
 from cup1d.utils import rebinning
 
 from cup1d.utils.utils import split_string
@@ -32,6 +30,7 @@ class Likelihood(object):
         cov_factor=1.0,
         prior_Gauss_rms=None,
         emu_cov_type="block",
+        covariance_method="inverse",
         min_log_like=-1e100,
         args=None,
         start_from_min=True,
@@ -55,6 +54,9 @@ class Likelihood(object):
         self.prior_Gauss_rms = prior_Gauss_rms
         self.cov_factor = cov_factor
         self.emu_cov_type = emu_cov_type
+        if covariance_method not in {"inverse", "cholesky"}:
+            raise ValueError("covariance_method must be 'inverse' or 'cholesky'")
+        self.covariance_method = covariance_method
         self.min_log_like = min_log_like
         self.data = data
         # we only do this for latter save all relevant after fitting the model
@@ -200,10 +202,12 @@ class Likelihood(object):
 
         # split in redshifts
         self.icov_Pk_kms = {}
+        self.chol_Pk_kms = {}
         self.cov_Pk_kms = {}
         self.cov_emu_Pk_kms = {}
         # all redshifts together, for full Pk
         self.full_icov_Pk_kms = {}
+        self.full_chol_Pk_kms = {}
         self.full_cov_Pk_kms = {}
         self.emu_full_cov_Pk_kms = {}
 
@@ -212,6 +216,7 @@ class Likelihood(object):
             data = self.data[key]
             # initialize, to store the results for different redshifts
             icov_Pk_kms = []
+            chol_Pk_kms = []
             cov_Pk_kms = []
             cov_emu_Pk_kms = []
 
@@ -287,12 +292,20 @@ class Likelihood(object):
                 ind = np.argmin(np.abs(self.cov_factor["z"] - data.z[ii]))
                 cov *= self.cov_factor["val_full"][ind] ** 2
 
-                # Compute and store the inverse covariance matrix
+                # Factor once. Cholesky is used directly by the likelihood when
+                # requested; keep the inverse for established diagnostic APIs.
+                try:
+                    chol_Pk_kms.append(cho_factor(cov, lower=True, check_finite=False))
+                except np.linalg.LinAlgError as error:
+                    raise np.linalg.LinAlgError(
+                        f"Covariance for data set {key!r}, z={data.z[ii]:.3f} is not positive definite"
+                    ) from error
                 icov_Pk_kms.append(np.linalg.inv(cov))
                 cov_Pk_kms.append(cov)
                 cov_emu_Pk_kms.append(add_emu_cov_kms)
 
             self.icov_Pk_kms[key] = icov_Pk_kms
+            self.chol_Pk_kms[key] = chol_Pk_kms
             self.cov_Pk_kms[key] = cov_Pk_kms
             self.cov_emu_Pk_kms[key] = cov_emu_Pk_kms
 
@@ -400,7 +413,12 @@ class Likelihood(object):
 
                         cov[i0, i1] = cov[i0, i1] * fact0 * fact1
 
-                # Compute and store the inverse covariance matrix
+                try:
+                    self.full_chol_Pk_kms[key] = cho_factor(cov, lower=True, check_finite=False)
+                except np.linalg.LinAlgError as error:
+                    raise np.linalg.LinAlgError(
+                        f"Full covariance for data set {key!r} is not positive definite"
+                    ) from error
                 self.full_icov_Pk_kms[key] = np.linalg.inv(cov)
                 self.full_cov_Pk_kms[key] = cov
                 self.emu_full_cov_Pk_kms[key] = full_emu_cov
@@ -698,7 +716,9 @@ class Likelihood(object):
             emu_p1d_use = emu_p1d[key]
             data = self.data[key]
             icov_Pk_kms = self.icov_Pk_kms[key]
+            chol_Pk_kms = self.chol_Pk_kms[key]
             full_icov_Pk_kms = self.full_icov_Pk_kms[key]
+            full_chol_Pk_kms = self.full_chol_Pk_kms.get(key)
 
             # loop over redshift bins
             for iz in range(len(data.z)):
@@ -708,7 +728,11 @@ class Likelihood(object):
                         continue
                 # compute chi2 for this redshift bin
                 diff = data.Pk_kms[iz] - np.array(emu_p1d_use[iz]).reshape(-1)
-                chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
+                if self.covariance_method == "cholesky":
+                    solved = cho_solve(chol_Pk_kms[iz], diff, check_finite=False)
+                    chi2_z = np.dot(diff, solved)
+                else:
+                    chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
                 # print(iz, chi2_z, np.mean(icov_Pk_kms[iz]), np.mean(diff))
                 # print(
                 #     np.dot(icov_Pk_kms[iz], diff),
@@ -718,7 +742,9 @@ class Likelihood(object):
                 if ignore_log_det_cov:
                     log_like_all[key][iz] = -0.5 * chi2_z
                 else:
-                    log_det_cov = np.log(np.abs(1 / np.linalg.det(icov_Pk_kms[iz])))
+                    log_det_cov = (2 * np.log(np.diag(chol_Pk_kms[iz][0])).sum()
+                                   if self.covariance_method == "cholesky"
+                                   else np.log(np.abs(1 / np.linalg.det(icov_Pk_kms[iz]))))
                     log_like_all[key][iz] = -0.5 * (chi2_z + log_det_cov)
 
             if (full_icov_Pk_kms is None) | (zmask is not None):
@@ -726,11 +752,17 @@ class Likelihood(object):
             else:
                 # compute chi2 using full cov
                 diff = data.full_Pk_kms - np.concatenate(emu_p1d_use)
-                chi2_all = np.dot(np.dot(full_icov_Pk_kms, diff), diff)
+                if self.covariance_method == "cholesky":
+                    solved = cho_solve(full_chol_Pk_kms, diff, check_finite=False)
+                    chi2_all = np.dot(diff, solved)
+                else:
+                    chi2_all = np.dot(np.dot(full_icov_Pk_kms, diff), diff)
                 if ignore_log_det_cov:
                     log_like += -0.5 * chi2_all
                 else:
-                    log_det_cov = np.log(np.abs(1 / np.linalg.det(full_icov_Pk_kms)))
+                    log_det_cov = (2 * np.log(np.diag(full_chol_Pk_kms[0])).sum()
+                                   if self.covariance_method == "cholesky"
+                                   else np.log(np.abs(1 / np.linalg.det(full_icov_Pk_kms))) )
                     log_like += -0.5 * (chi2_all + log_det_cov)
 
         # something went wrong
@@ -919,7 +951,9 @@ class Likelihood(object):
             for key in self.Rebin_data.zs:
                 data = self.data[key]
                 inverse_covariance = self.icov_Pk_kms[key]
+                chol_covariance = self.chol_Pk_kms[key]
                 full_inverse_covariance = self.full_icov_Pk_kms[key]
+                full_chol_covariance = self.full_chol_Pk_kms.get(key)
                 if full_inverse_covariance is not None and zmask is None:
                     model = (
                         np.concatenate(batched_predictions[key], axis=1)
@@ -927,13 +961,8 @@ class Likelihood(object):
                         else np.stack([np.concatenate(predictions[index][key]) for index in valid_indices])
                     )
                     residual = data.full_Pk_kms[None, :] - model
-                    chi2 = np.einsum(
-                        "bi,ij,bj->b",
-                        residual,
-                        full_inverse_covariance,
-                        residual,
-                        optimize=True,
-                    )
+                    chi2 = (np.sum(residual * cho_solve(full_chol_covariance, residual.T, check_finite=False).T, axis=1)
+                            if self.covariance_method == "cholesky" else np.einsum("bi,ij,bj->b", residual, full_inverse_covariance, residual, optimize=True))
                     batch_log_like -= 0.5 * chi2
                     if not ignore_log_det_cov:
                         batch_log_like -= 0.5 * np.log(
@@ -952,13 +981,8 @@ class Likelihood(object):
                         else np.stack([predictions[index][key][redshift_index] for index in valid_indices])
                     )
                     residual = data.Pk_kms[redshift_index][None, :] - model
-                    chi2 = np.einsum(
-                        "bi,ij,bj->b",
-                        residual,
-                        inverse_covariance[redshift_index],
-                        residual,
-                        optimize=True,
-                    )
+                    chi2 = (np.sum(residual * cho_solve(chol_covariance[redshift_index], residual.T, check_finite=False).T, axis=1)
+                            if self.covariance_method == "cholesky" else np.einsum("bi,ij,bj->b", residual, inverse_covariance[redshift_index], residual, optimize=True))
                     batch_log_like -= 0.5 * chi2
                     if not ignore_log_det_cov:
                         batch_log_like -= 0.5 * np.log(

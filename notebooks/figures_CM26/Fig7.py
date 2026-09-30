@@ -23,14 +23,12 @@
 # %autoreload 2
 
 import numpy as np
-import time, os, sys
-import matplotlib.pyplot as plt
+import os
 
 # our own modules
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
 from cup1d.postprocessing.plotter import Plotter
-from cup1d.utils.utils import get_path_repo
 
 # %%
 

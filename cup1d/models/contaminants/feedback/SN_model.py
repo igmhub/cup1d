@@ -1,6 +1,4 @@
 import numpy as np
-import copy
-import os
 from cup1d.likelihood import parameter as likelihood_parameter
 
 

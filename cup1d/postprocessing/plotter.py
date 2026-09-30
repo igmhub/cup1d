@@ -1191,7 +1191,7 @@ class Plotter(object):
                         file extension (i.e. .pdf, .png etc)
          - if delta_lnprob_cut is set, keep only high-prob points"""
 
-        from chainconsumer import ChainConsumer, Chain, Truth
+        from chainconsumer import ChainConsumer
 
         assert len(chain_files) == len(labels)
 

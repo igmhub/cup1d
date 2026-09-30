@@ -23,12 +23,11 @@
 # %autoreload 2
 
 import numpy as np
-import time, os, sys
+import os
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
-import lace
-from lace.archive import gadget_archive, nyx_archive
+from lace.archive import gadget_archive
 from lace.emulator.gp_emulator_multi import GPEmulator
 from matplotlib.ticker import FormatStrFormatter
 

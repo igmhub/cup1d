@@ -15,7 +15,6 @@ from lace.emulator.emulator_manager import set_emulator
 from cup1d.emulator.archive import set_archive
 from cup1d.inference.analysis import Analysis
 from cup1d.theory.cosmology import set_cosmo
-from cup1d.theory import camb as CAMB_model
 from cup1d.utils.utils import get_path_repo
 
 

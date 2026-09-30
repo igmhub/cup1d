@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis

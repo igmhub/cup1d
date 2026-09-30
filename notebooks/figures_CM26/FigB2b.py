@@ -24,7 +24,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-from lace.archive import gadget_archive, nyx_archive
+from lace.archive import nyx_archive
 from lace.emulator.gp_emulator_multi import GPEmulator
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib import rcParams

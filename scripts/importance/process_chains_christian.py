@@ -6,7 +6,6 @@ import numpy as np
 from mpi4py import MPI
 from cup1d.postprocessing.chains import planck as planck_chains
 from cup1d.theory import linear_power as add_linP_params
-from cup1d.utils.utils import get_path_repo
 
 
 def main():

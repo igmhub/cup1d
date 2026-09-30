@@ -23,7 +23,7 @@
 from copy import deepcopy
 
 import numpy as np
-import os, sys
+import os
 import matplotlib.pyplot as plt
 from cup1d import Analysis, Args
 from cup1d.utils.utils import get_path_repo

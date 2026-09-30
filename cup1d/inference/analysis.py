@@ -160,6 +160,7 @@ class Analysis(object):
             free_param_names=free_parameters,
             cov_factor=self.args.cov_factor,
             emu_cov_type=self.args.emu_cov_type,
+            covariance_method=self.args.covariance_method,
             args=self.args,
         )
         # Backward-compatible descriptive alias. Public analysis code should

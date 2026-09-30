@@ -3,9 +3,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from cup1d.postprocessing.p1d import (
-    P1DPlotter, plot_p1d, plot_p1d_spectra, plot_p1d_residuals,
-    old_plot_p1d, plot_p1d_errors,
+from cup1d.postprocessing.p1d import (  # noqa: F401 - public legacy re-exports
+    P1DPlotter,
+    old_plot_p1d,
+    plot_p1d,
+    plot_p1d_errors,
+    plot_p1d_residuals,
+    plot_p1d_spectra,
 )
 
 

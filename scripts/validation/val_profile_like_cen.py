@@ -5,7 +5,6 @@ os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
-from cup1d.utils.utils import get_path_repo
 
 
 def main():

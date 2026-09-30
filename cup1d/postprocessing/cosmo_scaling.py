@@ -77,7 +77,7 @@ def damped_linear_model(cosmology, kpressure_kms):
     values so LaCE's 1D interpolator is never extrapolated or silently clamped.
     """
 
-    def p3d(z, k, mu, parameters, new_cosmo_params=None):
+    def p3d(linear, z, k, mu, parameters, new_cosmo_params=None):
         if new_cosmo_params is not None:
             raise ValueError("Supply cosmology overrides when constructing the model")
         unique, inverse = np.unique(k, return_inverse=True)
@@ -174,12 +174,13 @@ class CosmoScalingPlotter:
 
     def project(self, cosmology, n_k_perp=None):
         """Project the damped linear spectrum to P1D [km/s]."""
-        from forestflow.p1d import P1D_kms
+        from forestflow.statistics.p1d import P1D_kms
 
         options = dict(self.integration)
         if n_k_perp is not None:
             options["n_k_perp"] = n_k_perp
         return P1D_kms(
+            None,
             self.z_star,
             self.k_parallel,
             damped_linear_model(cosmology, self.kpressure_kms),

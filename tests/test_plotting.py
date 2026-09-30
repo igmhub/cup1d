@@ -12,7 +12,7 @@ import pytest
 from scipy.linalg import block_diag
 
 from cup1d.likelihood.likelihood import Likelihood
-from cup1d.postprocessing.p1d import P1DPlotter, plot_p1d, plot_p1d_errors
+from cup1d.postprocessing.p1d import P1DPlotter, plot_p1d
 
 
 class SmallLikelihood:

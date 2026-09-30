@@ -40,7 +40,6 @@
 from pathlib import Path
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from cup1d import Analysis, Args
 from cup1d.postprocessing.plotter import Plotter

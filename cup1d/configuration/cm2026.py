@@ -52,7 +52,7 @@ _CONFIG_GROUPS = (
     ("IGM model", ("igm_params", "fid_igm")),
     ("Contamination model", ("fid_cont",)),
     ("Instrumental systematics", ("fid_syst", "ic_correction")),
-    ("Covariance", ("cov_syst_type", "emu_cov_type", "cov_factor")),
+    ("Covariance", ("cov_syst_type", "emu_cov_type", "covariance_method", "cov_factor")),
     ("Priors", ("use_star_priors", "prior_Gauss_rms", "Gauss_priors")),
     (
         "Inference",

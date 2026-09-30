@@ -1,19 +1,14 @@
 import numpy as np
-import time, os, sys
+import os, sys
 import glob
-import matplotlib.pyplot as plt
 
 # our own modules
-from lace.cosmo import camb_cosmo
 from lace.emulator.emulator_manager import set_emulator
-from cup1d.theory import theory as lya_theory
-from cup1d.likelihood import likelihood
 from cup1d.inference.fitter import Fitter
 from cup1d.postprocessing.plotter import Plotter
 
 from cup1d.inference.analysis import (
     set_archive,
-    set_p1d,
     set_cosmo,
     set_free_likelihood_parameters,
     set_like,

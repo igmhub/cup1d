@@ -1,7 +1,6 @@
 import os
 import math
 import numpy as np
-from scipy.stats import chi2 as chi2_scipy
 
 from cup1d.utils.utils import get_path_repo
 from cup1d.utils.various_dicts import get_blob_value

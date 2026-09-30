@@ -1,7 +1,6 @@
 from collections.abc import Mapping
 
 import numpy as np
-
 from lace.cosmo import base_cosmology
 from lace.cosmo import cosmology
 from lace.cosmo import rescale_cosmology
@@ -10,9 +9,9 @@ from cup1d.likelihood.parameter import make_parameter
 from cup1d.models.contaminants.model_contaminants import Contaminants
 from cup1d.models.contaminants.model_systematics import Systematics
 from cup1d.models.igm.model_igm import IGM
-from cup1d.utils.utils_sims import get_training_hc
 from cup1d.utils.hull import Hull
 from cup1d.utils.utils import is_number_string
+from cup1d.utils.utils_sims import get_training_hc
 
 
 class Theory:
@@ -561,7 +560,7 @@ class Theory:
                 if name in ["As", "ns", "nrun"]:
                     new_cosmo_params[name] = value
             self.emulator.set_linear_theory(zs, new_cosmo_params=new_cosmo_params)
-            _res = self.emulator.emulate_P1D_Mpc(zs, kin_Mpc, emu_call)
+            _res = self.emulator.emulate_p1d_Mpc(zs, kin_Mpc, emu_call)
         else:
             _res = self.emulator.emulate_p1d_Mpc(emu_call, kin_Mpc)
         p1d_Mpc = _res
@@ -690,7 +689,9 @@ class Theory:
                 {name: np.asarray(values)[ib] for name, values in like_params.items() if name in {"As", "ns", "nrun"}}
                 for ib in range(n_batch)
             ]
-            p_mpc = self.emulator.emulate_p1d_Mpc_batch(zs, kin, emu_call, cosmology_parameters)
+            p_mpc = self.emulator.emulate_p1d_Mpc(
+                zs, kin, emu_call, cosmology_parameters=cosmology_parameters
+            )
         else:
             p_mpc = self.emulator.emulate_p1d_Mpc(flat_call, kin.reshape(n_batch*n_z, n_k)).reshape(n_batch, n_z, n_k)
         p_kms = [p_mpc[:, iz, :len(k_kms[iz])] * M_of_z[:, iz, None] for iz in range(n_z)]

@@ -222,6 +222,8 @@ ic_correction: false
 cov_syst_type: red
 # Emulator covariance representation: full, diagonal, or block.
 emu_cov_type: full
+# Numerical representation used for the likelihood covariance quadratic form.
+covariance_method: inverse
 # Redshift-dependent covariance rescaling factors.
 cov_factor:
   # Multiplicative factors for statistical errors.

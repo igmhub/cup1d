@@ -1,9 +1,8 @@
 import numpy as np
-import copy
 import os
 from scipy.interpolate import interp1d
 from cup1d.likelihood import parameter as likelihood_parameter
-from cup1d.utils.utils import get_discrete_cmap, get_path_repo
+from cup1d.utils.utils import get_path_repo
 
 
 class AGN_Model(object):

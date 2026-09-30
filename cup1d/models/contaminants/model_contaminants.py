@@ -12,10 +12,6 @@ from cup1d.models.contaminants.metals import (
     si_add,
 )
 
-from cup1d.models.contaminants.feedback import (
-    SN_model,
-    AGN_model,
-)
 
 
 class Contaminants(object):

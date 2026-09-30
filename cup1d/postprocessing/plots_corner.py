@@ -5,9 +5,7 @@ from emcee.autocorr import integrated_time
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
-from scipy.ndimage import gaussian_filter
 from matplotlib.ticker import MaxNLocator
-from scipy.stats import gaussian_kde
 
 from matplotlib import rcParams
 from scipy.stats import chi2 as chi2_scipy

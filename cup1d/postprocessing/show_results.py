@@ -1,7 +1,6 @@
 import numpy as np
 
 from cup1d.likelihood import parameter as parameter_space
-import matplotlib.pyplot as plt
 from scipy.stats import chi2 as chi2_scipy
 
 
