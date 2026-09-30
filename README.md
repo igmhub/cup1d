@@ -64,7 +64,14 @@ make install
 git clone https://github.com/igmhub/cup1d.git
 cd cup1d
 make install
-``` 
+```
+
+This installs the LaCE GP-emulator workflow. ForestFlow-emulator analyses and
+Planck-chain postprocessing are optional:
+
+```bash
+make install-extended
+```
 
 #### NERSC users:
 

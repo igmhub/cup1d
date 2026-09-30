@@ -144,8 +144,6 @@ class IGM_model(object):
         # extrapolate to z=5.0 (if needed)
         if np.max(fid_igm[name_coeff + "_z"]) < zmax:
             z_to_inter = np.concatenate([z_to_inter, [zmax]])
-        else:
-            z_to_inter = fid_igm[name_coeff + "_z"][mask_znonzero]
 
         if smoothing:
             fid_vals = p(z_to_inter)
