@@ -661,8 +661,12 @@ class Likelihood(object):
         return all_p1ds, other_stuff
 
     def get_chi2(self, parameters=None, return_all=False, zmask=None):
-        """Compute chi2 using data and theory, without adding
-        emulator covariance"""
+        """Compute chi2 using data and theory, without emulator covariance.
+
+        ``zmask`` is a diagnostic single-redshift fit only. It intentionally
+        uses that redshift's covariance block and cannot retain cross-redshift
+        covariance terms. Use ``zmask=None`` for a joint fit.
+        """
 
         log_like, log_like_all = self.get_log_like(
             parameters, ignore_log_det_cov=True, zmask=zmask
@@ -686,8 +690,14 @@ class Likelihood(object):
         return_blob=False,
         zmask=None,
     ):
-        """Compute log(likelihood), including determinant of covariance
-        unless you are setting ignore_log_det_cov=True."""
+        """Compute log(likelihood), including determinant of covariance.
+
+        A non-null ``zmask`` may select exactly one redshift. This is for
+        one-redshift diagnostic fits: selecting a subset omits cross-redshift
+        covariance, so multi-redshift masks are rejected.
+        """
+
+        zmask = self._validate_single_redshift_mask(zmask)
 
         # what to return if we are out of priors
         null_out = [-np.inf, -np.inf]
@@ -773,6 +783,27 @@ class Likelihood(object):
         if return_blob:
             out.append(blob)
         return out
+
+    @staticmethod
+    def _validate_single_redshift_mask(zmask):
+        """Normalize the diagnostic redshift mask and reject unsafe subsets."""
+
+        if zmask is None:
+            return None
+        zmask = np.asarray(zmask, dtype=float)
+        if zmask.ndim == 0:
+            zmask = zmask.reshape(1)
+        elif zmask.ndim != 1:
+            raise ValueError("zmask must be one redshift value or None")
+        if zmask.size != 1:
+            raise ValueError(
+                "zmask supports exactly one redshift. A multi-redshift subset "
+                "would drop retained cross-redshift covariance; use zmask=None "
+                "for a joint fit."
+            )
+        if not np.isfinite(zmask[0]):
+            raise ValueError("zmask must contain one finite redshift")
+        return zmask
 
     def regulate_log_like(self, log_like):
         """Make sure that log_like is not NaN, nor tiny"""
@@ -906,6 +937,7 @@ class Likelihood(object):
         batch with NumPy rather than one point at a time.
         """
 
+        zmask = self._validate_single_redshift_mask(zmask)
         parameter_columns = parameters_batch if isinstance(parameters_batch, dict) else None
         parameters_batch = self._parameter_batch_rows(parameters_batch)
         n_points = len(parameters_batch)

@@ -1,9 +1,11 @@
 import numpy as np
 import pytest
+from types import SimpleNamespace
 
 from cup1d.conventions import canonicalize_unit_keys, validate_p1d_contract
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
 from cup1d.inference.fitter import Fitter
+from cup1d.likelihood.likelihood import Likelihood
 from cup1d.likelihood import parameter
 from cup1d.utils.rebinning import Rebinning
 from cup1d.utils.blinding import apply_blinding, apply_unblinding
@@ -112,3 +114,31 @@ def test_rebinning_batch_matches_scalar_for_ragged_k_grids():
     ]
     for result, reference in zip(batched, expected):
         np.testing.assert_allclose(result, reference)
+
+
+def test_identity_rebinning_preserves_the_native_grid_and_spectral_shape():
+    native_k_kms = np.array([0.001, 0.003, 0.008])
+    data = SimpleNamespace(z=np.array([3.0]), k_kms=[native_k_kms])
+    rebin = Rebinning({"data": data}, k_rebin_factor=1)
+
+    np.testing.assert_array_equal(rebin.k_kms["data"][0], native_k_kms)
+    np.testing.assert_array_equal(rebin.cover["data"][0], np.eye(3))
+    spectrum = np.array([1.0, 2.0, 4.0])
+    np.testing.assert_array_equal(
+        rebin.rebinning("data", [spectrum])[0], spectrum
+    )
+    np.testing.assert_array_equal(
+        rebin.rebinning_batch("data", [spectrum[None, :]])[0], spectrum[None, :]
+    )
+
+
+@pytest.mark.parametrize("zmask", [[2.2, 2.4], np.array([[2.2]])])
+def test_likelihood_rejects_multi_redshift_diagnostic_masks(zmask):
+    with pytest.raises(ValueError, match="redshift"):
+        Likelihood._validate_single_redshift_mask(zmask)
+
+
+def test_likelihood_accepts_a_single_redshift_diagnostic_mask():
+    np.testing.assert_array_equal(
+        Likelihood._validate_single_redshift_mask(2.2), np.array([2.2])
+    )
