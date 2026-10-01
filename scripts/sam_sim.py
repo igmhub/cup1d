@@ -11,14 +11,11 @@ from cup1d.utils.utils import get_path_repo
 
 
 def _initial_point(analysis):
-    """Return the configured initial point in sampler coordinates."""
+    """Return the configured initial point as a named physical parameter point."""
 
-    point = analysis.fitter.sampling_point_from_parameters().copy()
-    indices = {
-        name: index for index, name in enumerate(analysis.like.free_params)
-    }
+    point = analysis.fitter.initial_parameters()
     for name, value in analysis.args.initial_sampling_values.items():
-        if name not in indices:
+        if name not in point:
             raise ValueError(
                 f"Initial sampling value provided for unknown parameter {name}"
             )
@@ -26,7 +23,7 @@ def _initial_point(analysis):
             raise ValueError(
                 f"Initial sampling value for {name} must lie in [0, 1]"
             )
-        point[indices[name]] = value
+        point[name]["value"] = analysis.fitter.value_from_cube(name, value)
     return point
 
 
@@ -49,7 +46,7 @@ def run(config_path, refine=True):
         # run_sampler sets mle_cube to the best point in the chain. Because a
         # chain is present, this minimization updates sampler_results.npy and
         # leaves the independent minimizer_results.npy untouched.
-        analysis.run_minimizer(analysis.fitter.mle_cube, restart=True)
+        analysis.run_minimizer(analysis.fitter.mle, restart=True)
 
     return analysis
 

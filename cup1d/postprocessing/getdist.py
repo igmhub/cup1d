@@ -2,6 +2,7 @@
 import numpy as np
 from getdist import MCSamples
 from cup1d.inference import fitter
+from cup1d.utils.various_dicts import get_blob_values
 
 
 # for each parameter name, figure out LaTeX label
@@ -75,7 +76,7 @@ def read_chain_for_getdist(
         cube=False, delta_lnprob_cut=delta_lnprob_cut
     )
     if blob_names:
-        blob_values = np.array([blobs[key] for key in blob_names]).transpose()
+        blob_values = get_blob_values(blobs, blob_names)
         # stack all values, including log(prob)
         run["values"] = np.hstack(
             [free_values, np.column_stack((blob_values, lnprob))]

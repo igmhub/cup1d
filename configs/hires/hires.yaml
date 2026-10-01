@@ -3,6 +3,8 @@
 data_label:
   - DESIY1_QMLE3
   - Karacayli2022
+# Apply the same explicit line-of-sight scale cut for either emulator.
+kmax_ikms: 0.07
 # Match the historical ``no_res`` setup: do not vary spectrograph-resolution
 # corrections, leaving them at their fiducial (zero-correction) values.
 fid_syst:

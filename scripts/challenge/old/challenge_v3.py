@@ -1,4 +1,4 @@
-import time, os, sys
+import os
 import glob
 import numpy as np
 from cup1d.configuration.args import Args

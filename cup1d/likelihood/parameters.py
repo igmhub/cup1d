@@ -1,4 +1,4 @@
-def set_free_likelihood_parameters(args, emulator_label="CH24_mpgcen_gpr"):
+def set_free_likelihood_parameters(args, emulator_label="lace_mpg"):
     """Set free parameters for likelihood"""
 
     # cosmology

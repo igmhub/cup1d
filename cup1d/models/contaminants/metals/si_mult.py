@@ -341,3 +341,37 @@ class SiMult(Contaminant):
             metal_corr.append(1 + C0 + Cam + Cmm + Cm)
 
         return metal_corr
+
+    def get_contamination_batch(self, z, k_kms, mF, like_params, remove=None):
+        """Multiplicative Si correction, returned as ``[(batch, k_z), ...]``."""
+        z = np.atleast_1d(np.asarray(z, dtype=float))
+        values = {key: self.get_value_batch(key, z, like_params) for key in self.list_coeffs}
+        for key in self.null_vals:
+            null = self.null_vals[key] if self.prop_coeffs[key + "_otype"] == "const" else np.exp(self.null_vals[key])
+            values[key] = np.where(values[key] <= null, 0.0, values[key])
+        off = {"SiIII_Lya": 1, "SiIIa_Lya": 1, "SiIIb_Lya": 1, "SiIIc_Lya": 0,
+               "SiIII_SiIIa": 1, "SiIII_SiIIb": 1, "SiIII_SiIIc": 0,
+               "SiIIc_SiIIb": 0, "SiIIc_SiIIa": 0, "SiIIb_SiIIa": 0}
+        if remove is not None:
+            off.update({key: value for key, value in remove.items() if key in off})
+        off["SiIIb_SiIIa"] = off["SiIIc_SiIIa"] = off["SiIIc_SiIIb"] = 0
+        ra3, rb3, rc3 = self.rat["SiIIa_SiIII"], self.rat["SiIIb_SiIII"], self.rat["SiIIc_SiIII"]
+        output = []
+        for iz in range(len(z)):
+            k = np.asarray(k_kms[iz])[None, :]
+            def val(name, default=1.0):
+                return values[name][:, iz, None] if name in values else default
+            g3 = 2 - 2 / (1 + np.exp(-val("s_Lya_SiIII") * k))
+            g2 = 2 - 2 / (1 + np.exp(-val("s_Lya_SiII") * k))
+            g22 = (2 - 2 / (1 + np.exp(-val("s_SiIIa_SiIIb") * k))) * val("f_SiIIa_SiIIb")
+            mflux = np.asarray(mF)[:, iz, None]
+            a3 = val("f_Lya_SiIII") / (1 - mflux)
+            a2 = rb3 * val("f_Lya_SiII") / (1 - mflux)
+            r3 = ra3 * val("f_SiIIa_SiIII")
+            c0 = a3**2*off["SiIII_Lya"] + a2**2*((r3/rb3)**2*off["SiIIa_Lya"] + off["SiIIb_Lya"] + (rc3/rb3)**2*off["SiIIc_Lya"])
+            cam = 2*a3*g3*off["SiIII_Lya"]*np.cos(self.dv["SiIII_Lya"]*k)
+            cam += 2*a2*g2*(off["SiIIa_Lya"]*(r3/rb3)*np.cos(self.dv["SiIIa_Lya"]*k) + off["SiIIb_Lya"]*np.cos(self.dv["SiIIb_Lya"]*k) + off["SiIIc_Lya"]*(rc3/rb3)*np.cos(self.dv["SiIIc_Lya"]*k))
+            cmm = 2*a3*a2*val("f_SiIIb_SiIII")*(off["SiIII_SiIIc"]*(rc3/rb3)*np.cos(self.dv["SiIII_SiIIc"]*k) + off["SiIII_SiIIb"]*np.cos(self.dv["SiIII_SiIIb"]*k) + off["SiIII_SiIIa"]*(r3/rb3)*np.cos(self.dv["SiIII_SiIIa"]*k))
+            cm = 2*a2**2*g22*(off["SiIIc_SiIIb"]*(rc3/rb3)*np.cos(self.dv["SiIIc_SiIIb"]*k) + off["SiIIc_SiIIa"]*(rc3/rb3)*(ra3/rb3)*np.cos(self.dv["SiIIc_SiIIa"]*k) + off["SiIIb_SiIIa"]*(r3/rb3)*np.cos(self.dv["SiIIb_SiIIa"]*k))
+            output.append(1 + c0 + cam + cmm + cm)
+        return output

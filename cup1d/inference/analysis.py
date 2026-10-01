@@ -160,6 +160,7 @@ class Analysis(object):
             free_param_names=free_parameters,
             cov_factor=self.args.cov_factor,
             emu_cov_type=self.args.emu_cov_type,
+            covariance_method=self.args.covariance_method,
             args=self.args,
         )
         # Backward-compatible descriptive alias. Public analysis code should
@@ -276,6 +277,8 @@ class Analysis(object):
         estimate_errors=False,
         hessian_step=1.0e-4,
         error_method="finite_difference",
+        vectorize=True,
+        pso_type="global",
     ):
         """
         Run the minimizer (only rank 0)
@@ -302,6 +305,13 @@ class Analysis(object):
                     hessian_step=hessian_step,
                     error_method=error_method,
                 )
+            elif type_minimizer == "PSO":
+                self.fitter.run_minimizer_pso(
+                    p0=p0, zmask=zmask, vectorize=vectorize, pso_type=pso_type,
+                    restart=restart,
+                    estimate_errors=estimate_errors, hessian_step=hessian_step,
+                    error_method=error_method,
+                )
             elif type_minimizer == "DA":
                 self.fitter.run_minimizer_da(
                     log_func_minimize=self.fitter.minus_log_prob,
@@ -313,7 +323,7 @@ class Analysis(object):
                     error_method=error_method,
                 )
             else:
-                raise ValueError("type_minimizer must be 'NM' or 'DA'")
+                raise ValueError("type_minimizer must be 'NM', 'DA', or 'PSO'")
 
             # save fit
             if save_chains or hasattr(self.fitter, "chain"):
@@ -339,7 +349,9 @@ class Analysis(object):
             # get testing_data from task 0
             self.fitter.mle_cube = comm.recv(source=0, tag=(rank + 1) * 13)
 
-    def run_sampler(self, pini=None, make_plots=False, zmask=None):
+    def run_sampler(
+        self, pini=None, make_plots=False, zmask=None, vectorize=None
+    ):
         """
         Run the sampler (after minimizer)
         """
@@ -361,7 +373,7 @@ class Analysis(object):
         if pini is None:
             pini = self.fitter.mle_cube
 
-        self.fitter.run_sampler(pini=pini, zmask=zmask)
+        self.fitter.run_sampler(pini=pini, zmask=zmask, vectorize=vectorize)
 
         if rank == 0:
             end = time.time()
@@ -403,7 +415,7 @@ class Analysis(object):
             if pname not in out_dict:
                 out_dict[pname] = {"z": [], "val": []}
             out_dict[pname]["z"].append(znode)
-            out_dict[pname]["val"].append(self.fitter.mle[name])
+            out_dict[pname]["val"].append(self.fitter.get_mle_value(name))
 
         for key in out_dict:
             out_dict[key]["z"] = np.array(out_dict[key]["z"])

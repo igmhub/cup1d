@@ -40,7 +40,6 @@
 from pathlib import Path
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from cup1d import Analysis, Args
 from cup1d.postprocessing.plotter import Plotter
@@ -120,9 +119,9 @@ for ii in range(1):
     print()
 
     print(ii, zmask)
-    p0 = analysis.fitter.sampling_point_from_parameters().copy()
+    initial_point = analysis.fitter.initial_parameters()
     analysis.run_minimizer(
-        p0,
+        initial_point,
         zmask=zmask,
         restart=True,
     )

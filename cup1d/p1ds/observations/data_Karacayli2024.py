@@ -1,9 +1,8 @@
-import os
 
 import pandas
 import numpy as np
 
-from cup1d.p1ds.base_p1d_data import BaseDataP1D, _drop_zbins
+from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Karacayli2024(BaseDataP1D):

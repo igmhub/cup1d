@@ -5,6 +5,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from cup1d.utils.various_dicts import get_blob_value
+
 
 class PowerRatioPlotter:
     """Plot linear-power ratios relative to a reference CMB cosmology.
@@ -63,8 +65,8 @@ class PowerRatioPlotter:
 
         blobs = np.load(desi_blobs_path)
         blinding = np.load(blinding_path, allow_pickle=True).item()
-        desi_delta2_star = blobs["Delta2_star"].reshape(-1) - blinding["Delta2_star"]
-        desi_n_star = blobs["n_star"].reshape(-1) - blinding["n_star"]
+        desi_delta2_star = get_blob_value(blobs, "Delta2_star").reshape(-1) - blinding["Delta2_star"]
+        desi_n_star = get_blob_value(blobs, "n_star").reshape(-1) - blinding["n_star"]
         if k_kms is None:
             k_kms = self.default_power_kms_grid()
         return self.set_data(

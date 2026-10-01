@@ -1,7 +1,6 @@
 from lace.archive.nyx_archive import NyxArchive
 from lace.configuration import get_nyx_path
 import numpy as np
-import os
 
 
 def main():

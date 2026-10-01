@@ -20,6 +20,8 @@
 # %load_ext autoreload
 # %autoreload 2
 
+from copy import deepcopy
+
 import numpy as np
 import os, sys
 import matplotlib.pyplot as plt
@@ -43,15 +45,14 @@ analysis = Analysis(args)
 # Get parameters from a point of the parameter space close to the best fit
 
 # %%
-p0 = analysis.fitter.sampling_point_from_parameters().copy()
-free_params = analysis.fitter.parameters_from_sampling_point(p0)
-analysis.like.get_chi2(free_params)
+initial_point = analysis.fitter.initial_parameters()
+analysis.fitter.get_chi2(initial_point)
 
 # %% [markdown]
 # Plot model for these parameters
 
 # %%
-analysis.like.plot_p1d(free_params)
+analysis.like.plot_p1d(initial_point)
 
 # %% [markdown]
 # #### If you want to extract the data
@@ -104,8 +105,13 @@ print(
 # %%
 # list of model parameters
 
-for par in analysis.like.free_params.values():
-    print(par["name"], par["value"], par["min_value"], par["max_value"])
+for par, parameter in initial_point.items():
+    print(
+        par,
+        f"{parameter['value']:.4e}",
+        f"{parameter['min_value']:.4e}",
+        f"{parameter['max_value']:.4e}",
+    )
 
 # %% [markdown]
 # #### Evaluate the model for some input parameters
@@ -114,13 +120,8 @@ for par in analysis.like.free_params.values():
 # evaluate model for the initial value of the input parameters
 zs = analysis.data[key].z
 k_kms = analysis.data[key].k_kms
-ini_free_params = {
-    name: parameter["value"]
-    for name, parameter in analysis.like.free_params.items()
-}
-
 ini_model_Pk_kms = analysis.theory.get_p1d_kms(
-    zs, k_kms, like_params=ini_free_params
+    zs, k_kms, like_params=initial_point
 )[0]
 
 # %%
@@ -128,11 +129,11 @@ ini_model_Pk_kms = analysis.theory.get_p1d_kms(
 zs = analysis.data[key].z
 k_kms = analysis.data[key].k_kms
 
-new_free_params = ini_free_params.copy()
-new_free_params["As"] *= 1.1
+new_point = deepcopy(initial_point)
+new_point["As"]["value"] *= 1.1
 
 new_As_model_Pk_kms = analysis.theory.get_p1d_kms(
-    zs, k_kms, like_params=new_free_params
+    zs, k_kms, like_params=new_point
 )[0]
 
 # %% [markdown]
@@ -154,13 +155,13 @@ plt.show()
 # ### Compressed parameters
 
 # %%
-blob = analysis.theory.get_blob_for_parameters(ini_free_params)
+blob = analysis.theory.get_blob_for_parameters(initial_point)
 ini_Delta2_star = blob[0]
 ini_n_star = blob[1]
 print(ini_Delta2_star, ini_n_star)
 
 # %%
-blob = analysis.theory.get_blob_for_parameters(new_free_params)
+blob = analysis.theory.get_blob_for_parameters(new_point)
 new_Delta2_star = blob[0]
 new_n_star = blob[1]
 print(new_Delta2_star, new_n_star)
@@ -176,22 +177,21 @@ new_Delta2_star/ini_Delta2_star
 # Get value of parameters close to best fit again
 
 # %%
-p0 = analysis.fitter.sampling_point_from_parameters().copy()
-free_params = analysis.fitter.parameters_from_sampling_point(p0)
-analysis.like.get_chi2(free_params)
+initial_point = analysis.fitter.initial_parameters()
+analysis.fitter.get_chi2(initial_point)
 
 # %% [markdown]
 # Run minimizer starting from this point, it should stop the minimization soon
 
 # %%
-analysis.run_minimizer(p0)
+analysis.run_minimizer(initial_point)
 
 # %% [markdown]
 # Evaluate for the new best fit
 
 # %%
-p1 = analysis.fitter.mle_cube
-analysis.like.plot_p1d(analysis.fitter.parameters_from_sampling_point(p1))
+best_fit_point = analysis.fitter.mle
+analysis.like.plot_p1d(best_fit_point)
 
 # %% [markdown]
 # Read chain

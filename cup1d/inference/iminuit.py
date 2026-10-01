@@ -2,7 +2,6 @@ import numpy as np
 from iminuit import Minuit
 
 # our own modules
-from cup1d.likelihood import likelihood
 from cup1d.likelihood import parameter as parameter_space
 
 

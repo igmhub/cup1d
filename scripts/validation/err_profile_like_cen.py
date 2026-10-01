@@ -5,7 +5,6 @@ os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 import numpy as np
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
-from cup1d.utils.utils import get_path_repo
 from cup1d.emulator.archive import set_archive
 
 
@@ -65,7 +64,7 @@ def main():
         )
         pip = Analysis(args, out_folder=out_folder, archive=archive_mock)
 
-        input_pars = pip.fitter.sampling_point_from_parameters().copy()
+        input_pars = pip.fitter.initial_parameters()
         print(input_pars)
 
         pip.fitter.run_minimizer(

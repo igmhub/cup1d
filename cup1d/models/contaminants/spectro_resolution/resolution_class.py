@@ -112,3 +112,13 @@ class Resolution(Contaminant):
         # print(cont)
 
         return cont
+
+    def get_contamination_batch(self, z, k_kms, like_params):
+        """Resolution correction with output items shaped ``(batch, k_z)``."""
+        z = np.atleast_1d(np.asarray(z, dtype=float))
+        values = self.get_value_batch("R_coeff", z, like_params)
+        return [
+            1 + 2 * values[:, iz, None] * get_Rz_Naim(z[iz]) ** 2
+            * np.asarray(k_kms[iz])[None, :] ** 2
+            for iz in range(len(z))
+        ]

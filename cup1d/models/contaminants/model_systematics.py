@@ -67,6 +67,9 @@ class Systematics(object):
     #     return dict_out
 
     def get_contamination(self, z, k_kms, like_params=None):
+        """Return scalar or batched systematics based on parameter shape."""
+        if isinstance(like_params, dict) and like_params and all(np.asarray(value).ndim == 1 for value in like_params.values()):
+            return self.resolution_model.get_contamination_batch(z, k_kms, like_params)
         # include multiplicative resolution correction
         cont = self.resolution_model.get_contamination(
             z=z, k_kms=k_kms, like_params=like_params

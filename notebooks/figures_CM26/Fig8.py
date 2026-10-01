@@ -23,19 +23,17 @@
 # %autoreload 2
 
 import numpy as np
-import time, os, sys
-import matplotlib.pyplot as plt
+import os
 
 # our own modules
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
-from cup1d.utils.utils import get_path_repo
 
 # %%
 data_label = "DESIY1_QMLE3"
 name_variation = None
-emulator_label = "CH24_mpgcen_gpr"
-# emulator_label = "CH24_nyxcen_gpr"
+emulator_label = "lace_mpg"
+# emulator_label = "lace_nyx"
 name_variation = "no_inflate"
 
 args = Args(data_label=data_label, emulator_label=emulator_label)
@@ -48,8 +46,8 @@ args.set_baseline(
 pip = Analysis(args, out_folder=None)
 
 # %%
-p0 = pip.fitter.sampling_point_from_parameters()
-free_params = pip.fitter.parameters_from_sampling_point(p0)
+p0 = pip.fitter.initial_parameters()
+free_params = p0
 pip.fitter.like.get_chi2(free_params, zmask=[2.2])
 
 # %%

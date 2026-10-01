@@ -40,7 +40,7 @@ folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/gl
 
 data = np.load(folder + "fitter_results.npy", allow_pickle=True).item()
 p0 = data["fitter"]["mle_cube"]
-free_params = pip.fitter.parameters_from_sampling_point(p0)
+free_params = p0
 pip.fitter.like.get_chi2(free_params)
 
 # %%

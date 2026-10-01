@@ -1,0 +1,9 @@
+version: 1
+disable_existing_loggers: false
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: WARNING
+root:
+  handlers: [console]
+  level: WARNING

@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
@@ -33,9 +32,9 @@ def plot_table_igm(
     chain="1",
     store_data=False,
 ):
-    emulator_label = "CH24_mpgcen_gpr"
+    emulator_label = "lace_mpg"
     if name_variation == "nyx":
-        emulator_label = "CH24_nyxcen_gpr"
+        emulator_label = "lace_nyx"
         name_variation = None
         tit = None
         lab_fid = "lyssa-central"
@@ -74,7 +73,7 @@ def plot_table_igm(
         base + folder + "fitter_results.npy", allow_pickle=True
     ).item()
     p0 = data["fitter"]["mle_cube"]
-    free_params = pip.fitter.parameters_from_sampling_point(p0)
+    free_params = pip.fitter.point_from_chain_row(p0)
 
     chain = np.load(base + folder + "chain.npy")
 

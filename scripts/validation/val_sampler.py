@@ -3,11 +3,9 @@ import sys
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
-import numpy as np
 from mpi4py import MPI
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
-from cup1d.utils.utils import get_path_repo
 from cup1d.postprocessing.plots_corner import plots_chain
 
 
@@ -71,7 +69,7 @@ def main():
 
     pip = Analysis(args)
 
-    input_pars = pip.fitter.sampling_point_from_parameters().copy()
+    input_pars = pip.fitter.initial_parameters()
 
     print("starting minimization")
     pip.run_minimizer(input_pars, restart=True)

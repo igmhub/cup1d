@@ -219,3 +219,30 @@ class SiAdd(Contaminant):
             metal_corr.append(aSiII**2 * ktot * G_SiII_SiII)
 
         return metal_corr
+
+    def get_contamination_batch(self, z, k_kms, mF, like_params, remove=None):
+        """Additive Si correction; each result has shape ``(batch, k_z)``."""
+        z = np.atleast_1d(np.asarray(z, dtype=float))
+        values = {key: self.get_value_batch(key, z, like_params) for key in self.list_coeffs}
+        for key in self.null_vals:
+            null = self.null_vals[key] if self.prop_coeffs[key + "_otype"] == "const" else np.exp(self.null_vals[key])
+            values[key] = np.where(values[key] <= null, 0.0, values[key])
+        off = self.off.copy()
+        if remove is not None:
+            off.update({key: value for key, value in remove.items() if key in off})
+        rac, rbc, rab = self.rat["SiIIa_SiIIc"], self.rat["SiIIb_SiIIc"], self.rat["SiIIa_SiIIb"]
+        output = []
+        for iz in range(len(z)):
+            k = np.asarray(k_kms[iz])[None, :]
+            amp = values["f_SiIIa_SiIIb"][:, iz, None]
+            damping = np.exp(-values["s_SiIIa_SiIIb"][:, iz, None] ** 2 * k**2)
+            Cac = 1 + rac**2 + 2 * rac * np.cos(self.dv["SiIIc_SiIIa"] * k)
+            Cbc = 1 + rbc**2 + 2 * rbc * np.cos(self.dv["SiIIc_SiIIb"] * k)
+            Cba = rbc**2 * (1 + rab**2 + 2 * rab * np.cos(self.dv["SiIIb_SiIIa"] * k))
+            pairs = (("SiIIacbc", "SiIIc_SiIIa", "SiIIc_SiIIb", 2*(1+rac*rbc), 2*(rac+rbc)), ("SiIIacab", "SiIIc_SiIIa", "SiIIb_SiIIa", 2*rbc*(1+rac*rab), 2*rbc*(rac+rab)), ("SiIIbcab", "SiIIc_SiIIb", "SiIIb_SiIIa", 2*rbc*(1+rbc*rab), 2*rbc*(rbc+rab)))
+            total = off["SiIIc_SiIIa"]*Cac + off["SiIIc_SiIIb"]*Cbc + off["SiIIb_SiIIa"]*Cba
+            for flag, first, second, coef_d, coef_s in pairs:
+                d, s = .5*(self.dv[first]-self.dv[second]), .5*(self.dv[first]+self.dv[second])
+                total = total + off[flag]*(coef_d*np.cos(d*k)+coef_s*np.cos(s*k))
+            output.append(amp**2 * total * damping)
+        return output

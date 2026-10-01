@@ -3,11 +3,9 @@ import os
 import math
 import copy
 from mpi4py import MPI
-from scipy.stats.distributions import chi2 as chi2_scipy
-from scipy.linalg import block_diag
+from scipy.linalg import block_diag, cho_factor, cho_solve
 
 from lace.cosmo.thermal_broadening import thermal_broadening_kms
-from cup1d.utils.utils import is_number_string
 from cup1d.utils import rebinning
 
 from cup1d.utils.utils import split_string
@@ -32,6 +30,7 @@ class Likelihood(object):
         cov_factor=1.0,
         prior_Gauss_rms=None,
         emu_cov_type="block",
+        covariance_method="inverse",
         min_log_like=-1e100,
         args=None,
         start_from_min=True,
@@ -55,6 +54,9 @@ class Likelihood(object):
         self.prior_Gauss_rms = prior_Gauss_rms
         self.cov_factor = cov_factor
         self.emu_cov_type = emu_cov_type
+        if covariance_method not in {"inverse", "cholesky"}:
+            raise ValueError("covariance_method must be 'inverse' or 'cholesky'")
+        self.covariance_method = covariance_method
         self.min_log_like = min_log_like
         self.data = data
         # we only do this for latter save all relevant after fitting the model
@@ -185,7 +187,17 @@ class Likelihood(object):
 
         # get emulator error
         filename = "l1O_cov_" + self.theory.emulator.emulator_label + ".npy"
-        full_path = os.path.join(get_path_repo("lace"), "data", "covariance", filename)
+        if "forest" in self.theory.emulator.emulator_label:
+            import forestflow
+
+            covariance_root = os.path.join(
+                os.path.dirname(forestflow.__path__[0]), "data", "covariance"
+            )
+        else:
+            covariance_root = os.path.join(
+                get_path_repo("lace"), "data", "covariance"
+            )
+        full_path = os.path.join(covariance_root, filename)
         emu_cov = np.load(full_path, allow_pickle=True).item()
         # contains:
         # dict_save["zz"] = zz
@@ -200,10 +212,12 @@ class Likelihood(object):
 
         # split in redshifts
         self.icov_Pk_kms = {}
+        self.chol_Pk_kms = {}
         self.cov_Pk_kms = {}
         self.cov_emu_Pk_kms = {}
         # all redshifts together, for full Pk
         self.full_icov_Pk_kms = {}
+        self.full_chol_Pk_kms = {}
         self.full_cov_Pk_kms = {}
         self.emu_full_cov_Pk_kms = {}
 
@@ -212,6 +226,7 @@ class Likelihood(object):
             data = self.data[key]
             # initialize, to store the results for different redshifts
             icov_Pk_kms = []
+            chol_Pk_kms = []
             cov_Pk_kms = []
             cov_emu_Pk_kms = []
 
@@ -287,12 +302,20 @@ class Likelihood(object):
                 ind = np.argmin(np.abs(self.cov_factor["z"] - data.z[ii]))
                 cov *= self.cov_factor["val_full"][ind] ** 2
 
-                # Compute and store the inverse covariance matrix
+                # Factor once. Cholesky is used directly by the likelihood when
+                # requested; keep the inverse for established diagnostic APIs.
+                try:
+                    chol_Pk_kms.append(cho_factor(cov, lower=True, check_finite=False))
+                except np.linalg.LinAlgError as error:
+                    raise np.linalg.LinAlgError(
+                        f"Covariance for data set {key!r}, z={data.z[ii]:.3f} is not positive definite"
+                    ) from error
                 icov_Pk_kms.append(np.linalg.inv(cov))
                 cov_Pk_kms.append(cov)
                 cov_emu_Pk_kms.append(add_emu_cov_kms)
 
             self.icov_Pk_kms[key] = icov_Pk_kms
+            self.chol_Pk_kms[key] = chol_Pk_kms
             self.cov_Pk_kms[key] = cov_Pk_kms
             self.cov_emu_Pk_kms[key] = cov_emu_Pk_kms
 
@@ -400,7 +423,12 @@ class Likelihood(object):
 
                         cov[i0, i1] = cov[i0, i1] * fact0 * fact1
 
-                # Compute and store the inverse covariance matrix
+                try:
+                    self.full_chol_Pk_kms[key] = cho_factor(cov, lower=True, check_finite=False)
+                except np.linalg.LinAlgError as error:
+                    raise np.linalg.LinAlgError(
+                        f"Full covariance for data set {key!r} is not positive definite"
+                    ) from error
                 self.full_icov_Pk_kms[key] = np.linalg.inv(cov)
                 self.full_cov_Pk_kms[key] = cov
                 self.emu_full_cov_Pk_kms[key] = full_emu_cov
@@ -589,10 +617,27 @@ class Likelihood(object):
     ):
         """Compute theoretical prediction for P1D"""
 
-        like_params = {} if parameters is None else parameters
+        # Public callers supply a full named point; theory receives scalar
+        # values through this private boundary adapter.
+        like_params = (
+            {} if parameters is None
+            else parameter_space.values_from_point(self.free_params, parameters)
+        )
 
         all_p1ds = {}
         other_stuff = {}
+        forest_emulator = self.theory.emulator
+        use_forest_cache = "forest" in forest_emulator.emulator_label
+        if use_forest_cache:
+            # Several data sets commonly contain identical redshifts. Prime
+            # ForestFlow once for their union instead of repeating cINN calls.
+            emulator_calls = [
+                self.theory.get_emulator_calls(
+                    self.Rebin_data.zs[key], like_params=like_params
+                )[0]
+                for key in self.Rebin_data.zs
+            ]
+            forest_emulator.prime_prediction_cache(emulator_calls)
         for key in self.Rebin_data.zs:
             _results = self.theory.get_P1D_kms(
                 self.Rebin_data.zs[key],
@@ -605,6 +650,8 @@ class Likelihood(object):
                 remove=remove,
             )
             if _results is None:
+                if use_forest_cache:
+                    forest_emulator.clear_prediction_cache()
                 return None
 
             if return_blob | return_emu_params:
@@ -619,11 +666,17 @@ class Likelihood(object):
                 for ii in range(1, len(_results)):
                     other_stuff[key].append(_results[ii])
 
+        if use_forest_cache:
+            forest_emulator.clear_prediction_cache()
         return all_p1ds, other_stuff
 
     def get_chi2(self, parameters=None, return_all=False, zmask=None):
-        """Compute chi2 using data and theory, without adding
-        emulator covariance"""
+        """Compute chi2 using data and theory, without emulator covariance.
+
+        ``zmask`` is a diagnostic single-redshift fit only. It intentionally
+        uses that redshift's covariance block and cannot retain cross-redshift
+        covariance terms. Use ``zmask=None`` for a joint fit.
+        """
 
         log_like, log_like_all = self.get_log_like(
             parameters, ignore_log_det_cov=True, zmask=zmask
@@ -647,8 +700,14 @@ class Likelihood(object):
         return_blob=False,
         zmask=None,
     ):
-        """Compute log(likelihood), including determinant of covariance
-        unless you are setting ignore_log_det_cov=True."""
+        """Compute log(likelihood), including determinant of covariance.
+
+        A non-null ``zmask`` may select exactly one redshift. This is for
+        one-redshift diagnostic fits: selecting a subset omits cross-redshift
+        covariance, so multi-redshift masks are rejected.
+        """
+
+        zmask = self._validate_single_redshift_mask(zmask)
 
         # what to return if we are out of priors
         null_out = [-np.inf, -np.inf]
@@ -662,7 +721,8 @@ class Likelihood(object):
             return null_out
         else:
             if return_blob:
-                emu_p1d, blob = _res
+                emu_p1d, extra = _res
+                blob = next(iter(extra.values()))[0]
             else:
                 emu_p1d = _res[0]
 
@@ -676,7 +736,9 @@ class Likelihood(object):
             emu_p1d_use = emu_p1d[key]
             data = self.data[key]
             icov_Pk_kms = self.icov_Pk_kms[key]
+            chol_Pk_kms = self.chol_Pk_kms[key]
             full_icov_Pk_kms = self.full_icov_Pk_kms[key]
+            full_chol_Pk_kms = self.full_chol_Pk_kms.get(key)
 
             # loop over redshift bins
             for iz in range(len(data.z)):
@@ -686,7 +748,11 @@ class Likelihood(object):
                         continue
                 # compute chi2 for this redshift bin
                 diff = data.Pk_kms[iz] - np.array(emu_p1d_use[iz]).reshape(-1)
-                chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
+                if self.covariance_method == "cholesky":
+                    solved = cho_solve(chol_Pk_kms[iz], diff, check_finite=False)
+                    chi2_z = np.dot(diff, solved)
+                else:
+                    chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
                 # print(iz, chi2_z, np.mean(icov_Pk_kms[iz]), np.mean(diff))
                 # print(
                 #     np.dot(icov_Pk_kms[iz], diff),
@@ -696,7 +762,9 @@ class Likelihood(object):
                 if ignore_log_det_cov:
                     log_like_all[key][iz] = -0.5 * chi2_z
                 else:
-                    log_det_cov = np.log(np.abs(1 / np.linalg.det(icov_Pk_kms[iz])))
+                    log_det_cov = (2 * np.log(np.diag(chol_Pk_kms[iz][0])).sum()
+                                   if self.covariance_method == "cholesky"
+                                   else np.log(np.abs(1 / np.linalg.det(icov_Pk_kms[iz]))))
                     log_like_all[key][iz] = -0.5 * (chi2_z + log_det_cov)
 
             if (full_icov_Pk_kms is None) | (zmask is not None):
@@ -704,11 +772,17 @@ class Likelihood(object):
             else:
                 # compute chi2 using full cov
                 diff = data.full_Pk_kms - np.concatenate(emu_p1d_use)
-                chi2_all = np.dot(np.dot(full_icov_Pk_kms, diff), diff)
+                if self.covariance_method == "cholesky":
+                    solved = cho_solve(full_chol_Pk_kms, diff, check_finite=False)
+                    chi2_all = np.dot(diff, solved)
+                else:
+                    chi2_all = np.dot(np.dot(full_icov_Pk_kms, diff), diff)
                 if ignore_log_det_cov:
                     log_like += -0.5 * chi2_all
                 else:
-                    log_det_cov = np.log(np.abs(1 / np.linalg.det(full_icov_Pk_kms)))
+                    log_det_cov = (2 * np.log(np.diag(full_chol_Pk_kms[0])).sum()
+                                   if self.covariance_method == "cholesky"
+                                   else np.log(np.abs(1 / np.linalg.det(full_icov_Pk_kms))) )
                     log_like += -0.5 * (chi2_all + log_det_cov)
 
         # something went wrong
@@ -719,6 +793,27 @@ class Likelihood(object):
         if return_blob:
             out.append(blob)
         return out
+
+    @staticmethod
+    def _validate_single_redshift_mask(zmask):
+        """Normalize the diagnostic redshift mask and reject unsafe subsets."""
+
+        if zmask is None:
+            return None
+        zmask = np.asarray(zmask, dtype=float)
+        if zmask.ndim == 0:
+            zmask = zmask.reshape(1)
+        elif zmask.ndim != 1:
+            raise ValueError("zmask must be one redshift value or None")
+        if zmask.size != 1:
+            raise ValueError(
+                "zmask supports exactly one redshift. A multi-redshift subset "
+                "would drop retained cross-redshift covariance; use zmask=None "
+                "for a joint fit."
+            )
+        if not np.isfinite(zmask[0]):
+            raise ValueError("zmask must contain one finite redshift")
+        return zmask
 
     def regulate_log_like(self, log_like):
         """Make sure that log_like is not NaN, nor tiny"""
@@ -731,6 +826,7 @@ class Likelihood(object):
     def parameters_in_bounds(self, parameters):
         """Return whether all physical values lie within their prior bounds."""
 
+        parameters = parameter_space.values_from_point(self.free_params, parameters)
         return all(
             parameter["min_value"] <= parameters[name] <= parameter["max_value"]
             for name, parameter in self.free_params.items()
@@ -739,6 +835,7 @@ class Likelihood(object):
     def get_log_prior(self, parameters):
         """Compute the prior directly in physical parameter units."""
 
+        parameters = parameter_space.values_from_point(self.free_params, parameters)
         if not self.parameters_in_bounds(parameters):
             return self.min_log_like
         if self.Gauss_priors is None:
@@ -754,8 +851,9 @@ class Likelihood(object):
     def compute_log_prob(
         self, parameters, return_blob=False, ignore_log_det_cov=True, zmask=None
     ):
-        """Compute posterior probability for physical parameter values."""
+        """Compute posterior probability for a public point or private values."""
 
+        parameters = parameter_space.values_from_point(self.free_params, parameters)
         if not self.parameters_in_bounds(parameters):
             if return_blob:
                 return self.min_log_like, self.theory.get_blob()
@@ -803,6 +901,152 @@ class Likelihood(object):
             zmask=zmask,
         )
         return lnprob, *blob
+
+    def _parameter_batch_rows(self, parameters_batch):
+        """Validate a columnar parameter batch and expose scalar compatibility rows.
+
+        New callers should provide ``{name: array(n_batch)}``, which avoids
+        creating parameter dictionaries in the sampler/fitter layer.  The
+        scalar rows are retained temporarily because cosmology and several
+        legacy contaminant models have scalar-only APIs.
+        """
+
+        if isinstance(parameters_batch, dict):
+            if not parameters_batch:
+                return []
+            arrays = {}
+            n_batch = None
+            for name, values in parameters_batch.items():
+                values = np.asarray(values, dtype=float)
+                if values.ndim != 1:
+                    raise ValueError(
+                        f"batched parameter {name} must have shape (n_batch,), "
+                        f"got {values.shape}"
+                    )
+                if n_batch is None:
+                    n_batch = len(values)
+                elif len(values) != n_batch:
+                    raise ValueError(
+                        f"batched parameter {name} has length {len(values)}, "
+                        f"expected {n_batch}"
+                    )
+                arrays[name] = values
+            return [
+                {name: values[index] for name, values in arrays.items()}
+                for index in range(n_batch)
+            ]
+        return list(parameters_batch)
+
+    def log_prob_and_blobs_batch(
+        self, parameters_batch, ignore_log_det_cov=True, zmask=None
+    ):
+        """Evaluate posterior values for a batch of physical parameters.
+
+        Emulator calls are coalesced before model evaluation. Predictions are
+        then stacked so covariance contractions are evaluated over the entire
+        batch with NumPy rather than one point at a time.
+        """
+
+        zmask = self._validate_single_redshift_mask(zmask)
+        parameter_columns = parameters_batch if isinstance(parameters_batch, dict) else None
+        parameters_batch = self._parameter_batch_rows(parameters_batch)
+        n_points = len(parameters_batch)
+        in_bounds = np.asarray(
+            [self.parameters_in_bounds(parameters) for parameters in parameters_batch]
+        )
+        valid_indices = np.flatnonzero(in_bounds)
+        blobs = [self.theory.get_blob()] * n_points
+        batched_predictions = None
+        # Columnar callers use one complete forward-model evaluation per data
+        # group. Legacy list-of-dictionaries callers retain the compatibility
+        # path below.
+        if parameter_columns is not None and len(valid_indices):
+            valid_columns = {name: np.asarray(values)[in_bounds] for name, values in parameter_columns.items()}
+            batched_predictions = {}
+            for key, redshifts in self.Rebin_data.zs.items():
+                fine_prediction = self.theory.get_p1d_kms(
+                    redshifts, self.Rebin_data.k_kms[key], valid_columns
+                )
+                batched_predictions[key] = self.Rebin_data.rebinning_batch(key, fine_prediction)
+            first_redshifts = next(iter(self.Rebin_data.zs.values()))
+            _, _, valid_blobs = self.theory.get_emulator_calls(
+                first_redshifts, valid_columns, return_M_of_z=True, return_blob=True
+            )
+            for local_index, index in enumerate(valid_indices):
+                blobs[index] = tuple(valid_blobs[local_index])
+        else:
+            predictions = [None] * n_points
+            for index, parameters in enumerate(parameters_batch):
+                if not in_bounds[index]:
+                    continue
+                result = self.get_p1d_kms(parameters, return_blob=True)
+                if result is None:
+                    continue
+                predictions[index] = result[0]
+                extra = result[1]
+                blobs[index] = next(iter(extra.values()))[0]
+            valid_indices = np.flatnonzero([prediction is not None for prediction in predictions])
+
+        log_like = np.full(n_points, self.min_log_like, dtype=float)
+        if len(valid_indices):
+            batch_log_like = np.zeros(len(valid_indices))
+            for key in self.Rebin_data.zs:
+                data = self.data[key]
+                inverse_covariance = self.icov_Pk_kms[key]
+                chol_covariance = self.chol_Pk_kms[key]
+                full_inverse_covariance = self.full_icov_Pk_kms[key]
+                full_chol_covariance = self.full_chol_Pk_kms.get(key)
+                if full_inverse_covariance is not None and zmask is None:
+                    model = (
+                        np.concatenate(batched_predictions[key], axis=1)
+                        if batched_predictions is not None
+                        else np.stack([np.concatenate(predictions[index][key]) for index in valid_indices])
+                    )
+                    residual = data.full_Pk_kms[None, :] - model
+                    chi2 = (np.sum(residual * cho_solve(full_chol_covariance, residual.T, check_finite=False).T, axis=1)
+                            if self.covariance_method == "cholesky" else np.einsum("bi,ij,bj->b", residual, full_inverse_covariance, residual, optimize=True))
+                    batch_log_like -= 0.5 * chi2
+                    if not ignore_log_det_cov:
+                        batch_log_like -= 0.5 * np.log(
+                            np.abs(1 / np.linalg.det(full_inverse_covariance))
+                        )
+                    continue
+
+                for redshift_index, redshift in enumerate(data.z):
+                    if zmask is not None and not np.any(
+                        np.abs(zmask - redshift) < 1.0e-3
+                    ):
+                        continue
+                    model = (
+                        batched_predictions[key][redshift_index]
+                        if batched_predictions is not None
+                        else np.stack([predictions[index][key][redshift_index] for index in valid_indices])
+                    )
+                    residual = data.Pk_kms[redshift_index][None, :] - model
+                    chi2 = (np.sum(residual * cho_solve(chol_covariance[redshift_index], residual.T, check_finite=False).T, axis=1)
+                            if self.covariance_method == "cholesky" else np.einsum("bi,ij,bj->b", residual, inverse_covariance[redshift_index], residual, optimize=True))
+                    batch_log_like -= 0.5 * chi2
+                    if not ignore_log_det_cov:
+                        batch_log_like -= 0.5 * np.log(
+                            np.abs(
+                                1
+                                / np.linalg.det(
+                                    inverse_covariance[redshift_index]
+                                )
+                            )
+                        )
+            log_like[valid_indices] = np.maximum(
+                batch_log_like, self.min_log_like
+            )
+
+        log_prior = np.asarray(
+            [self.get_log_prior(parameters) for parameters in parameters_batch]
+        )
+        posterior = log_like + log_prior
+        posterior[~in_bounds] = self.min_log_like
+        return [
+            (posterior[index], *blobs[index]) for index in range(n_points)
+        ]
 
     def old_plot_p1d(
         self,

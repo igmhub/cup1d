@@ -12,7 +12,7 @@ import pytest
 from scipy.linalg import block_diag
 
 from cup1d.likelihood.likelihood import Likelihood
-from cup1d.postprocessing.p1d import P1DPlotter, plot_p1d, plot_p1d_errors
+from cup1d.postprocessing.p1d import P1DPlotter, plot_p1d
 
 
 class SmallLikelihood:
@@ -74,6 +74,13 @@ def test_rendering_and_native_outputs(residuals, panels, nz, datasets):
         plotted_data = ax.containers[0].lines[0].get_ydata()
         expected = data.Pk_kms[0] / (data.Pk_kms[0] - .5) if residuals else data.k_kms[0] * data.Pk_kms[0] / np.pi
         np.testing.assert_allclose(plotted_data, expected)
+    if panels:
+        expected_label = (r'$P_{\rm 1D}^{\rm data}/P_{\rm 1D}^{\rm fit}$'
+                          if residuals else r'$k_\parallel P_{\rm 1D}/\pi$')
+        assert [axis.get_ylabel() for axis in axes] == [
+            expected_label if index % 3 == 0 else ''
+            for index in range(len(axes))
+        ]
 
 
 def test_mask_uses_original_prediction_indices_and_correct_dof():

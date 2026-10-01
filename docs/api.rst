@@ -23,7 +23,6 @@ Data, emulator, and theory
    cup1d.p1ds.factory
    cup1d.emulator.archive
    cup1d.emulator.factory
-   cup1d.emulator.interface
    cup1d.theory.camb
    cup1d.theory.cosmology
    cup1d.theory.factory

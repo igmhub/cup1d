@@ -23,21 +23,19 @@
 # %autoreload 2
 
 import numpy as np
-import time, os, sys
-import matplotlib.pyplot as plt
+import os
 
 # our own modules
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
 from cup1d.postprocessing.plotter import Plotter
-from cup1d.utils.utils import get_path_repo
 
 # %%
 
 data_label = "DESIY1_QMLE3"
 name_variation = None
-emulator_label = "CH24_mpgcen_gpr"
-# emulator_label = "CH24_nyxcen_gpr"
+emulator_label = "lace_mpg"
+# emulator_label = "lace_nyx"
 
 # emu_cov_type = "block"
 # emu_cov_type = "diagonal"

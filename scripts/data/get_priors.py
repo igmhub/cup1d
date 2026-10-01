@@ -1,6 +1,6 @@
 # //global/cfs/cdirs/desicollab/science/lya/y1-p1d/likelihood_files/data_files/MockChallengeSnapshot
 
-import socket, os, sys, glob
+import socket, os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
@@ -15,7 +15,6 @@ from lace.emulator.emulator_manager import set_emulator
 from cup1d.emulator.archive import set_archive
 from cup1d.inference.analysis import Analysis
 from cup1d.theory.cosmology import set_cosmo
-from cup1d.theory import camb as CAMB_model
 from cup1d.utils.utils import get_path_repo
 
 
@@ -83,8 +82,8 @@ def main():
 
     ## set baseline
 
-    emulator_label = "CH24_mpgcen_gpr"
-    # emulator_label = "CH24_nyxcen_gpr"
+    emulator_label = "lace_mpg"
+    # emulator_label = "lace_nyx"
 
     args = Args(emulator_label=emulator_label)
     args.data_label = "DESIY1"
@@ -132,7 +131,7 @@ def main():
             "CH24_mpg_gp",
             "CH24_nyx_gp",
             "CH24_nyx_gpr",
-            "CH24_nyxcen_gpr",
+            "lace_nyx",
         ]:
             args.archive = set_archive(args.training_set)
             args.emulator = set_emulator(

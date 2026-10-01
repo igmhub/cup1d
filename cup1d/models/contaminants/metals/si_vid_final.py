@@ -219,3 +219,20 @@ class SiVid(Contaminant):
             metal_corr.append(1 + PSiIII + PLya_SiIII)
 
         return metal_corr
+
+    def get_contamination_batch(self, z, k_kms, mF, like_params, remove=None):
+        """Ma et al. SiVid correction, returned as ``[(batch, k_z), ...]``."""
+        z = np.atleast_1d(np.asarray(z, dtype=float))
+        values = {key: self.get_value_batch(key, z, like_params) for key in self.list_coeffs}
+        for key in self.null_vals:
+            null = self.null_vals[key] if self.prop_coeffs[key + "_otype"] == "const" else np.exp(self.null_vals[key])
+            values[key] = np.where(values[key] <= null, 0.0, values[key])
+        return [
+            1
+            + values["f_Lya_SiIII"][:, iz, None] / (1 - np.asarray(mF)[:, iz, None])
+            * np.exp(values["s_Lya_SiIII"][:, iz, None] * np.asarray(k_kms[iz])[None, :])
+            + values["f_Lya_SiII"][:, iz, None] / (1 - np.asarray(mF)[:, iz, None])
+            * np.cos(self.dv["SiIII_Lya"] * np.asarray(k_kms[iz])[None, :])
+            * np.exp(-values["s_Lya_SiII"][:, iz, None] * np.asarray(k_kms[iz])[None, :])
+            for iz in range(len(z))
+        ]

@@ -37,7 +37,7 @@ VARIATIONS: dict[str, dict[str, Any]] = {
     "emu_block": {"emu_cov_type": "block"},
     "infl_emu_cov": {"name_variation": "infl_emu_cov"},
     "bias_eBOSS": {"name_variation": "bias_eBOSS"},
-    "nyx": {"emulator_label": "CH24_nyxcen_gpr"},
+    "nyx": {"emulator_label": "lace_nyx"},
     "cosmo": {"name_variation": "cosmo"},
     "cosmo_74": {"name_variation": "cosmo_74"},
     "cosmo_mnu_varh": {"name_variation": "cosmo_mnu_varh"},
@@ -183,7 +183,7 @@ def make_variation(options: dict[str, Any]) -> dict[str, Any]:
     """Return the fully resolved configuration for one CM2026 variation."""
 
     data_label = options.get("data_label", "DESIY1_QMLE3")
-    emulator_label = options.get("emulator_label", "CH24_mpgcen_gpr")
+    emulator_label = options.get("emulator_label", "lace_mpg")
     emu_cov_type = options.get("emu_cov_type", "full")
     name_variation = options.get("name_variation")
 

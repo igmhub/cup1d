@@ -21,7 +21,6 @@
 # %autoreload 2
 
 import numpy as np
-import time, os, sys
 import matplotlib.pyplot as plt
 from cup1d.utils.fit_ellipse import fit_ellipse, plot_ellipse
 from scipy.interpolate import griddata
@@ -1023,7 +1022,6 @@ plt.tight_layout()
 # %%
 from cup1d.theory.cosmology import set_cosmo
 from cup1d.theory import camb as CAMB_model
-import matplotlib.cm as cm
 
 # %%
 
@@ -1185,7 +1183,6 @@ dat_metal_trad = np.load(folder + "line_sigmas.npy", allow_pickle=True).item()
 # %%
 from cup1d.theory.cosmology import set_cosmo
 from cup1d.theory import camb as CAMB_model
-import matplotlib.cm as cm
 
 
 # %%

@@ -28,6 +28,7 @@ import numpy as np
 import os
 from cup1d.postprocessing.chains import planck as planck_chains
 from cup1d.postprocessing.importance_sampling import plot_importance_sampling
+from cup1d.utils.various_dicts import get_blob_value
 from cup1d.utils.utils import get_path_repo
 
 from matplotlib import rcParams
@@ -108,8 +109,8 @@ blobs = np.load(desi_chain_directory + "blobs.npy")
 blinding_path = os.path.join(get_path_repo("cup1d"), "data", "blinding_dr1.npy")
 blinding = np.load(blinding_path, allow_pickle=True).item()
 
-delta2_star_samples = blobs["Delta2_star"].reshape(-1) - blinding["Delta2_star"]
-n_star_samples = blobs["n_star"].reshape(-1) - blinding["n_star"]
+delta2_star_samples = get_blob_value(blobs, "Delta2_star").reshape(-1) - blinding["Delta2_star"]
+n_star_samples = get_blob_value(blobs, "n_star").reshape(-1) - blinding["n_star"]
 correlation = np.corrcoef(delta2_star_samples, n_star_samples)[0, 1]
 desi_dr1 = {
     "Delta2_star": summary_mpg["delta2_star_16_50_84"][1] - blinding["Delta2_star"],

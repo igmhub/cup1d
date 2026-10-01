@@ -55,11 +55,10 @@ analysis = Analysis(args)
 # prediction evaluated at that point.
 
 # %%
-initial_point = analysis.fitter.sampling_point_from_parameters().copy()
-initial_parameters = analysis.fitter.parameters_from_sampling_point(initial_point)
-initial_chi2 = analysis.like.get_chi2(initial_parameters)
+initial_point = analysis.fitter.initial_parameters()
+initial_chi2 = analysis.fitter.get_chi2(initial_point)
 print(f"Initial chi2 = {initial_chi2:.3f}")
-analysis.like.plot_p1d(initial_parameters, residuals=True, plot_panels=True)
+analysis.like.plot_p1d(initial_point, residuals=True, plot_panels=True)
 
 
 # %% [markdown]
@@ -70,7 +69,7 @@ analysis.like.plot_p1d(initial_parameters, residuals=True, plot_panels=True)
 
 # %%
 analysis.run_minimizer(initial_point, restart=True)
-best_fit_point = analysis.fitter.mle_cube
+best_fit_point = analysis.fitter.mle
 print(f"Best-fit chi2 = {analysis.fitter.mle_chi2:.3f}")
 
 
@@ -80,8 +79,7 @@ print(f"Best-fit chi2 = {analysis.fitter.mle_chi2:.3f}")
 # Compare the mock P1D with the best-fit model after minimization.
 
 # %%
-best_fit_parameters = analysis.fitter.parameters_from_sampling_point(best_fit_point)
-analysis.like.plot_p1d(best_fit_parameters, residuals=True, plot_panels=True)
+analysis.like.plot_p1d(best_fit_point, residuals=True, plot_panels=True)
 
 
 # %% [markdown]
@@ -91,9 +89,8 @@ analysis.like.plot_p1d(best_fit_parameters, residuals=True, plot_panels=True)
 # the mock. External observational measurements are omitted.
 
 # %%
-best_fit_parameters = analysis.fitter.parameters_from_sampling_point(best_fit_point)
 analysis.like.plot_igm(
-    free_params=best_fit_parameters,
+    free_params=best_fit_point,
     plot_external_data=False,
     plot_truth=True,
     variation_label="Best fit",
@@ -110,6 +107,6 @@ analysis.like.plot_igm(
 from cup1d.postprocessing import Plotter
 
 plotter = Plotter(analysis.fitter)
-plotter.plot_mle_cosmo()
+plotter.plot_mle_cosmo(plot_errors=True, error_method="gauss_newton")
 
 # %%

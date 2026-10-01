@@ -11,6 +11,7 @@ from scipy.stats import gaussian_kde, norm
 from cup1d.likelihood import marginal
 from cup1d.postprocessing.chains import planck
 from cup1d.utils.utils import get_path_repo
+from cup1d.utils.various_dicts import get_blob_value
 
 
 class HistoricalLinearPowerPlotter:
@@ -181,8 +182,8 @@ class HistoricalLinearPowerPlotter:
                 joint_axis.plot(delta2_star, n_star, color=color, lw=[3, 2][index], alpha=0.7)
                 joint_axis.fill(delta2_star, n_star, color=color, alpha=0.7)
 
-        delta2_star = self.desi_blobs["Delta2_star"].reshape(-1) - self.blinding["Delta2_star"]
-        n_star = self.desi_blobs["n_star"].reshape(-1) - self.blinding["n_star"]
+        delta2_star = get_blob_value(self.desi_blobs, "Delta2_star").reshape(-1) - self.blinding["Delta2_star"]
+        n_star = get_blob_value(self.desi_blobs, "n_star").reshape(-1) - self.blinding["n_star"]
         self._plot_kde(amplitude_axis, delta2_star, blues(0.7))
         self._plot_kde(slope_axis, n_star, blues(0.7))
 
@@ -268,8 +269,8 @@ class HistoricalLinearPowerPlotter:
             - self.blinding["n_star"],
             "yerr": self.desi_summary["n_star_err"],
             "r": np.corrcoef(
-                self.desi_blobs["Delta2_star"].reshape(-1),
-                self.desi_blobs["n_star"].reshape(-1),
+                get_blob_value(self.desi_blobs, "Delta2_star").reshape(-1),
+                get_blob_value(self.desi_blobs, "n_star").reshape(-1),
             )[0, 1],
         }
 

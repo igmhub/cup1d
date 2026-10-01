@@ -1,9 +1,12 @@
 import copy
+from functools import wraps
+from collections.abc import Mapping
 import os
 from pathlib import Path
 import time
 from scipy.optimize import minimize
 from scipy.linalg import block_diag
+from threadpoolctl import threadpool_limits
 import numpy as np
 from mpi4py import MPI
 
@@ -20,6 +23,28 @@ from cup1d.utils.various_dicts import (
     blob_strings,
     blob_strings_orig,
 )
+
+
+def _configure_pyswarms_logging():
+    """Prevent PySwarms from installing its default report.log handler."""
+
+    config_path = Path(__file__).resolve().parents[1] / "utils" / "pyswarms_logging.yaml"
+    os.environ["LOG_CFG"] = str(config_path)
+
+
+def _single_threaded_numerics(function):
+    """Run a scalar optimization without nested BLAS/OpenMP parallelism."""
+
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        # Nelder--Mead evaluates one point at a time. Limiting numerical
+        # backends here avoids paying thread-management overhead for the
+        # small linear-algebra kernels within each scalar likelihood call.
+        # ``threadpool_limits`` restores the caller's settings on exit.
+        with threadpool_limits(limits=1):
+            return function(*args, **kwargs)
+
+    return wrapped
 
 
 class Fitter(object):
@@ -137,26 +162,69 @@ class Fitter(object):
         )
 
         ## Set up list of parameter names in tex format for plotting
-        self.paramstrings = [
-            param_dict[name] for name in self.like.free_params
-        ]
+        self.paramstrings = [param_dict[name] for name in self.like.free_params]
 
         # when running on simulated data, we can store true cosmo values
         self.set_truth()
 
         # Figure out what extra information will be provided as blobs
-        self.blobs_dtype = self.like.theory.get_blobs_dtype()
+        self.blob_names = [name for name, _ in self.like.theory.get_blobs_dtype()]
+        self.blobs_dtype = float
         self.mle = None
 
-    def sampling_point_from_parameters(self, parameters=None):
-        """Convert physical values to the optimizer unit cube."""
+    def initial_parameters(self):
+        """Return independent named initial parameter definitions.
 
-        return parameter_space.values_to_cube(self.like.free_params, parameters)
+        Each entry contains the current physical ``value`` and its prior
+        bounds, so it is suitable for display or user edits without mutating
+        the likelihood's own parameter definitions.
+        """
+
+        return copy.deepcopy(self.like.free_params)
+
+    def _cube_from_point(self, point=None):
+        """Convert a public named point to private optimizer coordinates."""
+
+        return parameter_space.values_to_cube(self.like.free_params, point)
+
+    def _point_from_cube(self, cube):
+        """Convert private optimizer coordinates to a public named point."""
+
+        values = parameter_space.values_from_cube(self.like.free_params, cube)
+        return parameter_space.point_from_values(self.like.free_params, values)
+
+    def point_to_unit_cube(self, point):
+        """Normalize a public named parameter point to unit-cube coordinates.
+
+        This is mainly useful for diagnostics and interoperability; optimizers
+        and samplers perform the conversion internally when given a point.
+        """
+
+        return self._cube_from_point(point)
+
+    def sampling_point_from_parameters(self, parameters=None):
+        """Compatibility alias for :meth:`_cube_from_point`."""
+
+        return self._cube_from_point(parameters)
+
+    def point_from_chain_row(self, cube):
+        """Return a public named point for one numeric chain row."""
+
+        return self._point_from_cube(cube)
 
     def parameters_from_sampling_point(self, values):
-        """Convert optimizer coordinates to physical values."""
+        """Compatibility alias returning scalar values for internal callers."""
 
         return parameter_space.values_from_cube(self.like.free_params, values)
+
+    def parameters_from_sampling_points(self, values):
+        """Convert cube points to columnar physical parameter arrays.
+
+        Each returned mapping value has shape ``(n_batch,)``. This is the
+        batch counterpart of :meth:`parameters_from_sampling_point`.
+        """
+
+        return parameter_space.values_from_cube_batch(self.like.free_params, values)
 
     def value_in_cube(self, name, value=None):
         return parameter_space.value_in_cube(self.like.free_params, name, value)
@@ -167,12 +235,19 @@ class Fitter(object):
     def error_from_cube(self, name, error):
         return parameter_space.error_from_cube(self.like.free_params, name, error)
 
+    def get_mle_value(self, name):
+        """Return one fitted physical or derived value from public results."""
+
+        if name in self.mle:
+            return self.mle[name]["value"]
+        return self.mle_cosmo[name]
+
     def get_mle_latex(self):
         """Return MLE values keyed by presentation-only LaTeX labels."""
 
         return {
-            self.param_dict.get(name, name): value
-            for name, value in self.mle.items()
+            self.param_dict.get(name, name): parameter["value"]
+            for name, parameter in self.mle.items()
         }
 
     def get_truth_latex(self):
@@ -181,8 +256,7 @@ class Fitter(object):
         if self.truth is None:
             return None
         return {
-            self.param_dict.get(name, name): value
-            for name, value in self.truth.items()
+            self.param_dict.get(name, name): value for name, value in self.truth.items()
         }
 
     def _prediction_vector_and_icov(self, values, zmask=None):
@@ -214,7 +288,10 @@ class Fitter(object):
                 continue
             model_vectors.append(
                 np.concatenate(
-                    [np.asarray(predictions[key][index]).reshape(-1) for index in indices]
+                    [
+                        np.asarray(predictions[key][index]).reshape(-1)
+                        for index in indices
+                    ]
                 )
             )
             full_icov = self.like.full_icov_Pk_kms[key]
@@ -222,7 +299,9 @@ class Fitter(object):
                 covariance_blocks.append(full_icov)
             else:
                 covariance_blocks.append(
-                    block_diag(*[self.like.icov_Pk_kms[key][index] for index in indices])
+                    block_diag(
+                        *[self.like.icov_Pk_kms[key][index] for index in indices]
+                    )
                 )
         if not model_vectors:
             raise ValueError("zmask does not select any data bins")
@@ -232,23 +311,26 @@ class Fitter(object):
         """Approximate posterior curvature from first model derivatives."""
 
         parameters = list(self.like.free_params.values())
-        exponential = np.asarray([
-            parameter.get("hessian_transform") == "exp"
-            for parameter in parameters
-        ])
+        exponential = np.asarray(
+            [parameter.get("hessian_transform") == "exp" for parameter in parameters]
+        )
         hessian_point = self.mle_cube.copy()
         amplitude_min = np.exp([parameter["min_value"] for parameter in parameters])
         amplitude_max = np.exp([parameter["max_value"] for parameter in parameters])
-        log_width = np.asarray([
-            parameter["max_value"] - parameter["min_value"]
-            for parameter in parameters
-        ])
+        log_width = np.asarray(
+            [
+                parameter["max_value"] - parameter["min_value"]
+                for parameter in parameters
+            ]
+        )
         amplitude_range = amplitude_max - amplitude_min
         if np.any(exponential):
-            log_values = np.asarray([
-                parameter_space.value_from_cube(self.like.free_params, name, value)
-                for name, value in zip(self.like.free_params, self.mle_cube)
-            ])
+            log_values = np.asarray(
+                [
+                    parameter_space.value_from_cube(self.like.free_params, name, value)
+                    for name, value in zip(self.like.free_params, self.mle_cube)
+                ]
+            )
             hessian_point[exponential] = (
                 np.exp(log_values[exponential]) - amplitude_min[exponential]
             ) / amplitude_range[exponential]
@@ -260,7 +342,9 @@ class Fitter(object):
             )
             cube[exponential] = (
                 np.log(amplitudes)
-                - np.asarray([parameter["min_value"] for parameter in parameters])[exponential]
+                - np.asarray([parameter["min_value"] for parameter in parameters])[
+                    exponential
+                ]
             ) / log_width[exponential]
             return cube
 
@@ -278,9 +362,7 @@ class Fitter(object):
         )
         jacobian = np.empty((model.size, self.ndim))
         for index in range(self.ndim):
-            step = min(
-                hessian_step, hessian_point[index], 1.0 - hessian_point[index]
-            )
+            step = min(hessian_step, hessian_point[index], 1.0 - hessian_point[index])
             direction = np.zeros(self.ndim)
             if step > 0:
                 direction[index] = step
@@ -309,10 +391,12 @@ class Fitter(object):
         hessian = hessian * np.outer(cube_scale, cube_scale)
         priors = self.like.Gauss_priors
         if priors is not None:
-            scales = np.asarray([
-                parameter["max_value"] - parameter["min_value"]
-                for parameter in self.like.free_params.values()
-            ])
+            scales = np.asarray(
+                [
+                    parameter["max_value"] - parameter["min_value"]
+                    for parameter in self.like.free_params.values()
+                ]
+            )
             hessian += np.diag((scales / priors) ** 2)
         return hessian
 
@@ -376,14 +460,14 @@ class Fitter(object):
         self.mle_error_method = method
         self.mle_hessian = hessian
         self.mle_hessian_rank = int(np.count_nonzero(~null_modes))
-        self.mle_covariance_cube = (
-            eigenvectors * inverse_eigenvalues
-        ) @ eigenvectors.T
+        self.mle_covariance_cube = (eigenvectors * inverse_eigenvalues) @ eigenvectors.T
         self.mle_null_modes = eigenvectors[:, null_modes]
-        scales = np.asarray([
-            parameter["max_value"] - parameter["min_value"]
-            for parameter in self.like.free_params.values()
-        ])
+        scales = np.asarray(
+            [
+                parameter["max_value"] - parameter["min_value"]
+                for parameter in self.like.free_params.values()
+            ]
+        )
         self.mle_covariance = self.mle_covariance_cube * np.outer(scales, scales)
         null_weight = np.sum(self.mle_null_modes**2, axis=1)
         self.mle_errors = {
@@ -432,37 +516,54 @@ class Fitter(object):
         # numerical projections onto cosmology after a coordinate transform do
         # not by themselves invalidate the finite identifiable-subspace error.
 
-        self.mle_cosmo_covariance = (
-            jacobian @ self.mle_covariance_cube @ jacobian.T
-        )
+        self.mle_cosmo_covariance = jacobian @ self.mle_covariance_cube @ jacobian.T
         errors = np.sqrt(np.diag(self.mle_cosmo_covariance))
         self.mle_cosmo_correlation = self.mle_cosmo_covariance / np.outer(
             errors, errors
         )
         cosmo_names = ("Delta2_star", "n_star", "alpha_star")
         self.mle_cosmo_errors = {
-            name: errors[index]
-            for index, name in enumerate(cosmo_names)
+            name: errors[index] for index, name in enumerate(cosmo_names)
         }
         return self.mle_errors
 
-    def get_chi2(self, values, **kwargs):
-        """Evaluate chi-squared from optimizer coordinates."""
+    def _values_from_input(self, point_or_cube):
+        """Private adapter for public points and internal cube coordinates."""
 
-        parameters = self.parameters_from_sampling_point(values)
-        return self.like.get_chi2(parameters, **kwargs)
+        if isinstance(point_or_cube, Mapping):
+            return parameter_space.values_from_point(
+                self.like.free_params, point_or_cube
+            )
+        return self.parameters_from_sampling_point(point_or_cube)
 
-    def log_prob(self, values, **kwargs):
-        """Evaluate posterior probability from sampler coordinates."""
+    def get_chi2(self, point_or_cube, **kwargs):
+        """Evaluate chi-squared from a public point or internal cube array."""
 
-        parameters = self.parameters_from_sampling_point(values)
-        return self.like.log_prob(parameters, **kwargs)
+        return self.like.get_chi2(self._values_from_input(point_or_cube), **kwargs)
 
-    def log_prob_and_blobs(self, values, **kwargs):
-        """Evaluate posterior and blobs from sampler coordinates."""
+    def log_prob(self, point_or_cube, **kwargs):
+        """Evaluate posterior from a public point or internal cube array."""
 
-        parameters = self.parameters_from_sampling_point(values)
-        return self.like.log_prob_and_blobs(parameters, **kwargs)
+        return self.like.log_prob(self._values_from_input(point_or_cube), **kwargs)
+
+    def log_prob_and_blobs(self, point_or_cube, **kwargs):
+        """Evaluate posterior and blobs from a public point or internal cube."""
+
+        return self.like.log_prob_and_blobs(
+            self._values_from_input(point_or_cube), **kwargs
+        )
+
+    def log_prob_and_blobs_batch(self, values, **kwargs):
+        """Evaluate an array of sampler coordinates in one likelihood batch."""
+
+        values = np.asarray(values)
+        if values.ndim != 2 or values.shape[1] != self.ndim:
+            raise ValueError(
+                f"expected sampling points with shape (n, {self.ndim}); "
+                f"got {values.shape}"
+            )
+        parameters = self.parameters_from_sampling_points(values)
+        return self.like.log_prob_and_blobs_batch(parameters, **kwargs)
 
     def minus_log_prob(self, values, zmask=None, ind_fix=None, pfix=None):
         """Negative posterior in optimizer coordinates."""
@@ -494,18 +595,30 @@ class Fitter(object):
         zmask=None,
         timeout=None,
         force_timeout=False,
+        vectorize=None,
     ):
         """Set up sampler, run burn in, run chains,
         return chains
             - timeout is the time in hours to run the
               sampler for
+            - vectorize batches the default likelihood across walkers
             - force_timeout will continue to run the chains
               until timeout, regardless of convergence"""
 
         import emcee
 
+        if isinstance(pini, Mapping):
+            pini = self.sampling_point_from_parameters(pini)
+        if vectorize is None:
+            emulator_label = self.like.theory.emulator.emulator_label
+            vectorize = "forest" not in emulator_label
+        use_vectorized = vectorize and log_func is None
         if log_func is None:
-            _log_func = self.log_prob_and_blobs
+            _log_func = (
+                self.log_prob_and_blobs_batch
+                if use_vectorized
+                else self.log_prob_and_blobs
+            )
         else:
             _log_func = log_func
 
@@ -523,6 +636,7 @@ class Fitter(object):
                 self.ndim,
                 log_func,
                 blobs_dtype=self.blobs_dtype,
+                vectorize=use_vectorized,
             )
             self._seed_sampler(sampler)
             self.print(
@@ -551,7 +665,11 @@ class Fitter(object):
 
             p0 = self.get_initial_walkers(pini=pini)
             sampler = emcee.EnsembleSampler(
-                self.nwalkers, self.ndim, log_func, blobs_dtype=self.blobs_dtype
+                self.nwalkers,
+                self.ndim,
+                log_func,
+                blobs_dtype=self.blobs_dtype,
+                vectorize=use_vectorized,
             )
 
             self._seed_sampler(sampler)
@@ -607,6 +725,7 @@ class Fitter(object):
 
         return sampler
 
+    @_single_threaded_numerics
     def run_minimizer(
         self,
         log_func_minimize=None,
@@ -646,6 +765,8 @@ class Fitter(object):
                     fun = lambda x: log_func_minimize(x, ind_fix=ind_fix, pfix=pfix)
                     return fun
 
+        if isinstance(p0, Mapping):
+            p0 = self.sampling_point_from_parameters(p0)
         _log_func_minimize = set_log_func_minimize(p0, zmask=zmask, mask_pars=mask_pars)
 
         if restart:
@@ -791,6 +912,146 @@ class Fitter(object):
                 hessian_step=hessian_step, zmask=zmask, method=error_method
             )
 
+    def run_minimizer_pso(
+        self,
+        p0=None,
+        zmask=None,
+        n_particles=128,
+        iters=1000,
+        options=None,
+        pso_type="global",
+        vectorize=True,
+        restart=False,
+        chi2_tol=0.1,
+        estimate_errors=False,
+        hessian_step=1.0e-4,
+        error_method="finite_difference",
+    ):
+        """Minimize with global- or local-neighborhood PSO.
+
+        ``pso_type="global"`` attracts all particles to the swarm-wide best;
+        ``pso_type="local"`` uses a dynamic neighborhood to preserve separate
+        searches for longer. When ``vectorize`` is true, each swarm iteration evaluates all
+        particles in one batched likelihood call. Set it false to use the
+        scalar likelihood once per particle, primarily for benchmarking.
+        ``iters`` remains a maximum: after an initial swarm-exploration phase,
+        the optimizer stops after 20 consecutive global-best improvements
+        smaller than ``chi2_tol`` (0.1 by default). The tolerance matches the
+        local minimizer, while the longer window respects PSO's different
+        iteration scale. With ``restart=True``
+        the run replaces the stored MLE even when it is worse than a previous one.
+        """
+        if n_particles < 2 or iters < 1:
+            raise ValueError("n_particles must be at least 2 and iters positive")
+        pso_type = pso_type.lower()
+        if pso_type not in {"global", "local"}:
+            raise ValueError("pso_type must be 'global' or 'local'")
+        if chi2_tol <= 0:
+            raise ValueError("chi2_tol must be positive")
+        if restart:
+            self.mle_chi2 = 1e10
+        if options is None:
+            options = {"c1": 1.5, "c2": 1.5, "w": 0.7}
+        else:
+            options = dict(options)
+        if pso_type == "local":
+            # PySwarms' local topology requires these neighborhood settings.
+            options.setdefault("k", min(10, n_particles))
+            options.setdefault("p", 2)
+        if isinstance(p0, Mapping):
+            p0 = self.sampling_point_from_parameters(p0)
+        initial = np.full(self.ndim, 0.5) if p0 is None else np.asarray(p0, dtype=float)
+        if initial.shape != (self.ndim,):
+            raise ValueError(f"p0 must have shape ({self.ndim},)")
+        rng = np.random.default_rng(42)
+        # A dense random displacement changes every parameter at once. In this
+        # high-dimensional likelihood those proposals are usually much worse
+        # than the supplied point, leaving PSO with no useful direction. Seed
+        # the swarm with one-coordinate probes at several scales first,
+        # then sparse probes.
+        init_pos = np.repeat(initial[None, :], n_particles, axis=0)
+        probe_steps = (0.025, 0.05, 0.075, 0.1)
+        n_axis_probes = min(n_particles - 1, 2 * self.ndim * len(probe_steps))
+        probe_index = np.arange(n_axis_probes)
+        axes = probe_index % self.ndim
+        signs = np.where((probe_index // self.ndim) % 2 == 0, -1.0, 1.0)
+        steps = np.asarray(probe_steps)[probe_index // (2 * self.ndim)]
+        probe_rows = np.arange(1, n_axis_probes + 1)
+        init_pos[probe_rows, axes] = initial[axes] + steps * signs
+        for index in range(n_axis_probes + 1, n_particles):
+            active = rng.choice(self.ndim, size=min(3, self.ndim), replace=False)
+            init_pos[index, active] += rng.normal(0.0, 0.05, size=len(active))
+        init_pos = np.clip(init_pos, 0.0, 1.0)
+
+        def objective(points):
+            if vectorize:
+                results = self.log_prob_and_blobs_batch(points, zmask=zmask)
+            else:
+                results = [
+                    self.log_prob_and_blobs(point, zmask=zmask) for point in points
+                ]
+            return -np.asarray([result[0] for result in results], dtype=float)
+
+        # PySwarms expresses its stop criterion relative to the objective.
+        # Scale it so the first-order absolute criterion is the same 0.1
+        # objective tolerance used by the Nelder--Mead minimizer. PSO needs
+        # a longer stagnation window because an iteration is only one swarm
+        # update, unlike a completed Nelder--Mead local search.
+        initial_cost = objective(initial[None, :])[0]
+        initial_chi2 = self.get_chi2(initial, zmask=zmask)
+        ftol = chi2_tol / (1.0 + abs(initial_cost))
+        self.print(
+            f"Starting {pso_type} PSO minimization with",
+            n_particles,
+            "particles; max iterations=",
+            iters,
+        )
+        self.print("Initial chi2 =", np.round(initial_chi2, 4))
+        _configure_pyswarms_logging()
+        if pso_type == "global":
+            from pyswarms.single import GlobalBestPSO as PSO
+        else:
+            from pyswarms.single import LocalBestPSO as PSO
+        optimizer = PSO(
+            n_particles=n_particles,
+            dimensions=self.ndim,
+            options=options,
+            bounds=(np.zeros(self.ndim), np.ones(self.ndim)),
+            init_pos=init_pos,
+            bh_strategy="periodic",
+            ftol=ftol,
+            ftol_iter=20,
+        )
+        if self.verbose:
+            # PySwarms sends raw floats to tqdm, which switches to scientific
+            # notation for moderately large costs. Keep its progress bar, but
+            # render the best objective in the same fixed-point format used by
+            # cup1d's start/end diagnostics.
+            def report_progress(**values):
+                if "best_cost" in values:
+                    values["best_cost"] = f"{float(values['best_cost']):.2f}"
+                optimizer.rep.t.set_postfix(**values)
+
+            optimizer.rep.hook = report_progress
+        cost, position = optimizer.optimize(
+            objective, iters=iters, verbose=self.verbose
+        )
+        chi2 = self.get_chi2(position, zmask=zmask)
+        self.print(
+            "PSO finished after",
+            len(optimizer.cost_history),
+            "iterations",
+        )
+        self.print("Final chi2 =", np.round(chi2, 4))
+        self.pso_cost = float(cost)
+        self.pso_position = np.asarray(position)
+        self.set_mle(self.pso_position, chi2, force=restart)
+        if estimate_errors:
+            self.estimate_mle_errors(
+                hessian_step=hessian_step, zmask=zmask, method=error_method
+            )
+        return optimizer
+
     def run_minimizer_da(
         self,
         log_func_minimize=None,
@@ -831,6 +1092,8 @@ class Fitter(object):
         if restart:
             self.mle_chi2 = 1e10
 
+        if isinstance(p0, Mapping):
+            p0 = self.sampling_point_from_parameters(p0)
         _log_func_minimize = set_log_func_minimize(p0, zmask=zmask, mask_pars=mask_pars)
 
         npars = len(self.like.free_params)
@@ -918,8 +1181,9 @@ class Fitter(object):
 
         self.lnprop_mle, *blobs = self.log_prob_and_blobs(self.mle_cube)
 
-        self.mle = dict(like_pars)
-        self.mle.update(self.mle_cosmo)
+        # ``mle`` is the public full parameter point. Derived cosmological
+        # quantities remain in ``mle_cosmo`` rather than mixing schemas.
+        self.mle = parameter_space.point_from_values(self.like.free_params, like_pars)
 
         if "As" not in self.like.free_params:
             return
@@ -1011,7 +1275,11 @@ class Fitter(object):
         if collapse:
             lnprob = self.lnprob[extra_nburn:, mask].reshape(-1)
             chain = self.chain[extra_nburn:, mask, :].reshape(-1, self.chain.shape[-1])
-            blobs = self.blobs[extra_nburn:, mask].reshape(-1)
+            selected_blobs = self.blobs[extra_nburn:, mask]
+            if selected_blobs.dtype.names is None:
+                blobs = selected_blobs.reshape(-1, selected_blobs.shape[-1])
+            else:
+                blobs = selected_blobs.reshape(-1)
         else:
             lnprob = self.lnprob[extra_nburn:, mask]
             chain = self.chain[extra_nburn:, mask, :]
@@ -1029,9 +1297,7 @@ class Fitter(object):
             cube_values = np.zeros_like(chain)
             for ip in range(chain.shape[-1]):
                 name = self.like.free_param_names[ip]
-                cube_values[..., ip] = self.value_from_cube(
-                    name, chain[..., ip]
-                )
+                cube_values[..., ip] = self.value_from_cube(name, chain[..., ip])
 
             return cube_values, lnprob, blobs
         else:
@@ -1063,8 +1329,11 @@ class Fitter(object):
             all_params = np.zeros((*chain.shape[:-1], chain.shape[-1] + 6))
 
             all_params[..., : chain.shape[-1]] = chain
-            for ii in range(6):
-                all_params[..., chain.shape[-1] + ii] = blobs[blob_strings_orig[ii]]
+            if blobs.dtype.names is None:
+                all_params[..., chain.shape[-1] :] = blobs
+            else:
+                for ii in range(6):
+                    all_params[..., chain.shape[-1] + ii] = blobs[blob_strings_orig[ii]]
 
             # Ordered strings for all parameters
             all_strings = self.paramstrings + blob_strings
@@ -1214,8 +1483,7 @@ class Fitter(object):
         if self.save_directory is None:
             raise ValueError("This fitter has no output directory")
         missing = [
-            name for name in ("chain", "blobs", "lnprob")
-            if not hasattr(self, name)
+            name for name in ("chain", "blobs", "lnprob") if not hasattr(self, name)
         ]
         if missing:
             raise ValueError(

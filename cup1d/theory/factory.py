@@ -1,11 +1,10 @@
 import numpy as np
-
 from lace.cosmo import cosmology
 
-from cup1d.theory.theory import Theory
-from cup1d.models.igm.model_igm import IGM
 from cup1d.models.contaminants.model_contaminants import Contaminants
 from cup1d.models.contaminants.model_systematics import Systematics
+from cup1d.models.igm.model_igm import IGM
+from cup1d.theory.theory import Theory
 
 
 def set_theory(
@@ -59,8 +58,8 @@ def set_theory(
 
     theory.model_igm.set_fid_igm(np.unique(zs))
 
-    if emulator.emulator_label == "forest_mpg":
+    if emulator.emulator_label in ("forest_mpg", "forest_mpg_fix"):
         emulator_cosmology = cosmology.Cosmology(cosmo_label=cosmo_label)
-        emulator.set_cosmo(emulator_cosmology.input_cosmo_params_dict)
+        emulator.set_cosmology(emulator_cosmology.input_cosmo_params_dict)
 
     return theory

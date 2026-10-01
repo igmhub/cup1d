@@ -1,5 +1,7 @@
-import numpy as np
+from collections.abc import Mapping
 
+import numpy as np
+from lace.cosmo import base_cosmology
 from lace.cosmo import cosmology
 from lace.cosmo import rescale_cosmology
 
@@ -7,9 +9,9 @@ from cup1d.likelihood.parameter import make_parameter
 from cup1d.models.contaminants.model_contaminants import Contaminants
 from cup1d.models.contaminants.model_systematics import Systematics
 from cup1d.models.igm.model_igm import IGM
-from cup1d.utils.utils_sims import get_training_hc
 from cup1d.utils.hull import Hull
 from cup1d.utils.utils import is_number_string
+from cup1d.utils.utils_sims import get_training_hc
 
 
 class Theory:
@@ -93,6 +95,28 @@ class Theory:
             )
             self.hull_hires = self.hull
         self.set_cosmo_priors()
+
+    @staticmethod
+    def _parameter_values(like_params):
+        """Unwrap a public parameter point into values used by theory models.
+
+        Public cup1d calls accept a named parameter point, where each entry
+        may include ``value``, prior limits, and other metadata. Theory and
+        its component models only need the numerical values. Values-only
+        scalar mappings and columnar batch mappings remain supported for
+        internal/vectorized use.
+        """
+
+        if like_params is None:
+            return None
+        if not isinstance(like_params, Mapping):
+            raise TypeError("like_params must be a mapping of parameter names")
+        return {
+            name: value["value"]
+            if isinstance(value, Mapping) and "value" in value
+            else value
+            for name, value in like_params.items()
+        }
 
     def set_cosmo_priors(self, extra_factor=1.25):
         """Resolve cosmological prior limits for the fiducial cosmology.
@@ -189,6 +213,7 @@ class Theory:
         """
 
         fiducial_cosmo = self.fid_cosmo["cosmo"]
+        like_params = self._parameter_values(like_params)
         like_params = {} if like_params is None else like_params
         new_params_dict = {
             name: value
@@ -212,10 +237,42 @@ class Theory:
             cosmo.get_linP_Mpc_params(z, self.emu_kp_Mpc) for z in np.atleast_1d(zs)
         ]
 
+    @staticmethod
+    def _is_columnar_parameter_mapping(like_params):
+        """Return whether a parameter mapping carries a leading batch axis."""
+
+        if not isinstance(like_params, Mapping) or not like_params:
+            return False
+        dimensions = {np.asarray(value).ndim for value in like_params.values()}
+        if dimensions == {0}:
+            return False
+        if dimensions != {1}:
+            raise ValueError(
+                "likelihood parameters must be all scalars or all "
+                "one-dimensional batch arrays"
+            )
+        lengths = {len(np.asarray(value)) for value in like_params.values()}
+        if len(lengths) != 1:
+            raise ValueError("all batched likelihood parameters must share n_batch")
+        return True
+
     def get_emulator_calls(
         self, zs, like_params=None, return_M_of_z=True, return_blob=False
     ):
-        """Build emulator inputs and velocity-to-comoving conversions."""
+        """Build emulator inputs for scalar or columnar parameter mappings.
+
+        Scalar values preserve the historical return shapes.  A mapping whose
+        values all have shape ``(n_batch,)`` is dispatched to
+        :meth:`get_emulator_calls_batch`, returning inputs and conversions with
+        leading ``(n_batch, n_z)`` axes.
+        """
+
+        like_params = self._parameter_values(like_params)
+        if self._is_columnar_parameter_mapping(like_params):
+            emu_call, M_of_z, blobs = self.get_emulator_calls_batch(zs, like_params)
+            if return_M_of_z:
+                return (emu_call, M_of_z, blobs) if return_blob else (emu_call, M_of_z)
+            return (emu_call, blobs) if return_blob else emu_call
 
         # LaCE handles both transfer-function rescaling and the new-CAMB case.
         cosmo = self.get_cosmology(like_params)
@@ -271,6 +328,77 @@ class Theory:
             return emu_call, blob
         return emu_call
 
+    def get_emulator_calls_batch(self, zs, like_params):
+        """Build batched emulator inputs with shape ``(n_batch, n_z)``.
+
+        The background/linear-power rescaling is intentionally evaluated once
+        per point: cup1d analyses use LaCE's inexpensive
+        ``RescaledCosmology`` path after setup, not repeated CAMB calls.  IGM
+        histories are evaluated columnarly across the full batch.
+        """
+
+        zs = np.atleast_1d(np.asarray(zs, dtype=float))
+        like_params = self._parameter_values(like_params)
+        if not isinstance(like_params, Mapping) or not like_params:
+            raise ValueError("like_params must be a non-empty columnar mapping")
+        n_batch = None
+        for name, values in like_params.items():
+            values = np.asarray(values, dtype=float)
+            if values.ndim != 1:
+                raise ValueError(
+                    f"batched parameter {name} must have shape (n_batch,), got {values.shape}"
+                )
+            if n_batch is None:
+                n_batch = len(values)
+            elif len(values) != n_batch:
+                raise ValueError(f"batched parameter {name} has inconsistent length")
+
+        cosmologies = [
+            self.get_cosmology({name: values[index] for name, values in like_params.items()})
+            for index in range(n_batch)
+        ]
+        linear = base_cosmology.BaseCosmology.get_linP_Mpc_params_for_cosmologies(
+            cosmologies, zs, self.emu_kp_Mpc
+        )
+        M_of_z = base_cosmology.BaseCosmology.get_dkms_dMpc_for_cosmologies(
+            cosmologies, zs
+        )
+        emu_call = {}
+        for key in self.emulator.emu_params:
+            if key in {"Delta2_p", "n_p", "alpha_p"}:
+                emu_call[key] = linear[key]
+            elif key == "mF":
+                tau = self.model_igm.models["F_model"].get_value_batch(
+                    "tau_eff", zs, like_params
+                )
+                tau *= self.model_igm.models["F_model"].fid_interp["tau_eff"](zs)[None, :]
+                emu_call[key] = np.exp(-tau)
+                emu_call["mF_fid"] = self.model_igm.models["F_model"].get_mean_flux(zs)
+            elif key == "gamma":
+                gamma = self.model_igm.models["T_model"].get_value_batch(
+                    "gamma", zs, like_params
+                )
+                emu_call[key] = gamma * self.model_igm.models["T_model"].fid_interp["gamma"](zs)[None, :]
+            elif key == "sigT_Mpc":
+                sigT = self.model_igm.models["T_model"].get_value_batch(
+                    "sigT_kms", zs, like_params
+                )
+                sigT *= self.model_igm.models["T_model"].fid_interp["sigT_kms"](zs)[None, :]
+                emu_call[key] = sigT / M_of_z
+            elif key in {"kF_Mpc", "lambda_P"}:
+                kF = self.model_igm.models["P_model"].get_value_batch(
+                    "kF_kms", zs, like_params
+                )
+                kF *= self.model_igm.models["P_model"].fid_interp["kF_kms"](zs)[None, :]
+                if key == "kF_Mpc":
+                    emu_call[key] = kF * M_of_z
+                else:
+                    emu_call[key] = 1000 / (kF * M_of_z)
+            else:
+                raise ValueError("Not a theory model for emulator parameter", key)
+        blobs = np.asarray([self.get_blob(cosmo) for cosmo in cosmologies])
+        return emu_call, M_of_z, blobs
+
     def get_blobs_dtype(self):
         """Return the dtype of the cosmological summary returned by the fitter."""
 
@@ -315,7 +443,7 @@ class Theory:
         )
 
     def get_blob_for_parameters(self, like_params):
-        """Return a blob for likelihood parameters via the LaCE flow."""
+        """Return a blob for a public parameter point or values-only mapping."""
 
         return self.get_blob(self.get_cosmology(like_params))
 
@@ -346,7 +474,22 @@ class Theory:
             return_contaminants=return_contaminants,
         )
 
-    def get_p1d_kms(
+    def get_p1d_kms(self, zs, k_kms, like_params=None, **kwargs):
+        """Return scalar or batched P1D according to parameter-array shape.
+
+        A scalar parameter mapping follows the historical API. A columnar
+        mapping with values shaped ``(n_batch,)`` returns a list over redshift
+        whose items have shape ``(n_batch, n_k_z)``.
+        """
+        like_params = self._parameter_values(like_params)
+        if self._is_columnar_parameter_mapping(like_params):
+            unsupported = set(kwargs) - {"remove"}
+            if unsupported:
+                raise ValueError(f"batched P1D does not support {sorted(unsupported)}")
+            return self._get_p1d_kms_batch(zs, k_kms, like_params, **kwargs)
+        return self._get_p1d_kms_scalar(zs, k_kms, like_params=like_params, **kwargs)
+
+    def _get_p1d_kms_scalar(
         self,
         zs,
         k_kms,
@@ -417,7 +560,7 @@ class Theory:
                 if name in ["As", "ns", "nrun"]:
                     new_cosmo_params[name] = value
             self.emulator.set_linear_theory(zs, new_cosmo_params=new_cosmo_params)
-            _res = self.emulator.emulate_P1D_Mpc(zs, kin_Mpc, emu_call)
+            _res = self.emulator.emulate_p1d_Mpc(zs, kin_Mpc, emu_call)
         else:
             _res = self.emulator.emulate_p1d_Mpc(emu_call, kin_Mpc)
         p1d_Mpc = _res
@@ -523,6 +666,41 @@ class Theory:
             out.append(terms)
 
         return out[0] if len(out) == 1 else out
+
+    def _get_p1d_kms_batch(self, zs, k_kms, like_params, remove=None):
+        """Evaluate LaCE P1D for a columnar batch, returning ``[(batch, k_z)]``.
+
+        This path flattens batch and redshift for the GP emulator; ragged data
+        grids remain a list over redshift. ForestFlow keeps its dedicated
+        latent-index batch path until its linear-theory wrapper accepts a
+        cosmology batch.
+        """
+        forest = "forest" in self.emulator.emulator_label
+        zs = np.atleast_1d(np.asarray(zs, dtype=float))
+        emu_call, M_of_z, _ = self.get_emulator_calls(zs, like_params, return_M_of_z=True, return_blob=True)
+        n_batch, n_z = M_of_z.shape
+        n_k = max(len(values) for values in k_kms)
+        kin = np.zeros((n_batch, n_z, n_k))
+        for iz, values in enumerate(k_kms):
+            kin[:, iz, :len(values)] = np.asarray(values)[None, :] * M_of_z[:, iz, None]
+        flat_call = {name: np.asarray(values).reshape(-1) for name, values in emu_call.items() if name in self.emulator.emu_params}
+        if forest:
+            cosmology_parameters = [
+                {name: np.asarray(values)[ib] for name, values in like_params.items() if name in {"As", "ns", "nrun"}}
+                for ib in range(n_batch)
+            ]
+            p_mpc = self.emulator.emulate_p1d_Mpc(
+                zs, kin, emu_call, cosmology_parameters=cosmology_parameters
+            )
+        else:
+            p_mpc = self.emulator.emulate_p1d_Mpc(flat_call, kin.reshape(n_batch*n_z, n_k)).reshape(n_batch, n_z, n_k)
+        p_kms = [p_mpc[:, iz, :len(k_kms[iz])] * M_of_z[:, iz, None] for iz in range(n_z)]
+        cont = self.model_cont.get_contamination(zs, k_kms, emu_call["mF"], M_of_z, like_params, remove=remove)
+        if any(name.startswith("R_coeff") for name in like_params):
+            syst = self.model_syst.get_contamination(zs, k_kms, like_params)
+        else:
+            syst = [np.ones_like(item) for item in p_kms]
+        return [(cont["cont_HCD"][iz] * cont["cont_mul_metals"][iz] * cont["IC_corr"][iz] * p_kms[iz] + cont["cont_add_metals"][iz]) * syst[iz] for iz in range(n_z)]
 
     def get_parameters(self):
         """Return all likelihood parameters, including fixed parameters."""

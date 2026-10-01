@@ -30,7 +30,6 @@
 import os
 from cobaya.yaml import yaml_load_file
 from cobaya.model import get_model
-from cobaya_lya_p1d.cobaya_lya_p1d import Cobaya_lya_p1d
 
 # %% [markdown]
 # ### Load likelihood

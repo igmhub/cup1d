@@ -123,8 +123,34 @@ errors are optional and are evaluated only after minimization.
 
 ``analysis.run_sampler`` normally starts walkers around the MLE and repeatedly
 calls the same likelihood path. It stores unit-cube chains, log posterior
-values, and derived theory blobs. Consequently, minimization and sampling use
-the same priors and model evaluation; only the inference algorithm differs.
+values, and derived theory blobs. Batched LaCE calls group all
+walker and redshift rows by GP expert, while covariance contractions operate
+over the leading walker dimension. New blobs are stored as an ordinary float
+array with shape ``(step, walker, 6)`` in the order ``Delta2_star``,
+``n_star``, ``alpha_star``, ``f_star``, ``g_star``, and ``H0``.
+
+For a vectorized sampler call, unit-cube coordinates are first converted to a
+columnar parameter mapping: every parameter has shape ``(batch,)``. Theory
+emulator inputs then have shape ``(batch, redshift)``; the ragged data grids
+remain a list over redshift, with predictions shaped ``(batch, k_z)``.
+Rebinning applies every redshift window matrix to the complete batch at once.
+LaCE GP rows are flattened over ``batch * redshift`` before prediction. The
+LaCE cosmology rescaling remains one inexpensive operation per point, and
+legacy scalar contaminant formulae are still the next component to move onto
+the batch axis. Consequently, minimization and sampling use the same priors
+and model evaluation; only the inference algorithm differs.
+
+Redshift-restricted diagnostic fits
+-----------------------------------
+
+``zmask`` is restricted to exactly one redshift in likelihood, minimizer, and
+sampler calls. A restricted fit currently uses an individual redshift
+covariance block, whereas the full covariance may retain correlations between
+redshifts. A mask with multiple redshifts would silently lose those terms, so
+it is rejected. Use ``zmask=None`` for a scientifically consistent joint
+likelihood. P1D plotting may still select several redshifts, but evaluates
+each displayed redshift separately for diagnostic chi-squared annotations; it
+does not represent a joint masked likelihood.
 
 The ``postprocessing`` package consumes these saved products to make P1D,
 corner, IGM-history, contaminant, and cosmological-summary plots. Blinding is

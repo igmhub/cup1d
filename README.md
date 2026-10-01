@@ -64,7 +64,14 @@ make install
 git clone https://github.com/igmhub/cup1d.git
 cd cup1d
 make install
-``` 
+```
+
+This installs the LaCE GP-emulator workflow. ForestFlow-emulator analyses and
+Planck-chain postprocessing are optional:
+
+```bash
+make install-extended
+```
 
 #### NERSC users:
 
@@ -110,7 +117,8 @@ The remaining notebooks are organized by purpose:
 - `notebooks/data/observations` and `notebooks/data/mocks`: inspect input P1D
   measurements and synthetic data.
 - `notebooks/likelihood`: likelihood diagnostics, initial-condition fits, and
-  fit inspection.
+  fit inspection. `inference_methods.py` compares Nelder--Mead, PSO, and
+  scalar/batched emcee sampling for the baseline.
 - `notebooks/igm` and `notebooks/contaminants`: visualize physical and
   nuisance-model components.
 - `notebooks/planck`: load Planck chains, perform importance sampling, and

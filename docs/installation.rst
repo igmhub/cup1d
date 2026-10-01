@@ -9,6 +9,13 @@ checkout, install cup1d and its runtime dependencies with:
 
    python -m pip install -e .
 
+The default installation supports the LaCE GP-emulator likelihood workflow.
+ForestFlow-emulator analyses and Planck-chain postprocessing are optional:
+
+.. code-block:: console
+
+   python -m pip install -e ".[extended]"
+
 For development, install the test and documentation extras:
 
 .. code-block:: console

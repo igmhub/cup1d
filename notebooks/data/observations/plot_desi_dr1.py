@@ -25,7 +25,6 @@
 # %autoreload 2
 
 import numpy as np
-import time, os, sys
 import matplotlib.pyplot as plt
 
 from cup1d.configuration import Args
