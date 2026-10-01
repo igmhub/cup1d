@@ -41,7 +41,7 @@ class Rebinning(object):
                 for iz in range(len(self.zs[key])):
                     self.k_kms[key].append(data.k_kms[iz])
                     self.cover[key].append(
-                        np.ones((len(data.k_kms[iz]), len(data.k_kms[iz])))
+                        np.eye(len(data.k_kms[iz]))
                     )
                     self.sum_cover[key].append(np.sum(self.cover[key][iz], axis=1))
             else:

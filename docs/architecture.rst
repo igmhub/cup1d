@@ -140,6 +140,18 @@ legacy scalar contaminant formulae are still the next component to move onto
 the batch axis. Consequently, minimization and sampling use the same priors
 and model evaluation; only the inference algorithm differs.
 
+Redshift-restricted diagnostic fits
+-----------------------------------
+
+``zmask`` is restricted to exactly one redshift in likelihood, minimizer, and
+sampler calls. A restricted fit currently uses an individual redshift
+covariance block, whereas the full covariance may retain correlations between
+redshifts. A mask with multiple redshifts would silently lose those terms, so
+it is rejected. Use ``zmask=None`` for a scientifically consistent joint
+likelihood. P1D plotting may still select several redshifts, but evaluates
+each displayed redshift separately for diagnostic chi-squared annotations; it
+does not represent a joint masked likelihood.
+
 The ``postprocessing`` package consumes these saved products to make P1D,
 corner, IGM-history, contaminant, and cosmological-summary plots. Blinding is
 applied to saved compressed cosmological results where configured, and

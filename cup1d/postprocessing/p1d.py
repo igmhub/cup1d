@@ -106,7 +106,28 @@ class P1DPlotter:
             total_chi2 = sum(sum(v.values()) for v in chi2_bins.values())
         else:
             prediction = self._predict(values)
-            total_chi2, chi2_bins = self.like.get_chi2(values, return_all=True, zmask=mask)
+            # Inference accepts only one zmask value because a multi-redshift
+            # subset discards retained cross-redshift covariance. Plot
+            # selection remains useful, so collect its diagnostic chi2 values
+            # one redshift at a time.
+            if mask is not None and len(mask) > 1:
+                chi2_bins = {key: {} for key in self.like.data}
+                total_chi2 = 0.0
+                for z in dict.fromkeys(float(z) for z in mask):
+                    chi2_z, each_z = self.like.get_chi2(
+                        values, return_all=True, zmask=np.array([z])
+                    )
+                    total_chi2 += chi2_z
+                    for key, indices in selected.items():
+                        for i in indices:
+                            if np.isclose(
+                                self.like.data[key].z[i], z, atol=1e-3, rtol=0
+                            ):
+                                chi2_bins[key][i] = each_z[key][i]
+            else:
+                total_chi2, chi2_bins = self.like.get_chi2(
+                    values, return_all=True, zmask=mask
+                )
             predictions = None
             if chi2_nozcov:
                 total_chi2 = sum(chi2_bins[key][i] for key, indices in selected.items() for i in indices)
