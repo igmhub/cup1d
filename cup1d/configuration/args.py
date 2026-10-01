@@ -8,6 +8,8 @@ import numpy as np
 
 
 _TRAINING_SETS = {
+    "lace_mpg": "Cabayol23",
+    "lace_nyx": "models_Nyx_Sept2025_include_Nyx_fid_rseed",
     "CH24_mpgcen_gpr": "Cabayol23",
     "CH24_nyxcen_gpr": "models_Nyx_Sept2025_include_Nyx_fid_rseed",
 }

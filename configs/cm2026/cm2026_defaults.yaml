@@ -25,7 +25,7 @@ path_data: null
 
 ## Emulator
 # Identifier of the P1D emulator.
-emulator_label: CH24_mpgcen_gpr
+emulator_label: lace_mpg
 # Simulation omitted from emulator training, or null to use all simulations.
 drop_emu_sim: null
 

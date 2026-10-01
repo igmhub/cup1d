@@ -82,8 +82,8 @@ def main():
 
     ## set baseline
 
-    emulator_label = "CH24_mpgcen_gpr"
-    # emulator_label = "CH24_nyxcen_gpr"
+    emulator_label = "lace_mpg"
+    # emulator_label = "lace_nyx"
 
     args = Args(emulator_label=emulator_label)
     args.data_label = "DESIY1"
@@ -130,7 +130,7 @@ def main():
             "CH24_mpg_gp",
             "CH24_nyx_gp",
             "CH24_nyx_gpr",
-            "CH24_nyxcen_gpr",
+            "lace_nyx",
         ]:
             args.archive = set_archive(args.training_set)
             args.emulator = set_emulator(

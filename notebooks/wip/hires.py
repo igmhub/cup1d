@@ -32,7 +32,8 @@ from cup1d.utils.utils import get_path_repo
 # ## Load P1D measurements and set likelihood
 
 # %%
-# Choose ``"lace"`` for CH24_mpgcen_gpr or ``"forestflow"`` for forest_mpg.
+# Choose ``"lace"`` for the ``lace_mpg`` alias or ``"forestflow"`` for
+# the ``forest_mpg`` alias.
 config_names = {
     "lace": "hires.yaml",
     "forestflow": "hires_forestflow.yaml",

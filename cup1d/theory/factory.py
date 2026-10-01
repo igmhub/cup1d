@@ -58,7 +58,7 @@ def set_theory(
 
     theory.model_igm.set_fid_igm(np.unique(zs))
 
-    if emulator.emulator_label == "forest_mpg":
+    if emulator.emulator_label in ("forest_mpg", "forest_mpg_fix"):
         emulator_cosmology = cosmology.Cosmology(cosmo_label=cosmo_label)
         emulator.set_cosmology(emulator_cosmology.input_cosmo_params_dict)
 

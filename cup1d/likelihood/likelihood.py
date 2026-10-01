@@ -187,7 +187,17 @@ class Likelihood(object):
 
         # get emulator error
         filename = "l1O_cov_" + self.theory.emulator.emulator_label + ".npy"
-        full_path = os.path.join(get_path_repo("lace"), "data", "covariance", filename)
+        if "forest" in self.theory.emulator.emulator_label:
+            import forestflow
+
+            covariance_root = os.path.join(
+                os.path.dirname(forestflow.__path__[0]), "data", "covariance"
+            )
+        else:
+            covariance_root = os.path.join(
+                get_path_repo("lace"), "data", "covariance"
+            )
+        full_path = os.path.join(covariance_root, filename)
         emu_cov = np.load(full_path, allow_pickle=True).item()
         # contains:
         # dict_save["zz"] = zz

@@ -34,8 +34,8 @@ from cup1d.postprocessing.plotter import Plotter
 
 data_label = "DESIY1_QMLE3"
 name_variation = None
-emulator_label = "CH24_mpgcen_gpr"
-# emulator_label = "CH24_nyxcen_gpr"
+emulator_label = "lace_mpg"
+# emulator_label = "lace_nyx"
 
 # emu_cov_type = "block"
 # emu_cov_type = "diagonal"

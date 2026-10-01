@@ -107,7 +107,7 @@ def main():
 
     # emulator_label = "CH24_mpg_gp"
     # emulator_label = "CH24_nyx_gp"
-    emulator_label = "CH24_nyxcen_gpr"
+    emulator_label = "lace_nyx"
     vary_alphas = False
 
     args = Args(emulator_label=emulator_label)
@@ -174,7 +174,7 @@ def main():
             "CH24_mpg_gp",
             "CH24_nyx_gp",
             "CH24_nyx_gpr",
-            "CH24_nyxcen_gpr",
+            "lace_nyx",
         ]:
             args.archive = set_archive(args.training_set)
             args.emulator = set_emulator(
