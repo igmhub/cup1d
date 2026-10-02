@@ -13,12 +13,41 @@ def plot_cosmo_sampler_and_fit(
     fit_label="MLE Gaussian",
     levels=(0.68, 0.95),
 ):
-    """Plot sampler contours and the corresponding local MLE Gaussian.
+    """Plot two-parameter sampler contours and a local MLE Gaussian.
 
-    Parameters are supplied in their desired display coordinates.  In
-    particular, callers should unblind both sampler values and MLE values
-    before calling this function; an additive blinding offset leaves the
-    covariance unchanged.
+    Parameters
+    ----------
+    samples : ndarray
+        Posterior samples with shape ``(n_samples, 2)`` in display coordinates.
+    mle : mapping
+        Maximum-likelihood values keyed by the two entries in ``names``.
+    covariance : ndarray
+        MLE covariance with shape ``(2, 2)`` in the same coordinates as
+        ``samples`` and ``mle``.
+    names : tuple of str, default: ("Delta2_star", "n_star")
+        Keys used to read MLE coordinates.
+    labels : tuple of str
+        Axis labels for the two displayed coordinates.
+    sampler_label, fit_label : str
+        Legend labels for posterior samples and MLE result.
+    levels : tuple of float, default: (0.68, 0.95)
+        Credible-region levels passed to :mod:`corner`.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Corner plot augmented with one-sigma MLE ellipse and Gaussian marginals.
+
+    Raises
+    ------
+    ValueError
+        If inputs do not describe two coordinates or covariance is not finite
+        with non-negative eigenvalues and positive diagonal variances.
+
+    Notes
+    -----
+    Callers must provide sampler and MLE values in the same, already unblinded
+    display coordinates.  An additive blinding offset leaves covariance intact.
     """
 
     import corner

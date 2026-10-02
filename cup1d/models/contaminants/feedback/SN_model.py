@@ -3,7 +3,7 @@ from cup1d.likelihood import parameter as likelihood_parameter
 
 
 class SN_Model(object):
-    """Model SN contamination following Viel+13"""
+    """Viel et al. (2013) supernova-feedback P1D contamination model."""
 
     def __init__(
         self,
@@ -13,6 +13,21 @@ class SN_Model(object):
         ln_SN_coeff=None,
         free_param_names=None,
     ):
+        """Initialize the redshift-dependent supernova amplitude history.
+
+        Parameters
+        ----------
+        z_0 : float, default=3
+            Pivot redshift for the logarithmic amplitude polynomial.
+        fid_value : sequence of float, default=[0, -4]
+            Fiducial polynomial coefficients.
+        null_value : float, default=-4
+            Constant-log-amplitude threshold that disables contamination.
+        ln_SN_coeff : sequence of float, optional
+            Fixed amplitude polynomial coefficients.
+        free_param_names : sequence of str, optional
+            Names used to infer free coefficient count.
+        """
         self.z_0 = z_0
         if fid_value is None:
             fid_value = [0, -4]
@@ -39,7 +54,7 @@ class SN_Model(object):
         self.set_parameters()
 
     def set_parameters(self):
-        """Setup likelihood parameters in the HCD model"""
+        """Build likelihood parameter definitions for SN amplitudes."""
 
         self.params = {}
         Npar = len(self.ln_SN_coeff)
@@ -62,12 +77,12 @@ class SN_Model(object):
         return
 
     def get_Nparam(self):
-        """Number of parameters in the model"""
+        """Return the number of SN amplitude-coefficient parameters."""
         assert len(self.ln_SN_coeff) == len(self.params), "size mismatch"
         return len(self.ln_SN_coeff)
 
     def get_SN_damp(self, z, like_params=None):
-        """Amplitude of HCD contamination around z_0"""
+        """Evaluate the positive SN amplitude at redshift ``z``."""
 
         ln_SN_coeff = self.get_SN_coeffs(like_params=like_params)
         if ln_SN_coeff[-1] <= self.null_value:
@@ -79,7 +94,22 @@ class SN_Model(object):
             return np.exp(ln_out)
 
     def get_contamination(self, z, k_Mpc, like_params=None):
-        """Multiplicative contamination caused by SNs"""
+        """Evaluate the multiplicative SN-feedback P1D correction.
+
+        Parameters
+        ----------
+        z : float
+            Redshift selecting the calibrated piecewise template amplitude.
+        k_Mpc : array-like
+            Comoving wavenumbers in 1/Mpc.
+        like_params : mapping, optional
+            SN amplitude-coefficient overrides.
+
+        Returns
+        -------
+        ndarray
+            Dimensionless correction applied to the P1D.
+        """
         SN_damp = self.get_SN_damp(z, like_params=like_params)
         if SN_damp == 0:
             return 1
@@ -106,11 +136,11 @@ class SN_Model(object):
             return corSN
 
     def get_parameters(self):
-        """Return likelihood parameters for the HCD model"""
+        """Return SN likelihood parameter definitions keyed by name."""
         return self.params
 
     def get_SN_coeffs(self, like_params=None):
-        """Return list of mean flux coefficients"""
+        """Return log-amplitude polynomial coefficients with named overrides."""
 
         if like_params:
             ln_SN_coeff = self.ln_SN_coeff.copy()

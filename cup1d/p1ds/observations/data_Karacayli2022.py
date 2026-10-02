@@ -4,10 +4,18 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Karacayli2022(BaseDataP1D):
+    """Represent the Karacayli2022 P1D data product."""
     def __init__(self, kmax_kms=0.1, z_min=0, z_max=10):
-        """Read measured P1D from file.
-        - diag_cov: for now, use diagonal covariance
-        - kmax_kms: limit to low-k where we trust emulator"""
+        """Load the conservative Karacayli et al. (2022) P1D product.
+
+        Parameters
+        ----------
+        kmax_kms : float, default: 0.1
+            Strict upper wavenumber cut in ``s / km`` applied before building
+            the per-redshift and full covariance representations.
+        z_min, z_max : float, default: 0, 10
+            Inclusive redshift interval retained in the data object.
+        """
 
         # optimize
         # kmax_kms = 0.07
@@ -51,7 +59,20 @@ class P1D_Karacayli2022(BaseDataP1D):
 
 
 def read_from_file(kmax_kms):
-    """Read file containing mock P1D"""
+    """Read and scale-cut the Karacayli et al. (2022) P1D measurement.
+
+    Parameters
+    ----------
+    kmax_kms : float
+        Strict upper wavenumber limit in ``s / km``.
+
+    Returns
+    -------
+    tuple
+        Per-redshift and concatenated P1D vectors in ``km / s``, covariance
+        blocks in ``(km / s)**2``, smooth P1D placeholders, and inferred
+        wavenumber-bin edges in ``s / km``.
+    """
 
     # folder storing P1D measurement
     datadir = BaseDataP1D.BASEDIR + "/Karacayli2022/"

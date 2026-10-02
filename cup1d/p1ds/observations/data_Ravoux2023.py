@@ -7,7 +7,16 @@ class P1D_Ravoux2023(BaseDataP1D):
     """Class containing P1D from Ravoux et al. (2023)."""
 
     def __init__(self, z_min=0, z_max=10, velunits=True):
-        """Read measured P1D from Ravoux et al. (2023)."""
+        """Load the Ravoux et al. (2023) P1D measurement.
+
+        Parameters
+        ----------
+        z_min, z_max : float, default: 0, 10
+            Inclusive redshift range retained from the measurement.
+        velunits : bool, default: True
+            Read the velocity-space data and covariance tables when true;
+            otherwise read the published comoving-coordinate tables.
+        """
 
         # folder storing P1D measurements
         datadir = BaseDataP1D.BASEDIR + "/Ravoux2023/"
@@ -21,7 +30,22 @@ class P1D_Ravoux2023(BaseDataP1D):
 
 
 def read_from_file(datadir, velunits):
-    """Reconstruct covariance matrix from files."""
+    """Read Ravoux et al. (2023) P1D values and covariance tables.
+
+    Parameters
+    ----------
+    datadir : str or path-like
+        Directory containing the measurement and covariance text files.
+    velunits : bool
+        Select velocity-space or comoving-coordinate products.
+
+    Returns
+    -------
+    tuple
+        Redshift bins, common wavenumber grid, P1D values, and covariance
+        blocks.  For ``velunits=True``, the units are ``s / km``, ``km / s``,
+        and ``(km / s)**2``, respectively.
+    """
 
     # start by reading Pk file
     if velunits:

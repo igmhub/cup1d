@@ -6,6 +6,18 @@ from cup1d.utils.utils import get_path_repo
 
 
 def spa_chains_dir(root_dir):
+    """Resolve the directory containing bundled CMB-SPA chains.
+
+    Parameters
+    ----------
+    root_dir : str or path-like or None
+        Explicit chain root.  When None, use Cup1D's bundled SPA-chain data.
+
+    Returns
+    -------
+    str
+        Chain-root directory path.
+    """
     if root_dir is None:
         root_dir = os.path.join(
             get_path_repo("cup1d"), "data", "cmbspa_linP_chains"
@@ -15,9 +27,26 @@ def spa_chains_dir(root_dir):
 
 
 def planck_chains_dir(release, root_dir):
-    """Given a Planck data release (year, integer), return the full path
-    to the folder where the chains are stored.
-    If no root_dir is passed, use environmental variable PLANCK_CHAINS."""
+    """Resolve the directory for a bundled Planck release.
+
+    Parameters
+    ----------
+    release : {2013, 2015, 2018}
+        Planck release year.
+    root_dir : str or path-like or None
+        Parent directory holding Planck chain releases.  When None, use the
+        bundled Cup1D chain directory.
+
+    Returns
+    -------
+    str
+        Release-specific chain directory.
+
+    Raises
+    ------
+    ValueError
+        If ``release`` is unsupported.
+    """
 
     if root_dir is None:
         root_dir = os.path.join(
@@ -35,7 +64,24 @@ def planck_chains_dir(release, root_dir):
 
 
 def load_samples(file_root):
-    """Check that input chain exist, at least in zipped format, and read them."""
+    """Load a GetDist chain, unpacking a gzipped text chain when necessary.
+
+    Parameters
+    ----------
+    file_root : str or path-like
+        GetDist file root, without the optional ``.txt`` or ``.txt.gz`` suffix.
+
+    Returns
+    -------
+    getdist.mcsamples.MCSamples
+        Loaded samples, with a ``periodic`` range attribute supplied for
+        legacy Planck range files.
+
+    Raises
+    ------
+    IOError
+        If neither an unpacked nor gzipped chain is available.
+    """
 
     print("loading", file_root)
 
@@ -58,15 +104,25 @@ def load_samples(file_root):
 
 
 def get_planck_results(release, model, data, root_dir, linP_tag):
-    """Load results from Planck, for a given data release and data combination.
-    Inputs:
-        - release (integer): 2013, 2015 or 2018
-        - model (string): cosmo model, e.g., base, base_mnu...
-        - data (string): data combination, e.g., plikHM_TT_lowl_lowE
-        - root_dir (string): path to folder with Planck chains
-        - linP_tag (string): label identifying linear power columns
-    Outputs:
-        - dictionary with relevant information
+    """Load one Planck chain and its derived parameter accessor.
+
+    Parameters
+    ----------
+    release : {2013, 2015, 2018}
+        Planck release year.
+    model, data : str
+        Cosmological model and Planck likelihood-combination directory names.
+    root_dir : str or path-like or None
+        Parent directory containing Planck chains.
+    linP_tag : str or None
+        Suffix identifying added linear-power parameter columns.  None selects
+        the chain without that suffix.
+
+    Returns
+    -------
+    dict
+        Mapping containing release metadata, resolved paths, chain name,
+        :class:`getdist.mcsamples.MCSamples`, and its parameter accessor.
     """
 
     analysis = {}
@@ -112,7 +168,18 @@ def get_planck_2013(
     root_dir=None,
     linP_tag="zlinP",
 ):
-    """Load results from Planck 2013 chain"""
+    """Load a Planck-2013 chain.
+
+    Parameters
+    ----------
+    model, data, root_dir, linP_tag
+        Forwarded to :func:`get_planck_results` with release 2013.
+
+    Returns
+    -------
+    dict
+        Loaded-chain metadata and GetDist objects.
+    """
     return get_planck_results(
         2013, model=model, data=data, root_dir=root_dir, linP_tag=linP_tag
     )
@@ -121,7 +188,18 @@ def get_planck_2013(
 def get_planck_2015(
     model="base_mnu", data="plikHM_TT_lowTEB", root_dir=None, linP_tag="zlinP"
 ):
-    """Load results from Planck 2015 chain"""
+    """Load a Planck-2015 chain.
+
+    Parameters
+    ----------
+    model, data, root_dir, linP_tag
+        Forwarded to :func:`get_planck_results` with release 2015.
+
+    Returns
+    -------
+    dict
+        Loaded-chain metadata and GetDist objects.
+    """
     return get_planck_results(
         2015, model=model, data=data, root_dir=root_dir, linP_tag=linP_tag
     )
@@ -133,8 +211,18 @@ def get_planck_2018(
     root_dir=None,
     linP_tag="zlinP",
 ):
-    """Load results from Planck 2018 chain.
-    - linP_tag identifies chains with added linear parameters."""
+    """Load a Planck-2018 chain.
+
+    Parameters
+    ----------
+    model, data, root_dir, linP_tag
+        Forwarded to :func:`get_planck_results` with release 2018.
+
+    Returns
+    -------
+    dict
+        Loaded-chain metadata and GetDist objects.
+    """
     return get_planck_results(
         2018, model=model, data=data, root_dir=root_dir, linP_tag=linP_tag
     )
@@ -143,9 +231,24 @@ def get_planck_2018(
 def load_planck_2018_chains(chain_specs: Iterable[dict], root_dir=None):
     """Load a named collection of Planck-2018 chains.
 
-    Each specification must define ``model`` and ``data``. ``name`` is the
-    returned-dictionary key and defaults to ``model``; ``linP_tag`` defaults
-    to ``None``. Other fields, such as a plotting ``label``, are ignored.
+    Parameters
+    ----------
+    chain_specs : iterable of dict
+        Specifications requiring ``model`` and ``data``.  ``name`` defaults to
+        ``model`` and ``linP_tag`` defaults to None; extra plotting metadata is
+        ignored.
+    root_dir : str or path-like or None, optional
+        Parent directory containing Planck chains.
+
+    Returns
+    -------
+    dict[str, dict]
+        Loaded chain metadata keyed by each requested name.
+
+    Raises
+    ------
+    ValueError
+        If two specifications resolve to the same output name.
     """
     chains = {}
     for spec in chain_specs:
@@ -164,8 +267,23 @@ def load_planck_2018_chains(chain_specs: Iterable[dict], root_dir=None):
 def load_spa_chains(chain_specs: Iterable[dict], root_dir=None):
     """Load a named collection of CMB-SPA chains.
 
-    The specification convention matches :func:`load_planck_2018_chains`.
-    ``linP_tag`` defaults to the CMB-SPA standard, ``"linP"``.
+    Parameters
+    ----------
+    chain_specs : iterable of dict
+        Specifications following :func:`load_planck_2018_chains`; ``linP_tag``
+        defaults to the CMB-SPA convention, ``"linP"``.
+    root_dir : str or path-like or None, optional
+        Parent directory containing CMB-SPA chains.
+
+    Returns
+    -------
+    dict[str, dict]
+        Loaded chain metadata keyed by each requested name.
+
+    Raises
+    ------
+    ValueError
+        If two specifications resolve to the same output name.
     """
     chains = {}
     for spec in chain_specs:
@@ -182,15 +300,24 @@ def load_spa_chains(chain_specs: Iterable[dict], root_dir=None):
 
 
 def get_spa_results(model, data, root_dir, linP_tag, release="d1"):
-    """Load results from Planck, for a given data release and data combination.
-    Inputs:
-        - release (integer): 2013, 2015 or 2018
-        - model (string): cosmo model, e.g., base, base_mnu...
-        - data (string): data combination, e.g., plikHM_TT_lowl_lowE
-        - root_dir (string): path to folder with Planck chains
-        - linP_tag (string): label identifying linear power columns
-    Outputs:
-        - dictionary with relevant information
+    """Load one CMB-SPA chain and its parameter accessor.
+
+    Parameters
+    ----------
+    model, data : str
+        Cosmological model and data-combination directory names.
+    root_dir : str or path-like or None
+        Parent directory containing CMB-SPA chains.
+    linP_tag : str or None
+        Suffix identifying linear-power augmented chains.  None chooses the
+        untagged directory and chain name.
+    release : str, default: "d1"
+        CMB-SPA release identifier stored in the returned metadata.
+
+    Returns
+    -------
+    dict
+        Resolved chain metadata, loaded GetDist samples, and parameter accessor.
     """
 
     analysis = {}
@@ -229,8 +356,18 @@ def get_spa_results(model, data, root_dir, linP_tag, release="d1"):
 def get_spa(
     model="base_mnu", data="DESI_CMB-SPA", root_dir=None, linP_tag="linP"
 ):
-    """Load results from Planck 2018 chain.
-    - linP_tag identifies chains with added linear parameters."""
+    """Load a standard CMB-SPA chain.
+
+    Parameters
+    ----------
+    model, data, root_dir, linP_tag
+        Forwarded to :func:`get_spa_results`.
+
+    Returns
+    -------
+    dict
+        Loaded-chain metadata and GetDist objects.
+    """
     return get_spa_results(model, data, root_dir, linP_tag)
 
 
@@ -241,15 +378,23 @@ def get_cobaya(
     linP_tag="zlinP",
     lite=False,
 ):
-    """Load results from Planck, for a given data release and data combination.
-    Inputs:
-        - release (integer): 2013, 2015 or 2018
-        - model (string): cosmo model, e.g., base, base_mnu...
-        - data (string): data combination, e.g., plikHM_TT_lowl_lowE
-        - root_dir (string): path to folder with Planck chains
-        - linP_tag (string): label identifying linear power columns
-    Outputs:
-        - dictionary with relevant information
+    """Load a Cobaya output chain as GetDist samples.
+
+    Parameters
+    ----------
+    root_dir : str or path-like
+        Parent directory containing the Cobaya model and data directories.
+    model, data : str
+        Cosmological model and data-combination directory names.
+    linP_tag : str or None, default: "zlinP"
+        Optional subdirectory identifying added linear-power parameters.
+    lite : bool, default: False
+        Load the ``-lite`` output root when true.
+
+    Returns
+    -------
+    dict
+        Mapping with loaded GetDist samples and its parameter accessor.
     """
 
     from cobaya.yaml import yaml_load_file

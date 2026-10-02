@@ -20,7 +20,19 @@ from cup1d.emulator.archive import set_archive
 
 
 def is_synthetic_data_label(data_label):
-    """Return whether a P1D dataset requires a true theory model."""
+    """Return whether a P1D label denotes generated rather than observed data.
+
+    Parameters
+    ----------
+    data_label : str
+        Dataset label accepted by :func:`set_p1d`.
+
+    Returns
+    -------
+    bool
+        True for simulation, forecast, acceleration, Sherwood, and DESI
+        challenge labels that require a theory prediction.
+    """
 
     return (
         data_label.startswith(("mpg", "nyx", "forecast"))
@@ -29,29 +41,34 @@ def is_synthetic_data_label(data_label):
 
 
 def set_p1d(args, data_label, archive=None, theory=None):
-    """Set P1D data
+    """Construct the P1D data object selected by a configuration label.
 
     Parameters
     ----------
-    archive : object
-        Archive object containing P1D data
+    args : object
+        Parsed Cup1D configuration.  Its covariance, smoothing, noise,
+        redshift, and input-file options are used by the selected reader.
     data_label : str
-        Label of simulation/dataset used to generate mock data
-    synth_cov_label : str, optional
-        Covariance dataset used to construct synthetic data.
-    apply_smoothing : bool or None
-        If True, apply smoothing to P1D. If None, do what is best for the input emulator
-    z_min : float
-        Minimum redshift of P1D measurements
-    z_max : float
-        Maximum redshift of P1D measurements
-    cull_data : bool
-        If True, cull data outside of k range from emulator
+        Label of the simulation, forecast, challenge, or observational data
+        product to load.
+    archive : object, optional
+        Already loaded simulation archive.  A compatible archive is reused;
+        otherwise the configured training archive is loaded.
+    theory : object, optional
+        Theory object required for synthetic labels and used to generate mock
+        P1D predictions.
 
     Returns
     -------
-    data : object
-        P1D data
+    BaseDataP1D
+        Selected measurement or mock data object, with its ``data_label``
+        attribute set to ``data_label``.
+
+    Raises
+    ------
+    ValueError
+        If a synthetic label lacks ``theory``, no compatible simulation exists,
+        or the label is not implemented.
     """
 
     if (

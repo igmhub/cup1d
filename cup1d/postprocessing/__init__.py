@@ -4,7 +4,23 @@ __all__ = ["EmulatorPriorPlotter", "Plotter", "VariationPlotter", "P1DPlotter", 
 
 
 def __getattr__(name):
-    """Import optional plotting support only when it is requested."""
+    """Lazily import a public post-processing export.
+
+    Parameters
+    ----------
+    name : str
+        Name listed in :data:`__all__`.
+
+    Returns
+    -------
+    object
+        Requested plotting class or function.
+
+    Raises
+    ------
+    AttributeError
+        If ``name`` is not a supported lazy export.
+    """
 
     if name in {"P1DPlotter", "plot_p1d"}:
         from cup1d.postprocessing import p1d

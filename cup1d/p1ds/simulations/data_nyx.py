@@ -11,8 +11,7 @@ from cup1d.p1ds.observations import (
 
 
 class Nyx_P1D(BaseMockP1D):
-    """Class to load a Nyx simulation as a mock data object.
-    Can use PD2013 or Chabanier2019 covmats"""
+    """Build a Nyx simulation P1D mock on an observational covariance layout."""
 
     def __init__(
         self,
@@ -29,13 +28,33 @@ class Nyx_P1D(BaseMockP1D):
         p1d_fname=None,
         path_data=None,
     ):
-        """Read mock P1D from MP-Gadget sims, and returns mock measurement:
-        - testing_data: p1d measurements from Nyx sims
-        - input_sim: check available options in testing_data
-        - z_max: maximum redshift to use in mock data
-        - data_cov_label: P1D covariance to use (Chabanier2019 or PD2013)
-        - data_cov_factor: multiply covariance by this factor
-        - add_syst: Include systematic estimates in covariance matrices
+        """Initialize a Nyx P1D mock using simulation P1D records.
+
+        Parameters
+        ----------
+        theory : object
+            Initialized Cup1D theory for smoothing, coordinate conversion,
+            contaminants, and stored truth metadata.
+        testing_data : sequence of dict
+            Simulation records with ``z``, ``k_Mpc``, ``p1d_Mpc``, and
+            ``dkms_dMpc`` fields.
+        apply_smoothing : bool, default: True
+            Apply the emulator's calibrated smoothing to the simulation P1D.
+        input_sim : str, default: "nyx_central"
+            Nyx simulation label saved in the truth metadata.
+        data_cov_label : str, default: "Chabanier2019"
+            Observational product supplying covariance and sampling grids.
+        add_syst, add_noise : bool, default: True, False
+            Include reference systematic errors and optionally add a correlated
+            Gaussian data realization.
+        seed : int, default: 0
+            Seed used for a noise realization.
+        z_min, z_max : float, default: 0, 10
+            Inclusive output-redshift range.
+        p1d_fname : str or path-like, optional
+            Explicit DESI reference P1D file when required.
+        path_data : str or path-like, optional
+            Reserved compatibility input path.
         """
 
         # covariance matrix settings
@@ -164,6 +183,23 @@ class Nyx_P1D(BaseMockP1D):
     #         ]
 
     def _load_p1d(self, theory, p1d_fname=None):
+        """Map reference covariance sampling to native Nyx simulation redshifts.
+
+        Parameters
+        ----------
+        theory : object
+            Theory providing the redshift-dependent comoving--velocity
+            conversion.
+        p1d_fname : str or path-like, optional
+            Explicit DESI reference P1D file.
+
+        Returns
+        -------
+        tuple
+            Native Nyx redshifts, P1D vectors in ``km / s``, wavenumbers in
+            ``s / km``, total/statistical covariance blocks in ``(km / s)**2``,
+            and concatenated representations.
+        """
         # figure out dataset to mimic
         if self.data_cov_label == "Chabanier2019":
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)

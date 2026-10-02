@@ -15,7 +15,7 @@ from cup1d.models.contaminants.metals import (
 
 
 class Contaminants(object):
-    """Contains all IGM models"""
+    """Compose metal, HCD, and initial-condition P1D contamination models."""
 
     def __init__(
         self,
@@ -27,6 +27,21 @@ class Contaminants(object):
         pars_cont=None,
         ic_correction=None,
     ):
+        """Build native contaminant components from configuration or overrides.
+
+        Parameters
+        ----------
+        free_param_names : sequence of str, optional
+            Free contaminant coefficient names.
+        metal_models, hcd_model : mapping or object, optional
+            Prebuilt components replacing native construction.
+        sn_model, agn_model : object, optional
+            Retained optional feedback-model hooks.
+        pars_cont : mapping
+            Native contaminant coefficient histories, priors, and model types.
+        ic_correction : bool, optional
+            Enable the fitted Nyx initial-condition correction.
+        """
         self.pars_cont = pars_cont
         self.ic_correction = ic_correction
 
@@ -174,7 +189,25 @@ class Contaminants(object):
     #     return dict_out
 
     def get_contamination(self, z, k_kms, mF, M_of_z, like_params=None, remove=None):
-        """Return scalar or batched contaminants based on parameter shape."""
+        """Combine all scalar contaminant terms for requested P1D grids.
+
+        Parameters
+        ----------
+        z, mF, M_of_z : array-like
+            Redshifts, mean fluxes, and velocity-to-comoving conversions.
+        k_kms : sequence of ndarray
+            Per-redshift wavenumber grids in s/km.
+        like_params : mapping, optional
+            Scalar physical coefficient overrides.
+        remove : mapping, optional
+            Metal transition flags overriding default contributions.
+
+        Returns
+        -------
+        dict
+            Additive-metal P1D terms and dimensionless multiplicative metal,
+            HCD, feedback, and initial-condition correction factors.
+        """
         if isinstance(like_params, dict) and like_params and all(np.asarray(value).ndim == 1 for value in like_params.values()):
             return self.get_contamination_batch(z, k_kms, mF, M_of_z, like_params, remove=remove)
         # include multiplicative metal contamination
@@ -313,7 +346,12 @@ class Contaminants(object):
 
 
     def get_contamination_batch(self, z, k_kms, mF, M_of_z, like_params, remove=None):
-        """Combine batched contaminants; outputs are lists of ``(batch, k_z)``."""
+        """Combine contaminants for columnar parameter samples.
+
+        Each returned redshift item has shape ``(n_batch, nk_z)``; additive
+        metal terms retain the caller's P1D units and every other term is
+        dimensionless.
+        """
         z = np.atleast_1d(z)
         n_batch = len(next(iter(like_params.values())))
         mult = [np.ones((n_batch, len(k_kms[iz]))) for iz in range(len(z))]
@@ -339,6 +377,30 @@ def ref_nyx_ic_correction(k_kms, z):
     # one with 2lpt (single fluid) IC and the other one with monofonic (2 fluid)
     # - The high k points and z evolution are well determined
     # - Low k term: quite uncertain, due to cosmic variance
+    """Return the fitted Nyx initial-condition correction to P1D.
+
+    Parameters
+    ----------
+    k_kms : numpy.ndarray or sequence of numpy.ndarray
+        Wavenumbers in s/km. For multiple redshifts, provide one possibly
+        ragged grid per redshift.
+    z : array_like
+        Nonempty redshift sequence. The single-redshift branch uses its
+        array directly in the fitted polynomial.
+
+    Returns
+    -------
+    numpy.ndarray or list of numpy.ndarray
+        Dimensionless multiplicative correction. A single redshift returns
+        an array; multiple redshifts return a list in input order.
+
+    Notes
+    -----
+    The fit compares single-fluid 2LPT and two-fluid initial conditions.
+    Its polynomial redshift dependence multiplies
+    ``1-exp(-k_kms/0.003669741766936781)`` in percent; the correction is
+    the reciprocal of one minus that fractional difference.
+    """
     ic_corr_z = np.array([0.15261529, -2.30600644, 2.61877894])
     ic_corr_k = 0.003669741766936781
     if len(z) == 1:

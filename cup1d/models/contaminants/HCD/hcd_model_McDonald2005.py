@@ -13,6 +13,21 @@ class HCD_Model_McDonald2005(object):
         ln_A_damp_coeff=None,
         free_param_names=None,
     ):
+        """Initialize the McDonald (2005) phenomenological HCD correction.
+
+        Parameters
+        ----------
+        z_0 : float, default=3
+            Pivot redshift of the logarithmic amplitude polynomial.
+        fid_A_damp : sequence of float, default=[0, -6]
+            Fiducial polynomial coefficients ordered from highest to constant.
+        null_value : float, default=-6
+            Constant-log-amplitude threshold at which contamination is nulled.
+        ln_A_damp_coeff : sequence of float, optional
+            Explicit fixed polynomial coefficients.
+        free_param_names : sequence of str, optional
+            Names used to infer free amplitude-coefficient count.
+        """
         self.z_0 = z_0
         self.null_value = null_value
         if fid_A_damp is None:
@@ -39,7 +54,7 @@ class HCD_Model_McDonald2005(object):
         self.set_parameters()
 
     def set_parameters(self):
-        """Setup likelihood parameters in the HCD model"""
+        """Build likelihood parameter definitions for HCD amplitudes."""
 
         self.params = {}
         Npar = len(self.ln_A_damp_coeff)
@@ -64,12 +79,15 @@ class HCD_Model_McDonald2005(object):
         return
 
     def get_Nparam(self):
-        """Number of parameters in the model"""
+        """Return the number of HCD amplitude-coefficient parameters."""
         assert len(self.ln_A_damp_coeff) == len(self.params), "size mismatch"
         return len(self.ln_A_damp_coeff)
 
     def get_A_damp(self, z, like_params=None):
-        """Amplitude of HCD contamination around z_0"""
+        """Evaluate the positive HCD damping amplitude at redshift ``z``.
+
+        A null constant coefficient returns zero amplitude.
+        """
 
         ln_A_damp_coeff = self.get_A_damp_coeffs(like_params=like_params)
         if ln_A_damp_coeff[-1] <= self.null_value:
@@ -81,7 +99,22 @@ class HCD_Model_McDonald2005(object):
         return np.exp(ln_out)
 
     def get_contamination(self, z, k_kms, like_params=None):
-        """Multiplicative contamination caused by HCDs"""
+        """Evaluate multiplicative HCD correction on velocity wavenumbers.
+
+        Parameters
+        ----------
+        z : float
+            Redshift.
+        k_kms : array-like
+            Line-of-sight wavenumbers in s/km.
+        like_params : mapping, optional
+            HCD coefficient overrides.
+
+        Returns
+        -------
+        float or ndarray
+            Dimensionless multiplicative P1D correction.
+        """
         A_damp = self.get_A_damp(z, like_params=like_params)
         if A_damp == 0:
             return 1
@@ -92,7 +125,11 @@ class HCD_Model_McDonald2005(object):
         return 1 + A_damp * f_HCD
 
     def get_contamination_batch(self, z, k_kms, like_params):
-        """McDonald HCD correction with items shaped ``(batch, k_z)``."""
+        """Evaluate McDonald HCD corrections for columnar parameter samples.
+
+        Returns one dimensionless ``(n_batch, nk_z)`` correction array per
+        supplied redshift grid.
+        """
         z = np.atleast_1d(np.asarray(z, dtype=float))
         n_batch = len(next(iter(like_params.values())))
         coeff = np.broadcast_to(np.asarray(self.ln_A_damp_coeff, dtype=float), (n_batch, len(self.ln_A_damp_coeff))).copy()
@@ -108,11 +145,11 @@ class HCD_Model_McDonald2005(object):
         return [1 + amplitude[:, iz, None] * (0.018 + 1 / (15000 * np.asarray(k_kms[iz])[None, :] - 8.9)) for iz in range(len(z))]
 
     def get_parameters(self):
-        """Return likelihood parameters for the HCD model"""
+        """Return HCD likelihood parameter definitions keyed by name."""
         return self.params
 
     def get_A_damp_coeffs(self, like_params=None):
-        """Return list of mean flux coefficients"""
+        """Return HCD log-amplitude polynomial coefficients with overrides."""
 
         if like_params:
             ln_A_damp_coeff = self.ln_A_damp_coeff.copy()
@@ -158,7 +195,7 @@ class HCD_Model_McDonald2005(object):
         cmap=None,
         smooth_k=False,
     ):
-        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_hcd_contamination`."""
+        """Render McDonald HCD corrections across redshift and k grids."""
         from cup1d.postprocessing.contaminants import plot_hcd_contamination as _plot
 
         return _plot(self, z, k_kms, ln_A_damp_coeff, plot_every_iz, cmap, smooth_k)

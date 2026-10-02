@@ -15,17 +15,25 @@ from cup1d.p1ds.observations import (
 
 
 def load_data(folder, sim_label="l160_r25", hh=0.675, kmax=10):
-    """
-    This function loads the P1D and P3D data from the ACCEL2 simulations
+    """Load P1D and angle-averaged P3D products from an ACCEL2 simulation.
 
-    For the P1D, it loads the P1D from individual axes (x, y, z)
-    For the P3D, it loads the average P3D (individual axes not available)
+    Parameters
+    ----------
+    folder : str or path-like
+        Root directory containing ``p1d_from_sim`` and ``p3d_from_sim``.
+    sim_label : str, default: "l160_r25"
+        ACCEL2 simulation directory name.
+    hh : float, default: 0.675
+        Dimensionless Hubble parameter used to convert the stored ``h`` units.
+    kmax : float, default: 10
+        Strict upper comoving wavenumber cut in ``1 / Mpc``.
 
-    Input:
-    - folder: folder where the data is stored
-    - sim_label: label of the simulation
-    - hh: hubble parameter
-    - kmax: maximum k to use in the P1D and P3D (larger than maximum needed)
+    Returns
+    -------
+    dict
+        Redshifts; P1D grids, directional measurements, and mode counts; and
+        P3D ``k``--``mu`` grids, mode counts, and powers.  P1D is in ``Mpc``;
+        P3D is in ``Mpc**3``; wavenumbers are in ``1 / Mpc``.
     """
 
     labs_dirs = ["x", "y", "z"]
@@ -135,15 +143,36 @@ class Accel2_P1D(BaseMockP1D):
         p1d_fname=None,
         interp_to_cov=False,
     ):
-        """Read mock P1D from MP-Gadget sims, and returns mock measurement:
-        - testing_data: has to be None
-        - input_sim: check available options in testing_data
-        - z_max: maximum redshift to use in mock data
-        - data_cov_label: P1D covariance to use (Chabanier2019 or PD2013)
-        - data_cov_factor: multiply covariance by this factor
-        - add_syst: Include systematic estimates in covariance matrices
-        - interp_to_cov: if true, interpolate simulations results to the redshifts
-            and scales of the covariance matrix. if not, the other way around
+        """Build an ACCEL2 mock on a selected observational covariance layout.
+
+        Parameters
+        ----------
+        theory : object
+            Initialized Cup1D theory, used for coordinate conversion,
+            smoothing, contaminants, and truth metadata.
+        testing_data : object, optional
+            Reserved compatibility argument; ACCEL2 products are loaded from
+            ``path_data``.
+        apply_smoothing : bool, default: True
+            Apply the emulator's calibrated smoothing to simulation P1D.
+        input_sim : str, default: "l160_r25"
+            ACCEL2 simulation label.
+        data_cov_label : str, default: "Chabanier2019"
+            Observational product providing covariance and target sampling.
+        add_syst, add_noise : bool, default: True, False
+            Include reference systematic covariance and optionally realize
+            Gaussian measurement noise.
+        seed : int, default: 0
+            Seed used when drawing mock noise.
+        z_min, z_max : float, default: 0, 10
+            Inclusive output-redshift interval.
+        path_data : str or path-like
+            ACCEL2 product root directory.
+        p1d_fname : str or path-like, optional
+            Explicit DESI reference P1D product when relevant.
+        interp_to_cov : bool, default: False
+            If true, interpolate simulation P1D to covariance grids; otherwise
+            interpolate covariance sampling to the native simulation grids.
         """
 
         # covariance matrix settings
@@ -302,7 +331,24 @@ class Accel2_P1D(BaseMockP1D):
     #         ]
 
     def _load_p1d(self, theory, p1d_fname=None):
-        """Interpolate data to the redshifts and scales of the covariance matrix"""
+        """Interpolate ACCEL2 P1D onto the covariance reference layout.
+
+        Parameters
+        ----------
+        theory : object
+            Theory used to obtain redshift-dependent velocity--comoving
+            conversion factors.
+        p1d_fname : str or path-like, optional
+            Explicit DESI reference data file when ``data_cov_label`` selects
+            a DESI product.
+
+        Returns
+        -------
+        tuple
+            Per-redshift P1D in ``km / s``, wavenumbers in ``s / km``, total
+            and statistical covariance blocks in ``(km / s)**2``, and their
+            concatenated representations.
+        """
         # figure out dataset to mimic
         if self.data_cov_label == "Chabanier2019":
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)
@@ -383,7 +429,22 @@ class Accel2_P1D(BaseMockP1D):
         )
 
     def _load_p1d_to_cov(self, theory, p1d_fname=None):
-        """Interpolate cov matrix to the redshifts of the data, data to scales of cov matrix"""
+        """Map covariance sampling to the native ACCEL2 redshift grid.
+
+        Parameters
+        ----------
+        theory : object
+            Theory used for comoving--velocity conversion.
+        p1d_fname : str or path-like, optional
+            Explicit DESI reference data file when required.
+
+        Returns
+        -------
+        tuple
+            Native ACCEL2 redshifts, P1D vectors in ``km / s``, wavenumbers in
+            ``s / km``, total and statistical covariance blocks in
+            ``(km / s)**2``, and concatenated representations.
+        """
         # figure out dataset to mimic
         if self.data_cov_label == "Chabanier2019":
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)
@@ -484,19 +545,52 @@ class Accel2_P1D(BaseMockP1D):
         )
 
     def plot_p1d_z(self, out_dict):
-        """Delegate to :func:`cup1d.postprocessing.data.simulations.plot_p1d_z`."""
+        """Plot ACCEL2 P1D at each redshift.
+
+        Parameters
+        ----------
+        out_dict : dict
+            ACCEL2 payload returned by :func:`load_data`.
+
+        Returns
+        -------
+        object
+            Plotting result from the simulation post-processing helper.
+        """
         from cup1d.postprocessing.data.simulations import plot_p1d_z as _plot
 
         return _plot(self, out_dict)
 
     def plot_p1d_axes(self, out_dict):
-        """Delegate to :func:`cup1d.postprocessing.data.simulations.plot_p1d_axes`."""
+        """Plot directional ACCEL2 P1D measurements.
+
+        Parameters
+        ----------
+        out_dict : dict
+            ACCEL2 payload returned by :func:`load_data`.
+
+        Returns
+        -------
+        object
+            Plotting result from the simulation post-processing helper.
+        """
         from cup1d.postprocessing.data.simulations import plot_p1d_axes as _plot
 
         return _plot(self, out_dict)
 
     def plot_p3d_z(self, out_dict):
-        """Delegate to :func:`cup1d.postprocessing.data.simulations.plot_p3d_z`."""
+        """Plot ACCEL2 P3D at each redshift.
+
+        Parameters
+        ----------
+        out_dict : dict
+            ACCEL2 payload returned by :func:`load_data`.
+
+        Returns
+        -------
+        object
+            Plotting result from the simulation post-processing helper.
+        """
         from cup1d.postprocessing.data.simulations import plot_p3d_z as _plot
 
         return _plot(self, out_dict)

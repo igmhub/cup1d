@@ -7,9 +7,18 @@ class P1D_Irsic2017(BaseDataP1D):
     """Class containing P1D from Irsic et al. (2017)."""
 
     def __init__(self, z_min=0, z_max=10, add_syst=True, ignore_zcov=True):
-        """Read measured P1D from Irsic et al. (2017).
-        - add_syst=True will include systematic errors to covariance.
-        - ignore_zcov=False will include covariance between z bins."""
+        """Load the Iršič et al. (2017) P1D measurement.
+
+        Parameters
+        ----------
+        z_min, z_max : float, default: 0, 10
+            Inclusive redshift interval retained from the measurement.
+        add_syst : bool, default: True
+            Add tabulated systematic variances to each redshift-block diagonal.
+        ignore_zcov : bool, default: True
+            Require the currently implemented block-diagonal treatment.  Full
+            cross-redshift covariance is not yet supported.
+        """
 
         # folder storing P1D measurement
         datadir = BaseDataP1D.BASEDIR + "/Irsic2017/"
@@ -22,7 +31,28 @@ class P1D_Irsic2017(BaseDataP1D):
 
 
 def read_from_file(basedir, add_syst, ignore_zcov):
-    """Reconstruct measurement and covariance matrix from files."""
+    """Read Iršič et al. (2017) P1D tables and per-redshift covariance blocks.
+
+    Parameters
+    ----------
+    basedir : str or path-like
+        Directory containing the published power and covariance text files.
+    add_syst : bool
+        Add the tabulated systematic P1D errors in quadrature.
+    ignore_zcov : bool
+        Must be true because this reader exposes only within-redshift blocks.
+
+    Returns
+    -------
+    tuple
+        Redshifts, common wavenumbers in ``s / km``, P1D values in ``km / s``,
+        and covariance blocks in ``(km / s)**2``.
+
+    Raises
+    ------
+    AssertionError
+        If cross-redshift covariance is requested.
+    """
 
     assert ignore_zcov, "implement cross-z covariance in p1d_Irsic2017"
 

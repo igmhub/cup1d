@@ -7,9 +7,17 @@ class P1D_Walther2018(BaseDataP1D):
     """Class containing P1D from Walther et al. (2018)."""
 
     def __init__(self, kmax_kms=1.0, z_min=0, z_max=10, diag_cov=True):
-        """Read measured P1D from Walther et al. (2018).
+        """Load the Walther et al. (2018) P1D measurement.
 
-        Problems for the off-diagonal terms of the covariance matrix
+        Parameters
+        ----------
+        kmax_kms : float, default: 1
+            Strict upper retained wavenumber in ``s / km``.
+        z_min, z_max : float, default: 0, 10
+            Inclusive redshift interval retained in the data object.
+        diag_cov : bool, default: True
+            Use only total diagonal errors.  Setting false reconstructs the
+            published within-redshift correlation covariance.
         """
 
         # # optimize
@@ -54,7 +62,23 @@ class P1D_Walther2018(BaseDataP1D):
 
 
 def read_from_file(kmax_kms, diag_cov=True):
-    """Reconstruct covariance matrix from files."""
+    """Read and scale-cut the Walther et al. (2018) P1D tables.
+
+    Parameters
+    ----------
+    kmax_kms : float
+        Strict upper wavenumber cut in ``s / km``.
+    diag_cov : bool, default: True
+        Construct diagonal covariance from the tabulated errors when true;
+        otherwise apply the supplied correlation matrices.
+
+    Returns
+    -------
+    tuple
+        Per-redshift and concatenated P1D arrays in ``km / s``, covariance
+        blocks in ``(km / s)**2``, smooth-P1D placeholders, and inferred
+        wavenumber-bin edges in ``s / km``.
+    """
 
     # folder storing P1D measurement
     datadir = BaseDataP1D.BASEDIR + "/Walther2018/"

@@ -21,6 +21,7 @@ import numpy as np
 
 
 def get_hessian(func, p0, hh=1e-4):
+    """Return hessian."""
     def mod_elem(nelem, ind, val):
         xx = np.zeros(nelem)
         xx[ind] = val

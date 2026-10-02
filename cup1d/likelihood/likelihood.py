@@ -18,7 +18,12 @@ from cup1d.likelihood import parameter as parameter_space
 
 
 class Likelihood(object):
-    """Likelihood class, holds data, theory, and knows about parameters"""
+    """Evaluate P1D data likelihoods using a theory prediction and priors.
+
+    The object builds effective data-plus-emulator covariance at construction,
+    manages free physical parameters, and exposes prediction, chi-squared, and
+    posterior interfaces for inference drivers.
+    """
 
     def __init__(
         self,
@@ -35,18 +40,47 @@ class Likelihood(object):
         args=None,
         start_from_min=True,
     ):
-        """Setup likelihood from theory and data. Options:
-        - data (required) is the data to model
-        - theory (required) instance of lya_theory
-        - free_param_names is a list of param names, in any order
-        - free_param_limits list of tuples, same order than free_param_names
-        - if prior_Gauss_rms is None it will use uniform priors
-        - ignore k-bins with k > kmin_kms
-        - cov_factor adjusts the contribution from data covariance
-        - emu_cov_factor adjusts the contribution from emulator covariance
-        set between 0 and 1.
-        - extra_p1d_data: extra P1D data, e.g., from HIRES
-        - min_log_like: use this instead of - infinity"""
+        """Initialize the native P1D likelihood and fixed data covariance.
+
+        Parameters
+        ----------
+        data : dict
+            Selected P1D data sets keyed by label.
+        theory : cup1d.theory.theory.Theory
+            Forward model supplying uncontaminated P1D predictions.
+        free_param_names : sequence of str, optional
+            Free physical parameter names. ``None`` delegates selection to the
+            subsequent parameter setup.
+        free_param_limits : sequence of tuple, optional
+            Lower and upper physical limits in the same order as
+            ``free_param_names``.
+        verbose : bool, default=False
+            Print setup diagnostics from the MPI root rank.
+        cov_factor : float or mapping, default=1.0
+            Data, systematic, and emulator covariance scaling accepted by the
+            configured covariance builder.
+        prior_Gauss_rms : float, optional
+            Fraction of each parameter's uniform width used for Gaussian
+            priors. ``None`` instead uses parameter-specific widths or no
+            Gaussian prior.
+        emu_cov_type : {"diagonal", "block", "full"}, default="block"
+            Correlation structure retained from emulator covariance.
+        covariance_method : {"inverse", "cholesky"}, default="inverse"
+            Numerical representation used for Gaussian contractions.
+        min_log_like : float, default=-1e100
+            Finite floor returned for rejected likelihood evaluations.
+        args : cup1d.configuration.args.Args
+            Configuration providing rebinning, initial-condition, and related
+            native analysis settings.
+        start_from_min : bool, default=True
+            Load configured initial conditions when their file is present.
+
+        Notes
+        -----
+        The likelihood sets data covariance once at construction. Its raw
+        chi-squared is a data diagnostic; priors are added separately when a
+        posterior is evaluated.
+        """
 
         self.rank = MPI.COMM_WORLD.Get_rank()
 
@@ -122,8 +156,19 @@ class Likelihood(object):
                     )
 
     def set_Gauss_priors(self):
-        """
-        Sets Gaussian priors on the parameters
+        """Build Gaussian-prior widths aligned with free-parameter order.
+
+        Returns
+        -------
+        None
+            Sets ``Gauss_priors`` to finite widths or ``None`` when no
+            Gaussian prior is active.
+
+        Notes
+        -----
+        ``prior_Gauss_rms`` takes precedence over parameter-specific
+        ``Gauss_priors_width`` values. A width of ``1e4`` represents an
+        effectively inactive prior and is removed when all widths are inactive.
         """
 
         self.Gauss_priors = np.ones((len(self.free_params)))
@@ -143,62 +188,51 @@ class Likelihood(object):
         else:
             self.Gauss_priors = None
 
-    def set_icov(self):
-        """
-        Computes and sets the inverse covariance matrix for the P1 power spectrum data and full power spectrum data.
+    def set_icov(self, emulator_covariance=None, fiducial_conversion=None):
+        """Build effective P1D covariance, Cholesky factors, and inverses.
 
-        This method processes the main dataset (`data`) and any additional dataset (`extra_data`) associated
-        with the object. For each dataset:
-        - It computes the inverse covariance matrices for the power spectrum (`Pk_kms`) at different redshifts,
-          incorporating an emulator error factor.
-        - It computes the inverse covariance matrix for the full power spectrum data, if available.
-
-        The resulting inverse covariance matrices are stored in instance attributes.
-
-        Attributes Modified:
-        --------------------
-        icov_Pk_kms : list of numpy.ndarray
-            List of inverse covariance matrices for the power spectrum of the main dataset at different redshifts.
-
-        full_icov_Pk_kms : numpy.ndarray or None
-            Inverse covariance matrix for the full power spectrum of the main dataset.
-            Set to `None` if the full power spectrum is not available.
-
-        extra_icov_Pk_kms : list of numpy.ndarray
-            List of inverse covariance matrices for the power spectrum of the additional dataset at different redshifts.
-            Set to `None` if `extra_data` is not provided.
-
-        extra_full_icov_Pk_kms : numpy.ndarray or None
-            Inverse covariance matrix for the full power spectrum of the additional dataset.
-            Set to `None` if the full power spectrum is not available or if `extra_data` is not provided.
-
-        Notes:
-        -----
-        - The emulator error is added to the diagonal of the covariance matrix before inverting. The error is
-          computed as `(data.Pk_kms * emu_cov_factor) ** 2`, where `emu_cov_factor` is an attribute of the object.
-        - The method iterates over redshift bins (`data.z`) and processes the covariance matrices accordingly.
-        - If the dataset (`data` or `extra_data`) is `None`, no processing occurs for that dataset.
-
-        Raises:
+        Returns
         -------
-        ValueError:
-            If the covariance matrix inversion fails (e.g., due to singularity).
+        None
+            Sets per-redshift and, where provided, full-vector covariance,
+            inverse-covariance, Cholesky, and emulator-covariance dictionaries
+            keyed by data-set label.
+
+        Raises
+        ------
+        numpy.linalg.LinAlgError
+            If a scaled data-plus-emulator covariance is not positive definite.
+
+        Notes
+        -----
+        The emulator bundle is loaded from ForestFlow for labels containing
+        ``'forest'`` and from LaCE otherwise. Its relative covariance is
+        projected to each data grid using the fiducial velocity conversion;
+        ``emu_cov_type`` selects diagonal, within-redshift block, or full
+        redshift-and-wavenumber correlations.
         """
 
-        # get emulator error
-        filename = "l1O_cov_" + self.theory.emulator.emulator_label + ".npy"
-        if "forest" in self.theory.emulator.emulator_label:
-            import forestflow
+        if (emulator_covariance is None) != (fiducial_conversion is None):
+            raise ValueError(
+                "emulator_covariance and fiducial_conversion must be supplied together"
+            )
+        if emulator_covariance is None:
+            filename = "l1O_cov_" + self.theory.emulator.emulator_label + ".npy"
+            if "forest" in self.theory.emulator.emulator_label:
+                import forestflow
 
-            covariance_root = os.path.join(
-                os.path.dirname(forestflow.__path__[0]), "data", "covariance"
-            )
+                covariance_root = os.path.join(
+                    os.path.dirname(forestflow.__path__[0]), "data", "covariance"
+                )
+            else:
+                covariance_root = os.path.join(
+                    get_path_repo("lace"), "data", "covariance"
+                )
+            full_path = os.path.join(covariance_root, filename)
+            emu_cov = np.load(full_path, allow_pickle=True).item()
+            fiducial_conversion = self.theory.fid_cosmo["cosmo"].get_dkms_dMpc
         else:
-            covariance_root = os.path.join(
-                get_path_repo("lace"), "data", "covariance"
-            )
-        full_path = os.path.join(covariance_root, filename)
-        emu_cov = np.load(full_path, allow_pickle=True).item()
+            emu_cov = emulator_covariance
         # contains:
         # dict_save["zz"] = zz
         # dict_save["k_Mpc"] = k_Mpc
@@ -262,7 +296,7 @@ class Likelihood(object):
                 # also add emulator covariance to stat + syst covariance
 
                 # data k_kms to Mpc
-                dkms_dMpc = self.theory.fid_cosmo["cosmo"].get_dkms_dMpc(data.z[ii])
+                dkms_dMpc = fiducial_conversion(data.z[ii])
                 k_Mpc = data.k_kms[ii] * dkms_dMpc
 
                 # initialize emulator covariance
@@ -357,9 +391,7 @@ class Likelihood(object):
                 else:
                     full_emu_cov = np.zeros_like(cov)
                     for i0 in range(cov.shape[0]):
-                        dkms_dMpc = self.theory.fid_cosmo["cosmo"].get_dkms_dMpc(
-                            data.full_zs[i0]
-                        )
+                        dkms_dMpc = fiducial_conversion(data.full_zs[i0])
                         full_k_kms0 = data.full_k_kms[i0] * dkms_dMpc
 
                         # find closest z in cov
@@ -368,7 +400,9 @@ class Likelihood(object):
                             :, 0
                         ]
                         # find closest k for such z
-                        ind1 = np.argmin(np.abs(emu_cov["k_Mpc_zk"] - full_k_kms0))
+                        ind1 = np.argmin(
+                            np.abs(emu_cov["k_Mpc_zk"][ind] - full_k_kms0)
+                        )
                         # closest index in z and k
                         j0 = ind[ind1]
 
@@ -378,9 +412,7 @@ class Likelihood(object):
                         )
 
                         for i1 in range(cov.shape[0]):
-                            dkms_dMpc = self.theory.fid_cosmo["cosmo"].get_dkms_dMpc(
-                                data.full_zs[i1]
-                            )
+                            dkms_dMpc = fiducial_conversion(data.full_zs[i1])
                             full_k_kms1 = data.full_k_kms[i1] * dkms_dMpc
 
                             # find closest z in cov
@@ -391,7 +423,9 @@ class Likelihood(object):
                                 emu_cov["zz_zk"] == emu_cov["zz_zk"][ind0]
                             )[:, 0]
                             # find closest k for such z
-                            ind1 = np.argmin(np.abs(emu_cov["k_Mpc_zk"] - full_k_kms1))
+                            ind1 = np.argmin(
+                                np.abs(emu_cov["k_Mpc_zk"][ind] - full_k_kms1)
+                            )
                             # closest index in z and k
                             j1 = ind[ind1]
 
@@ -434,7 +468,26 @@ class Likelihood(object):
                 self.emu_full_cov_Pk_kms[key] = full_emu_cov
 
     def set_free_parameters(self, free_param_names, free_param_limits):
-        """Select free parameters into an ordered name-to-properties mapping."""
+        """Select and optionally limit theory parameters for likelihood fitting.
+
+        Parameters
+        ----------
+        free_param_names : sequence of str
+            Theory parameter names retained as free likelihood coordinates.
+        free_param_limits : sequence of tuple, optional
+            Physical ``(min_value, max_value)`` overrides in matching order.
+
+        Returns
+        -------
+        None
+            Sets ordered ``free_params`` and ``free_param_names`` attributes.
+
+        Raises
+        ------
+        ValueError
+            If limits have the wrong length or a requested name is absent from
+            the theory parameter definitions.
+        """
 
         if free_param_limits is not None and len(free_param_limits) != len(
             free_param_names
@@ -458,7 +511,24 @@ class Likelihood(object):
             print(f"likelihood setup with {len(self.free_params)} free parameters")
 
     def cosmology_params(self, parameters):
-        """Return the cosmological subset of a physical parameter mapping."""
+        """Extract supported cosmological values from a physical parameter map.
+
+        Parameters
+        ----------
+        parameters : mapping
+            Physical values keyed by parameter name.
+
+        Returns
+        -------
+        dict
+            Present values among ``ombh2``, ``omch2``, ``cosmomc_theta``,
+            ``As``, ``ns``, ``mnu``, and ``nrun``.
+
+        Raises
+        ------
+        ValueError
+            If none of the supported cosmology names is present.
+        """
 
         names = {"ombh2", "omch2", "cosmomc_theta", "As", "ns", "mnu", "nrun"}
         cosmo_dict = {
@@ -469,7 +539,20 @@ class Likelihood(object):
         return cosmo_dict
 
     def set_truth(self):
-        """Store true cosmology from the simulation used to make mock data"""
+        """Store compatible mock-data truth in physical and unit-cube forms.
+
+        Returns
+        -------
+        None
+            Sets ``truth`` to ``None`` for observations or to simulation truth
+            plus compatible free-parameter and compressed-cosmology values.
+
+        Notes
+        -----
+        IGM truth coefficients are only assigned when the simulation IGM grid
+        matches the fiducial model grid; otherwise their stored values are
+        ``np.inf`` to indicate incompatibility.
+        """
 
         # access true cosmology used in mock data
         primary_data = next(iter(self.data.values()))
@@ -553,7 +636,13 @@ class Likelihood(object):
             #     ] = parameter_space.value_in_cube(self.free_params, name, self.truth["cont"][name])
 
     def set_model(self):
-        """Store fiducial cosmology assumed for the fit"""
+        """Store fiducial cosmology, IGM, free-parameter, and linP metadata.
+
+        Returns
+        -------
+        None
+            Builds the ``fid`` dictionary used by result and diagnostic code.
+        """
 
         self.fid = {}
 
@@ -596,7 +685,24 @@ class Likelihood(object):
         apply_hull=True,
         remove=None,
     ):
-        """Compute P1D in km/s using the canonical public name."""
+        """Compute theoretical P1D in km/s using the canonical public name.
+
+        Parameters
+        ----------
+        parameters : mapping, optional
+            Physical free-parameter values.
+        return_covar, return_blob, return_emu_params : bool, default=False
+            Forward requested auxiliary theory products.
+        apply_hull : bool, default=True
+            Reject predictions outside the emulator admission hull.
+        remove : sequence of str, optional
+            Contaminant contributions omitted from the prediction.
+
+        Returns
+        -------
+        tuple or None
+            Same result as :meth:`get_p1d_kms`.
+        """
         return self.get_p1d_kms(
             parameters=parameters,
             return_covar=return_covar,
@@ -615,7 +721,30 @@ class Likelihood(object):
         apply_hull=True,
         remove=None,
     ):
-        """Compute theoretical prediction for P1D"""
+        """Compute rebinned theoretical P1D predictions for every data set.
+
+        Parameters
+        ----------
+        parameters : mapping, optional
+            Full or partial named physical point; omitted values use defaults.
+        return_covar, return_blob, return_emu_params : bool, default=False
+            Request corresponding auxiliary theory outputs.
+        apply_hull : bool, default=True
+            Apply emulator hull/domain admission checks.
+        remove : sequence of str, optional
+            Contaminant contributions omitted by theory.
+
+        Returns
+        -------
+        predictions, auxiliary : tuple or None
+            Re-binned P1D rows keyed by dataset label and requested auxiliary
+            outputs. ``None`` signals an inadmissible theory prediction.
+
+        Notes
+        -----
+        ForestFlow calls are primed across the union of requested redshifts
+        and its cache is cleared before returning, including rejection paths.
+        """
 
         # Public callers supply a full named point; theory receives scalar
         # values through this private boundary adapter.
@@ -673,6 +802,22 @@ class Likelihood(object):
     def get_chi2(self, parameters=None, return_all=False, zmask=None):
         """Compute chi2 using data and theory, without emulator covariance.
 
+        Parameters
+        ----------
+        parameters : mapping, optional
+            Physical free-parameter values.
+        return_all : bool, default=False
+            Also return per-data-set, per-redshift chi-squared arrays.
+        zmask : float or array-like, optional
+            Exactly one diagnostic redshift, or ``None`` for a joint fit.
+
+        Returns
+        -------
+        float or tuple
+            Total chi-squared, optionally with per-redshift contributions.
+
+        Notes
+        -----
         ``zmask`` is a diagnostic single-redshift fit only. It intentionally
         uses that redshift's covariance block and cannot retain cross-redshift
         covariance terms. Use ``zmask=None`` for a joint fit.
@@ -700,7 +845,25 @@ class Likelihood(object):
         return_blob=False,
         zmask=None,
     ):
-        """Compute log(likelihood), including determinant of covariance.
+        """Compute P1D Gaussian log likelihood and per-redshift contributions.
+
+        Parameters
+        ----------
+        parameters : mapping, optional
+            Physical free-parameter values.
+        ignore_log_det_cov : bool, default=True
+            Omit covariance normalization determinants.
+        return_blob : bool, default=False
+            Include the theory blob associated with the prediction.
+        zmask : float or array-like, optional
+            Exactly one diagnostic redshift, or ``None`` for the joint fit.
+
+        Returns
+        -------
+        list
+            ``[log_like, log_like_all]`` and, when requested,
+            ``[log_like, log_like_all, blob]``. Rejected predictions return
+            negative infinities (and a zero blob when requested).
 
         A non-null ``zmask`` may select exactly one redshift. This is for
         one-redshift diagnostic fits: selecting a subset omits cross-redshift
@@ -796,7 +959,24 @@ class Likelihood(object):
 
     @staticmethod
     def _validate_single_redshift_mask(zmask):
-        """Normalize the diagnostic redshift mask and reject unsafe subsets."""
+        """Normalize a diagnostic redshift mask and reject unsafe subsets.
+
+        Parameters
+        ----------
+        zmask : float or array-like, optional
+            One finite redshift, or ``None`` for a full joint fit.
+
+        Returns
+        -------
+        ndarray or None
+            One-element floating-point array or ``None``.
+
+        Raises
+        ------
+        ValueError
+            If more than one redshift, a non-vector value, or a non-finite
+            redshift is supplied.
+        """
 
         if zmask is None:
             return None
@@ -816,7 +996,19 @@ class Likelihood(object):
         return zmask
 
     def regulate_log_like(self, log_like):
-        """Make sure that log_like is not NaN, nor tiny"""
+        """Replace invalid or excessively small likelihood values with a floor.
+
+        Parameters
+        ----------
+        log_like : float or None
+            Candidate log likelihood.
+
+        Returns
+        -------
+        float
+            ``min_log_like`` for ``None``/NaN values, otherwise the maximum
+            of the candidate and ``min_log_like``.
+        """
 
         if (log_like is None) or math.isnan(log_like):
             return self.min_log_like
@@ -824,7 +1016,19 @@ class Likelihood(object):
         return max(self.min_log_like, log_like)
 
     def parameters_in_bounds(self, parameters):
-        """Return whether all physical values lie within their prior bounds."""
+        """Return whether named physical values satisfy uniform prior bounds.
+
+        Parameters
+        ----------
+        parameters : mapping
+            Full or partial named physical parameter values.
+
+        Returns
+        -------
+        bool
+            True only when every free parameter lies within its inclusive
+            configured physical interval.
+        """
 
         parameters = parameter_space.values_from_point(self.free_params, parameters)
         return all(
@@ -833,7 +1037,19 @@ class Likelihood(object):
         )
 
     def get_log_prior(self, parameters):
-        """Compute the prior directly in physical parameter units."""
+        """Compute uniform-bound and optional Gaussian log prior.
+
+        Parameters
+        ----------
+        parameters : mapping
+            Full or partial named physical parameter values.
+
+        Returns
+        -------
+        float
+            ``min_log_like`` outside uniform bounds, zero with no active
+            Gaussian priors, or the summed Gaussian log prior.
+        """
 
         parameters = parameter_space.values_from_point(self.free_params, parameters)
         if not self.parameters_in_bounds(parameters):
@@ -851,7 +1067,24 @@ class Likelihood(object):
     def compute_log_prob(
         self, parameters, return_blob=False, ignore_log_det_cov=True, zmask=None
     ):
-        """Compute posterior probability for a public point or private values."""
+        """Compute posterior from physical values, likelihood, and priors.
+
+        Parameters
+        ----------
+        parameters : mapping
+            Full or partial named physical parameter values.
+        return_blob : bool, default=False
+            Return the theory blob with the posterior.
+        ignore_log_det_cov : bool, default=True
+            Forward covariance-normalization choice to likelihood evaluation.
+        zmask : float or array-like, optional
+            One diagnostic redshift or ``None``.
+
+        Returns
+        -------
+        float or tuple
+            Posterior log probability, optionally paired with theory blob.
+        """
 
         parameters = parameter_space.values_from_point(self.free_params, parameters)
         if not self.parameters_in_bounds(parameters):
@@ -880,7 +1113,22 @@ class Likelihood(object):
         return log_like + log_prior
 
     def log_prob(self, parameters, ignore_log_det_cov=True, zmask=None):
-        """Return posterior probability for physical parameter values."""
+        """Return posterior log probability for physical parameter values.
+
+        Parameters
+        ----------
+        parameters : mapping
+            Full or partial named physical parameter values.
+        ignore_log_det_cov : bool, default=True
+            Omit covariance normalization determinants.
+        zmask : float or array-like, optional
+            One diagnostic redshift or ``None``.
+
+        Returns
+        -------
+        float
+            Posterior log probability.
+        """
 
         return self.compute_log_prob(
             parameters,
@@ -892,7 +1140,22 @@ class Likelihood(object):
     def log_prob_and_blobs(
         self, parameters, ignore_log_det_cov=True, zmask=None
     ):
-        """Return posterior probability and flattened theory blobs."""
+        """Return posterior log probability and flattened theory blobs.
+
+        Parameters
+        ----------
+        parameters : mapping
+            Full or partial named physical parameter values.
+        ignore_log_det_cov : bool, default=True
+            Omit covariance normalization determinants.
+        zmask : float or array-like, optional
+            One diagnostic redshift or ``None``.
+
+        Returns
+        -------
+        tuple
+            Posterior log probability followed by theory blob values.
+        """
 
         lnprob, blob = self.compute_log_prob(
             parameters,
@@ -903,7 +1166,24 @@ class Likelihood(object):
         return lnprob, *blob
 
     def _parameter_batch_rows(self, parameters_batch):
-        """Validate a columnar parameter batch and expose scalar compatibility rows.
+        """Validate a parameter batch and expose scalar compatibility rows.
+
+        Parameters
+        ----------
+        parameters_batch : mapping or iterable of mapping
+            Preferred columnar mapping of one-dimensional arrays, or legacy
+            iterable of scalar physical parameter mappings.
+
+        Returns
+        -------
+        list of dict
+            Scalar parameter mappings in batch order.
+
+        Raises
+        ------
+        ValueError
+            If a column is not one-dimensional or columns have different
+            batch lengths.
 
         New callers should provide ``{name: array(n_batch)}``, which avoids
         creating parameter dictionaries in the sampler/fitter layer.  The
@@ -940,7 +1220,24 @@ class Likelihood(object):
     def log_prob_and_blobs_batch(
         self, parameters_batch, ignore_log_det_cov=True, zmask=None
     ):
-        """Evaluate posterior values for a batch of physical parameters.
+        """Evaluate posterior values and blobs for a physical-parameter batch.
+
+        Parameters
+        ----------
+        parameters_batch : mapping or iterable of mapping
+            Preferred columnar mapping with arrays of shape ``(n_batch,)``, or
+            legacy scalar parameter mappings.
+        ignore_log_det_cov : bool, default=True
+            Omit covariance normalization determinants.
+        zmask : float or array-like, optional
+            One diagnostic redshift or ``None`` for joint fitting.
+
+        Returns
+        -------
+        list of tuple
+            One tuple per input point: posterior log probability followed by
+            theory blob values. Out-of-bounds or rejected points receive the
+            configured posterior floor.
 
         Emulator calls are coalesced before model evaluation. Predictions are
         then stacked so covariance contractions are evaluated over the entire
@@ -1130,7 +1427,35 @@ class Likelihood(object):
         ylims=None,
         store_data=False,
     ):
-        """Delegate to :func:`cup1d.postprocessing.likelihood.plot_p1d`."""
+        """Render model/data P1D diagnostics through the maintained plotter.
+
+        Parameters
+        ----------
+        values : array-like or mapping, optional
+            Sampling coordinates or physical parameter values to plot.
+        plot_every_iz : int, default=1
+            Redshift-bin stride.
+        residuals, print_ratio, print_chi2, return_all, collapse, plot_panels
+            Diagnostic-layout and reporting switches forwarded unchanged.
+        plot_fname : path-like, optional
+            Optional figure destination.
+        rand_posterior : ndarray, optional
+            Posterior samples used for uncertainty realizations.
+        show, return_covar, plot_realizations, z_at_time, glob_full, fix_cosmo,
+        chi2_nozcov, store_data : bool
+            Rendering and diagnostic options owned by the postprocessing API.
+        zmask : float or array-like, optional
+            One-redshift diagnostic selection.
+        n_perturb, fontsize, n_param_glob_full : int
+            Plotting/perturbation controls.
+        ylims : tuple, optional
+            Vertical limits.
+
+        Returns
+        -------
+        object
+            Exact product returned by the maintained postprocessing renderer.
+        """
         from cup1d.postprocessing.likelihood import plot_p1d as _plot
 
         return _plot(
@@ -1169,7 +1494,28 @@ class Likelihood(object):
         z_at_time=False,
         fontsize=16,
     ):
-        """Delegate to :func:`cup1d.postprocessing.likelihood.plot_p1d_errors`."""
+        """Render P1D covariance/error diagnostics through the plotter.
+
+        Parameters
+        ----------
+        values : array-like or mapping, optional
+            Point whose model/error state is shown.
+        plot_fname : path-like, optional
+            Optional figure destination.
+        show : bool, default=True
+            Display the figure interactively.
+        zmask : float or array-like, optional
+            One-redshift diagnostic selection.
+        z_at_time : bool, default=False
+            Use at-a-time redshift organization.
+        fontsize : int, default=16
+            Base text size.
+
+        Returns
+        -------
+        object
+            Exact product returned by the postprocessing renderer.
+        """
         from cup1d.postprocessing.likelihood import plot_p1d_errors as _plot
 
         return _plot(self, values, plot_fname, show, zmask, z_at_time, fontsize)
@@ -1257,7 +1603,12 @@ class Likelihood(object):
         nelem=5000,
         store_data=False,
     ):
-        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_hcd_cont`."""
+        """Render HCD-contaminant posterior diagnostics.
+
+        Parameters are forwarded to
+        :func:`cup1d.postprocessing.contaminants.plot_hcd_cont`; ``zstar`` is
+        the velocity-pivot redshift and ``chain`` provides posterior samples.
+        """
         from cup1d.postprocessing.contaminants import plot_hcd_cont as _plot
 
         return _plot(self, zstar, p0, chain, save_directory, ftsize, nelem, store_data)
@@ -1271,7 +1622,7 @@ class Likelihood(object):
         nelem=5000,
         store_data=False,
     ):
-        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_metal_cont_add`."""
+        """Render additive-metal contamination diagnostics from a fit chain."""
         from cup1d.postprocessing.contaminants import plot_metal_cont_add as _plot
 
         return _plot(
@@ -1294,7 +1645,7 @@ class Likelihood(object):
         nelem=5000,
         store_data=False,
     ):
-        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_metal_cont_mult`."""
+        """Render multiplicative-metal contamination diagnostics from a fit chain."""
         from cup1d.postprocessing.contaminants import plot_metal_cont_mult as _plot
 
         return _plot(
@@ -1328,7 +1679,11 @@ class Likelihood(object):
         plot_external_data=True,
         plot_truth=False,
     ):
-        """Delegate to :func:`cup1d.postprocessing.igm.plot_likelihood_igm`."""
+        """Render IGM-history diagnostics through the maintained plotter.
+
+        The options select posterior source, redshift masking, fiducial/truth
+        overlays, external data, layout, and optional data persistence.
+        """
         from cup1d.postprocessing.igm import plot_likelihood_igm as _plot
 
         return _plot(
@@ -1353,7 +1708,7 @@ class Likelihood(object):
         )
 
     def plot_cov_terms(self, save_directory=None):
-        """Delegate to :func:`cup1d.postprocessing.likelihood.plot_cov_terms`."""
+        """Render data, systematic, and emulator covariance contributions."""
         from cup1d.postprocessing.likelihood import plot_cov_terms as _plot
 
         return _plot(self, save_directory)
@@ -1361,25 +1716,45 @@ class Likelihood(object):
     def plot_cov_to_pk(
         self, use_pk_smooth=True, fname=None, ftsize=18, store_data=False
     ):
-        """Delegate to :func:`cup1d.postprocessing.likelihood.plot_cov_to_pk`."""
+        """Render covariance relative to P1D, optionally using smooth P1D."""
         from cup1d.postprocessing.likelihood import plot_cov_to_pk as _plot
 
         return _plot(self, use_pk_smooth, fname, ftsize, store_data)
 
     def plot_correlation_matrix(self, save_directory=None):
-        """Delegate to :func:`cup1d.postprocessing.likelihood.plot_correlation_matrix`."""
+        """Render the fitted data-vector correlation matrix."""
         from cup1d.postprocessing.likelihood import plot_correlation_matrix as _plot
 
         return _plot(self, save_directory)
 
     def plot_hull_fid(self, like_params=None):
-        """Delegate to :func:`cup1d.postprocessing.likelihood.plot_hull_fid`."""
+        """Render the fiducial point against the emulator admission hull."""
         from cup1d.postprocessing.likelihood import plot_hull_fid as _plot
 
         return _plot(self, like_params)
 
     def set_ic_from_z_at_time(self, fname, verbose=True):
-        """Set the initial conditions for the likelihood from a fit"""
+        """Initialize free coefficients from independent redshift-bin fits.
+
+        Parameters
+        ----------
+        fname : path-like
+            NumPy result dictionary from an at-a-time fit, with best-fit
+            parameter values indexed by redshift.
+        verbose : bool, default=True
+            Print assigned physical values on the MPI root rank.
+
+        Returns
+        -------
+        None
+            Updates free-parameter values and resets IGM/HCD/metal model
+            coefficients consistently.
+
+        Raises
+        ------
+        ValueError
+            If a free coefficient has no matching configured redshift node.
+        """
 
         dir_out = np.load(fname, allow_pickle=True).item()
 
@@ -1439,7 +1814,26 @@ class Likelihood(object):
         )
 
     def set_ic_global(self, fname, verbose=True):
-        """Set the initial conditions for the likelihood from a fit"""
+        """Initialize free coefficients from a global redshift-dependent fit.
+
+        Parameters
+        ----------
+        fname : path-like
+            NumPy result dictionary containing fitted coefficient histories.
+        verbose : bool, default=True
+            Print assigned physical values on the MPI root rank.
+
+        Returns
+        -------
+        None
+            Updates configured fixed flags, interpolates coefficient values at
+            model nodes, and resets contaminant/IGM coefficient models.
+
+        Raises
+        ------
+        ValueError
+            If a requested parameter has no matching model-node configuration.
+        """
         dir_out = np.load(fname, allow_pickle=True).item()
 
         # Update the physical fiducial values from the saved best fit.
@@ -1519,7 +1913,15 @@ class Likelihood(object):
 
 def others_igm():
     # Galdwick 2021
+    """Return external IGM measurements in cup1d model conventions.
 
+    Returns
+    -------
+    dict
+        Literature measurements keyed by source, with redshift, mean flux,
+        temperature, thermal-width, slope, and propagated one-sigma errors.
+        Temperatures are converted to the IGM-model convention where needed.
+    """
     z = np.array([2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8])
 
     # mean transmitted flux

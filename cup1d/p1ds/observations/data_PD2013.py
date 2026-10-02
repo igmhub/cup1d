@@ -4,8 +4,21 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_PD2013(BaseDataP1D):
+    """Represent the PD2013 P1D data product."""
     def __init__(self, z_min=0, z_max=10, use_FFT=True, add_syst=True):
-        """Read measured P1D from files, either FFT or likelihood version."""
+        """Load the Palanque-Delabrouille et al. (2013) P1D measurement.
+
+        Parameters
+        ----------
+        z_min, z_max : float, default: 0, 10
+            Inclusive redshift range retained from the measurement.
+        use_FFT : bool, default: True
+            Read the implemented FFT table.  The alternate likelihood-table
+            reader remains intentionally unimplemented.
+        add_syst : bool, default: True
+            Add the tabulated systematic error in quadrature to statistical
+            variance before applying the published correlation matrices.
+        """
 
         # folder storing P1D measurement
         datadir = BaseDataP1D.BASEDIR + "/PD2013/"
@@ -22,7 +35,21 @@ class P1D_PD2013(BaseDataP1D):
 
 
 def read_FFT_from_file(datadir, add_syst=True):
-    """Setup measurement using FFT approach"""
+    """Read the FFT-based Palanque-Delabrouille et al. (2013) P1D product.
+
+    Parameters
+    ----------
+    datadir : str or path-like
+        Directory containing table 4a and its per-redshift correlation tables.
+    add_syst : bool, default: True
+        Include systematic P1D variance in each covariance diagonal.
+
+    Returns
+    -------
+    tuple
+        Redshifts, common wavenumbers in ``s / km``, P1D values in ``km / s``,
+        and covariance blocks in ``(km / s)**2``.
+    """
 
     # start by reading Pk file
     p1d_file = datadir + "/table4a.dat"
@@ -68,15 +95,42 @@ def read_FFT_from_file(datadir, add_syst=True):
 
 
 def read_like_from_file(datadir, add_syst=True):
-    """Setup measurement using likelihood approach"""
+    """Reserve the likelihood-table reader for a future implementation.
+
+    Parameters
+    ----------
+    datadir : str or path-like
+        Directory containing the likelihood-table product.
+    add_syst : bool, default: True
+        Requested systematic-error treatment.
+
+    Raises
+    ------
+    ValueError
+        Always, because the likelihood-table product is not implemented.
+    """
 
     p1d_file = datadir + "/table5a.dat"
     raise ValueError("implement _setup_like to read likelihood P1D")
 
 
 def analytic_p1d_PD2013_z_kms(z, k_kms):
-    """Fitting formula for 1D P(z,k) from Palanque-Delabrouille et al. (2013).
-    Wavenumbers and power in units of km/s. Corrected to be flat at low-k"""
+    """Evaluate the Palanque-Delabrouille et al. (2013) analytic P1D fit.
+
+    Parameters
+    ----------
+    z : float or ndarray
+        Redshift at which to evaluate the fitting formula.
+    k_kms : ndarray
+        Wavenumbers in ``s / km``.  Values below the model turnover are
+        replaced in place by the turnover wavenumber.
+
+    Returns
+    -------
+    ndarray
+        P1D values in ``km / s``, flattened at low wavenumber rather than
+        extrapolated to zero.
+    """
 
     # numbers from Palanque-Delabrouille (2013)
     A_F = 0.064

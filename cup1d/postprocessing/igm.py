@@ -29,7 +29,44 @@ def plot_likelihood_igm(
     plot_external_data=True,
     plot_truth=False,
 ):
-    """Plot IGM histories and optional external measurements or truth."""
+    """Plot likelihood IGM histories, posterior bands, and comparison data.
+
+    Parameters
+    ----------
+    self : object
+        Likelihood-like object exposing data, theory, free parameters, and
+        optional mock truth.
+    cloud : bool, default: False
+        Overlay emulator-training IGM histories.
+    chain_uformat : ndarray, optional
+        Posterior samples with final dimension matching free parameters.  A
+        three-dimensional walker chain is flattened before sampling.
+    free_params : mapping, optional
+        Complete named sampling point plotted as a dotted variation.
+    save_directory : str or path-like, optional
+        Directory for PDF and PNG outputs.
+    zmask : array_like, optional
+        Redshifts used for point estimates and posterior summary tables.
+    plot_type : {"all", "tau_sigT"}, default: "all"
+        Four-history or three-history layout.
+    plot_fid, plot_external_data, plot_truth : bool
+        Plot the fiducial model, external measurements, and mock truth.
+    lab_fid, variation_label, title : str
+        Legend labels and title for displayed curves.
+    ftsize : float, default: 18
+        Base figure font size.
+    nelem : int, default: 20000
+        Maximum randomly selected posterior samples.
+    pre_xylims, plot_more_igm : bool
+        Layout and extended-IGM compatibility options.
+    store_data : bool, default: False
+        Return plotted bands, points, and external-data arrays.
+
+    Returns
+    -------
+    dict
+        Summary-table arrays and, when requested, plotted-data arrays.
+    """
 
     # true IGM parameters
     # if self.truth is not None:
@@ -577,7 +614,29 @@ def plot_likelihood_igm(
 
 
 def plot_parameters(self, z, like_params, folder=None):
-    """Plot likelihood parameters"""
+    """Plot redshift evolution of IGM model parameters.
+
+    Parameters
+    ----------
+    self : object
+        IGM model exposing coefficient metadata and evaluators.
+    z : array_like of float
+        Redshifts at which the parameters are evaluated.
+    like_params : dict or sequence of dict
+        One physical parameter mapping or one mapping per redshift.
+    folder : str or path-like, optional
+        File root for PNG and PDF output.
+
+    Returns
+    -------
+    tuple of dict
+        Evaluated parameter values and corresponding coefficient values.
+
+    Raises
+    ------
+    ValueError
+        If a configured coefficient name is not a supported IGM history.
+    """
 
     from matplotlib import pyplot as plt
 
@@ -677,7 +736,18 @@ def plot_parameters(self, z, like_params, folder=None):
 
 
 def plot_mock_igm(self):
-    """Plot IGM histories"""
+    """Plot cosmological and IGM truth histories stored by a mock.
+
+    Parameters
+    ----------
+    self : object
+        Mock data object with a ``truth`` mapping produced by
+        :meth:`cup1d.p1ds.base_p1d_mock.BaseMockP1D.set_truth`.
+
+    Notes
+    -----
+    This legacy helper creates the figure in place and returns None.
+    """
 
     # true IGM parameters
     pars_true = {}

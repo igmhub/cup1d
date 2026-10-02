@@ -12,6 +12,11 @@ from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
 
 
 class Plotter(object):
+    """High-level plot suite for a completed Cup1D fit or saved chain.
+
+    The object delegates to specialized P1D, IGM, contaminant, hull, and
+    corner-plot modules while retaining a fitted analysis state.
+    """
     def __init__(
         self,
         fitter=None,
@@ -21,6 +26,29 @@ class Plotter(object):
         fname_priors=None,
         args={},
     ):
+        """Initialize from an in-memory fitter or legacy saved chain product.
+
+        Parameters
+        ----------
+        fitter : object, optional
+            Completed Cup1D fitter exposing likelihood and best-fit methods.
+        save_directory : str or path-like, optional
+            Directory created for all figure outputs.
+        fname_chain : str or path-like, optional
+            Legacy ``fitter_results.npy`` chain product used to reconstruct an
+            analysis and fitter when ``fitter`` is omitted.
+        zmask : array_like, optional
+            Redshift selection reused by suite-level minimizer plots.
+        fname_priors : str or path-like, optional
+            Optional prior-chain product for corner overlays.
+        args : mapping, default: {}
+            Configuration overrides applied while reconstructing a saved chain.
+
+        Notes
+        -----
+        ``fitter`` takes precedence over ``fname_chain``.  The legacy path
+        reconstructs stored parameter names into the current point convention.
+        """
         self.zmask = zmask
         if fitter is not None:
             self.fitter = fitter
@@ -124,6 +152,20 @@ class Plotter(object):
             self.fitter.chain_priors = None
 
     def plots_minimizer(self, zrange=[0, 10], zmask=None):
+        """Generate the standard minimizer diagnostic suite.
+
+        Parameters
+        ----------
+        zrange : sequence of float, default: [0, 10]
+            Redshift limits passed to contaminant plots.
+        zmask : array_like, optional
+            Selected redshifts.  The instance-level ``zmask`` takes priority.
+
+        Notes
+        -----
+        Generates and closes multiple figures: initial/best-fit P1D, P1D
+        errors, cosmology, IGM, contaminants, and emulator-hull diagnostics.
+        """
         if self.zmask is not None:
             zmask = self.zmask
             zrange = [np.min(zmask) - 0.01, np.max(zmask) + 0.01]
@@ -170,6 +212,13 @@ class Plotter(object):
         plt.close()
 
     def plots_sampler(self):
+        """Generate the standard sampler diagnostic suite.
+
+        Notes
+        -----
+        Generates and closes log-probability, initial/best-fit P1D, errors,
+        corner, IGM, contaminant, and emulator-hull figures from sampler state.
+        """
         # plot lnprob
         plt.close("all")
         self.plot_lnprob()
@@ -221,6 +270,19 @@ class Plotter(object):
         plt.close()
 
     def get_hc_star(self, nyx_version="Jul2024"):
+        """Load emulator simulation cosmologies in compressed star coordinates.
+
+        Parameters
+        ----------
+        nyx_version : str, default: "Jul2024"
+            Nyx cosmology-product version used for a Nyx emulator.
+
+        Returns
+        -------
+        tuple
+            Simulation labels; ``Delta2_star``, ``n_star``, and ``alpha_star``
+            arrays; emulator suite label; and raw cosmology mapping.
+        """
         suite_emu = self.fitter.like.theory.emulator.list_sim_cube[0][:3]
         if suite_emu == "mpg":
             fname = os.path.join(
@@ -257,7 +319,25 @@ class Plotter(object):
     def plot_mle_cosmo(
         self, fontsize=16, plot_errors=False, nsigma=1, error_method="gauss_newton"
     ):
-        """Plot MLE cosmology and, optionally, its local Gaussian errors."""
+        """Plot MLE compressed cosmology against emulator simulations.
+
+        Parameters
+        ----------
+        fontsize : float, default: 16
+            Base axis-label font size.
+        plot_errors : bool, default: False
+            Overlay local Gaussian covariance ellipses around the MLE.
+        nsigma : float, default: 1
+            Ellipse radius in standard deviations.
+        error_method : str, default: "gauss_newton"
+            MLE covariance estimator used if it has not been calculated.
+
+        Raises
+        ------
+        ValueError
+            If ``nsigma`` is non-positive or covariance is not positive
+            semidefinite.
+        """
 
         if nsigma <= 0:
             raise ValueError("nsigma must be positive")
@@ -350,6 +430,20 @@ class Plotter(object):
                 )
 
                 def add_error_ellipse(axis, indices):
+                    """Add a projected MLE covariance ellipse to one axes.
+
+                    Parameters
+                    ----------
+                    axis : matplotlib.axes.Axes
+                        Axes receiving the ellipse.
+                    indices : tuple of int
+                        Two compressed-cosmology coordinates to project.
+
+                    Raises
+                    ------
+                    ValueError
+                        If the projected covariance has a negative eigenvalue.
+                    """
                     projected = covariance[np.ix_(indices, indices)]
                     eigenvalues, eigenvectors = np.linalg.eigh(projected)
                     if np.any(eigenvalues < 0):
@@ -412,11 +506,22 @@ class Plotter(object):
         only_cosmo=False,
         extra_nburn=0,
     ):
-        """Make corner plot in ChainConsumer
-        - plot_params: Pass a list of parameters to plot (in LaTeX form),
-                    or leave as None to
-                    plot all (including derived)
-        - if delta_lnprob_cut is set, keep only high-prob points"""
+        """Plot posterior samples with ChainConsumer and fitted reference lines.
+
+        Parameters
+        ----------
+        plot_params : sequence of str, optional
+            Legacy parameter-selection argument; varying fitted parameters are
+            selected by the current implementation.
+        delta_lnprob_cut : float, optional
+            Retain only samples within this log-probability threshold.
+        usetex, serif : bool
+            Retained plotting-style compatibility options.
+        only_cosmo : bool, default: False
+            Restrict the plot to compressed cosmological parameters.
+        extra_nburn : int, default: 0
+            Additional initial sampler rows discarded by the fitter helper.
+        """
 
         from chainconsumer import ChainConsumer, Chain, Truth
         import pandas as pd
@@ -483,7 +588,25 @@ class Plotter(object):
         only_cosmo_lims=True,
         extra_data=None,
     ):
-        """Make corner plot in corner"""
+        """Plot posterior corner contours with MAP, truth, and prior overlays.
+
+        Parameters
+        ----------
+        delta_lnprob_cut : float, optional
+            Retain only high-probability samples.
+        usetex : bool, default: True
+            Retained compatibility style option.
+        only_cosmo : bool, default: False
+            Restrict to compressed cosmological parameters and overlay emulator
+            simulation points.
+        extra_nburn : int, default: 0
+            Additional burn-in rows discarded by the fitter helper.
+        only_cosmo_lims : bool, default: True
+            Expand cosmology panels to include emulator-domain limits.
+        extra_data : ndarray, optional
+            Optional extra cosmology samples with columns matching displayed
+            star-parameter coordinates.
+        """
 
         params_plot, strings_plot, _ = self.fitter.get_all_params(
             delta_lnprob_cut=delta_lnprob_cut, extra_nburn=extra_nburn
@@ -751,7 +874,22 @@ class Plotter(object):
         only_plot=None,
         extra_nburn=0,
     ):
-        """Make corner plot in corner"""
+        """Plot a corner diagram after mapping IGM coefficients at one redshift.
+
+        Parameters
+        ----------
+        z_use : float
+            Redshift at which IGM coefficient parameters are converted to
+            physical mean-flux, temperature, slope, or pressure-scale values.
+        usetex : bool, default: True
+            Retained compatibility style option.
+        delta_lnprob_cut : float, optional
+            Retain only high-probability samples.
+        only_plot : sequence of str, optional
+            Subset of variable LaTeX parameter labels to display.
+        extra_nburn : int, default: 0
+            Additional burn-in rows discarded by the fitter helper.
+        """
 
         params_plot, strings_plot, _ = self.fitter.get_all_params(
             delta_lnprob_cut=delta_lnprob_cut, extra_nburn=extra_nburn
@@ -977,7 +1115,13 @@ class Plotter(object):
             plt.savefig(name + ".png")
 
     def plot_lnprob(self, extra_nburn=0):
-        """Plot lnprob"""
+        """Plot retained and purged sampler log-probability walker traces.
+
+        Parameters
+        ----------
+        extra_nburn : int, default: 0
+            Additional initial iterations removed before walker-purge analysis.
+        """
 
         mask, _ = purge_chains(self.fitter.lnprob[extra_nburn:, :])
 
@@ -1001,8 +1145,24 @@ class Plotter(object):
         plot_panels=False,
         z_at_time=False,
     ):
-        """Plot the P1D of the data and the emulator prediction
-        for the MCMC best fit
+        """Delegate fitted P1D spectrum or residual plotting.
+
+        Parameters
+        ----------
+        values : array_like or sequence, optional
+            Sampling point(s); defaults to the stored MLE sampling point.
+        plot_every_iz : int, default: 1
+            Plot every nth redshift bin.
+        residuals : bool, default: False
+            Plot data/model ratios instead of dimensionless spectra.
+        rand_posterior : sequence, optional
+            Sampling points used to draw pointwise model-uncertainty bands.
+        stat_best_fit : str, default: "mle"
+            Label used in posterior-band output filenames.
+        zmask : array_like, optional
+            Selected redshifts.
+        plot_panels, z_at_time : bool
+            Use per-bin panels or one point per redshift.
         """
 
         ## Get best fit values for each parameter
@@ -1045,8 +1205,14 @@ class Plotter(object):
         )
 
     def plot_p1d_errors(self, values=None, zmask=None):
-        """Plot the P1D of the data and the emulator prediction
-        for the MCMC best fit
+        """Delegate standardized P1D-residual histogram plotting.
+
+        Parameters
+        ----------
+        values : array_like, optional
+            Sampling point(s); defaults to the stored MLE.
+        zmask : array_like, optional
+            Selected redshifts.
         """
 
         ## Get best fit values for each parameter
@@ -1070,8 +1236,17 @@ class Plotter(object):
         )
 
     def plot_P1D_initial(self, plot_every_iz=1, residuals=False, zmask=None):
-        """Plot the P1D of the data and the emulator prediction
-        for the fiducial model"""
+        """Delegate P1D plotting for the likelihood's fiducial initial point.
+
+        Parameters
+        ----------
+        plot_every_iz : int, default: 1
+            Plot every nth redshift bin.
+        residuals : bool, default: False
+            Plot data/model ratios instead of dimensionless spectra.
+        zmask : array_like, optional
+            Selected redshifts.
+        """
 
         if self.save_directory is not None:
             if residuals:
@@ -1091,9 +1266,15 @@ class Plotter(object):
         )
 
     def plot_histograms(self, cube=False, delta_lnprob_cut=None):
-        """Make histograms for all dimensions, using re-normalized values if
-        cube=True
-        - if delta_lnprob_cut is set, use only high-prob points"""
+        """Plot one-dimensional histograms for all fitted parameters.
+
+        Parameters
+        ----------
+        cube : bool, default: False
+            Plot unit-cube values rather than physical parameter values.
+        delta_lnprob_cut : float, optional
+            Retain only samples within this log-probability threshold.
+        """
 
         # get chain (from sampler or from file)
         chain, lnprob, blobs = self.fitter.get_chain(delta_lnprob_cut=delta_lnprob_cut)
@@ -1123,7 +1304,22 @@ class Plotter(object):
         cloud=True,
         zmask=None,
     ):
-        """Plot IGM histories"""
+        """Delegate likelihood IGM-history plotting for the stored best fit.
+
+        Parameters
+        ----------
+        value : array_like, optional
+            Best-fit point compatibility argument; stored MLE is used by the
+            current plotting delegation.
+        rand_sample : ndarray, optional
+            Reserved posterior-sample compatibility argument.
+        stat_best_fit : str, default: "mle"
+            Best-fit label compatibility argument.
+        cloud : bool, default: True
+            Overlay emulator-training histories.
+        zmask : array_like, optional
+            Selected IGM-summary redshifts.
+        """
 
         if value is None:
             value = self.mle_values
@@ -1183,13 +1379,31 @@ class Plotter(object):
         usetex=True,
         serif=True,
     ):
-        """Function to take a list of chain files and overplot the chains
-        Pass a list of chain files (ints) and a list of labels (strings)
-         - plot_params: list of parameters (in code variables, not latex form)
-                        to plot if only a subset is desired
-         - save_string: to save the plot. Must include
-                        file extension (i.e. .pdf, .png etc)
-         - if delta_lnprob_cut is set, keep only high-prob points"""
+        """Overlay multiple saved sampler chains with ChainConsumer.
+
+        Parameters
+        ----------
+        chain_files : sequence of int or str
+            Saved Emcee chain identifiers.
+        labels : sequence of str
+            Display labels, one per chain identifier.
+        plot_params : sequence of str, optional
+            Code parameter names to display; all parameters are shown when
+            omitted.
+        save_string : str or path-like, optional
+            Complete output filename including its extension.
+        rootdir, subfolder : str or path-like, optional
+            Emcee chain output location.
+        delta_lnprob_cut : float, optional
+            Retain only high-probability samples.
+        usetex, serif : bool
+            ChainConsumer style options.
+
+        Raises
+        ------
+        AssertionError
+            If the number of chain files and labels differs.
+        """
 
         from chainconsumer import ChainConsumer
 
@@ -1248,7 +1462,24 @@ class Plotter(object):
         plot_data=False,
         zrange=[0, 10],
     ):
-        """Function to plot the HCD contamination"""
+        """Plot the MLE HCD contamination history.
+
+        Parameters
+        ----------
+        plot_every_iz : int, default: 1
+            Plot every nth redshift bin.
+        smooth_k : bool, default: False
+            Evaluate on smooth log-spaced wavenumber grids.
+        plot_data : bool, default: False
+            Overlay stored MLE data/model products.
+        zrange : sequence of float, default: [0, 10]
+            Inclusive redshift plotting range.
+
+        Notes
+        -----
+        Coefficients are reconstructed in the model's reverse polynomial order.
+        The method returns early when no HCD coefficients are free.
+        """
 
         if plot_data:
             dict_data = self.mle_results
@@ -1319,7 +1550,29 @@ class Plotter(object):
         mle_results=None,
         plot_panels=True,
     ):
-        """Function to plot metal contamination"""
+        """Plot MLE additive and multiplicative metal contamination histories.
+
+        Parameters
+        ----------
+        plot_every_iz : int, default: 1
+            Plot every nth redshift bin.
+        stat_best_fit : str, default: "mle"
+            Retained best-fit-label compatibility argument.
+        smooth_k : bool, default: False
+            Evaluate on smooth log-spaced wavenumber grids.
+        plot_data : bool, default: False
+            Overlay MLE data/model products.
+        zrange : sequence of float, default: [0, 10]
+            Inclusive redshift plotting range.
+        mle_results : dict, optional
+            Explicit data/model payload replacing stored MLE results.
+        plot_panels : bool, default: True
+            Request per-redshift panels from the metal-model plotter.
+
+        Notes
+        -----
+        Metal coefficients are reconstructed in reverse polynomial order.
+        """
 
         if plot_data:
             if mle_results is not None:
@@ -1403,7 +1656,24 @@ class Plotter(object):
         plot_data=False,
         zrange=[0, 10],
     ):
-        """Function to plot AGN contamination"""
+        """Plot the MLE AGN contamination history.
+
+        Parameters
+        ----------
+        plot_every_iz : int, default: 1
+            Plot every nth redshift bin.
+        smooth_k : bool, default: False
+            Evaluate on smooth log-spaced wavenumber grids.
+        plot_data : bool, default: False
+            Overlay stored MLE data/model products.
+        zrange : sequence of float, default: [0, 10]
+            Inclusive redshift plotting range.
+
+        Notes
+        -----
+        AGN coefficients are reconstructed in reverse polynomial order.  The
+        method returns early when no AGN coefficient is free.
+        """
 
         if plot_data:
             dict_data = self.mle_results
@@ -1528,6 +1798,7 @@ class Plotter(object):
             plt.show()
 
     def plot_illustrate_contaminants_cum(self, values, zmask, fontsize=18):
+        """Plot illustrate contaminants cum diagnostics."""
         _data_z = []
         _data_k_kms = []
         _data_Pk_kms = []
@@ -1996,6 +2267,7 @@ class Plotter(object):
 
     def plot_illustrate_contaminants2(self, values, zmask, fontsize=18, lines_use=None):
         # all_contaminants = np.array(lines_use + ["DLA", "res", "none"])
+        """Plot illustrate contaminants2 diagnostics."""
         all_contaminants = np.array(lines_use + ["DLA", "none"])
 
         cont2label = {
@@ -2242,6 +2514,7 @@ class Plotter(object):
 
 
 def plot_cov(p1d_fname, kmin=1e-3, nknyq=0.5, fontsize=14, save_directory=None, lab=""):
+    """Plot cov diagnostics."""
     from astropy.io import fits
 
     try:

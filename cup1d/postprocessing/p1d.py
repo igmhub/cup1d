@@ -33,6 +33,13 @@ class P1DBin:
 
     @property
     def probability(self):
+        """Return the chi-squared survival probability for this P1D bin.
+
+        Returns
+        -------
+        float
+            Upper-tail probability evaluated from :attr:`chi2` and :attr:`dof`.
+        """
         return chi2_distribution.sf(self.chi2, self.dof)
 
 
@@ -46,9 +53,34 @@ class P1DPlotter:
     """
 
     def __init__(self, likelihood):
+        """Bind a P1D plotting adapter to one likelihood.
+
+        Parameters
+        ----------
+        likelihood : object
+            Re-binned likelihood exposing P1D data, predictions, covariances,
+            and chi-squared evaluation.
+        """
         self.like = likelihood
 
     def _predict(self, values):
+        """Evaluate a P1D prediction and reject out-of-domain points.
+
+        Parameters
+        ----------
+        values : array_like or mapping
+            Sampling point accepted by the likelihood.
+
+        Returns
+        -------
+        mapping
+            Predicted P1D vectors grouped by dataset and redshift index.
+
+        Raises
+        ------
+        ValueError
+            If the sampling point is outside the admitted model domain.
+        """
         result = self.like.get_p1d_kms(values)
         if result is None:
             raise ValueError("Cannot plot P1D: the sampling point is outside the model domain.")
@@ -58,6 +90,49 @@ class P1DPlotter:
                 z_at_time=False, rand_posterior=None, n_perturb=0,
                 collapse=False, plot_panels=False, glob_full=False,
                 fix_cosmo=False, n_param_glob_full=16, chi2_nozcov=False):
+        """Prepare selected P1D bins, predictions, diagnostics, and draws.
+
+        Parameters
+        ----------
+        values : array_like, mapping, or sequence, optional
+            Joint sampling point, or one point per selected redshift when
+            ``z_at_time`` is true.
+        zmask : array_like, optional
+            Redshifts selected with a tolerance of ``1e-3``.
+        plot_every_iz : int, default: 1
+            Retain every nth selected redshift bin.
+        z_at_time : bool, default: False
+            Use a separately fitted point for every selected redshift.
+        rand_posterior : ndarray or sequence of mapping, optional
+            Posterior points used for pointwise model-error bands.  Numeric
+            arrays have shape ``(n_samples, n_free_parameters)``.
+        n_perturb : int, default: 0
+            Number of joint covariance realizations for each selected dataset.
+        collapse, plot_panels : bool
+            Control redshift offsets and panel-color convention.
+        glob_full : bool, default: False
+            Use ``n_param_glob_full`` in per-bin degrees of freedom.
+        fix_cosmo : bool, default: False
+            Subtract two fixed cosmological parameters from joint degrees of
+            freedom.
+        n_param_glob_full : int, default: 16
+            Parameter count used with ``glob_full``.
+        chi2_nozcov : bool, default: False
+            Sum independent per-redshift chi-squared values for the displayed
+            total.
+
+        Returns
+        -------
+        tuple
+            Selected :class:`P1DBin` objects, total chi-squared, and degrees of
+            freedom.
+
+        Raises
+        ------
+        ValueError
+            If sampling input shape, selection, perturbation count, or model
+            prediction shape is invalid.
+        """
         if not isinstance(plot_every_iz, (int, np.integer)) or plot_every_iz < 1:
             raise ValueError("plot_every_iz must be a positive integer.")
         if not isinstance(n_perturb, (int, np.integer)) or n_perturb < 0:
@@ -190,6 +265,25 @@ class P1DPlotter:
         return bins, float(total_chi2), dof
 
     def _realizations(self, key, models, indices, count):
+        """Draw correlated P1D realizations across selected redshift blocks.
+
+        Parameters
+        ----------
+        key : str
+            Dataset key.
+        models : mapping[int, ndarray]
+            P1D model vectors in ``km / s`` indexed by redshift bin.
+        indices : sequence of int
+            Selected redshift-bin indices.
+        count : int
+            Number of multivariate Gaussian draws.
+
+        Returns
+        -------
+        dict[int, ndarray]
+            Each selected index maps to draws with shape ``(count, nk)``;
+            returns an empty mapping when no draws are requested.
+        """
         if not count or not indices:
             return {}
         data = self.like.data[key]
@@ -203,6 +297,21 @@ class P1DPlotter:
 
 
 def _axes(bins, panels):
+    """Create grouped or per-bin axes for prepared P1D bins.
+
+    Parameters
+    ----------
+    bins : sequence of P1DBin
+        Prepared bins defining dataset grouping and panel count.
+    panels : bool
+        Create a three-column per-bin layout when true; otherwise share one
+        axis for every dataset key.
+
+    Returns
+    -------
+    tuple
+        Matplotlib figure and a list of axes aligned with ``bins``.
+    """
     if panels:
         rows = (len(bins) + 2) // 3
         fig, axes = plt.subplots(
@@ -220,6 +329,21 @@ def _axes(bins, panels):
 
 
 def _bin_label(item, print_chi2):
+    """Format a redshift-bin annotation.
+
+    Parameters
+    ----------
+    item : P1DBin
+        Prepared bin whose diagnostics are displayed.
+    print_chi2 : bool
+        Include degrees of freedom and survival probability instead of data
+        count.
+
+    Returns
+    -------
+    str
+        LaTeX-formatted Matplotlib annotation.
+    """
     if print_chi2:
         return (rf"$\chi^2={item.chi2:.2f}$, $n_\mathrm{{deg}}={item.dof}$, "
                 f"prob={100 * item.probability:.2f}%")
@@ -227,7 +351,24 @@ def _bin_label(item, print_chi2):
 
 
 def plot_p1d_spectra(bins, *, panels=False, fontsize=20, print_chi2=True):
-    """Render prepared bins as dimensionless spectra; return figure and axes."""
+    """Render prepared bins as dimensionless P1D spectra.
+
+    Parameters
+    ----------
+    bins : sequence of P1DBin
+        Prepared P1D measurements in native velocity units.
+    panels : bool, default: False
+        Use one panel per selected bin instead of one axis per dataset.
+    fontsize : float, default: 20
+        Base figure font size.
+    print_chi2 : bool, default: True
+        Annotate bins with chi-squared probabilities.
+
+    Returns
+    -------
+    tuple
+        Matplotlib figure and axes.  Ordinate values are ``k P1D / pi``.
+    """
     fig, axes = _axes(bins, panels)
     for index, (item, ax) in enumerate(zip(bins, axes)):
         factor = item.k / np.pi
@@ -253,7 +394,29 @@ def plot_p1d_spectra(bins, *, panels=False, fontsize=20, print_chi2=True):
 
 
 def plot_p1d_residuals(bins, *, panels=False, fontsize=20, print_chi2=True):
-    """Render data/model ratios; return figure and axes."""
+    """Render data-to-model P1D ratios and uncertainty bands.
+
+    Parameters
+    ----------
+    bins : sequence of P1DBin
+        Prepared P1D measurements in native velocity units.
+    panels : bool, default: False
+        Use one panel per selected bin instead of one axis per dataset.
+    fontsize : float, default: 20
+        Base figure font size.
+    print_chi2 : bool, default: True
+        Annotate bins with chi-squared probabilities.
+
+    Returns
+    -------
+    tuple
+        Matplotlib figure and axes.
+
+    Raises
+    ------
+    ValueError
+        If any model P1D value is zero.
+    """
     fig, axes = _axes(bins, panels)
     for index, (item, ax) in enumerate(zip(bins, axes)):
         if np.any(item.model == 0):
@@ -281,6 +444,32 @@ def plot_p1d_residuals(bins, *, panels=False, fontsize=20, print_chi2=True):
 
 
 def _finish(fig, axes, chi2, dof, *, fontsize, ylims, plot_fname, show):
+    """Finalize labels, limits, title, display, and optional figure files.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        Figure to finalize.
+    axes : sequence of matplotlib.axes.Axes
+        Axes created for prepared bins, possibly with repeated entries.
+    chi2 : float
+        Total chi-squared displayed in the title.
+    dof : int
+        Degrees of freedom used for the chi-squared survival probability.
+    fontsize : float
+        Base figure font size.
+    ylims : array_like, optional
+        One pair, one pair per distinct axis, or one pair per panel row.
+    plot_fname : str or path-like, optional
+        File root for PDF and PNG output.
+    show : bool
+        Display the figure when no output path is supplied.
+
+    Raises
+    ------
+    ValueError
+        If ``ylims`` cannot be aligned with the distinct plotted axes.
+    """
     probability = chi2_distribution.sf(chi2, dof)
     fig.suptitle(rf'$\chi^2={chi2:.2f}$, $n_\mathrm{{deg}}={dof}$, prob={probability * 100:.4g}%', fontsize=fontsize)
     unique_axes = list(dict.fromkeys(axes))
@@ -307,6 +496,19 @@ def _finish(fig, axes, chi2, dof, *, fontsize, ylims, plot_fname, show):
 
 
 def _output(bins):
+    """Collect native P1D diagnostics grouped by dataset key.
+
+    Parameters
+    ----------
+    bins : sequence of P1DBin
+        Prepared bins to serialize.
+
+    Returns
+    -------
+    dict[str, dict[str, list]]
+        Redshifts, ``k_kms`` in ``s / km``, P1D data/model/error in ``km / s``,
+        chi-squared values, and survival probabilities grouped by dataset.
+    """
     result = {}
     for item in bins:
         values = dict(zs=item.z, k_kms=item.k, p1d_data=item.data, p1d_model=item.model,
@@ -325,13 +527,45 @@ def plot_p1d(
     glob_full=False, fix_cosmo=False, n_param_glob_full=16, chi2_nozcov=False,
     ylims=None, store_data=False,
 ):
-    """Dispatch to spectra or residual rendering with the historical API.
+    """Plot likelihood P1D spectra or residuals through the historical API.
 
-    ``return_all`` returns native spectra and diagnostics grouped by dataset.
-    ``store_data`` returns plotted coordinates (flat for one dataset, keyed
-    by dataset for multiple datasets). Otherwise the return value is ``None``.
-    Figures remain accessible through Matplotlib. Emulator covariance is not
-    exposed by the current rebinned likelihood; use posterior draws for bands.
+    Parameters
+    ----------
+    likelihood : object
+        Re-binned likelihood exposing P1D predictions and covariance.
+    values, zmask, plot_every_iz, z_at_time, rand_posterior, n_perturb
+        Sampling, redshift selection, posterior-band, and realization options
+        forwarded to :meth:`P1DPlotter.prepare`.
+    residuals : bool, default: False
+        Plot data/model ratios rather than dimensionless spectra.
+    plot_fname : str or path-like, optional
+        File root for PDF and PNG output.
+    show : bool, default: True
+        Display the figure when no file root is supplied.
+    return_covar : bool, default: False
+        Unsupported compatibility option.
+    print_ratio, print_chi2 : bool
+        Print ratios on rank zero and display chi-squared bin annotations.
+    return_all, store_data : bool
+        Return native diagnostics or plotted coordinates instead of None.
+    collapse, plot_realizations, plot_panels, glob_full, fix_cosmo,
+    n_param_glob_full, chi2_nozcov, ylims, fontsize
+        Rendering and degrees-of-freedom options forwarded to preparation or
+        finalization.
+
+    Returns
+    -------
+    dict, optional
+        Native grouped diagnostics for ``return_all`` or plotted coordinates
+        for ``store_data``; otherwise None.
+
+    Raises
+    ------
+    NotImplementedError
+        If ``return_covar`` is requested.
+    ValueError
+        If posterior samples are combined with redshift-at-a-time fitting or
+        any selection/preparation contract is invalid.
     """
     if return_covar:
         raise NotImplementedError(
@@ -367,17 +601,50 @@ def plot_p1d(
 
 
 def old_plot_p1d(likelihood, *args, **kwargs):
-    """Deprecated alias using the maintained P1D renderer and data interface."""
+    """Call :func:`plot_p1d` while emitting a deprecation warning.
+
+    Parameters
+    ----------
+    likelihood : object
+        Likelihood forwarded to :func:`plot_p1d`.
+    *args, **kwargs
+        Additional arguments forwarded unchanged.
+
+    Returns
+    -------
+    object
+        Return value of :func:`plot_p1d`.
+    """
     warnings.warn('old_plot_p1d is deprecated; use plot_p1d.', DeprecationWarning, stacklevel=2)
     return plot_p1d(likelihood, *args, **kwargs)
 
 
 def plot_p1d_errors(likelihood, values=None, plot_fname=None, show=True,
                     zmask=None, z_at_time=False, fontsize=16):
-    """Plot standardized-residual histograms against a unit Gaussian.
+    """Plot standardized P1D residual histograms against a unit Gaussian.
 
-    Return ``bins``, ``zs``, and ``(d-m)/err`` as in the historical routine.
-    For multiple datasets, these dictionaries are keyed by dataset name.
+    Parameters
+    ----------
+    likelihood : object
+        Re-binned likelihood exposing P1D predictions and covariance.
+    values : array_like or mapping, optional
+        Sampling point forwarded to :meth:`P1DPlotter.prepare`.
+    plot_fname : str or path-like, optional
+        File root for PDF and PNG output.
+    show : bool, default: True
+        Display the figure when no output path is supplied.
+    zmask : array_like, optional
+        Selected redshifts.
+    z_at_time : bool, default: False
+        Interpret ``values`` as one point per selected redshift.
+    fontsize : float, default: 16
+        Base axis-label font size.
+
+    Returns
+    -------
+    dict
+        Histogram edges, redshifts, and residual arrays keyed by dataset when
+        more than one dataset is selected.
     """
     bins, chi2, dof = P1DPlotter(likelihood).prepare(values, zmask=zmask, z_at_time=z_at_time)
     rows = (len(bins) + 2) // 2

@@ -3,16 +3,18 @@ from cup1d.models.contaminants.base_contaminants import Contaminant
 
 
 def vel_diff(lambda1, lambda2):
+    """Convert rest wavelengths to an absolute logarithmic velocity separation."""
     c_kms = 299792.458
     return np.abs(np.log(lambda2 / lambda1)) * c_kms
 
 
 def rstrength(lambda1, lambda2, f1, f2):
+    """Return an optically-thin wavelength--oscillator-strength ratio."""
     return (lambda1 * f1) / (lambda2 * f2)
 
 
 class SiVid(Contaminant):
-    """Model the contamination from Silicon Lya cross-correlations"""
+    """Ma et al. silicon velocity-distortion multiplicative P1D model."""
 
     def __init__(
         self,
@@ -26,8 +28,11 @@ class SiVid(Contaminant):
         flat_priors=None,
         Gauss_priors=None,
     ):
-        """Model the evolution of a metal contamination (SiII or SiIII).
-        We use a power law around z_0=3."""
+        """Initialize SiVid transition data and pivot coefficient histories.
+
+        Parameters are forwarded to :class:`Contaminant`; default amplitude and
+        damping histories are exponentially transformed pivot polynomials.
+        """
 
         self.wav = {
             "SiIII": 1206.51,
@@ -155,8 +160,24 @@ class SiVid(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, mF, like_params=None, remove=None):
-        """Multiplicative contamination at a given z and k (in s/km).
-        The mean flux (mF) is used scale it (see McDonald et al. 2006)"""
+        """Evaluate the SiVid multiplicative correction on velocity k grids.
+
+        Parameters
+        ----------
+        z, mF : array-like
+            Redshift rows and matching mean-flux values.
+        k_kms : sequence of ndarray
+            Per-redshift line-of-sight wavenumbers in s/km.
+        like_params : mapping, optional
+            Coefficient-history overrides.
+        remove : mapping, optional
+            Transition flags overriding default contributions.
+
+        Returns
+        -------
+        list of ndarray
+            Dimensionless multiplicative corrections in redshift order.
+        """
 
         # z = np.atleast_1d(z)
         # k_kms = np.atleast_2d(k_kms)
@@ -221,7 +242,10 @@ class SiVid(Contaminant):
         return metal_corr
 
     def get_contamination_batch(self, z, k_kms, mF, like_params, remove=None):
-        """Ma et al. SiVid correction, returned as ``[(batch, k_z), ...]``."""
+        """Evaluate SiVid corrections for columnar likelihood samples.
+
+        Returns a list of dimensionless ``(n_batch, nk_z)`` arrays.
+        """
         z = np.atleast_1d(np.asarray(z, dtype=float))
         values = {key: self.get_value_batch(key, z, like_params) for key in self.list_coeffs}
         for key in self.null_vals:

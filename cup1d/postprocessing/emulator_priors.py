@@ -35,7 +35,14 @@ class EmulatorPriorPlotter:
     }
 
     def compute_priors(self):
-        """Compute the two mapped prior domains and return their boundaries."""
+        """Compute mapped MPG and Nyx prior boundaries.
+
+        Returns
+        -------
+        dict[str, ndarray]
+            Closed alpha-shape boundaries with shape ``(n_boundary, 2)`` in
+            ``(Delta2_star, n_star)`` coordinates.
+        """
 
         self._set_fiducial_cosmology()
         for emulator, ranges in self._RANGES.items():
@@ -47,7 +54,20 @@ class EmulatorPriorPlotter:
         return self.boundaries
 
     def plot_priors(self, ax=None, show_simulations=True):
-        """Plot the MPG and Nyx prior boundaries and simulation cosmologies."""
+        """Plot MPG and Nyx prior boundaries in star-parameter coordinates.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Existing axes; a new figure and axes are created when omitted.
+        show_simulations : bool, default: True
+            Scatter training-simulation cosmologies inside each boundary.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axes containing the prior boundaries.
+        """
 
         if not self.boundaries:
             self.compute_priors()
@@ -70,7 +90,13 @@ class EmulatorPriorPlotter:
         return ax
 
     def _set_fiducial_cosmology(self):
-        """Set the CAMB-derived reference used for the fast mapping."""
+        """Initialize the CAMB-derived reference for primordial-grid mapping.
+
+        Notes
+        -----
+        Sets private fiducial star parameters and the pivot wavenumber in
+        ``1 / Mpc`` used by :meth:`_map_primordial_grid`.
+        """
 
         from lace.cosmo.cosmology import Cosmology
         from cup1d.theory.camb import CAMBModel
@@ -104,7 +130,19 @@ class EmulatorPriorPlotter:
         self._kp_mpc = self.kp_kms * model.dkms_dMpc(self.z_star)
 
     def _map_primordial_grid(self, ranges):
-        """Map a regular primordial-spectrum grid to star parameters."""
+        """Map a rectangular primordial ``As``--``ns`` grid into star space.
+
+        Parameters
+        ----------
+        ranges : mapping
+            ``As`` and ``ns`` lower/upper bounds defining the emulator domain.
+
+        Returns
+        -------
+        ndarray
+            Mapped samples with shape ``(grid_size**2, 2)`` in
+            ``(Delta2_star, n_star)`` coordinates.
+        """
 
         amplitudes = np.linspace(*ranges["As"], self.grid_size)
         tilts = np.linspace(*ranges["ns"], self.grid_size)
@@ -121,7 +159,19 @@ class EmulatorPriorPlotter:
         return np.column_stack((delta2_star, n_star))
 
     def _simulation_points(self, emulator):
-        """Return the cosmologies included in the corresponding simulation set."""
+        """Return retained training-simulation cosmologies in star space.
+
+        Parameters
+        ----------
+        emulator : {"mpg", "nyx"}
+            Simulation suite whose labels are filtered.
+
+        Returns
+        -------
+        ndarray
+            Simulation points with shape ``(n_simulations, 2)`` in
+            ``(Delta2_star, n_star)`` coordinates.
+        """
 
         from cup1d.theory.cosmology import set_cosmo
 
@@ -141,7 +191,25 @@ class EmulatorPriorPlotter:
         return np.asarray(points)
 
     def _concave_hull(self, points):
-        """Return the exterior coordinates of the alpha shape of ``points``."""
+        """Return the exterior polygon of an alpha shape.
+
+        Parameters
+        ----------
+        points : ndarray
+            Two-dimensional points with shape ``(n_points, 2)``.
+
+        Returns
+        -------
+        ndarray
+            Closed exterior boundary coordinates with shape ``(n_boundary, 2)``.
+
+        Raises
+        ------
+        ImportError
+            If optional ``alphashape`` support is not installed.
+        ValueError
+            If the alpha shape is not polygonal.
+        """
 
         try:
             import alphashape

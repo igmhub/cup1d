@@ -17,7 +17,38 @@ def plot_p1d(
     ftsize=18,
     store_data=False,
 ):
-    """Plot P1D mesurement. If use_dimensionless, plot k*P(k)/pi."""
+    """Plot P1D measurements and covariance-diagonal uncertainties.
+
+    Parameters
+    ----------
+    zs : array_like of float
+        Redshifts associated with the P1D blocks.
+    k_kms, Pk_kms : sequence of ndarray
+        Per-redshift wavenumber grids in ``s / km`` and P1D vectors in
+        ``km / s``.
+    cov_Pk_kms : sequence of ndarray
+        Per-redshift covariance blocks with shape ``(nk, nk)`` in
+        ``(km / s)**2``.
+    use_dimensionless : bool, default: True
+        Plot ``k P1D / pi`` rather than P1D itself.
+    xlog, ylog : bool, default: False, True
+        Use logarithmic wavenumber and ordinate axes.
+    fname : str or path-like, optional
+        File root for PDF and PNG outputs.
+    cov_ext : sequence of ndarray, optional
+        Optional covariance blocks whose diagonal errors replace those from
+        ``cov_Pk_kms``.
+    ftsize : float, default: 18
+        Base font size.
+    store_data : bool, default: False
+        Return plotted x, y, and diagonal-error arrays.
+
+    Returns
+    -------
+    dict, optional
+        Keys ``xN``, ``yN``, and ``errN`` for every redshift block when
+        ``store_data`` is true; otherwise None.
+    """
 
     rcParams["mathtext.fontset"] = "stix"
     rcParams["font.family"] = "STIXGeneral"

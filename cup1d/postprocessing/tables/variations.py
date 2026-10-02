@@ -134,6 +134,7 @@ def format_column(
     one_decimal=False,
     two_decimals=False,
 ):
+    """Format column."""
     formatted = []
     for val in values:
         if one_decimal:
@@ -150,6 +151,7 @@ def format_column(
 
 
 def table_variations(base):
+    """Execute table variations."""
     variations = {
         "DESIY1_QMLE3_mpg": [
             "Fiducial",

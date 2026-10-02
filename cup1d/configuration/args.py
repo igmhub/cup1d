@@ -16,7 +16,21 @@ _TRAINING_SETS = {
 
 
 def get_training_set(emulator_label):
-    """Return the simulation archive associated with an emulator."""
+    """Return the training archive selected by an emulator label.
+
+    Parameters
+    ----------
+    emulator_label : str
+        Public cup1d alias or underlying emulator label. Known LaCE aliases
+        map to their explicit archive; unknown labels use the ``"mpg"``
+        substring heuristic.
+
+    Returns
+    -------
+    str
+        Archive label. Unknown MPG-like labels select ``"Cabayol23"`` and
+        all other labels select ``"Pedersen21"``.
+    """
 
     return _TRAINING_SETS.get(
         emulator_label,
@@ -90,6 +104,22 @@ class Args:
     }
 
     def __init__(self, synthetic=False, **options):
+        """Resolve CM2026 defaults and programmatic overrides.
+
+        Parameters
+        ----------
+        synthetic : bool, default=False
+            Select synthetic-data rather than observational CM2026 defaults.
+        **options
+            Nested configuration overrides using the same keys as the CM2026
+            YAML. Values are merged with defaults and normalized to runtime
+            array types.
+
+        Notes
+        -----
+        This constructor does not read a YAML file. Use :meth:`from_yaml` or
+        :meth:`from_variation` for file-backed configurations.
+        """
         from cup1d.configuration.loader import apply_overrides, restore_runtime_types
         from cup1d.configuration import (
             make_cm2026_defaults,
@@ -164,7 +194,23 @@ class Args:
 
     @staticmethod
     def _preserve_configured_fiducial_values(values, name, n_nodes):
-        """Normalize an explicitly configured physical model reference value."""
+        """Normalize an explicit fiducial history to its configured layout.
+
+        Parameters
+        ----------
+        values : dict
+            Model configuration section mutated in place.
+        name : str
+            Physical history name whose value is normalized.
+        n_nodes : int
+            Number of configured redshift nodes for interpolated histories.
+
+        Raises
+        ------
+        ValueError
+            If a pivot history has more than one value, or an interpolated
+            history has neither one nor ``n_nodes`` values.
+        """
 
         configured = np.asarray(values[name])
         if values.get(f"{name}_ztype") == "pivot":
@@ -201,7 +247,25 @@ class Args:
 
     @classmethod
     def from_yaml(cls, filename, verbose=True, synthetic=False, **options):
-        """Create arguments from CM2026 defaults and a YAML override file."""
+        """Create resolved arguments from a CM2026-compatible YAML file.
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            YAML override file. Its resolved absolute path is retained as
+            ``config_path`` on the returned object.
+        verbose : bool, default=True
+            Print resolved default and user-provided values.
+        synthetic : bool, default=False
+            Select synthetic-data rather than observational defaults.
+        **options
+            Programmatic overrides merged after YAML values.
+
+        Returns
+        -------
+        Args
+            Fully resolved analysis arguments with ``config_loader="yaml"``.
+        """
 
         from cup1d.configuration.loader import read_config
 
@@ -216,7 +280,22 @@ class Args:
 
     @classmethod
     def from_baseline(cls, verbose=False, synthetic=False, **options):
-        """Create arguments for the CM2026 baseline analysis."""
+        """Create arguments from the canonical CM2026 baseline YAML.
+
+        Parameters
+        ----------
+        verbose : bool, default=False
+            Print resolved default and override values.
+        synthetic : bool, default=False
+            Select the synthetic default family before applying overrides.
+        **options
+            Programmatic CM2026 overrides.
+
+        Returns
+        -------
+        Args
+            Resolved baseline analysis arguments.
+        """
 
         return cls.from_yaml(
             _cm2026_config_dir() / "cm2026_base.yaml",
@@ -227,7 +306,22 @@ class Args:
 
     @classmethod
     def _from_overrides(cls, overrides, verbose=True, synthetic=False):
-        """Resolve an override mapping against the appropriate defaults."""
+        """Resolve a mapping against CM2026 defaults.
+
+        Parameters
+        ----------
+        overrides : dict
+            Nested configuration values to merge into the selected defaults.
+        verbose : bool, default=True
+            Print resolved leaves and their source.
+        synthetic : bool, default=False
+            Select synthetic-data rather than observational defaults.
+
+        Returns
+        -------
+        Args
+            Fully initialized arguments with derived nodes and priors.
+        """
 
         from cup1d.configuration.loader import (
             apply_overrides,
@@ -252,7 +346,26 @@ class Args:
 
     @classmethod
     def from_variation(cls, name, verbose=False, synthetic=False, **options):
-        """Apply a named CM2026 variation on top of the baseline."""
+        """Create arguments by applying a CM2026 variation to the baseline.
+
+        Parameters
+        ----------
+        name : str or pathlib.Path or None
+            Variation name under ``configs/cm2026/variations`` or a YAML path.
+            ``None`` and ``"None"`` select the baseline without a variation.
+        verbose : bool, default=False
+            Print resolved default and override values.
+        synthetic : bool, default=False
+            Select synthetic-data rather than observational defaults.
+        **options
+            Programmatic overrides merged after baseline and variation YAML.
+
+        Returns
+        -------
+        Args
+            Resolved arguments with ``config_loader="variation"`` unless no
+            variation was requested.
+        """
 
         if name in (None, "None"):
             return cls.from_baseline(
@@ -281,7 +394,18 @@ class Args:
 
 
 def _merge_overrides(base, updates):
-    """Recursively combine YAML and programmatic overrides."""
+    """Recursively merge nested override mappings.
+
+    Parameters
+    ----------
+    base, updates : dict
+        Base mapping and values that replace or recursively extend it.
+
+    Returns
+    -------
+    dict
+        Deep copy of ``base`` with ``updates`` applied. Inputs are unchanged.
+    """
 
     merged = deepcopy(base)
     for name, value in updates.items():
@@ -293,7 +417,13 @@ def _merge_overrides(base, updates):
 
 
 def _cm2026_config_dir():
-    """Return the directory containing the CM2026 YAML inputs."""
+    """Return the installed repository directory containing CM2026 YAML files.
+
+    Returns
+    -------
+    pathlib.Path
+        ``configs/cm2026`` under the cup1d repository root.
+    """
 
     from cup1d.utils.utils import get_path_repo
 

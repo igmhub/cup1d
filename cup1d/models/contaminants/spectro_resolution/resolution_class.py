@@ -9,6 +9,21 @@ def get_Rz(z, k_kms):
     # rfit = np.polyfit(lambda_AA, resolution, 2)
     # plt.plot(lambda_AA, np.poly1d(rfit)(lambda_AA))
 
+    """Estimate a velocity resolution width from the fitted resolving power.
+
+    Parameters
+    ----------
+    z : float
+        Redshift used to convert velocity to observed wavelength.
+    k_kms : float or numpy.ndarray
+        Wavenumber in s/km. The fit is evaluated at the corresponding
+        wavelength scale ``2*pi/k_AA``.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        Gaussian velocity width in km/s, using ``c/(2.355*resolving_power)``.
+    """
     c_kms = 2.99792458e5
     lya_AA = 1215.67
     rfit = np.array([4.53087663e-05, 1.70716005e-01, 8.60679006e02])
@@ -25,6 +40,18 @@ def get_Rz(z, k_kms):
 
 def get_Rz_Naim(z):
     # 4.1 https://arxiv.org/abs/2306.06316
+    """Convert a fixed 0.8-Angstrom width into a velocity width.
+
+    Parameters
+    ----------
+    z : float or numpy.ndarray
+        Absorber redshift.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        Width in km/s, equal to ``c*0.8/((1+z)*1215.67)``.
+    """
     c_kms = 2.99792458e5
     lya_AA = 1215.67  # angstroms
     Delta_lambda_AA = 0.8  # angstroms
@@ -35,9 +62,10 @@ def get_Rz_Naim(z):
 
 
 class Resolution(Contaminant):
-    """Use a handful of parameters to model the mean transmitted flux fraction
-    (or mean flux) as a function of redshift.
-     For now, we use a polynomial to describe log(tau_eff) around z_tau.
+    """Model the multiplicative P1D correction for spectrograph resolution.
+
+    The redshift-dependent ``R_coeff`` history controls the correction applied
+    by ``get_contamination`` to velocity-space power spectra.
     """
 
     def __init__(
@@ -52,7 +80,19 @@ class Resolution(Contaminant):
         null_vals=None,
         Gauss_priors=None,
     ):
-        """Construct model as a rescaling around a fiducial mean flux"""
+        """Initialize the resolution-coefficient history and its priors.
+
+        Parameters
+        ----------
+        coeffs, prop_coeffs, free_param_names
+            Optional fixed history, metadata, and free coefficient selection.
+        z_0 : float, default=3
+            Pivot redshift of the coefficient polynomial.
+        z_max_res : float, default=10
+            Retained compatibility resolution cutoff.
+        fid_vals, flat_priors, null_vals, Gauss_priors : mapping, optional
+            History defaults and prior metadata forwarded to :class:`Contaminant`.
+        """
 
         list_coeffs = ["R_coeff"]
 
@@ -86,7 +126,22 @@ class Resolution(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, like_params=None):
-        """Multiplicative contamination caused by Resolution"""
+        """Evaluate multiplicative spectrograph-resolution corrections.
+
+        Parameters
+        ----------
+        z : array-like
+            Redshift rows.
+        k_kms : sequence of ndarray
+            Velocity wavenumber grids in s/km.
+        like_params : mapping, optional
+            Scalar resolution-coefficient overrides.
+
+        Returns
+        -------
+        ndarray or list of ndarray
+            Dimensionless correction factors.
+        """
 
         vals = {}
         for key in self.list_coeffs:
@@ -114,7 +169,10 @@ class Resolution(Contaminant):
         return cont
 
     def get_contamination_batch(self, z, k_kms, like_params):
-        """Resolution correction with output items shaped ``(batch, k_z)``."""
+        """Evaluate resolution corrections for columnar coefficient samples.
+
+        Returns one dimensionless ``(n_batch, nk_z)`` array per redshift.
+        """
         z = np.atleast_1d(np.asarray(z, dtype=float))
         values = self.get_value_batch("R_coeff", z, like_params)
         return [

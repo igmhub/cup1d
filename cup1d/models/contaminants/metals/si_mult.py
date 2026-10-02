@@ -3,16 +3,18 @@ from cup1d.models.contaminants.base_contaminants import Contaminant
 
 
 def vel_diff(lambda1, lambda2):
+    """Convert two rest wavelengths into an absolute velocity separation."""
     c_kms = 299792.458
     return np.abs(np.log(lambda2 / lambda1)) * c_kms
 
 
 def rstrength(lambda1, lambda2, f1, f2):
+    """Return the optically-thin wavelength--oscillator-strength ratio."""
     return (lambda1 * f1) / (lambda2 * f2)
 
 
 class SiMult(Contaminant):
-    """Model the contamination from Silicon Lya cross-correlations"""
+    """Multiplicative Si III/Si II cross-correlation P1D contamination model."""
 
     def __init__(
         self,
@@ -26,8 +28,11 @@ class SiMult(Contaminant):
         flat_priors=None,
         Gauss_priors=None,
     ):
-        """Model the evolution of a metal contamination (SiII or SiIII).
-        We use a power law around z_0=3."""
+        """Initialize silicon transition ratios and coefficient histories.
+
+        Parameters are forwarded to :class:`Contaminant`; default histories
+        are pivot polynomials with exponentially transformed amplitudes.
+        """
 
         self.wav = {
             "SiIII": 1206.51,
@@ -155,8 +160,11 @@ class SiMult(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, mF, like_params=None, remove=None):
-        """Multiplicative contamination at a given z and k (in s/km).
-        The mean flux (mF) is used scale it (see McDonald et al. 2006)"""
+        """Evaluate multiplicative silicon contamination on velocity k grids.
+
+        ``mF`` sets the flux-normalized metal amplitudes. The result is a list
+        of dimensionless correction arrays, one per redshift.
+        """
 
         # z = np.atleast_1d(z)
         # k_kms = np.atleast_2d(k_kms)
@@ -343,7 +351,26 @@ class SiMult(Contaminant):
         return metal_corr
 
     def get_contamination_batch(self, z, k_kms, mF, like_params, remove=None):
-        """Multiplicative Si correction, returned as ``[(batch, k_z), ...]``."""
+        """Evaluate multiplicative silicon corrections for columnar samples.
+
+        Parameters
+        ----------
+        z : array-like
+            Redshift rows.
+        k_kms : sequence of ndarray
+            Per-redshift velocity wavenumbers in s/km.
+        mF : ndarray
+            Mean-flux array with shape ``(n_batch, nz)``.
+        like_params : mapping
+            Coefficient columns with shape ``(n_batch,)``.
+        remove : mapping, optional
+            Pair flags overriding default transition contributions.
+
+        Returns
+        -------
+        list of ndarray
+            Dimensionless arrays with shape ``(n_batch, nk_z)``.
+        """
         z = np.atleast_1d(np.asarray(z, dtype=float))
         values = {key: self.get_value_batch(key, z, like_params) for key in self.list_coeffs}
         for key in self.null_vals:
@@ -360,6 +387,7 @@ class SiMult(Contaminant):
         for iz in range(len(z)):
             k = np.asarray(k_kms[iz])[None, :]
             def val(name, default=1.0):
+                """Return a batch-column coefficient or its neutral default."""
                 return values[name][:, iz, None] if name in values else default
             g3 = 2 - 2 / (1 + np.exp(-val("s_Lya_SiIII") * k))
             g2 = 2 - 2 / (1 + np.exp(-val("s_Lya_SiII") * k))

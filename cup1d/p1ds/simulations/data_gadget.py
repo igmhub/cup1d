@@ -30,15 +30,35 @@ class Gadget_P1D(BaseMockP1D):
         path_data=None,
         interp_to_cov=False,
     ):
-        """Read mock P1D from MP-Gadget sims, and returns mock measurement:
-        - testing_data: p1d measurements from Gadget sims
-        - input_sim: check available options in testing_data
-        - z_max: maximum redshift to use in mock data
-        - data_cov_label: P1D covariance to use (Chabanier2019 or PD2013)
-        - data_cov_factor: multiply covariance by this factor
-        - add_syst: Include systematic estimates in covariance matrices
-        - interp_to_cov: if true, interpolate simulations results to the redshifts
-            and scales of the covariance matrix. if not, the other way around
+        """Build an MP-Gadget mock P1D on an observational covariance layout.
+
+        Parameters
+        ----------
+        theory : object
+            Initialized Cup1D theory for smoothing, coordinate conversion,
+            contaminants, and truth metadata.
+        testing_data : sequence of dict
+            Simulation P1D records containing ``z``, ``k_Mpc``, ``p1d_Mpc``,
+            and ``dkms_dMpc``.
+        apply_smoothing : bool, default: True
+            Apply the emulator's calibrated P1D smoothing.
+        input_sim : str, default: "mpg_central"
+            Simulation label saved in truth metadata.
+        data_cov_label : str, default: "Chabanier2019"
+            Observational covariance and target-sampling product.
+        add_syst, add_noise : bool, default: True, False
+            Include reference systematics and optionally draw correlated noise.
+        seed : int, default: 0
+            Random seed used for a noise realization.
+        z_min, z_max : float, default: 0, 10
+            Inclusive output redshift limits.
+        p1d_fname : str or path-like, optional
+            Explicit DESI reference P1D file when relevant.
+        path_data : str or path-like, optional
+            Reserved input-data path compatibility argument.
+        interp_to_cov : bool, default: False
+            Interpolate P1D to covariance grids when true; otherwise map the
+            covariance sampling to native simulation redshifts and scales.
         """
 
         # covariance matrix settings
@@ -178,7 +198,22 @@ class Gadget_P1D(BaseMockP1D):
     #         ]
 
     def _load_p1d(self, theory, p1d_fname=None):
-        """Interpolate data to the redshifts and scales of the covariance matrix"""
+        """Interpolate MP-Gadget P1D onto the reference covariance layout.
+
+        Parameters
+        ----------
+        theory : object
+            Theory providing the redshift-dependent ``dkms_dMpc`` conversion.
+        p1d_fname : str or path-like, optional
+            Explicit DESI reference P1D product.
+
+        Returns
+        -------
+        tuple
+            Per-redshift P1D and wavenumber arrays in ``km / s`` and ``s / km``
+            plus total/statistical covariance blocks in ``(km / s)**2`` and
+            concatenated equivalents.
+        """
         # figure out dataset to mimic
         if self.data_cov_label == "Chabanier2019":
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)
@@ -259,7 +294,22 @@ class Gadget_P1D(BaseMockP1D):
         )
 
     def _load_p1d_to_cov(self, theory, p1d_fname=None):
-        """Interpolate cov matrix to the redshifts of the data, data to scales of cov matrix"""
+        """Map reference covariance sampling to native MP-Gadget redshifts.
+
+        Parameters
+        ----------
+        theory : object
+            Theory providing the comoving--velocity conversion.
+        p1d_fname : str or path-like, optional
+            Explicit DESI reference P1D product.
+
+        Returns
+        -------
+        tuple
+            Native simulation redshifts, P1D vectors in ``km / s``,
+            wavenumbers in ``s / km``, total/statistical covariance blocks in
+            ``(km / s)**2``, and concatenated equivalents.
+        """
         # figure out dataset to mimic
         if self.data_cov_label == "Chabanier2019":
             data = data_Chabanier2019.P1D_Chabanier2019(add_syst=self.add_syst)

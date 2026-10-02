@@ -6,7 +6,7 @@ from cup1d.utils.utils import get_path_repo
 
 
 class AGN_Model(object):
-    """Model AGN contamination
+    """Chabanier et al. (2020) AGN P1D contamination model.
 
     Model Chabanier et al. 2020, Eq. 21 for correction:
 
@@ -21,6 +21,21 @@ class AGN_Model(object):
         ln_AGN_coeff=None,
         free_param_names=None,
     ):
+        """Initialize redshift-dependent AGN amplitude and calibrated template.
+
+        Parameters
+        ----------
+        z_0 : float, default=3
+            Pivot redshift of the logarithmic AGN amplitude polynomial.
+        fid_value : sequence of float, default=[0, -5]
+            Fiducial polynomial coefficients.
+        null_value : float, default=-5.5
+            Constant-log-amplitude threshold that disables the correction.
+        ln_AGN_coeff : sequence of float, optional
+            Fixed log-amplitude coefficients.
+        free_param_names : sequence of str, optional
+            Names used to infer the free-coefficient count.
+        """
         self.z_0 = z_0
         if fid_value is None:
             fid_value = [0, -5]
@@ -49,7 +64,7 @@ class AGN_Model(object):
         self.AGN_z, self.AGN_expansion = _load_agn_file()
 
     def set_parameters(self):
-        """Setup likelihood parameters in the HCD model"""
+        """Build likelihood parameter definitions for AGN amplitudes."""
 
         self.params = {}
         Npar = len(self.ln_AGN_coeff)
@@ -72,12 +87,12 @@ class AGN_Model(object):
         return
 
     def get_Nparam(self):
-        """Number of parameters in the model"""
+        """Return the number of AGN amplitude-coefficient parameters."""
         assert len(self.ln_AGN_coeff) == len(self.params), "size mismatch"
         return len(self.ln_AGN_coeff)
 
     def get_AGN_damp(self, z, like_params=None):
-        """Amplitude of AGN contamination around z_0"""
+        """Evaluate the positive AGN template amplitude at redshift ``z``."""
 
         ln_AGN_coeff = self.get_AGN_coeffs(like_params=like_params)
         if ln_AGN_coeff[-1] <= self.null_value:
@@ -89,7 +104,23 @@ class AGN_Model(object):
         return np.exp(ln_out)
 
     def get_contamination(self, z, k_kms, like_params=None):
-        """Multiplicative contamination caused by AGNs"""
+        """Evaluate the multiplicative AGN P1D correction.
+
+        Parameters
+        ----------
+        z : float
+            Redshift at which the calibrated template is interpolated or
+            linearly extrapolated.
+        k_kms : array-like
+            Line-of-sight wavenumbers in s/km.
+        like_params : mapping, optional
+            AGN amplitude-coefficient overrides.
+
+        Returns
+        -------
+        ndarray
+            Dimensionless ``1 + beta`` P1D correction.
+        """
 
         fAGN = self.get_AGN_damp(z, like_params=like_params)
         if fAGN == 0:
@@ -118,11 +149,11 @@ class AGN_Model(object):
         return 1 + beta
 
     def get_parameters(self):
-        """Return likelihood parameters for the HCD model"""
+        """Return AGN likelihood parameter definitions keyed by name."""
         return self.params
 
     def get_AGN_coeffs(self, like_params=None):
-        """Return list of mean flux coefficients"""
+        """Return log-amplitude polynomial coefficients with named overrides."""
 
         if like_params:
             ln_AGN_coeff = self.ln_AGN_coeff.copy()
@@ -169,7 +200,7 @@ class AGN_Model(object):
         zrange=[0, 10],
         name=None,
     ):
-        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_agn_contamination`."""
+        """Render calibrated AGN contamination curves and optional data overlay."""
         from cup1d.postprocessing.contaminants import plot_agn_contamination as _plot
 
         return _plot(
@@ -187,6 +218,14 @@ class AGN_Model(object):
 
 
 def _load_agn_file():
+    """Load calibrated AGN template coefficients from the bundled text asset.
+
+    Returns
+    -------
+    AGN_z, AGN_expansion : tuple of ndarray
+        Template redshifts and ``(constant, amplitude, scale)`` expansion
+        coefficients used to construct velocity-space corrections.
+    """
     agn_corr_filename = os.path.join(
         get_path_repo("cup1d"), "data", "nuisance", "AGN_corr.dat"
     )

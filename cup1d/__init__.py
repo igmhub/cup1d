@@ -4,7 +4,23 @@ __all__ = ["Analysis", "Args", "__version__"]
 
 
 def __getattr__(name):
-    """Load the public analysis interface only when requested."""
+    """Lazily resolve a public top-level cup1d symbol.
+
+    Parameters
+    ----------
+    name : str
+        Requested module attribute.
+
+    Returns
+    -------
+    type
+        ``Analysis`` or ``Args`` when either public symbol is requested.
+
+    Raises
+    ------
+    AttributeError
+        If ``name`` is not a lazily exported public symbol.
+    """
 
     if name == "Analysis":
         from cup1d.inference import Analysis

@@ -14,6 +14,20 @@ from cup1d.postprocessing.p1d import (  # noqa: F401 - public legacy re-exports
 
 
 def plot_cov_terms(self, save_directory=None):
+    """Plot fractional statistical, systematic, and emulator variances.
+
+    Parameters
+    ----------
+    self : object
+        Likelihood object exposing per-redshift total, emulator, and data
+        covariance blocks in ``(km / s)**2``.
+    save_directory : str or path-like, optional
+        Directory for ``cov_terms.pdf`` and ``cov_terms.png``.
+
+    Notes
+    -----
+    This helper creates and displays the figure in place and returns None.
+    """
     npanels = int(np.round(np.sqrt(len(self.cov_Pk_kms))))
     fig, ax = plt.subplots(
         npanels + 1, npanels, sharex=True, sharey=True, figsize=(10, 8)
@@ -47,6 +61,27 @@ def plot_cov_terms(self, save_directory=None):
 def plot_cov_to_pk(
     self, use_pk_smooth=True, fname=None, ftsize=18, store_data=False
 ):
+    """Plot diagonal covariance components relative to P1D.
+
+    Parameters
+    ----------
+    self : object
+        Likelihood object with named P1D data, covariance scaling, and emulator
+        covariance blocks.
+    use_pk_smooth : bool, default: True
+        Normalize errors by smooth P1D rather than measured P1D.
+    fname : str or path-like, optional
+        File root for PDF and PNG outputs.
+    ftsize : float, default: 18
+        Base figure font size.
+    store_data : bool, default: False
+        Return plotted wavenumber and fractional-error arrays.
+
+    Returns
+    -------
+    dict, optional
+        Per-redshift ``xN`` and colored fractional-error arrays when requested.
+    """
     key = list(self.data.keys())[0]
     nz = len(self.data[key].z)
     npanels = int(np.round(np.sqrt(nz)))
@@ -150,7 +185,34 @@ def plot_cov_to_pk(
 
 
 def plot_correlation_matrix(self, save_directory=None):
+    """Plot the full P1D covariance normalized to a correlation matrix.
+
+    Parameters
+    ----------
+    self : object
+        Likelihood object exposing ``full_cov_Pk_kms`` in ``(km / s)**2``.
+    save_directory : str or path-like, optional
+        Directory for ``correlation.pdf`` and ``correlation.png``.
+
+    Notes
+    -----
+    Zero covariance entries are assigned zero correlation.  The legacy local
+    positive-definiteness helper is retained but not currently invoked.
+    """
     def correlation_from_covariance(covariance):
+        """Normalize a covariance matrix to correlation coefficients.
+
+        Parameters
+        ----------
+        covariance : ndarray
+            Square covariance matrix.
+
+        Returns
+        -------
+        ndarray
+            Correlation matrix of the same shape, with exact covariance zeros
+            assigned zero correlation.
+        """
         v = np.sqrt(np.diag(covariance))
         outer_v = np.outer(v, v)
         correlation = covariance / outer_v
@@ -158,6 +220,18 @@ def plot_correlation_matrix(self, save_directory=None):
         return correlation
 
     def is_pos_def(x):
+        """Return whether all eigenvalues of a square matrix are positive.
+
+        Parameters
+        ----------
+        x : ndarray
+            Square matrix to test.
+
+        Returns
+        -------
+        bool
+            True only when every eigenvalue is strictly positive.
+        """
         return np.all(np.linalg.eigvals(x) > 0)
 
     plt.imshow(correlation_from_covariance(self.full_cov_Pk_kms))
@@ -172,6 +246,21 @@ def plot_correlation_matrix(self, save_directory=None):
 
 
 def plot_hull_fid(self, like_params=None):
+    """Plot pairwise emulator-hull projections at a likelihood point.
+
+    Parameters
+    ----------
+    self : object
+        Theory/likelihood object exposing emulator-call construction and a
+        redshift-indexed hull.
+    like_params : mapping, optional
+        Physical likelihood parameters used to construct emulator calls.
+
+    Notes
+    -----
+    The resulting emulator parameter array has shape ``(nz, n_hull_params)``.
+    Plotting is delegated to the hull object and this helper returns None.
+    """
     emu_call, M_of_z = self.theory.get_emulator_calls(
         self.data.z, like_params=like_params
     )

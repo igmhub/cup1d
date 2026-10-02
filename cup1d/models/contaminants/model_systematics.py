@@ -4,9 +4,20 @@ from cup1d.models.contaminants.spectro_resolution import resolution_class
 
 
 class Systematics(object):
-    """Contains all IGM models"""
+    """Container for instrument-resolution systematic corrections."""
 
     def __init__(self, free_param_names=None, resolution_model=None, pars_syst=None):
+        """Build a resolution model from native systematics configuration.
+
+        Parameters
+        ----------
+        free_param_names : sequence of str, optional
+            Free resolution coefficient names.
+        resolution_model : object, optional
+            Prebuilt model replacing native construction.
+        pars_syst : mapping
+            Fiducial coefficient histories, transforms, nodes, and priors.
+        """
         self.pars_syst = pars_syst
 
         if "flat_priors" in pars_syst:
@@ -67,7 +78,23 @@ class Systematics(object):
     #     return dict_out
 
     def get_contamination(self, z, k_kms, like_params=None):
-        """Return scalar or batched systematics based on parameter shape."""
+        """Return resolution corrections for scalar or columnar parameters.
+
+        Parameters
+        ----------
+        z : array-like
+            Redshift rows.
+        k_kms : sequence of ndarray
+            Per-redshift wavenumber grids in s/km.
+        like_params : mapping, optional
+            Scalar values or one-dimensional batch columns.
+
+        Returns
+        -------
+        ndarray or list of ndarray
+            Dimensionless resolution corrections, with a leading batch axis for
+            columnar inputs.
+        """
         if isinstance(like_params, dict) and like_params and all(np.asarray(value).ndim == 1 for value in like_params.values()):
             return self.resolution_model.get_contamination_batch(z, k_kms, like_params)
         # include multiplicative resolution correction

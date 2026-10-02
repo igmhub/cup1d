@@ -4,11 +4,30 @@ from cup1d.models.contaminants.base_contaminants import Contaminant
 
 def fun_cont(damp, k):
     # Based on Walther+24, their equation is weird
+    """Evaluate the BOSS HCD multiplicative power correction.
+
+    Parameters
+    ----------
+    damp : float or numpy.ndarray
+        Dimensionless contamination amplitude.
+    k : float or numpy.ndarray
+        Line-of-sight wavenumber in s/km.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        Dimensionless factor multiplying P1D. Zero amplitude gives unity.
+
+    Notes
+    -----
+    The implemented rational profile is singular at ``15000*k = 9.9``.
+    This helper applies no domain clipping or regularization.
+    """
     return 1 + 1 / (1 - (1 / (15000 * k - 8.9))) * damp
 
 
 class HCD_BOSS(Contaminant):
-    """HCD contamination Eq. 5.2 Walther+24"""
+    """BOSS HCD multiplicative correction based on Walther et al. (2024)."""
 
     def __init__(
         self,
@@ -21,6 +40,22 @@ class HCD_BOSS(Contaminant):
         null_vals=None,
         Gauss_priors=None,
     ):
+        """Initialize the one-family HCD damping contaminant model.
+
+        Parameters
+        ----------
+        coeffs : mapping, optional
+            Coefficient values supplied to the base contaminant model.
+        prop_coeffs : mapping, optional
+            Redshift interpolation and output-transform metadata.
+        free_param_names : sequence of str, optional
+            Likelihood parameter names that are free.
+        z_0 : float, default=3.0
+            Pivot redshift for coefficient evolution.
+        fid_vals, flat_priors, null_vals, Gauss_priors : mapping, optional
+            Fiducial values and prior/null definitions. Defaults implement the
+            calibrated ``HCD_damp1`` model.
+        """
         # list of all coefficients
         list_coeffs = [
             "HCD_damp1",
@@ -64,7 +99,23 @@ class HCD_BOSS(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, like_params=None):
-        """Multiplicative contamination caused by HCDs"""
+        """Evaluate scalar-point HCD multiplicative corrections.
+
+        Parameters
+        ----------
+        z : array-like
+            Redshifts matching ``k_kms`` rows.
+        k_kms : sequence of array-like
+            Wavenumber rows in s/km.
+        like_params : mapping, optional
+            Coefficient overrides in likelihood parameterization.
+
+        Returns
+        -------
+        list of ndarray or ndarray
+            One correction row per redshift, or the row itself for one
+            redshift.
+        """
 
         vals = {}
         for key in self.list_coeffs:
@@ -91,7 +142,22 @@ class HCD_BOSS(Contaminant):
         return dla_corr
 
     def get_contamination_batch(self, z, k_kms, like_params):
-        """HCD correction with output items shaped ``(batch, k_z)``."""
+        """Evaluate batched HCD corrections.
+
+        Parameters
+        ----------
+        z : array-like
+            Redshifts matching ``k_kms`` rows.
+        k_kms : sequence of array-like
+            Wavenumber rows in s/km.
+        like_params : mapping
+            Columnar parameter values with a leading batch dimension.
+
+        Returns
+        -------
+        list of ndarray
+            One array per redshift with shape ``(n_batch, n_k)``.
+        """
         z = np.atleast_1d(np.asarray(z, dtype=float))
         values = self.get_value_batch("HCD_damp1", z, like_params)
         null = np.exp(self.null_vals["HCD_damp1"])

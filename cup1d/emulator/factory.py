@@ -7,7 +7,20 @@ _EMULATOR_ALIASES = {
 
 
 def set_emulator(emulator_label="lace_mpg"):
-    """Load a supported LaCE or ForestFlow emulator, resolving local aliases."""
+    """Load a LaCE or ForestFlow emulator after resolving cup1d aliases.
+
+    Parameters
+    ----------
+    emulator_label : str, default="lace_mpg"
+        ``lace_mpg`` and ``lace_nyx`` resolve to LaCE central GP bundles;
+        ``forest_mpg`` resolves to the corrected ForestFlow MPG bundle;
+        ``forest_mpg_old`` resolves through the legacy ForestFlow name.
+
+    Returns
+    -------
+    object
+        LaCE's configured GP emulator or ForestFlow's :class:`P1DEmulator`.
+    """
 
     emulator_label = _EMULATOR_ALIASES.get(emulator_label, emulator_label)
 

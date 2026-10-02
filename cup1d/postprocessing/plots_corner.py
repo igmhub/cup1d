@@ -20,6 +20,7 @@ from cup1d.utils.various_dicts import get_blob_value, param_dict
 
 
 def prepare_data(folder_in, truth={"Delta2_star": 0, "n_star": 0}, nburn_extra=0):
+    """Prepare data."""
     fdict = np.load(
         os.path.join(folder_in, "fitter_results.npy"), allow_pickle=True
     ).item()
@@ -76,8 +77,31 @@ def plots_chain(
     truth={"Delta2_star": 0, "n_star": 0},
     store_data=False,
 ):
-    """
-    Plot the chains
+    """Generate the legacy chain-diagnostic suite from saved sampler products.
+
+    Parameters
+    ----------
+    folder_in, folder_in2 : str or path-like
+        Primary and optional comparison chain directories containing the
+        standard ``chain.npy``, ``blobs.npy``, ``lnprob.npy``, and fitter files.
+    folder_out : str or path-like, optional
+        Directory for diagnostic figures and summary NumPy products.  Defaults
+        to ``folder_in``.
+    nburn_extra : int, default: 0
+        Additional initial sampler iterations discarded from diagnostics.
+    ftsize : float, default: 20
+        Base figure font size.
+    truth : mapping, default: {"Delta2_star": 0, "n_star": 0}
+        Additive blinding offsets removed from compressed blob coordinates.
+    store_data : bool, default: False
+        Return the final data payload emitted by compatible plotting helpers.
+
+    Returns
+    -------
+    dict, optional
+        Last successfully returned diagnostic payload when ``store_data`` is
+        true; otherwise None.  Individual legacy plot failures are reported
+        and do not stop the remaining diagnostics.
     """
 
     out_data = {}
@@ -152,6 +176,26 @@ def plots_chain(
 
 
 def plot_res(dat, folder_out=None, ftsize=20, store_data=False):
+    """Plot posterior percentiles of the final eleven resolution parameters.
+
+    Parameters
+    ----------
+    dat : ndarray
+        Flattened physical chain with final eleven columns corresponding to
+        redshift-ordered resolution parameters.
+    folder_out : str or path-like, optional
+        Directory for ``zreso.pdf`` and ``zreso.png``.
+    ftsize : float, default: 20
+        Base figure font size.
+    store_data : bool, default: False
+        Return redshift grid and 16/50/84 percentiles.
+
+    Returns
+    -------
+    dict, optional
+        ``x`` redshifts and ``y`` percentile array with shape ``(3, 11)`` when
+        requested; otherwise None.
+    """
     store_data = {}
     zz = np.arange(2.2, 4.201, 0.2)
     # res_params = chain[..., -11:].reshape(-1, 11)
@@ -184,6 +228,20 @@ def plot_res(dat, folder_out=None, ftsize=20, store_data=False):
 
 
 def get_summary(folder_out, lnprob):
+    """Compute and save a legacy sampler summary from persisted chain products.
+
+    Parameters
+    ----------
+    folder_out : str or path-like
+        Directory containing fitter, contour, and blob NumPy products.
+    lnprob : ndarray
+        Retained log-probability chain whose maximum is compared with the MLE.
+
+    Notes
+    -----
+    Saves ``summary.npy`` in ``folder_out`` and returns None.  Summary star
+    parameters retain the stored chain's coordinate convention.
+    """
     dict_out = {}
 
     data = np.load(
@@ -229,7 +287,24 @@ def get_summary(folder_out, lnprob):
 
 
 def save_contours(x, y, folder_out=None, bins=50, flag=""):
-    """Extract contours from 2D histogram"""
+    """Extract and save 68- and 95-percent contours from a 2D histogram.
+
+    Parameters
+    ----------
+    x, y : array_like
+        Paired posterior samples.
+    folder_out : str or path-like
+        Output directory for ``line_sigmas{flag}.npy``.
+    bins : int, default: 50
+        Number of histogram bins per coordinate.
+    flag : str, default: ""
+        Suffix distinguishing alternate coordinate products.
+
+    Notes
+    -----
+    Stores a mapping from credible level to lists of ``(x, y)`` contour
+    vertices, then returns None.
+    """
     H, xedges, yedges = np.histogram2d(x, y, bins=bins, density=True)
 
     # Compute cumulative distribution in descending order
@@ -275,6 +350,17 @@ def save_contours(x, y, folder_out=None, bins=50, flag=""):
 
 
 def plot_lnprob(lnprob, folder_out=None, ftsize=20):
+    """Plot walker log-probability traces and their mean and median.
+
+    Parameters
+    ----------
+    lnprob : ndarray
+        Log-probability chain with shape ``(n_steps, n_walkers)``.
+    folder_out : str or path-like, optional
+        Directory for ``lnprob.pdf`` and ``lnprob.png``.
+    ftsize : float, default: 20
+        Retained compatibility font-size argument.
+    """
     print("plotting lnprob")
     for ii in range(lnprob.shape[1]):
         plt.plot(lnprob[:, ii])
@@ -293,6 +379,20 @@ def plot_lnprob(lnprob, folder_out=None, ftsize=20):
 
 
 def corner_blobs(dat, folder_out=None, ftsize=20, labels=None):
+    """Plot a two-dimensional corner diagram for compressed blob parameters.
+
+    Parameters
+    ----------
+    dat : ndarray
+        Flattened chain whose first two columns are compressed linear-power
+        amplitude and slope.
+    folder_out : str or path-like, optional
+        Directory for compressed-corner PDF and PNG output.
+    ftsize : float, default: 20
+        Base label and title font size.
+    labels : sequence of str
+        Parameter-name keys resolved through ``param_dict``.
+    """
     print("plotting corner_blobs")
     labs = []
     for ilab in range(2):
@@ -331,6 +431,21 @@ def corner_blobs(dat, folder_out=None, ftsize=20, labels=None):
 
 
 def corner_chain(dat, folder_out=None, ftsize=20, labels=None, divs=2):
+    """Plot chunked corner diagrams for a flattened physical chain.
+
+    Parameters
+    ----------
+    dat : ndarray
+        Flattened chain whose final eleven columns are resolution parameters.
+    folder_out : str or path-like, optional
+        Directory for chunked corner PDF and PNG outputs.
+    ftsize : float, default: 20
+        Base label and title font size.
+    labels : sequence of str
+        Parameter-name keys resolved through ``param_dict``.
+    divs : int, default: 2
+        Number of parameter chunks.
+    """
     print("plotting corner_chain")
     # fig corner
     ndim = dat.shape[1] - 11
@@ -383,6 +498,36 @@ def corr_compressed(
     show_correlation=True,
     show_range=True,
 ):
+    """Plot selected nuisance-parameter correlations with star parameters.
+
+    Parameters
+    ----------
+    dat : ndarray
+        Flattened physical posterior chain.
+    labels : sequence of str
+        Column names aligned with ``dat``.
+    priors : ndarray
+        Prior bounds with shape ``(n_parameters, 2)``.
+    dat2 : ndarray, optional
+        Optional comparison chain using the same columns.
+    folder_out : str or path-like, optional
+        Directory for generated correlation figures.
+    ftsize : float, default: 20
+        Base figure font size.
+    sigmas : int, default: 2
+        Number of contour levels requested from :func:`get_contours`.
+    threshold : float, default: 1e-4
+        Density threshold used by the contour helper.
+    store_data : bool, default: False
+        Return selected summary locations and spreads.
+    show_correlation, show_range : bool
+        Annotate correlation coefficients and prior ranges.
+
+    Returns
+    -------
+    dict, optional
+        Stored summary data when requested; otherwise None.
+    """
     store_data = {}
     print("plotting corr_compressed")
     # labels = fdict["like"]["free_param_names"]
@@ -641,6 +786,21 @@ def corr_compressed(
 
 
 def plot_corr(dat, labs, ftsize=20, folder_out=None, threshold=0.35):
+    """Plot masked posterior-correlation matrices under three transforms.
+
+    Parameters
+    ----------
+    dat : ndarray
+        Flattened physical posterior samples with parameter columns.
+    labs : sequence of str
+        Column names resolved to LaTeX labels through ``param_dict``.
+    ftsize : float, default: 20
+        Base figure font size.
+    folder_out : str or path-like, optional
+        Directory for three ``corr_mat`` PDF and PNG products.
+    threshold : float, default: 0.35
+        Absolute correlation required for a lower-triangle annotation.
+    """
     print("Plotting correlation matrix")
 
     groups = ["tau", "sigT_kms", "gamma", "Lya", ["SiIIa", "SiIIb"], "HCD"]
@@ -757,13 +917,26 @@ def plot_corr(dat, labs, ftsize=20, folder_out=None, threshold=0.35):
 
 
 def get_contours(x, y, sigmas=1, bins=40, threshold=1e-4):
-    """
-    Return mesh (X,Y), histogram values H (shape matches X,Y), and contour
-    thresholds that enclose 68% and optionally 95% of the samples.
+    """Estimate probability-mass contours from paired posterior samples.
 
-    Usage:
-        X, Y, H, levels = get_contours(x, y, sigmas=2, bins=50)
-        plt.contour(X, Y, H, levels=levels)
+    Parameters
+    ----------
+    x, y : array_like
+        Paired one-dimensional samples.
+    sigmas : {1, 2}, default: 1
+        Return density thresholds enclosing 68 percent, or 68 and 95 percent,
+        of histogram probability mass.
+    bins : int, default: 40
+        Histogram bins per coordinate.
+    threshold : float, default: 1e-4
+        Reflect samples when ``x`` reaches below this value, preventing a
+        contour boundary at zero for positive parameters.
+
+    Returns
+    -------
+    tuple
+        ``X``, ``Y``, and transposed counts with shape ``(bins, bins)``, plus
+        ascending contour levels suitable for :func:`matplotlib.pyplot.contour`.
     """
     if np.min(x) < threshold:
         x = np.concatenate([x, -x])

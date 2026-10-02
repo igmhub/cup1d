@@ -6,7 +6,16 @@ class P1D_Chabanier2019(BaseDataP1D):
     """Class containing P1D from Chabanier et al. (2019)."""
 
     def __init__(self, z_min=0, z_max=10, add_syst=True):
-        """Read measured P1D from Chabanier et al. (2019)."""
+        """Load the Chabanier et al. (2019) P1D measurement.
+
+        Parameters
+        ----------
+        z_min, z_max : float, default: 0, 10
+            Inclusive redshift range retained from the published data.
+        add_syst : bool, default: True
+            Add the eight tabulated systematic-error components in quadrature
+            to the statistical diagonal before reconstructing each covariance.
+        """
 
         # folder storing P1D measurements
         # datadir = BaseDataP1D.BASEDIR + "/Chabanier2019/"
@@ -44,7 +53,26 @@ def read_from_file(
     add_syst=True,
     blinding=False,
 ):
-    """Reconstruct covariance matrix from files."""
+    """Read Chabanier et al. (2019) P1D tables and reconstruct covariance.
+
+    Parameters
+    ----------
+    datadir : str or path-like
+        Directory containing ``Pk1D_data.dat``, ``Pk1D_syst.dat``, and
+        ``Pk1D_cor.dat``.
+    add_syst : bool, default: True
+        Include tabulated systematic variances in the covariance diagonal.
+    blinding : bool or str, optional
+        Blinding metadata returned unchanged for compatibility with readers
+        exposing a blind label.
+
+    Returns
+    -------
+    tuple
+        Per-redshift P1D vectors in ``km / s`` and wavenumber grids in
+        ``s / km``, their covariance blocks in ``(km / s)**2``, concatenated
+        equivalents, and the supplied blinding metadata.
+    """
 
     # start by reading Pk file
     p1d_file = datadir + "/Pk1D_data.dat"

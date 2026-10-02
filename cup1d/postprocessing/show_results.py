@@ -5,6 +5,7 @@ from scipy.stats import chi2 as chi2_scipy
 
 
 def get_parameters(par, z, like, mle_cube):
+    """Return parameters."""
     like_params = parameter_space.values_from_cube(like.free_params, mle_cube)
 
     models = [
@@ -26,6 +27,7 @@ def get_parameters(par, z, like, mle_cube):
 
 
 def reformat_cube(args, data, emulator, out_mle_cube, weak_priors=None):
+    """Reformat cube."""
     from cup1d.inference.analysis import set_like
 
     ii = 0

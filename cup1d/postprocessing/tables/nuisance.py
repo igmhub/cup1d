@@ -4,6 +4,7 @@ from cup1d.utils.various_dicts import param_dict
 
 
 def format_value_with_error(m, ep, em):
+    """Format value with error."""
     if ep == 0 or em == 0 or np.isnan(ep) or np.isnan(em):
         return f"${m:.2f}^{{+{ep:.2f}}}_{{-{em:.2f}}}$"
 
@@ -24,6 +25,7 @@ def format_value_with_error(m, ep, em):
 
 
 def table_nuisance(folder_variation):
+    """Execute table nuisance."""
     labels, lnprob, dat, priors, dat_Asns = prepare_data(folder_variation)
 
     dat = dat.reshape(-1, dat.shape[-1])

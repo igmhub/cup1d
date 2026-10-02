@@ -6,6 +6,7 @@ from cup1d.utils.utils import get_path_repo
 
 
 def get_cosmology_from_label(cosmo_label="default"):
+    """Return cosmology from label."""
     if cosmo_label == "default":
         return Cosmology()
     elif cosmo_label == "low_omch2":

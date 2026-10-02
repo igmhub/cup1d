@@ -79,19 +79,50 @@ _CONFIG_GROUPS = (
 
 
 def make_cm2026_defaults() -> dict[str, Any]:
-    """Read the canonical observational CM2026 defaults."""
+    """Load the canonical observational CM2026 defaults.
+
+    Returns
+    -------
+    dict
+        Resolved observational configuration with runtime NumPy arrays, local
+        initial-condition path, and top-level options in canonical order.
+    """
 
     return _read_defaults(_DEFAULTS_FILE)
 
 
 def make_cm2026_synth_defaults() -> dict[str, Any]:
-    """Read the canonical synthetic-data CM2026 defaults."""
+    """Load the canonical synthetic-data CM2026 defaults.
+
+    Returns
+    -------
+    dict
+        Resolved synthetic configuration with runtime NumPy arrays, local
+        initial-condition path, and top-level options in canonical order.
+    """
 
     return _read_defaults(_SYNTH_DEFAULTS_FILE)
 
 
 def _read_defaults(filename: Path) -> dict[str, Any]:
-    """Load a user-facing defaults file and restore local runtime paths."""
+    """Load and normalize one packaged CM2026 defaults file.
+
+    Parameters
+    ----------
+    filename : pathlib.Path
+        Packaged YAML defaults file.
+
+    Returns
+    -------
+    dict
+        Deep-copied configuration with restored array types, local
+        initial-condition path, and canonical top-level key order.
+
+    Raises
+    ------
+    ValueError
+        If the YAML root is not a mapping.
+    """
 
     with filename.open(encoding="utf-8") as stream:
         config = yaml.safe_load(stream)
@@ -106,10 +137,26 @@ def _read_defaults(filename: Path) -> dict[str, Any]:
 def update_cm2026_derived(
     config: dict[str, Any], overrides: dict[str, Any]
 ) -> dict[str, Any]:
-    """Update values derived from general redshift and model settings.
+    """Refresh nodes and covariance factors derived from CM2026 settings.
 
-    Explicitly supplied derived values are preserved. This allows users to
-    replace the standard node construction when needed.
+    Parameters
+    ----------
+    config : dict
+        Resolved configuration mutated in place.
+    overrides : dict
+        User-supplied nested values. Explicit node grids and covariance
+        redshifts are retained instead of being regenerated.
+
+    Returns
+    -------
+    dict
+        The same ``config`` object after derived updates.
+
+    Notes
+    -----
+    IGM and contaminant node grids are geometric in redshift, systematics
+    grids are linear, and covariance factors are expanded to one value per
+    covariance redshift.
     """
 
     z_min = config["z_min"]
@@ -150,18 +197,59 @@ def update_cm2026_derived(
 
 
 def _provided(overrides: dict[str, Any], section: str, name: str) -> bool:
+    """Return whether an override explicitly supplies a section key.
+
+    Parameters
+    ----------
+    overrides : dict
+        Nested user-provided configuration mapping.
+    section, name : str
+        Section and direct child key to inspect.
+
+    Returns
+    -------
+    bool
+        True only when ``overrides[section]`` is a mapping containing ``name``.
+    """
     section_values = overrides.get(section, {})
     return isinstance(section_values, dict) and name in section_values
 
 
 def _parameter_names(section: dict[str, Any]) -> list[str]:
-    """Infer model parameter names from their node-count settings."""
+    """Infer model family names from node-count keys.
+
+    Parameters
+    ----------
+    section : dict
+        Model configuration section containing keys such as ``n_tau_eff``.
+
+    Returns
+    -------
+    list of str
+        Names with the leading ``"n_"`` removed, in mapping iteration order.
+    """
 
     return [name[2:] for name in section if name.startswith("n_")]
 
 
 def _organize_config(config: dict[str, Any]) -> dict[str, Any]:
-    """Order top-level options by their role in the analysis."""
+    """Order top-level CM2026 options by their configured role.
+
+    Parameters
+    ----------
+    config : dict
+        Complete CM2026 configuration mapping.
+
+    Returns
+    -------
+    dict
+        New mapping ordered according to ``_CONFIG_GROUPS``.
+
+    Raises
+    ------
+    ValueError
+        If a top-level option is absent from all configuration groups.
+    """
 
     organized = {}
     for _, names in _CONFIG_GROUPS:

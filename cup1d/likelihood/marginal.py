@@ -1,9 +1,24 @@
 
 
 def gaussian_chi2(neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r):
-    """Given central values and errors for Delta_L^2 and n_eff, and its
-    cross-correlation coefficient r, compute Gaussian delta chi^2 at
-    points (neff,DL2).
+    """Evaluate a correlated Gaussian compressed linear-power chi-squared.
+
+    Parameters
+    ----------
+    neff, DL2 : float or array-like
+        Effective slope and dimensionless linear-power amplitude at the
+        experiment's stated velocity-space pivot.
+    neff_val, DL2_val : float
+        Measured central values.
+    neff_err, DL2_err : float
+        One-standard-deviation marginal errors.
+    r : float
+        Correlation coefficient between slope and amplitude.
+
+    Returns
+    -------
+    float or ndarray
+        Delta chi-squared relative to the measurement central value.
     """
     chi2 = (
         (DL2 - DL2_val) ** 2 / DL2_err**2
@@ -14,8 +29,11 @@ def gaussian_chi2(neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r):
 
 
 def gaussian_chi2_McDonald2005(neff, DL2):
-    """Compute Gaussian Delta chi^2 for a particular point(s) (neff,DL2),
-    using the measurement from McDonald et al. (2005).
+    """Evaluate the McDonald et al. (2005) compressed linear-power likelihood.
+
+    ``neff`` and dimensionless ``DL2`` are defined at ``z=3`` and
+    ``k=0.009 s/km``. The returned dictionary contains the adopted Gaussian
+    summary and the evaluated chi-squared.
     """
     # DL2 = k^3 P(k) / (2 pi^2) , at z=3
     DL2_val = 0.47
@@ -39,9 +57,10 @@ def gaussian_chi2_McDonald2005(neff, DL2):
 
 
 def gaussian_chi2_Chabanier2019(neff, DL2):
-    """Compute Gaussian Delta chi^2 for a particular point(s) (neff,DL2),
-    using the measurement from Chabanier et al. (2019, Figure 20).
-    Actual values from Table I of Goldstein+23 (https://arxiv.org/abs/2303.00746)
+    """Evaluate the Chabanier et al. (2019) compressed likelihood at z=3.
+
+    The returned dictionary includes the adopted published Gaussian summary
+    and chi-squared for ``neff`` and dimensionless ``DL2`` at ``0.009 s/km``.
     """
     # DL2 = k^3 P(k) / (2 pi^2), at z=3
     DL2_val = 0.310
@@ -65,8 +84,9 @@ def gaussian_chi2_Chabanier2019(neff, DL2):
 
 
 def gaussian_chi2_PalanqueDelabrouille2015(neff, DL2):
-    """Compute Gaussian Delta chi^2 for a particular point(s) (neff,DL2),
-    using the measurement from Palanque-Delabrouille et al. (2015, Figure 11, S4.2.3).
+    """Evaluate the Palanque-Delabrouille et al. (2015) Gaussian summary.
+
+    Parameters and returned fields follow :func:`gaussian_chi2_McDonald2005`.
     """
     # DL2 = k^3 P(k) / (2 pi^2), at z=3
     DL2_val = 0.32
@@ -90,8 +110,20 @@ def gaussian_chi2_PalanqueDelabrouille2015(neff, DL2):
 
 
 def gaussian_chi2_Walther2024(neff, DL2, ana_type="priors"):
-    """Compute Gaussian Delta chi^2 for a particular point(s) (neff,DL2),
-    using the measurement from Walther2024 (Table 3).
+    """Evaluate one of the Walther et al. (2024) compressed summaries.
+
+    Parameters
+    ----------
+    neff, DL2 : float or array-like
+        Linear-power slope and dimensionless amplitude at the stated pivot.
+    ana_type : str, default="priors"
+        Select the prior-including published summary; another value selects
+        the no-prior summary.
+
+    Returns
+    -------
+    dict
+        Adopted summary statistics and evaluated chi-squared.
     """
 
     if ana_type == "priors":
@@ -133,6 +165,16 @@ def gaussian_chi2_DESI_DR1(neff, DL2):
 
     The likelihood is defined at ``z_star = 3.0`` and
     ``k_star_kms = 0.009`` using the published amplitude--slope covariance.
+
+    Parameters
+    ----------
+    neff, DL2 : float or array-like
+        Effective slope and dimensionless amplitude at the DR1 pivot.
+
+    Returns
+    -------
+    dict
+        Published Gaussian summary statistics and evaluated chi-squared.
     """
     # DL2 = k^3 P(k) / (2 pi^2), at z=3
     DL2_val = 0.379

@@ -6,6 +6,7 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_QMLE_Ohio(BaseDataP1D):
+    """Represent the QMLE Ohio P1D data product."""
     def __init__(
         self,
         diag_cov=True,
@@ -17,10 +18,24 @@ class P1D_QMLE_Ohio(BaseDataP1D):
         filename=None,
         noise_syst=0,
     ):
-        """Read measured P1D from file from Ohio mocks (QMLE)
+        """Load a QMLE Ohio mock P1D data product.
 
-        Args:
-            filename: if not None, read that file.
+        Parameters
+        ----------
+        diag_cov : bool, default: True
+            Retained for API compatibility.  This reader currently constructs
+            a diagonal covariance, plus an optional rank-one noise systematic.
+        kmin_kms, kmax_kms : float, default: 0.001, 0.04
+            Strict wavenumber cuts in ``s / km``.
+        z_min, z_max : float, default: 0, 10
+            Inclusive redshift selection applied by :class:`BaseDataP1D`.
+        version : str, default: "ohio-v0"
+            Distributed mock-product version used when ``filename`` is absent.
+        filename : str or path-like, optional
+            Explicit QMLE table.  Overrides the ``P1D_FORECAST`` lookup.
+        noise_syst : float, default: 0
+            Amplitude of a fully correlated noise systematic, expressed as a
+            multiplier of the table's ``b`` column.
         """
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
@@ -35,7 +50,36 @@ class P1D_QMLE_Ohio(BaseDataP1D):
     def _read_file(
         self, diag_cov, kmin_kms, kmax_kms, version, filename, noise_syst
     ):
-        """Read file containing mock P1D"""
+        """Read and scale-cut the QMLE Ohio mock table.
+
+        Parameters
+        ----------
+        diag_cov : bool
+            API-compatible covariance selection flag; diagonal covariance is
+            currently always used.
+        kmin_kms, kmax_kms : float
+            Strict retained wavenumber limits in ``s / km``.
+        version : str
+            Built-in product version selected when ``filename`` is omitted.
+        filename : str or path-like, optional
+            Explicit input table.
+        noise_syst : float
+            Multiplier for the fully correlated noise-systematic component.
+
+        Returns
+        -------
+        tuple
+            Redshift bins, per-redshift wavenumbers in ``s / km``, P1D values
+            in ``km / s``, and covariance blocks in ``(km / s)**2``.
+
+        Raises
+        ------
+        ValueError
+            If a requested built-in mock version is unknown.
+        AssertionError
+            If the required ``P1D_FORECAST`` environment variable or input
+            table is unavailable.
+        """
 
         if filename:
             fname = filename

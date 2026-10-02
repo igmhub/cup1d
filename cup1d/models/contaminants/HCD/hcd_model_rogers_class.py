@@ -3,11 +3,27 @@ from cup1d.models.contaminants.base_contaminants import Contaminant
 
 
 def fun_damping(k_kms, a, b):
+    """Evaluate the damping profile of a Rogers HCD component.
+
+    Parameters
+    ----------
+    k_kms : float or numpy.ndarray
+        Line-of-sight wavenumber in s/km.
+    a : float
+        Dimensionless profile coefficient.
+    b : float
+        Velocity scale in km/s multiplying ``k_kms`` in the exponential.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        Dimensionless profile ``1/(a*exp(k_kms*b)-1)**2``.
+    """
     return 1 / (a * np.exp(k_kms * b) - 1) ** 2
 
 
 class HCD_Model_Rogers(Contaminant):
-    """New model for HCD contamination"""
+    """Rogers-style redshift-dependent HCD damping contamination model."""
 
     def __init__(
         self,
@@ -20,6 +36,18 @@ class HCD_Model_Rogers(Contaminant):
         null_vals=None,
         Gauss_priors=None,
     ):
+        """Initialize four damping components and a constant HCD correction.
+
+        Parameters
+        ----------
+        coeffs, prop_coeffs, free_param_names
+            Coefficient histories and metadata forwarded to :class:`Contaminant`.
+        z_0 : float, default=3
+            Requested pivot redshift; internal damping evolution is referenced
+            to the calibrated model pivot.
+        fid_vals, flat_priors, null_vals, Gauss_priors : mapping, optional
+            Coefficient defaults, limits, null thresholds, and Gaussian widths.
+        """
         # list of all coefficients
         list_coeffs = [
             "HCD_damp1",
@@ -92,7 +120,23 @@ class HCD_Model_Rogers(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, like_params=None):
-        """Multiplicative contamination caused by HCDs"""
+        """Evaluate scalar-point Rogers HCD corrections.
+
+        Parameters
+        ----------
+        z : array-like
+            Redshift rows.
+        k_kms : sequence of ndarray
+            Per-redshift velocity wavenumber grids in s/km.
+        like_params : mapping, optional
+            Coefficient overrides.
+
+        Returns
+        -------
+        ndarray or list of ndarray
+            Dimensionless corrections; one array per redshift unless one row
+            was requested.
+        """
 
         # z = np.atleast_1d(z)
         # k_kms = np.atleast_2d(k_kms)
@@ -140,7 +184,10 @@ class HCD_Model_Rogers(Contaminant):
         return dla_corr
 
     def get_contamination_batch(self, z, k_kms, like_params):
-        """Rogers HCD correction with output items ``(batch, k_z)``."""
+        """Evaluate Rogers HCD corrections for columnar likelihood samples.
+
+        Returns a list of dimensionless arrays with shape ``(n_batch, nk_z)``.
+        """
         z = np.atleast_1d(np.asarray(z, dtype=float))
         values = {key: self.get_value_batch(key, z, like_params) for key in self.list_coeffs}
         for key in self.null_vals:

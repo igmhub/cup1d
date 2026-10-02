@@ -7,8 +7,22 @@ from cup1d.likelihood import parameter as parameter_space
 
 
 def plot_best_fit(self, plot_every_iz=1, residuals=True):
-    """Plot best-fit P1D vs data.
-    - plot_every_iz (int): skip some redshift bins."""
+    """Plot the minimizer's best-fit P1D prediction against data.
+
+    Parameters
+    ----------
+    self : object
+        Inference object exposing ``minimizer`` and likelihood ``like``.
+    plot_every_iz : int, default: 1
+        Plot every nth redshift bin.
+    residuals : bool, default: True
+        Include residual panels in the likelihood P1D plot.
+
+    Notes
+    -----
+    The minimizer must already have valid sampling-cube values.  This legacy
+    helper delegates plotting and returns None.
+    """
 
     # get best-fit values from minimizer (should check that it was run)
     best_fit_values = np.array(self.minimizer.values)
@@ -27,9 +41,25 @@ def plot_best_fit(self, plot_every_iz=1, residuals=True):
 
 
 def plot_ellipses(self, pname_x, pname_y, nsig=2, cube_values=False):
-    """Plot Gaussian contours for parameters (pname_x,pname_y)
-    - nsig: number of sigma contours to plot
-    - cube_values: if True, will use unit cube values."""
+    """Plot Gaussian confidence ellipses from the fitted covariance.
+
+    Parameters
+    ----------
+    self : object
+        Inference object exposing fitted parameter values, errors, covariance,
+        and sampling-cube conversion helpers.
+    pname_x, pname_y : str
+        Names of the two free parameters to display.
+    nsig : int, default: 2
+        Number of nested integer-sigma ellipses.
+    cube_values : bool, default: False
+        Plot unit-cube coordinates rather than physical parameters.
+
+    Notes
+    -----
+    When physical coordinates are plotted, ``As`` is multiplied by ``1e9`` for
+    numerical display.  The helper creates axes in place and returns None.
+    """
 
     from matplotlib.patches import Ellipse
     from numpy import linalg as LA

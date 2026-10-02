@@ -3,6 +3,7 @@ from cup1d.models.igm.base_igm import IGM_model
 
 
 class MeanFlux(IGM_model):
+    """Model the IGM meanflux history used by cup1d."""
     def __init__(
         self,
         coeffs=None,
@@ -14,6 +15,11 @@ class MeanFlux(IGM_model):
         flat_priors=None,
         Gauss_priors=None,
     ):
+        """Initialize the effective-optical-depth history model.
+
+        Parameters are forwarded to :class:`IGM_model`; the default history is
+        a spline-interpolated exponential multiplier of fiducial ``tau_eff``.
+        """
         list_coeffs = ["tau_eff"]
 
         if prop_coeffs is None:
@@ -49,13 +55,42 @@ class MeanFlux(IGM_model):
         )
 
     def get_tau_eff(self, z, like_params=None, name_par="tau_eff"):
-        """Effective optical depth at the input redshift"""
+        """Evaluate the effective optical-depth history.
+
+        Parameters
+        ----------
+        z : float or numpy.ndarray
+            Redshift(s) at which to evaluate the history.
+        like_params : mapping, optional
+            Physical named coefficients overriding the configured history.
+        name_par : str, default="tau_eff"
+            Coefficient and fiducial-history key.
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Dimensionless effective optical depth: the history multiplier
+            returned by ``get_value`` times the fiducial optical depth.
+        """
 
         tau_eff = self.get_value(name_par, z, like_params=like_params)
         tau_eff *= self.fid_interp[name_par](z)
         return tau_eff
 
     def get_mean_flux(self, z, like_params=None):
-        """Mean transmitted flux fraction at the input redshift"""
+        """Evaluate the mean transmitted flux fraction.
+
+        Parameters
+        ----------
+        z : float or numpy.ndarray
+            Redshift(s) at which to evaluate the history.
+        like_params : mapping, optional
+            Physical named coefficients passed to ``get_tau_eff``.
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Dimensionless flux fraction ``exp(-tau_eff)`` at ``z``.
+        """
         tau = self.get_tau_eff(z, like_params=like_params)
         return np.exp(-tau)

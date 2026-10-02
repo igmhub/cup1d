@@ -4,7 +4,7 @@ from cup1d.likelihood import parameter as likelihood_parameter
 
 
 class Contaminant(object):
-    """New model for HCD contamination"""
+    """Base model for redshift-dependent contaminant coefficient histories."""
 
     def __init__(
         self,
@@ -19,6 +19,29 @@ class Contaminant(object):
         flat_priors=None,
         Gauss_priors=None,
     ):
+        """Initialize coefficient histories and their likelihood definitions.
+
+        Parameters
+        ----------
+        coeffs : mapping, optional
+            Fixed coefficient arrays for each family.
+        list_coeffs : sequence of str
+            Coefficient family names.
+        prop_coeffs : mapping
+            Per-family redshift interpolation and output-transform metadata.
+        free_param_names : sequence of str, optional
+            Free likelihood parameters. Required when ``coeffs`` is omitted.
+        z_0 : float, default=3.0
+            Pivot redshift for polynomial histories.
+        fid_vals, null_vals, z_max, flat_priors, Gauss_priors : mapping, optional
+            Family-specific defaults, nulling, redshift limits, and priors.
+
+        Raises
+        ------
+        ValueError
+            If required family metadata is missing or both/neither fixed
+            coefficients and free parameter names are supplied.
+        """
         # store input data
         self.list_coeffs = list_coeffs
         self.z_0 = z_0
@@ -93,7 +116,18 @@ class Contaminant(object):
         self.set_params()
 
     def set_params(self):
-        """Setup likelihood parameters in the HCD model"""
+        """Build canonical likelihood parameter definitions for coefficients.
+
+        Returns
+        -------
+        None
+            Sets ``params`` keyed by indexed coefficient parameter name.
+
+        Raises
+        ------
+        ValueError
+            If no matching flat-prior definition exists for a coefficient.
+        """
 
         self.params = {}
 
@@ -147,7 +181,18 @@ class Contaminant(object):
                 self.params[name] = par
 
     def get_Nparam(self):
-        """Number of parameters in the model"""
+        """Return the number of coefficient likelihood parameters.
+
+        Returns
+        -------
+        int
+            Number of entries in ``params``.
+
+        Raises
+        ------
+        ValueError
+            If the parameter count and stored coefficient count disagree.
+        """
         n_params = len(self.params)
         n_coeffs = 0
         for coeff in self.coeffs:
@@ -157,6 +202,27 @@ class Contaminant(object):
         return n_params
 
     def get_value(self, name, z, like_params=None):
+        """Evaluate one scalar-point coefficient history at redshift values.
+
+        Parameters
+        ----------
+        name : str
+            Coefficient family name.
+        z : float or array-like
+            Redshift or redshifts.
+        like_params : mapping, optional
+            Likelihood coefficient overrides.
+
+        Returns
+        -------
+        float or ndarray
+            History after configured constant or exponential output transform.
+
+        Raises
+        ------
+        ValueError
+            If redshift interpolation or output-transform metadata is invalid.
+        """
         coeff = self.get_coeff(name, like_params=like_params)
         # print(name, coeff, self.prop_coeffs[name + "_otype"])
 
@@ -207,11 +273,37 @@ class Contaminant(object):
             raise ValueError("prop_coeffs must be const or exp for", name)
 
     def get_value_batch(self, name, z, like_params):
-        """Evaluate one coefficient history for a columnar parameter batch.
+        """Evaluate a coefficient history for several parameter points.
 
-        Parameters are arrays of shape ``(n_batch,)`` and the returned array
-        has shape ``(n_batch, n_z)``.  This supports the pivot and linear
-        spline histories used by production cup1d configurations.
+        Parameters
+        ----------
+        name : str
+            Configured history family.
+        z : float or array_like
+            Scalar or one-dimensional redshift grid, converted to an array.
+        like_params : mapping of str to numpy.ndarray
+            Nonempty columnar parameter mapping. Each relevant coefficient
+            array has shape ``(n_batch,)``. Missing family coefficients retain
+            their stored values; the first mapping entry sets the batch size.
+
+        Returns
+        -------
+        numpy.ndarray
+            History values with shape ``(n_batch, n_z)``. The configured
+            ``exp`` output transform is applied after interpolation.
+
+        Raises
+        ------
+        ValueError
+            If the mapping is empty or a relevant column has the wrong shape.
+        NotImplementedError
+            If the history uses an unsupported interpolation type.
+
+        Notes
+        -----
+        Supported histories are pivot polynomials, linear interpolation, and
+        degree-one splines. This method evaluates the coefficient history;
+        it does not multiply a fiducial physical history.
         """
 
         z = np.atleast_1d(np.asarray(z, dtype=float))
@@ -260,13 +352,63 @@ class Contaminant(object):
         return ln_out
 
     def get_parameter(self, name):
+        """Return a stored coefficient parameter definition.
+
+        Parameters
+        ----------
+        name : str
+            Full coefficient parameter name in ``self.params``.
+
+        Returns
+        -------
+        dict
+            Shared parameter definition. Mutations affect the model.
+
+        Raises
+        ------
+        KeyError
+            If the parameter name is absent.
+        """
         return self.params[name]
 
     def get_parameters(self):
-        """Return likelihood parameters"""
+        """Return shared likelihood parameter definitions for all families.
+
+        Returns
+        -------
+        dict
+            Mapping from indexed coefficient names to mutable parameter records.
+        """
         return self.params
 
     def get_coeff(self, name, like_params=None):
+        """Retrieve history coefficients with physical named overrides.
+
+        Parameters
+        ----------
+        name : str
+            Coefficient family in ``self.coeffs``.
+        like_params : mapping, optional
+            Values keyed by ``name_<index>``. If the family is overridden,
+            all configured indices must be supplied. Other families are ignored.
+
+        Returns
+        -------
+        numpy.ndarray
+            Coefficients in polynomial order for pivot histories or node order
+            for interpolation. Overrides operate on a copy; an absent or empty
+            mapping returns the stored array itself.
+
+        Raises
+        ------
+        ValueError
+            If the number of supplied family coefficients is inconsistent.
+
+        Notes
+        -----
+        Pivot coefficient index zero denotes the constant polynomial term,
+        stored at the end of the array.
+        """
         if like_params:
             coeff = self.coeffs[name].copy()
             Npar = 0
@@ -299,7 +441,26 @@ class Contaminant(object):
         return coeff
 
     def reset_coeffs(self, like_params, rank=0):
-        """Reset all coefficients to fiducial values"""
+        """Persist complete named coefficient overrides into this model.
+
+        Parameters
+        ----------
+        like_params : mapping
+            Physical coefficient values keyed by ``<family>_<index>``. A
+            partially supplied family is rejected to preserve its history.
+        rank : int, default=0
+            MPI rank that emits before/after diagnostic output.
+
+        Returns
+        -------
+        None
+            Updates ``coeffs`` in place.
+
+        Raises
+        ------
+        ValueError
+            If supplied values cover only part of a coefficient family.
+        """
         for name in self.coeffs:
             Npar = 0
             if rank == 0:
@@ -332,7 +493,17 @@ class Contaminant(object):
                 print("new", name, self.coeffs[name])
 
     def plot_parameters(self, z, like_params, folder=None):
-        """Delegate to :func:`cup1d.postprocessing.contaminants.plot_parameters`."""
+        """Render redshift-dependent coefficient histories.
+
+        Parameters
+        ----------
+        z : array-like
+            Redshift grid.
+        like_params : mapping
+            Coefficient values to display.
+        folder : path-like, optional
+            Destination directory owned by the postprocessing renderer.
+        """
         from cup1d.postprocessing.contaminants import plot_parameters as _plot
 
         return _plot(self, z, like_params, folder)

@@ -14,6 +14,7 @@ LaCE emulator and supports observational, mock, and forecast analyses.
    configuration
    architecture
    workflow
+   external_p1d
    package_layout
    plotting
    tutorials

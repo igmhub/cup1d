@@ -53,6 +53,30 @@ def read_chain_for_getdist(
     ignore_rows=0.2,
     smooth_scale=0.2,
 ):
+    """Read a Cup1D emcee chain and convert it to GetDist samples.
+
+    Parameters
+    ----------
+    rootdir, subfolder : str or path-like
+        Base output directory and analysis subdirectory containing the chain.
+    chain_num : int or str
+        Chain identifier passed to :class:`cup1d.inference.fitter.EmceeSampler`.
+    label : str
+        GetDist display label.
+    delta_lnprob_cut : float, default: 50
+        Discard samples sufficiently below the maximum log probability.
+    ignore_rows : float, default: 0.2
+        Initial fraction discarded by GetDist.
+    smooth_scale : float, default: 0.2
+        One- and two-dimensional GetDist KDE smoothing scale.
+
+    Returns
+    -------
+    dict
+        Sampler, stacked samples, parameter names/labels, and an
+        :class:`getdist.MCSamples` instance.  Cosmology chains include derived
+        compressed linear-power blob columns and ``lnprob``.
+    """
     print("will read chain for", label, rootdir, subfolder, chain_num)
     run = {"chain_num": chain_num, "label": label}
     sampler = fitter.EmceeSampler(

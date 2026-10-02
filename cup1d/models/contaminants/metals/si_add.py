@@ -3,16 +3,22 @@ from cup1d.models.contaminants.base_contaminants import Contaminant
 
 
 def vel_diff(lambda1, lambda2):
+    """Convert two rest wavelengths into their velocity separation.
+
+    Wavelength inputs share any length unit; the returned absolute separation
+    is in km/s using the logarithmic Doppler convention.
+    """
     c_kms = 299792.458
     return np.abs(np.log(lambda2 / lambda1)) * c_kms
 
 
 def rstrength(lambda1, lambda2, f1, f2):
+    """Return the optically-thin wavelength--oscillator-strength ratio."""
     return (lambda1 * f1) / (lambda2 * f2)
 
 
 class SiAdd(Contaminant):
-    """Model the contamination from Silicon Lya cross-correlations"""
+    """Additive Si II cross-correlation contribution to the flux P1D."""
 
     def __init__(
         self,
@@ -26,8 +32,11 @@ class SiAdd(Contaminant):
         z_max=None,
         Gauss_priors=None,
     ):
-        """Model the evolution of a metal contamination (SiII or SiIII).
-        We use a power law around z_0=3."""
+        """Initialize Si II transition ratios and redshift coefficient histories.
+
+        Parameters are forwarded to :class:`Contaminant`; amplitude and
+        damping histories are pivot polynomials by default.
+        """
 
         self.wav = {
             # "SiIII": 1206.50,
@@ -128,8 +137,26 @@ class SiAdd(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, mF, like_params=None, remove=None):
-        """Multiplicative contamination at a given z and k (in s/km).
-        The mean flux (mF) is used scale it (see McDonald et al. 2006)"""
+        """Evaluate additive Si II P1D contamination on velocity k grids.
+
+        Parameters
+        ----------
+        z : array-like
+            Redshift rows.
+        k_kms : sequence of ndarray
+            Per-redshift wavenumber grids in s/km.
+        mF : array-like
+            Mean flux values; retained for interface compatibility.
+        like_params : mapping, optional
+            Coefficient-history overrides.
+        remove : mapping, optional
+            Pair flags overriding selected transition contributions.
+
+        Returns
+        -------
+        list of ndarray
+            Additive P1D contributions with units matching the caller's P1D.
+        """
 
         # z = np.atleast_1d(z)
         # k_kms = np.atleast_2d(k_kms)
@@ -221,7 +248,10 @@ class SiAdd(Contaminant):
         return metal_corr
 
     def get_contamination_batch(self, z, k_kms, mF, like_params, remove=None):
-        """Additive Si correction; each result has shape ``(batch, k_z)``."""
+        """Evaluate additive Si II corrections for columnar likelihood samples.
+
+        Returns one additive ``(n_batch, nk_z)`` P1D array per redshift.
+        """
         z = np.atleast_1d(np.asarray(z, dtype=float))
         values = {key: self.get_value_batch(key, z, like_params) for key in self.list_coeffs}
         for key in self.null_vals:

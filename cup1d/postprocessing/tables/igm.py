@@ -32,6 +32,7 @@ def plot_table_igm(
     chain="1",
     store_data=False,
 ):
+    """Plot table igm diagnostics."""
     emulator_label = "lace_mpg"
     if name_variation == "nyx":
         emulator_label = "lace_nyx"
