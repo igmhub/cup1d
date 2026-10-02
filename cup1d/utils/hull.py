@@ -7,6 +7,20 @@ from cup1d.utils.utils import get_path_repo
 
 
 def in_hull(hull, p):
+    """Return membership flags for points in a two-dimensional convex hull.
+
+    Parameters
+    ----------
+    hull : scipy.spatial.ConvexHull
+        Hull augmented with the equation arrays used by cup1d.
+    p : numpy.ndarray
+        Points with shape ``(npoint, 2)``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Boolean membership flags.
+    """
     return np.all(hull.eq @ p.T + hull.eq2[:, : p.shape[0]] <= hull.tol, 0)
 
 
@@ -119,6 +133,7 @@ class Hull(object):
             self.hulls = self.set_hulls(data_hull, extra_factor=extra_factor)
 
     def set_hulls(self, points, extra_factor=1.0):
+        """Build the pairwise projected hulls for all training parameters."""
         int_factor = extra_factor - 0.01
 
         hulls = []
@@ -155,6 +170,7 @@ class Hull(object):
         return hulls
 
     def in_hulls(self, p):
+        """Return whether every point lies in every pairwise hull."""
         for jj in range(len(self.hulls)):
             res = in_hull(
                 self.hulls[jj], p[:, [self.hulls[jj].dim0, self.hulls[jj].dim1]]
@@ -165,6 +181,7 @@ class Hull(object):
         return True
 
     def set_hull(self, data_hull, extra_factor=1.050):
+        """Build an expanded full-dimensional hull from training points."""
         int_factor = extra_factor - 1e-3
         mean = data_hull.mean(axis=0)
         int_data = int_factor * (data_hull - mean) + mean
@@ -205,6 +222,7 @@ class Hull(object):
         )
 
     def save_hull(self, suite, mpg_version="Cabayol23", nyx_version="Jul2024"):
+        """Save the full-dimensional hull for a simulation suite."""
         if suite == "nyx":
             folder = get_nyx_path()
             fname = os.path.join(folder, "hull_Nyx23_" + nyx_version + ".npy")
@@ -215,6 +233,7 @@ class Hull(object):
         np.save(fname, vars(self.hull))
 
     def load_hull(self, suite, mpg_version="Cabayol23", nyx_version="Jul2024"):
+        """Load a previously saved full-dimensional suite hull."""
         if suite == "nyx":
             folder = get_nyx_path()
             fname = os.path.join(folder, "hull_Nyx23_" + nyx_version + ".npy")

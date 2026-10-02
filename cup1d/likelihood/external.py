@@ -1,0 +1,218 @@
+"""External, pre-contaminant P1D likelihood boundary."""
+
+from dataclasses import dataclass
+import hashlib
+import json
+
+import numpy as np
+from scipy.linalg import cho_solve
+
+from cup1d.utils.rebinning import Rebinning
+
+
+def fingerprint(value):
+    """Return a stable SHA-256 fingerprint of a JSON-serializable value."""
+    return hashlib.sha256(json.dumps(value, sort_keys=True, allow_nan=False).encode()).hexdigest()
+
+
+@dataclass(frozen=True)
+class PredictionGroup:
+    """Prediction grid requested for one data set."""
+    identifier: str
+    redshifts: tuple
+    k_ikms: tuple
+
+    def __post_init__(self):
+        """Validate and normalize redshift and wavenumber grids."""
+        object.__setattr__(self, "redshifts", tuple(float(z) for z in self.redshifts))
+        object.__setattr__(self, "k_ikms", tuple(tuple(float(k) for k in row) for row in self.k_ikms))
+        if not self.redshifts or len(self.redshifts) != len(self.k_ikms):
+            raise ValueError("one nonempty k grid is required per redshift")
+        for z, row in zip(self.redshifts, self.k_ikms):
+            k = np.asarray(row)
+            if not np.isfinite(z) or k.size == 0 or np.any(~np.isfinite(k)) or np.any(k <= 0) or np.any(np.diff(k) <= 0):
+                raise ValueError("prediction grids must be finite, positive and strictly increasing")
+
+    def to_dict(self):
+        """Serialize the group together with grid fingerprints."""
+        return dict(identifier=self.identifier, redshifts=list(self.redshifts), k_ikms=[list(row) for row in self.k_ikms], grid_fingerprints=[fingerprint(list(row)) for row in self.k_ikms])
+
+    @classmethod
+    def from_dict(cls, value):
+        """Build and validate a group from serialized metadata."""
+        fields = dict(value)
+        expected = fields.pop("grid_fingerprints", None)
+        group = cls(**fields)
+        if expected is not None and expected != group.to_dict()["grid_fingerprints"]:
+            raise ValueError("serialized grid fingerprint mismatch")
+        return group
+
+
+@dataclass(frozen=True)
+class PredictionRequest:
+    """Immutable prediction contract shared by theory and likelihood."""
+    groups: tuple
+    configuration_id: str
+    units: str = "s/km"
+    stage: str = "uncontaminated_before_rebinning"
+
+    def __post_init__(self):
+        """Validate contract fields and freeze the group collection."""
+        object.__setattr__(self, "groups", tuple(self.groups))
+        if len({group.identifier for group in self.groups}) != len(self.groups):
+            raise ValueError("duplicate dataset identifier")
+        if self.units != "s/km" or self.stage != "uncontaminated_before_rebinning":
+            raise ValueError("unsupported prediction units/stage")
+
+    @property
+    def identity(self):
+        """Return a stable identifier for this request."""
+        return fingerprint(self.to_dict())
+
+    @property
+    def redshifts(self):
+        """Return sorted unique redshifts across data sets."""
+        return tuple(sorted({z for group in self.groups for z in group.redshifts}))
+
+    def to_dict(self):
+        """Serialize the request."""
+        return dict(groups=[group.to_dict() for group in self.groups], configuration_id=self.configuration_id, units=self.units, stage=self.stage)
+
+    @classmethod
+    def from_dict(cls, value):
+        """Build a request from serialized metadata."""
+        return cls(groups=tuple(PredictionGroup.from_dict(group) for group in value["groups"]), **{key: item for key, item in value.items() if key != "groups"})
+
+
+@dataclass(frozen=True)
+class PredictionContext:
+    """Redshift-dependent IGM and cosmology quantities for a request."""
+    request_id: str
+    redshifts: tuple
+    mean_flux: tuple
+    dkms_diMpc: tuple
+
+    def __post_init__(self):
+        """Normalize and validate context arrays."""
+        for key in ("redshifts", "mean_flux", "dkms_diMpc"):
+            object.__setattr__(self, key, tuple(float(item) for item in getattr(self, key)))
+        if len(set(self.redshifts)) != len(self.redshifts) or not (len(self.redshifts) == len(self.mean_flux) == len(self.dkms_diMpc)):
+            raise ValueError("context requires unique, matching redshifts")
+        if not np.all(np.isfinite(self.redshifts + self.mean_flux + self.dkms_diMpc)) or any(not 0 < flux < 1 for flux in self.mean_flux) or any(conversion <= 0 for conversion in self.dkms_diMpc):
+            raise ValueError("invalid mean flux or velocity conversion")
+
+
+@dataclass(frozen=True)
+class LikelihoodResult:
+    """Correlated Gaussian P1D likelihood diagnostics."""
+    loglike: float
+    chi2_data: float
+    logdet_cov: float
+    ndata: int
+    valid: bool
+
+
+def gaussian_residual(diff, factor, check_finite=True):
+    """Return chi-squared and log determinant from a Cholesky factor."""
+    diff = np.asarray(diff, dtype=float)
+    if diff.ndim != 1 or (check_finite and not np.all(np.isfinite(diff))):
+        raise ValueError("residual must be a finite vector")
+    return float(diff @ cho_solve(factor, diff, check_finite=check_finite)), float(2 * np.log(np.diag(factor[0])).sum())
+
+
+def apply_observation_model(model_cont, model_syst, zs, k_kms, p1d_kms, mean_flux, M_of_z, like_params=None, remove=None):
+    """Apply cup1d contaminant and resolution response to raw P1D arrays."""
+    like_params = {} if like_params is None else like_params
+    syst = model_syst.get_contamination(zs, k_kms, like_params=like_params) if any(name.startswith("R_coeff") for name in like_params) else np.ones(len(zs))
+    cont = model_cont.get_contamination(zs, k_kms, mean_flux, M_of_z, like_params=like_params, remove=remove)
+    powers, terms = [], []
+    for index, z in enumerate(zs):
+        powers.append((cont["cont_HCD"][index] * cont["cont_mul_metals"][index] * cont["IC_corr"][index] * p1d_kms[index] + cont["cont_add_metals"][index]) * syst[index])
+        terms.append(dict(z=z, k_kms=k_kms[index], p1d_emu_kms=p1d_kms[index], C_res=syst[index], C_mul_metals=cont["cont_mul_metals"][index], C_add_metals=cont["cont_add_metals"][index], C_HCD=cont["cont_HCD"][index], IC_corr=cont["IC_corr"][index], p1d_tot_kms="[(C_mul_metals * C_HCD * IC_corr * p1d_emu_kms + C_add_metals) * C_res]"))
+    return powers, terms
+
+
+class ExternalP1DLikelihood:
+    """Static P1D data, response, and covariance backend."""
+
+    def __init__(self, data, model_cont, model_syst, cov_factor, emulator_covariance, fiducial_conversion, emu_cov_type="block", k_rebin_factor=1, configuration_id=None, include_logdet=False):
+        """Initialize fixed covariance and the raw-P1D prediction request."""
+        from cup1d.likelihood.likelihood import Likelihood
+        self.data, self.model_cont, self.model_syst = data, model_cont, model_syst
+        if not isinstance(k_rebin_factor, int) or k_rebin_factor < 1 or not data:
+            raise ValueError("nonempty data and positive integer rebin factor required")
+        self.Rebin_data = Rebinning(data, k_rebin_factor=k_rebin_factor)
+        self.cov_factor = {key: np.asarray(value) for key, value in cov_factor.items()}
+        self.emu_cov_type, self.include_logdet = emu_cov_type, include_logdet
+        z_factors = self.cov_factor.get("z")
+        if z_factors is None or z_factors.ndim != 1 or not len(z_factors) or not np.all(np.isfinite(z_factors)):
+            raise ValueError("covariance factors require a finite redshift vector")
+        for name in ("val_stat", "val_syst", "val_emu", "val_full"):
+            value = self.cov_factor.get(name)
+            if value is None or value.shape != z_factors.shape or np.any(~np.isfinite(value)) or np.any(value < 0):
+                raise ValueError(f"invalid covariance scaling {name}")
+        for key, dataset in data.items():
+            if dataset.full_Pk_kms is not None:
+                expected_z = np.concatenate([np.full(len(k), z) for z, k in zip(dataset.z, dataset.k_kms)])
+                if not np.array_equal(dataset.full_zs, expected_z) or not np.array_equal(dataset.full_k_kms, np.concatenate(dataset.k_kms)) or not np.array_equal(dataset.full_Pk_kms, np.concatenate(dataset.Pk_kms)):
+                    raise ValueError(f"full data vector ordering differs from redshift blocks for {key}")
+        if emu_cov_type not in {"diagonal", "block", "full"}:
+            raise ValueError("unknown emulator covariance type")
+        for name in ("zz_zk", "k_Mpc_zk", "cov_zk"):
+            if name not in emulator_covariance:
+                raise ValueError(f"missing emulator covariance metadata {name}")
+        matrices = [matrix for dataset in data.values() for matrix in dataset.cov_Pk_kms]
+        matrices += [dataset.full_cov_Pk_kms for dataset in data.values() if dataset.full_Pk_kms is not None]
+        matrices += [emulator_covariance["cov_zk"]]
+        for matrix in matrices:
+            matrix = np.asarray(matrix)
+            tolerance = 1e-12 * max(np.max(np.abs(matrix)), np.finfo(float).tiny)
+            if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1] or not np.all(np.isfinite(matrix)) or not np.allclose(matrix, matrix.T, rtol=0, atol=tolerance):
+                raise ValueError("covariance must be finite and symmetric")
+        Likelihood._set_covariance(self, emulator_covariance, fiducial_conversion)
+        effective = [matrix for rows in self.cov_Pk_kms.values() for matrix in rows] + [matrix for matrix in self.full_cov_Pk_kms.values() if matrix is not None]
+        for matrix in effective:
+            tolerance = 1e-12 * max(np.max(np.abs(matrix)), np.finfo(float).tiny)
+            if not np.all(np.isfinite(matrix)) or not np.allclose(matrix, matrix.T, rtol=0, atol=tolerance):
+                raise ValueError("effective covariance must be finite and symmetric")
+        self.request = PredictionRequest(tuple(PredictionGroup(key, self.Rebin_data.zs[key], self.Rebin_data.k_kms[key]) for key in data), configuration_id)
+
+    def get_prediction_request(self):
+        """Return the immutable raw-P1D prediction contract."""
+        return self.request
+
+    def apply_observation_model(self, p1d_lya_kms, context, nuisance_parameters):
+        """Apply responses and rebin raw predictions onto data grids."""
+        if context.request_id != self.request.identity or set(p1d_lya_kms) != set(self.data):
+            raise ValueError("prediction request identity or dataset mismatch")
+        index = {z: i for i, z in enumerate(context.redshifts)}
+        result = {}
+        for group in self.request.groups:
+            if len(p1d_lya_kms[group.identifier]) != len(group.redshifts):
+                raise ValueError("redshift prediction count mismatch")
+            rows = []
+            for k, power in zip(group.k_ikms, p1d_lya_kms[group.identifier]):
+                power = np.asarray(power, dtype=float)
+                if power.shape != (len(k),) or not np.all(np.isfinite(power)):
+                    raise ValueError("malformed or non-finite external prediction")
+                rows.append(power)
+            inds = [index[z] for z in group.redshifts]
+            observed, _ = apply_observation_model(self.model_cont, self.model_syst, np.asarray(group.redshifts), [np.asarray(k) for k in group.k_ikms], rows, np.asarray(context.mean_flux)[inds], np.asarray(context.dkms_diMpc)[inds], nuisance_parameters)
+            result[group.identifier] = self.Rebin_data.rebinning(group.identifier, observed)
+        return result
+
+    def evaluate_from_p1d(self, p1d_lya_kms, context, nuisance_parameters):
+        """Evaluate the correlated Gaussian likelihood of raw P1D predictions."""
+        predictions = self.apply_observation_model(p1d_lya_kms, context, nuisance_parameters)
+        chi2, logdet, ndata = 0.0, 0.0, 0
+        for key, dataset in self.data.items():
+            if dataset.full_Pk_kms is not None:
+                diffs, factors = [dataset.full_Pk_kms - np.concatenate(predictions[key])], [self.full_chol_Pk_kms[key]]
+            else:
+                diffs, factors = [data - model for data, model in zip(dataset.Pk_kms, predictions[key])], self.chol_Pk_kms[key]
+            for diff, factor in zip(diffs, factors):
+                contribution, determinant = gaussian_residual(diff, factor)
+                chi2 += contribution
+                logdet += determinant if self.include_logdet else 0.0
+                ndata += len(diff)
+        return LikelihoodResult(-0.5 * (chi2 + logdet), chi2, logdet, ndata, True)

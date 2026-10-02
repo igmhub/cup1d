@@ -49,6 +49,18 @@ def is_number_string(value):
 
 
 def split_string(s):
+    """Split a trailing underscore-index from a parameter name.
+
+    Parameters
+    ----------
+    s : str
+        Name optionally ending in ``_<integer>``.
+
+    Returns
+    -------
+    tuple of str and str or None
+        Base name and trailing index when present.
+    """
     match = re.match(r"^(.*)_(\d+)$", s)
     if match:
         return match.group(1), match.group(2)
@@ -65,6 +77,7 @@ def get_discrete_cmap(n, base_cmap="jet"):
 
 
 def mpi_hello_world():
+    """Print an MPI communicator greeting from every rank."""
     from mpi4py import MPI
 
     # Get the MPI communicator

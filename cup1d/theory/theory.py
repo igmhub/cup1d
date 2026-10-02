@@ -642,7 +642,8 @@ class Theory:
                     "C_mul_metals": cont_all["cont_mul_metals"][iz],
                     "C_add_metals": cont_all["cont_add_metals"][iz],
                     "C_HCD": cont_all["cont_HCD"][iz],
-                    "p1d_tot_kms": "[(C_mul_metals * C_HCD * p1d_emu_kms + C_add_metals) * C_res]",
+                    "IC_corr": cont_all["IC_corr"][iz],
+                    "p1d_tot_kms": "[(C_mul_metals * C_HCD * IC_corr * p1d_emu_kms + C_add_metals) * C_res]",
                 }
             )
             _p1d_cont_kms = (
