@@ -1719,7 +1719,25 @@ class Plotter(object):
         plot_data=False,
         zrange=[0, 10],
     ):
-        """Function to plot AGN contamination"""
+        """Plot the fitted spectrograph-resolution contamination.
+
+        Parameters
+        ----------
+        plot_every_iz : int, default: 1
+            Draw every ``plot_every_iz``-th P1D redshift bin.
+        smooth_k : bool, default: False
+            Whether to evaluate the contamination on a smoothed k grid.
+        plot_data : bool, default: False
+            Whether to pass maximum-likelihood result data to the model plot.
+        zrange : sequence of float, default: [0, 10]
+            Redshift range shown in the contamination plot.
+
+        Notes
+        -----
+        Returns without plotting when no resolution coefficients are free. A
+        PDF and PNG are written to :attr:`save_directory` when it is set;
+        otherwise Matplotlib displays the figure.
+        """
 
         if plot_data:
             dict_data = self.mle_results
@@ -1759,7 +1777,19 @@ class Plotter(object):
         )
 
     def plot_hull(self, p0=None, save_plot=True, zmask=None):
-        """Function to plot data within hull"""
+        """Plot emulator input points against the admitted training hull.
+
+        Parameters
+        ----------
+        p0 : array_like, optional
+            Normalized sampling point. Defaults to the fitter maximum-likelihood
+            cube.
+        save_plot : bool, default: True
+            Save PDF and PNG files when :attr:`save_directory` is configured.
+        zmask : array_like, optional
+            Redshifts for the emulator calls. Defaults to the fitted data
+            redshifts.
+        """
 
         if p0 is None:
             p0 = self.fitter.mle_cube
@@ -1798,7 +1828,24 @@ class Plotter(object):
             plt.show()
 
     def plot_illustrate_contaminants_cum(self, values, zmask, fontsize=18):
-        """Plot illustrate contaminants cum diagnostics."""
+        """Plot cumulative changes from successively enabled contaminants.
+
+        Parameters
+        ----------
+        values : array_like
+            Normalized parameter point used as the starting fitted model.
+        zmask : array_like
+            Selected data redshifts. The diagnostic currently displays the
+            first matched redshift bin.
+        fontsize : float, default: 18
+            Font size for labels, legends, and chi-squared annotations.
+
+        Notes
+        -----
+        Each panel compares data residuals to the incremental P1D change from
+        adding one contaminant group. Output is saved below
+        :attr:`save_directory`, if set, or displayed otherwise.
+        """
         _data_z = []
         _data_k_kms = []
         _data_Pk_kms = []
@@ -2012,8 +2059,25 @@ class Plotter(object):
     ):
         """Plot residuals after removing individual contamination terms.
 
-        Set ``zenodo_filename`` (for example, ``"fig_7.npy"``) to save the
-        plotted arrays in ``data/zenodo``. Nothing is written by default.
+        Parameters
+        ----------
+        values : array_like
+            Normalized parameter point from which removal scenarios start.
+        zmask : array_like
+            Selected data redshifts. The first matched bin is plotted.
+        fontsize : float, default: 18
+            Font size for plotted annotations.
+        store_data : bool, default: False
+            Return the plotted numerical arrays instead of only creating the
+            figure.
+        zenodo_filename : str, optional
+            Filename for a copy of the plotted arrays in ``data/zenodo``.
+
+        Returns
+        -------
+        dict, optional
+            Plot arrays when ``store_data`` is true; otherwise returns
+            ``None``.
         """
 
         collect_data = store_data or zenodo_filename is not None
@@ -2267,7 +2331,26 @@ class Plotter(object):
 
     def plot_illustrate_contaminants2(self, values, zmask, fontsize=18, lines_use=None):
         # all_contaminants = np.array(lines_use + ["DLA", "res", "none"])
-        """Plot illustrate contaminants2 diagnostics."""
+        """Plot contaminant contributions ordered by their chi-squared impact.
+
+        Parameters
+        ----------
+        values : array_like
+            Normalized maximum-likelihood parameter point.
+        zmask : array_like
+            Selected P1D data redshifts. The first matching bin is used for
+            residual and chi-squared comparisons.
+        fontsize : float, default: 18
+            Font size for axis labels, legends, and annotations.
+        lines_use : sequence of str
+            Metal or resolution contamination identifiers to compare. ``DLA``
+            and the full-model ``"none"`` case are added internally.
+
+        Notes
+        -----
+        The routine ranks terms by the change in diagonal-bin chi-squared and
+        writes PDF and PNG output below :attr:`save_directory` when available.
+        """
         all_contaminants = np.array(lines_use + ["DLA", "none"])
 
         cont2label = {
@@ -2514,7 +2597,31 @@ class Plotter(object):
 
 
 def plot_cov(p1d_fname, kmin=1e-3, nknyq=0.5, fontsize=14, save_directory=None, lab=""):
-    """Plot cov diagnostics."""
+    """Plot P1D statistical and systematic covariance diagnostics from FITS.
+
+    Parameters
+    ----------
+    p1d_fname : str or path-like
+        DESI P1D FITS product containing ``P1D_BLIND``, ``COVARIANCE_STAT``,
+        and ``SYSTEMATICS`` extensions. The filename must identify an ``fft``
+        or ``qmle`` measurement.
+    kmin : float, default: 1e-3
+        Minimum displayed line-of-sight wavenumber in ``s / km``.
+    nknyq : float, default: 0.5
+        Fraction of the redshift-dependent Nyquist wavenumber retained.
+    fontsize : float, default: 14
+        Font size for plot labels and ticks.
+    save_directory : str or path-like, optional
+        Directory for output files. The figure is displayed when omitted.
+    lab : str, default: ""
+        Extra label included in the output filename.
+
+    Raises
+    ------
+    ValueError
+        If the FITS file cannot be read or its filename does not identify a
+        supported measurement type.
+    """
     from astropy.io import fits
 
     try:

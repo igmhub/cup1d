@@ -3,7 +3,11 @@ from cup1d.likelihood import parameter as likelihood_parameter
 
 
 class SN_Model(object):
-    """Viel et al. (2013) supernova-feedback P1D contamination model."""
+    """Viel et al. (2013) supernova-feedback P1D contamination model.
+
+    It returns the scale- and redshift-dependent multiplicative correction
+    associated with simulated supernova feedback.
+    """
 
     def __init__(
         self,

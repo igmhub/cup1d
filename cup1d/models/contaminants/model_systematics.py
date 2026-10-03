@@ -4,7 +4,11 @@ from cup1d.models.contaminants.spectro_resolution import resolution_class
 
 
 class Systematics(object):
-    """Container for instrument-resolution systematic corrections."""
+    """Container for instrument-resolution systematic corrections.
+
+    The object owns the resolution model and combines its correction with the
+    likelihood's fitted parameter mapping.
+    """
 
     def __init__(self, free_param_names=None, resolution_model=None, pars_syst=None):
         """Build a resolution model from native systematics configuration.

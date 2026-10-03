@@ -209,6 +209,19 @@ class VariationPlotter:
     }
 
     def __init__(self, output_root=None, prior_plotter=None, blinding=None):
+        """Initialize a variation-contour loader.
+
+        Parameters
+        ----------
+        output_root : str or path-like, optional
+            Root directory containing DESI DR1 output folders. Defaults to
+            the project-level ``data/out_DESI_DR1`` directory.
+        prior_plotter : EmulatorPriorPlotter, optional
+            Source of emulator-domain boundaries for observational groups.
+        blinding : mapping, optional
+            Additive ``Delta2_star`` and ``n_star`` offsets. The distributed
+            DR1 blinding data are loaded when omitted.
+        """
         if output_root is None:
             output_root = Path(get_path_repo("cup1d")).parent / "data" / "out_DESI_DR1"
         self.output_root = Path(output_root)
@@ -221,7 +234,14 @@ class VariationPlotter:
 
     @classmethod
     def available_groups(cls):
-        """Return a dictionary of named comparison groups and their members."""
+        """Return the named comparison groups and their variation identifiers.
+
+        Returns
+        -------
+        dict of str to list of str
+            Copy of :attr:`GROUPS`, suitable for inspecting accepted inputs to
+            :meth:`plot` without mutating class configuration.
+        """
 
         return {name: list(members) for name, members in cls.GROUPS.items()}
 
@@ -235,11 +255,30 @@ class VariationPlotter:
     ):
         """Plot one or more named comparison groups.
 
-        ``groups`` may be one group name or a list. When multiple names are
-        supplied, one figure is created for each group. Set ``save_figures``
-        to ``True`` to write PDF and PNG versions. By default no files are
-        written. Without an explicit ``save_directory``, files are written to
-        ``figs/variations`` below the current working directory.
+        Parameters
+        ----------
+        groups : str or sequence of str
+            Keys from :attr:`GROUPS`. Multiple groups receive separate axes.
+        axes : matplotlib.axes.Axes or sequence, optional
+            Existing axes. New side-by-side axes are created when omitted.
+        fontsize : float, default: 22
+            Base font size for the contour labels and legend.
+        save_figures : bool, default: False
+            Save PDF and PNG copies for each group.
+        save_directory : str or path-like, optional
+            Destination for saved figures. Defaults to ``figs/variations`` in
+            the current directory when saving is enabled.
+
+        Returns
+        -------
+        matplotlib.axes.Axes or sequence of matplotlib.axes.Axes
+            Axis for one requested group, otherwise the supplied or created
+            axes in group order.
+
+        Raises
+        ------
+        ValueError
+            If any requested group is unknown.
         """
 
         if isinstance(groups, str):
@@ -267,6 +306,26 @@ class VariationPlotter:
         return axes[0] if len(groups) == 1 else axes
 
     def _load_contour(self, name, as_ns=False):
+        """Load and cache one variation's contour product.
+
+        Parameters
+        ----------
+        name : str
+            Variation identifier from :attr:`_SPECS`.
+        as_ns : bool, default: False
+            Load primordial-amplitude/spectral-index contours rather than
+            compressed linear-power contours.
+
+        Returns
+        -------
+        dict
+            Deep copy of contour polygons keyed by confidence level.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the required stored contour product is absent.
+        """
         key = (name, as_ns)
         if key not in self._contours:
             spec = self._SPECS[name]
@@ -281,6 +340,17 @@ class VariationPlotter:
         return contour
 
     def _plot_group(self, group, ax, fontsize):
+        """Draw all contours belonging to one named comparison group.
+
+        Parameters
+        ----------
+        group : str
+            Key from :attr:`GROUPS`.
+        ax : matplotlib.axes.Axes
+            Axis receiving contours and labels.
+        fontsize : float
+            Base font size used by :meth:`_set_axes` and the legend.
+        """
         import matplotlib.pyplot as plt
 
         names = self.GROUPS[group]
@@ -338,6 +408,22 @@ class VariationPlotter:
         )
 
     def _reference_point(self, contour, name, default=None):
+        """Determine the point relative to which a contour is displayed.
+
+        Parameters
+        ----------
+        contour : dict
+            Contour polygons keyed by confidence level.
+        name : str
+            Variation identifier used to look up simulation metadata.
+        default : tuple of float, optional
+            Reference point used for observational variations.
+
+        Returns
+        -------
+        tuple of float
+            ``(Delta2_star, n_star)`` reference coordinates.
+        """
         spec = self._SPECS[name]
         if spec.simulation_label is None:
             if default is not None:
@@ -353,6 +439,17 @@ class VariationPlotter:
         return star["Delta2_star"], star["n_star"]
 
     def _add_prior_region(self, ax, names, reference_x, reference_y):
+        """Shade compatible emulator-prior regions for observational contours.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            Axis receiving the shaded prior regions.
+        names : sequence of str
+            Variation identifiers in the displayed group.
+        reference_x, reference_y : float
+            Coordinates used to shift the blinded prior boundaries.
+        """
         if self.prior_plotter is None or any(
             self._SPECS[name].simulation_label for name in names
         ):
@@ -388,7 +485,13 @@ class VariationPlotter:
             ax.fill(boundary[:, 0], boundary[:, 1], "white")
 
     def _reintroduce_blinding(self, contour):
-        """Restore the DR1 offsets in the baseline star-parameter contours."""
+        """Restore DR1 offsets in baseline star-parameter contours.
+
+        Parameters
+        ----------
+        contour : dict
+            Cached contour mapping mutated in place before plotting.
+        """
 
         for level in (0.68, 0.95):
             values = list(contour[level][0])
@@ -398,6 +501,19 @@ class VariationPlotter:
 
     @staticmethod
     def _set_axes(ax, x_limits, y_limits, as_ns, fontsize):
+        """Set padded limits, labels, ticks, and zero-reference lines.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            Axis to configure.
+        x_limits, y_limits : sequence of float
+            Minimum and maximum data coordinates before padding.
+        as_ns : bool
+            Select primordial-parameter instead of linear-power labels.
+        fontsize : float
+            Base font size.
+        """
         x_range, y_range = x_limits[1] - x_limits[0], y_limits[1] - y_limits[0]
         ax.set_xlim(x_limits[0] - 0.05 * x_range, x_limits[1] + 0.05 * x_range)
         ax.set_ylim(y_limits[0] - 0.05 * y_range, y_limits[1] + 0.05 * y_range)
@@ -414,6 +530,17 @@ class VariationPlotter:
 
     @staticmethod
     def _save_figures(groups, axes, directory):
+        """Save one PDF and PNG for each requested variation group.
+
+        Parameters
+        ----------
+        groups : sequence of str
+            Group names used in output filenames.
+        axes : sequence of matplotlib.axes.Axes
+            Axes whose parent figures are saved.
+        directory : str or path-like
+            Destination directory, created if necessary.
+        """
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
         for group, axis in zip(groups, axes, strict=True):

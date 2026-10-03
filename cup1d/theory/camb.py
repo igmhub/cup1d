@@ -4,12 +4,27 @@ from cup1d.likelihood import parameter as likelihood_parameter
 
 
 class CAMBModel(object):
-    """Interface between CAMB object and Theory"""
+    """Cache LaCE/CAMB cosmology calculations required by :class:`Theory`."""
 
     def __init__(
         self, zs, cosmo=None, z_star=3.0, kp_kms=0.009, fast_camb=True
     ):
-        """Setup from CAMB object and list of redshifts"""
+        """Initialize a cosmology evaluator on a redshift grid.
+
+        Parameters
+        ----------
+        zs : array_like
+            Redshifts at which linear power is needed.
+        cosmo : lace.cosmo.cosmology.Cosmology, optional
+            Cosmology evaluator. A fiducial LaCE cosmology is created when
+            omitted.
+        z_star : float, default: 3.0
+            Redshift for cached compressed linear-power parameters.
+        kp_kms : float, default: 0.009
+            Velocity-space pivot in ``s / km`` for compressed parameters.
+        fast_camb : bool, default: True
+            Compatibility flag retained by downstream callers.
+        """
 
         # list of redshifts at which we evaluate linear power
         self.zs = zs
@@ -31,7 +46,20 @@ class CAMBModel(object):
         self.cached_linP_params = None
 
     def get_likelihood_parameters(self, cosmo_priors=None):
-        """Return a list of likelihood parameters"""
+        """Construct sampled cosmological parameters and their top-hat bounds.
+
+        Parameters
+        ----------
+        cosmo_priors : mapping, optional
+            Optional ``As``, ``ns``, and ``nrun`` ``(minimum, maximum)``
+            bounds replacing the built-in broad ranges.
+
+        Returns
+        -------
+        dict of str to dict
+            Parameter metadata for ``ombh2``, ``omch2``, ``As``, ``ns``,
+            ``mnu``, ``nrun``, and ``H0``.
+        """
 
         # should clarify role of min/max given that these are also
         # set in the likelihood
@@ -118,8 +146,13 @@ class CAMBModel(object):
         return {parameter["name"]: parameter for parameter in params}
 
     def get_camb_results(self):
-        """Check if we have called CAMB.get_results yet, to save time.
-        It returns a CAMB.results object."""
+        """Return cached or newly evaluated CAMB background results.
+
+        Returns
+        -------
+        camb.results.CAMBdata
+            Results supplied by the wrapped LaCE cosmology.
+        """
 
         if self.cached_camb_results is None:
             self.cached_camb_results = self.cosmo.get_CAMBdata()
@@ -127,8 +160,14 @@ class CAMBModel(object):
         return self.cached_camb_results
 
     def get_linP_Mpc(self):
-        """Check if we have already computed linP_Mpc, to save time.
-        It returns (k_Mpc, zs, linP_Mpc)."""
+        """Return cached linear power on the internal comoving-k grid.
+
+        Returns
+        -------
+        tuple
+            ``(k_Mpc, zs, linP_Mpc)`` with wavenumbers in ``1 / Mpc`` and
+            power evaluated at the configured redshifts.
+        """
 
         if self.cached_linP_Mpc is None:
             k_Mpc = np.logspace(-4, np.log10(self.cosmo.get_kmax_linP_Mpc()), 1000)
@@ -138,7 +177,14 @@ class CAMBModel(object):
         return self.cached_linP_Mpc
 
     def get_linP_params(self):
-        """Linear power parameters at (z_star,kp_kms) for this cosmology"""
+        """Return compressed linear-power parameters at the configured pivot.
+
+        Returns
+        -------
+        dict
+            Linear-power amplitude, slope, and running at ``z_star`` and
+            ``kp_kms``.
+        """
 
         if self.cached_linP_params is None:
             self.cached_linP_params = self.cosmo.get_linP_kms_params(
@@ -148,20 +194,48 @@ class CAMBModel(object):
         return self.cached_linP_params
 
     def get_linP_Mpc_params(self, kp_Mpc):
-        """Get linear power parameters to call emulator, at each z.
-        Amplitude, slope and running around pivot point kp_Mpc."""
+        """Evaluate compressed comoving linear-power parameters at each redshift.
+
+        Parameters
+        ----------
+        kp_Mpc : float
+            Comoving pivot wavenumber in ``1 / Mpc``.
+
+        Returns
+        -------
+        list of dict
+            Amplitude, slope, and running dictionaries in configured-redshift
+            order.
+        """
 
         return [
             self.cosmo.get_linP_Mpc_params(z, kp_Mpc) for z in self.zs
         ]
 
     def dkms_dMpc(self, z):
-        """Return H(z)/(1+z) to convert Mpc to km/s"""
+        """Return the comoving-to-velocity wavenumber conversion at redshift.
+
+        Parameters
+        ----------
+        z : float
+            Redshift.
+
+        Returns
+        -------
+        float
+            ``H(z) / (1 + z)`` in ``km / s / Mpc``.
+        """
 
         return self.cosmo.get_dkms_dMpc(z)
 
     def get_M_of_zs(self):
-        """Return M(z)=H(z)/(1+z) for each z"""
+        """Return comoving-to-velocity conversions for all configured redshifts.
+
+        Returns
+        -------
+        list of float
+            ``H(z) / (1 + z)`` values in ``km / s / Mpc``.
+        """
 
         M_of_zs = []
         for z in self.zs:
@@ -170,7 +244,21 @@ class CAMBModel(object):
         return M_of_zs
 
     def get_new_model(self, zs, like_params):
-        """For an arbitrary list of like_params, return a new CAMBModel"""
+        """Create a new model after applying sampled cosmological parameters.
+
+        Parameters
+        ----------
+        zs : array_like
+            Redshifts for the new model.
+        like_params : mapping
+            Physical likelihood parameters. Recognized cosmology keys replace
+            the corresponding values while unspecified inputs stay fiducial.
+
+        Returns
+        -------
+        CAMBModel
+            Fresh model with empty calculation caches.
+        """
 
         # store a dictionary with parameters set to input values
         camb_param_dict = {}

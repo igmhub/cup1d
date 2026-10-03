@@ -21,8 +21,24 @@ import numpy as np
 
 
 def get_hessian(func, p0, hh=1e-4):
-    """Return hessian."""
+    """Approximate a scalar objective Hessian with central differences.
+
+    Parameters
+    ----------
+    func : callable
+        Scalar function accepting a one-dimensional parameter vector.
+    p0 : array_like, shape (n_parameters,)
+        Expansion point.
+    hh : float, default: 1e-4
+        Equal finite-difference step in every coordinate.
+
+    Returns
+    -------
+    ndarray, shape (n_parameters, n_parameters)
+        Symmetric central-difference Hessian.
+    """
     def mod_elem(nelem, ind, val):
+        """Return a coordinate vector with one nonzero finite-difference step."""
         xx = np.zeros(nelem)
         xx[ind] = val
         return xx
@@ -50,7 +66,25 @@ def get_hessian(func, p0, hh=1e-4):
 
 
 def get_hessian_rows(func, p0, indices, hh=1e-4):
-    """Return finite-difference Hessian rows for selected coordinates."""
+    """Approximate selected rows of a scalar objective Hessian.
+
+    Parameters
+    ----------
+    func : callable
+        Scalar function accepting a parameter vector.
+    p0 : array_like, shape (n_parameters,)
+        Expansion point.
+    indices : sequence of int
+        Coordinates whose Hessian rows are evaluated.
+    hh : float, default: 1e-4
+        Equal finite-difference step in every coordinate.
+
+    Returns
+    -------
+    ndarray, shape (n_parameters, n_parameters)
+        Array whose requested rows contain central-difference values and whose
+        remaining rows are zero.
+    """
 
     p0 = np.asarray(p0)
     hessian = np.zeros((len(p0), len(p0)))

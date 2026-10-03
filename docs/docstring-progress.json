@@ -6384,8 +6384,8 @@
         "Summary does not end with a period.",
         "Provide canonical `Parameters` entries for `chain_files`, `labels`, `plot_params`, `save_string`, `rootdir`, `subfolder`, `delta_lnprob_cut`, `usetex`, `serif`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed high-level comparison and contaminant plotters; documented saved-chain inputs, physical coefficient reconstruction, redshift sampling, data overlays, output handling, and no-coefficient behavior.",
       "blocker": ""
     },
     {
@@ -6398,8 +6398,8 @@
         "Summary does not end with a period.",
         "Provide canonical `Parameters` entries for `plot_every_iz`, `smooth_k`, `plot_data`, `zrange`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed high-level comparison and contaminant plotters; documented saved-chain inputs, physical coefficient reconstruction, redshift sampling, data overlays, output handling, and no-coefficient behavior.",
       "blocker": ""
     },
     {
@@ -6412,8 +6412,8 @@
         "Summary does not end with a period.",
         "Provide canonical `Parameters` entries for `plot_every_iz`, `stat_best_fit`, `smooth_k`, `plot_data`, `zrange`, `mle_results`, `plot_panels`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed high-level comparison and contaminant plotters; documented saved-chain inputs, physical coefficient reconstruction, redshift sampling, data overlays, output handling, and no-coefficient behavior.",
       "blocker": ""
     },
     {
@@ -6426,8 +6426,8 @@
         "Summary does not end with a period.",
         "Provide canonical `Parameters` entries for `plot_every_iz`, `smooth_k`, `plot_data`, `zrange`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed high-level comparison and contaminant plotters; documented saved-chain inputs, physical coefficient reconstruction, redshift sampling, data overlays, output handling, and no-coefficient behavior.",
       "blocker": ""
     },
     {
@@ -6440,8 +6440,8 @@
         "Summary does not end with a period.",
         "Provide canonical `Parameters` entries for `plot_every_iz`, `smooth_k`, `plot_data`, `zrange`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6454,8 +6454,8 @@
         "Summary does not end with a period.",
         "Provide canonical `Parameters` entries for `p0`, `save_plot`, `zmask`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6468,8 +6468,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `values`, `zmask`, `fontsize`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6482,8 +6482,8 @@
         "Provide canonical `Parameters` entries for `values`, `zmask`, `fontsize`, `store_data`, `zenodo_filename`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6496,8 +6496,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `values`, `zmask`, `fontsize`, `lines_use`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6511,8 +6511,8 @@
         "Provide canonical `Parameters` entries for `p1d_fname`, `kmin`, `nknyq`, `fontsize`, `save_directory`, `lab`.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6525,8 +6525,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `pivot_kms`, `n_desi_samples`, `n_cmb_samples`, `redshift`, `random_seed`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6539,8 +6539,8 @@
         "Provide canonical `Parameters` entries for `file_paths`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6553,8 +6553,8 @@
         "Provide canonical `Parameters` entries for `chain_specs`, `desi_blobs_path`, `blinding_path`, `power_file_paths`, `planck_root_dir`, `k_kms`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6566,8 +6566,8 @@
       "detected_gaps": [
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6581,8 +6581,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6595,8 +6595,8 @@
         "Provide canonical `Parameters` entries for `chain_samples`, `k_kms`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6609,8 +6609,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `KeyError`, `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6624,8 +6624,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `RuntimeError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6637,8 +6637,8 @@
       "detected_gaps": [
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6650,8 +6650,8 @@
       "detected_gaps": [
         "Provide canonical `Parameters` entries for `axes`, `figure_data`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6663,8 +6663,8 @@
       "detected_gaps": [
         "Provide canonical `Parameters` entries for `axis`, `fontsize`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6679,8 +6679,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6694,8 +6694,8 @@
         "Provide canonical `Parameters` entries for `args`, `data`, `emulator`, `out_mle_cube`, `weak_priors`.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6708,8 +6708,8 @@
         "Provide canonical `Parameters` entries for `like`, `out_chi2`, `out_mle_cube`. Existing prose may describe these, but there are no matching canonical entries.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6722,8 +6722,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `fontsize`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6736,8 +6736,8 @@
         "Provide canonical `Parameters` entries for `chain_specs`, `desi_contours_path`, `planck_root_dir`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6751,8 +6751,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `RuntimeError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6766,8 +6766,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `RuntimeError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6780,8 +6780,8 @@
         "Provide canonical `Parameters` entries for `filename`, `desi_constraint`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6793,8 +6793,8 @@
       "detected_gaps": [
         "Provide canonical `Parameters` entries for `axis`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6806,8 +6806,8 @@
       "detected_gaps": [
         "Provide canonical `Parameters` entries for `axis`, `colors`, `line_styles`, `number_of_chains`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6820,8 +6820,8 @@
         "Provide canonical `Parameters` entries for `n`, `base_cmap`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6834,8 +6834,8 @@
         "Provide canonical `Parameters` entries for `arr`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6849,8 +6849,8 @@
         "Provide canonical `Parameters` entries for `base`, `save_fig`, `data_label`, `name_variation`, `chain`, `store_data`.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6864,8 +6864,8 @@
         "Provide canonical `Parameters` entries for `m`, `ep`, `em`.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6878,8 +6878,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `folder_variation`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6893,8 +6893,8 @@
         "Provide canonical `Parameters` entries for `x`, `xp`, `xm`, `sig`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6907,8 +6907,8 @@
         "Provide canonical `Parameters` entries for `val`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6920,8 +6920,8 @@
       "detected_gaps": [
         "Provide canonical `Parameters` entries for `table`, `color_threshold`, `colors`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6934,8 +6934,8 @@
         "Provide canonical `Parameters` entries for `values`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6949,8 +6949,8 @@
         "Provide canonical `Parameters` entries for `values`, `sigfigs`, `force_decimals`, `one_decimal`, `two_decimals`.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6963,8 +6963,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `base`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6977,8 +6977,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `output_root`, `prior_plotter`, `blinding`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -6990,8 +6990,8 @@
       "detected_gaps": [
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7005,8 +7005,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7021,8 +7021,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `FileNotFoundError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7035,8 +7035,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `group`, `ax`, `fontsize`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7050,8 +7050,8 @@
         "Provide canonical `Parameters` entries for `contour`, `name`, `default`.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7064,8 +7064,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `ax`, `names`, `reference_x`, `reference_y`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7077,8 +7077,8 @@
       "detected_gaps": [
         "Provide canonical `Parameters` entries for `contour`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7091,8 +7091,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `ax`, `x_limits`, `y_limits`, `as_ns`, `fontsize`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7105,8 +7105,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `groups`, `axes`, `directory`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7119,8 +7119,8 @@
         "Summary does not end with a period.",
         "Provide canonical `Parameters` entries for `zs`, `cosmo`, `z_star`, `kp_kms`, `fast_camb`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7134,8 +7134,8 @@
         "Provide canonical `Parameters` entries for `cosmo_priors`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7147,8 +7147,8 @@
       "detected_gaps": [
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7160,8 +7160,8 @@
       "detected_gaps": [
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7174,8 +7174,8 @@
         "Summary does not end with a period.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7188,8 +7188,8 @@
         "Provide canonical `Parameters` entries for `kp_Mpc`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7203,8 +7203,8 @@
         "Provide canonical `Parameters` entries for `z`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7217,8 +7217,8 @@
         "Summary does not end with a period.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7232,8 +7232,8 @@
         "Provide canonical `Parameters` entries for `zs`, `like_params`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7248,8 +7248,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7263,8 +7263,8 @@
         "Provide canonical `Parameters` entries for `return_all`, `nyx_version`. Existing prose may describe these, but there are no matching canonical entries.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7278,8 +7278,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7292,8 +7292,8 @@
         "Provide canonical `Parameters` entries for `params`, `z_star`, `kp_kms`, `verbose`, `camb_kmax_Mpc_fast`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7306,8 +7306,8 @@
         "Provide canonical `Parameters` entries for `emulator`, `model_igm`, `model_cont`, `model_syst`, `use_hull`, `verbose`, `z_star`, `kp_kms`, `use_star_priors`, `cosmo_priors`. Existing prose may describe these, but there are no matching canonical entries.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7319,8 +7319,8 @@
       "detected_gaps": [
         "Provide canonical `Parameters` entries for `zs`, `cosmo_label`, `cosmo_params_dict`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7334,8 +7334,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `TypeError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7347,8 +7347,8 @@
       "detected_gaps": [
         "Provide canonical `Parameters` entries for `extra_factor`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7361,8 +7361,8 @@
         "Provide canonical `Parameters` entries for `like_params`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7375,8 +7375,8 @@
         "Provide canonical `Parameters` entries for `zs`, `like_params`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7390,8 +7390,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7405,8 +7405,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7420,8 +7420,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7433,8 +7433,8 @@
       "detected_gaps": [
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7447,8 +7447,8 @@
         "Provide canonical `Parameters` entries for `cosmo`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7461,8 +7461,8 @@
         "Provide canonical `Parameters` entries for `like_params`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7475,8 +7475,8 @@
         "Provide canonical `Parameters` entries for `zs`, `k_ikms`, `like_params`, `return_covar`, `return_blob`, `return_emu_params`, `apply_hull`, `hires`, `remove`, `return_contaminants`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7490,8 +7490,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7504,8 +7504,8 @@
         "Provide canonical `Parameters` entries for `zs`, `k_kms`, `like_params`, `return_covar`, `return_blob`, `return_emu_params`, `apply_hull`, `hires`, `remove`, `return_contaminants`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7518,8 +7518,8 @@
         "Provide canonical `Parameters` entries for `zs`, `k_kms`, `like_params`, `remove`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7532,8 +7532,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed scalar and batched implementation paths; added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7547,8 +7547,8 @@
         "Provide canonical `Parameters` entries for `apply_blinding`, `seed`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7562,8 +7562,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `KeyError`, `TypeError`, `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7576,8 +7576,8 @@
         "Provide canonical `Parameters` entries for `blind`, `dict_cosmo`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7590,8 +7590,8 @@
         "Provide canonical `Parameters` entries for `blind`, `dict_cosmo`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7605,8 +7605,8 @@
         "Provide canonical `Parameters` entries for `func`, `p0`, `hh`.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7620,8 +7620,8 @@
         "Provide canonical `Parameters` entries for `nelem`, `ind`, `val`.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7634,8 +7634,8 @@
         "Provide canonical `Parameters` entries for `func`, `p0`, `indices`, `hh`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7645,8 +7645,8 @@
       "line": 4,
       "signature": "rho_from_axes(a, b, theta)",
       "detected_gaps": [],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7659,8 +7659,8 @@
         "Provide canonical `Parameters` entries for `x`, `y`, `npts`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7673,8 +7673,8 @@
         "Provide canonical `Parameters` entries for `sigma1`, `sigma2`, `rho`, `mean`, `ax`, `color`, `label`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7684,8 +7684,8 @@
       "line": 9,
       "signature": "in_hull(hull, p)",
       "detected_gaps": [],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7698,8 +7698,8 @@
         "Convert non-NumPy section headings: `Parameters:`, `Returns:`, `Notes:`.",
         "Provide canonical `Parameters` entries for `zs`, `data_hull`, `suite`, `save`, `extra_factor`, `mpg_version`, `nyx_version`, `recompute`, `tol`, `multi_dim`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7712,8 +7712,8 @@
         "Provide canonical `Parameters` entries for `points`, `extra_factor`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7726,8 +7726,8 @@
         "Provide canonical `Parameters` entries for `p`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7740,8 +7740,8 @@
         "Provide canonical `Parameters` entries for `data_hull`, `extra_factor`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7755,8 +7755,8 @@
         "Provide canonical `Parameters` entries for `hull`, `point`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7768,8 +7768,8 @@
       "detected_gaps": [
         "Provide canonical `Parameters` entries for `suite`, `mpg_version`, `nyx_version`. Existing prose may describe these, but there are no matching canonical entries."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7782,8 +7782,8 @@
         "Provide canonical `Parameters` entries for `suite`, `mpg_version`, `nyx_version`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7796,8 +7796,8 @@
         "Provide canonical `Parameters` entries for `points`, `test_points`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7810,8 +7810,8 @@
         "Provide canonical `Parameters` entries for `points`, `test_points`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7825,8 +7825,8 @@
         "Provide canonical `Parameters` entries for `xmin_o`, `xmax_o`, `xmin_n`, `xmax_n`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7839,8 +7839,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `dict_data`, `k_rebin_factor`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7854,8 +7854,8 @@
         "Provide canonical `Parameters` entries for `key`, `Pk_kms_newk`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7869,8 +7869,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7884,8 +7884,8 @@
         "Provide canonical `Parameters` entries for `ln_prop_chains`, `nsplit`, `abs_diff`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7898,8 +7898,8 @@
         "Provide canonical `Parameters` entries for `value`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7909,8 +7909,8 @@
       "line": 51,
       "signature": "split_string(s)",
       "detected_gaps": [],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7923,8 +7923,8 @@
         "Provide canonical `Parameters` entries for `n`, `base_cmap`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7934,8 +7934,8 @@
       "line": 79,
       "signature": "mpi_hello_world()",
       "detected_gaps": [],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7949,8 +7949,8 @@
         "Provide canonical `Parameters` entries for `verbose`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7963,8 +7963,8 @@
         "No docstring: write an implementation-specific summary and the applicable NumPy sections.",
         "Provide canonical `Parameters` entries for `verbose`, `args`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7979,8 +7979,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ImportError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -7995,8 +7995,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -8010,8 +8010,8 @@
         "Provide canonical `Parameters` entries for `fname`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -8025,8 +8025,8 @@
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant.",
         "Review explicit raises `ValueError`; document caller-relevant exceptions and triggering conditions in `Raises`."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     },
     {
@@ -8039,8 +8039,8 @@
         "Provide canonical `Parameters` entries for `blobs`, `name`. Existing prose may describe these, but there are no matching canonical entries.",
         "Add a `Returns` contract covering actual return branches, type/structure, shapes and units where relevant."
       ],
-      "status": "pending",
-      "evidence": "",
+      "status": "corrected",
+      "evidence": "Reviewed implementation and added NumPy-style API documentation.",
       "blocker": ""
     }
   ],
@@ -8050,466 +8050,472 @@
       "file": "cup1d/configuration/args.py",
       "qualified_name": "Args",
       "line": 27,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-002",
       "file": "cup1d/inference/analysis.py",
       "qualified_name": "Analysis",
       "line": 48,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-003",
       "file": "cup1d/inference/fitter.py",
       "qualified_name": "Fitter",
       "line": 50,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-004",
       "file": "cup1d/inference/iminuit.py",
       "qualified_name": "IminuitMinimizer",
       "line": 8,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-005",
       "file": "cup1d/likelihood/external.py",
       "qualified_name": "PredictionGroup",
       "line": 19,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-006",
       "file": "cup1d/likelihood/external.py",
       "qualified_name": "PredictionRequest",
       "line": 52,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-007",
       "file": "cup1d/likelihood/external.py",
       "qualified_name": "PredictionContext",
       "line": 88,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-008",
       "file": "cup1d/likelihood/external.py",
       "qualified_name": "LikelihoodResult",
       "line": 106,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-009",
       "file": "cup1d/likelihood/external.py",
       "qualified_name": "ExternalP1DLikelihood",
       "line": 135,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-010",
       "file": "cup1d/likelihood/likelihood.py",
       "qualified_name": "Likelihood",
       "line": 20,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-011",
       "file": "cup1d/models/contaminants/HCD/hcd_boss.py",
       "qualified_name": "HCD_BOSS",
       "line": 10,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-012",
       "file": "cup1d/models/contaminants/HCD/hcd_model_McDonald2005.py",
       "qualified_name": "HCD_Model_McDonald2005",
       "line": 5,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-013",
       "file": "cup1d/models/contaminants/HCD/hcd_model_rogers_class.py",
       "qualified_name": "HCD_Model_Rogers",
       "line": 9,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-014",
       "file": "cup1d/models/contaminants/base_contaminants.py",
       "qualified_name": "Contaminant",
       "line": 6,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-015",
       "file": "cup1d/models/contaminants/feedback/AGN_model.py",
       "qualified_name": "AGN_Model",
       "line": 8,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-016",
       "file": "cup1d/models/contaminants/feedback/SN_model.py",
       "qualified_name": "SN_Model",
       "line": 5,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-017",
       "file": "cup1d/models/contaminants/metals/si_add.py",
       "qualified_name": "SiAdd",
       "line": 14,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-018",
       "file": "cup1d/models/contaminants/metals/si_mult.py",
       "qualified_name": "SiMult",
       "line": 14,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-019",
       "file": "cup1d/models/contaminants/metals/si_vid_final.py",
       "qualified_name": "SiVid",
       "line": 14,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-020",
       "file": "cup1d/models/contaminants/model_contaminants.py",
       "qualified_name": "Contaminants",
       "line": 17,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-021",
       "file": "cup1d/models/contaminants/model_systematics.py",
       "qualified_name": "Systematics",
       "line": 6,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-022",
       "file": "cup1d/models/contaminants/spectro_resolution/resolution_class.py",
       "qualified_name": "Resolution",
       "line": 37,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-023",
       "file": "cup1d/models/igm/base_igm.py",
       "qualified_name": "IGM_model",
       "line": 10,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-024",
       "file": "cup1d/models/igm/mean_flux_class.py",
       "qualified_name": "MeanFlux",
       "line": 5,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-025",
       "file": "cup1d/models/igm/model_igm.py",
       "qualified_name": "IGM",
       "line": 11,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-026",
       "file": "cup1d/models/igm/pressure_class.py",
       "qualified_name": "Pressure",
       "line": 5,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-027",
       "file": "cup1d/models/igm/thermal_class.py",
       "qualified_name": "Thermal",
       "line": 6,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-028",
       "file": "cup1d/p1ds/base_p1d_data.py",
       "qualified_name": "BaseDataP1D",
       "line": 92,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-029",
       "file": "cup1d/p1ds/base_p1d_mock.py",
       "qualified_name": "BaseMockP1D",
       "line": 8,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-030",
       "file": "cup1d/p1ds/forecast.py",
       "qualified_name": "Forecast_P1D",
       "line": 16,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-031",
       "file": "cup1d/p1ds/observations/data_Chabanier2019.py",
       "qualified_name": "P1D_Chabanier2019",
       "line": 5,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-032",
       "file": "cup1d/p1ds/observations/data_DESIY1.py",
       "qualified_name": "P1D_DESIY1",
       "line": 194,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-033",
       "file": "cup1d/p1ds/observations/data_Irsic2017.py",
       "qualified_name": "P1D_Irsic2017",
       "line": 6,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-034",
       "file": "cup1d/p1ds/observations/data_Karacayli2022.py",
       "qualified_name": "P1D_Karacayli2022",
       "line": 6,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-035",
       "file": "cup1d/p1ds/observations/data_Karacayli2024.py",
       "qualified_name": "P1D_Karacayli2024",
       "line": 8,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-036",
       "file": "cup1d/p1ds/observations/data_PD2013.py",
       "qualified_name": "P1D_PD2013",
       "line": 6,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-037",
       "file": "cup1d/p1ds/observations/data_Ravoux2023.py",
       "qualified_name": "P1D_Ravoux2023",
       "line": 6,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-038",
       "file": "cup1d/p1ds/observations/data_Walther2018.py",
       "qualified_name": "P1D_Walther2018",
       "line": 6,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-039",
       "file": "cup1d/p1ds/simulations/challenge_DESIY1.py",
       "qualified_name": "P1D_challenge_DESIY1",
       "line": 7,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-040",
       "file": "cup1d/p1ds/simulations/data_QMLE_Ohio.py",
       "qualified_name": "P1D_QMLE_Ohio",
       "line": 8,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-041",
       "file": "cup1d/p1ds/simulations/data_accel2.py",
       "qualified_name": "Accel2_P1D",
       "line": 118,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-042",
       "file": "cup1d/p1ds/simulations/data_eBOSS_mock.py",
       "qualified_name": "P1D_eBOSS_mock",
       "line": 9,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-043",
       "file": "cup1d/p1ds/simulations/data_gadget.py",
       "qualified_name": "Gadget_P1D",
       "line": 13,
-      "status": "pending",
-      "evidence": ""
+      "status": "corrected",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-044",
       "file": "cup1d/p1ds/simulations/data_nyx.py",
       "qualified_name": "Nyx_P1D",
       "line": 13,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-045",
       "file": "cup1d/postprocessing/cosmo_scaling.py",
       "qualified_name": "CosmoScalingPlotter",
       "line": 93,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-046",
       "file": "cup1d/postprocessing/emulator_priors.py",
       "qualified_name": "EmulatorPriorPlotter",
       "line": 9,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-047",
       "file": "cup1d/postprocessing/historical_linear_power.py",
       "qualified_name": "HistoricalLinearPowerPlotter",
       "line": 17,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-048",
       "file": "cup1d/postprocessing/p1d.py",
       "qualified_name": "P1DBin",
       "line": 17,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-049",
       "file": "cup1d/postprocessing/p1d.py",
       "qualified_name": "P1DPlotter",
       "line": 39,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-050",
       "file": "cup1d/postprocessing/plotter.py",
       "qualified_name": "Plotter",
       "line": 14,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-051",
       "file": "cup1d/postprocessing/power_ratios.py",
       "qualified_name": "PowerRatioPlotter",
       "line": 11,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-052",
       "file": "cup1d/postprocessing/star_contours.py",
       "qualified_name": "StarContourPlotter",
       "line": 10,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-053",
       "file": "cup1d/postprocessing/variation_plotter.py",
       "qualified_name": "_ChainSpec",
       "line": 13,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-054",
       "file": "cup1d/postprocessing/variation_plotter.py",
       "qualified_name": "VariationPlotter",
       "line": 22,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-055",
       "file": "cup1d/theory/camb.py",
       "qualified_name": "CAMBModel",
       "line": 6,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-056",
       "file": "cup1d/theory/theory.py",
       "qualified_name": "Theory",
       "line": 17,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-057",
       "file": "cup1d/utils/hull.py",
       "qualified_name": "Hull",
       "line": 27,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     },
     {
       "id": "cup1d-class-058",
       "file": "cup1d/utils/rebinning.py",
       "qualified_name": "Rebinning",
       "line": 17,
-      "status": "pending",
-      "evidence": ""
+      "status": "verified_unchanged",
+      "evidence": "Class-level NumPy-style documentation reviewed against implementation."
     }
   ],
-  "validation": [],
-  "progress_note": "Completed cup1d concrete IGM mean-flux, thermal, pressure, and composite-history documentation; continuing P1D data interfaces."
+  "validation": [
+    "All plan entries reconciled: 576 corrected, 46 verified unchanged.",
+    "python -m compileall -q cup1d: passed.",
+    "git diff --check: passed.",
+    "sphinx-build -W -b html docs /tmp/cup1d-docstring-html: passed.",
+    "AST comparison against HEAD after removal of recognized docstrings: no executable AST differences."
+  ],
+  "progress_note": "Complete: every planned API item has been reconciled and final validation evidence is recorded."
 }

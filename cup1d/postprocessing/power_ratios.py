@@ -25,6 +25,21 @@ class PowerRatioPlotter:
         redshift=3.0,
         random_seed=None,
     ):
+        """Initialize Figure-22 power-ratio calculation settings.
+
+        Parameters
+        ----------
+        pivot_kms : float, default: 0.009
+            Common compressed-linear-power pivot in ``s / km``.
+        n_desi_samples : int, default: 20000
+            Maximum randomly selected DESI P1D samples for its band.
+        n_cmb_samples : int, default: 500
+            Maximum CMB chain samples used to compute a missing power cache.
+        redshift : float, default: 3
+            Redshift at which velocity-space linear power is evaluated.
+        random_seed : int, optional
+            Seed for reproducible chain subsampling.
+        """
         self.pivot_kms = pivot_kms
         self.n_desi_samples = n_desi_samples
         self.n_cmb_samples = n_cmb_samples
@@ -34,7 +49,18 @@ class PowerRatioPlotter:
 
     @staticmethod
     def load_power_samples(file_paths):
-        """Load one two-dimensional linear-power sample array per file."""
+        """Load cached linear-power arrays.
+
+        Parameters
+        ----------
+        file_paths : sequence of str or path-like
+            NumPy files containing one ``(n_samples, n_k)`` array each.
+
+        Returns
+        -------
+        list of ndarray
+            Cached velocity-space linear-power samples in file-path order.
+        """
         return [np.load(Path(file_path)) for file_path in file_paths]
 
     def load_data(
@@ -46,12 +72,28 @@ class PowerRatioPlotter:
         planck_root_dir=None,
         k_kms=None,
     ):
-        """Load all Figure-22 inputs directly from chains and files.
+        """Load all Figure-22 chains, DESI samples, and power-cache inputs.
 
-        Each element of ``chain_specs`` must define ``model``, ``data``, and
-        ``label``; it may optionally define ``linP_tag``.  The first chain is
-        the LCDM reference. ``desi_blobs_path`` points to the DESI ``blobs.npy``
-        file and ``blinding_path`` to its ``blinding_dr1.npy`` offsets.
+        Parameters
+        ----------
+        chain_specs : sequence of mapping
+            Planck chain specifications with ``model``, ``data``, and ``label``;
+            optional ``name`` and ``linP_tag`` select the stored chain.
+        desi_blobs_path, blinding_path : str or path-like
+            DESI ``blobs.npy`` and additive compressed-parameter offsets.
+        power_file_paths : sequence of str or path-like
+            Cache paths aligned with ``chain_specs``.  Missing files are
+            calculated and saved.
+        planck_root_dir : str or path-like, optional
+            Parent directory containing Planck chain releases.
+        k_kms : array_like, optional
+            Velocity-space wavenumber grid in ``s / km``; defaults to the
+            Figure-22 cache grid.
+
+        Returns
+        -------
+        PowerRatioPlotter
+            This loaded instance.
         """
         from cup1d.postprocessing.chains import planck
 
@@ -82,17 +124,41 @@ class PowerRatioPlotter:
 
     @staticmethod
     def default_power_kms_grid():
-        """Return the k grid used to generate the stored ``P_kms_*.npy`` files."""
+        """Return the Figure-22 velocity-space linear-power grid.
+
+        Returns
+        -------
+        ndarray
+            Logarithmically spaced wavenumbers in ``s / km`` used by the
+            distributed ``P_kms_*.npy`` caches.
+        """
         log10_k_min = -5.888706504390846
         log10_k_max = -0.41158524967118454
         log10_k_step = 0.0054826
         return 10 ** np.arange(log10_k_min, log10_k_max, log10_k_step)
 
     def load_or_create_power_samples(self, cmb_chains, file_paths, k_kms):
-        """Load cached power samples, computing and caching missing arrays.
+        """Load cached power samples or calculate missing arrays from CMB chains.
 
-        Missing files are generated from random samples of their corresponding
-        GetDist chain. ``n_cmb_samples`` controls the number of CAMB calls.
+        Parameters
+        ----------
+        cmb_chains : sequence of dict
+            Chain dictionaries containing GetDist ``samples`` objects.
+        file_paths : sequence of str or path-like
+            Cache paths aligned with ``cmb_chains``.
+        k_kms : array_like
+            Evaluation wavenumber grid in ``s / km``.
+
+        Returns
+        -------
+        list of ndarray
+            One linear-power array with shape ``(n_samples, len(k_kms))`` per
+            CMB chain, in velocity-space power units ``(km / s)**3``.
+
+        Raises
+        ------
+        ValueError
+            If chain and cache-path sequence lengths differ.
         """
         if len(cmb_chains) != len(file_paths):
             raise ValueError("cmb_chains and file_paths must have equal length")
@@ -112,7 +178,21 @@ class PowerRatioPlotter:
         return power_samples
 
     def _compute_power_samples(self, chain_samples, k_kms):
-        """Compute linear power at the configured redshift for chain samples."""
+        """Compute velocity-space linear power for a random CMB-chain subset.
+
+        Parameters
+        ----------
+        chain_samples : getdist.MCSamples
+            CMB posterior samples convertible to LaCE cosmology parameters.
+        k_kms : array_like
+            Wavenumbers in ``s / km``.
+
+        Returns
+        -------
+        ndarray
+            Linear power with shape ``(n_selected, len(k_kms))`` and units
+            ``(km / s)**3`` at :attr:`redshift`.
+        """
         from lace.cosmo.cosmology import Cosmology
 
         n_chain_samples = chain_samples.samples.shape[0]
@@ -160,6 +240,21 @@ class PowerRatioPlotter:
             Wavenumber grid of the precomputed linear-power arrays, in s/km.
         delta2_parameter, n_parameter : str
             Names of the amplitude and slope columns in the CMB chains.
+
+        Returns
+        -------
+        PowerRatioPlotter
+            This instance, marked ready for :meth:`plot`.
+
+        Raises
+        ------
+        ValueError
+            If aligned input sequences have inconsistent lengths, DESI sample
+            arrays have different shapes, or a power array does not match
+            ``k_kms``.
+        KeyError
+            If the reference CMB chain lacks either requested compressed
+            linear-power parameter.
         """
         if not (len(cmb_chains) == len(labels) == len(power_samples)):
             raise ValueError("cmb_chains, labels, and power_samples must have equal length")
@@ -198,9 +293,33 @@ class PowerRatioPlotter:
     def plot(self, panel_indices=None, figsize=(10, 12), fontsize=22, save_path=None):
         """Create the CMB power-ratio figure and return figure, axes, and data.
 
-        ``panel_indices`` groups CMB-chain indices into panels.  By default the
-        reference occupies the first panel, the next two extensions the second,
-        and all remaining extensions the third.
+        Parameters
+        ----------
+        panel_indices : sequence of sequence of int, optional
+            CMB-chain indices grouped into vertical panels. By default the
+            reference occupies the first panel, the next two extensions the
+            second, and remaining extensions the third.
+        figsize : tuple of float, default: (10, 12)
+            Matplotlib figure size in inches.
+        fontsize : float, default: 22
+            Font size used for axis labels, ticks, and legends.
+        save_path : str or path-like, optional
+            Output filename for a copy of the figure. No file is written when
+            omitted.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Created power-ratio figure.
+        ndarray of matplotlib.axes.Axes
+            One axis per requested panel.
+        dict
+            Plotted CMB and DESI bands, indexed by component name.
+
+        Raises
+        ------
+        RuntimeError
+            If :meth:`load_data` or :meth:`set_data` has not been called.
         """
         if not self._is_loaded:
             raise RuntimeError("call load_data before plot")
@@ -288,6 +407,11 @@ class PowerRatioPlotter:
             Data returned by :meth:`plot`.
         filename : str
             Name of the NumPy file, defaulting to the Figure 22 convention.
+
+        Returns
+        -------
+        pathlib.Path
+            Saved ``.npy`` file under ``data/zenodo``.
         """
         from cup1d.utils.utils import get_path_repo
 
@@ -297,7 +421,17 @@ class PowerRatioPlotter:
         return output_path
 
     def _add_desi_constraint(self, axes, figure_data):
-        """Add the DESI amplitude-and-slope band to every panel."""
+        """Add the DESI amplitude-and-slope band to every panel.
+
+        Parameters
+        ----------
+        axes : sequence of matplotlib.axes.Axes
+            Axes receiving the DESI pivot error bar and ratio band.
+        figure_data : dict
+            Mutable figure-data dictionary updated with a ``"desi_p1d"``
+            entry. Wavenumbers are in ``s / km`` and all ratios are
+            dimensionless.
+        """
         n_samples = min(self.n_desi_samples, self.desi_delta2_star.size)
         sample_indices = self.random_generator.choice(
             self.desi_delta2_star.size, size=n_samples, replace=False
@@ -352,7 +486,15 @@ class PowerRatioPlotter:
 
     @staticmethod
     def _add_scale_annotations(axis, fontsize):
-        """Mark the approximate Ly-alpha P1D and CMB scale ranges."""
+        """Mark the approximate Ly-alpha P1D and CMB scale ranges.
+
+        Parameters
+        ----------
+        axis : matplotlib.axes.Axes
+            Axis on which the scale-range lines and labels are drawn.
+        fontsize : float
+            Font size for the annotations.
+        """
         axis.plot([0.00125, 0.04], [0.92, 0.92], linewidth=2, color="k")
         axis.text(5e-3, 0.87, r"Ly$\alpha$ $P_\mathrm{1D}$", fontsize=fontsize)
         axis.plot([2.85e-5, 0.0025], [0.93, 0.93], linewidth=2, color="k")

@@ -205,7 +205,12 @@ class PredictionContext:
 
 @dataclass(frozen=True)
 class LikelihoodResult:
-    """Correlated Gaussian P1D likelihood diagnostics."""
+    """Correlated Gaussian P1D likelihood diagnostics.
+
+    Instances retain per-data-set residuals and chi-squared contributions,
+    total data chi-squared, prior contribution, and prediction validity
+    information for external likelihood callers.
+    """
     loglike: float
     chi2_data: float
     logdet_cov: float

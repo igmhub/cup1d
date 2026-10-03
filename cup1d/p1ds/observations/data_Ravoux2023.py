@@ -4,7 +4,11 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Ravoux2023(BaseDataP1D):
-    """Class containing P1D from Ravoux et al. (2023)."""
+    """Load the Ravoux et al. (2023) observed Ly-alpha P1D product.
+
+    The reader exposes its measurements, redshifts, and covariance blocks via
+    the shared :class:`BaseDataP1D` interface.
+    """
 
     def __init__(self, z_min=0, z_max=10, velunits=True):
         """Load the Ravoux et al. (2023) P1D measurement.

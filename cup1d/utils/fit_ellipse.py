@@ -28,9 +28,21 @@ def rho_from_axes(a, b, theta):
 
 
 def fit_ellipse(x, y, npts=200):
-    """
-    Fit an ellipse to scattered (x, y) points, ignoring NaNs.
-    Returns parametric fit (xfit, yfit).
+    """Fit a conic ellipse to finite scattered two-dimensional points.
+
+    Parameters
+    ----------
+    x, y : array_like
+        Coordinates of contour points. Paired NaNs are discarded.
+    npts : int, default: 200
+        Number of points in the returned parametric ellipse.
+
+    Returns
+    -------
+    xfit, yfit : ndarray
+        Parametric ellipse coordinates.
+    rho : float
+        Correlation implied by the fitted semi-axes and orientation.
     """
     # remove NaNs
     mask = ~(np.isnan(x) | np.isnan(y))
@@ -95,8 +107,26 @@ def plot_ellipse(
     color="C1",
     label="ellipse",
 ):
-    # Covariance matrix
-    """Delegate to :func:`cup1d.postprocessing.geometry.plot_ellipse`."""
+    """Plot a covariance ellipse via the shared geometry implementation.
+
+    Parameters
+    ----------
+    sigma1, sigma2 : float
+        Marginal standard deviations.
+    rho : float
+        Correlation coefficient.
+    mean : sequence of float, default: [1.0, 2.0]
+        Ellipse center.
+    ax : matplotlib.axes.Axes, optional
+        Target axis.
+    color, label : str
+        Matplotlib style forwarded to the shared plotting helper.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        Axis containing the ellipse.
+    """
     from cup1d.postprocessing.geometry import plot_ellipse as _plot
 
     return _plot(sigma1, sigma2, rho, mean, ax, color, label)

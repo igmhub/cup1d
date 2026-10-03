@@ -4,7 +4,11 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Irsic2017(BaseDataP1D):
-    """Class containing P1D from Irsic et al. (2017)."""
+    """Load the Irsic et al. (2017) observed Ly-alpha P1D product.
+
+    Measurements and covariance blocks are normalized to cup1d's native
+    velocity-space binned-data interface.
+    """
 
     def __init__(self, z_min=0, z_max=10, add_syst=True, ignore_zcov=True):
         """Load the Iršič et al. (2017) P1D measurement.

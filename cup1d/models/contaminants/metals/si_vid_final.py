@@ -14,7 +14,11 @@ def rstrength(lambda1, lambda2, f1, f2):
 
 
 class SiVid(Contaminant):
-    """Ma et al. silicon velocity-distortion multiplicative P1D model."""
+    """Ma et al. silicon velocity-distortion multiplicative P1D model.
+
+    It represents line-pair distortions as a redshift-dependent factor on the
+    modeled P1D.
+    """
 
     def __init__(
         self,

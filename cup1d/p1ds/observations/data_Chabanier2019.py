@@ -3,7 +3,11 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Chabanier2019(BaseDataP1D):
-    """Class containing P1D from Chabanier et al. (2019)."""
+    """Load the Chabanier et al. (2019) observed Ly-alpha P1D product.
+
+    The reader converts the distributed tabulation and covariance into the
+    common :class:`BaseDataP1D` redshift-bin representation.
+    """
 
     def __init__(self, z_min=0, z_max=10, add_syst=True):
         """Load the Chabanier et al. (2019) P1D measurement.

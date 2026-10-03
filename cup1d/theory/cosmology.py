@@ -6,7 +6,24 @@ from cup1d.utils.utils import get_path_repo
 
 
 def get_cosmology_from_label(cosmo_label="default"):
-    """Return cosmology from label."""
+    """Construct a small set of legacy cosmology variations by label.
+
+    Parameters
+    ----------
+    cosmo_label : str, default: "default"
+        One of the built-in labels such as ``"low_omch2"``, ``"mnu_03"``,
+        or ``"SHOES"``.
+
+    Returns
+    -------
+    lace.cosmo.cosmology.Cosmology
+        Requested cosmology.
+
+    Raises
+    ------
+    ValueError
+        If the label is not implemented.
+    """
     if cosmo_label == "default":
         return Cosmology()
     elif cosmo_label == "low_omch2":
@@ -32,15 +49,29 @@ def set_cosmo(
     return_all=False,
     nyx_version="models_Nyx_Mar2025_with_CGAN_val_3axes",
 ):
-    """Set fiducial cosmology
+    """Construct a fiducial cosmology from a named simulation or reference.
 
     Parameters
     ----------
-    cosmo_label : str
+    cosmo_label : str, default: "mpg_central"
+        Simulation, Planck, DESI, or reference-cosmology label implemented by
+        this module.
+    return_all : bool, default: False
+        For MPG and Nyx catalogue labels, return the complete stored catalogue
+        rather than the selected cosmology.
+    nyx_version : str, default: "models_Nyx_Mar2025_with_CGAN_val_3axes"
+        Nyx emulator catalogue version used for Nyx labels.
 
     Returns
     -------
-    cosmo : object
+    lace.cosmo.cosmology.Cosmology or dict
+        Selected cosmology, or the selected simulation-suite catalogue when
+        ``return_all`` is true for a catalogue-backed label.
+
+    Raises
+    ------
+    ValueError
+        If an input catalogue cannot be loaded or the label is unknown.
     """
     if (cosmo_label[:3] == "mpg") | (cosmo_label[:3] == "nyx"):
         if cosmo_label[:3] == "mpg":

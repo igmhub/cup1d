@@ -5,7 +5,18 @@ from cup1d.inference.analysis import Analysis
 
 
 def format_asym_error(arr):
-    """Format median + errors from percentiles (arr[0]=16th, arr[1]=50th, arr[2]=84th)."""
+    """Format 16th, 50th, and 84th percentiles as a LaTex asymmetric error.
+
+    Parameters
+    ----------
+    arr : array_like, shape (3,)
+        Lower percentile, median, and upper percentile in that order.
+
+    Returns
+    -------
+    str
+        Math-mode LaTex string of the form ``$median^{+upper}_{-lower}$``.
+    """
     lower = arr[1] - arr[0]
     upper = arr[2] - arr[1]
 
@@ -32,7 +43,28 @@ def plot_table_igm(
     chain="1",
     store_data=False,
 ):
-    """Plot table igm diagnostics."""
+    """Create an IGM summary figure and print its LaTex table rows.
+
+    Parameters
+    ----------
+    base : str or path-like
+        Parent directory containing the configured fitter products.
+    save_fig : str or path-like, optional
+        Directory passed to the IGM plotting routine.
+    data_label : str, default: "DESIY1_QMLE3"
+        cup1d P1D data-set label.
+    name_variation : str, optional
+        Analysis variation subdirectory; ``"nyx"`` selects the Nyx emulator.
+    chain : str, default: "1"
+        Chain subdirectory identifier.
+    store_data : bool, default: False
+        Return plotted numerical data when true.
+
+    Returns
+    -------
+    dict, optional
+        Data returned by the IGM plot when ``store_data`` is true.
+    """
     emulator_label = "lace_mpg"
     if name_variation == "nyx":
         emulator_label = "lace_nyx"

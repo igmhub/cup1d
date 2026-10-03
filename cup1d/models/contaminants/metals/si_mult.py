@@ -14,7 +14,11 @@ def rstrength(lambda1, lambda2, f1, f2):
 
 
 class SiMult(Contaminant):
-    """Multiplicative Si III/Si II cross-correlation P1D contamination model."""
+    """Multiplicative Si III/Si II cross-correlation P1D contamination model.
+
+    The model applies redshift-dependent metal distortion factors to the
+    uncontaminated Ly-alpha P1D.
+    """
 
     def __init__(
         self,

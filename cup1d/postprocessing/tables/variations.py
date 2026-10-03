@@ -7,10 +7,22 @@ from cup1d.utils.various_dicts import get_blob_value
 
 
 def match_precision(x, xp, xm, sig=2):
-    r"""
-    Return LaTeX string "$x^{+xp}_{-xm}$" with x and errors rounded so that
-    errors have `sig` significant figures.
-    If x is positive, add LaTeX thin space prefix for alignment: '\;\;\,'.
+    r"""Format a value and asymmetric errors with matched precision.
+
+    Parameters
+    ----------
+    x : float
+        Central value.
+    xp, xm : float
+        Positive and negative error magnitudes.
+    sig : int, default: 2
+        Significant figures retained for the largest error.
+
+    Returns
+    -------
+    str
+        LaTex math expression ``$x^{+xp}_{-xm}$``. Positive central values
+        receive thin-space padding for table alignment.
     """
     err = max(abs(xp), abs(xm))
     if err == 0:
@@ -31,7 +43,19 @@ def match_precision(x, xp, xm, sig=2):
 
 
 def format_last(val):
-    """Scientific notation if |val| < 1e-3 (and val != 0), else 4 decimals."""
+    """Format a scalar for the final variation-table column.
+
+    Parameters
+    ----------
+    val : float
+        Value to format.
+
+    Returns
+    -------
+    str
+        Two-decimal fixed notation, or LaTex scientific notation when
+        ``0 < abs(val) < 1e-2``.
+    """
     if val == 0:
         return "0.00"
     if abs(val) < 1e-2:
@@ -42,13 +66,22 @@ def format_last(val):
 
 
 def make_latex_table(table, color_threshold=[0.9655, 2.2957], colors=["yellow", "red"]):
-    r"""
-    Print aligned LaTeX rows from `table`.
-    Each row: [name, x1, x1p, x1m, x2, x2p, x2m, val3, val4, val5]
-    - columns 2 & 3: $value^{+err}_{-err}$; positive values get '\;\;\,' padding
-    - column 4 (val3) -> formatted as .2f, triggers coloring if < color_threshold
-    - column 5 (val4) -> formatted as .1f
-    - column 6 (val5) -> .4f or scientific if <1e-3
+    r"""Print aligned LaTex rows for variation-summary values.
+
+    Parameters
+    ----------
+    table : sequence of sequence
+        Rows in the order ``[name, x1, x1p, x1m, x2, x2p, x2m, val3, val4,
+        val5]``.
+    color_threshold : sequence of float, default: [0.9655, 2.2957]
+        Thresholds intended for optional row coloring based on ``val3``.
+    colors : sequence of str, default: ["yellow", "red"]
+        LaTex color names intended for the threshold regions.
+
+    Notes
+    -----
+    The current implementation deliberately disables the optional coloring
+    before printing, while retaining the arguments for backwards compatibility.
     """
     rows_plain = []
     for row in table:
@@ -113,7 +146,19 @@ def make_latex_table(table, color_threshold=[0.9655, 2.2957], colors=["yellow", 
 
 
 def format_last_column(values):
-    """Format last column with trailing zeros or LaTeX scientific notation."""
+    """Format and right-align values for a final LaTex table column.
+
+    Parameters
+    ----------
+    values : array_like
+        Numeric values to format.
+
+    Returns
+    -------
+    list of str
+        Fixed four-decimal or scientific-notation strings padded to a common
+        display width.
+    """
     formatted = []
     for val in values:
         if abs(val) >= 1e-3:
@@ -134,7 +179,24 @@ def format_column(
     one_decimal=False,
     two_decimals=False,
 ):
-    """Format column."""
+    """Format and right-align a numeric table column.
+
+    Parameters
+    ----------
+    values : array_like
+        Numeric values to format.
+    sigfigs : int, default: 2
+        Significant figures used when ``force_decimals`` is false.
+    force_decimals : bool, default: True
+        Use fixed decimal notation instead of significant-figure notation.
+    one_decimal, two_decimals : bool, default: False
+        Override decimal precision with one or two places respectively.
+
+    Returns
+    -------
+    list of str
+        Strings padded to the widest formatted value.
+    """
     formatted = []
     for val in values:
         if one_decimal:
@@ -151,7 +213,14 @@ def format_column(
 
 
 def table_variations(base):
-    """Execute table variations."""
+    """Print the fixed DESI DR1 analysis-variation comparison table.
+
+    Parameters
+    ----------
+    base : str or path-like
+        Parent output directory containing the hard-coded variation folders,
+        chain blobs, and summaries.
+    """
     variations = {
         "DESIY1_QMLE3_mpg": [
             "Fiducial",

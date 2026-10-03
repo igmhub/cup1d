@@ -5,7 +5,30 @@ from scipy.stats import chi2 as chi2_scipy
 
 
 def get_parameters(par, z, like, mle_cube):
-    """Return parameters."""
+    """Evaluate one fitted IGM or contaminant parameter at a redshift.
+
+    Parameters
+    ----------
+    par : str
+        Coefficient name registered by an IGM, metal, or HCD model.
+    z : float or array_like
+        Redshift or redshifts at which to evaluate the model.
+    like : cup1d.likelihood.likelihood.Likelihood
+        Likelihood supplying free-parameter metadata and fitted models.
+    mle_cube : array_like
+        Best-fit point in normalized sampling-cube coordinates.
+
+    Returns
+    -------
+    float or ndarray
+        Physical model value. Values of exponentially parameterized models are
+        returned in natural-log form for consistency with their coefficients.
+
+    Raises
+    ------
+    ValueError
+        If ``par`` is not provided by the supported fitted models.
+    """
     like_params = parameter_space.values_from_cube(like.free_params, mle_cube)
 
     models = [
@@ -27,7 +50,29 @@ def get_parameters(par, z, like, mle_cube):
 
 
 def reformat_cube(args, data, emulator, out_mle_cube, weak_priors=None):
-    """Reformat cube."""
+    """Map per-redshift at-a-time best fits into a common sampling cube.
+
+    Parameters
+    ----------
+    args : cup1d.inference.args.Args
+        Analysis configuration. Its baseline is updated in place for each
+        P1D redshift bin.
+    data : mapping
+        Input data with ``"P1Ds"`` and ``"extra_P1Ds"`` entries used to build
+        the at-a-time likelihoods.
+    emulator : object
+        Emulator passed to :func:`cup1d.inference.analysis.set_like`.
+    out_mle_cube : sequence of array_like
+        One normalized maximum-likelihood cube per P1D redshift bin.
+    weak_priors : mapping, optional
+        Redshift-indexed weak-prior centers and widths for free parameters.
+
+    Returns
+    -------
+    list of ndarray
+        At-a-time best-fit points represented in the free-parameter ordering
+        of the first redshift-bin likelihood.
+    """
     from cup1d.inference.analysis import set_like
 
     ii = 0
@@ -85,7 +130,24 @@ def reformat_cube(args, data, emulator, out_mle_cube, weak_priors=None):
 
 
 def print_results(like, out_chi2, out_mle_cube):
-    """Print goodness-of-fit statistics for independent redshift-bin fits."""
+    """Print goodness-of-fit statistics for independent redshift-bin fits.
+
+    Parameters
+    ----------
+    like : cup1d.likelihood.likelihood.Likelihood
+        Likelihood containing exactly one P1D data set.
+    out_chi2 : sequence of float
+        Best-fit chi-squared values, ordered by P1D redshift bin.
+    out_mle_cube : sequence of array_like
+        Best-fit sampling cubes aligned with ``out_chi2``. Their lengths set
+        the number of fitted degrees of freedom per bin.
+
+    Raises
+    ------
+    ValueError
+        If the likelihood contains multiple P1D data sets or more fit results
+        than redshift bins.
+    """
 
     if len(like.data) != 1:
         raise ValueError("print_results requires exactly one P1D data set")

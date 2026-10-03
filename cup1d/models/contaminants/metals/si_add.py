@@ -18,7 +18,11 @@ def rstrength(lambda1, lambda2, f1, f2):
 
 
 class SiAdd(Contaminant):
-    """Additive Si II cross-correlation contribution to the flux P1D."""
+    """Additive Si II cross-correlation contribution to the flux P1D.
+
+    Redshift-history coefficients control additive metal-power templates in
+    velocity-space units.
+    """
 
     def __init__(
         self,

@@ -15,7 +15,33 @@ def set_theory(
     fid_or_true="fid",
     zs=None,
 ):
-    """Construct a theory model for fiducial or synthetic-data settings."""
+    """Construct a configured theory model for fiducial or synthetic data.
+
+    Parameters
+    ----------
+    args : cup1d.configuration.args.Args
+        Analysis configuration supplying fiducial/true models and priors.
+    emulator : object
+        P1D emulator compatible with :class:`cup1d.theory.theory.Theory`.
+    free_parameters : sequence of str
+        Parameter names enabled in IGM, contaminant, and systematic models.
+    use_hull : bool, default: True
+        Enable emulator-domain hull checks in the constructed theory.
+    fid_or_true : {"fid", "true"}, default: "fid"
+        Select fiducial or synthetic-truth model settings.
+    zs : array_like, optional
+        Redshifts used for cosmology and fiducial IGM initialization.
+
+    Returns
+    -------
+    cup1d.theory.theory.Theory
+        Initialized theory model.
+
+    Raises
+    ------
+    ValueError
+        If ``fid_or_true`` is neither ``"fid"`` nor ``"true"``.
+    """
 
     if zs is None:
         zs = np.arange(2.0, 4.51, 0.1)

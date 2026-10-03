@@ -124,8 +124,11 @@ def load_data(folder, sim_label="l160_r25", hh=0.675, kmax=10):
 
 
 class Accel2_P1D(BaseMockP1D):
-    """Class to load an MP-Gadget simulation as a mock data object.
-    Can use PD2013 or Chabanier2019 covmats"""
+    """Load an ACCEL2 MP-Gadget simulation as a mock P1D data object.
+
+    The mock can inherit PD2013 or Chabanier2019 observational covariance
+    layouts while retaining the simulation's underlying P1D signal.
+    """
 
     def __init__(
         self,

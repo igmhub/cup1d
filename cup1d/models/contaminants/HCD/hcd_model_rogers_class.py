@@ -23,7 +23,11 @@ def fun_damping(k_kms, a, b):
 
 
 class HCD_Model_Rogers(Contaminant):
-    """Rogers-style redshift-dependent HCD damping contamination model."""
+    """Rogers-style redshift-dependent HCD damping contamination model.
+
+    The model evaluates a free coefficient history and maps it to the
+    multiplicative P1D correction for high-column-density absorbers.
+    """
 
     def __init__(
         self,

@@ -4,7 +4,11 @@ from cup1d.likelihood import parameter as likelihood_parameter
 
 
 class Contaminant(object):
-    """Base model for redshift-dependent contaminant coefficient histories."""
+    """Base model for redshift-dependent contaminant coefficient histories.
+
+    Subclasses share parameter construction, fiducial interpolation, and
+    coefficient evaluation while defining their physical P1D corrections.
+    """
 
     def __init__(
         self,

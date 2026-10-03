@@ -11,8 +11,11 @@ from cup1d.p1ds.observations import (
 
 
 class Gadget_P1D(BaseMockP1D):
-    """Class to load an MP-Gadget simulation as a mock data object.
-    Can use PD2013 or Chabanier2019 covmats"""
+    """Load an MP-Gadget simulation as a mock P1D data object.
+
+    The mock can use PD2013 or Chabanier2019 covariance layouts while
+    preserving the simulation P1D prediction as its central measurement.
+    """
 
     def __init__(
         self,

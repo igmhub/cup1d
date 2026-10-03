@@ -35,7 +35,34 @@ class Theory:
         use_star_priors=None,
         cosmo_priors=None,
     ):
-        """Initialize the theory with an emulator and optional model objects."""
+        """Initialize theory components and emulator training metadata.
+
+        Parameters
+        ----------
+        emulator : object
+            Required P1D emulator exposing its parameter list and simulation
+            training cube.
+        model_igm, model_cont, model_syst : object, optional
+            Preconfigured IGM, contaminant, and systematic models. Defaults
+            are constructed when omitted.
+        use_hull : bool, default: True
+            Enable checks against the emulator's admitted training domain.
+        verbose : bool, default: False
+            Retained compatibility verbosity flag.
+        z_star : float, default: 3.0
+            Redshift of compressed linear-power quantities.
+        kp_kms : float, default: 0.009
+            Compressed-power pivot in ``s / km``.
+        use_star_priors : mapping, optional
+            Optional bounds on compressed linear-power parameters.
+        cosmo_priors : mapping, optional
+            Cosmological prior bounds overriding training-derived limits.
+
+        Raises
+        ------
+        ValueError
+            If no emulator is supplied.
+        """
 
         self.verbose = verbose
 
@@ -71,7 +98,18 @@ class Theory:
             self.model_syst = model_syst
 
     def set_fid_cosmo(self, zs, cosmo_label=None, cosmo_params_dict=None):
-        """Set the fiducial LaCE cosmology and precompute its quantities."""
+        """Set the fiducial cosmology and precompute redshift-dependent values.
+
+        Parameters
+        ----------
+        zs : array_like
+            Requested redshifts; ``z_star`` is added automatically.
+        cosmo_label : str, optional
+            LaCE cosmology label.
+        cosmo_params_dict : mapping, optional
+            Explicit cosmological parameters, overriding a label as defined by
+            :class:`lace.cosmo.cosmology.Cosmology`.
+        """
 
         zs = np.unique(np.concatenate([np.atleast_1d(zs), [self.z_star]]))
         cosmo = cosmology.Cosmology(
@@ -100,6 +138,24 @@ class Theory:
     def _parameter_values(like_params):
         """Unwrap a public parameter point into values used by theory models.
 
+        Parameters
+        ----------
+        like_params : mapping, optional
+            Named numerical values or public parameter dictionaries.
+
+        Returns
+        -------
+        dict or None
+            Values-only parameter mapping, preserving scalar or columnar
+            arrays; ``None`` remains ``None``.
+
+        Raises
+        ------
+        TypeError
+            If a non-mapping, non-``None`` point is supplied.
+
+        Notes
+        -----
         Public cup1d calls accept a named parameter point, where each entry
         may include ``value``, prior limits, and other metadata. Theory and
         its component models only need the numerical values. Values-only
@@ -121,6 +177,14 @@ class Theory:
     def set_cosmo_priors(self, extra_factor=1.25):
         """Resolve cosmological prior limits for the fiducial cosmology.
 
+        Parameters
+        ----------
+        extra_factor : float, default: 1.25
+            Multiplicative expansion applied to training-derived primordial
+            bounds before explicit configuration overrides.
+
+        Notes
+        -----
         Primordial limits are inferred from the emulator training set unless
         explicitly supplied through ``Args.cosmo_priors``. Background limits
         always come from that Args mapping.
@@ -207,6 +271,19 @@ class Theory:
     def get_cosmology(self, like_params=None):
         """Return the LaCE cosmology corresponding to likelihood parameters.
 
+        Parameters
+        ----------
+        like_params : mapping, optional
+            Public or values-only cosmological parameter point.
+
+        Returns
+        -------
+        lace.cosmo.base_cosmology.BaseCosmology
+            Rescaled fiducial cosmology when the background is compatible, or
+            a freshly constructed full LaCE cosmology otherwise.
+
+        Notes
+        -----
         ``RescaledCosmology`` validates whether the requested parameters
         preserve the background. If they do not, construct a full cosmology
         and let LaCE obtain a new CAMB result.
@@ -230,7 +307,20 @@ class Theory:
         return cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
 
     def get_linP_Mpc_params(self, zs, like_params=None):
-        """Get emulator linear-power parameters directly from LaCE."""
+        """Get emulator linear-power parameters directly from LaCE.
+
+        Parameters
+        ----------
+        zs : array_like
+            Redshifts at which to evaluate compressed linear power.
+        like_params : mapping, optional
+            Cosmological parameter point.
+
+        Returns
+        -------
+        list of dict
+            Compressed linear-power quantities in redshift order.
+        """
 
         cosmo = self.get_cosmology(like_params)
         return [
@@ -239,7 +329,23 @@ class Theory:
 
     @staticmethod
     def _is_columnar_parameter_mapping(like_params):
-        """Return whether a parameter mapping carries a leading batch axis."""
+        """Return whether a parameter mapping carries a leading batch axis.
+
+        Parameters
+        ----------
+        like_params : mapping
+            Scalar or one-dimensional parameter arrays.
+
+        Returns
+        -------
+        bool
+            True for consistent one-dimensional columns.
+
+        Raises
+        ------
+        ValueError
+            If parameter dimensions are mixed or batch lengths differ.
+        """
 
         if not isinstance(like_params, Mapping) or not like_params:
             return False
@@ -261,6 +367,25 @@ class Theory:
     ):
         """Build emulator inputs for scalar or columnar parameter mappings.
 
+        Parameters
+        ----------
+        zs : array_like
+            Evaluation redshifts.
+        like_params : mapping, optional
+            Scalar or columnar parameter point.
+        return_M_of_z : bool, default: True
+            Include ``H(z)/(1+z)`` conversions in the return value.
+        return_blob : bool, default: False
+            Include compressed cosmology summary values.
+
+        Returns
+        -------
+        dict or tuple
+            Emulator input arrays, optionally accompanied by conversions and
+            summary blobs. Batched arrays have leading ``(n_batch, n_z)``.
+
+        Notes
+        -----
         Scalar values preserve the historical return shapes.  A mapping whose
         values all have shape ``(n_batch,)`` is dispatched to
         :meth:`get_emulator_calls_batch`, returning inputs and conversions with
@@ -331,6 +456,26 @@ class Theory:
     def get_emulator_calls_batch(self, zs, like_params):
         """Build batched emulator inputs with shape ``(n_batch, n_z)``.
 
+        Parameters
+        ----------
+        zs : array_like
+            Evaluation redshifts.
+        like_params : mapping of array_like
+            Values with shared shape ``(n_batch,)``.
+
+        Returns
+        -------
+        tuple
+            ``(emu_call, M_of_z, blobs)`` with batch-leading arrays.
+
+        Raises
+        ------
+        ValueError
+            If the point is empty or columns are not one-dimensional and equal
+            in length.
+
+        Notes
+        -----
         The background/linear-power rescaling is intentionally evaluated once
         per point: cup1d analyses use LaCE's inexpensive
         ``RescaledCosmology`` path after setup, not repeated CAMB calls.  IGM
@@ -400,7 +545,14 @@ class Theory:
         return emu_call, M_of_z, blobs
 
     def get_blobs_dtype(self):
-        """Return the dtype of the cosmological summary returned by the fitter."""
+        """Return field specifications for fitter cosmology summary blobs.
+
+        Returns
+        -------
+        list of tuple
+            ``(field_name, float)`` entries for compressed power, growth, and
+            Hubble summaries.
+        """
 
         return [
             ("Delta2_star", float),
@@ -412,7 +564,19 @@ class Theory:
         ]
 
     def get_blob(self, cosmo=None):
-        """Return extra information (blob) for the fitter."""
+        """Return compressed cosmology information for fitter storage.
+
+        Parameters
+        ----------
+        cosmo : lace.cosmo.base_cosmology.BaseCosmology, optional
+            Cosmology to summarize. Missing input returns all-NaN placeholders.
+
+        Returns
+        -------
+        tuple
+            ``Delta2_star``, ``n_star``, ``alpha_star``, growth rate, Hubble
+            slope, and ``H0`` in :meth:`get_blobs_dtype` order.
+        """
 
         if cosmo is None:
             number_of_blobs = len(self.get_blobs_dtype())
@@ -443,7 +607,18 @@ class Theory:
         )
 
     def get_blob_for_parameters(self, like_params):
-        """Return a blob for a public parameter point or values-only mapping."""
+        """Return a fitter blob for a public or values-only parameter point.
+
+        Parameters
+        ----------
+        like_params : mapping
+            Cosmological parameter point.
+
+        Returns
+        -------
+        tuple
+            Summary values returned by :meth:`get_blob`.
+        """
 
         return self.get_blob(self.get_cosmology(like_params))
 
@@ -460,7 +635,26 @@ class Theory:
         remove=None,
         return_contaminants=False,
     ):
-        """Emulate P1D in km/s with explicitly named inverse-km/s input."""
+        """Evaluate the P1D with an explicitly named velocity-k argument.
+
+        Parameters
+        ----------
+        zs : array_like
+            Redshifts corresponding to ``k_ikms``.
+        k_ikms : array_like or sequence of array_like
+            Velocity-space wavenumbers in ``s / km``.
+        like_params : mapping, optional
+            Scalar or batched parameter point.
+        return_covar, return_blob, return_emu_params, apply_hull, hires,
+        remove, return_contaminants
+            Passed unchanged to :meth:`get_p1d_kms`.
+
+        Returns
+        -------
+        object
+            P1D prediction or the requested augmented result from
+            :meth:`get_p1d_kms`.
+        """
         return self.get_p1d_kms(
             zs,
             k_ikms,
@@ -477,6 +671,30 @@ class Theory:
     def get_p1d_kms(self, zs, k_kms, like_params=None, **kwargs):
         """Return scalar or batched P1D according to parameter-array shape.
 
+        Parameters
+        ----------
+        zs : array_like
+            P1D redshifts.
+        k_kms : sequence of array_like
+            Per-redshift wavenumber grids in ``s / km``.
+        like_params : mapping, optional
+            Scalar values or same-length batch columns.
+        **kwargs
+            Scalar-path output controls. The batch path accepts only ``remove``.
+
+        Returns
+        -------
+        list or object
+            Scalar-path P1D output, or a list of arrays with shape
+            ``(n_batch, n_k_z)`` for columnar parameters.
+
+        Raises
+        ------
+        ValueError
+            If unsupported scalar-path controls are supplied for a batch.
+
+        Notes
+        -----
         A scalar parameter mapping follows the historical API. A columnar
         mapping with values shaped ``(n_batch,)`` returns a list over redshift
         whose items have shape ``(n_batch, n_k_z)``.
@@ -502,7 +720,37 @@ class Theory:
         remove=None,
         return_contaminants=False,
     ):
-        """Emulate the P1D in velocity units for the requested redshifts."""
+        """Emulate a scalar P1D in velocity units for requested redshifts.
+
+        Parameters
+        ----------
+        zs : array_like
+            Evaluation redshifts.
+        k_kms : sequence of array_like
+            Per-redshift grids in ``s / km``.
+        like_params : mapping, optional
+            Scalar physical parameter values.
+        return_covar : bool, default: False
+            Include emulator covariance placeholders in the output.
+        return_blob : bool, default: True
+            Include compressed cosmology summary values.
+        return_emu_params : bool, default: False
+            Include constructed emulator input parameters.
+        apply_hull : bool, default: True
+            Reject points outside the emulator training hull.
+        hires : bool, default: False
+            Select the high-resolution hull when enabled.
+        remove : mapping, optional
+            Contaminant removal flags passed to the contamination model.
+        return_contaminants : bool, default: False
+            Include term-by-term contamination dictionaries.
+
+        Returns
+        -------
+        list, tuple, or None
+            P1D arrays, optionally with requested auxiliary outputs. Returns
+            ``None`` when a star prior or hull rejects the parameter point.
+        """
 
         zs = np.atleast_1d(zs)
         like_params = {} if like_params is None else like_params
@@ -671,6 +919,24 @@ class Theory:
     def _get_p1d_kms_batch(self, zs, k_kms, like_params, remove=None):
         """Evaluate LaCE P1D for a columnar batch, returning ``[(batch, k_z)]``.
 
+        Parameters
+        ----------
+        zs : array_like
+            Evaluation redshifts.
+        k_kms : sequence of array_like
+            Per-redshift wavenumber grids in ``s / km``.
+        like_params : mapping of array_like
+            Physical parameter columns with common shape ``(n_batch,)``.
+        remove : mapping, optional
+            Contaminant removal flags.
+
+        Returns
+        -------
+        list of ndarray
+            One P1D array of shape ``(n_batch, n_k_z)`` per redshift.
+
+        Notes
+        -----
         This path flattens batch and redshift for the GP emulator; ragged data
         grids remain a list over redshift. ForestFlow keeps its dedicated
         latent-index batch path until its linear-theory wrapper accepts a
@@ -704,7 +970,13 @@ class Theory:
         return [(cont["cont_HCD"][iz] * cont["cont_mul_metals"][iz] * cont["IC_corr"][iz] * p_kms[iz] + cont["cont_add_metals"][iz]) * syst[iz] for iz in range(n_z)]
 
     def get_parameters(self):
-        """Return all likelihood parameters, including fixed parameters."""
+        """Return all theory, IGM, contamination, and systematic parameters.
+
+        Returns
+        -------
+        list of dict
+            Parameter metadata including fixed and sampled parameters.
+        """
 
         # LaCE provides the fiducial values; Args provides the prior limits.
         cosmology = self.fid_cosmo["cosmo"]

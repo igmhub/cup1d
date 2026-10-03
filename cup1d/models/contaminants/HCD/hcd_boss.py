@@ -27,7 +27,12 @@ def fun_cont(damp, k):
 
 
 class HCD_BOSS(Contaminant):
-    """BOSS HCD multiplicative correction based on Walther et al. (2024)."""
+    """BOSS HCD multiplicative correction based on Walther et al. (2024).
+
+    The model parameterizes the residual high-column-density absorber effect
+    on the velocity-space flux P1D and exposes its redshift evolution through
+    the common contaminant interface.
+    """
 
     def __init__(
         self,

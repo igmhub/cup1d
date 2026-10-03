@@ -11,51 +11,31 @@ def get_training_hc(
     emu_params=None,
     nyx_version="models_Nyx_Mar2025_with_CGAN_val_3axes",
 ):
-    """
-    Loads and processes the training data for the emulator, including cosmological and IGM parameters.
+    """Load simulator cosmology and IGM histories used for emulator domains.
 
-    This function reads the relevant cosmological and IGM history files for the specified simulation suite
-    (`mpg` or `nyx`), extracts the parameters needed for the emulator, and organizes them into a structure
-    suitable for training. It returns the parameters used for training, the associated data points, and the raw
-    cosmological and IGM data.
+    Parameters
+    ----------
+    sim_suite : {"mpg", "nyx"}
+        Simulation suite whose stored histories are loaded.
+    emu_params : sequence of str, optional
+        Cosmology-parameter selection. Its inclusion of ``"alpha_p"`` selects
+        the three-parameter Nyx-style cosmology input.
+    nyx_version : str, default: "models_Nyx_Mar2025_with_CGAN_val_3axes"
+        Nyx cosmology catalogue version.
 
-    Parameters:
-    -----------
-    sim_suite : str
-        The simulation suite to use, either "mpg" or "nyx". Determines which files are loaded and processed.
-
-    emu_params : list of str, optional, default=None
-        A list of parameters to use for the cosmological emulator. If not provided, default parameters are
-        selected based on the simulation suite. Possible values are `["Delta2_p", "n_p"]` for "mpg" and
-        `["Delta2_p", "n_p", "alpha_p"]` for "nyx".
-
-    nyx_version : str, optional, default="Jul2024"
-        The version of the NYX simulation to use. Only used if `sim_suite` is "nyx".
-
-    Returns:
-    --------
-    hc_params : list of str
-        The list of parameters used for training the emulator, combining both cosmological and IGM parameters.
-
-    hc_points : numpy.ndarray
-        A 2D array where each row represents a set of values for the cosmological and IGM parameters used for training.
-
-    cosmo_all : list of dict
-        The raw cosmological data loaded from the emulator files. This includes the simulation parameters and labels.
-
-    igm_all : dict
-        The raw IGM history data loaded from the IGM history files. This includes the IGM parameters for each simulation.
-
-    Raises:
+    Returns
     -------
-    ValueError
-        If the simulation suite is not recognized or if any of the required files are missing.
+    hc_params : list of str
+        Ordered emulator-domain parameter names.
+    hc_points : ndarray, shape (n_training_rows, n_parameters)
+        Concatenated cosmology and IGM training inputs.
+    cosmo_all, igm_all : dict
+        Raw stored cosmology and IGM-history mappings.
 
-    Notes:
-    -----
-    - The function expects specific files for "mpg" and "nyx" simulations (cosmological and IGM history data).
-      If any of these files are not found, it will raise a `ValueError` with a suggestion on how to generate them.
-    - The cosmological parameters and IGM parameters are extracted and returned in a format suitable for training an emulator.
+    Raises
+    ------
+    ValueError
+        If the suite is unsupported or a required stored product is missing.
     """
 
     # get name of files storing cosmo and igm
@@ -151,18 +131,18 @@ def get_training_hc(
 
 
 def load_chains_for_cosmopower(fname):
-    """
-    Load chains from a file.
+    """Load cup1d fitter samples into a CosmoPower-compatible table.
 
-    Parameters:
-    -----------
-    path : str
-        The path to the file containing the chains.
+    Parameters
+    ----------
+    fname : str or path-like
+        Saved fitter-result ``.npy`` file.
 
-    Returns:
-    --------
-    chains : numpy.ndarray
-        The loaded chains.
+    Returns
+    -------
+    pandas.DataFrame
+        Physical sampled parameters, compressed power summaries, and fixed
+        fiducial background quantities.
     """
 
     import pandas as pd

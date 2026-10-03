@@ -4,7 +4,22 @@ import numpy as np
 
 
 def purge_chains(ln_prop_chains, nsplit=4, abs_diff=15):
-    """Purge emcee chains that have not converged"""
+    """Select walkers with stable, sufficiently high log-probability histories.
+
+    Parameters
+    ----------
+    ln_prop_chains : ndarray
+        Chain log-probabilities with sampling steps on axis zero.
+    nsplit : int, default: 4
+        Number of temporal chunks used for stability checks.
+    abs_diff : float, default: 15
+        Allowed chunk variation and distance below the global median.
+
+    Returns
+    -------
+    keep, keep_not : ndarray
+        Walker indices satisfying or failing both convergence heuristics.
+    """
     minval = np.median(ln_prop_chains) - abs_diff
     print(minval)
     # split each walker in nsplit chunks
@@ -38,8 +53,17 @@ def purge_chains(ln_prop_chains, nsplit=4, abs_diff=15):
 
 
 def is_number_string(value):
-    """
-    Check if the input string represents a valid number (integer or float).
+    """Return whether a value can be converted to a floating-point number.
+
+    Parameters
+    ----------
+    value : object
+        Candidate numeric representation.
+
+    Returns
+    -------
+    bool
+        Whether ``float(value)`` succeeds.
     """
     try:
         float(value)  # Try to convert to a float
@@ -70,14 +94,33 @@ def split_string(s):
 
 # Function to generate n discrete colors from any continuous colormap
 def get_discrete_cmap(n, base_cmap="jet"):
-    """Delegate to :func:`cup1d.postprocessing.style.get_discrete_cmap`."""
+    """Construct a discrete Matplotlib colormap through the style helper.
+
+    Parameters
+    ----------
+    n : int
+        Number of colors.
+    base_cmap : str, default: "jet"
+        Matplotlib colormap name.
+
+    Returns
+    -------
+    matplotlib.colors.ListedColormap
+        Discrete sampled colormap.
+    """
     from cup1d.postprocessing.style import get_discrete_cmap as _plot
 
     return _plot(n, base_cmap)
 
 
 def mpi_hello_world():
-    """Print an MPI communicator greeting from every rank."""
+    """Print an MPI communicator greeting from every rank.
+
+    Requires
+    --------
+    mpi4py
+        Available MPI Python bindings.
+    """
     from mpi4py import MPI
 
     # Get the MPI communicator
@@ -92,13 +135,26 @@ def mpi_hello_world():
 
 
 def create_print_function(verbose=True):
-    """Create a function to print messages"""
+    """Create a rank-zero MPI-aware print function.
+
+    Parameters
+    ----------
+    verbose : bool, default: True
+        Retained compatibility argument; per-call verbosity controls output.
+
+    Returns
+    -------
+    callable
+        Function accepting ``*args`` and a ``verbose`` keyword. It prints only
+        from rank zero.
+    """
 
     from mpi4py import MPI
 
     mpi_rank = MPI.COMM_WORLD.Get_rank() if MPI.COMM_WORLD.Get_size() > 1 else 0
 
     def print_new(*args, verbose=True):
+        """Print arguments from rank zero when per-call verbosity is enabled."""
         if verbose and mpi_rank == 0:
             print(*args, flush=True)
         else:
@@ -108,33 +164,22 @@ def create_print_function(verbose=True):
 
 
 def get_path_repo(name_repo):
-    """
-    Returns the file path to the root directory of a specified repository.
+    """Return the installed source root of a supported IGMHub package.
 
-    This function checks the name of the repository and imports the corresponding module
-    (`cup1d` or `lace`) to obtain the directory path. If the repository name matches a part
-    of the path, it returns the path directly; otherwise, it appends the repository name to the
-    path and returns the resulting full path.
-
-    Parameters:
+    Parameters
     ----------
-    name_repo : str
-        The name of the repository. Expected values are "cup1d" or "lace".
+    name_repo : {"cup1d", "lace"}
+        Package whose repository root is requested.
 
-    Returns:
+    Returns
     -------
     str
-        The file path to the root directory of the specified repository.
+        Absolute source-root path.
 
-    Raises:
+    Raises
     ------
     ImportError
-        If the specified repository name is not recognized, this function will raise an ImportError.
-
-    Notes:
-    -----
-    - The function uses the `__path__` attribute of the imported repository modules to determine the root directory.
-    - The repository name should exactly match one of the recognized values ("cup1d" or "lace").
+        If the repository name is unsupported.
     """
     if name_repo == "cup1d":
         import cup1d

@@ -3,7 +3,11 @@ from cup1d.likelihood import parameter as likelihood_parameter
 
 
 class HCD_Model_McDonald2005(object):
-    """Model HCD contamination following McDonald et al. (2005)."""
+    """Model HCD contamination following McDonald et al. (2005).
+
+    This legacy parameterization supplies a multiplicative correction to the
+    Ly-alpha P1D for damped and sub-damped absorption systems.
+    """
 
     def __init__(
         self,

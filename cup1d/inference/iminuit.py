@@ -6,7 +6,13 @@ from cup1d.likelihood import parameter as parameter_space
 
 
 class IminuitMinimizer(object):
-    """Adapt a cup1d likelihood to iminuit's unit-cube minimizer interface."""
+    """Adapt a cup1d likelihood to iminuit's bounded unit-cube interface.
+
+    The adapter translates unit-cube coordinates to physical likelihood
+    parameters, evaluates chi-squared, and exposes Minuit-compatible named
+    objective arguments. It retains the likelihood and fitting configuration
+    required to initialize and run iminuit optimizations.
+    """
 
     def __init__(self, like, ini_values=None, error=0.02, verbose=False):
         """Initialize iminuit with a cup1d likelihood and unit-cube values.

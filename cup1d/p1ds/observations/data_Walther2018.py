@@ -4,7 +4,11 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Walther2018(BaseDataP1D):
-    """Class containing P1D from Walther et al. (2018)."""
+    """Load the Walther et al. (2018) observed Ly-alpha P1D product.
+
+    Measurements and uncertainty information are mapped into the shared
+    velocity-space P1D data-container interface.
+    """
 
     def __init__(self, kmax_kms=1.0, z_min=0, z_max=10, diag_cov=True):
         """Load the Walther et al. (2018) P1D measurement.

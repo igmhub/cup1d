@@ -4,7 +4,20 @@ from cup1d.utils.various_dicts import param_dict
 
 
 def format_value_with_error(m, ep, em):
-    """Format value with error."""
+    """Format a value and asymmetric errors as a LaTex math expression.
+
+    Parameters
+    ----------
+    m : float
+        Central value.
+    ep, em : float
+        Positive and negative error magnitudes.
+
+    Returns
+    -------
+    str
+        Formatted expression, using scientific notation for small errors.
+    """
     if ep == 0 or em == 0 or np.isnan(ep) or np.isnan(em):
         return f"${m:.2f}^{{+{ep:.2f}}}_{{-{em:.2f}}}$"
 
@@ -25,7 +38,13 @@ def format_value_with_error(m, ep, em):
 
 
 def table_nuisance(folder_variation):
-    """Execute table nuisance."""
+    """Print paired LaTex nuisance-parameter summary rows from a chain folder.
+
+    Parameters
+    ----------
+    folder_variation : str or path-like
+        Folder accepted by :func:`cup1d.postprocessing.plots_corner.prepare_data`.
+    """
     labels, lnprob, dat, priors, dat_Asns = prepare_data(folder_variation)
 
     dat = dat.reshape(-1, dat.shape[-1])
