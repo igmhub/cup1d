@@ -47,3 +47,24 @@ def test_native_scalar_external_order_and_return_contract():
     assert native[1]==(0.,)*6
     assert native[-1][0]["IC_corr"][0]==5.
     assert terms[0]["p1d_tot_kms"]==native[-1][0]["p1d_tot_kms"]
+
+
+def test_public_external_coefficient_route_returns_immutable_rows():
+    """Supplied coefficients are projected without invoking an emulator."""
+    from cup1d.likelihood.external import PredictionGroup, PredictionRequest, project_arinyo_request
+    from lya_interface.cosmology import CobayaCosmologySnapshot
+
+    z = np.array([2.5])
+    k = np.geomspace(.001, 100., 512)
+    snapshot = CobayaCosmologySnapshot(z, k, np.tile(1e3*k**-2.5, (1, 1)), [250.], [.95])
+    request = PredictionRequest((PredictionGroup("fixture", (2.5,), ((.001, .002, .003),)),), "fixture")
+    coefficients = {2.5: dict(bias=-.15, bias_eta=-.2, q1=.2, q2=.01,
+                             kvav=.5, av=.3, bv=1.2, kp=8.)}
+    result = project_arinyo_request(request, snapshot, coefficients,
+                                    projection={"n_k_perp": 24, "k_perp_max_iMpc": 10.},
+                                    kmax_iMpc=5.)
+    assert result["fixture"][0].shape == (3,)
+    assert np.all(np.isfinite(result["fixture"][0]))
+    assert not result["fixture"][0].flags.writeable
+    with np.testing.assert_raises(ValueError):
+        result["fixture"][0].setflags(write=True)

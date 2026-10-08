@@ -3,11 +3,103 @@
 from dataclasses import dataclass
 import hashlib
 import json
+from types import MappingProxyType
 
 import numpy as np
 from scipy.linalg import cho_solve
 
 from cup1d.utils.rebinning import Rebinning
+
+
+def project_arinyo_request(request, snapshot, arinyo, projection=None,
+                           kmax_iMpc=np.inf, integrator=None, *,
+                           model=None, linear=None):
+    """Project externally supplied ForestFlow coefficients to raw P1D.
+
+    Parameters
+    ----------
+    request : PredictionRequest
+        Immutable data-grid contract in velocity units.
+    snapshot : object
+        Point-specific cosmology exposing ``get_dkms_diMpc`` and
+        ``validate_k``.
+    arinyo : mapping
+        Redshift-indexed named ForestFlow Arinyo coefficients. No emulator is
+        constructed or evaluated by this function.
+    projection : mapping, optional
+        Keyword arguments for ForestFlow's ``P1DIntegrator``.
+    kmax_iMpc : float, default=numpy.inf
+        Largest supported parallel wavenumber in 1/Mpc.
+    integrator : forestflow.statistics.p1d.P1DIntegrator, optional
+        Existing projection integrator. Supplying it retains its bounded
+        geometry cache; otherwise one is built from ``projection``.
+    model : object, optional
+        Existing object exposing ``P3D_Mpc_kpar_kperp``.  This compatibility
+        hook lets interface callers retain an already constructed ForestFlow
+        model; ordinary callers leave it unset.
+    linear : object, optional
+        Matching linear-theory adapter used with ``model``.  When omitted, a
+        point-specific adapter is constructed from ``snapshot``.
+
+    Returns
+    -------
+    mapping
+        Immutable dataset-indexed raw P1D arrays in km/s units, preserving
+        ragged requested grids and their original group/redshift order.
+
+    Raises
+    ------
+    ValueError
+        If a requested grid exceeds declared coverage or projected power is
+        non-finite/non-positive.
+
+    Notes
+    -----
+    ForestFlow is imported lazily, keeping ordinary cup1d analyses independent
+    of the optional external-coefficient route.
+    """
+    from forestflow.model.arinyo import ArinyoModel
+    from forestflow.model.linear import LinearTheoryGrid
+    from forestflow.statistics.p1d import P1DIntegrator, P1D_Mpc
+
+    projection = {} if projection is None else dict(projection)
+    keys = list(dict.fromkeys((z, k) for group in request.groups
+                              for z, k in zip(group.redshifts, group.k_ikms)))
+    if not keys:
+        raise ValueError("external coefficient projection requires P1D grids")
+    zs = np.asarray([z for z, _ in keys], dtype=float)
+    lengths = np.asarray([len(k) for _, k in keys], dtype=int)
+    conversion = np.asarray(snapshot.get_dkms_diMpc(zs), dtype=float)
+    k_iMpc = np.empty((len(keys), int(lengths.max())))
+    for index, (_, k) in enumerate(keys):
+        row = np.asarray(k, dtype=float) * conversion[index]
+        if row.max() > kmax_iMpc:
+            raise ValueError("parallel k outside declared external-coefficient coverage")
+        k_iMpc[index, :len(row)] = row
+        k_iMpc[index, len(row):] = row[-1]
+    integrator = P1DIntegrator(**projection) if integrator is None else integrator
+    for cutoff in (integrator.k_perp_iMpc[0], integrator.k_perp_iMpc[-1]):
+        snapshot.validate_k(np.sqrt(k_iMpc**2 + cutoff**2))
+    names = next(iter(arinyo.values())).keys()
+    parameters = {name: np.asarray([arinyo[z][name] for z in zs])[:, None, None]
+                  for name in names}
+    model = ArinyoModel(fiducial_cosmology=snapshot) if model is None else model
+    linear = LinearTheoryGrid(z=zs, cosmology=snapshot) if linear is None else linear
+    projected = P1D_Mpc(linear, zs, k_iMpc, model.P3D_Mpc_kpar_kperp, parameters,
+                        integrator=integrator) * conversion[:, None]
+    if not np.all(np.isfinite(projected)) or np.any(projected <= 0):
+        raise ValueError("non-finite/nonpositive external-coefficient projection")
+    by_key = {}
+    for index, key in enumerate(keys):
+        # Own-data arrays can have WRITEABLE re-enabled.  A bytes-backed
+        # view makes the provider product genuinely immutable without taking
+        # a dependency on lya_interface's helper.
+        values = np.asarray(projected[index, :lengths[index]], dtype=np.float64)
+        row = np.frombuffer(values.tobytes(), dtype=np.float64).reshape(values.shape)
+        by_key[key] = row
+    return MappingProxyType({group.identifier: tuple(by_key[(z, k)]
+                            for z, k in zip(group.redshifts, group.k_ikms))
+                            for group in request.groups})
 
 
 def fingerprint(value):
