@@ -1,0 +1,6 @@
+# CM2026 DR1 baseline using the ForestFlow MPG emulator.
+#
+# All data selection, nuisance modelling, priors, and runtime defaults come
+# from ``cm2026_defaults.yaml``.  This override intentionally changes only
+# the emulator, making it directly comparable with ``cm2026_base.yaml``.
+emulator_label: forest_mpg
