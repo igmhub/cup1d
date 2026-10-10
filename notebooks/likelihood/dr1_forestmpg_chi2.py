@@ -41,11 +41,12 @@ from cup1d.utils.utils import get_path_repo
 # Set this to the number of latent ForestFlow realizations to average for every
 # emulator prediction.  Typical comparisons are 100, 500, 1000, and 3000.
 N_REALIZATIONS = 5000
-SEEDS = (3, 17, 91, 134, 201, 301, 401, 501, 601, 701)
+SEEDS = (3, 17, 91, 134, 201, 301, 401, 501, 601, 701, 801, 901, 1001, 1101, 1201, 1301, 1401, 1501, 1601, 1701)
 METHODS = (
     # ("gaussian", "mean", "transformed", "nested"),
     # ("antithetic", "mean", "transformed", "nested"),
     ("sobol", "mean", "transformed", "nested"),
+    ("sobol_antithetic", "mean", "transformed", "nested"),
 )
 
 
@@ -110,7 +111,7 @@ print(f"Nrealizations={N_REALIZATIONS}: chi2_initial={chi2:.6f} ({seconds:.3f} s
 # are fitted here: every entry evaluates exactly the same `initial_point`.
 
 # %%
-N_REALIZATIONS_SCAN = (500, 1000, 2000, 3000)
+N_REALIZATIONS_SCAN = (512, 1024, 2048)
 scan_rows = []
 for method in METHODS:
     for n_realizations in N_REALIZATIONS_SCAN:
@@ -154,7 +155,4 @@ for row in summary:
           f"time={row['time_mean_seconds']:.3f} ± {row['time_std_seconds']:.3f} s")
 
 # %%
-837.664785
-
-# %%
-P1DEmulator
+sobol_antithetic/mean/transformed/nested, N=  1024

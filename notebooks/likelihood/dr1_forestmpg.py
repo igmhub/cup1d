@@ -53,6 +53,10 @@ analysis = Analysis(args)
 initial_point = analysis.fitter.initial_parameters()
 analysis.fitter.get_chi2(initial_point)
 
+# %%
+initial_point = analysis.fitter.initial_parameters()
+analysis.fitter.get_chi2(initial_point)
+
 # %% [markdown]
 # Plot model for these parameters.
 
