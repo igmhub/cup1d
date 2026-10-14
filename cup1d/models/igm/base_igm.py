@@ -8,7 +8,7 @@ from cup1d.likelihood import parameter as likelihood_parameter
 
 
 class IGM_model(object):
-    """New model for HCD contamination"""
+    """Base redshift-history model for one physical IGM quantity."""
 
     def __init__(
         self,
@@ -22,6 +22,20 @@ class IGM_model(object):
         flat_priors=None,
         Gauss_priors=None,
     ):
+        """Initialize coefficient histories and a smooth fiducial IGM history.
+
+        Parameters
+        ----------
+        coeffs, list_coeffs, prop_coeffs, free_param_names
+            Fixed histories or metadata used to construct sampled coefficient
+            histories.
+        z_0 : float, default=3
+            Pivot redshift for polynomial histories.
+        fid_igm : mapping
+            Fiducial quantity and redshift arrays used to build interpolators.
+        fid_vals, flat_priors, Gauss_priors : mapping
+            Defaults and likelihood-prior metadata for every history family.
+        """
         # store input data
         self.list_coeffs = list_coeffs
         self.z_0 = z_0
@@ -106,7 +120,31 @@ class IGM_model(object):
         zmin=1.9,
         zmax=5.5,
     ):
-        """Post-process IGM from simulation"""
+        """Fit/interpolate one fiducial IGM history for stable evaluation.
+
+        Parameters
+        ----------
+        fid_igm : mapping
+            Quantity arrays and matching ``<name>_z`` grids.
+        name_coeff : str
+            Physical IGM quantity name.
+        order_extra : int, default=2
+            Polynomial order used to smooth the fiducial history.
+        smoothing : bool, default=True
+            Use the fitted smooth history instead of original nonzero points.
+        zmin, zmax : float, default=1.9, 5.5
+            Redshift range covered by the resulting interpolator.
+
+        Returns
+        -------
+        None
+            Stores a cubic fiducial interpolator in ``fid_interp``.
+
+        Raises
+        ------
+        ValueError
+            If no finite nonzero fiducial values are available.
+        """
 
         mask = (
             (fid_igm[name_coeff + "_z"] != 0)
@@ -180,7 +218,7 @@ class IGM_model(object):
         )
 
     def set_params(self):
-        """Setup likelihood parameters in the HCD model"""
+        """Build canonical likelihood parameter definitions for IGM histories."""
 
         self.params = {}
 
@@ -232,7 +270,7 @@ class IGM_model(object):
                 self.params[name] = par
 
     def get_Nparam(self):
-        """Number of parameters in the model"""
+        """Return the total number of IGM history coefficients."""
         n_params = len(self.params)
         n_coeffs = 0
         for coeff in self.coeffs:
@@ -242,6 +280,11 @@ class IGM_model(object):
         return n_params
 
     def get_value(self, name, z, like_params=None):
+        """Evaluate one scalar-point IGM coefficient history.
+
+        Returns a constant or exponentially transformed value depending on
+        configured output type; it does not multiply the fiducial history.
+        """
         coeff = self.get_coeff(name, like_params=like_params)
 
         if self.prop_coeffs[name + "_ztype"] == "pivot":
@@ -279,11 +322,37 @@ class IGM_model(object):
             raise ValueError("prop_coeffs must be const or exp for", name)
 
     def get_value_batch(self, name, z, like_params):
-        """Evaluate one coefficient history for a columnar parameter batch.
+        """Evaluate a coefficient history for several parameter points.
 
-        Parameters are arrays of shape ``(n_batch,)`` and the returned array
-        has shape ``(n_batch, n_z)``.  This supports the pivot and linear
-        spline histories used by production cup1d configurations.
+        Parameters
+        ----------
+        name : str
+            Configured history family.
+        z : float or array_like
+            Scalar or one-dimensional redshift grid, converted to an array.
+        like_params : mapping of str to numpy.ndarray
+            Nonempty columnar parameter mapping. Each relevant coefficient
+            array has shape ``(n_batch,)``. Missing family coefficients retain
+            their stored values; the first mapping entry sets the batch size.
+
+        Returns
+        -------
+        numpy.ndarray
+            History values with shape ``(n_batch, n_z)``. The configured
+            ``exp`` output transform is applied after interpolation.
+
+        Raises
+        ------
+        ValueError
+            If the mapping is empty or a relevant column has the wrong shape.
+        NotImplementedError
+            If the history uses an unsupported interpolation type.
+
+        Notes
+        -----
+        Supported histories are pivot polynomials, linear interpolation, and
+        degree-one splines. This method evaluates the coefficient history;
+        it does not multiply a fiducial physical history.
         """
 
         z = np.atleast_1d(np.asarray(z, dtype=float))
@@ -332,13 +401,57 @@ class IGM_model(object):
         return ln_out
 
     def get_parameter(self, name):
+        """Return a stored coefficient parameter definition.
+
+        Parameters
+        ----------
+        name : str
+            Full coefficient parameter name in ``self.params``.
+
+        Returns
+        -------
+        dict
+            Shared parameter definition. Mutations affect the model.
+
+        Raises
+        ------
+        KeyError
+            If the parameter name is absent.
+        """
         return self.params[name]
 
     def get_parameters(self):
-        """Return likelihood parameters"""
+        """Return mutable likelihood parameter definitions keyed by name."""
         return self.params
 
     def get_coeff(self, name, like_params=None):
+        """Retrieve history coefficients with physical named overrides.
+
+        Parameters
+        ----------
+        name : str
+            Coefficient family in ``self.coeffs``.
+        like_params : mapping, optional
+            Values keyed by ``name_<index>``. If the family is overridden,
+            all configured indices must be supplied. Other families are ignored.
+
+        Returns
+        -------
+        numpy.ndarray
+            Coefficients in polynomial order for pivot histories or node order
+            for interpolation. Overrides operate on a copy; an absent or empty
+            mapping returns the stored array itself.
+
+        Raises
+        ------
+        ValueError
+            If the number of supplied family coefficients is inconsistent.
+
+        Notes
+        -----
+        Pivot coefficient index zero denotes the constant polynomial term,
+        stored at the end of the array.
+        """
         if like_params:
             coeff = self.coeffs[name].copy()
             Npar = 0
@@ -371,7 +484,7 @@ class IGM_model(object):
         return coeff
 
     def reset_coeffs(self, like_params, rank=0):
-        """Reset all coefficients to fiducial values"""
+        """Persist complete named overrides into stored IGM coefficients."""
         for name in self.coeffs:
             Npar = 0
             if rank == 0:
@@ -404,7 +517,7 @@ class IGM_model(object):
                 print("new", name, self.coeffs[name])
 
     def plot_parameters(self, z, like_params, folder=None):
-        """Delegate to :func:`cup1d.postprocessing.igm.plot_parameters`."""
+        """Render redshift-dependent IGM coefficient histories."""
         from cup1d.postprocessing.igm import plot_parameters as _plot
 
         return _plot(self, z, like_params, folder)

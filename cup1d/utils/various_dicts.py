@@ -157,7 +157,25 @@ blob_strings_orig = [
 
 
 def get_blob_values(blobs, names=None):
-    """Return named blob columns from dense or legacy structured arrays."""
+    """Extract named fitter-blob columns from dense or structured storage.
+
+    Parameters
+    ----------
+    blobs : array_like
+        Dense last-axis blob array or structured blob array.
+    names : sequence of str, optional
+        Requested names, defaulting to all canonical blob fields.
+
+    Returns
+    -------
+    ndarray
+        Extracted columns on a final named-field axis.
+
+    Raises
+    ------
+    ValueError
+        If an unstructured array has the wrong last-axis width.
+    """
 
     import numpy as np
 
@@ -174,7 +192,20 @@ def get_blob_values(blobs, names=None):
 
 
 def get_blob_value(blobs, name):
-    """Return one named blob column from either supported storage format."""
+    """Extract one named fitter-blob column from supported storage formats.
+
+    Parameters
+    ----------
+    blobs : array_like
+        Dense or structured fitter blobs.
+    name : str
+        Canonical blob field name.
+
+    Returns
+    -------
+    ndarray
+        Values for the requested field.
+    """
 
     return get_blob_values(blobs, [name])[..., 0]
 

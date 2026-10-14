@@ -6,12 +6,21 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_Karacayli2024(BaseDataP1D):
+    """Represent the Karacayli2024 P1D data product."""
     def __init__(self, diag_cov=False, kmax_nyq=0.5, z_min=2.19, z_max=10):
-        """Read measured P1D from file.
-        - diag_cov: for now, use diagonal covariance
-        - kmax_nyq: High k cut wrt the Nyquist frequency
-        - z_min: z=2.0 bin is not recommended by Karacayli2024
-        - z_max: maximum redshift to include"""
+        """Load the Karacayli et al. (2024) DESI early-data P1D measurement.
+
+        Parameters
+        ----------
+        diag_cov : bool, default: False
+            Use only published total variances instead of the off-diagonal
+            covariance product.
+        kmax_nyq : float, default: 0.5
+            Fraction of the redshift-dependent Nyquist wavenumber retained.
+        z_min, z_max : float, default: 2.19, 10
+            Inclusive redshift selection.  The default excludes the
+            unrecommended lowest-redshift bin.
+        """
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         z, k, Pk, cov = read_from_file(diag_cov, kmax_nyq)
@@ -22,7 +31,23 @@ class P1D_Karacayli2024(BaseDataP1D):
 
 
 def read_from_file(diag_cov, kmax_nyq):
-    """Read file containing P1D"""
+    """Read the Karacayli et al. (2024) P1D and apply a Nyquist-scale cut.
+
+    Parameters
+    ----------
+    diag_cov : bool
+        Construct a diagonal covariance from total errors when true; otherwise
+        read the published total off-diagonal covariance.
+    kmax_nyq : float
+        Fraction of each redshift bin's Nyquist frequency to retain.
+
+    Returns
+    -------
+    tuple
+        Redshift bins, common wavenumbers in ``s / km``, padded P1D vectors in
+        ``km / s``, and covariance blocks in ``(km / s)**2``.  Padded modes
+        receive zero power and infinite variance for later removal.
+    """
 
     # folder storing P1D measurement
     datadir = BaseDataP1D.BASEDIR + "/Karacayli2024/"

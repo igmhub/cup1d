@@ -14,11 +14,11 @@ from cup1d.p1ds.simulations import (
 
 
 class Forecast_P1D(BaseMockP1D):
-    """Class to generate a Forecast P1D
+    """Mock P1D data with an observed survey's grids and covariance structure.
 
-    Provide data_label to load covariance matrix and range of redshifts and scales from observation
-
-    Provide theory with an emulator to generate P1D signal at the same redshifts and scales as the data_label
+    The class loads a reference data product for its redshift, wavenumber, and
+    covariance blocks, then replaces its P1D central values with a prediction
+    from the supplied theory.
     """
 
     def __init__(
@@ -32,29 +32,31 @@ class Forecast_P1D(BaseMockP1D):
         p1d_fname=None,
         path_data=None,
     ):
-        """Copy data and replace P1D signal using theory
+        """Build a forecast from a theory prediction and reference data layout.
 
         Parameters
         ----------
-        emulator : object
-            Emulator object
-        data_label : string
-            Data label to load data from
-        z_min : float
-            Minimum redshift
-        z_max : float
-            Maximum redshift
-        add_noise : boolean
-            Add noise to P1D
-        seed : int
-            Seed for random number generator
-        fid_sim_igm : string
-            IGM model to use for generating data
-        zs : array
-            Redshifts
-        k_kms : array
-            Wavenumbers in km/s
+        theory : object
+            Initialized Cup1D theory object used to evaluate the fiducial P1D.
+        data_label : str, default: "Chabanier2019"
+            Reference observational layout.  Supported values include
+            ``"Chabanier2019"``, DESI Y1 labels, and ``"challenge_DESIY1"``.
+        z_min, z_max : float, default: 0, 10
+            Inclusive redshift interval retained in the forecast.
+        add_noise : bool, default: False
+            Add one Gaussian realization drawn from the reference covariance.
+        seed : int, default: 0
+            Random seed used when ``add_noise`` is true.
+        p1d_fname : str or path-like, optional
+            Challenge DESI Y1 P1D input file.  Required for that label.
+        path_data : str or path-like, optional
+            Directory containing the challenge input products.
 
+        Raises
+        ------
+        ValueError
+            If ``data_label`` is unsupported or challenge data are requested
+            without ``p1d_fname``.
         """
 
         # load covariance from data file

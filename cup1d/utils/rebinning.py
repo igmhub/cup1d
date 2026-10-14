@@ -2,7 +2,20 @@ import numpy as np
 
 
 def get_bin_coverage(xmin_o, xmax_o, xmin_n, xmax_n):
-    """Trick to accelerate rebinning"""
+    """Compute fractional overlap of old bins with new bins.
+
+    Parameters
+    ----------
+    xmin_o, xmax_o : array_like
+        Lower and upper edges of the old bins.
+    xmin_n, xmax_n : array_like
+        Lower and upper edges of the target bins.
+
+    Returns
+    -------
+    ndarray, shape (n_new, n_old)
+        Fractions of each old-bin width contributing to each target bin.
+    """
     # check out https://stcorp.github.io/harp/doc/html/algorithms/regridding.html
     cover = np.zeros((len(xmin_n), len(xmin_o)))
     for jj in range(len(xmin_n)):
@@ -15,13 +28,20 @@ def get_bin_coverage(xmin_o, xmax_o, xmin_n, xmax_n):
 
 
 class Rebinning(object):
-    """Class for rebinning
-
-    Only implemented in k_kms for now, but could be extended to z
-
-    """
+    """Precompute overlap weights for rebinning P1D k grids."""
 
     def __init__(self, dict_data, k_rebin_factor=1):
+        """Build rebinning grids and overlap matrices for each data set.
+
+        Parameters
+        ----------
+        dict_data : mapping
+            Data objects with ``z``, ``k_kms``, ``k_kms_min``, and
+            ``k_kms_max`` attributes.
+        k_rebin_factor : int, default: 1
+            Number of fine-grid points per original data-grid point. One
+            preserves the original grids and identity overlap matrices.
+        """
 
         self.k_kms = {}
         self.zs = {}
@@ -66,7 +86,20 @@ class Rebinning(object):
                     self.sum_cover[key].append(np.sum(_cover, axis=1))
 
     def rebinning(self, key, Pk_kms_newk):
-        """For rebinning Pk predictions"""
+        """Rebin scalar P1D predictions from fine to data k grids.
+
+        Parameters
+        ----------
+        key : hashable
+            Data-set key supplied to the constructor.
+        Pk_kms_newk : sequence of array_like
+            One fine-grid P1D prediction per redshift bin.
+
+        Returns
+        -------
+        list of ndarray
+            Predictions averaged onto the corresponding observed k grids.
+        """
         Pk_kms_origk = []
         for iz in range(len(self.zs[key])):
             _Pk_kms = (
@@ -82,10 +115,26 @@ class Rebinning(object):
     def rebinning_batch(self, key, Pk_kms_newk):
         """Rebin a batch of P1D predictions without looping over walkers.
 
-        ``Pk_kms_newk`` is a list over redshift bins. Item ``iz`` has shape
+        Parameters
+        ----------
+        key : hashable
+            Data-set key supplied to the constructor.
+        Pk_kms_newk : sequence of ndarray
+            List over redshift bins. Item ``iz`` has shape
         ``(n_batch, n_k_fine[iz])`` and the returned item has shape
         ``(n_batch, n_k_data[iz])``. Keeping a list over redshift preserves
         the ragged k grids used by the observational data.
+
+        Returns
+        -------
+        list of ndarray
+            Batched predictions on observed grids.
+
+        Raises
+        ------
+        ValueError
+            If redshift counts, fine-grid widths, dimensions, or batch sizes
+            do not match the precomputed weights.
         """
 
         if len(Pk_kms_newk) != len(self.zs[key]):

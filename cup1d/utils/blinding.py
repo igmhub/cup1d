@@ -3,7 +3,20 @@ from cup1d.utils.various_dicts import blob_strings_orig, conv_strings
 
 
 def set_blinding(apply_blinding, seed):
-    """Set the blinding parameters"""
+    """Generate deterministic compressed-cosmology blinding offsets.
+
+    Parameters
+    ----------
+    apply_blinding : bool
+        Draw Gaussian offsets when true; return exact zeros otherwise.
+    seed : int or SeedSequence
+        Seed supplied to NumPy's default random generator.
+
+    Returns
+    -------
+    dict of str to float
+        Offsets for ``Delta2_star``, ``n_star``, and ``alpha_star``.
+    """
     blind_prior = {"Delta2_star": 0.05, "n_star": 0.01, "alpha_star": 0.005}
     if apply_blinding:
         rng = np.random.default_rng(seed)
@@ -19,6 +32,31 @@ def set_blinding(apply_blinding, seed):
 def _apply_blinding_offset(blind, values, sign):
     """Apply signed offsets to all present cosmology representations.
 
+    Parameters
+    ----------
+    blind : dict
+        Additive offsets keyed by compressed cosmology parameter.
+    values : mapping or ndarray
+        Mutable mapping, structured array, or unnamed blob array to update.
+    sign : {1, -1}
+        Apply or remove the offsets.
+
+    Returns
+    -------
+    mapping or ndarray
+        The same object after in-place modification.
+
+    Raises
+    ------
+    TypeError
+        If offset or result containers have unsupported types.
+    ValueError
+        If an unnamed blob array lacks enough columns.
+    KeyError
+        If an unknown blinding key is supplied.
+
+    Notes
+    -----
     Missing cosmology fields are legitimate (for example a result may contain
     only ``Delta2_star`` and ``n_star``), but malformed inputs are not silently
     ignored.  The operation is in-place, matching the historical API.
@@ -49,10 +87,36 @@ def _apply_blinding_offset(blind, values, sign):
 
 
 def apply_blinding(blind, dict_cosmo):
-    """Apply cosmology blinding offsets in-place to every present field."""
+    """Apply cosmology blinding offsets in place.
+
+    Parameters
+    ----------
+    blind : dict
+        Offsets returned by :func:`set_blinding`.
+    dict_cosmo : mapping or ndarray
+        Mutable cosmology representation to blind.
+
+    Returns
+    -------
+    mapping or ndarray
+        The modified input object.
+    """
     return _apply_blinding_offset(blind, dict_cosmo, sign=1)
 
 
 def apply_unblinding(blind, dict_cosmo):
-    """Remove cosmology blinding offsets in-place from every present field."""
+    """Remove cosmology blinding offsets in place.
+
+    Parameters
+    ----------
+    blind : dict
+        Offsets returned by :func:`set_blinding`.
+    dict_cosmo : mapping or ndarray
+        Mutable cosmology representation to unblind.
+
+    Returns
+    -------
+    mapping or ndarray
+        The modified input object.
+    """
     return _apply_blinding_offset(blind, dict_cosmo, sign=-1)

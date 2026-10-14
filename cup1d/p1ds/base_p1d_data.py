@@ -22,7 +22,38 @@ def _drop_zbins(
     kmin_in=None,
     kmax_in=None,
 ):
-    """Drop redshift bins below z_min or above z_max"""
+    """Select a redshift interval and remove padded P1D bins.
+
+    Parameters
+    ----------
+    z_in : array_like of float
+        Redshift of each input P1D block.
+    k_in, Pk_in : sequence of ndarray
+        Per-redshift wavenumber grids in ``s / km`` and P1D measurements in
+        ``km / s``.  Zero-valued trailing P1D entries are treated as padding.
+    cov_in : sequence of ndarray
+        Per-redshift P1D covariance blocks with shape ``(nk, nk)`` and units
+        ``(km / s)**2``.
+    z_min, z_max : float
+        Inclusive redshift limits.
+    full_zs, full_Pk_kms, full_cov_kms, full_cov_stat_kms : ndarray, optional
+        Optional concatenated representation, restricted consistently with
+        the selected redshift range.
+    Pksmooth_kms : sequence of ndarray, optional
+        Optional smooth P1D prediction associated with each measurement.
+    cov_stat : sequence of ndarray, optional
+        Optional statistical covariance blocks.
+    kmin_in, kmax_in : sequence of ndarray, optional
+        Lower and upper wavenumber-bin edges.  When omitted, they are inferred
+        from the spacing of each retained grid.
+
+    Returns
+    -------
+    tuple
+        Filtered per-redshift and concatenated P1D arrays, followed by smooth
+        P1D, statistical covariance, and bin-edge arrays.  The tuple order is
+        the one consumed by :class:`BaseDataP1D`.
+    """
 
     # k_in center of the kbin
     # kmin_in starting of the kbin
@@ -90,7 +121,14 @@ def _drop_zbins(
 
 
 class BaseDataP1D(object):
-    """Base class to store measurements of the 1D power spectrum"""
+    """Container for binned one-dimensional Lyman-alpha power measurements.
+
+    Instances retain one wavenumber grid and covariance matrix for every
+    redshift bin.  The canonical attributes use explicit units: ``k_ikms`` is
+    in ``s / km``, ``P1D_kms`` in ``km / s``, and ``cov_P1D_kms`` in
+    ``(km / s)**2``.  Legacy ``Pk_kms`` and ``k_kms`` aliases remain available
+    for stored analyses.
+    """
 
     BASEDIR = os.path.join(get_path_repo("cup1d"), "data", "p1d_measurements")
 
@@ -111,7 +149,36 @@ class BaseDataP1D(object):
         k_kms_min=None,
         k_kms_max=None,
     ):
-        """Construct base P1D class, from measured power and covariance"""
+        """Initialize a P1D data set and apply its redshift selection.
+
+        Parameters
+        ----------
+        z : array_like of float
+            Redshift-bin centers.
+        _k_kms : array_like or sequence of ndarray
+            Wavenumber grid(s) in ``s / km``.  A common grid is expanded to
+            all redshift bins; otherwise one grid per redshift is required.
+        Pk_kms : sequence of ndarray
+            Measured P1D values in ``km / s``.
+        cov_Pk_kms : sequence of ndarray
+            P1D covariance blocks in ``(km / s)**2``.
+        z_min, z_max : float, default: 0, 10
+            Inclusive redshift bounds retained in this instance.
+        full_zs, full_Pk_kms, full_cov_kms, full_cov_stat_kms : ndarray, optional
+            Optional concatenated data-vector representation and covariance.
+        Pksmooth_kms : sequence of ndarray, optional
+            Smooth P1D prediction associated with the measurement.
+        cov_stat : sequence of ndarray, optional
+            Statistical-only covariance blocks.
+        k_kms_min, k_kms_max : sequence of ndarray, optional
+            Lower and upper wavenumber-bin edges in ``s / km``.
+
+        Raises
+        ------
+        ValueError
+            If a retained P1D block violates the canonical wavenumber, P1D,
+            or covariance shape and unit contract.
+        """
 
         ## if multiple z, ensure that k_kms for each redshift
         # more than one z, and k_kms is different for each z
@@ -188,25 +255,83 @@ class BaseDataP1D(object):
     full_k_kms = property(lambda self: self.full_k_ikms, lambda self, value: setattr(self, "full_k_ikms", value))
 
     def get_P1D_iz(self, iz):
-        """Return P1D in km/s for redshift-bin index ``iz``."""
+        """Return the P1D vector at one redshift bin.
+
+        Parameters
+        ----------
+        iz : int
+            Index into :attr:`z`.
+
+        Returns
+        -------
+        ndarray of float
+            P1D values with shape ``(nk,)`` and units ``km / s``.
+        """
         return self.P1D_kms[iz]
 
     def get_Pk_iz(self, iz):
-        """Compatibility alias for :meth:`get_P1D_iz`."""
+        """Return a P1D vector through the legacy ``Pk`` API.
+
+        Parameters
+        ----------
+        iz : int
+            Index into :attr:`z`.
+
+        Returns
+        -------
+        ndarray of float
+            Alias for :meth:`get_P1D_iz` with units ``km / s``.
+        """
         return self.get_P1D_iz(iz)
 
     def get_cov_iz(self, iz):
-        """Return covariance of P1D in units of (km/s)^2 for redshift bin iz"""
+        """Return the P1D covariance block at one redshift bin.
+
+        Parameters
+        ----------
+        iz : int
+            Index into :attr:`z`.
+
+        Returns
+        -------
+        ndarray of float
+            Covariance matrix with shape ``(nk, nk)`` and units
+            ``(km / s)**2``.
+        """
 
         return self.cov_Pk_kms[iz]
 
     def get_icov_iz(self, iz):
-        """Return covariance of P1D in units of (km/s)^2 for redshift bin iz"""
+        """Return the inverse P1D covariance block at one redshift bin.
+
+        Parameters
+        ----------
+        iz : int
+            Index into :attr:`z`.
+
+        Returns
+        -------
+        ndarray of float
+            Inverse covariance matrix with shape ``(nk, nk)`` and units
+            ``(s / km)**2``.
+        """
 
         return self.icov_Pk_kms[iz]
 
     def cull_data(self, kmin_kms=0, kmax_kms=10):
-        """Remove bins with wavenumber k < kmin_kms and k > kmin_kms"""
+        """Restrict every redshift block to an inclusive wavenumber interval.
+
+        Parameters
+        ----------
+        kmin_kms, kmax_kms : float or None, default: 0, 10
+            Lower and upper retained limits in ``s / km``.  Passing ``None``
+            for both leaves the data unchanged.
+
+        Notes
+        -----
+        This method mutates the per-redshift wavenumber, P1D, covariance, and
+        inverse-covariance arrays in place.
+        """
 
         if (kmin_kms is None) & (kmax_kms is None):
             return
@@ -231,7 +356,29 @@ class BaseDataP1D(object):
         ftsize=18,
         store_data=False,
     ):
+        """Plot the measured P1D blocks and their uncertainties.
 
+        Parameters
+        ----------
+        use_dimensionless : bool, default: True
+            Plot dimensionless power when true.
+        xlog, ylog : bool, default: False, True
+            Use logarithmic axes for wavenumber and power.
+        fname : str or path-like, optional
+            Output filename passed to the plotting helper.
+        cov_ext : sequence of ndarray, optional
+            Optional external covariance to display with the data.
+        ftsize : float, default: 18
+            Base font size for the figure.
+        store_data : bool, default: False
+            Request storage of the plotted data from the helper.
+
+        Returns
+        -------
+        object
+            Figure or plotting payload returned by
+            :func:`cup1d.postprocessing.data.p1d.plot_p1d`.
+        """
         from cup1d.postprocessing.data import p1d
 
         return p1d.plot_p1d(

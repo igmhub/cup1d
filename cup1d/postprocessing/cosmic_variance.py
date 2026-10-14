@@ -4,6 +4,13 @@ from cup1d.emulator.archive import set_archive
 
 
 def plot_cosmic_variance():
+    """Compare central and seed simulation P1D realizations.
+
+    The diagnostic loads fixed Nyx and MP-Gadget archive products, plots their
+    median-centered fractional P1D differences over ``0.1 < k < 2`` in
+    ``1 / Mpc``, and writes ``cosmic_variance_nyx_mpg.png`` in the current
+    working directory.
+    """
     training_set = "models_Nyx_Sept2025_include_Nyx_fid_rseed"
     archive_mock = set_archive(training_set=training_set)
     central = archive_mock.get_testing_data("nyx_central")

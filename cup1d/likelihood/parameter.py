@@ -14,7 +14,28 @@ def make_parameter(
     fixed=False,
     hessian_transform=None,
 ):
-    """Return the canonical dictionary describing one model parameter."""
+    """Create the canonical plain-dictionary parameter definition.
+
+    Parameters
+    ----------
+    name : str
+        Parameter identifier.
+    min_value, max_value : float
+        Physical uniform-prior bounds.
+    value : float, optional
+        Current physical value.
+    Gauss_priors_width : float, optional
+        Physical Gaussian-prior width.
+    fixed : bool, default=False
+        Mark the coordinate fixed for minimizers that support masking.
+    hessian_transform : str, optional
+        Coordinate transformation hint for Hessian estimation.
+
+    Returns
+    -------
+    dict
+        Canonical parameter property mapping.
+    """
 
     return {
         "name": name,
@@ -33,7 +54,20 @@ LikelihoodParameter = make_parameter
 
 
 def info_str(parameter, all_info=False):
-    """Return a compact description of a parameter dictionary."""
+    """Format a compact parameter-definition description.
+
+    Parameters
+    ----------
+    parameter : mapping
+        Canonical parameter dictionary.
+    all_info : bool, default=False
+        Include physical lower and upper bounds.
+
+    Returns
+    -------
+    str
+        Name/value string, optionally with bounds.
+    """
 
     info = f"{parameter['name']} = {parameter['value']}"
     if all_info:
@@ -42,7 +76,27 @@ def info_str(parameter, all_info=False):
 
 
 def value_in_cube(parameters, name, value=None):
-    """Normalize one physical value using a parameter-property mapping."""
+    """Convert one physical parameter value to its unit-cube coordinate.
+
+    Parameters
+    ----------
+    parameters : mapping
+        Parameter definitions keyed by name.
+    name : str
+        Parameter name.
+    value : float, optional
+        Physical value. Defaults to the definition's ``'value'``.
+
+    Returns
+    -------
+    float
+        Unit-cube coordinate; values outside bounds are not clipped.
+
+    Raises
+    ------
+    ValueError
+        If neither ``value`` nor the definition contains a current value.
+    """
 
     parameter = parameters[name]
     value = parameter["value"] if value is None else value
@@ -53,7 +107,22 @@ def value_in_cube(parameters, name, value=None):
 
 
 def value_from_cube(parameters, name, value):
-    """Convert one unit-cube coordinate to physical units."""
+    """Convert one unit-cube coordinate to a physical parameter value.
+
+    Parameters
+    ----------
+    parameters : mapping
+        Parameter definitions keyed by name.
+    name : str
+        Parameter name.
+    value : float or ndarray
+        Unit-cube coordinate or coordinates.
+
+    Returns
+    -------
+    float or ndarray
+        Physical value with the input shape.
+    """
 
     parameter = parameters[name]
     width = parameter["max_value"] - parameter["min_value"]
@@ -61,7 +130,22 @@ def value_from_cube(parameters, name, value):
 
 
 def error_from_cube(parameters, name, error):
-    """Convert one unit-cube uncertainty to physical units."""
+    """Convert unit-cube uncertainty to physical parameter units.
+
+    Parameters
+    ----------
+    parameters : mapping
+        Parameter definitions keyed by name.
+    name : str
+        Parameter name.
+    error : float or ndarray
+        Unit-cube uncertainty.
+
+    Returns
+    -------
+    float or ndarray
+        Physical uncertainty with the input shape.
+    """
 
     parameter = parameters[name]
     return error * (parameter["max_value"] - parameter["min_value"])
@@ -69,7 +153,20 @@ def error_from_cube(parameters, name, error):
 
 
 def values_from_point(parameters, point):
-    """Privately unwrap a public named parameter point into scalar values."""
+    """Unwrap a public named point into scalar physical values.
+
+    Parameters
+    ----------
+    parameters : mapping
+        Free-parameter definitions determining required names and order.
+    point : mapping or None
+        Mapping from names to scalar values or full parameter dictionaries.
+
+    Returns
+    -------
+    dict or None
+        Scalar physical values for all free parameters, or ``None`` unchanged.
+    """
 
     if point is None:
         return None
@@ -81,7 +178,21 @@ def values_from_point(parameters, point):
 
 
 def point_from_values(parameters, values):
-    """Return a full named parameter point with updated physical values."""
+    """Copy definitions and replace current values from a scalar mapping.
+
+    Parameters
+    ----------
+    parameters : mapping
+        Base parameter definitions.
+    values : mapping
+        Physical values keyed by parameter name.
+
+    Returns
+    -------
+    dict
+        Deep-copied parameter definitions with matching ``'value'`` entries
+        updated; unknown values are ignored.
+    """
 
     import copy
 
@@ -94,6 +205,20 @@ def point_from_values(parameters, values):
 def values_to_cube(parameters, values=None):
     """Return an ordered unit-cube array from physical parameter values.
 
+    Parameters
+    ----------
+    parameters : mapping
+        Ordered parameter definitions.
+    values : mapping, optional
+        Direct physical values or full parameter dictionaries.
+
+    Returns
+    -------
+    ndarray
+        Unit-cube coordinates in ``parameters`` iteration order.
+
+    Notes
+    -----
     ``values`` may map names directly to physical values or to complete
     parameter dictionaries such as ``Likelihood.free_params``. The latter is
     the user-facing form and supplies each value under its ``"value"`` key.
@@ -111,7 +236,25 @@ def values_to_cube(parameters, values=None):
 
 
 def values_from_cube(parameters, values):
-    """Return an ordered mapping of names to physical values."""
+    """Convert one unit-cube coordinate vector to physical values.
+
+    Parameters
+    ----------
+    parameters : mapping
+        Ordered parameter definitions.
+    values : array-like
+        One coordinate per parameter.
+
+    Returns
+    -------
+    dict
+        Physical values keyed by parameter name.
+
+    Raises
+    ------
+    ValueError
+        If coordinate count differs from parameter count.
+    """
 
     if len(values) != len(parameters):
         raise ValueError("sampling-point size mismatch")
@@ -124,6 +267,25 @@ def values_from_cube(parameters, values):
 def values_from_cube_batch(parameters, values):
     """Convert unit-cube points to a columnar physical-parameter mapping.
 
+    Parameters
+    ----------
+    parameters : mapping
+        Ordered parameter definitions.
+    values : array-like
+        Unit-cube array with shape ``(n_batch, n_parameters)``.
+
+    Returns
+    -------
+    dict
+        Physical arrays of shape ``(n_batch,)`` keyed by parameter name.
+
+    Raises
+    ------
+    ValueError
+        If the array is not two-dimensional with the required trailing size.
+
+    Notes
+    -----
     ``values`` has shape ``(n_batch, n_parameters)``. The result maps every
     parameter to a one-dimensional ``(n_batch,)`` array, avoiding one Python
     dictionary per walker in batch-aware callers.

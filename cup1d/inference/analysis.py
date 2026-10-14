@@ -17,7 +17,26 @@ from cup1d.utils.utils import split_string
 
 
 def get_grid_large(nelem):
-    """Need to be moved somewhere else"""
+    """Build a rectangular grid spanning the MPG cosmology training set.
+
+    Parameters
+    ----------
+    nelem : int
+        Number of samples along each of the ``Delta2_star`` and ``n_star``
+        axes.
+
+    Returns
+    -------
+    xgrid, ygrid : ndarray
+        Two arrays of shape ``(nelem, nelem)`` returned by
+        :func:`numpy.meshgrid`.  Together they cover the extrema stored in
+        LaCE's ``Australia20/mpg_emu_cosmo.npy`` metadata.
+
+    Notes
+    -----
+    This helper depends on the installed LaCE repository data rather than an
+    archive supplied to :class:`Analysis`.
+    """
     fname = os.path.join(
         get_path_repo("lace"),
         "data",
@@ -46,7 +65,28 @@ def get_grid_large(nelem):
 
 
 class Analysis(object):
-    """Full analysis for extracting cosmology from P1D using sampler"""
+    """Assemble the P1D data, theory, likelihood, and inference driver.
+
+    The constructor is MPI-aware: rank zero builds default emulators and data
+    and sends the resulting objects to worker ranks.  A caller may instead
+    inject already constructed data, archive, or emulator objects.
+
+    Attributes
+    ----------
+    args : cup1d.configuration.args.Args
+        Resolved analysis configuration.
+    data : dict
+        P1D data sets indexed by their configured labels.
+    emulator : object
+        Emulator selected by ``args.emulator_label`` or supplied explicitly.
+    theory : object
+        Fiducial theory object evaluated by the likelihood.
+    like : cup1d.likelihood.likelihood.Likelihood
+        Likelihood used for minimization and sampling.  ``likelihood`` is a
+        backward-compatible alias for this attribute.
+    fitter : cup1d.inference.fitter.Fitter
+        Object managing minimizer and sampler runs.
+    """
 
     def __init__(
         self,
@@ -58,7 +98,32 @@ class Analysis(object):
         system="local",
         create_output=True,
     ):
-        """Set analysis."""
+        """Initialize an analysis from configuration and optional components.
+
+        Parameters
+        ----------
+        args : cup1d.configuration.args.Args, optional
+            Resolved configuration.  When omitted, construct the CM2026
+            baseline configuration and apply ``system`` to it.
+        data : dict, optional
+            Pre-built P1D data sets keyed by every label in
+            ``args.data_label``.  If omitted, construct them with
+            :func:`cup1d.p1ds.factory.set_p1d`.
+        archive : object, optional
+            Simulation archive passed while constructing P1D data.  It is not
+            used when ``data`` is supplied.
+        emulator : object, optional
+            Pre-built emulator.  If omitted, resolve
+            ``args.emulator_label`` through the emulator factory.
+        out_folder : str or path-like, optional
+            Directory used by :class:`Fitter` for result products.  Defaults
+            to the output folder in ``args``.
+        system : str, default='local'
+            Execution-system label applied only when ``args`` is omitted.
+        create_output : bool, default=True
+            Whether the fitter may create its output directory.  Result
+            restoration disables this to avoid modifying a saved run.
+        """
 
         if args is None:
             # set default args to Chaves-Montero+26 analysis
@@ -188,8 +253,32 @@ class Analysis(object):
     def from_results(cls, filename, **analysis_options):
         """Reconstruct an analysis and restore a saved fit or sampler run.
 
-        The likelihood is rebuilt from the YAML recorded in the result file.
-        Loading does not create a new output directory.
+        Parameters
+        ----------
+        filename : str or path-like
+            NumPy result file produced by :class:`Fitter` with format version
+            1.  Its recorded YAML path determines the reconstructed
+            configuration.
+        **analysis_options
+            Keyword arguments forwarded to :class:`Analysis`, except ``args``
+            and ``create_output``.  Those are controlled by the saved result.
+
+        Returns
+        -------
+        Analysis
+            Rebuilt analysis whose fitter has restored the saved state and
+            whose ``results_path`` identifies ``filename``.
+
+        Raises
+        ------
+        ValueError
+            If the file does not contain a supported minimizer or sampler
+            result.
+        FileNotFoundError
+            If the YAML configuration recorded in the result is unavailable.
+        TypeError
+            If ``analysis_options`` attempts to override the reconstructed
+            configuration or output-creation policy.
         """
 
         result_path = Path(filename).expanduser().resolve()
@@ -236,6 +325,28 @@ class Analysis(object):
         n_burn_in=0,
         test=False,
     ):
+        """Choose legacy emcee step and burn-in counts from data labels.
+
+        Parameters
+        ----------
+        data_label : str
+            Label selecting the default production step count.
+        cov_label : str
+            Covariance label selecting the default burn-in count.
+        n_igm : int
+            Retained for compatibility with older callers.  It does not alter
+            the counts chosen by this implementation.
+        n_steps, n_burn_in : int, default=0
+            Explicit positive counts.  A value of zero requests the
+            label-dependent defaults.
+        test : bool, default=False
+            If true, use ten production steps and no burn-in.
+
+        Notes
+        -----
+        The values are assigned to ``self.n_steps`` and ``self.n_burn_in``;
+        they do not modify the already-created fitter configuration.
+        """
         # set steps
         if test == True:
             self.n_steps = 10
@@ -280,8 +391,49 @@ class Analysis(object):
         vectorize=True,
         pso_type="global",
     ):
-        """
-        Run the minimizer (only rank 0)
+        """Run a minimizer on rank zero and broadcast its best-fit cube.
+
+        Parameters
+        ----------
+        p0 : array-like
+            Initial point in the fitter's sampling-coordinate convention.
+        make_plots : bool, default=False
+            Create minimizer diagnostic plots after a successful root-rank
+            run.
+        mask_pars : bool, default=False
+            Request the Nelder--Mead parameter-masking behavior implemented
+            by :meth:`Fitter.run_minimizer`.
+        save_chains : bool, default=False
+            Save sampler-style results even when the minimizer did not attach
+            a chain.
+        zmask : array-like, optional
+            Redshift mask forwarded to the selected minimizer and plotter.
+        restart : bool, default=False
+            Forward restart handling to the selected fitter method.
+        type_minimizer : {'NM', 'DA', 'PSO'}, default='NM'
+            Select Nelder--Mead, differential annealing, or particle swarm
+            optimization.
+        estimate_errors : bool, default=False
+            Estimate parameter errors after minimization.
+        hessian_step : float, default=1e-4
+            Finite-difference displacement used for error estimation.
+        error_method : str, default='finite_difference'
+            Error-estimation method understood by :class:`Fitter`.
+        vectorize : bool, default=True
+            Enable vectorized likelihood evaluation for particle swarm runs.
+        pso_type : str, default='global'
+            Particle-swarm variant forwarded when ``type_minimizer`` is
+            ``'PSO'``.
+
+        Raises
+        ------
+        ValueError
+            If ``type_minimizer`` is not ``'NM'``, ``'DA'``, or ``'PSO'``.
+
+        Notes
+        -----
+        The method returns ``None``.  The root rank saves results and every
+        rank receives the resulting ``fitter.mle_cube``.
         """
 
         comm = MPI.COMM_WORLD
@@ -352,8 +504,24 @@ class Analysis(object):
     def run_sampler(
         self, pini=None, make_plots=False, zmask=None, vectorize=None
     ):
-        """
-        Run the sampler (after minimizer)
+        """Run the configured sampler, optionally starting at a supplied point.
+
+        Parameters
+        ----------
+        pini : array-like, optional
+            Initial sampling-coordinate point.  Defaults to the current
+            ``fitter.mle_cube``, normally produced by :meth:`run_minimizer`.
+        make_plots : bool, default=False
+            Create sampler diagnostic plots on rank zero after saving results.
+        zmask : array-like, optional
+            Redshift mask forwarded to the fitter and optional plotter.
+        vectorize : bool, optional
+            Override the fitter's vectorized likelihood-evaluation setting.
+
+        Notes
+        -----
+        All MPI ranks participate in sampling; only rank zero saves result
+        products and creates plots.  The method returns ``None``.
         """
 
         # def func_for_sampler(p0):
@@ -396,6 +564,26 @@ class Analysis(object):
                 self.plotter.plots_sampler()
 
     def save_global_ic(self, fname):
+        """Save the best-fit non-cosmological parameters by redshift node.
+
+        Parameters
+        ----------
+        fname : str or path-like
+            Target filename for :func:`numpy.save`.  The saved dictionary is
+            keyed by parameter family and each value has sorted ``'z'`` and
+            ``'val'`` arrays.
+
+        Raises
+        ------
+        ValueError
+            If a free parameter cannot be associated with an IGM,
+            contaminant, or systematic fiducial-node definition.
+
+        Notes
+        -----
+        ``As`` and ``ns`` are deliberately omitted because this helper is for
+        global IGM, contaminant, and systematic initial conditions.
+        """
         out_dict = {}
         for name in self.fitter.like.free_params:
             if name in ["As", "ns"]:

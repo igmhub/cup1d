@@ -3,6 +3,7 @@ from cup1d.models.igm.base_igm import IGM_model
 
 
 class Pressure(IGM_model):
+    """Model the IGM pressure history used by cup1d."""
     def __init__(
         self,
         coeffs=None,
@@ -14,6 +15,11 @@ class Pressure(IGM_model):
         flat_priors=None,
         Gauss_priors=None,
     ):
+        """Initialize the inverse pressure-smoothing scale history model.
+
+        Parameters are forwarded to :class:`IGM_model`; ``kF_kms`` remains a
+        velocity-space inverse length in s/km.
+        """
         list_coeffs = ["kF_kms"]
 
         if prop_coeffs is None:
@@ -49,7 +55,25 @@ class Pressure(IGM_model):
         )
 
     def get_kF_kms(self, z, like_params=None, name_par="kF_kms"):
-        """Effective optical depth at the input redshift"""
+        """Return the inverse pressure-smoothing scale in velocity units.
+
+        Parameters
+        ----------
+        z : float or numpy.ndarray
+            Redshift(s) at which to evaluate the history.
+        like_params : mapping, optional
+            Physical named history coefficients. Omitted coefficients use
+            the configured history; these values are not sampler coordinates.
+        name_par : str, default="kF_kms"
+            History key used for both coefficients and fiducial interpolation.
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Inverse smoothing scale in s/km, evaluated at ``z``. Multiplying
+            by ``H(z)/(1+z)`` converts it to an inverse comoving length in
+            1/Mpc. This quantity is an inverse length, not a broadening width.
+        """
 
         kF_kms = self.get_value(name_par, z, like_params=like_params)
         kF_kms *= self.fid_interp[name_par](z)

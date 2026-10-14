@@ -8,7 +8,27 @@ import yaml
 
 
 def read_config(filename: str | Path) -> dict[str, Any]:
-    """Read a YAML configuration file and return its contents."""
+    """Read a YAML configuration mapping.
+
+    Parameters
+    ----------
+    filename : str or pathlib.Path
+        YAML file path. User-home syntax is expanded before opening.
+
+    Returns
+    -------
+    dict
+        Parsed YAML root mapping without default resolution or type coercion.
+
+    Raises
+    ------
+    ValueError
+        If the YAML root is not a mapping.
+    OSError
+        If the file cannot be opened.
+    yaml.YAMLError
+        If the file is not valid YAML.
+    """
 
     path = Path(filename).expanduser()
     with path.open(encoding="utf-8") as stream:
@@ -21,7 +41,19 @@ def read_config(filename: str | Path) -> dict[str, Any]:
 
 
 def restore_runtime_types(config: dict[str, Any]) -> dict[str, Any]:
-    """Restore array types used by the analysis from plain YAML lists."""
+    """Restore NumPy arrays that YAML represents as lists.
+
+    Parameters
+    ----------
+    config : dict
+        Resolved configuration mutated in place.
+
+    Returns
+    -------
+    dict
+        The same ``config`` mapping, with configured model nodes, fiducial
+        histories, and covariance-factor arrays converted from lists.
+    """
 
     array_paths: set[tuple[str, str]] = set()
 
@@ -58,7 +90,16 @@ def restore_runtime_types(config: dict[str, Any]) -> dict[str, Any]:
 
 
 def print_config_values(config: dict[str, Any], source: str) -> None:
-    """Print the source and value of every configuration leaf."""
+    """Print every leaf of a configuration mapping with one source label.
+
+    Parameters
+    ----------
+    config : dict
+        Possibly nested configuration mapping.
+    source : str
+        Label printed for every leaf, such as ``"default"`` or
+        ``"user-provided"``.
+    """
 
     for name, value in config.items():
         _print_values(name, value, source=source)
@@ -67,7 +108,17 @@ def print_config_values(config: dict[str, Any], source: str) -> None:
 def print_resolved_values(
     config: dict[str, Any], overrides: dict[str, Any], prefix: str = ""
 ) -> None:
-    """Print resolved leaves as default or explicitly user-provided."""
+    """Print each resolved leaf and whether an override supplied it.
+
+    Parameters
+    ----------
+    config : dict
+        Fully resolved, possibly nested configuration mapping.
+    overrides : dict
+        User-provided nested values used to identify each leaf's source.
+    prefix : str, default=""
+        Dotted path already traversed during recursive calls.
+    """
 
     for name, value in config.items():
         full_name = f"{prefix}{name}"
@@ -89,10 +140,33 @@ def apply_overrides(
     prefix: str = "",
     verbose: bool = True,
 ) -> dict[str, Any]:
-    """Recursively apply user overrides to resolved default values.
+    """Merge user overrides into a resolved default configuration.
 
-    A message is printed for every leaf value, identifying whether it came
-    from the CM2026 defaults or from the user configuration.
+    Parameters
+    ----------
+    defaults : dict
+        Nested default mapping. It is not mutated.
+    overrides : dict
+        Nested replacement values. ``"__delete__"`` may list direct child
+        keys to remove. Additional keys are accepted only in nested model
+        dictionaries.
+    prefix : str, default=""
+        Dotted path used in recursive diagnostics.
+    verbose : bool, default=True
+        Print each leaf's source or explicit deletion.
+
+    Returns
+    -------
+    dict
+        Newly constructed resolved configuration, preserving selected NumPy
+        array and tuple runtime types.
+
+    Raises
+    ------
+    TypeError
+        If a deletion list or nested override has the wrong type.
+    ValueError
+        If a deletion names an unknown key or a new top-level key is supplied.
     """
 
     delete_keys = overrides.get("__delete__", [])
@@ -154,7 +228,20 @@ def apply_overrides(
 
 
 def _coerce_like(value: Any, default: Any) -> Any:
-    """Preserve selected runtime types when replacing YAML values."""
+    """Coerce a replacement to selected types of its default value.
+
+    Parameters
+    ----------
+    value : Any
+        User-provided replacement value.
+    default : Any
+        Default value whose NumPy-array dtype or tuple type is preserved.
+
+    Returns
+    -------
+    Any
+        Array, tuple, or unchanged replacement according to ``default``.
+    """
 
     if isinstance(default, np.ndarray):
         return np.asarray(value, dtype=default.dtype)
@@ -164,7 +251,20 @@ def _coerce_like(value: Any, default: Any) -> Any:
 
 
 def _coerce_additional(value: Any, name: str) -> Any:
-    """Coerce extensible model values that have no baseline counterpart."""
+    """Coerce a supported additional nested model value.
+
+    Parameters
+    ----------
+    value : Any
+        User-provided value without a baseline counterpart.
+    name : str
+        Fully qualified configuration path.
+
+    Returns
+    -------
+    Any
+        NumPy array for ``*_znodes`` values; otherwise the unchanged value.
+    """
 
     if name.endswith("_znodes"):
         return np.asarray(value)
@@ -172,7 +272,17 @@ def _coerce_additional(value: Any, name: str) -> Any:
 
 
 def _print_values(name: str, value: Any, source: str) -> None:
-    """Print one status line per resolved leaf value."""
+    """Print recursive configuration leaves with a common source label.
+
+    Parameters
+    ----------
+    name : str
+        Current dotted configuration path.
+    value : Any
+        Leaf value or nested dictionary to traverse.
+    source : str
+        Label printed before the value.
+    """
 
     if isinstance(value, dict):
         for child_name, child_value in value.items():

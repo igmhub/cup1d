@@ -12,7 +12,19 @@ from cup1d.utils.utils import get_path_repo
 
 
 def get_at_a_time_ic_path(emulator_label):
-    """Return the standard initial-condition path for an emulator family."""
+    """Return the standard per-redshift initial-condition file path.
+
+    Parameters
+    ----------
+    emulator_label : str
+        Emulator label. Labels containing ``'nyx'`` select the Nyx file; all
+        others select the MPG file.
+
+    Returns
+    -------
+    pathlib.Path
+        ``cup1d/data/ics/{nyx|mpg}_ic_at_a_time.npy``.
+    """
 
     emulator_family = "nyx" if "nyx" in emulator_label.lower() else "mpg"
     return Path(get_path_repo("cup1d")) / "data" / "ics" / (
@@ -21,7 +33,19 @@ def get_at_a_time_ic_path(emulator_label):
 
 
 def get_global_ic_path(emulator_label):
-    """Return the standard global-fit initial-condition path."""
+    """Return the standard reduced-global initial-condition file path.
+
+    Parameters
+    ----------
+    emulator_label : str
+        Emulator label. Labels containing ``'nyx'`` select the Nyx file; all
+        others select the MPG file.
+
+    Returns
+    -------
+    pathlib.Path
+        ``cup1d/data/ics/{nyx|mpg}_ic_global_red.npy``.
+    """
 
     emulator_family = "nyx" if "nyx" in emulator_label.lower() else "mpg"
     return Path(get_path_repo("cup1d")) / "data" / "ics" / (
@@ -48,6 +72,23 @@ def generate_at_a_time_initial_conditions(
         Replace an existing output file.
     verbose : bool, optional
         Print fitted redshifts and the final goodness-of-fit table.
+
+    Returns
+    -------
+    pathlib.Path or None
+        Saved file on MPI rank zero; ``None`` on worker ranks.
+
+    Raises
+    ------
+    ValueError
+        If the YAML does not select ``at_a_time_global`` fitting.
+    FileExistsError
+        If the destination exists and ``overwrite`` is false.
+
+    Notes
+    -----
+    A fresh :class:`Analysis` is constructed for every redshift bin so the
+    generated starting points follow the normal at-a-time workflow.
     """
 
     args = Args.from_yaml(config_path, verbose=False)
@@ -117,6 +158,33 @@ def generate_global_initial_conditions(
 ):
     """Run the reduced global fit and save its initial conditions.
 
+    Parameters
+    ----------
+    config_path : path-like
+        YAML configuration for the reduced global optimization.
+    output_path : path-like, optional
+        Destination ``.npy`` file. Defaults to the emulator-family global IC
+        path under ``data/ics``.
+    overwrite : bool, default=False
+        Replace an existing destination file.
+    verbose : bool, default=True
+        Print fit and output summaries on MPI rank zero.
+
+    Returns
+    -------
+    pathlib.Path or None
+        Saved file on MPI rank zero; ``None`` on worker ranks.
+
+    Raises
+    ------
+    ValueError
+        If the YAML is not a ``global_opt`` setup or it consumes an existing
+        global IC file.
+    FileExistsError
+        If the destination exists and ``overwrite`` is false.
+
+    Notes
+    -----
     The associated YAML must set ``file_ic: null``. This is the YAML-native
     counterpart of the legacy ``ic_global=False`` option: a global IC file is
     being created, so it must not first be used as input.

@@ -11,14 +11,34 @@ class StarContourPlotter:
     """Create cumulative CMB and DESI contours in ``Delta2_star``--``n_star``."""
 
     def __init__(self, fontsize=26):
+        """Initialize an unloaded amplitude--slope contour plotter.
+
+        Parameters
+        ----------
+        fontsize : float, default: 26
+            Font size used for axes and legends in generated figures.
+        """
         self.fontsize = fontsize
         self._is_loaded = False
 
     def load_data(self, chain_specs, desi_contours_path, planck_root_dir=None):
         """Load Planck chains and the DESI ``line_sigmas.npy`` contour data.
 
-        ``chain_specs`` contains dictionaries with ``model``, ``data``, and
-        ``label``. The contours are plotted cumulatively in that order.
+        Parameters
+        ----------
+        chain_specs : sequence of mapping
+            Chain specifications with ``model``, ``data``, and ``label``
+            fields. Contours are plotted cumulatively in this order.
+        desi_contours_path : str or path-like
+            ``line_sigmas.npy`` file containing DESI contour polygons keyed by
+            confidence probability.
+        planck_root_dir : str or path-like, optional
+            Parent directory containing Planck chain releases.
+
+        Returns
+        -------
+        StarContourPlotter
+            This loaded instance.
         """
         from cup1d.postprocessing.chains import planck
 
@@ -36,8 +56,23 @@ class StarContourPlotter:
     def plot_progressive(self, xlim=(0.25, 0.45), ylim=(-2.35, -2.23), save_directory=None):
         """Plot DESI contours plus progressively more CMB extensions.
 
-        Returns a list of ``(figure, axis)`` pairs, one for each cumulative
-        subset of the configured CMB chains.
+        Parameters
+        ----------
+        xlim, ylim : tuple of float
+            Display limits for ``Delta2_star`` and ``n_star`` respectively.
+        save_directory : str or path-like, optional
+            Directory receiving PNG and PDF copies of every cumulative panel.
+
+        Returns
+        -------
+        list of tuple
+            ``(figure, axis)`` pairs, one for each cumulative subset of the
+            configured CMB chains.
+
+        Raises
+        ------
+        RuntimeError
+            If :meth:`load_data` has not been called.
         """
         if not self._is_loaded:
             raise RuntimeError("call load_data before plot_progressive")
@@ -79,7 +114,24 @@ class StarContourPlotter:
         return outputs
 
     def get_zenodo_data(self, desi_constraint=None):
-        """Return the compact Figure-21 data dictionary for a Zenodo release."""
+        """Return the compact Figure-21 data dictionary for a Zenodo release.
+
+        Parameters
+        ----------
+        desi_constraint : mapping, optional
+            DESI mean, standard deviations, and correlation. The published
+            Figure-21 values are used by default.
+
+        Returns
+        -------
+        dict
+            Gaussian summaries for DESI and each loaded CMB chain.
+
+        Raises
+        ------
+        RuntimeError
+            If contour data have not been loaded.
+        """
         if not self._is_loaded:
             raise RuntimeError("call load_data before get_zenodo_data")
         if desi_constraint is None:
@@ -107,7 +159,20 @@ class StarContourPlotter:
         return figure_data
 
     def save_data_to_zenodo(self, filename="fig_21.npy", desi_constraint=None):
-        """Save the Figure-21 summary data under cup1d's Zenodo directory."""
+        """Save the Figure-21 summary data under cup1d's Zenodo directory.
+
+        Parameters
+        ----------
+        filename : str, default: "fig_21.npy"
+            Destination name under ``data/zenodo``.
+        desi_constraint : mapping, optional
+            Replacement DESI Gaussian summary passed to :meth:`get_zenodo_data`.
+
+        Returns
+        -------
+        pathlib.Path
+            Saved NumPy file.
+        """
         from cup1d.utils.utils import get_path_repo
 
         output_path = Path(get_path_repo("cup1d")) / "data" / "zenodo" / filename
@@ -116,7 +181,13 @@ class StarContourPlotter:
         return output_path
 
     def _plot_desi_contours(self, axis):
-        """Draw the 68% and 95% DESI contour polygons."""
+        """Draw the 68% and 95% DESI contour polygons.
+
+        Parameters
+        ----------
+        axis : matplotlib.axes.Axes
+            Axis receiving the contour outlines and shaded polygons.
+        """
         blues = plt.colormaps["Blues"]
         for contour_index, probability in enumerate([0.68, 0.95]):
             label = r"DESI $P_\mathrm{1D}$" if contour_index == 0 else None
@@ -128,7 +199,17 @@ class StarContourPlotter:
                 label = None
 
     def _add_legend(self, axis, colors, line_styles, number_of_chains):
-        """Add a compact legend matching the plotted contour styles."""
+        """Add a compact legend matching the plotted contour styles.
+
+        Parameters
+        ----------
+        axis : matplotlib.axes.Axes
+            Axis on which to add the legend.
+        colors, line_styles : sequence of str
+            Matplotlib styles indexed by the loaded CMB-chain order.
+        number_of_chains : int
+            Number of cumulative CMB chains included in this panel.
+        """
         from matplotlib.lines import Line2D
 
         handles = [Line2D([], [], color="C0", label=r"DESI $P_\mathrm{1D}$", lw=3)]

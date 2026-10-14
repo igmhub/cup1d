@@ -26,17 +26,57 @@ from cup1d.utils.various_dicts import (
 
 
 def _configure_pyswarms_logging():
-    """Prevent PySwarms from installing its default report.log handler."""
+    """Point PySwarms at cup1d's logging configuration.
+
+    Notes
+    -----
+    Sets the process environment variable ``LOG_CFG`` to the packaged YAML
+    file.  PySwarms reads that variable when it is subsequently imported or
+    configured, avoiding its default ``report.log`` handler.
+    """
 
     config_path = Path(__file__).resolve().parents[1] / "utils" / "pyswarms_logging.yaml"
     os.environ["LOG_CFG"] = str(config_path)
 
 
 def _single_threaded_numerics(function):
-    """Run a scalar optimization without nested BLAS/OpenMP parallelism."""
+    """Decorate a scalar numerical callable to use one BLAS/OpenMP thread.
+
+    Parameters
+    ----------
+    function : callable
+        Callable evaluated within a temporary single-thread numerical-backend
+        context.
+
+    Returns
+    -------
+    callable
+        Wrapped callable with the same metadata and arguments as ``function``.
+
+    Notes
+    -----
+    Thread limits are restored after every call.  This is intended for scalar
+    optimizers whose small linear-algebra kernels do not benefit from nested
+    numerical parallelism.
+    """
 
     @wraps(function)
     def wrapped(*args, **kwargs):
+        """Call the decorated function under a one-thread numerical limit.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments forwarded unchanged to the decorated
+            callable.
+        **kwargs
+            Keyword arguments forwarded unchanged to the decorated callable.
+
+        Returns
+        -------
+        object
+            Whatever the decorated callable returns.
+        """
         # Nelder--Mead evaluates one point at a time. Limiting numerical
         # backends here avoids paying thread-management overhead for the
         # small linear-algebra kernels within each scalar likelihood call.
@@ -48,7 +88,13 @@ def _single_threaded_numerics(function):
 
 
 class Fitter(object):
-    """Wrapper around an emcee sampler for Lyman alpha likelihood"""
+    """Manage optimization, sampling, persistence, and derived fit products.
+
+    A fitter owns the unit-cube representation of a
+    :class:`~cup1d.likelihood.likelihood.Likelihood` parameter point.  It
+    supports scalar and vectorized minimizers, emcee sampling, MPI-aware
+    output handling, and restoration of saved runs.
+    """
 
     def __init__(
         self,
@@ -66,10 +112,39 @@ class Fitter(object):
         random_seed=None,
         create_output=True,
     ):
-        """Setup sampler from likelihood, or use default.
-        If read_chain_file is provided, read pre-computed chain.
-        rootdir allows user to search for saved chains in a different
-        location to the code itself."""
+        """Initialize fitting state for a likelihood and sampling schedule.
+
+        Parameters
+        ----------
+        like : cup1d.likelihood.likelihood.Likelihood
+            Likelihood whose free parameters, prediction, and posterior are
+            evaluated by this fitter.
+        nwalkers : int, default=1
+            Requested emcee walkers.  It is raised to ``2 * ndim + 1`` when
+            necessary for the number of free parameters.
+        nsteps, nburn : int, default=1, 0
+            Production and burn-in steps per walker.
+        thin : int, default=1
+            Chain thinning factor retained in fitter configuration.
+        verbose : bool, default=False
+            Enable rank-zero progress printing.
+        subfolder : str or path-like, optional
+            Optional child directory used while creating output products.
+        rootdir : str or path-like, optional
+            Root directory used to construct the output directory.
+        parallel : bool, default=False
+            Use ``MPI.COMM_WORLD`` and distribute root-rank output metadata.
+        explore : bool, default=False
+            Enable the fitter's exploratory sampler setting.
+        fix_cosmology : bool, default=False
+            Record whether cosmological parameters are fixed for downstream
+            sampling configuration.
+        random_seed : int, optional
+            Seed used to create a rank-specific NumPy random generator.
+        create_output : bool, default=True
+            Create the output directory on rank zero.  Disable when restoring
+            an existing result.
+        """
 
         self.parallel = parallel
         self.explore = explore
@@ -183,67 +258,201 @@ class Fitter(object):
         return copy.deepcopy(self.like.free_params)
 
     def _cube_from_point(self, point=None):
-        """Convert a public named point to private optimizer coordinates."""
+        """Convert named physical values to unit-cube optimizer coordinates.
+
+        Parameters
+        ----------
+        point : mapping, optional
+            Physical values keyed by free-parameter name.  Missing values use
+            the parameter definitions' current values.
+
+        Returns
+        -------
+        ndarray
+            One unit-cube coordinate per free likelihood parameter.
+        """
 
         return parameter_space.values_to_cube(self.like.free_params, point)
 
     def _point_from_cube(self, cube):
-        """Convert private optimizer coordinates to a public named point."""
+        """Convert unit-cube optimizer coordinates to a named physical point.
+
+        Parameters
+        ----------
+        cube : array-like
+            Unit-cube coordinates ordered as ``like.free_params``.
+
+        Returns
+        -------
+        dict
+            Physical parameter values keyed by free-parameter name.
+        """
 
         values = parameter_space.values_from_cube(self.like.free_params, cube)
         return parameter_space.point_from_values(self.like.free_params, values)
 
     def point_to_unit_cube(self, point):
-        """Normalize a public named parameter point to unit-cube coordinates.
+        """Normalize a named physical point to unit-cube coordinates.
 
-        This is mainly useful for diagnostics and interoperability; optimizers
-        and samplers perform the conversion internally when given a point.
+        Parameters
+        ----------
+        point : mapping
+            Physical values keyed by free-parameter name.
+
+        Returns
+        -------
+        ndarray
+            Coordinates ordered as ``like.free_params``.
         """
 
         return self._cube_from_point(point)
 
     def sampling_point_from_parameters(self, parameters=None):
-        """Compatibility alias for :meth:`_cube_from_point`."""
+        """Return unit-cube coordinates for physical parameter values.
+
+        Parameters
+        ----------
+        parameters : mapping, optional
+            Physical values keyed by free-parameter name.  Missing values use
+            parameter-definition defaults.
+
+        Returns
+        -------
+        ndarray
+            Unit-cube coordinates, ordered as ``like.free_params``.
+        """
 
         return self._cube_from_point(parameters)
 
     def point_from_chain_row(self, cube):
-        """Return a public named point for one numeric chain row."""
+        """Return named physical values for one unit-cube chain row.
+
+        Parameters
+        ----------
+        cube : array-like
+            One chain row in free-parameter order.
+
+        Returns
+        -------
+        dict
+            Physical values keyed by free-parameter name.
+        """
 
         return self._point_from_cube(cube)
 
     def parameters_from_sampling_point(self, values):
-        """Compatibility alias returning scalar values for internal callers."""
+        """Convert one unit-cube point to physical scalar values.
+
+        Parameters
+        ----------
+        values : array-like
+            Unit-cube coordinates ordered as ``like.free_params``.
+
+        Returns
+        -------
+        dict
+            Physical scalar values keyed by free-parameter name.
+        """
 
         return parameter_space.values_from_cube(self.like.free_params, values)
 
     def parameters_from_sampling_points(self, values):
-        """Convert cube points to columnar physical parameter arrays.
+        """Convert a batch of unit-cube points to columnar physical arrays.
 
-        Each returned mapping value has shape ``(n_batch,)``. This is the
-        batch counterpart of :meth:`parameters_from_sampling_point`.
+        Parameters
+        ----------
+        values : array-like
+            Array of unit-cube coordinates with one trailing coordinate per
+            free parameter.
+
+        Returns
+        -------
+        dict
+            Mapping from parameter name to arrays of shape ``(n_batch,)``.
         """
 
         return parameter_space.values_from_cube_batch(self.like.free_params, values)
 
     def value_in_cube(self, name, value=None):
+        """Convert one physical parameter value to its unit-cube coordinate.
+
+        Parameters
+        ----------
+        name : str
+            Free-parameter name.
+        value : float, optional
+            Physical value.  If omitted, use the parameter definition's
+            current value.
+
+        Returns
+        -------
+        float
+            Corresponding unit-cube coordinate.
+        """
         return parameter_space.value_in_cube(self.like.free_params, name, value)
 
     def value_from_cube(self, name, value):
+        """Convert one unit-cube coordinate to its physical value.
+
+        Parameters
+        ----------
+        name : str
+            Free-parameter name.
+        value : float
+            Unit-cube coordinate.
+
+        Returns
+        -------
+        float
+            Physical parameter value.
+        """
         return parameter_space.value_from_cube(self.like.free_params, name, value)
 
     def error_from_cube(self, name, error):
+        """Convert a unit-cube uncertainty to physical parameter units.
+
+        Parameters
+        ----------
+        name : str
+            Free-parameter name.
+        error : float
+            Uncertainty expressed in the unit-cube coordinate.
+
+        Returns
+        -------
+        float
+            Uncertainty expressed in the parameter's physical coordinate.
+        """
         return parameter_space.error_from_cube(self.like.free_params, name, error)
 
     def get_mle_value(self, name):
-        """Return one fitted physical or derived value from public results."""
+        """Return one best-fit physical or derived value.
+
+        Parameters
+        ----------
+        name : str
+            Free-parameter name stored in ``mle`` or derived cosmology name
+            stored in ``mle_cosmo``.
+
+        Returns
+        -------
+        float
+            Best-fit value in physical units.
+        """
 
         if name in self.mle:
             return self.mle[name]["value"]
         return self.mle_cosmo[name]
 
     def get_mle_latex(self):
-        """Return MLE values keyed by presentation-only LaTeX labels."""
+        """Return best-fit free-parameter values keyed by LaTeX labels.
+
+        Returns
+        -------
+        dict
+            Mapping from the plotting label in ``param_dict`` (or the
+            parameter name when absent) to the best-fit physical value.
+        """
 
         return {
             self.param_dict.get(name, name): parameter["value"]
@@ -251,7 +460,14 @@ class Fitter(object):
         }
 
     def get_truth_latex(self):
-        """Return truth values keyed by presentation-only LaTeX labels."""
+        """Return simulation-truth values keyed by LaTeX labels.
+
+        Returns
+        -------
+        dict or None
+            Mapping from plotting labels to truth values, or ``None`` when
+            the likelihood does not provide a synthetic-data truth.
+        """
 
         if self.truth is None:
             return None
@@ -260,7 +476,29 @@ class Fitter(object):
         }
 
     def _prediction_vector_and_icov(self, values, zmask=None):
-        """Return the model vector and matching fixed inverse covariance."""
+        """Flatten selected model bins and assemble their inverse covariance.
+
+        Parameters
+        ----------
+        values : array-like
+            Unit-cube coordinates for the free likelihood parameters.
+        zmask : array-like, optional
+            Redshifts to retain, matched to data bins with an absolute
+            tolerance of ``1e-3``.  By default retain all bins.
+
+        Returns
+        -------
+        prediction : ndarray
+            Concatenated one-dimensional model prediction for selected data
+            bins.
+        inverse_covariance : ndarray
+            Block-diagonal inverse covariance aligned with ``prediction``.
+
+        Raises
+        ------
+        ValueError
+            If the emulator rejects the point or ``zmask`` selects no bins.
+        """
 
         parameters = self.parameters_from_sampling_point(values)
         result = self.like.get_p1d_kms(parameters)
@@ -308,7 +546,27 @@ class Fitter(object):
         return np.concatenate(model_vectors), block_diag(*covariance_blocks)
 
     def _gauss_newton_hessian(self, hessian_step, zmask=None):
-        """Approximate posterior curvature from first model derivatives."""
+        """Approximate unit-cube posterior curvature from model derivatives.
+
+        Parameters
+        ----------
+        hessian_step : float
+            Maximum central- or one-sided-difference displacement in the
+            transformed coordinate used for each parameter.
+        zmask : array-like, optional
+            Redshifts retained while forming the prediction vector.
+
+        Returns
+        -------
+        ndarray
+            Gauss--Newton curvature matrix with Gaussian-prior curvature
+            included when the likelihood defines such priors.
+
+        Notes
+        -----
+        Parameters tagged with ``hessian_transform='exp'`` are differentiated
+        in physical amplitude coordinates and scaled back to the unit cube.
+        """
 
         parameters = list(self.like.free_params.values())
         exponential = np.asarray(
@@ -336,6 +594,19 @@ class Fitter(object):
             ) / amplitude_range[exponential]
 
         def hessian_to_cube(point):
+            """Map mixed Hessian coordinates back to the fitter's unit cube.
+
+            Parameters
+            ----------
+            point : ndarray
+                Coordinate vector in which exponential parameters are stored
+                as normalized physical amplitudes.
+
+            Returns
+            -------
+            ndarray
+                Unit-cube vector accepted by likelihood evaluation.
+            """
             cube = np.asarray(point).copy()
             amplitudes = amplitude_min[exponential] + (
                 point[exponential] * amplitude_range[exponential]
@@ -405,8 +676,35 @@ class Fitter(object):
     ):
         """Estimate local MLE errors from the negative-log-posterior Hessian.
 
+        Parameters
+        ----------
+        hessian_step : float, default=1e-4
+            Finite-difference displacement used for curvature derivatives.
+        zmask : array-like, optional
+            Redshifts retained in likelihood and Gauss--Newton calculations.
+        method : {'finite_difference', 'gauss_newton', 'hybrid'}, default='finite_difference'
+            Curvature estimator.  ``'hybrid'`` replaces cosmology rows of the
+            Gauss--Newton matrix with finite-difference rows.
+
+        Returns
+        -------
+        dict
+            Marginalized physical uncertainties keyed by free-parameter name.
+            Unidentified null-mode components are reported as ``np.inf``.
+
+        Raises
+        ------
+        ValueError
+            If no MLE is available, the step is non-positive, the method is
+            unknown, or the estimated curvature is non-finite or not locally
+            positive semidefinite.
+
+        Notes
+        -----
         The covariance is evaluated in the unit cube and propagated to
         physical likelihood parameters and compressed linear-power parameters.
+        The method stores the curvature, covariance, rank, null modes, and
+        compressed-cosmology covariance as ``mle_*`` attributes.
         """
 
         if not hasattr(self, "mle_cube"):
@@ -480,6 +778,18 @@ class Fitter(object):
         }
 
         def star_parameters(point):
+            """Return compressed linear-power parameters at one cube point.
+
+            Parameters
+            ----------
+            point : array-like
+                Unit-cube free-parameter coordinates.
+
+            Returns
+            -------
+            ndarray
+                ``Delta2_star``, ``n_star``, and ``alpha_star`` in that order.
+            """
             parameters = self.parameters_from_sampling_point(point)
             return np.asarray(self.like.theory.get_blob_for_parameters(parameters)[:3])
 
@@ -528,7 +838,19 @@ class Fitter(object):
         return self.mle_errors
 
     def _values_from_input(self, point_or_cube):
-        """Private adapter for public points and internal cube coordinates."""
+        """Normalize public points or unit-cube arrays to physical values.
+
+        Parameters
+        ----------
+        point_or_cube : mapping or array-like
+            Named physical values or unit-cube coordinates in free-parameter
+            order.
+
+        Returns
+        -------
+        dict
+            Physical parameter values keyed by free-parameter name.
+        """
 
         if isinstance(point_or_cube, Mapping):
             return parameter_space.values_from_point(
@@ -537,24 +859,82 @@ class Fitter(object):
         return self.parameters_from_sampling_point(point_or_cube)
 
     def get_chi2(self, point_or_cube, **kwargs):
-        """Evaluate chi-squared from a public point or internal cube array."""
+        """Evaluate likelihood chi-squared from physical values or a cube point.
+
+        Parameters
+        ----------
+        point_or_cube : mapping or array-like
+            Named physical values or unit-cube coordinates.
+        **kwargs
+            Keyword arguments forwarded to ``like.get_chi2``.
+
+        Returns
+        -------
+        float
+            Likelihood chi-squared.
+        """
 
         return self.like.get_chi2(self._values_from_input(point_or_cube), **kwargs)
 
     def log_prob(self, point_or_cube, **kwargs):
-        """Evaluate posterior from a public point or internal cube array."""
+        """Evaluate log posterior from physical values or a cube point.
+
+        Parameters
+        ----------
+        point_or_cube : mapping or array-like
+            Named physical values or unit-cube coordinates.
+        **kwargs
+            Keyword arguments forwarded to ``like.log_prob``.
+
+        Returns
+        -------
+        float
+            Log posterior, including configured priors.
+        """
 
         return self.like.log_prob(self._values_from_input(point_or_cube), **kwargs)
 
     def log_prob_and_blobs(self, point_or_cube, **kwargs):
-        """Evaluate posterior and blobs from a public point or internal cube."""
+        """Evaluate log posterior and auxiliary blobs at one parameter point.
+
+        Parameters
+        ----------
+        point_or_cube : mapping or array-like
+            Named physical values or unit-cube coordinates.
+        **kwargs
+            Keyword arguments forwarded to ``like.log_prob_and_blobs``.
+
+        Returns
+        -------
+        tuple
+            Log posterior and the likelihood-defined sampler blobs.
+        """
 
         return self.like.log_prob_and_blobs(
             self._values_from_input(point_or_cube), **kwargs
         )
 
     def log_prob_and_blobs_batch(self, values, **kwargs):
-        """Evaluate an array of sampler coordinates in one likelihood batch."""
+        """Evaluate posterior and blobs for a batch of unit-cube points.
+
+        Parameters
+        ----------
+        values : array-like
+            Two-dimensional array with shape ``(n_batch, ndim)``.
+        **kwargs
+            Keyword arguments forwarded to the batched likelihood method.
+
+        Returns
+        -------
+        tuple
+            Batched log posterior and likelihood-defined blobs.
+
+        Raises
+        ------
+        ValueError
+            If ``values`` is not a two-dimensional array with ``ndim``
+            coordinates in its second dimension.
+        """
 
         values = np.asarray(values)
         if values.ndim != 2 or values.shape[1] != self.ndim:
@@ -566,7 +946,24 @@ class Fitter(object):
         return self.like.log_prob_and_blobs_batch(parameters, **kwargs)
 
     def minus_log_prob(self, values, zmask=None, ind_fix=None, pfix=None):
-        """Negative posterior in optimizer coordinates."""
+        """Evaluate negative log posterior, optionally fixing one coordinate.
+
+        Parameters
+        ----------
+        values : array-like
+            Unit-cube coordinates.
+        zmask : array-like, optional
+            Redshift mask forwarded to posterior evaluation.
+        ind_fix : int, optional
+            Coordinate index replaced before evaluation.
+        pfix : float, optional
+            Replacement unit-cube value used with ``ind_fix``.
+
+        Returns
+        -------
+        float
+            Negative log posterior.
+        """
 
         values = np.asarray(values).copy()
         if ind_fix is not None:
@@ -574,8 +971,14 @@ class Fitter(object):
         return -self.log_prob(values, zmask=zmask)
 
     def set_truth(self):
-        """Set up dictionary with true values of cosmological
-        likelihood parameters for plotting purposes"""
+        """Store synthetic-data truth in canonical parameter-name form.
+
+        Returns
+        -------
+        None
+            Sets ``truth`` to a copied ``like_params`` dictionary for
+            synthetic data, or to ``None`` when fitting observations.
+        """
 
         # likelihood contains true parameters, but not in latex names
         like_truth = self.like.truth
@@ -597,13 +1000,38 @@ class Fitter(object):
         force_timeout=False,
         vectorize=None,
     ):
-        """Set up sampler, run burn in, run chains,
-        return chains
-            - timeout is the time in hours to run the
-              sampler for
-            - vectorize batches the default likelihood across walkers
-            - force_timeout will continue to run the chains
-              until timeout, regardless of convergence"""
+        """Run emcee burn-in and production chains from an initial point.
+
+        Parameters
+        ----------
+        pini : mapping or array-like, optional
+            Named physical initial values or one unit-cube initial point.
+            When omitted, walker initialization uses parameter defaults.
+        log_func : callable, optional
+            Custom emcee log-probability callable.  Supplying one disables
+            the built-in batched-likelihood selection.
+        zmask : array-like, optional
+            Redshifts forwarded to the selected log-probability callable.
+        timeout : float, optional
+            Retained compatibility option; it is not used by this sampler.
+        force_timeout : bool, default=False
+            Retained compatibility option; it is not used by this sampler.
+        vectorize : bool, optional
+            Batch the default likelihood across walkers.  When omitted, use
+            vectorization except for emulator labels containing ``'forest'``.
+
+        Returns
+        -------
+        emcee.EnsembleSampler
+            The rank-local sampler.  On rank zero, fitted chains, blobs, log
+            probabilities, and the MAP-derived MLE are stored on the fitter.
+
+        Notes
+        -----
+        In MPI mode, rank zero concatenates walker axes received from workers.
+        Blinding is applied only to stored derived-star blobs, after the MLE
+        is selected.
+        """
 
         import emcee
 
@@ -740,9 +1168,60 @@ class Fitter(object):
         hessian_step=1.0e-4,
         error_method="finite_difference",
     ):
-        """Minimizer"""
+        """Minimize negative log posterior with bounded Nelder--Mead searches.
+
+        Parameters
+        ----------
+        log_func_minimize : callable, optional
+            Negative-log-posterior callable in unit-cube coordinates.
+        p0 : mapping or array-like, optional
+            Named physical values or initial unit-cube point.  Defaults to the
+            centre of the unit cube.
+        burn_in : bool, default=False
+            Perform Latin-hypercube-started preliminary local searches before
+            the main minimization.
+        zmask : array-like, optional
+            Redshift mask passed to the objective.
+        mask_pars : bool, default=False
+            Keep likelihood parameters marked ``fixed`` at their initial
+            unit-cube values during minimization.
+        restart : bool, default=False
+            Reset stored-MLE comparison state before running.
+        neval : int, default=1000
+            Maximum function evaluations and iterations per SciPy search.
+        chi2_tol : float, default=0.1
+            Absolute objective tolerance used by Nelder--Mead and repeat
+            stopping logic.
+        estimate_errors : bool, default=False
+            Estimate local MLE errors after a fit.
+        hessian_step : float, default=1e-4
+            Displacement passed to MLE-error estimation.
+        error_method : str, default='finite_difference'
+            Curvature estimator passed to :meth:`estimate_mle_errors`.
+
+        Notes
+        -----
+        The fitted unit-cube point and chi-squared are passed to
+        :meth:`set_mle`; this method returns ``None``.
+        """
 
         def set_log_func_minimize(pini, zmask=None, mask_pars=False):
+            """Prepare an objective with optional redshift and fixed-coordinate masks.
+
+            Parameters
+            ----------
+            pini : array-like
+                Initial unit-cube point supplying fixed-coordinate values.
+            zmask : array-like, optional
+                Redshift mask forwarded to ``log_func_minimize``.
+            mask_pars : bool, default=False
+                Replace likelihood parameters marked fixed before each call.
+
+            Returns
+            -------
+            callable
+                Objective accepting a complete unit-cube parameter vector.
+            """
             if mask_pars == False:
                 if zmask is not None:
                     fun = lambda x: log_func_minimize(x, zmask=zmask)
@@ -927,8 +1406,51 @@ class Fitter(object):
         hessian_step=1.0e-4,
         error_method="finite_difference",
     ):
-        """Minimize with global- or local-neighborhood PSO.
+        """Minimize the posterior with global- or local-neighborhood PSO.
 
+        Parameters
+        ----------
+        p0 : mapping or array-like, optional
+            Named physical values or a unit-cube swarm centre.  Defaults to
+            the unit-cube centre.
+        zmask : array-like, optional
+            Redshift mask forwarded to likelihood evaluations.
+        n_particles : int, default=128
+            Number of swarm particles; must be at least two.
+        iters : int, default=1000
+            Maximum swarm updates; must be positive.
+        options : mapping, optional
+            PySwarms coefficients.  Defaults to ``c1=1.5``, ``c2=1.5``, and
+            ``w=0.7``; local PSO additionally receives ``k`` and ``p``.
+        pso_type : {'global', 'local'}, default='global'
+            Swarm topology.
+        vectorize : bool, default=True
+            Evaluate all particles together through the batched likelihood.
+        restart : bool, default=False
+            Force replacement of a stored MLE even if this fit is worse.
+        chi2_tol : float, default=0.1
+            Absolute tolerance transformed into PySwarms' relative stopping
+            criterion.
+        estimate_errors : bool, default=False
+            Estimate local errors after fitting.
+        hessian_step : float, default=1e-4
+            Displacement used for optional error estimation.
+        error_method : str, default='finite_difference'
+            Curvature estimator used for optional error estimation.
+
+        Returns
+        -------
+        pyswarms.single.GlobalBestPSO or pyswarms.single.LocalBestPSO
+            Configured optimizer after the completed run.
+
+        Raises
+        ------
+        ValueError
+            If particle count, iteration count, tolerance, topology, or the
+            initial point shape is invalid.
+
+        Notes
+        -----
         ``pso_type="global"`` attracts all particles to the swarm-wide best;
         ``pso_type="local"`` uses a dynamic neighborhood to preserve separate
         searches for longer. When ``vectorize`` is true, each swarm iteration evaluates all
@@ -984,6 +1506,18 @@ class Fitter(object):
         init_pos = np.clip(init_pos, 0.0, 1.0)
 
         def objective(points):
+            """Return negative log posterior for every swarm particle.
+
+            Parameters
+            ----------
+            points : ndarray
+                Unit-cube points with shape ``(n_particles, ndim)``.
+
+            Returns
+            -------
+            ndarray
+                Negative log posterior for each input particle.
+            """
             if vectorize:
                 results = self.log_prob_and_blobs_batch(points, zmask=zmask)
             else:
@@ -1028,6 +1562,18 @@ class Fitter(object):
             # render the best objective in the same fixed-point format used by
             # cup1d's start/end diagnostics.
             def report_progress(**values):
+                """Format PySwarms' best objective for its progress bar.
+
+                Parameters
+                ----------
+                **values
+                    Progress fields supplied by PySwarms.
+
+                Returns
+                -------
+                None
+                    Updates the optimizer reporter postfix in place.
+                """
                 if "best_cost" in values:
                     values["best_cost"] = f"{float(values['best_cost']):.2f}"
                 optimizer.rep.t.set_postfix(**values)
@@ -1062,11 +1608,51 @@ class Fitter(object):
         estimate_errors=False,
         hessian_step=1.0e-4,
     ):
-        """Minimizer using dual annealing"""
+        """Minimize negative log posterior with SciPy dual annealing.
+
+        Parameters
+        ----------
+        log_func_minimize : callable, optional
+            Negative-log-posterior callable in unit-cube coordinates.
+        p0 : mapping or array-like, optional
+            Named physical values or unit-cube initial point.
+        zmask : array-like, optional
+            Redshift mask forwarded to the objective.
+        mask_pars : object, optional
+            Legacy fixed-parameter switch interpreted by the nested objective
+            helper; ``None`` leaves all coordinates free.
+        restart : bool, default=True
+            Replace a stored MLE even if this annealing result is worse.
+        estimate_errors : bool, default=False
+            Estimate MLE errors after fitting.
+        hessian_step : float, default=1e-4
+            Displacement used for optional error estimation.
+
+        Notes
+        -----
+        The method writes fitted state through :meth:`set_mle` and returns
+        ``None``.
+        """
 
         from scipy.optimize import dual_annealing
 
         def set_log_func_minimize(pini, zmask=None, mask_pars=None):
+            """Prepare dual-annealing objective with optional coordinate masks.
+
+            Parameters
+            ----------
+            pini : array-like
+                Initial unit-cube point supplying fixed-coordinate values.
+            zmask : array-like, optional
+                Redshift mask forwarded to the objective.
+            mask_pars : object, optional
+                If not ``None``, hold likelihood parameters marked fixed.
+
+            Returns
+            -------
+            callable
+                Objective accepting a complete unit-cube vector.
+            """
             if mask_pars is None:
                 if zmask is not None:
                     fun = lambda x: log_func_minimize(x, zmask=zmask)
@@ -1148,7 +1734,24 @@ class Fitter(object):
             )
 
     def set_mle(self, mle_cube, mle_chi2, force=False):
-        """Set the maximum likelihood solution"""
+        """Store a maximum-likelihood point and its derived cosmology.
+
+        Parameters
+        ----------
+        mle_cube : array-like
+            Best-fit unit-cube coordinates.
+        mle_chi2 : float
+            Chi-squared at ``mle_cube``.
+        force : bool, default=False
+            Replace stored fit state even when ``mle_chi2`` is not smaller
+            than the current best value.
+
+        Notes
+        -----
+        Replacing an MLE removes all persisted error-estimate attributes,
+        rebuilds physical free parameters and compressed cosmology, and
+        applies configured blinding only to the derived cosmology.
+        """
 
         if hasattr(self, "mle_chi2") and not force:
             if mle_chi2 < self.mle_chi2:
@@ -1214,15 +1817,38 @@ class Fitter(object):
                 self.print(par, val)
 
     def _seed_sampler(self, sampler):
-        """Seed emcee proposal moves from this fitter’s local generator."""
+        """Seed an emcee sampler from this fitter's rank-local generator.
+
+        Parameters
+        ----------
+        sampler : emcee.EnsembleSampler
+            Sampler whose legacy ``random_state`` is set in place.
+
+        Returns
+        -------
+        None
+        """
 
         seed = int(self.rng.integers(0, np.iinfo(np.uint32).max))
         sampler.random_state = np.random.RandomState(seed).get_state()
 
     def get_initial_walkers(self, pini=None, rms=0.01):
-        """Setup initial states of walkers in sensible points
-        -- initial will set a range within unit volume around the
-           fiducial values to initialise walkers (if no prior is used)"""
+        """Draw clipped unit-cube initial positions for all emcee walkers.
+
+        Parameters
+        ----------
+        pini : array-like, optional
+            Unit-cube centre.  Defaults to 0.5 for every parameter.
+        rms : float, default=0.01
+            Positive uniform displacement width added independently to each
+            coordinate.
+
+        Returns
+        -------
+        ndarray
+            Initial walker positions with shape ``(nwalkers, ndim)``, clipped
+            to the interval ``[0.05, 0.95]``.
+        """
 
         ndim = self.ndim
         nwalkers = self.nwalkers
@@ -1243,8 +1869,21 @@ class Fitter(object):
         return p0
 
     def get_trunc_norm(self, mean, n_samples):
-        """Wrapper for scipys truncated normal distribution
-        Runs in the range [0,1] with a rms specified on initialisation"""
+        """Draw unit-interval truncated-normal values around a mean.
+
+        Parameters
+        ----------
+        mean : float or array-like
+            Centre passed to SciPy's truncated normal distribution.
+        n_samples : int or tuple of int
+            Requested output size.
+
+        Returns
+        -------
+        ndarray
+            Draws limited to ``[0, 1]`` using ``like.prior_Gauss_rms`` as the
+            distribution scale.
+        """
 
         from scipy.stats import truncnorm
 
@@ -1260,9 +1899,35 @@ class Fitter(object):
         return values
 
     def get_chain(self, cube=True, extra_nburn=0, delta_lnprob_cut=None, collapse=True):
-        """Figure out whether chain has been read from file, or computed.
-        - if cube=True, return values in range [0,1]
-        - if delta_lnprob_cut is set, use it to remove low-prob islands"""
+        """Return retained sampler points, log posterior values, and blobs.
+
+        Parameters
+        ----------
+        cube : bool, default=True
+            Return unit-cube coordinates.  If false, convert coordinates to
+            physical parameter values.
+        extra_nburn : int, default=0
+            Additional leading stored steps to discard.
+        delta_lnprob_cut : float, optional
+            Retain only samples within this log-posterior distance of the
+            maximum after walker filtering.
+        collapse : bool, default=True
+            Flatten retained step and walker axes into a sample axis.
+
+        Returns
+        -------
+        chain : ndarray
+            Retained coordinates, with a trailing parameter axis.
+        lnprob : ndarray
+            Log posterior values aligned with ``chain``.
+        blobs : ndarray
+            Likelihood blobs aligned with ``chain``.
+
+        Notes
+        -----
+        Unless ``explore`` is enabled, the method removes walkers rejected by
+        :func:`cup1d.utils.utils.purge_chains` before other selection.
+        """
 
         # mask walkers not converged
         if self.explore == False:
@@ -1304,10 +1969,27 @@ class Fitter(object):
             return chain, lnprob, blobs
 
     def get_all_params(self, delta_lnprob_cut=None, extra_nburn=0, collapse=True):
-        """Get a merged array of both sampled and derived parameters
-        returns a 2D array of all parameters, and an ordered list of
-        the LaTeX strings for each.
-            - if delta_lnprob_cut is set, keep only high-prob points"""
+        """Return sampled parameters, available derived blobs, and labels.
+
+        Parameters
+        ----------
+        delta_lnprob_cut : float, optional
+            High-posterior selection forwarded to :meth:`get_chain`.
+        extra_nburn : int, default=0
+            Additional stored steps discarded by :meth:`get_chain`.
+        collapse : bool, default=True
+            Flatten sample axes as in :meth:`get_chain`.
+
+        Returns
+        -------
+        all_params : ndarray
+            Physical sampled parameters, optionally concatenated with six
+            derived blobs when those blobs are available.
+        all_strings : list of str
+            LaTeX labels aligned with the trailing axis of ``all_params``.
+        lnprob : ndarray
+            Log posterior values aligned with the leading sample axes.
+        """
 
         chain, lnprob, blobs = self.get_chain(
             cube=False,
@@ -1344,7 +2026,26 @@ class Fitter(object):
         return all_params, all_strings, lnprob
 
     def _setup_chain_folder(self, rootdir=None, subfolder=None):
-        """Set up a directory to save files for this sampler run"""
+        """Create a unique numbered directory for fitter output products.
+
+        Parameters
+        ----------
+        rootdir : str or path-like, optional
+            Output root.  Defaults to ``cup1d/data/chains``.
+        subfolder : str or path-like, optional
+            Child directory below ``rootdir`` before numbered ``chain_N``
+            folders are allocated.
+
+        Returns
+        -------
+        None
+            Sets ``save_directory`` to the newly created path.
+
+        Notes
+        -----
+        A ``FileExistsError`` during creation is treated as a concurrent
+        allocation race and retries the next number.
+        """
 
         if rootdir:
             chain_location = rootdir
@@ -1382,8 +2083,19 @@ class Fitter(object):
         return
 
     def _write_dict_to_text(self, saveDict):
-        """Write the settings for this chain
-        to a more easily readable .txt file"""
+        """Write selected saved-result metadata to ``info.txt``.
+
+        Parameters
+        ----------
+        saveDict : mapping
+            Result metadata.  Large chain, blob, posterior, and autocorrelation
+            arrays are omitted from the human-readable file.
+
+        Returns
+        -------
+        None
+            Writes ``info.txt`` inside ``save_directory``.
+        """
 
         ## What keys don't we want to include in the info file
         dontPrint = ["lnprob", "flatchain", "blobs", "autocorr"]
@@ -1396,9 +2108,25 @@ class Fitter(object):
         return
 
     def get_best_fit(self, delta_lnprob_cut=None, stat_best_fit="mean"):
-        """Return an array of best fit values (mean) from the MCMC chain,
-        in unit likelihood space.
-            - if delta_lnprob_cut is set, use only high-prob points"""
+        """Summarize the chain or return the stored maximum-likelihood point.
+
+        Parameters
+        ----------
+        delta_lnprob_cut : float, optional
+            High-posterior selection used for mean or median summaries.
+        stat_best_fit : {'mean', 'median', 'mle'}, default='mean'
+            Summary statistic in unit-cube coordinates.
+
+        Returns
+        -------
+        ndarray
+            Unit-cube parameter vector.
+
+        Raises
+        ------
+        ValueError
+            If ``stat_best_fit`` is unsupported.
+        """
 
         if stat_best_fit == "mean":
             chain, lnprob, blobs = self.get_chain(delta_lnprob_cut=delta_lnprob_cut)
@@ -1427,7 +2155,18 @@ class Fitter(object):
     )
 
     def _configuration_reference(self):
-        """Return the YAML information required to reconstruct this fit."""
+        """Return configuration provenance needed to reconstruct a fit.
+
+        Returns
+        -------
+        dict
+            Absolute YAML path, loader type, and synthetic-data flag.
+
+        Raises
+        ------
+        ValueError
+            If the likelihood configuration was not created from a YAML file.
+        """
 
         config_path = getattr(self.like.args, "config_path", None)
         if config_path is None:
@@ -1442,7 +2181,19 @@ class Fitter(object):
         }
 
     def _fit_result(self):
-        """Return only state produced by fitting, not YAML-derived inputs."""
+        """Serialize state produced by fitting, excluding YAML-derived inputs.
+
+        Returns
+        -------
+        dict
+            MLE cube and chi-squared plus any available persisted error
+            products.
+
+        Raises
+        ------
+        ValueError
+            If no fitted MLE state is available.
+        """
 
         if self.mle is None or not hasattr(self, "mle_cube"):
             raise ValueError("No fitted result is available to save")
@@ -1456,6 +2207,19 @@ class Fitter(object):
         return result
 
     def _result_payload(self, result_type):
+        """Build a versioned result payload around fitted state.
+
+        Parameters
+        ----------
+        result_type : {'minimizer', 'sampler'}
+            Kind of result being serialized.
+
+        Returns
+        -------
+        dict
+            Format-versioned payload with configuration provenance, parameter
+            ordering, and fitted state.
+        """
         return {
             "format_version": 1,
             "result_type": result_type,
@@ -1465,7 +2229,23 @@ class Fitter(object):
         }
 
     def save_minimizer_results(self):
-        """Save a compact, YAML-backed standalone minimizer result."""
+        """Save a compact YAML-reconstructable minimizer result.
+
+        Returns
+        -------
+        pathlib.Path
+            ``minimizer_results.npy`` inside ``save_directory``.
+
+        Raises
+        ------
+        ValueError
+            If no output directory is configured.
+
+        Notes
+        -----
+        Missing MLE uncertainties are first computed with the Gauss--Newton
+        estimator so they are included in the saved fit state.
+        """
 
         if self.save_directory is None:
             raise ValueError("This fitter has no output directory")
@@ -1478,7 +2258,24 @@ class Fitter(object):
         return out_file
 
     def save_sampler_results(self):
-        """Save sampler arrays separately and reference them from its result."""
+        """Save sampler arrays and a YAML-reconstructable result manifest.
+
+        Returns
+        -------
+        pathlib.Path
+            ``sampler_results.npy`` manifest inside ``save_directory``.
+
+        Raises
+        ------
+        ValueError
+            If no output directory is configured or required chain, blob, or
+            log-posterior arrays are unavailable.
+
+        Notes
+        -----
+        The manifest references separate ``chain.npy``, ``blobs.npy``, and
+        ``lnprob.npy`` assets.
+        """
 
         if self.save_directory is None:
             raise ValueError("This fitter has no output directory")
@@ -1508,7 +2305,26 @@ class Fitter(object):
         return out_file
 
     def restore_results(self, payload, result_path):
-        """Restore fitter state from a validated result payload."""
+        """Restore fitted state and optional sampler arrays from a manifest.
+
+        Parameters
+        ----------
+        payload : mapping
+            Version-validated minimizer or sampler result manifest.
+        result_path : str or path-like
+            Location of that manifest, used to resolve relative asset paths.
+
+        Returns
+        -------
+        Fitter
+            This fitter after state restoration.
+
+        Raises
+        ------
+        ValueError
+            If saved parameter names or MLE shape do not match the
+            reconstructed likelihood.
+        """
 
         expected_names = list(self.like.free_param_names)
         if payload.get("parameter_names") != expected_names:
@@ -1544,7 +2360,19 @@ class Fitter(object):
         return self
 
     def save_fitter(self, save_chains=False):
-        """Compatibility wrapper for the split result-file interface."""
+        """Save a minimizer or sampler result through the compatibility API.
+
+        Parameters
+        ----------
+        save_chains : bool, default=False
+            Save sampler arrays and manifest when true; otherwise save only
+            the minimizer result.
+
+        Returns
+        -------
+        pathlib.Path
+            Path returned by the selected persistence method.
+        """
 
         if save_chains:
             return self.save_sampler_results()

@@ -5,11 +5,22 @@ from cup1d.p1ds.base_p1d_mock import BaseMockP1D
 
 
 class P1D_challenge_DESIY1(BaseMockP1D):
+    """Represent the challenge DESIY1 P1D data product."""
     def __init__(self, theory, true_cosmo, p1d_fname=None, z_min=0, z_max=10):
-        """Read measured P1D from file.
-        - full_cov: for now, no covariance between redshift bins
-        - z_min: z=2.0 bin is not recommended by Karacayli2024
-        - z_max: maximum redshift to include"""
+        """Load a DESI Y1 challenge P1D realization and record its truth.
+
+        Parameters
+        ----------
+        theory : object
+            Cup1D theory object.  Its fiducial IGM and cosmology are reset to
+            the challenge truth before that truth is stored in the mock.
+        true_cosmo : object
+            Cosmology object corresponding to the challenge realization.
+        p1d_fname : str or path-like, optional
+            Challenge FITS file containing ``P1D`` and ``COVARIANCE`` tables.
+        z_min, z_max : float, default: 0, 10
+            Inclusive redshift range retained from the file.
+        """
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
         res = read_from_file(p1d_fname=p1d_fname)
@@ -45,7 +56,33 @@ class P1D_challenge_DESIY1(BaseMockP1D):
 
 
 def read_from_file(p1d_fname=None, kmin=1e-3, nknyq=0.5, max_cov=1e3):
-    """Read file containing P1D"""
+    """Read and quality-filter a DESI Y1 challenge P1D FITS product.
+
+    Parameters
+    ----------
+    p1d_fname : str or path-like
+        FITS file with velocity-space P1D and covariance extensions.
+    kmin : float, default: 1e-3
+        Strict lower wavenumber cut in ``s / km``.
+    nknyq : float, default: 0.5
+        Fraction of the redshift-dependent Nyquist frequency retained.
+    max_cov : float, default: 1e3
+        Retained-diagonal covariance ceiling in ``(km / s)**2``.  This option
+        is accepted for reader compatibility; this implementation only uses
+        positivity and finite-value filtering.
+
+    Returns
+    -------
+    tuple
+        Per-redshift and concatenated P1D vectors in ``km / s``, covariance
+        blocks in ``(km / s)**2``, and blinding metadata.
+
+    Raises
+    ------
+    ValueError
+        If the FITS file cannot be opened, lacks a ``P1D`` extension, or is
+        not tagged as velocity-space data.
+    """
 
     # folder storing P1D measurement
     print("Reading: ", p1d_fname)

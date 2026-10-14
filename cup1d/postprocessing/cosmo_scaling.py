@@ -32,10 +32,32 @@ TITLES = (
 
 
 def match_star_parameters(background, target, z_star, k_star_kms, match_running=False):
-    """Select primordial parameters to match a target at a fixed velocity pivot.
+    """Rescale primordial parameters to match compressed linear-power values.
 
-    The new background's conversion factor is used. This inverse matching
-    selects As/ns/nrun; LaCE performs the actual spectrum rescaling and fit.
+    Parameters
+    ----------
+    background : lace.cosmo.cosmology.Cosmology
+        Cosmology to rescale without changing its background parameters.
+    target : mapping
+        Target ``Delta2_star``, ``n_star``, and, when requested,
+        ``alpha_star`` values.
+    z_star : float
+        Redshift of the compressed linear-power pivot.
+    k_star_kms : float
+        Pivot wavenumber in ``s / km``.
+    match_running : bool, default: False
+        Also match ``alpha_star`` by changing primordial running.
+
+    Returns
+    -------
+    lace.cosmo.rescale_cosmology.RescaledCosmology
+        Cosmology with adjusted ``As``, ``ns``, and optionally ``nrun``.
+
+    Raises
+    ------
+    AssertionError
+        If the rescaled spectrum does not reproduce the requested star
+        parameters to the stated numerical tolerance.
     """
     current = background.get_linP_kms_params(z_star, k_star_kms)
     primordial = background.get_primordial_params()
@@ -71,13 +93,47 @@ def match_star_parameters(background, target, z_star, k_star_kms, match_running=
 
 
 def damped_linear_model(cosmology, kpressure_kms):
-    """Return a ForestFlow P3D callable in Mpc**3, damped at total k.
+    """Create a Gaussian-damped linear P3D callable for P1D projection.
 
-    Flatten/restore ForestFlow's 2D integration grid through sorted unique k
-    values so LaCE's 1D interpolator is never extrapolated or silently clamped.
+    Parameters
+    ----------
+    cosmology : lace.cosmo.cosmology.Cosmology
+        Cosmology used to evaluate linear power and velocity conversion.
+    kpressure_kms : float
+        Gaussian damping scale in ``s / km``.
+
+    Returns
+    -------
+    callable
+        ForestFlow-compatible ``p3d(linear, z, k, mu, parameters, ...)``
+        function returning P3D in ``Mpc**3`` for ``k`` in ``1 / Mpc``.
     """
 
     def p3d(linear, z, k, mu, parameters, new_cosmo_params=None):
+        """Evaluate the damped linear P3D on a scalar or array integration grid.
+
+        Parameters
+        ----------
+        linear, mu, parameters
+            ForestFlow callback compatibility arguments; they do not alter the
+            damped linear calculation.
+        z : float
+            Evaluation redshift.
+        k : array_like
+            Total comoving wavenumbers in ``1 / Mpc``.
+        new_cosmo_params : mapping, optional
+            Unsupported cosmology overrides.
+
+        Returns
+        -------
+        ndarray
+            Damped linear P3D with the same shape as ``k`` in ``Mpc**3``.
+
+        Raises
+        ------
+        ValueError
+            If cosmology overrides are supplied after construction.
+        """
         if new_cosmo_params is not None:
             raise ValueError("Supply cosmology overrides when constructing the model")
         unique, inverse = np.unique(k, return_inverse=True)
@@ -112,6 +168,35 @@ class CosmoScalingPlotter:
         n_k_perp=397,
         camb_kmax_mpc=400.0,
     ):
+        """Initialize a cached cosmological-scaling experiment.
+
+        Parameters
+        ----------
+        fiducial_parameters : mapping, optional
+            CAMB cosmological parameters overriding :data:`FIDUCIAL_PARAMETERS`.
+        z_star : float, default: 3
+            Redshift of the compressed linear-power pivot.
+        k_star_kms : float, default: 0.009
+            Pivot wavenumber in ``s / km``.
+        scans : mapping[str, array_like], optional
+            Scan values for ``omch2``, ``H0``, and ``mnu``.
+        k_parallel_kms, k_linear_kms : array_like, optional
+            Positive one-dimensional P1D and linear-power grids in ``s / km``.
+        kpressure_kms : float, default: 0.4
+            Positive Gaussian pressure-damping scale in ``s / km``.
+        k_perp_min, k_perp_max : float
+            Transverse integration bounds in ``s / km``.
+        n_k_perp : int
+            Number of transverse integration samples.
+        camb_kmax_mpc : float, default: 400
+            Minimum CAMB maximum wavenumber in ``1 / Mpc``.
+
+        Raises
+        ------
+        ValueError
+            If either wavenumber grid or ``kpressure_kms`` is non-finite,
+            non-positive, or not one-dimensional where required.
+        """
         self.parameters = {**FIDUCIAL_PARAMETERS, **(fiducial_parameters or {})}
         self.z_star, self.k_star_kms = z_star, k_star_kms
         self.scans = {
@@ -156,6 +241,18 @@ class CosmoScalingPlotter:
         self._fiducial_spectra = None
 
     def _make_cosmology(self, parameters):
+        """Construct a cosmology with CAMB coverage for all projection grids.
+
+        Parameters
+        ----------
+        parameters : mapping
+            CAMB cosmological parameters.
+
+        Returns
+        -------
+        lace.cosmo.cosmology.Cosmology
+            Cosmology whose CAMB maximum is enlarged for the requested grids.
+        """
         cosmo = Cosmology(
             cosmo_params_dict=dict(parameters), camb_kmax_Mpc=self.camb_kmax_mpc
         )
@@ -173,7 +270,20 @@ class CosmoScalingPlotter:
         return cosmo
 
     def project(self, cosmology, n_k_perp=None):
-        """Project the damped linear spectrum to P1D [km/s]."""
+        """Project the damped linear spectrum to velocity-space P1D.
+
+        Parameters
+        ----------
+        cosmology : lace.cosmo.cosmology.Cosmology
+            Cosmology whose damped linear P3D is projected.
+        n_k_perp : int, optional
+            Override the configured number of transverse integration samples.
+
+        Returns
+        -------
+        ndarray
+            P1D with shape ``(len(k_parallel),)`` and units ``km / s``.
+        """
         from forestflow.statistics.p1d import P1D_kms
 
         options = dict(self.integration)
@@ -189,6 +299,24 @@ class CosmoScalingPlotter:
         )
 
     def _spectra(self, cosmology):
+        """Evaluate the linear and projected spectra for one cosmology.
+
+        Parameters
+        ----------
+        cosmology : lace.cosmo.cosmology.Cosmology
+            Cosmology to evaluate at :attr:`z_star`.
+
+        Returns
+        -------
+        dict[str, ndarray]
+            ``linear`` power in ``(km / s)**3`` and ``p1d`` in ``km / s``.
+
+        Raises
+        ------
+        ValueError
+            If either calculated spectrum contains non-finite or non-positive
+            values.
+        """
         spectra = dict(
             linear=cosmology.get_linP_kms(self.z_star, self.k_linear),
             p1d=self.project(cosmology),
@@ -199,10 +327,28 @@ class CosmoScalingPlotter:
         return spectra
 
     def compute_scan(self, parameter):
-        """Cache each distinct background and all three matching cases.
+        """Calculate and cache all matching cases for one parameter scan.
 
-        The mnu scan retains the old experiment's fixed omch2+omnuh2 by
-        compensating the CDM density using CAMB's actual neutrino density.
+        Parameters
+        ----------
+        parameter : {"omch2", "H0", "mnu"}
+            Cosmological parameter varied over :attr:`scans`.
+
+        Returns
+        -------
+        list of dict
+            One entry per scan value containing background parameters, models,
+            star parameters, and linear/P1D spectra for every matching case.
+
+        Raises
+        ------
+        ValueError
+            If ``parameter`` is unsupported.
+
+        Notes
+        -----
+        The neutrino-mass scan compensates CDM density to preserve the former
+        experiment's fixed ``omch2 + omnuh2`` convention.
         """
         if parameter in self.results:
             return self.results[parameter]
@@ -245,7 +391,26 @@ class CosmoScalingPlotter:
         return rows
 
     def get_figure_data(self, parameter, spectrum):
-        """Return exact plotted coordinates/ratios and reconstruction metadata."""
+        """Return plotted power ratios and complete reconstruction metadata.
+
+        Parameters
+        ----------
+        parameter : {"omch2", "H0", "mnu"}
+            Cosmological parameter scan to evaluate.
+        spectrum : {"linear", "p1d"}
+            Spectrum whose fractional ratio to the fiducial is returned.
+
+        Returns
+        -------
+        dict
+            ``x`` in ``s / km``, panel/scan ratio arrays defined as
+            ``P / P_fid - 1``, and metadata with units and calculation inputs.
+
+        Raises
+        ------
+        ValueError
+            If ``spectrum`` is not ``"linear"`` or ``"p1d"``.
+        """
         if spectrum not in ("linear", "p1d"):
             raise ValueError("spectrum must be 'linear' or 'p1d'")
         rows = self.compute_scan(parameter)
@@ -286,6 +451,20 @@ class CosmoScalingPlotter:
 
     @staticmethod
     def _label(parameter, value):
+        """Format one scan value for a plot legend.
+
+        Parameters
+        ----------
+        parameter : str
+            Scanned parameter name.
+        value : float
+            Parameter value in its native CAMB convention.
+
+        Returns
+        -------
+        str
+            LaTeX-formatted legend label.
+        """
         if parameter == "H0":
             return rf"$h={value/100:.3f}$"
         if parameter == "mnu":
@@ -305,11 +484,33 @@ class CosmoScalingPlotter:
         save_data=False,
         output_directory=None,
     ):
-        """Plot the three matching cases; optionally save figure or Zenodo data.
+        """Plot scaling residuals for the three compressed-parameter matches.
 
-        ``ylims`` optionally supplies three (lower, upper) pairs. Returns
-        (figure, axes, data). The linear comparison uses a common velocity
-        grid evaluated directly by CAMB rather than interpolating other curves.
+        Parameters
+        ----------
+        parameter : {"omch2", "H0", "mnu"}
+            Cosmological parameter scan to plot.
+        spectrum : {"linear", "p1d"}, default: "p1d"
+            Select linear or projected P1D residuals.
+        fontsize : float, default: 20
+            Base figure font size.
+        figsize : tuple, default: (8, 8)
+            Matplotlib figure dimensions in inches.
+        cmap : str, default: "turbo"
+            Matplotlib colormap for scan values.
+        ylims : sequence of tuple, optional
+            Explicit limits for the three panels.
+        save_path : str or path-like, optional
+            Figure output path.
+        save_data : bool, default: False
+            Save the plotted arrays using :meth:`save_data_to_zenodo`.
+        output_directory : str or path-like, optional
+            Directory for saved arrays.
+
+        Returns
+        -------
+        tuple
+            Matplotlib figure, three axes, and the plotted data dictionary.
         """
         import matplotlib.pyplot as plt
 
@@ -369,7 +570,22 @@ class CosmoScalingPlotter:
 
     @staticmethod
     def save_data_to_zenodo(data, filename=None, output_directory=None):
-        """Write local figure arrays (never upload); return the resulting path."""
+        """Write figure arrays locally in NumPy format without uploading.
+
+        Parameters
+        ----------
+        data : dict
+            Payload produced by :meth:`get_figure_data`.
+        filename : str, optional
+            Output filename.  Defaults to the appendix-figure convention.
+        output_directory : str or path-like, optional
+            Output directory.  Defaults to Cup1D's local Zenodo-data folder.
+
+        Returns
+        -------
+        pathlib.Path
+            Written ``.npy`` file path.
+        """
         from cup1d.utils.utils import get_path_repo
 
         metadata = data["metadata"]
@@ -388,7 +604,14 @@ class CosmoScalingPlotter:
         return path
 
     def plot_fiducial(self):
-        """Plot dimensionless k_parallel P1D/pi for the reference model."""
+        """Plot the fiducial dimensionless velocity-space P1D.
+
+        Returns
+        -------
+        tuple
+            Matplotlib figure and axes, with ``k_parallel P1D / pi`` plotted
+            against ``k_parallel`` in ``s / km``.
+        """
         import matplotlib.pyplot as plt
 
         if self._fiducial_spectra is None:
@@ -405,7 +628,18 @@ class CosmoScalingPlotter:
         return fig, ax
 
     def plot_matched_detail(self, parameter):
-        """Compare two/three-parameter linear residuals in one panel."""
+        """Compare two- and three-parameter linear matching residuals.
+
+        Parameters
+        ----------
+        parameter : {"omch2", "H0", "mnu"}
+            Cosmological parameter scan to compare.
+
+        Returns
+        -------
+        tuple
+            Matplotlib figure, axes, and underlying plotted data dictionary.
+        """
         import matplotlib.pyplot as plt
 
         data = self.get_figure_data(parameter, "linear")

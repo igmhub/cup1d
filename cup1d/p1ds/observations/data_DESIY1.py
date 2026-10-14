@@ -7,7 +7,23 @@ from cup1d.utils.utils import get_path_repo
 
 
 def set_p1d_filename(data_label="QMLE3"):
-    """Set path to DESI DR1 P1D file"""
+    """Resolve a DESI DR1 P1D label to its distributed FITS product.
+
+    Parameters
+    ----------
+    data_label : str, default: "QMLE3"
+        Label ending in ``QMLE3``, ``QMLE``, ``FFT_dir``, or ``FFT3_dir``.
+
+    Returns
+    -------
+    str
+        Absolute path to the matching velocity-space P1D FITS file.
+
+    Raises
+    ------
+    ValueError
+        If the label does not identify a supported DESI DR1 estimator.
+    """
 
     path_data = os.path.join(get_path_repo("cup1d"), "data", "p1d_measurements")
 
@@ -41,6 +57,27 @@ def set_p1d_filename(data_label="QMLE3"):
 
 
 def compute_cov(syst, type_measurement="QMLE", type_analysis="red", variation=None):
+    """Build the systematic covariance selected for a DESI P1D analysis.
+
+    Parameters
+    ----------
+    syst : FITS record array
+        Systematic-error table containing ``Z`` and estimator-specific error
+        columns.  Each error column is in the same units as P1D, ``km / s``.
+    type_measurement : {"QMLE", "FFT"}, default: "QMLE"
+        P1D estimator that determines the available systematic components.
+    type_analysis : {"fid", "red", "xred"}, default: "red"
+        Systematic model: fully correlated, reduced, or extended-reduced.
+    variation : str, optional
+        ``"data_syst_diag"`` moves selected systematic components to the
+        covariance diagonal.
+
+    Returns
+    -------
+    ndarray or None
+        Systematic covariance with shape ``(ndata, ndata)`` and units
+        ``(km / s)**2``; None for an unsupported measurement type.
+    """
     if type_measurement == "QMLE":
         sys_labels = [
             "E_DLA_COMPLETENESS",
@@ -192,6 +229,7 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red", variation=No
 
 
 class P1D_DESIY1(BaseDataP1D):
+    """Represent the DESIY1 P1D data product."""
     def __init__(
         self,
         data_label=None,
@@ -203,10 +241,26 @@ class P1D_DESIY1(BaseDataP1D):
         variation=None,
         data_bias=1.0,
     ):
-        """Read measured P1D from file.
-        - full_cov: for now, no covariance between redshift bins
-        - z_min: z=2.0 bin is not recommended by Karacayli2024
-        - z_max: maximum redshift to include"""
+        """Load a DESI DR1 velocity-space P1D measurement.
+
+        Parameters
+        ----------
+        data_label : str, optional
+            DESI estimator label used to choose the default FITS product.
+        z_min, z_max : float, default: 0, 10
+            Inclusive redshift interval retained after reading.
+        cov_syst_type : {"fid", "red", "xred"}, default: "red"
+            Prescription used to combine systematic covariance components.
+        p1d_fname, cov_fname : str or path-like, optional
+            Measurement and covariance FITS files.  ``cov_fname`` defaults to
+            the measurement file.
+        variation : str, optional
+            Named data-systematic variation, including ``"DLA_TAN"`` and
+            ``"data_syst_diag"``.
+        data_bias : float, default: 1
+            Multiplicative correction applied to P1D and consistently squared
+            in the statistical covariance.
+        """
 
         if p1d_fname is None:
             p1d_fname = set_p1d_filename(data_label=data_label)
@@ -270,7 +324,40 @@ def read_from_file(
     variation=None,
     data_bias=1.0,
 ):
-    """Read file containing P1D"""
+    """Read and quality-filter a DESI DR1 P1D FITS data product.
+
+    Parameters
+    ----------
+    p1d_fname : str or path-like
+        P1D measurement FITS file with a velocity-units ``P1D_BLIND`` table.
+    cov_fname : str or path-like, optional
+        FITS file supplying covariance and systematics extensions.  Defaults
+        to ``p1d_fname``.
+    kmin : float, default: 1e-3
+        Strict lower wavenumber cut in ``s / km``.
+    nknyq : float, default: 0.5
+        Fraction of the redshift-dependent Nyquist wavenumber retained.
+    max_cov : float, default: 1e3
+        Strict upper cut on retained covariance diagonal values in
+        ``(km / s)**2``.
+    cov_syst_type, variation : str, optional
+        Options forwarded to :func:`compute_cov`.
+    data_bias : float, default: 1
+        Multiplicative P1D correction; covariance scales as its square.
+
+    Returns
+    -------
+    tuple
+        Per-redshift and concatenated P1D arrays, total and statistical
+        covariance in ``(km / s)**2``, blinding metadata, smooth P1D vectors,
+        and wavenumber-bin edges in ``s / km``.
+
+    Raises
+    ------
+    ValueError
+        If a required FITS file or extension is unavailable, the data are not
+        in velocity units, or the estimator cannot be inferred from the file.
+    """
 
     # we correct both the stat cov matrix and p1d for data bias
 

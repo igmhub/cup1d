@@ -7,7 +7,17 @@ from scipy.spatial import ConvexHull
 
 
 def plot_hull(self, points, test_points=None):
-    # Visualization: Project onto all 2D pairs of dimensions
+    """Plot pairwise projections of one stored convex hull.
+
+    Parameters
+    ----------
+    self : object
+        Object exposing a SciPy ``hull`` and ordered parameter names ``params``.
+    points : ndarray
+        Sample points with shape ``(n_samples, n_dimensions)``.
+    test_points : ndarray, optional
+        Reserved comparison points; currently not rendered.
+    """
     n_dimensions = points.shape[1]
     fig, axes = plt.subplots(
         n_dimensions,
@@ -52,7 +62,17 @@ def plot_hull(self, points, test_points=None):
 
 
 def plot_hulls(self, points, test_points=None):
-    # Visualization: Project onto all 2D pairs of dimensions
+    """Plot pairwise projections of separately stored two-dimensional hulls.
+
+    Parameters
+    ----------
+    self : object
+        Object exposing ordered SciPy hulls and parameter names ``params``.
+    points : ndarray
+        Sample points with shape ``(n_samples, n_dimensions)``.
+    test_points : ndarray, optional
+        Reserved comparison points; currently not rendered.
+    """
     n_dimensions = points.shape[1]
     fig, axes = plt.subplots(
         n_dimensions,
@@ -96,7 +116,26 @@ def plot_ellipse(
     color="C1",
     label="ellipse",
 ):
-    # Covariance matrix
+    """Add the 68-percent two-dimensional Gaussian ellipse to axes.
+
+    Parameters
+    ----------
+    sigma1, sigma2 : float, default: 0.2, 0.5
+        Standard deviations of the two coordinates.
+    rho : float, default: 0.6
+        Correlation coefficient.
+    mean : sequence of float, default: [1.0, 2.0]
+        Ellipse center with two coordinates.
+    ax : matplotlib.axes.Axes, optional
+        Existing axes.  A new figure and axes are created when omitted.
+    color, label : str
+        Matplotlib edge color and legend label.
+
+    Notes
+    -----
+    The ellipse patch and center marker are added in place.  This legacy helper
+    does not return the created figure or axes.
+    """
     cov = np.array(
         [
             [sigma1**2, rho * sigma1 * sigma2],

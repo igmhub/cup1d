@@ -18,6 +18,34 @@ def plot_hcd_cont(
     nelem=5000,
     store_data=False,
 ):
+    """Plot HCD contamination components at one measured redshift.
+
+    Parameters
+    ----------
+    self : object
+        Likelihood-like object exposing ``data``, ``free_params``, and an HCD
+        contamination model.
+    zstar : float, default: 3
+        Redshift present in ``self.data.z``.
+    p0 : array_like, optional
+        Sampling-space point used when no posterior ``chain`` is supplied.
+    chain : ndarray, optional
+        Posterior samples with final axis matching the free-parameter order.
+    save_directory : str or path-like, optional
+        Directory where PDF and PNG figures are written.
+    ftsize : float, default: 24
+        Base font size.
+    nelem : int, default: 5000
+        Maximum randomly selected posterior samples.
+    store_data : bool, default: False
+        Return plotted percentile data instead of only showing the figure.
+
+    Returns
+    -------
+    dict, optional
+        Interpolation grid and plotted percentile bands when ``store_data`` is
+        true; otherwise None.
+    """
     if store_data:
         out_data = {}
 
@@ -129,6 +157,30 @@ def plot_metal_cont_add(
     nelem=5000,
     store_data=False,
 ):
+    """Plot additive metal contamination across four reference redshifts.
+
+    Parameters
+    ----------
+    self : object
+        Likelihood-like object exposing data, IGM, and additive-metal models.
+    free_params : dict, optional
+        Physical likelihood parameters for a deterministic model curve.
+    chain : ndarray, optional
+        Posterior samples with final axis matching the free-parameter order.
+    save_directory : str or path-like, optional
+        Directory where PDF and PNG figures are written.
+    ftsize : float, default: 24
+        Base font size.
+    nelem : int, default: 5000
+        Maximum randomly selected posterior samples.
+    store_data : bool, default: False
+        Return interpolation grids and percentile bands.
+
+    Returns
+    -------
+    dict, optional
+        Plotted data when requested; otherwise None.
+    """
     if store_data:
         out_data = {}
 
@@ -240,7 +292,32 @@ def plot_metal_cont_mult(
     nelem=5000,
     store_data=False,
 ):
-    """Plot metallicity contours"""
+    """Plot multiplicative metal-contamination components.
+
+    Parameters
+    ----------
+    self : object
+        Likelihood-like object exposing the multiplicative-metal model.
+    free_params : dict, optional
+        Physical likelihood parameters for deterministic curves.
+    chain : ndarray, optional
+        Posterior samples with final axis matching the free-parameter order.
+    zstar : float, default: 3
+        Measured redshift at which to plot the components.
+    save_directory : str or path-like, optional
+        Directory where PDF and PNG figures are written.
+    ftsize : float, default: 24
+        Base font size.
+    nelem : int, default: 5000
+        Maximum randomly selected posterior samples.
+    store_data : bool, default: False
+        Return interpolation grids and percentile bands.
+
+    Returns
+    -------
+    dict, optional
+        Plotted data when requested; otherwise None.
+    """
 
     if store_data:
         out_data = {}
@@ -592,7 +669,26 @@ def plot_metal_cont_mult(
 
 
 def plot_parameters(self, z, like_params, folder=None):
-    """Plot likelihood parameters"""
+    """Plot redshift evolution of contaminant-model parameters.
+
+    Parameters
+    ----------
+    self : object
+        Contaminant model exposing coefficient metadata and evaluators.
+    z : array_like of float
+        Redshifts at which to evaluate coefficients.
+    like_params : dict or sequence of dict
+        One physical parameter mapping for all redshifts, or one mapping per
+        redshift.
+    folder : str or path-like, optional
+        File root where PNG and PDF figures are written.
+
+    Returns
+    -------
+    tuple of dict
+        Evaluated parameter values and polynomial coefficient values, keyed by
+        contaminant parameter name.
+    """
 
     from matplotlib import pyplot as plt
 
@@ -669,7 +765,25 @@ def plot_hcd_contamination(
     cmap=None,
     smooth_k=False,
 ):
-    """Plot the contamination model"""
+    """Plot the HCD multiplicative contamination over selected redshifts.
+
+    Parameters
+    ----------
+    self : object
+        Object providing fiducial HCD coefficients.
+    z : array_like of float
+        Redshifts associated with ``k_kms``.
+    k_kms : sequence of ndarray
+        Per-redshift wavenumber grids in ``s / km``.
+    ln_A_damp_coeff : array_like, optional
+        HCD amplitude coefficients; defaults to the object's fiducial values.
+    plot_every_iz : int, default: 1
+        Plot every nth redshift bin.
+    cmap : callable, optional
+        Colormap mapping redshift-bin index to a color.
+    smooth_k : bool, default: False
+        Evaluate on a log-spaced grid instead of supplied wavenumbers.
+    """
 
     from cup1d.models.contaminants.HCD.hcd_model_McDonald2005 import HCD_Model_McDonald2005
 
@@ -720,7 +834,31 @@ def plot_agn_contamination(
     zrange=[0, 10],
     name=None,
 ):
-    """Plot the contamination model"""
+    """Plot AGN contamination and optional data/model comparison.
+
+    Parameters
+    ----------
+    self : object
+        Object providing fiducial AGN coefficients.
+    z : array_like of float
+        Redshifts associated with ``k_kms``.
+    k_kms : sequence of ndarray
+        Per-redshift wavenumber grids in ``s / km``.
+    ln_AGN_coeff : array_like, optional
+        AGN amplitude coefficients; defaults to fiducial values.
+    plot_every_iz : int, default: 1
+        Plot every nth redshift bin.
+    cmap : callable, optional
+        Colormap mapping redshift-bin index to a color.
+    smooth_k : bool, default: False
+        Evaluate on a log-spaced grid instead of supplied wavenumbers.
+    dict_data : dict, optional
+        Optional ``zs``, ``p1d_data``, and ``p1d_model`` arrays for comparison.
+    zrange : sequence of float, default: [0, 10]
+        Inclusive redshift plotting limits.
+    name : str, optional
+        Optional label used by the remaining plotting code.
+    """
 
     from cup1d.models.contaminants.feedback.AGN_model import AGN_Model
 

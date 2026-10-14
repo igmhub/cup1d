@@ -4,7 +4,23 @@ __all__ = ["Likelihood", "make_parameter", "LikelihoodParameter"]
 
 
 def __getattr__(name):
-    """Avoid initializing MPI unless the full likelihood is requested."""
+    """Lazily expose likelihood symbols without initializing MPI at import time.
+
+    Parameters
+    ----------
+    name : str
+        Requested module attribute.
+
+    Returns
+    -------
+    object
+        ``Likelihood`` or the parameter factory.
+
+    Raises
+    ------
+    AttributeError
+        If ``name`` is not a supported lazy module attribute.
+    """
 
     if name == "Likelihood":
         from cup1d.likelihood.likelihood import Likelihood

@@ -15,9 +15,22 @@ from cup1d.utils.various_dicts import get_blob_value
 
 
 class HistoricalLinearPowerPlotter:
-    """Create the CMB, DESI DR1, and historical P1D comparison figure."""
+    """Create the CMB, DESI DR1, and historical P1D comparison figure.
+
+    Parameters
+    ----------
+    fontsize : float, default: 26
+        Base Matplotlib font size for the comparison figure.
+    """
 
     def __init__(self, fontsize=26):
+        """Initialize the plotter without loading external chain products.
+
+        Parameters
+        ----------
+        fontsize : float, default: 26
+            Base font size used by :meth:`plot`.
+        """
         self.fontsize = fontsize
         self._is_loaded = False
 
@@ -27,11 +40,22 @@ class HistoricalLinearPowerPlotter:
         desi_chain_directory=None,
         blinding_path=None,
     ):
-        """Load the Planck LCDM chain, DESI DR1 contours, and literature data.
+        """Load Planck, DESI DR1, and blinding products for the comparison.
 
-        All paths are optional. By default the method uses the repository's
-        Planck chains, the DESI DR1 ``chain_7`` output next to the repository,
-        and the tutorial blinding offsets.
+        Parameters
+        ----------
+        planck_root_dir : str or path-like, optional
+            Parent directory containing Planck linear-power chains.
+        desi_chain_directory : str or path-like, optional
+            DESI DR1 ``chain_7`` directory containing contours, blobs, and
+            summary products.
+        blinding_path : str or path-like, optional
+            NumPy mapping of additive ``Delta2_star`` and ``n_star`` offsets.
+
+        Returns
+        -------
+        HistoricalLinearPowerPlotter
+            This loaded instance.
         """
         repository_path = Path(get_path_repo("cup1d"))
         if planck_root_dir is None:
@@ -68,9 +92,22 @@ class HistoricalLinearPowerPlotter:
         return self
 
     def plot(self, include_simulations=True):
-        """Return the historical constraint figure without writing files.
+        """Create the historical constraint figure without writing files.
 
-        Set ``include_simulations=False`` to omit the MPG simulation points.
+        Parameters
+        ----------
+        include_simulations : bool, default: True
+            Overlay MPG training-simulation star-parameter points.
+
+        Returns
+        -------
+        tuple
+            GetDist figure and its 2-by-2 axes array.
+
+        Raises
+        ------
+        RuntimeError
+            If :meth:`load_data` has not been called.
         """
         self._require_loaded()
         cmb_samples = self.cmb["samples"].copy()
@@ -99,7 +136,20 @@ class HistoricalLinearPowerPlotter:
         return plotter.fig, plotter.subplots
 
     def get_zenodo_data(self):
-        """Return the compact Figure-18 summary data dictionary."""
+        """Return the compact Figure-18 constraint summary.
+
+        Returns
+        -------
+        dict[str, dict]
+            Mean, standard-deviation, and correlation summaries in unblinded
+            ``(Delta2_star, n_star)`` coordinates for CMB, DESI, and four
+            literature constraints.
+
+        Raises
+        ------
+        RuntimeError
+            If :meth:`load_data` has not been called.
+        """
         self._require_loaded()
         samples = self.cmb["samples"]
         delta2_star = np.asarray(samples["linP_DL2_star"])
@@ -121,13 +171,31 @@ class HistoricalLinearPowerPlotter:
         return data
 
     def save_data_to_zenodo(self, filename="fig_18.npy"):
-        """Save Figure-18 summary data under cup1d's Zenodo directory."""
+        """Save Figure-18 summary arrays to Cup1D's local Zenodo directory.
+
+        Parameters
+        ----------
+        filename : str, default: "fig_18.npy"
+            Output NumPy filename.
+
+        Returns
+        -------
+        pathlib.Path
+            Written file path.
+        """
         output_path = Path(get_path_repo("cup1d")) / "data" / "zenodo" / filename
         output_path.parent.mkdir(parents=True, exist_ok=True)
         np.save(output_path, self.get_zenodo_data())
         return output_path
 
     def _plot_literature(self, joint_axis, amplitude_axis, slope_axis):
+        """Overlay historical Gaussian constraints on joint and marginal axes.
+
+        Parameters
+        ----------
+        joint_axis, amplitude_axis, slope_axis : matplotlib.axes.Axes
+            Axes receiving joint contours and normalized marginal densities.
+        """
         thresholds = [2.30, 6.18]
         n_star_grid, delta2_grid = np.mgrid[-2.4:-2.2:200j, 0.2:0.65:200j]
         x_delta2 = np.linspace(0.2, 0.55, 500)
@@ -173,6 +241,13 @@ class HistoricalLinearPowerPlotter:
             )
 
     def _plot_desi(self, joint_axis, amplitude_axis, slope_axis):
+        """Overlay unblinded DESI DR1 contours and KDE marginals.
+
+        Parameters
+        ----------
+        joint_axis, amplitude_axis, slope_axis : matplotlib.axes.Axes
+            Axes receiving DESI contours and normalized KDEs.
+        """
         blues = plt.colormaps["Blues"]
         for index, probability in enumerate([0.68, 0.95]):
             color = blues([0.7, 0.3][index])
@@ -189,6 +264,17 @@ class HistoricalLinearPowerPlotter:
 
     @staticmethod
     def _plot_kde(axis, samples, color):
+        """Plot a normalized Gaussian KDE for one sample vector.
+
+        Parameters
+        ----------
+        axis : matplotlib.axes.Axes
+            Axes receiving the density curve.
+        samples : array_like
+            One-dimensional posterior samples.
+        color : color-like
+            Matplotlib curve color.
+        """
         kde = gaussian_kde(samples)
         values = np.linspace(samples.min(), samples.max(), 200)
         density = kde(values)
@@ -196,6 +282,13 @@ class HistoricalLinearPowerPlotter:
 
     @staticmethod
     def _plot_simulations(axis):
+        """Scatter MPG training simulations in compressed linear-power space.
+
+        Parameters
+        ----------
+        axis : matplotlib.axes.Axes
+            Joint constraint axes receiving simulation points.
+        """
         from cup1d.theory.cosmology import set_cosmo
 
         for label, cosmology in set_cosmo("mpg_0", return_all=True).items():
@@ -204,6 +297,13 @@ class HistoricalLinearPowerPlotter:
                 axis.scatter(star_params["Delta2_star"], star_params["n_star"], color="C0")
 
     def _format_axes(self, joint_axis, amplitude_axis, slope_axis):
+        """Apply fixed Figure-18 limits, labels, ticks, and label rotations.
+
+        Parameters
+        ----------
+        joint_axis, amplitude_axis, slope_axis : matplotlib.axes.Axes
+            GetDist comparison axes to format in place.
+        """
         joint_axis.set(xlim=(0.23, 0.52), ylim=(-2.39, -2.24))
         joint_axis.set_xticks([0.3, 0.4, 0.5])
         joint_axis.set_yticks([-2.35, -2.30, -2.25])
@@ -219,6 +319,13 @@ class HistoricalLinearPowerPlotter:
                 label.set_ha("right")
 
     def _add_legend(self, axis):
+        """Add the fixed Figure-18 source legend.
+
+        Parameters
+        ----------
+        axis : matplotlib.axes.Axes
+            Axis receiving the legend.
+        """
         labels = [
             r"DESI DR1 (this work)",
             r"SDSS (McDonald+05)",
@@ -250,6 +357,14 @@ class HistoricalLinearPowerPlotter:
 
     @staticmethod
     def _literature_constraints():
+        """Build historical Gaussian chi-square grids in star coordinates.
+
+        Returns
+        -------
+        list of dict
+            Literature constraints evaluated on common ``n_star`` and
+            ``Delta2_star`` mesh grids.
+        """
         n_star_grid, delta2_grid = np.mgrid[-2.4:-2.2:200j, 0.2:0.65:200j]
         return [
             marginal.gaussian_chi2_McDonald2005(n_star_grid, delta2_grid),
@@ -261,6 +376,13 @@ class HistoricalLinearPowerPlotter:
         ]
 
     def _desi_constraint(self):
+        """Summarize the loaded, unblinded DESI DR1 compressed constraint.
+
+        Returns
+        -------
+        dict
+            Means, errors, and correlation coefficient in star coordinates.
+        """
         return {
             "x": self.desi_summary["delta2_star_16_50_84"][1]
             - self.blinding["Delta2_star"],
@@ -276,6 +398,18 @@ class HistoricalLinearPowerPlotter:
 
     @staticmethod
     def _constraint_from_samples(delta2_star, n_star):
+        """Compute Gaussian summary statistics from paired star samples.
+
+        Parameters
+        ----------
+        delta2_star, n_star : array_like
+            Paired compressed linear-power samples.
+
+        Returns
+        -------
+        dict
+            Means, standard deviations, and Pearson correlation coefficient.
+        """
         return {
             "x": np.mean(delta2_star),
             "xerr": np.std(delta2_star),
@@ -286,9 +420,23 @@ class HistoricalLinearPowerPlotter:
 
     @staticmethod
     def _ensure_ranges_periodic(samples):
+        """Supply the GetDist periodic-range attribute for legacy chain files.
+
+        Parameters
+        ----------
+        samples : getdist.MCSamples
+            Loaded samples mutated only when ``ranges.periodic`` is absent.
+        """
         if not hasattr(samples.ranges, "periodic"):
             samples.ranges.periodic = set()
 
     def _require_loaded(self):
+        """Raise unless external comparison products have been loaded.
+
+        Raises
+        ------
+        RuntimeError
+            If :meth:`load_data` has not completed successfully.
+        """
         if not self._is_loaded:
             raise RuntimeError("call load_data before plotting or exporting data")

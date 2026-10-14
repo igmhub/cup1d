@@ -4,6 +4,7 @@ from lace.cosmo import thermal_broadening
 
 
 class Thermal(IGM_model):
+    """Model the IGM thermal history used by cup1d."""
     def __init__(
         self,
         coeffs=None,
@@ -15,6 +16,11 @@ class Thermal(IGM_model):
         flat_priors=None,
         Gauss_priors=None,
     ):
+        """Initialize thermal-width and temperature-density slope histories.
+
+        Parameters are forwarded to :class:`IGM_model`; both default histories
+        multiply their fiducial values with constant-output spline factors.
+        """
         list_coeffs = ["sigT_kms", "gamma"]
 
         if prop_coeffs is None:
@@ -50,14 +56,46 @@ class Thermal(IGM_model):
         )
 
     def get_sigT_kms(self, z, like_params=None, name_par="sigT_kms"):
-        """sigT_kms at the input redshift"""
+        """Evaluate the thermal broadening width in km/s.
+
+        Parameters
+        ----------
+        z : float or numpy.ndarray
+            Redshift(s) at which to evaluate the history.
+        like_params : mapping, optional
+            Physical named coefficients overriding the configured history.
+        name_par : str, default="sigT_kms"
+            Coefficient and fiducial-history key.
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Thermal broadening width in km/s. Dividing by ``H(z)/(1+z)``
+            converts this width to a comoving length in Mpc.
+        """
 
         sigT_kms = self.get_value(name_par, z, like_params=like_params)
         sigT_kms *= self.fid_interp[name_par](z)
         return sigT_kms
 
     def get_T0(self, z, like_params=None, name_par="sigT_kms"):
-        """T_0 at the input redshift"""
+        """Convert the thermal broadening history to temperature.
+
+        Parameters
+        ----------
+        z : float or numpy.ndarray
+            Redshift(s) at which to evaluate the history.
+        like_params : mapping, optional
+            Physical named coefficients passed to ``get_sigT_kms``.
+        name_par : str, default="sigT_kms"
+            Thermal broadening history key.
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Temperature at mean density in kelvin, using LaCE's thermal
+            broadening conversion.
+        """
 
         sigT_kms = self.get_sigT_kms(
             z, like_params=like_params, name_par=name_par
@@ -66,7 +104,22 @@ class Thermal(IGM_model):
         return T0
 
     def get_gamma(self, z, like_params=None, name_par="gamma"):
-        """gamma at the input redshift"""
+        """Evaluate the temperature--density relation slope.
+
+        Parameters
+        ----------
+        z : float or numpy.ndarray
+            Redshift(s) at which to evaluate the history.
+        like_params : mapping, optional
+            Physical named coefficients overriding the configured history.
+        name_par : str, default="gamma"
+            Coefficient and fiducial-history key.
+
+        Returns
+        -------
+        float or numpy.ndarray
+            Dimensionless ``gamma`` in ``T = T0 * (rho/rho_mean)**(gamma-1)``.
+        """
 
         gamma = self.get_value(name_par, z, like_params=like_params)
         gamma *= self.fid_interp[name_par](z)

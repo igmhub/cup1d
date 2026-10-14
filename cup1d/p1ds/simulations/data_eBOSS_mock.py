@@ -7,6 +7,7 @@ from cup1d.p1ds.base_p1d_data import BaseDataP1D
 
 
 class P1D_eBOSS_mock(BaseMockP1D):
+    """Represent the eBOSS mock P1D data product."""
     def __init__(
         self,
         diag_cov=False,
@@ -17,9 +18,26 @@ class P1D_eBOSS_mock(BaseMockP1D):
         add_noise=False,
         seed=0,
     ):
-        """Read measured P1D from file.
-        - diag_cov: for now, use diagonal covariance
-        - kmax_kms: limit to low-k where we trust emulator"""
+        """Load the fiducial eBOSS mock P1D measurement.
+
+        Parameters
+        ----------
+        diag_cov : bool, default: False
+            Retained for API compatibility; covariance is read from the
+            distributed inverse-covariance product unless ``old_cov`` is used
+            internally.
+        kmax_kms : float, optional
+            Inclusive upper wavenumber cut in ``s / km``.
+        z_min, z_max : float, default: 0, 10
+            Inclusive redshift bounds retained in the data object.
+        input_sim : str, default: "nyx_central"
+            Mock simulation label.  The bundled reader currently supports only
+            the Nyx central simulation.
+        add_noise : bool, default: False
+            Draw a correlated Gaussian P1D realization.
+        seed : int, default: 0
+            Seed used when drawing noise.
+        """
 
         self.input_sim = input_sim
 
@@ -41,7 +59,31 @@ class P1D_eBOSS_mock(BaseMockP1D):
 
 
 def read_from_file(diag_cov, input_sim, kmax_kms=None, old_cov=False):
-    """Read file containing mock P1D"""
+    """Read the fiducial eBOSS mock P1D and its covariance blocks.
+
+    Parameters
+    ----------
+    diag_cov : bool
+        Compatibility argument retained by the public reader.
+    input_sim : str
+        Supported mock simulation label, currently ``"nyx_central"``.
+    kmax_kms : float, optional
+        Inclusive upper wavenumber cut in ``s / km``.
+    old_cov : bool, default: False
+        Reconstruct a legacy covariance from tabulated errors instead of
+        inverting the distributed inverse-covariance matrix.
+
+    Returns
+    -------
+    tuple
+        Redshift bins, common wavenumbers in ``s / km``, P1D vectors in
+        ``km / s``, and covariance blocks in ``(km / s)**2``.
+
+    Raises
+    ------
+    ValueError
+        If ``input_sim`` is not available in the bundled mock product.
+    """
 
     # folder storing P1D measurement
     datadir = BaseDataP1D.BASEDIR + "/eBOSS_mock/"

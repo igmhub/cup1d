@@ -9,7 +9,7 @@ from cup1d.utils.utils import get_path_repo
 
 
 class IGM(object):
-    """Contains all IGM models"""
+    """Compose mean-flux, thermal, and pressure IGM history models."""
 
     def __init__(
         self,
@@ -19,6 +19,18 @@ class IGM(object):
         T_model=None,
         P_model=None,
     ):
+        """Load fiducial IGM histories, priors, and concrete history models.
+
+        Parameters
+        ----------
+        free_param_names : sequence of str, optional
+            Sampled IGM coefficient names.
+        pars_igm : mapping
+            Native fiducial histories, model labels, coefficient metadata, and
+            prior-width controls.
+        F_model, T_model, P_model : IGM_model, optional
+            Prebuilt mean-flux, thermal, and pressure models.
+        """
         # set simulation from which we get fiducial IGM history
         for key in ["mF", "T", "kF"]:
             lab = "label_" + key
@@ -88,6 +100,19 @@ class IGM(object):
                 )
 
     def set_fid_igm(self, zs):
+        """Evaluate and store the current fiducial IGM histories at redshifts.
+
+        Parameters
+        ----------
+        zs : array-like
+            Redshift grid.
+
+        Returns
+        -------
+        None
+            Sets ``fid_igm`` with tau, gamma, thermal-width, and filtering
+            scale histories in their native model units.
+        """
         self.fid_igm = {}
         self.fid_igm["z"] = zs
         for key in self.models:
@@ -102,7 +127,25 @@ class IGM(object):
                     self.fid_igm[key] = self.models[key].get_kF_kms(zs)
 
     def get_igm(self, sim_igm_mF=None, sim_igm_T=None, sim_igm_kF=None):
-        """Load IGM history"""
+        """Load selected fiducial mean-flux, thermal, and pressure histories.
+
+        Parameters
+        ----------
+        sim_igm_mF, sim_igm_T, sim_igm_kF : str, optional
+            Simulation labels or supported external-history aliases for each
+            physical IGM sector.
+
+        Returns
+        -------
+        dict
+            Redshift grids and mean flux, optical depth, thermal width, gamma,
+            and filtering scales in their native units.
+
+        Raises
+        ------
+        ValueError
+            If required MPG or Nyx history assets cannot be loaded.
+        """
 
         fname = os.path.join(
             get_path_repo("lace"),
@@ -246,7 +289,7 @@ class IGM(object):
         return igms_return
 
     def set_priors(self, fid_igm, prop_coeffs, fact_priors=1.0, z_pivot=3, percent=95):
-        """Set priors for all IGM models
+        """Set broad native uniform priors for every modeled IGM history.
 
         This is only important for giving the minimizer and the sampler a uniform
         prior that it is not too broad. The metric below takes care of the real priors

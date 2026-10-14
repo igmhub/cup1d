@@ -155,7 +155,22 @@ def plot_importance_sampling(
 def _format_plot(
     plotter, parameter_name, use_as_ns, additional_parameters, fontsize
 ):
-    """Apply the conventional axes, reference lines, and limits."""
+    """Apply conventional labels, ticks, reference lines, and limits.
+
+    Parameters
+    ----------
+    plotter : getdist.plots.GetDistPlotter
+        Triangle plotter returned by :func:`plot_importance_sampling`.
+    parameter_name : str or None
+        Optional primary extension parameter.
+    use_as_ns : bool
+        Label the first coordinates as ``logA`` and ``ns`` instead of star
+        parameters.
+    additional_parameters : sequence of str
+        Supported extension parameters appended to the triangle plot.
+    fontsize : float
+        Tick and axis-label font size.
+    """
     dimension = 2 + len(additional_parameters)
     if parameter_name is not None:
         dimension += 2 if parameter_name == "nrunrun" else 1
@@ -209,7 +224,19 @@ def _format_plot(
 def _print_chain_summaries(
     chains, parameter_name, use_as_ns, additional_parameters
 ):
-    """Print the parameter constraints used when inspecting each figure."""
+    """Print selected one- or two-sigma summaries for plotted chains.
+
+    Parameters
+    ----------
+    chains : sequence of getdist.MCSamples
+        Original and/or importance-reweighted samples.
+    parameter_name : str or None
+        Primary extension parameter whose summary is printed.
+    use_as_ns : bool
+        Also print ``logA`` and ``ns`` constraints.
+    additional_parameters : sequence of str
+        Additional extension parameters to summarize.
+    """
     for index, samples in enumerate(chains):
         print(f"Sample {index}")
         if use_as_ns:
@@ -257,13 +284,29 @@ def _print_chain_summaries(
 
 
 def _ensure_ranges_periodic(samples):
-    """Bridge legacy ``.ranges`` files and current GetDist expectations."""
+    """Supply a missing GetDist periodic-range attribute in place.
+
+    Parameters
+    ----------
+    samples : getdist.MCSamples
+        Samples whose legacy ``ranges`` object may lack ``periodic``.
+    """
     if not hasattr(samples.ranges, "periodic"):
         samples.ranges.periodic = set()
 
 
 def _set_reference_lines_and_limits(plotter, parameter_name, use_as_ns):
-    """Add parameter-specific reference lines and historical display limits."""
+    """Add extension-specific reference lines and historical display limits.
+
+    Parameters
+    ----------
+    plotter : getdist.plots.GetDistPlotter
+        Triangle plotter modified in place.
+    parameter_name : str or None
+        Primary extension parameter selecting the reference values and limits.
+    use_as_ns : bool
+        Select amplitude-axis limits appropriate to primordial parameters.
+    """
     if parameter_name == "nnu":
         _add_reference_lines(plotter, 3.046)
         plotter.subplots[-1, 0].set_xlim(0.32, 0.39)
@@ -293,7 +336,17 @@ def _set_reference_lines_and_limits(plotter, parameter_name, use_as_ns):
 
 
 def _add_reference_lines(plotter, value, include_running=False):
-    """Draw a value in each panel involving the final parameter."""
+    """Draw a reference value in panels involving the extension parameter.
+
+    Parameters
+    ----------
+    plotter : getdist.plots.GetDistPlotter
+        Triangle plotter modified in place.
+    value : float
+        Reference parameter value.
+    include_running : bool, default: False
+        Also add lines to panels involving scalar running.
+    """
     plotter.subplots[-1, -1].axvline(value, ls="--", color="black")
     plotter.subplots[-1, 0].axhline(value, ls="--", color="black")
     plotter.subplots[-1, 1].axhline(value, ls="--", color="black")

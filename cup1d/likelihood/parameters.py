@@ -1,5 +1,21 @@
 def set_free_likelihood_parameters(args, emulator_label="lace_mpg"):
-    """Set free parameters for likelihood"""
+    """Build the ordered free-parameter list for a configured likelihood.
+
+    Parameters
+    ----------
+    args : cup1d.configuration.args.Args
+        Configuration defining fixed cosmology and IGM, contaminant, and
+        systematic parameter families and node counts.
+    emulator_label : str, default='lace_mpg'
+        Emulator label. Nyx labels permit ``nrun`` when ``vary_alphas`` is
+        enabled; other labels vary only ``As`` and ``ns``.
+
+    Returns
+    -------
+    list of str
+        Cosmology parameters followed by indexed IGM, contaminant, and
+        systematic parameter names in configuration order.
+    """
 
     # cosmology
     if args.fix_cosmo:
