@@ -52,11 +52,17 @@ def test_native_scalar_external_order_and_return_contract():
 def test_public_external_coefficient_route_returns_immutable_rows():
     """Supplied coefficients are projected without invoking an emulator."""
     from cup1d.likelihood.external import PredictionGroup, PredictionRequest, project_arinyo_request
-    from lya_interface.cosmology import CobayaCosmologySnapshot
+    from lace.cosmo.cosmology import Cosmology
+
+    class ProjectionCosmology(Cosmology):
+        """LaCE-only cosmology fixture for the external coefficient boundary."""
+
+        def validate_k(self, k_iMpc):
+            if np.any(np.asarray(k_iMpc) > self.get_kmax_linP_Mpc()):
+                raise ValueError("k outside the linear-power coverage")
 
     z = np.array([2.5])
-    k = np.geomspace(.001, 100., 512)
-    snapshot = CobayaCosmologySnapshot(z, k, np.tile(1e3*k**-2.5, (1, 1)), [250.], [.95])
+    snapshot = ProjectionCosmology()
     request = PredictionRequest((PredictionGroup("fixture", (2.5,), ((.001, .002, .003),)),), "fixture")
     coefficients = {2.5: dict(bias=-.15, bias_eta=-.2, q1=.2, q2=.01,
                              kvav=.5, av=.3, bv=1.2, kp=8.)}
