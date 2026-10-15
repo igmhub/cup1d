@@ -11,7 +11,8 @@ def set_emulator(emulator_label="lace_mpg"):
     ----------
     emulator_label : str, default="lace_mpg"
         ``lace_mpg`` and ``lace_nyx`` resolve to LaCE central GP bundles;
-        ``forest_mpg`` loads ForestFlow's default (current) MPG bundle.
+        ``forest_mpg_cinn`` loads ForestFlow's neural-network emulator;
+        ``forest_mpg_gp`` loads its Gaussian-process emulator.
 
     Returns
     -------
@@ -21,11 +22,15 @@ def set_emulator(emulator_label="lace_mpg"):
 
     emulator_label = _EMULATOR_ALIASES.get(emulator_label, emulator_label)
 
-    if emulator_label == "forest_mpg":
+    if emulator_label in ("forest_mpg_cinn", "forest_mpg_gp"):
         from forestflow.emulator import P1DEmulator
 
-        # ForestFlow decides which of its bundles is the current one.
-        emulator = P1DEmulator()
+        emulator = P1DEmulator(name_emu=emulator_label)
+    elif emulator_label in ("forest_mpg", "forest_mpg_fix", "forest_mpg_old"):
+        raise ValueError(
+            f"emulator_label {emulator_label!r} was removed: use 'forest_mpg_cinn' "
+            "(neural network) or 'forest_mpg_gp' (Gaussian process)"
+        )
     else:
         from lace.emulator import emulator_manager
 

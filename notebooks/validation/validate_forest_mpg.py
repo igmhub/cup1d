@@ -27,7 +27,7 @@
 # %% [markdown]
 # Construct the MPG mock with the same LaCE `gpolyfit` calibration used in
 # `validate_lace_mpg`. ForestFlow exposes that calibration only for mock-data
-# preparation; its likelihood predictions still use the `forest_mpg` emulator.
+# preparation; its likelihood predictions still use the `forest_mpg_cinn` emulator.
 
 # %%
 # %load_ext autoreload
@@ -46,8 +46,8 @@ config_path = (
     / "DESIY1_QMLE3_CH24_mpgcen_gpr.yaml"
 )
 args = Args.from_yaml(config_path, synthetic=True, verbose=False)
-args.emulator_label = "forest_mpg"
-args.out_folder = str(Path(args.out_folder).with_name("forest_mpg"))
+args.emulator_label = "forest_mpg_cinn"
+args.out_folder = str(Path(args.out_folder).with_name("forest_mpg_cinn"))
 analysis = Analysis(args)
 
 

@@ -33,7 +33,7 @@ from cup1d.utils.utils import get_path_repo
 
 # %%
 # Choose ``"lace"`` for the ``lace_mpg`` alias or ``"forestflow"`` for
-# the ``forest_mpg`` alias.
+# the ``forest_mpg_cinn`` alias.
 config_names = {
     "lace": "hires.yaml",
     "forestflow": "hires_forestflow.yaml",

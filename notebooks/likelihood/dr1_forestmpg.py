@@ -18,7 +18,7 @@
 #
 # This is the DR1 tutorial using the ForestFlow MPG emulator.  It is a
 # like-for-like counterpart of ``notebooks/tutorials/dr1.py``: the only
-# likelihood configuration change is ``emulator_label: forest_mpg``.
+# likelihood configuration change is ``emulator_label: forest_mpg_cinn``.
 
 # %%
 # %load_ext autoreload
