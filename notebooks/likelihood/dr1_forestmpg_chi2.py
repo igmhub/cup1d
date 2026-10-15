@@ -62,10 +62,6 @@ args.out_folder = "/tmp/cup1d_dr1_forestmpg_chi2"
 # Build the same ForestFlow wrapper selected by the YAML, then set its P3D
 # emulator's default number of latent realizations before cup1d evaluates it.
 emulator = set_emulator(args.emulator_label)
-if emulator.emulator_label != "forest_mpg_fix":
-    raise RuntimeError(
-        f"Expected forest_mpg to resolve to forest_mpg_fix, got {emulator.emulator_label!r}"
-    )
 emulator.emulator.Nrealizations = int(N_REALIZATIONS)
 analysis = Analysis(args, emulator=emulator)
 initial_point = analysis.fitter.initial_parameters()
