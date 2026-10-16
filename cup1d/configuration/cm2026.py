@@ -160,6 +160,14 @@ def update_cm2026_derived(
     covariance redshift.
     """
 
+    if config.get("out_folder") is None:
+        # ``<path_out>/<data_label>/global_opt/<emulator_label>``
+        data_label = config["data_label"]
+        data_label = data_label[0] if isinstance(data_label, (list, tuple)) else data_label
+        config["out_folder"] = str(
+            Path(config["path_out"]) / data_label / "global_opt" / config["emulator_label"]
+        )
+
     z_min = config["z_min"]
     z_max = config["z_max"]
 

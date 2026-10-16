@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from lace.cosmo.cosmology import Cosmology
+from lace.cosmo.labeled_cosmologies import COSMOLOGY_LABELS
 from lace.configuration import get_nyx_path
 from cup1d.utils.utils import get_path_repo
 
@@ -110,20 +111,9 @@ def set_cosmo(
         else:
             raise ValueError(f"Cosmo not found in {fname} for {cosmo_label}")
 
-    elif cosmo_label == "Planck18":
-        # Tab 2 of https://arxiv.org/abs/1807.06209, TT,TE,EE+lowE+lensing+BAO
-        cosmo = Cosmology(cosmo_params_dict=dict(
-            H0=67.66,
-            mnu=0.0,
-            omch2=0.119,
-            ombh2=0.0224,
-            omk=0.0,
-            As=2.105e-09,
-            ns=0.9665,
-            nrun=0.0,
-            pivot_scalar=0.05,
-            w=-1,
-        ))
+    elif cosmo_label in COSMOLOGY_LABELS:
+        # Planck18 and its LaCE variants are defined only in LaCE
+        cosmo = Cosmology(cosmo_label=cosmo_label)
     elif cosmo_label == "Planck18_high_omh2":
         cosmo = Cosmology(cosmo_params_dict=dict(
             H0=67.66,

@@ -60,11 +60,6 @@ analysis = Analysis(args)
 initial_point = analysis.fitter.initial_parameters()
 analysis.fitter.get_chi2(initial_point)
 
-# %%
-# %%time
-for ii in range(20):
-    analysis.fitter.get_chi2(initial_point)
-
 # %% [markdown]
 # Plot model for these parameters.
 
@@ -100,9 +95,13 @@ analysis.fitter.get_chi2(initial_point)
 # analysis.
 
 # %%
+analysis.run_minimizer(initial_point)
 
 # %%
-analysis.run_minimizer(initial_point)
+New GP, X
+
+# %%
+650.8886670779336
 
 # %% [markdown]
 # Evaluate the new best fit.
@@ -112,7 +111,7 @@ best_fit_point = analysis.fitter.mle
 analysis.like.plot_p1d(best_fit_point)
 
 # %%
-analysis.fitter.save_directory
+analysis.run_minimizer(best_fit_point)
 
 # %%
 from pathlib import Path
@@ -142,14 +141,14 @@ chain_path = "PATH_TO_FOREST_MPG_BLOBS.npy"
 
 # %%
 # from cup1d.utils.blinding import apply_unblinding
-#
+
 # results_unblind = apply_unblinding(analysis.like.blind, results)
 # analysis.fitter.estimate_mle_errors(method="gauss_newton")
 # mle_cosmo_unblind = apply_unblinding(
 #     analysis.like.blind, analysis.fitter.mle_cosmo.copy()
 # )
 # from cup1d.postprocessing import plot_cosmo_sampler_and_fit
-#
+
 # samples = np.column_stack(
 #     [results_unblind["Delta2_star"], results_unblind["n_star"]]
 # )
@@ -169,9 +168,49 @@ chain_path = "PATH_TO_FOREST_MPG_BLOBS.npy"
 # saved fit state is restored. Loading does not create another output directory.
 
 # %%
-# minimizer_results = os.path.join(
-#     analysis.fitter.save_directory, "minimizer_results.npy"
-# )
-# restored_analysis = Analysis.from_results(minimizer_results)
-# print(restored_analysis.fitter.mle_chi2)
-# print(restored_analysis.fitter.mle)
+minimizer_results = os.path.join(
+    analysis.fitter.save_directory, "minimizer_results.npy"
+)
+restored_analysis = Analysis.from_results(minimizer_results)
+print(restored_analysis.fitter.mle_chi2)
+print(restored_analysis.fitter.mle)
+
+# %%
+from cup1d.utils.blinding import apply_unblinding
+
+# Hessian-based errors at the best fit. 'finite_difference' is the more
+# robust (and slower) estimator; 'gauss_newton' is cheaper. Compare both.
+errors = {}
+method = "gauss_newton"
+analysis.fitter.estimate_mle_errors(method=method)
+errors[method] = {
+    "params": dict(analysis.fitter.mle_errors),
+    "cosmo": dict(analysis.fitter.mle_cosmo_errors),
+    "cosmo_cov": analysis.fitter.mle_cosmo_covariance.copy(),
+}
+print(method, "rank of Hessian:", analysis.fitter.mle_hessian_rank,
+        "of", analysis.fitter.ndim)
+
+# %%
+# Compressed cosmology: blinded value minus offsets, with the errors of each method
+mle_cosmo_unblind = apply_unblinding(
+    analysis.like.blind, analysis.fitter.mle_cosmo.copy()
+)
+for par in ("Delta2_star", "n_star", "alpha_star"):
+    print(f"{par:12s} {mle_cosmo_unblind[par]: .5f}", *(
+        f"+/- {errors[m]['cosmo'][par]:.5f} ({m})" for m in errors
+    ))
+
+# %%
+# Correlation of (Delta2_star, n_star, alpha_star)
+cov = errors["gauss_newton"]["cosmo_cov"]
+print(np.round(cov / np.sqrt(np.outer(np.diag(cov), np.diag(cov))), 3))
+
+# %%
+# Errors on all free parameters (inf = not constrained by the data)
+for name, err in errors["gauss_newton"]["params"].items():
+    print(f"{name:16s} {analysis.fitter.mle[name]['value']:10.4f} +/- {err:.4f}")
+
+analysis.fitter.save_minimizer_results()
+
+# %%
