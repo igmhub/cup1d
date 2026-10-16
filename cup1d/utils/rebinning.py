@@ -30,7 +30,7 @@ def get_bin_coverage(xmin_o, xmax_o, xmin_n, xmax_n):
 class Rebinning(object):
     """Precompute overlap weights for rebinning P1D k grids."""
 
-    def __init__(self, dict_data, k_rebin_factor=1):
+    def __init__(self, dict_data, k_rebin_factor=1, n_k_emu=None):
         """Build rebinning grids and overlap matrices for each data set.
 
         Parameters
@@ -41,9 +41,18 @@ class Rebinning(object):
         k_rebin_factor : int, default: 1
             Number of fine-grid points per original data-grid point. One
             preserves the original grids and identity overlap matrices.
+        n_k_emu : int, optional
+            When rebinning, also store in ``k_kms_emu`` a grid per redshift of
+            ``n_k_emu`` log-spaced points spanning the fine grid. Theory then
+            evaluates the emulator on this grid and interpolates its P1D to
+            the fine grid, instead of evaluating the emulator at every fine
+            point. Log spacing matters: the data bins are linear in k and too
+            coarse in ln k at low k for an accurate interpolation.
         """
 
         self.k_kms = {}
+        # None when the emulator is evaluated directly on ``k_kms``
+        self.k_kms_emu = {}
         self.zs = {}
         self.cover = {}
         self.sum_cover = {}
@@ -55,6 +64,7 @@ class Rebinning(object):
 
             data = dict_data[key]
             self.zs[key] = data.z
+            self.k_kms_emu[key] = None
 
             if k_rebin_factor == 1:
                 # Do nothing for a factor of one; retain the original k grid.
@@ -84,6 +94,11 @@ class Rebinning(object):
                     )
                     self.cover[key].append(_cover)
                     self.sum_cover[key].append(np.sum(_cover, axis=1))
+                if n_k_emu is not None:
+                    self.k_kms_emu[key] = [
+                        np.geomspace(fine[0], fine[-1], n_k_emu)
+                        for fine in self.k_kms[key]
+                    ]
 
     def rebinning(self, key, Pk_kms_newk):
         """Rebin scalar P1D predictions from fine to data k grids.

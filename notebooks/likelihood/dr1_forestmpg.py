@@ -18,7 +18,8 @@
 #
 # This is the DR1 tutorial using the ForestFlow MPG emulator.  It is a
 # like-for-like counterpart of ``notebooks/tutorials/dr1.py``: the only
-# likelihood configuration change is ``emulator_label: forest_mpg_cinn``.
+# likelihood configuration change is ``emulator_label: forest_mpg_cinn`` (neural
+# network) or ``forest_mpg_gp`` (Gaussian process); choose below.
 
 # %%
 # %load_ext autoreload
@@ -38,8 +39,14 @@ from cup1d.utils.utils import get_path_repo
 # ## Load P1D measurements and set likelihood
 
 # %%
+# EMULATOR_LABEL = "forest_mpg_cinn"  # or "forest_mpg_gp"
+EMULATOR_LABEL = "forest_mpg_gp"
+config_names = {
+    "forest_mpg_cinn": "cm2026_base_forestmpgcinn.yaml",
+    "forest_mpg_gp": "cm2026_base_forestmpggp.yaml",
+}
 config_file = os.path.join(
-    get_path_repo("cup1d"), "configs", "cm2026", "cm2026_base_forestmpg.yaml"
+    get_path_repo("cup1d"), "configs", "desi_dr1_tests", config_names[EMULATOR_LABEL]
 )
 args = Args.from_yaml(config_file, verbose=False)
 analysis = Analysis(args)
@@ -54,8 +61,9 @@ initial_point = analysis.fitter.initial_parameters()
 analysis.fitter.get_chi2(initial_point)
 
 # %%
-initial_point = analysis.fitter.initial_parameters()
-analysis.fitter.get_chi2(initial_point)
+# %%time
+for ii in range(20):
+    analysis.fitter.get_chi2(initial_point)
 
 # %% [markdown]
 # Plot model for these parameters.
@@ -90,6 +98,8 @@ analysis.fitter.get_chi2(initial_point)
 # Run the minimizer starting from this point.  For a production fit, set the
 # desired minimizer settings in the YAML or on ``args`` before constructing the
 # analysis.
+
+# %%
 
 # %%
 analysis.run_minimizer(initial_point)

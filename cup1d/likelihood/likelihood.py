@@ -98,7 +98,9 @@ class Likelihood(object):
 
         # set a class containing the rebinned data
         self.Rebin_data = rebinning.Rebinning(
-            self.data, k_rebin_factor=args.k_rebin_factor
+            self.data,
+            k_rebin_factor=args.k_rebin_factor,
+            n_k_emu=getattr(args, "n_k_emu", None),
         )
 
         self.theory = theory
@@ -772,6 +774,7 @@ class Likelihood(object):
                 self.Rebin_data.zs[key],
                 self.Rebin_data.k_kms[key],
                 like_params=like_params,
+                k_ikms_emu=self.Rebin_data.k_kms_emu[key],
                 return_covar=return_covar,
                 return_blob=return_blob,
                 return_emu_params=return_emu_params,
@@ -1262,7 +1265,10 @@ class Likelihood(object):
             batched_predictions = {}
             for key, redshifts in self.Rebin_data.zs.items():
                 fine_prediction = self.theory.get_p1d_kms(
-                    redshifts, self.Rebin_data.k_kms[key], valid_columns
+                    redshifts,
+                    self.Rebin_data.k_kms[key],
+                    valid_columns,
+                    k_kms_emu=self.Rebin_data.k_kms_emu[key],
                 )
                 batched_predictions[key] = self.Rebin_data.rebinning_batch(key, fine_prediction)
             first_redshifts = next(iter(self.Rebin_data.zs.values()))

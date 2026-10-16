@@ -132,6 +132,33 @@ def test_identity_rebinning_preserves_the_native_grid_and_spectral_shape():
     )
 
 
+def test_emulator_grid_spans_rebinning_grid_and_interpolates_smooth_p1d():
+    from cup1d.theory.theory import interpolate_p1d
+
+    k_kms = np.linspace(0.002, 0.03, 20)
+    data = SimpleNamespace(
+        z=np.array([3.0]),
+        k_kms=[k_kms],
+        k_kms_min=[k_kms - 0.0007],
+        k_kms_max=[k_kms + 0.0007],
+    )
+    assert Rebinning({"data": data}, k_rebin_factor=4).k_kms_emu["data"] is None
+    rebin = Rebinning({"data": data}, k_rebin_factor=4, n_k_emu=32)
+    fine, coarse = rebin.k_kms["data"][0], rebin.k_kms_emu["data"][0]
+    assert len(coarse) == 32
+    np.testing.assert_allclose(coarse[[0, -1]], fine[[0, -1]])
+    np.testing.assert_allclose(np.diff(np.log(coarse)), np.log(coarse[1] / coarse[0]))
+
+    def p1d(k):
+        return 50 * (1 + (k / 0.01) ** 2) ** -0.6 * np.exp(-((k / 0.08) ** 2))
+
+    np.testing.assert_allclose(interpolate_p1d(coarse, p1d(coarse), fine), p1d(fine), rtol=1e-5)
+    batch = np.stack([p1d(coarse), 2 * p1d(coarse)])
+    np.testing.assert_allclose(
+        interpolate_p1d(coarse, batch, fine), np.stack([p1d(fine), 2 * p1d(fine)]), rtol=1e-5
+    )
+
+
 @pytest.mark.parametrize("zmask", [[2.2, 2.4], np.array([[2.2]])])
 def test_likelihood_rejects_multi_redshift_diagnostic_masks(zmask):
     with pytest.raises(ValueError, match="redshift"):

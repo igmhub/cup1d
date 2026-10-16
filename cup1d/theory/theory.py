@@ -14,6 +14,34 @@ from cup1d.utils.utils import is_number_string
 from cup1d.utils.utils_sims import get_training_hc
 
 
+def interpolate_p1d(k_model, p1d_model, k_out):
+    """Interpolate P1D along its last axis with a cubic spline.
+
+    Parameters
+    ----------
+    k_model : array_like
+        Increasing wavenumbers at which ``p1d_model`` was evaluated.
+    p1d_model : array_like
+        P1D values with the wavenumber axis last.
+    k_out : array_like
+        Wavenumbers inside ``[k_model[0], k_model[-1]]``.
+
+    Returns
+    -------
+    ndarray
+        Interpolated P1D. The spline is built in ``(ln k, ln P)``, falling back
+        to ``(ln k, P)`` if any model value is not positive.
+    """
+    from scipy.interpolate import CubicSpline
+
+    ln_k_model = np.log(np.asarray(k_model, dtype=float))
+    ln_k_out = np.log(np.asarray(k_out, dtype=float))
+    p1d_model = np.asarray(p1d_model, dtype=float)
+    if np.all(p1d_model > 0):
+        return np.exp(CubicSpline(ln_k_model, np.log(p1d_model), axis=-1)(ln_k_out))
+    return CubicSpline(ln_k_model, p1d_model, axis=-1)(ln_k_out)
+
+
 class Theory:
     r"""Translate likelihood parameters into emulator P1D predictions.
 
@@ -634,6 +662,7 @@ class Theory:
         hires=False,
         remove=None,
         return_contaminants=False,
+        k_ikms_emu=None,
     ):
         """Evaluate the P1D with an explicitly named velocity-k argument.
 
@@ -648,6 +677,9 @@ class Theory:
         return_covar, return_blob, return_emu_params, apply_hull, hires,
         remove, return_contaminants
             Passed unchanged to :meth:`get_p1d_kms`.
+        k_ikms_emu : sequence of array_like, optional
+            Per-redshift emulator grids in ``s / km``; passed to
+            :meth:`get_p1d_kms` as ``k_kms_emu``.
 
         Returns
         -------
@@ -666,6 +698,7 @@ class Theory:
             hires=hires,
             remove=remove,
             return_contaminants=return_contaminants,
+            k_kms_emu=k_ikms_emu,
         )
 
     def get_p1d_kms(self, zs, k_kms, like_params=None, **kwargs):
@@ -680,7 +713,11 @@ class Theory:
         like_params : mapping, optional
             Scalar values or same-length batch columns.
         **kwargs
-            Scalar-path output controls. The batch path accepts only ``remove``.
+            Scalar-path output controls. The batch path accepts only
+            ``remove`` and ``k_kms_emu``. ``k_kms_emu`` (one increasing grid
+            per redshift, covering ``k_kms``) evaluates the emulator on that
+            grid and interpolates its P1D to ``k_kms`` before contaminants and
+            systematics are applied.
 
         Returns
         -------
@@ -701,7 +738,7 @@ class Theory:
         """
         like_params = self._parameter_values(like_params)
         if self._is_columnar_parameter_mapping(like_params):
-            unsupported = set(kwargs) - {"remove"}
+            unsupported = set(kwargs) - {"remove", "k_kms_emu"}
             if unsupported:
                 raise ValueError(f"batched P1D does not support {sorted(unsupported)}")
             return self._get_p1d_kms_batch(zs, k_kms, like_params, **kwargs)
@@ -719,6 +756,7 @@ class Theory:
         hires=False,
         remove=None,
         return_contaminants=False,
+        k_kms_emu=None,
     ):
         """Emulate a scalar P1D in velocity units for requested redshifts.
 
@@ -744,6 +782,10 @@ class Theory:
             Contaminant removal flags passed to the contamination model.
         return_contaminants : bool, default: False
             Include term-by-term contamination dictionaries.
+        k_kms_emu : sequence of array_like, optional
+            Per-redshift grids in ``s / km`` on which the emulator is
+            evaluated. Its P1D is then interpolated to ``k_kms`` (see
+            :func:`interpolate_p1d`). Contaminants always use ``k_kms``.
 
         Returns
         -------
@@ -798,9 +840,18 @@ class Theory:
             length = len(k_kms)
             k_kms = [k_kms]
 
+        # grids on which the emulator is evaluated
+        if k_kms_emu is None:
+            k_eval = k_kms
+        else:
+            if Nz == 1 and np.ndim(k_kms_emu[0]) == 0:
+                k_kms_emu = [k_kms_emu]
+            k_eval = [np.asarray(k_kms_emu[iz]) for iz in range(Nz)]
+            length = max(len(values) for values in k_eval)
+
         kin_Mpc = np.zeros((Nz, length))
         for iz in range(Nz):
-            kin_Mpc[iz, : len(k_kms[iz])] = k_kms[iz] * M_of_z[iz]
+            kin_Mpc[iz, : len(k_eval[iz])] = k_eval[iz] * M_of_z[iz]
 
         if "forest" in self.emulator.emulator_label:
             new_cosmo_params = {}
@@ -817,7 +868,10 @@ class Theory:
         p1d_kms = []
         covars = []
         for iz in range(Nz):
-            p1d_kms.append(p1d_Mpc[iz][: len(k_kms[iz])] * M_of_z[iz])
+            _p1d_kms = p1d_Mpc[iz][: len(k_eval[iz])] * M_of_z[iz]
+            if k_kms_emu is not None:
+                _p1d_kms = interpolate_p1d(k_eval[iz], _p1d_kms, k_kms[iz])
+            p1d_kms.append(_p1d_kms)
             # if return_covar:
             #     if cov_Mpc is None:
             #         covars.append(None)
@@ -916,7 +970,7 @@ class Theory:
 
         return out[0] if len(out) == 1 else out
 
-    def _get_p1d_kms_batch(self, zs, k_kms, like_params, remove=None):
+    def _get_p1d_kms_batch(self, zs, k_kms, like_params, remove=None, k_kms_emu=None):
         """Evaluate LaCE P1D for a columnar batch, returning ``[(batch, k_z)]``.
 
         Parameters
@@ -929,6 +983,9 @@ class Theory:
             Physical parameter columns with common shape ``(n_batch,)``.
         remove : mapping, optional
             Contaminant removal flags.
+        k_kms_emu : sequence of array_like, optional
+            Per-redshift emulator grids in ``s / km``; the emulator P1D is
+            interpolated from them to ``k_kms`` before contaminants.
 
         Returns
         -------
@@ -946,9 +1003,10 @@ class Theory:
         zs = np.atleast_1d(np.asarray(zs, dtype=float))
         emu_call, M_of_z, _ = self.get_emulator_calls(zs, like_params, return_M_of_z=True, return_blob=True)
         n_batch, n_z = M_of_z.shape
-        n_k = max(len(values) for values in k_kms)
+        k_eval = k_kms if k_kms_emu is None else k_kms_emu
+        n_k = max(len(values) for values in k_eval)
         kin = np.zeros((n_batch, n_z, n_k))
-        for iz, values in enumerate(k_kms):
+        for iz, values in enumerate(k_eval):
             kin[:, iz, :len(values)] = np.asarray(values)[None, :] * M_of_z[:, iz, None]
         flat_call = {name: np.asarray(values).reshape(-1) for name, values in emu_call.items() if name in self.emulator.emu_params}
         if forest:
@@ -961,7 +1019,9 @@ class Theory:
             )
         else:
             p_mpc = self.emulator.emulate_p1d_Mpc(flat_call, kin.reshape(n_batch*n_z, n_k)).reshape(n_batch, n_z, n_k)
-        p_kms = [p_mpc[:, iz, :len(k_kms[iz])] * M_of_z[:, iz, None] for iz in range(n_z)]
+        p_kms = [p_mpc[:, iz, :len(k_eval[iz])] * M_of_z[:, iz, None] for iz in range(n_z)]
+        if k_kms_emu is not None:
+            p_kms = [interpolate_p1d(k_eval[iz], p_kms[iz], k_kms[iz]) for iz in range(n_z)]
         cont = self.model_cont.get_contamination(zs, k_kms, emu_call["mF"], M_of_z, like_params, remove=remove)
         if any(name.startswith("R_coeff") for name in like_params):
             syst = self.model_syst.get_contamination(zs, k_kms, like_params)

@@ -1,0 +1,11 @@
+# DESI DR1 test (not part of the CM2026 paper) using the ForestFlow cINN emulator.
+#
+# All data selection, nuisance modelling, priors, and runtime defaults come
+# from ``configs/cm2026/cm2026_defaults.yaml``.  This override changes the
+# emulator, making it directly comparable with ``configs/cm2026/cm2026_base.yaml``,
+# evaluates it on 64 log-spaced k per redshift before interpolating to the
+# rebinning grid, and uses a finer rebinning grid (see
+# ``notebooks/validation/convergence_rebin_quadrature``).
+emulator_label: forest_mpg_cinn
+n_k_emu: 64
+k_rebin_factor: 16

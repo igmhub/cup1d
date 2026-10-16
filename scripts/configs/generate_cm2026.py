@@ -90,6 +90,7 @@ TOP_LEVEL_COMMENTS = {
     "z_max": "Maximum redshift included in the analysis.",
     "zbin_width": "Redshift-bin width used to construct regular grids.",
     "k_rebin_factor": "Factor controlling interpolation before k-bin rebinning.",
+    "n_k_emu": "Number of log-spaced k points per redshift on which the emulator is evaluated before interpolating to the rebinning grid. Null evaluates the emulator at every rebinning point.",
     "emulator_label": "Identifier of the P1D emulator.",
     "drop_emu_sim": "Simulation omitted from emulator training, or null to use all simulations.",
     "true_cosmo_label": "Cosmology used to generate synthetic data.",

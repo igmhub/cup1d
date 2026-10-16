@@ -15,6 +15,10 @@ z_max: 4.2
 zbin_width: 0.2
 # Factor controlling interpolation before k-bin rebinning.
 k_rebin_factor: 8
+# Number of log-spaced k points per redshift on which the emulator is
+# evaluated before interpolating to the rebinning grid. Null evaluates the
+# emulator at every rebinning point.
+n_k_emu: null
 # Optional maximum measured line-of-sight wavenumber in inverse km/s.
 # Null preserves each dataset's native scale range.
 kmax_ikms: null
