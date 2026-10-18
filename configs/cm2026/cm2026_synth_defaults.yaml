@@ -444,7 +444,7 @@ mcmc:
   # Keep one sample for every this many sampler steps.
   thin: 20
 # Initial-condition filename, resolved relative to `path_ic`.
-file_ic: mpg_ic_global_red.npy
+file_ic: DESIY1_QMLE3_lace_mpg_ic_global.npy
 # Directory containing initial-condition corrections.
 path_ic: null  # Resolved to the installed cup1d package data directory.
 

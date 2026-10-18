@@ -12,3 +12,7 @@ k_rebin_factor: 16
 # Outputs go to <path_out>/<data_label>/global_opt/<emulator_label>.
 out_folder: null
 path_out: /home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1
+# Initial conditions from the forest_mpg_gp minimizer, saved with
+# Analysis.save_global_ic(get_global_ic_path(data_label, emulator_label)).
+# Until that file exists, the fit starts from the fiducial values.
+file_ic: DESIY1_QMLE3_forest_mpg_gp_ic_global.npy

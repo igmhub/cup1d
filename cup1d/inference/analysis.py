@@ -478,6 +478,7 @@ class Analysis(object):
                 raise ValueError("type_minimizer must be 'NM', 'DA', or 'PSO'")
 
             # save fit
+            self.fprint(f"Saving the results to folder {self.fitter.save_directory}")
             if save_chains or hasattr(self.fitter, "chain"):
                 self.fitter.save_sampler_results()
             else:
@@ -564,14 +565,15 @@ class Analysis(object):
                 self.plotter.plots_sampler()
 
     def save_global_ic(self, fname):
-        """Save the best-fit non-cosmological parameters by redshift node.
+        """Save the best-fit parameters as global initial conditions.
 
         Parameters
         ----------
         fname : str or path-like
             Target filename for :func:`numpy.save`.  The saved dictionary is
             keyed by parameter family and each value has sorted ``'z'`` and
-            ``'val'`` arrays.
+            ``'val'`` arrays.  Free ``As`` and ``ns`` are stored as scalar
+            ``{'val': x}`` entries.
 
         Raises
         ------
@@ -581,12 +583,14 @@ class Analysis(object):
 
         Notes
         -----
-        ``As`` and ``ns`` are deliberately omitted because this helper is for
-        global IGM, contaminant, and systematic initial conditions.
+        IGM, contaminant, and systematic parameters are stored by redshift
+        node.  Without ``As`` and ``ns`` a fit restarted from this file would
+        start from the fiducial cosmology, far from the best fit.
         """
         out_dict = {}
         for name in self.fitter.like.free_params:
             if name in ["As", "ns"]:
+                out_dict[name] = {"val": float(self.fitter.get_mle_value(name))}
                 continue
             pname, iistr = split_string(name)
             ii = int(iistr)
@@ -606,6 +610,9 @@ class Analysis(object):
             out_dict[pname]["val"].append(self.fitter.get_mle_value(name))
 
         for key in out_dict:
+            if "z" not in out_dict[key]:
+                print(key, out_dict[key]["val"])
+                continue
             out_dict[key]["z"] = np.array(out_dict[key]["z"])
             ind = np.argsort(out_dict[key]["z"])
             out_dict[key]["z"] = out_dict[key]["z"][ind]

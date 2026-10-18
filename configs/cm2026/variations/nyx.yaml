@@ -7,4 +7,4 @@ fid_igm:
   label_kF: nyx_central
 out_folder: ./DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr
 pre_defined: null
-file_ic: nyx_ic_global_red.npy
+file_ic: DESIY1_QMLE3_lace_nyx_ic_global.npy

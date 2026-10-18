@@ -25,7 +25,7 @@
 # ```
 #
 # The script fits every redshift bin, prints the goodness-of-fit summary, and
-# saves the appropriate `mpg_ic_at_a_time.npy` or `nyx_ic_at_a_time.npy` file.
+# saves the appropriate `{data_label}_{emulator_label}_ic_at_a_time.npy` file.
 # This notebook is an interactive companion for inspecting one or a few local
 # fits and their contamination contributions; it does not write IC files.
 

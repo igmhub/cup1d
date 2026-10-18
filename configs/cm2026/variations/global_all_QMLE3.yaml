@@ -1,10 +1,10 @@
-# Diagnostic global-all setup. It reads mpg_ic_at_a_time.npy and exposes one
+# Diagnostic global-all setup. It reads DESIY1_QMLE3_lace_mpg_ic_at_a_time.npy and exposes one
 # free node at every DR1 redshift.
 data_label:
   - DESIY1_QMLE3
 fix_cosmo: true
 fit_type: global_all
-file_ic: mpg_ic_at_a_time.npy
+file_ic: DESIY1_QMLE3_lace_mpg_ic_at_a_time.npy
 out_folder: ./DESIY1_QMLE3/global_all/CH24_mpgcen_gpr
 pre_defined: null
 fid_igm:

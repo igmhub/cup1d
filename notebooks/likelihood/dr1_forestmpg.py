@@ -40,10 +40,12 @@ from cup1d.utils.utils import get_path_repo
 
 # %%
 # EMULATOR_LABEL = "forest_mpg_cinn"  # or "forest_mpg_gp"
-EMULATOR_LABEL = "forest_mpg_gp"
+# EMULATOR_LABEL = "forest_mpg_gp"
+EMULATOR_LABEL = "forest_mpg_gp_no_inflate"
 config_names = {
     "forest_mpg_cinn": "cm2026_base_forestmpgcinn.yaml",
     "forest_mpg_gp": "cm2026_base_forestmpggp.yaml",
+    "forest_mpg_gp_no_inflate": "cm2026_base_forestmpggp_no_inflate.yaml",
 }
 config_file = os.path.join(
     get_path_repo("cup1d"), "configs", "desi_dr1_tests", config_names[EMULATOR_LABEL]
@@ -98,10 +100,8 @@ analysis.fitter.get_chi2(initial_point)
 analysis.run_minimizer(initial_point)
 
 # %%
-New GP, X
-
-# %%
-650.8886670779336
+# from cup1d.inference import get_global_ic_path
+# analysis.save_global_ic(get_global_ic_path(analysis.args.data_label, analysis.args.emulator_label))
 
 # %% [markdown]
 # Evaluate the new best fit.
@@ -109,15 +109,6 @@ New GP, X
 # %%
 best_fit_point = analysis.fitter.mle
 analysis.like.plot_p1d(best_fit_point)
-
-# %%
-analysis.run_minimizer(best_fit_point)
-
-# %%
-from pathlib import Path
-
-minimizer_results = Path(analysis.fitter.save_directory) / "minimizer_results.npy"
-print(minimizer_results)
 
 # %% [markdown]
 # ## Read chain
@@ -212,5 +203,42 @@ for name, err in errors["gauss_newton"]["params"].items():
     print(f"{name:16s} {analysis.fitter.mle[name]['value']:10.4f} +/- {err:.4f}")
 
 analysis.fitter.save_minimizer_results()
+
+# %%
+path = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/blobs.npy"
+base_chain = np.load(path)
+
+results = {}
+results["Delta2_star"] = base_chain["Delta2_star"].reshape(-1)
+results["n_star"] = base_chain["n_star"].reshape(-1)
+
+for par in results:
+    print(np.median(results[par]))
+
+from cup1d.utils.blinding import apply_unblinding
+
+results_unblind = apply_unblinding(analysis.like.blind, results)
+
+for par in results_unblind:
+    print(np.median(results_unblind[par]))
+
+# %%
+analysis.fitter.estimate_mle_errors(method="gauss_newton")
+mle_cosmo_unblind = apply_unblinding(
+    analysis.like.blind, analysis.fitter.mle_cosmo.copy()
+)
+from cup1d.postprocessing import plot_cosmo_sampler_and_fit
+
+samples = np.column_stack(
+    [results_unblind["Delta2_star"], results_unblind["n_star"]]
+)
+fig = plot_cosmo_sampler_and_fit(
+    samples,
+    mle_cosmo_unblind,
+    analysis.fitter.mle_cosmo_covariance[:2, :2],
+    sampler_label="Sampler contours",
+    fit_label="Minimizer",
+)
+plt.show()
 
 # %%

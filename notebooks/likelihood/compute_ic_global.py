@@ -13,9 +13,9 @@
 # # Compute initial conditions from global fits
 #
 # The first stage fits each redshift independently and writes
-# `mpg_ic_at_a_time.npy`. The `global_all` diagnostic below reads those values
+# `DESIY1_QMLE3_lace_mpg_ic_at_a_time.npy`. The `global_all` diagnostic below reads those values
 # at the eleven DR1 redshifts. The reduced `global_opt` fit then produces
-# `mpg_ic_global_red.npy`, which is used as the initial point for the baseline
+# `DESIY1_QMLE3_lace_mpg_ic_global.npy`, which is used as the initial point for the baseline
 # analysis.
 #
 # Generate the files reproducibly with:
@@ -92,7 +92,7 @@ print(f"Reduced global initial chi2 = {global_initial_chi2:.3f}")
 
 # %% [markdown]
 # Run the global minimization. It can take several minutes. The command-line
-# script above performs this same operation and saves `mpg_ic_global_red.npy`.
+# script above performs this same operation and saves `DESIY1_QMLE3_lace_mpg_ic_global.npy`.
 
 # %%
 global_analysis.run_minimizer(global_initial_point, restart=True)

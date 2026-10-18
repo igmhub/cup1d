@@ -11,45 +11,78 @@ from cup1d.postprocessing.show_results import print_results
 from cup1d.utils.utils import get_path_repo
 
 
-def get_at_a_time_ic_path(emulator_label):
+def get_ic_filename(data_label, emulator_label, ic_type):
+    """Return the standard initial-condition filename.
+
+    Parameters
+    ----------
+    data_label : str or sequence of str
+        P1D data label(s) the initial conditions were fitted to. Several
+        labels are joined with ``'_'``.
+    emulator_label : str
+        Emulator label used in the fit, e.g. ``'lace_mpg'`` or
+        ``'forest_mpg_gp'``.
+    ic_type : {'global', 'at_a_time'}
+        Reduced-global fit or independent-redshift fits.
+
+    Returns
+    -------
+    str
+        ``{data_label}_{emulator_label}_ic_{ic_type}.npy``, e.g.
+        ``DESIY1_QMLE3_forest_mpg_gp_ic_global.npy``.
+
+    Raises
+    ------
+    ValueError
+        If ``ic_type`` is not ``'global'`` or ``'at_a_time'``.
+    """
+
+    if ic_type not in ("global", "at_a_time"):
+        raise ValueError("ic_type must be 'global' or 'at_a_time'")
+    if not isinstance(data_label, str):
+        data_label = "_".join(data_label)
+    return f"{data_label}_{emulator_label}_ic_{ic_type}.npy"
+
+
+def get_at_a_time_ic_path(data_label, emulator_label):
     """Return the standard per-redshift initial-condition file path.
 
     Parameters
     ----------
+    data_label : str or sequence of str
+        P1D data label(s) the initial conditions were fitted to.
     emulator_label : str
-        Emulator label. Labels containing ``'nyx'`` select the Nyx file; all
-        others select the MPG file.
+        Emulator label used in the fit.
 
     Returns
     -------
     pathlib.Path
-        ``cup1d/data/ics/{nyx|mpg}_ic_at_a_time.npy``.
+        ``cup1d/data/ics/{data_label}_{emulator_label}_ic_at_a_time.npy``.
     """
 
-    emulator_family = "nyx" if "nyx" in emulator_label.lower() else "mpg"
-    return Path(get_path_repo("cup1d")) / "data" / "ics" / (
-        f"{emulator_family}_ic_at_a_time.npy"
+    return Path(get_path_repo("cup1d")) / "data" / "ics" / get_ic_filename(
+        data_label, emulator_label, "at_a_time"
     )
 
 
-def get_global_ic_path(emulator_label):
+def get_global_ic_path(data_label, emulator_label):
     """Return the standard reduced-global initial-condition file path.
 
     Parameters
     ----------
+    data_label : str or sequence of str
+        P1D data label(s) the initial conditions were fitted to.
     emulator_label : str
-        Emulator label. Labels containing ``'nyx'`` select the Nyx file; all
-        others select the MPG file.
+        Emulator label used in the fit.
 
     Returns
     -------
     pathlib.Path
-        ``cup1d/data/ics/{nyx|mpg}_ic_global_red.npy``.
+        ``cup1d/data/ics/{data_label}_{emulator_label}_ic_global.npy``.
     """
 
-    emulator_family = "nyx" if "nyx" in emulator_label.lower() else "mpg"
-    return Path(get_path_repo("cup1d")) / "data" / "ics" / (
-        f"{emulator_family}_ic_global_red.npy"
+    return Path(get_path_repo("cup1d")) / "data" / "ics" / get_ic_filename(
+        data_label, emulator_label, "global"
     )
 
 
@@ -66,8 +99,8 @@ def generate_at_a_time_initial_conditions(
     config_path : path-like
         YAML configuration for an at-a-time global analysis.
     output_path : path-like, optional
-        Destination ``.npy`` file. By default this is the standard MPG or Nyx
-        at-a-time IC file under ``data/ics``.
+        Destination ``.npy`` file. Defaults to the at-a-time IC file for the
+        configured data and emulator labels under ``data/ics``.
     overwrite : bool, optional
         Replace an existing output file.
     verbose : bool, optional
@@ -98,7 +131,7 @@ def generate_at_a_time_initial_conditions(
         )
 
     output_path = (
-        get_at_a_time_ic_path(args.emulator_label)
+        get_at_a_time_ic_path(args.data_label, args.emulator_label)
         if output_path is None
         else Path(output_path)
     )
@@ -163,8 +196,8 @@ def generate_global_initial_conditions(
     config_path : path-like
         YAML configuration for the reduced global optimization.
     output_path : path-like, optional
-        Destination ``.npy`` file. Defaults to the emulator-family global IC
-        path under ``data/ics``.
+        Destination ``.npy`` file. Defaults to the global IC file for the
+        configured data and emulator labels under ``data/ics``.
     overwrite : bool, default=False
         Replace an existing destination file.
     verbose : bool, default=True
@@ -202,7 +235,7 @@ def generate_global_initial_conditions(
         )
 
     output_path = (
-        get_global_ic_path(args.emulator_label)
+        get_global_ic_path(args.data_label, args.emulator_label)
         if output_path is None
         else Path(output_path)
     )

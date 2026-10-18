@@ -48,11 +48,6 @@ analysis = Analysis(args)
 initial_point = analysis.fitter.initial_parameters()
 analysis.fitter.get_chi2(initial_point)
 
-# %%
-# %%time
-for ii in range(20):
-    analysis.fitter.get_chi2(initial_point)
-
 # %% [markdown]
 # Plot model for these parameters
 
@@ -198,8 +193,46 @@ analysis.run_minimizer(initial_point)
 best_fit_point = analysis.fitter.mle
 analysis.like.plot_p1d(best_fit_point)
 
+# %%
+from cup1d.utils.blinding import apply_unblinding
+
+# Hessian-based errors at the best fit. 'finite_difference' is the more
+# robust (and slower) estimator; 'gauss_newton' is cheaper. Compare both.
+errors = {}
+method = "gauss_newton"
+analysis.fitter.estimate_mle_errors(method=method)
+errors[method] = {
+    "params": dict(analysis.fitter.mle_errors),
+    "cosmo": dict(analysis.fitter.mle_cosmo_errors),
+    "cosmo_cov": analysis.fitter.mle_cosmo_covariance.copy(),
+}
+print(method, "rank of Hessian:", analysis.fitter.mle_hessian_rank,
+        "of", analysis.fitter.ndim)
+
+# %%
+# Compressed cosmology: blinded value minus offsets, with the errors of each method
+mle_cosmo_unblind = apply_unblinding(
+    analysis.like.blind, analysis.fitter.mle_cosmo.copy()
+)
+for par in ("Delta2_star", "n_star", "alpha_star"):
+    print(f"{par:12s} {mle_cosmo_unblind[par]: .5f}", *(
+        f"+/- {errors[m]['cosmo'][par]:.5f} ({m})" for m in errors
+    ))
+
+# %%
+# Correlation of (Delta2_star, n_star, alpha_star)
+cov = errors["gauss_newton"]["cosmo_cov"]
+print(np.round(cov / np.sqrt(np.outer(np.diag(cov), np.diag(cov))), 3))
+
+# %%
+# Errors on all free parameters (inf = not constrained by the data)
+for name, err in errors["gauss_newton"]["params"].items():
+    print(f"{name:16s} {analysis.fitter.mle[name]['value']:10.4f} +/- {err:.4f}")
+
+analysis.fitter.save_minimizer_results()
+
 # %% [markdown]
-# Read chain
+# ## Read chain
 
 # %%
 path = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/blobs.npy"

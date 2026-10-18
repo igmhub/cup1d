@@ -1,4 +1,4 @@
-# Reduced global fit used to generate mpg_ic_global_red.npy.
+# Reduced global fit used to generate DESIY1_QMLE3_lace_mpg_ic_global.npy.
 # ``file_ic: null`` replaces the legacy ``ic_global=False``: do not read the
 # global IC file being regenerated.
 data_label:

@@ -139,21 +139,28 @@ class Likelihood(object):
             if os.path.isfile(args.file_ic):
                 if self.rank == 0:
                     print("Loading ICs from", args.file_ic)
-                if "ic_global" in args.file_ic:
-                    if self.rank == 0:
-                        print("Setting ICs from global fit")
-                    self.set_ic_global(args.file_ic, verbose=True)
-                else:
+                # At-a-time files store per-redshift fits under "pnames";
+                # global files are keyed by parameter name.
+                ic_content = np.load(args.file_ic, allow_pickle=True).item()
+                if "pnames" in ic_content:
                     if self.rank == 0:
                         print("Setting ICs from at a time fit")
                     self.set_ic_from_z_at_time(args.file_ic, verbose=True)
+                else:
+                    if self.rank == 0:
+                        print("Setting ICs from global fit")
+                    self.set_ic_global(args.file_ic, verbose=True)
             else:
                 if self.rank == 0:
                     print(
                         f"Initial-condition file not found: {args.file_ic}\n"
-                        "Generate at-a-time initial conditions with:\n"
-                        "  python scripts/create_at_a_time_initial_conditions.py "
-                        "configs/cm2026/variations/at_a_time_global_QMLE3.yaml",
+                        "Starting from the fiducial parameter values instead.\n"
+                        "Generate initial conditions with:\n"
+                        "  python scripts/create_global_initial_conditions.py <global_opt yaml>\n"
+                        "  python scripts/create_at_a_time_initial_conditions.py <at_a_time_global yaml>\n"
+                        "or save them from a minimizer run with "
+                        "Analysis.save_global_ic(cup1d.inference.get_global_ic_path("
+                        "data_label, emulator_label)).",
                         flush=True,
                     )
 
@@ -1825,7 +1832,8 @@ class Likelihood(object):
         Parameters
         ----------
         fname : path-like
-            NumPy result dictionary containing fitted coefficient histories.
+            NumPy result dictionary containing fitted coefficient histories,
+            and optionally scalar ``As`` and ``ns`` entries (``{'val': x}``).
         verbose : bool, default=True
             Print assigned physical values on the MPI root rank.
 
@@ -1833,7 +1841,9 @@ class Likelihood(object):
         -------
         None
             Updates configured fixed flags, interpolates coefficient values at
-            model nodes, and resets contaminant/IGM coefficient models.
+            model nodes, resets contaminant/IGM coefficient models, and sets
+            free ``As``/``ns`` when the file stores them (otherwise they keep
+            their fiducial values).
 
         Raises
         ------
@@ -1845,6 +1855,11 @@ class Likelihood(object):
         # Update the physical fiducial values from the saved best fit.
         for name, parameter in self.free_params.items():
             if name in ["As", "ns"]:
+                # Older files do not store cosmology; keep the fiducial value.
+                if name in dir_out:
+                    parameter["value"] = float(dir_out[name]["val"])
+                    if verbose and (self.rank == 0):
+                        print(name, "\t", parameter["value"])
                 continue
             pname, iistr = split_string(name)
             ii = int(iistr)

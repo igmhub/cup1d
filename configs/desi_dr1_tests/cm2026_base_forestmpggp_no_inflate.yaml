@@ -1,0 +1,25 @@
+# DESI DR1 test (not part of the CM2026 paper) using the ForestFlow Gaussian-process emulator.
+#
+# Identical to ``cm2026_base_forestmpggp.yaml`` except that the statistical
+# errors are not artificially inflated by 5% (``cov_factor.val_stat`` is 1.0
+# instead of the default 1.05), as in ``configs/cm2026/variations/no_inflate.yaml``.
+#
+# All data selection, nuisance modelling, priors, and runtime defaults come
+# from ``configs/cm2026/cm2026_defaults.yaml``.  This override changes the
+# emulator, evaluates it on 64 log-spaced k per redshift before interpolating
+# to the rebinning grid, and uses a finer rebinning grid (see
+# ``notebooks/validation/convergence_rebin_quadrature``).
+emulator_label: forest_mpg_gp
+n_k_emu: 64
+k_rebin_factor: 16
+name_variation: no_inflate
+cov_factor:
+  val_stat: 1.0
+# Explicit so it does not overwrite the inflated run, whose out_folder: null
+# resolves to <path_out>/<data_label>/global_opt/<emulator_label>.
+out_folder: /home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/no_inflate/forest_mpg_gp
+path_out: /home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1
+# Initial conditions from the forest_mpg_gp minimizer, saved with
+# Analysis.save_global_ic(get_global_ic_path(data_label, emulator_label)).
+# Until that file exists, the fit starts from the fiducial values.
+file_ic: DESIY1_QMLE3_forest_mpg_gp_ic_global.npy
