@@ -61,6 +61,7 @@ for group, members in available_groups.items():
 # `save_figures=True` (and optionally set `save_directory`).
 
 # %%
-variation_plotter.plot(["cosmology_bounds"], save_figures=False)
+# variation_plotter.plot(["cosmology_bounds"], save_figures=False)
+variation_plotter.plot(["emulator"], save_figures=False)
 
 # %%

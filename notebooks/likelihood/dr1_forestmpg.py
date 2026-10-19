@@ -161,12 +161,21 @@ chain_path = "PATH_TO_FOREST_MPG_BLOBS.npy"
 # saved fit state is restored. Loading does not create another output directory.
 
 # %%
+# folder = analysis.fitter.save_directory
+folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/forest_mpg_gp/chain_1/"
 minimizer_results = os.path.join(
-    analysis.fitter.save_directory, "minimizer_results.npy"
+    folder, "minimizer_results.npy"
 )
 restored_analysis = Analysis.from_results(minimizer_results)
 print(restored_analysis.fitter.mle_chi2)
 print(restored_analysis.fitter.mle)
+
+# %%
+initial_point = restored_analysis.fitter.initial_parameters()
+restored_analysis.fitter.get_chi2(initial_point)
+
+# %%
+restored_analysis.like.plot_p1d(initial_point)
 
 # %%
 from cup1d.utils.blinding import apply_unblinding

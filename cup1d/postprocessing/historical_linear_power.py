@@ -62,7 +62,7 @@ class HistoricalLinearPowerPlotter:
             planck_root_dir = repository_path / "data" / "planck_linP_chains"
         if desi_chain_directory is None:
             desi_chain_directory = (
-                repository_path.parent
+                repository_path.parents[1]
                 / "data"
                 / "out_DESI_DR1"
                 / "DESIY1_QMLE3"

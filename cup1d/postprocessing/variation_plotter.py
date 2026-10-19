@@ -41,6 +41,11 @@ class VariationPlotter:
             "DESIY1_QMLE3/global_opt/CH24_nyxcen_gpr/chain_3",
             "Emulator: lace-lyssa",
         ),
+        "forest_mpg_gp": _ChainSpec(
+            "forest_mpg_gp",
+            "DESIY1_QMLE3/global_opt/forest_mpg_gp/chain_1",
+            "Emulator: forest-mpg",
+        ),
         "qmle": _ChainSpec(
             "qmle", "DESIY1_QMLE/global_opt/CH24_mpgcen_gpr/chain_2", "Data: w/ low SNR"
         ),
@@ -192,7 +197,7 @@ class VariationPlotter:
         "metal_models": ("baseline", "metal_trad", "metals_ma2025"),
         "hcd": ("baseline", "hcd0", "dlas", "hcd_boss"),
         "igm": ("baseline", "more_igm"),
-        "emulator": ("baseline", "nyx"),
+        "emulator": ("baseline", "nyx", "forest_mpg_gp"),
         "simulations": (
             "sim_mpg_central",
             "sim_mpg_seed",
@@ -223,7 +228,9 @@ class VariationPlotter:
             DR1 blinding data are loaded when omitted.
         """
         if output_root is None:
-            output_root = Path(get_path_repo("cup1d")).parent / "data" / "out_DESI_DR1"
+            output_root = (
+                Path(get_path_repo("cup1d")).parents[1] / "data" / "out_DESI_DR1"
+            )
         self.output_root = Path(output_root)
         self.prior_plotter = prior_plotter
         if blinding is None:

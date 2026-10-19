@@ -1,5 +1,6 @@
 import os
 import time
+import warnings
 from pathlib import Path
 import numpy as np
 from mpi4py import MPI
@@ -250,7 +251,7 @@ class Analysis(object):
         #######################
 
     @classmethod
-    def from_results(cls, filename, **analysis_options):
+    def from_results(cls, filename, config_path=None, **analysis_options):
         """Reconstruct an analysis and restore a saved fit or sampler run.
 
         Parameters
@@ -259,6 +260,11 @@ class Analysis(object):
             NumPy result file produced by :class:`Fitter` with format version
             1.  Its recorded YAML path determines the reconstructed
             configuration.
+        config_path : str or path-like, optional
+            YAML to use instead of the recorded one, e.g. when the result was
+            produced on another machine.  If omitted and the recorded path
+            is missing, a file with the same name is searched for under the
+            repository ``configs`` directory.
         **analysis_options
             Keyword arguments forwarded to :class:`Analysis`, except ``args``
             and ``create_output``.  Those are controlled by the saved result.
@@ -289,11 +295,36 @@ class Analysis(object):
         if result_type not in {"minimizer", "sampler"}:
             raise ValueError(f"Unknown result type: {result_type!r}")
 
-        config_path = Path(payload["config_path"]).expanduser()
+        recorded_path = Path(payload["config_path"]).expanduser()
+        if config_path is not None:
+            config_path = Path(config_path).expanduser()
+            if config_path != recorded_path:
+                warnings.warn(
+                    f"Using config_path={config_path} instead of the YAML "
+                    f"recorded by the result ({recorded_path}).",
+                    stacklevel=2,
+                )
+        elif recorded_path.exists():
+            config_path = recorded_path
+        else:
+            matches = sorted(
+                (Path(get_path_repo("cup1d")) / "configs").rglob(
+                    recorded_path.name
+                )
+            )
+            config_path = matches[0] if len(matches) == 1 else recorded_path
+            if config_path != recorded_path:
+                warnings.warn(
+                    f"YAML configuration recorded by the result "
+                    f"({recorded_path}) does not exist; falling back to "
+                    f"local file {config_path}. It may differ from the one "
+                    f"used for the original run.",
+                    stacklevel=2,
+                )
         if not config_path.exists():
             raise FileNotFoundError(
                 f"YAML configuration recorded by the result does not exist: "
-                f"{config_path}"
+                f"{recorded_path}; pass config_path= to override"
             )
         synthetic = bool(payload.get("synthetic", False))
         if payload.get("config_loader") == "variation":
