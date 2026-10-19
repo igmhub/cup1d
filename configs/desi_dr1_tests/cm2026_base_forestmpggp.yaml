@@ -9,9 +9,12 @@
 emulator_label: forest_mpg_gp
 n_k_emu: 64
 k_rebin_factor: 16
-# Outputs go to <path_out>/<data_label>/global_opt/<emulator_label>.
+# As and ns flat priors span the training-simulation mean +- 2 sigma, keeping
+# the GP emulator close to its training domain (n_p in particular).
+cosmo_prior_nsigma: 2.0
+# Outputs go to <path_out>/<data_label>/<name_variation or fit_type>/<emulator_label>/chain_N;
+# pass the root with ``scripts/data/data_sampler.py --path_out <dir>``.
 out_folder: null
-path_out: /home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1
 # Initial conditions from the forest_mpg_gp minimizer, saved with
 # Analysis.save_global_ic(get_global_ic_path(data_label, emulator_label)).
 # Until that file exists, the fit starts from the fiducial values.

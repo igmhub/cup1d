@@ -423,6 +423,9 @@ use_star_priors: null
 prior_Gauss_rms: null
 # Optional parameter-specific Gaussian priors.
 Gauss_priors: null
+# If set, As and ns flat priors span the emulator-training mean +- this many
+# standard deviations; null keeps the training range expanded by 25%.
+cosmo_prior_nsigma: null
 
 ## Inference
 # Inference configuration used for this analysis.
@@ -449,9 +452,11 @@ file_ic: DESIY1_QMLE3_lace_mpg_ic_global.npy
 path_ic: null  # Resolved to the installed cup1d package data directory.
 
 ## Output and runtime
-# Directory in which analysis products are written.
+# Directory in which analysis products are written. If null, it is derived as
+# <path_out>/<data_label>/<name_variation, or fit_type if null>/<emulator_label>.
 out_folder: ./DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr
-# Base directory for analysis outputs.
+# Root directory used when out_folder is null; scripts/data/data_sampler.py
+# --path_out overrides it from the command line.
 path_out: .
 # Optional computing-system identifier.
 system: null

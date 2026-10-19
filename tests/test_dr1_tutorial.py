@@ -9,8 +9,11 @@ from cup1d import Analysis, Args
 from lace.configuration import get_data_path
 
 
-# Reference after adopting the LaCE cosmology interface in ``Theory``.
-EXPECTED_CHI_SQUARED = np.float64(655.2820094791965)
+# Reference after scaling the full emulator covariance by the smooth data P1D
+# (PSMOOTH) instead of the measured P1D (655.2820094791965 -> 695.066433), and
+# interpolating it linearly in redshift between emulator snapshots instead of
+# taking the nearest one (-> 695.861141).
+EXPECTED_CHI_SQUARED = np.float64(695.861141)
 
 
 @pytest.mark.external_model
@@ -220,7 +223,7 @@ def test_dr1_baseline_chi_squared(tmp_path):
     assert minimizer_path.name == "minimizer_results.npy"
     assert set(minimizer_payload) == {
         "format_version", "result_type", "config_path", "config_loader",
-        "synthetic", "parameter_names", "fit",
+        "synthetic", "parameter_names", "parameter_bounds", "n_data", "fit",
     }
     assert {
         "mle_cube", "mle_chi2", "mle_cosmo_errors",

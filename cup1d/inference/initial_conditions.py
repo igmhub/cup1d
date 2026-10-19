@@ -8,43 +8,10 @@ from mpi4py import MPI
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
 from cup1d.postprocessing.show_results import print_results
-from cup1d.utils.utils import get_path_repo
+from cup1d.utils.ic_files import get_ic_filename, get_ic_path
 
 
-def get_ic_filename(data_label, emulator_label, ic_type):
-    """Return the standard initial-condition filename.
-
-    Parameters
-    ----------
-    data_label : str or sequence of str
-        P1D data label(s) the initial conditions were fitted to. Several
-        labels are joined with ``'_'``.
-    emulator_label : str
-        Emulator label used in the fit, e.g. ``'lace_mpg'`` or
-        ``'forest_mpg_gp'``.
-    ic_type : {'global', 'at_a_time'}
-        Reduced-global fit or independent-redshift fits.
-
-    Returns
-    -------
-    str
-        ``{data_label}_{emulator_label}_ic_{ic_type}.npy``, e.g.
-        ``DESIY1_QMLE3_forest_mpg_gp_ic_global.npy``.
-
-    Raises
-    ------
-    ValueError
-        If ``ic_type`` is not ``'global'`` or ``'at_a_time'``.
-    """
-
-    if ic_type not in ("global", "at_a_time"):
-        raise ValueError("ic_type must be 'global' or 'at_a_time'")
-    if not isinstance(data_label, str):
-        data_label = "_".join(data_label)
-    return f"{data_label}_{emulator_label}_ic_{ic_type}.npy"
-
-
-def get_at_a_time_ic_path(data_label, emulator_label):
+def get_at_a_time_ic_path(data_label, emulator_label, variation=None):
     """Return the standard per-redshift initial-condition file path.
 
     Parameters
@@ -53,19 +20,19 @@ def get_at_a_time_ic_path(data_label, emulator_label):
         P1D data label(s) the initial conditions were fitted to.
     emulator_label : str
         Emulator label used in the fit.
+    variation : str, optional
+        Analysis variation; ``None`` for the baseline of the sample.
 
     Returns
     -------
     pathlib.Path
-        ``cup1d/data/ics/{data_label}_{emulator_label}_ic_at_a_time.npy``.
+        ``cup1d/data/ics/{data_label}_{emulator_label}[_{variation}]_ic_at_a_time.npy``.
     """
 
-    return Path(get_path_repo("cup1d")) / "data" / "ics" / get_ic_filename(
-        data_label, emulator_label, "at_a_time"
-    )
+    return get_ic_path(data_label, emulator_label, "at_a_time", variation)
 
 
-def get_global_ic_path(data_label, emulator_label):
+def get_global_ic_path(data_label, emulator_label, variation=None):
     """Return the standard reduced-global initial-condition file path.
 
     Parameters
@@ -74,16 +41,16 @@ def get_global_ic_path(data_label, emulator_label):
         P1D data label(s) the initial conditions were fitted to.
     emulator_label : str
         Emulator label used in the fit.
+    variation : str, optional
+        Analysis variation; ``None`` for the baseline of the sample.
 
     Returns
     -------
     pathlib.Path
-        ``cup1d/data/ics/{data_label}_{emulator_label}_ic_global.npy``.
+        ``cup1d/data/ics/{data_label}_{emulator_label}[_{variation}]_ic_global.npy``.
     """
 
-    return Path(get_path_repo("cup1d")) / "data" / "ics" / get_ic_filename(
-        data_label, emulator_label, "global"
-    )
+    return get_ic_path(data_label, emulator_label, "global", variation)
 
 
 def generate_at_a_time_initial_conditions(
@@ -131,7 +98,9 @@ def generate_at_a_time_initial_conditions(
         )
 
     output_path = (
-        get_at_a_time_ic_path(args.data_label, args.emulator_label)
+        get_at_a_time_ic_path(
+            args.data_label, args.emulator_label, args.name_variation
+        )
         if output_path is None
         else Path(output_path)
     )
@@ -235,7 +204,9 @@ def generate_global_initial_conditions(
         )
 
     output_path = (
-        get_global_ic_path(args.data_label, args.emulator_label)
+        get_global_ic_path(
+            args.data_label, args.emulator_label, args.name_variation
+        )
         if output_path is None
         else Path(output_path)
     )

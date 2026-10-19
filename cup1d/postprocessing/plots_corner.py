@@ -19,12 +19,57 @@ rcParams["font.family"] = "STIXGeneral"
 from cup1d.utils.various_dicts import get_blob_value, param_dict
 
 
+def _load_parameter_bounds(folder_in):
+    """Return free-parameter names and prior bounds for a chain directory.
+
+    Reads the ``sampler_results.npy`` manifest written by
+    :meth:`cup1d.inference.fitter.Fitter.save_sampler_results`, falling back to
+    the legacy ``fitter_results.npy`` product of older runs.
+
+    Returns
+    -------
+    labels : list of str
+        Free-parameter names in chain order.
+    bounds : dict
+        ``{name: (min_value, max_value)}`` prior bounds.
+
+    Raises
+    ------
+    FileNotFoundError
+        If neither product exists.
+    KeyError
+        If the manifest predates the stored ``parameter_bounds``.
+    """
+    manifest = os.path.join(folder_in, "sampler_results.npy")
+    if os.path.isfile(manifest):
+        payload = np.load(manifest, allow_pickle=True).item()
+        if "parameter_bounds" not in payload:
+            raise KeyError(
+                f"{manifest} has no parameter_bounds; it was written before they "
+                "were stored. Re-save it or plot from the legacy products."
+            )
+        labels = list(payload["parameter_names"])
+        bounds = {name: tuple(payload["parameter_bounds"][name]) for name in labels}
+        return labels, bounds
+
+    legacy = os.path.join(folder_in, "fitter_results.npy")
+    if not os.path.isfile(legacy):
+        raise FileNotFoundError(
+            f"Neither sampler_results.npy nor fitter_results.npy in {folder_in}"
+        )
+    fdict = np.load(legacy, allow_pickle=True).item()
+    labels = list(fdict["like"]["free_param_names"])
+    free_params = fdict["like"]["free_params"]
+    bounds = {
+        name: (free_params[name]["min_value"], free_params[name]["max_value"])
+        for name in labels
+    }
+    return labels, bounds
+
+
 def prepare_data(folder_in, truth={"Delta2_star": 0, "n_star": 0}, nburn_extra=0):
     """Prepare data."""
-    fdict = np.load(
-        os.path.join(folder_in, "fitter_results.npy"), allow_pickle=True
-    ).item()
-    labels = fdict["like"]["free_param_names"]
+    labels, bounds = _load_parameter_bounds(folder_in)
 
     lnprob = np.load(os.path.join(folder_in, "lnprob.npy"))[nburn_extra:, :]
     blobs = np.load(os.path.join(folder_in, "blobs.npy"))
@@ -48,16 +93,12 @@ def prepare_data(folder_in, truth={"Delta2_star": 0, "n_star": 0}, nburn_extra=0
     dat_Asns = chain[nburn_extra:, :, :2].reshape(-1, 2)
 
     for ii in range(2):
-        lab = labels[ii]
-        vmax = fdict["like"]["free_params"][lab]["max_value"]
-        vmin = fdict["like"]["free_params"][lab]["min_value"]
+        vmin, vmax = bounds[labels[ii]]
         dat_Asns[:, ii] = dat_Asns[:, ii] * (vmax - vmin) + vmin
 
     priors = np.zeros((ndim, 2))
     for ii in range(2, ndim):
-        lab = labels[ii]
-        vmax = fdict["like"]["free_params"][lab]["max_value"]
-        vmin = fdict["like"]["free_params"][lab]["min_value"]
+        vmin, vmax = bounds[labels[ii]]
         dat[:, ii] = dat[:, ii] * (vmax - vmin) + vmin
         priors[ii, 0] = vmin
         priors[ii, 1] = vmax
@@ -244,24 +285,28 @@ def get_summary(folder_out, lnprob):
     """
     dict_out = {}
 
-    data = np.load(
-        os.path.join(folder_out, "fitter_results.npy"), allow_pickle=True
-    ).item()
-    if "full_Pk_kms" in data["data"]:
-        dict_out["ndata"] = data["data"]["full_Pk_kms"].shape[0]
+    manifest = os.path.join(folder_out, "sampler_results.npy")
+    if os.path.isfile(manifest):
+        data = np.load(manifest, allow_pickle=True).item()
+        dict_out["ndata"] = data["n_data"]
+        dict_out["npar"] = len(data["parameter_names"])
+        lnprob_mle = -0.5 * data["fit"]["mle_chi2"]
     else:
-        ndata = 0
-        for ii in range(len(data["data"]["Pk_kms"])):
-            ndata += data["data"]["Pk_kms"][ii].shape[0]
-        dict_out["ndata"] = ndata
-    dict_out["npar"] = data["fitter"]["mle_cube"].shape[0]
+        # legacy fitter_results.npy product
+        data = np.load(
+            os.path.join(folder_out, "fitter_results.npy"), allow_pickle=True
+        ).item()
+        if "full_Pk_kms" in data["data"]:
+            dict_out["ndata"] = data["data"]["full_Pk_kms"].shape[0]
+        else:
+            ndata = 0
+            for ii in range(len(data["data"]["Pk_kms"])):
+                ndata += data["data"]["Pk_kms"][ii].shape[0]
+            dict_out["ndata"] = ndata
+        dict_out["npar"] = data["fitter"]["mle_cube"].shape[0]
+        lnprob_mle = data["fitter"]["lnprob_mle"]
     dict_out["ndeg"] = dict_out["ndata"] - dict_out["npar"]
-    dict_out["chi2"] = -2 * np.max(
-        [
-            data["fitter"]["lnprob_mle"],
-            lnprob.max(),
-        ]
-    )
+    dict_out["chi2"] = -2 * np.max([lnprob_mle, lnprob.max()])
     dict_out["prob_chi2"] = chi2_scipy.sf(dict_out["chi2"], dict_out["ndeg"])
 
     data = np.load(
@@ -271,8 +316,8 @@ def get_summary(folder_out, lnprob):
     dict_out["nstar_2dcen"] = np.median(data[0.68][0][1])
 
     data = np.load(os.path.join(folder_out, "blobs.npy"))
-    dict_out["delta2_star_16_50_84"] = np.percentile(data["Delta2_star"], [16, 50, 84])
-    dict_out["n_star_16_50_84"] = np.percentile(data["n_star"], [16, 50, 84])
+    dict_out["delta2_star_16_50_84"] = np.percentile(get_blob_value(data, "Delta2_star"), [16, 50, 84])
+    dict_out["n_star_16_50_84"] = np.percentile(get_blob_value(data, "n_star"), [16, 50, 84])
 
     dict_out["delta2_star_err"] = 0.5 * (
         dict_out["delta2_star_16_50_84"][2] - dict_out["delta2_star_16_50_84"][0]

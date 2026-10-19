@@ -15,6 +15,10 @@ def plot_cosmo_sampler_and_fit(
 ):
     """Plot two-parameter sampler contours and a local MLE Gaussian.
 
+    When the MLE errors are zero (e.g. a fixed-cosmology fit, where no free
+    parameter moves the compressed cosmology), only the MLE centre is drawn:
+    a marker in the joint panel and vertical lines in the marginals.
+
     Parameters
     ----------
     samples : ndarray
@@ -42,7 +46,7 @@ def plot_cosmo_sampler_and_fit(
     ------
     ValueError
         If inputs do not describe two coordinates or covariance is not finite
-        with non-negative eigenvalues and positive diagonal variances.
+        with non-negative eigenvalues and diagonal variances.
 
     Notes
     -----
@@ -62,9 +66,12 @@ def plot_cosmo_sampler_and_fit(
         raise ValueError("covariance must have shape (2, 2)")
 
     mean = np.asarray([mle[name] for name in names])
-    errors = np.sqrt(np.diag(covariance))
-    if np.any(errors <= 0) or not np.all(np.isfinite(errors)):
-        raise ValueError("MLE covariance must have finite positive variances")
+    variances = np.diag(covariance)
+    if np.any(variances < 0) or not np.all(np.isfinite(covariance)):
+        raise ValueError("MLE covariance must be finite with non-negative variances")
+    errors = np.sqrt(variances)
+    # zero errors: only the MLE centre is meaningful, no ellipse or Gaussian
+    has_errors = bool(np.all(errors > 0))
 
     figure = corner.corner(
         samples,
@@ -79,40 +86,46 @@ def plot_cosmo_sampler_and_fit(
     joint_axis = axes[1, 0]
     legend_axis = axes[0, 1]
 
-    eigenvalues, eigenvectors = np.linalg.eigh(covariance)
-    if np.any(eigenvalues < 0):
-        raise ValueError("MLE covariance must be positive semidefinite")
-    order = np.argsort(eigenvalues)[::-1]
-    eigenvalues = eigenvalues[order]
-    eigenvectors = eigenvectors[:, order]
-    angle = np.degrees(np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0]))
-    joint_axis.add_patch(
-        Ellipse(
-            mean,
-            width=2 * np.sqrt(eigenvalues[0]),
-            height=2 * np.sqrt(eigenvalues[1]),
-            angle=angle,
-            facecolor="C3",
-            edgecolor="C3",
-            alpha=0.3,
+    if has_errors:
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
+        if np.any(eigenvalues < -1e-12 * np.max(np.abs(eigenvalues))):
+            raise ValueError("MLE covariance must be positive semidefinite")
+        eigenvalues = np.clip(eigenvalues, 0, None)
+        order = np.argsort(eigenvalues)[::-1]
+        eigenvalues = eigenvalues[order]
+        eigenvectors = eigenvectors[:, order]
+        angle = np.degrees(np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0]))
+        joint_axis.add_patch(
+            Ellipse(
+                mean,
+                width=2 * np.sqrt(eigenvalues[0]),
+                height=2 * np.sqrt(eigenvalues[1]),
+                angle=angle,
+                facecolor="C3",
+                edgecolor="C3",
+                alpha=0.3,
+            )
         )
-    )
     joint_axis.plot(*mean, "XC3")
 
     for index, axis in enumerate((axes[0, 0], axes[1, 1])):
-        grid = np.linspace(*axis.get_xlim(), 300)
-        density = np.exp(-0.5 * ((grid - mean[index]) / errors[index]) ** 2)
-        density /= np.sqrt(2 * np.pi) * errors[index]
-        axis.plot(grid, density, color="C3")
+        if has_errors:
+            grid = np.linspace(*axis.get_xlim(), 300)
+            density = np.exp(-0.5 * ((grid - mean[index]) / errors[index]) ** 2)
+            density /= np.sqrt(2 * np.pi) * errors[index]
+            axis.plot(grid, density, color="C3")
+        else:
+            axis.axvline(mean[index], color="C3")
 
+    handles = [
+        Line2D([], [], color="C0", label=sampler_label),
+        Line2D([], [], marker="X", color="C3", linestyle="", label=fit_label),
+    ]
+    if has_errors:
+        handles.append(
+            Patch(facecolor="C3", edgecolor="C3", alpha=0.3, label="MLE 1$\\sigma$")
+        )
     legend_axis.axis("off")
-    legend_axis.legend(
-        handles=[
-            Line2D([], [], color="C0", label=sampler_label),
-            Line2D([], [], marker="X", color="C3", linestyle="", label=fit_label),
-            Patch(facecolor="C3", edgecolor="C3", alpha=0.3, label="MLE 1$\\sigma$"),
-        ],
-        loc="center",
-    )
+    legend_axis.legend(handles=handles, loc="center")
 
     return figure

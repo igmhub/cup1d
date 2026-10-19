@@ -11,10 +11,62 @@ from cup1d.utils import rebinning
 from cup1d.utils.utils import split_string
 from cup1d.utils.utils import get_path_repo
 from cup1d.utils import blinding
+from cup1d.utils import ic_files
 from cup1d.likelihood import parameter as parameter_space
 
 
+def emulator_interpolation_weights(z, k_Mpc, emu_z, emu_k_Mpc):
+    """Weights mapping data points onto the emulator-covariance grid.
 
+    Parameters
+    ----------
+    z, k_Mpc : array_like
+        Redshift and wavenumber (1/Mpc) of each data point.
+    emu_z, emu_k_Mpc : array_like
+        Redshift and wavenumber of each entry of the emulator covariance
+        (``zz_zk`` and ``k_Mpc_zk``).
+
+    Returns
+    -------
+    ndarray
+        Matrix ``W`` of shape ``(n_data, n_emu)``. Each data point is linearly
+        interpolated in redshift between the two bracketing emulator
+        redshifts (clamped at the ends), using the nearest emulator
+        wavenumber at each of them, so the projected relative covariance is
+        ``W @ cov_zk @ W.T``, positive semidefinite by construction.
+
+    Notes
+    -----
+    Nearest-redshift matching assigns data at z=2.4 and 2.6 (and 3.4 and
+    3.6) to the same emulator redshift (2.5, 3.5) on the 0.25-spaced grid,
+    making their emulator errors fully correlated; interpolation avoids it.
+    """
+
+    z = np.atleast_1d(np.asarray(z, dtype=float))
+    k_Mpc = np.atleast_1d(np.asarray(k_Mpc, dtype=float))
+    emu_z = np.asarray(emu_z, dtype=float)
+    emu_k_Mpc = np.asarray(emu_k_Mpc, dtype=float)
+    grid_z = np.unique(emu_z)
+    members = {zz: np.flatnonzero(emu_z == zz) for zz in grid_z}
+
+    weights = np.zeros((z.size, emu_z.size))
+    for index, (z_point, k_point) in enumerate(zip(z, k_Mpc)):
+        upper = np.searchsorted(grid_z, z_point)
+        if upper == 0:
+            nodes = [(grid_z[0], 1.0)]
+        elif upper == grid_z.size:
+            nodes = [(grid_z[-1], 1.0)]
+        else:
+            z_lo, z_hi = grid_z[upper - 1], grid_z[upper]
+            frac = (z_point - z_lo) / (z_hi - z_lo)
+            nodes = [(z_lo, 1.0 - frac), (z_hi, frac)]
+        for z_node, weight in nodes:
+            if weight == 0:
+                continue
+            candidates = members[z_node]
+            nearest = candidates[np.argmin(np.abs(emu_k_Mpc[candidates] - k_point))]
+            weights[index, nearest] += weight
+    return weights
 
 
 class Likelihood(object):
@@ -134,33 +186,41 @@ class Likelihood(object):
                 break
         self.blind = blinding.set_blinding(apply_blinding, seed)
 
-        # set IC for likelihood
+        # set IC for likelihood: the variation's own file, else the baseline
+        # of the same sample and emulator, else the configured file_ic
         if start_from_min and (args.file_ic is not None):
-            if os.path.isfile(args.file_ic):
+            ic_file = ic_files.resolve_ic_file(args)
+            if ic_file is not None:
                 if self.rank == 0:
-                    print("Loading ICs from", args.file_ic)
+                    tried = ic_files.ic_candidates(args)
+                    if ic_file != tried[0]:
+                        print(
+                            f"No ICs at {tried[0]}; falling back to the next "
+                            "available file",
+                            flush=True,
+                        )
+                    print("Loading ICs from", ic_file)
                 # At-a-time files store per-redshift fits under "pnames";
                 # global files are keyed by parameter name.
-                ic_content = np.load(args.file_ic, allow_pickle=True).item()
+                ic_content = np.load(ic_file, allow_pickle=True).item()
                 if "pnames" in ic_content:
                     if self.rank == 0:
                         print("Setting ICs from at a time fit")
-                    self.set_ic_from_z_at_time(args.file_ic, verbose=True)
+                    self.set_ic_from_z_at_time(ic_file, verbose=True)
                 else:
                     if self.rank == 0:
                         print("Setting ICs from global fit")
-                    self.set_ic_global(args.file_ic, verbose=True)
+                    self.set_ic_global(ic_file, verbose=True)
             else:
                 if self.rank == 0:
+                    tried = "\n".join(f"  {path}" for path in ic_files.ic_candidates(args))
                     print(
-                        f"Initial-condition file not found: {args.file_ic}\n"
+                        f"No initial-condition file found, tried:\n{tried}\n"
                         "Starting from the fiducial parameter values instead.\n"
                         "Generate initial conditions with:\n"
                         "  python scripts/create_global_initial_conditions.py <global_opt yaml>\n"
                         "  python scripts/create_at_a_time_initial_conditions.py <at_a_time_global yaml>\n"
-                        "or save them from a minimizer run with "
-                        "Analysis.save_global_ic(cup1d.inference.get_global_ic_path("
-                        "data_label, emulator_label)).",
+                        "or save them from a minimizer run with Analysis.save_global_ic().",
                         flush=True,
                     )
 
@@ -308,36 +368,24 @@ class Likelihood(object):
                 dkms_dMpc = fiducial_conversion(data.z[ii])
                 k_Mpc = data.k_kms[ii] * dkms_dMpc
 
-                # initialize emulator covariance
-                add_emu_cov_kms = np.zeros((k_Mpc.shape[0], k_Mpc.shape[0]))
-
-                # find closest z in cov
-                ind0 = np.argmin(np.abs(emu_cov["zz_zk"] - data.z[ii]))
-                # get cov from closest z
-                ind = np.argwhere(emu_cov["zz_zk"] == emu_cov["zz_zk"][ind0])[:, 0]
-                # block diagonal for that redshift
-                _emu_cov = emu_cov["cov_zk"][ind, :][:, ind]
-                _k_Mpc = emu_cov["k_Mpc_zk"][ind]
-
-                # rescale covariance matrix by power spectrum,
-                # since the covariance matrix stores the relative error
-                for i0 in range(k_Mpc.shape[0]):
-                    # get closest k in emu cov matrix
-                    j0 = np.argmin(np.abs(k_Mpc[i0] - _k_Mpc))
-                    for i1 in range(k_Mpc.shape[0]):
-                        # skip if diagonal and i0 != i1
-                        if (self.emu_cov_type == "diagonal") and (i0 != i1):
-                            continue
-                        # get closest k in emu cov matrix
-                        j1 = np.argmin(np.abs(k_Mpc[i1] - _k_Mpc))
-                        add_emu_cov_kms[i0, i1] = (
-                            _emu_cov[j0, j1]
-                            * pksmooth[ii][i0]
-                            * pksmooth[ii][i1]
-                            * emu_cov_factor
-                        )
-
-                        cov[i0, i1] += add_emu_cov_kms[i0, i1]
+                # relative emulator covariance interpolated in z to this
+                # redshift, rescaled by the smooth P1D since it stores the
+                # relative error
+                weights = emulator_interpolation_weights(
+                    np.full(k_Mpc.shape[0], data.z[ii]),
+                    k_Mpc,
+                    emu_cov["zz_zk"],
+                    emu_cov["k_Mpc_zk"],
+                )
+                rel_emu_cov = weights @ emu_cov["cov_zk"] @ weights.T
+                add_emu_cov_kms = (
+                    rel_emu_cov
+                    * np.outer(pksmooth[ii], pksmooth[ii])
+                    * emu_cov_factor
+                )
+                if self.emu_cov_type == "diagonal":
+                    add_emu_cov_kms = np.diag(np.diag(add_emu_cov_kms))
+                cov += add_emu_cov_kms
 
                 emu_cov_blocks.append(add_emu_cov_kms)
 
@@ -398,58 +446,51 @@ class Likelihood(object):
                     cov += full_emu_cov
                 # full emu
                 else:
-                    full_emu_cov = np.zeros_like(cov)
-                    for i0 in range(cov.shape[0]):
-                        dkms_dMpc = fiducial_conversion(data.full_zs[i0])
-                        full_k_kms0 = data.full_k_kms[i0] * dkms_dMpc
-
-                        # find closest z in cov
-                        ind0 = np.argmin(np.abs(emu_cov["zz_zk"] - data.full_zs[i0]))
-                        ind = np.argwhere(emu_cov["zz_zk"] == emu_cov["zz_zk"][ind0])[
-                            :, 0
+                    # The emulator covariance stores errors relative to the
+                    # smooth P1D, so rescale by the smooth data P1D (as in the
+                    # per-redshift blocks), not by the noisy measurement.
+                    full_pksmooth = np.concatenate(pksmooth)
+                    full_k_check = np.concatenate(data.k_kms)
+                    full_z_check = np.concatenate(
+                        [np.full(len(k), z) for k, z in zip(data.k_kms, data.z)]
+                    )
+                    if (
+                        full_pksmooth.shape != data.full_Pk_kms.shape
+                        or not np.allclose(full_k_check, data.full_k_kms)
+                        or not np.allclose(full_z_check, data.full_zs)
+                    ):
+                        raise ValueError(
+                            "Per-redshift smooth P1D does not align with the full "
+                            "data vector; cannot build the full emulator covariance"
+                        )
+                    dkms_dMpc = {
+                        z: fiducial_conversion(z) for z in np.unique(data.full_zs)
+                    }
+                    full_k_Mpc = np.asarray(
+                        [
+                            k_kms * dkms_dMpc[z]
+                            for k_kms, z in zip(data.full_k_kms, data.full_zs)
                         ]
-                        # find closest k for such z
-                        ind1 = np.argmin(
-                            np.abs(emu_cov["k_Mpc_zk"][ind] - full_k_kms0)
-                        )
-                        # closest index in z and k
-                        j0 = ind[ind1]
-
-                        # index to inflate
-                        ind0_infl = np.argmin(
-                            np.abs(self.cov_factor["z"] - data.full_zs[i0])
-                        )
-
-                        for i1 in range(cov.shape[0]):
-                            dkms_dMpc = fiducial_conversion(data.full_zs[i1])
-                            full_k_kms1 = data.full_k_kms[i1] * dkms_dMpc
-
-                            # find closest z in cov
-                            ind0 = np.argmin(
-                                np.abs(emu_cov["zz_zk"] - data.full_zs[i1])
-                            )
-                            ind = np.argwhere(
-                                emu_cov["zz_zk"] == emu_cov["zz_zk"][ind0]
-                            )[:, 0]
-                            # find closest k for such z
-                            ind1 = np.argmin(
-                                np.abs(emu_cov["k_Mpc_zk"][ind] - full_k_kms1)
-                            )
-                            # closest index in z and k
-                            j1 = ind[ind1]
-
-                            # index to inflate
-                            ind1_infl = np.argmin(
-                                np.abs(self.cov_factor["z"] - data.full_zs[i1])
-                            )
-
-                            full_emu_cov[i0, i1] = (
-                                emu_cov["cov_zk"][j0, j1]
-                                * data.full_Pk_kms[i0]
-                                * data.full_Pk_kms[i1]
-                                * self.cov_factor["val_emu"][ind0_infl]
-                                * self.cov_factor["val_emu"][ind1_infl]
-                            )
+                    )
+                    weights = emulator_interpolation_weights(
+                        data.full_zs,
+                        full_k_Mpc,
+                        emu_cov["zz_zk"],
+                        emu_cov["k_Mpc_zk"],
+                    )
+                    infl_index = np.argmin(
+                        np.abs(
+                            np.asarray(self.cov_factor["z"])[None, :]
+                            - np.asarray(data.full_zs)[:, None]
+                        ),
+                        axis=1,
+                    )
+                    scale = (
+                        full_pksmooth * self.cov_factor["val_emu"][infl_index]
+                    )
+                    full_emu_cov = (
+                        weights @ emu_cov["cov_zk"] @ weights.T
+                    ) * np.outer(scale, scale)
 
                     cov += full_emu_cov
 
@@ -836,6 +877,12 @@ class Likelihood(object):
         log_like, log_like_all = self.get_log_like(
             parameters, ignore_log_det_cov=True, zmask=zmask
         )
+
+        # rejected prediction (out of bounds or non-finite model)
+        if not isinstance(log_like_all, dict):
+            if return_all:
+                return np.inf, {}
+            return np.inf
 
         chi2_eachz = {}
         for key in log_like_all:
@@ -1345,7 +1392,8 @@ class Likelihood(object):
                                 )
                             )
                         )
-            log_like[valid_indices] = np.maximum(
+            # fmax maps NaN (non-finite predictions) to the floor
+            log_like[valid_indices] = np.fmax(
                 batch_log_like, self.min_log_like
             )
 

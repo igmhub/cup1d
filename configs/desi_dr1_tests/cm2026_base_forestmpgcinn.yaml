@@ -9,6 +9,6 @@
 emulator_label: forest_mpg_cinn
 n_k_emu: 64
 k_rebin_factor: 16
-# Outputs go to <path_out>/<data_label>/global_opt/<emulator_label>.
+# Outputs go to <path_out>/<data_label>/<name_variation or fit_type>/<emulator_label>/chain_N;
+# pass the root with ``scripts/data/data_sampler.py --path_out <dir>``.
 out_folder: null
-path_out: /home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1

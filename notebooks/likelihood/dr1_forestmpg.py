@@ -41,10 +41,12 @@ from cup1d.utils.utils import get_path_repo
 # %%
 # EMULATOR_LABEL = "forest_mpg_cinn"  # or "forest_mpg_gp"
 # EMULATOR_LABEL = "forest_mpg_gp"
-EMULATOR_LABEL = "forest_mpg_gp_no_inflate"
+# EMULATOR_LABEL = "forest_mpg_gp_no_inflate"
+EMULATOR_LABEL = "forest_mpg_gp_fixcosmo"
 config_names = {
     "forest_mpg_cinn": "cm2026_base_forestmpgcinn.yaml",
     "forest_mpg_gp": "cm2026_base_forestmpggp.yaml",
+    "forest_mpg_gp_fixcosmo": "cm2026_base_forestmpggp_fixcosmo.yaml",
     "forest_mpg_gp_no_inflate": "cm2026_base_forestmpggp_no_inflate.yaml",
 }
 config_file = os.path.join(

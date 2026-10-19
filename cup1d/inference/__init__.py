@@ -8,6 +8,7 @@ from cup1d.inference.initial_conditions import (
     get_at_a_time_ic_path,
     get_global_ic_path,
     get_ic_filename,
+    get_ic_path,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "get_at_a_time_ic_path",
     "get_global_ic_path",
     "get_ic_filename",
+    "get_ic_path",
 ]

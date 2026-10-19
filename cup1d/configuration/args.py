@@ -127,13 +127,18 @@ class Args:
             update_cm2026_derived,
         )
 
+        # Set by _from_overrides, whose options are an already-resolved
+        # configuration including derived keys; unknown keys were checked then.
+        warn_unknown = not options.pop("_resolved", False)
         self.synthetic = synthetic
         factory = make_cm2026_synth_defaults if synthetic else make_cm2026_defaults
         defaults = factory()
         # Keep stable broad limits out of the baseline YAML while allowing a
         # dedicated YAML overlay to override individual entries.
         defaults["cosmo_priors"] = deepcopy(self._COSMO_PRIORS)
-        config = apply_overrides(defaults, options, verbose=False)
+        config = apply_overrides(
+            defaults, options, verbose=False, warn_unknown=warn_unknown
+        )
         config = update_cm2026_derived(config, options)
         config = restore_runtime_types(config)
         for name, value in config.items():
@@ -166,12 +171,22 @@ class Args:
     def _set_covariance_redshifts(self):
         """Construct the covariance grid and expand its scalar factors."""
 
-        self.cov_factor["z"] = np.arange(self.z_min, self.z_max + 0.5 * self.zbin_width, self.zbin_width)
+        # The grid is normally set by update_cm2026_derived, which keeps a
+        # user-provided cov_factor.z; only build it here when it is missing.
+        if self.cov_factor.get("z") is None:
+            self.cov_factor["z"] = np.arange(self.z_min, self.z_max + 0.5 * self.zbin_width, self.zbin_width)
+        self.cov_factor["z"] = np.asarray(self.cov_factor["z"], dtype=float)
         n_redshifts = len(self.cov_factor["z"])
         for name in ("val_stat", "val_syst", "val_emu", "val_full"):
-            value = self.cov_factor[name]
-            if np.isscalar(value):
-                self.cov_factor[name] = np.full(n_redshifts, value)
+            value = np.atleast_1d(np.asarray(self.cov_factor[name], dtype=float))
+            if value.size == 1:
+                value = np.full(n_redshifts, value[0])
+            if value.size != n_redshifts:
+                raise ValueError(
+                    f"cov_factor.{name} has {value.size} values but cov_factor.z "
+                    f"has {n_redshifts} redshifts"
+                )
+            self.cov_factor[name] = value
 
     def _set_fiducial_values(self):
         """Create internal model reference values from the parameter layout."""
@@ -342,7 +357,7 @@ class Args:
         config = restore_runtime_types(config)
         if verbose:
             print_resolved_values(config, overrides)
-        return cls(synthetic=synthetic, **config)
+        return cls(synthetic=synthetic, _resolved=True, **config)
 
     @classmethod
     def from_variation(cls, name, verbose=False, synthetic=False, **options):

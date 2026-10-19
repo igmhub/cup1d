@@ -79,6 +79,7 @@ def set_theory(
         z_star=args.z_star,
         kp_kms=args.kp_kms,
         cosmo_priors=args.cosmo_priors,
+        cosmo_prior_nsigma=getattr(args, "cosmo_prior_nsigma", None),
     )
     theory.set_fid_cosmo(np.unique(zs), cosmo_label=cosmo_label)
 

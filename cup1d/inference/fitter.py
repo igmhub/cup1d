@@ -619,13 +619,17 @@ class Fitter(object):
             ) / log_width[exponential]
             return cube
 
+        # d(hessian coordinate)/d(cube): for exponential parameters the
+        # Hessian coordinate is h = (a - a_min) / a_range with a = exp(x) and
+        # x = x_min + cube * log_width, so dh/dcube = a * log_width / a_range.
+        # The cube Hessian is H_cube = H_h * outer(dh/dcube, dh/dcube).
         cube_scale = np.ones(self.ndim)
         if np.any(exponential):
             amplitudes = amplitude_min[exponential] + (
                 hessian_point[exponential] * amplitude_range[exponential]
             )
-            cube_scale[exponential] = amplitude_range[exponential] / (
-                log_width[exponential] * amplitudes
+            cube_scale[exponential] = (
+                log_width[exponential] * amplitudes / amplitude_range[exponential]
             )
 
         model, inverse_covariance = self._prediction_vector_and_icov(
@@ -828,9 +832,22 @@ class Fitter(object):
 
         self.mle_cosmo_covariance = jacobian @ self.mle_covariance_cube @ jacobian.T
         errors = np.sqrt(np.diag(self.mle_cosmo_covariance))
-        self.mle_cosmo_correlation = self.mle_cosmo_covariance / np.outer(
-            errors, errors
+        # With fixed cosmology no free parameter moves the compressed
+        # parameters: their errors are exactly zero and the correlation is
+        # undefined (NaN), rather than a 0/0 division.
+        scale = np.outer(errors, errors)
+        self.mle_cosmo_correlation = np.full_like(scale, np.nan)
+        np.divide(
+            self.mle_cosmo_covariance,
+            scale,
+            out=self.mle_cosmo_correlation,
+            where=scale > 0,
         )
+        if not np.any(errors > 0):
+            self.print(
+                "No free cosmological parameters: compressed-cosmology "
+                "errors are zero"
+            )
         cosmo_names = ("Delta2_star", "n_star", "alpha_star")
         self.mle_cosmo_errors = {
             name: errors[index] for index, name in enumerate(cosmo_names)
@@ -1145,9 +1162,12 @@ class Fitter(object):
 
         if self.rank == 0:
             map_ind = np.argmax(self.lnprob.reshape(-1))
-            map_chi2 = -2.0 * self.lnprob.reshape(-1)[map_ind]
             map_chain = self.chain.reshape(-1, self.chain.shape[-1])[map_ind]
-            self.set_mle(map_chain, map_chi2, force=True)
+            # lnprob includes the log prior; compare on the likelihood chi2
+            # used by the minimizer, and keep the minimizer MLE (and its
+            # error estimates) unless the chain found a better point.
+            map_chi2 = self.get_chi2(map_chain, zmask=zmask)
+            self.set_mle(map_chain, map_chi2)
             # Blinding affects only derived star-parameter blobs.
             self.blobs = blinding.apply_blinding(self.like.blind, self.blobs)
 
@@ -1347,19 +1367,17 @@ class Fitter(object):
                 np.round(diff_chi, 4),
             )
 
+            # keep the best point found so far
+            if diff_chi < 0:
+                chi2 = _chi2.copy()
+                mle_cube = res.x.copy()
+
             if res.success:
                 keep = False
+            elif -diff_chi > chi2_tol:
+                rep = 0
             else:
-                if -diff_chi > chi2_tol:
-                    chi2 = _chi2.copy()
-                    mle_cube = res.x.copy()
-                    rep = 0
-                elif diff_chi < 0:
-                    chi2 = _chi2.copy()
-                    mle_cube = res.x.copy()
-                    rep += 1
-                else:
-                    rep += 1
+                rep += 1
 
             if rep >= 2:
                 # multiple times to ensure that it is real
@@ -1367,8 +1385,6 @@ class Fitter(object):
 
             ii += 1
 
-        mle_cube = res.x
-        chi2 = self.get_chi2(mle_cube, zmask=zmask)
         self.print("Passed out:", chi2)
         _ = (mle_cube > 0.95) | (mle_cube < 0.05)
         if np.sum(_) > 0:
@@ -1846,8 +1862,9 @@ class Fitter(object):
         Returns
         -------
         ndarray
-            Initial walker positions with shape ``(nwalkers, ndim)``, clipped
-            to the interval ``[0.05, 0.95]``.
+            Initial walker positions with shape ``(nwalkers, ndim)``.  Values
+            at or above 1 are redrawn in ``[0.95, 0.96)`` and values at or
+            below 0 in ``(0.04, 0.05]``.
         """
 
         ndim = self.ndim
@@ -1861,10 +1878,12 @@ class Fitter(object):
                 p0[:, ii] = 0.5 + p0[:, ii] * rms
             else:
                 p0[:, ii] = pini[ii] + p0[:, ii] * rms
+        # Scatter walkers that leave the unit cube back inside it; identical
+        # values would freeze that coordinate under the stretch move.
         _ = p0 >= 1.0
-        p0[_] = 0.95
+        p0[_] = 0.95 + self.rng.random(np.count_nonzero(_)) * 0.01
         _ = p0 <= 0.0
-        p0[_] = 0.05
+        p0[_] = 0.05 - self.rng.random(np.count_nonzero(_)) * 0.01
 
         return p0
 
@@ -2218,13 +2237,27 @@ class Fitter(object):
         -------
         dict
             Format-versioned payload with configuration provenance, parameter
-            ordering, and fitted state.
+            ordering, prior bounds (``parameter_bounds``, used to map the
+            unit-cube chain to physical values), the number of data points
+            (``n_data``), and fitted state.
         """
         return {
             "format_version": 1,
             "result_type": result_type,
             **self._configuration_reference(),
             "parameter_names": list(self.like.free_param_names),
+            "parameter_bounds": {
+                name: [float(par["min_value"]), float(par["max_value"])]
+                for name, par in self.like.free_params.items()
+            },
+            "n_data": int(
+                sum(
+                    len(data.full_Pk_kms)
+                    if getattr(data, "full_Pk_kms", None) is not None
+                    else sum(len(pk) for pk in data.Pk_kms)
+                    for data in self.like.data.values()
+                )
+            ),
             "fit": self._fit_result(),
         }
 

@@ -59,15 +59,23 @@ variations=(
     # "Turner24"
     # "kF_kms"
     ################
-    "configs/tan2026/DESIY1_FFT3_dir_DLA_TAN.yaml"
+    # "configs/tan2026/DESIY1_FFT3_dir_DLA_TAN.yaml"
+    "configs/desi_dr1_tests/cm2026_base_forestmpggp_no_inflate.yaml"
 )
 
 source /global/homes/j/jjchaves/miniconda3/bin/activate lace
+
+# Root of the outputs; <data_label>/<name_variation or fit_type>/<emulator_label>/chain_N is
+# created below it ($SCRATCH is defined by NERSC).
+path_out=$SCRATCH/out_DESI_DR1
 
 # Pick variation for this array task
 var=${variations[$SLURM_ARRAY_TASK_ID]}
 echo "Job $SLURM_ARRAY_JOB_ID, task $SLURM_ARRAY_TASK_ID: running variation = $var"
 
-time srun -n 128 --unbuffered python /global/homes/j/jjchaves/cup1d/scripts/data/data_sampler.py $var
+# --kill-on-bad-exit and "python -m mpi4py" make an uncaught exception on any
+# rank abort the whole job; otherwise the other ranks block in MPI receives
+# until the walltime runs out.
+time srun -n 128 --unbuffered --kill-on-bad-exit=1 python -m mpi4py /global/homes/j/jjchaves/cup1d/scripts/data/data_sampler.py $var --path_out $path_out
 
 echo "Job finished at: $(date)"

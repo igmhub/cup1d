@@ -564,13 +564,16 @@ class Analysis(object):
                 )
                 self.plotter.plots_sampler()
 
-    def save_global_ic(self, fname):
+    def save_global_ic(self, fname=None):
         """Save the best-fit parameters as global initial conditions.
 
         Parameters
         ----------
-        fname : str or path-like
-            Target filename for :func:`numpy.save`.  The saved dictionary is
+        fname : str or path-like, optional
+            Target filename for :func:`numpy.save`.  By default the standard
+            ``cup1d/data/ics/{data_label}_{emulator_label}[_{variation}]_ic_global.npy``
+            of this analysis, which the likelihood finds automatically.
+            The saved dictionary is
             keyed by parameter family and each value has sorted ``'z'`` and
             ``'val'`` arrays.  Free ``As`` and ``ns`` are stored as scalar
             ``{'val': x}`` entries.
@@ -587,6 +590,16 @@ class Analysis(object):
         node.  Without ``As`` and ``ns`` a fit restarted from this file would
         start from the fiducial cosmology, far from the best fit.
         """
+        if fname is None:
+            from cup1d.utils.ic_files import get_ic_path
+
+            fname = get_ic_path(
+                self.args.data_label,
+                self.args.emulator_label,
+                "global",
+                getattr(self.args, "name_variation", None),
+            )
+            print("Saving initial conditions to", fname)
         out_dict = {}
         for name in self.fitter.like.free_params:
             if name in ["As", "ns"]:

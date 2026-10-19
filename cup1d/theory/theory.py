@@ -29,17 +29,27 @@ def interpolate_p1d(k_model, p1d_model, k_out):
     Returns
     -------
     ndarray
-        Interpolated P1D. The spline is built in ``(ln k, ln P)``, falling back
-        to ``(ln k, P)`` if any model value is not positive.
+        Interpolated P1D. Each P1D (row along the last axis) is splined
+        independently in ``(ln k, ln P)``, falling back to ``(ln k, P)`` if any
+        of its values is not positive. Rows containing non-finite values, e.g.
+        from an emulator extrapolating far outside its training domain, are
+        returned as NaN so that the likelihood can reject that point.
     """
     from scipy.interpolate import CubicSpline
 
     ln_k_model = np.log(np.asarray(k_model, dtype=float))
     ln_k_out = np.log(np.asarray(k_out, dtype=float))
     p1d_model = np.asarray(p1d_model, dtype=float)
-    if np.all(p1d_model > 0):
-        return np.exp(CubicSpline(ln_k_model, np.log(p1d_model), axis=-1)(ln_k_out))
-    return CubicSpline(ln_k_model, p1d_model, axis=-1)(ln_k_out)
+    rows = p1d_model.reshape(-1, p1d_model.shape[-1])
+    out = np.full((rows.shape[0], ln_k_out.size), np.nan)
+    for irow, row in enumerate(rows):
+        if not np.all(np.isfinite(row)):
+            continue
+        if np.all(row > 0):
+            out[irow] = np.exp(CubicSpline(ln_k_model, np.log(row))(ln_k_out))
+        else:
+            out[irow] = CubicSpline(ln_k_model, row)(ln_k_out)
+    return out.reshape(p1d_model.shape[:-1] + (ln_k_out.size,))
 
 
 class Theory:
@@ -62,6 +72,7 @@ class Theory:
         kp_kms=0.009,
         use_star_priors=None,
         cosmo_priors=None,
+        cosmo_prior_nsigma=None,
     ):
         """Initialize theory components and emulator training metadata.
 
@@ -85,6 +96,10 @@ class Theory:
             Optional bounds on compressed linear-power parameters.
         cosmo_priors : mapping, optional
             Cosmological prior bounds overriding training-derived limits.
+        cosmo_prior_nsigma : float, optional
+            If given, the training-derived ``As`` and ``ns`` bounds are the
+            mean +- this many standard deviations of the training
+            simulations, instead of their range expanded by 25%.
 
         Raises
         ------
@@ -99,6 +114,7 @@ class Theory:
         self.use_hull = use_hull
         self.use_star_priors = use_star_priors
         self.input_cosmo_priors = cosmo_priors
+        self.cosmo_prior_nsigma = cosmo_prior_nsigma
 
         if emulator is None:
             raise ValueError("Emulator not specified")
@@ -215,7 +231,9 @@ class Theory:
         -----
         Primordial limits are inferred from the emulator training set unless
         explicitly supplied through ``Args.cosmo_priors``. Background limits
-        always come from that Args mapping.
+        always come from that Args mapping. With ``cosmo_prior_nsigma`` set,
+        the ``As`` and ``ns`` limits are the training mean +- that many
+        standard deviations (``extra_factor`` then applies to ``nrun`` only).
         """
 
         # pivot scale of primordial power
@@ -290,6 +308,19 @@ class Theory:
                     self.cosmo_priors[par][ii] *= 1 - (extra_factor - 1)
                 elif (ii == 1) and (self.cosmo_priors[par][ii] >= 0):
                     self.cosmo_priors[par][ii] *= extra_factor
+
+        if self.cosmo_prior_nsigma is not None:
+            # keep the emulator close to its training domain: n_p depends on
+            # ns and Delta2_p on As and ns, so wide primordial priors drive
+            # the emulator into extrapolation
+            for par in ("As", "ns"):
+                mean, std = hc_fid[par].mean(), hc_fid[par].std()
+                self.cosmo_priors[par] = np.array(
+                    [
+                        mean - self.cosmo_prior_nsigma * std,
+                        mean + self.cosmo_prior_nsigma * std,
+                    ]
+                )
 
         if self.input_cosmo_priors is not None:
             for name, bounds in self.input_cosmo_priors.items():

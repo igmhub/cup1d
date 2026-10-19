@@ -1,0 +1,21 @@
+# DESI DR1 test (not part of the CM2026 paper) using the ForestFlow Gaussian-process emulator.
+#
+# Identical to ``cm2026_base_forestmpggp.yaml`` except that the cosmology is
+# fixed to the Planck18_noBAO fiducial (``fix_cosmo: true``), so As and ns are not
+# free parameters and ``cosmo_prior_nsigma`` has no effect.
+#
+# All data selection, nuisance modelling, priors, and runtime defaults come
+# from ``configs/cm2026/cm2026_defaults.yaml``.
+emulator_label: forest_mpg_gp
+n_k_emu: 64
+k_rebin_factor: 16
+fid_cosmo_label: Planck18_noBAO
+fix_cosmo: true
+name_variation: fixcosmo
+# Outputs go to <path_out>/<data_label>/<name_variation or fit_type>/<emulator_label>/chain_N;
+# pass the root with ``scripts/data/data_sampler.py --path_out <dir>``.
+out_folder: null
+# Initial conditions are looked up automatically: first this variation's own
+# DESIY1_QMLE3_forest_mpg_gp_fixcosmo_ic_global.npy (written by
+# ``analysis.save_global_ic()``), else the baseline file below.
+file_ic: DESIY1_QMLE3_forest_mpg_gp_ic_global.npy

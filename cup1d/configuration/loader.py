@@ -1,5 +1,7 @@
 """Utilities for reading cup1d configuration files."""
 
+import difflib
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -139,6 +141,7 @@ def apply_overrides(
     overrides: dict[str, Any],
     prefix: str = "",
     verbose: bool = True,
+    warn_unknown: bool = True,
 ) -> dict[str, Any]:
     """Merge user overrides into a resolved default configuration.
 
@@ -154,6 +157,11 @@ def apply_overrides(
         Dotted path used in recursive diagnostics.
     verbose : bool, default=True
         Print each leaf's source or explicit deletion.
+    warn_unknown : bool, default=True
+        Warn about nested keys absent from the defaults, which are usually
+        typos (e.g. ``cov_factor.val_stats``). Known extensions, such as
+        ``<parameter>_znodes`` in model sections, ``cov_factor.z`` or entries
+        of mappings that are empty by default, do not warn.
 
     Returns
     -------
@@ -210,6 +218,7 @@ def apply_overrides(
                 user_value,
                 prefix=f"{name}.",
                 verbose=verbose,
+                warn_unknown=warn_unknown,
             )
         else:
             resolved[key] = _coerce_like(user_value, default_value)
@@ -220,11 +229,52 @@ def apply_overrides(
     # values that do not exist in the baseline (for example HCD_const_znodes).
     for key in additional:
         name = f"{prefix}{key}"
+        if warn_unknown and not _is_known_extension(defaults, key, prefix):
+            close = difflib.get_close_matches(key, list(defaults), n=1)
+            hint = f" Did you mean {prefix}{close[0]}?" if close else ""
+            warnings.warn(
+                f"Unknown option {name} is not in the defaults and may be a "
+                f"typo; it is kept but may be ignored.{hint}",
+                UserWarning,
+                stacklevel=2,
+            )
         resolved[key] = _coerce_additional(overrides[key], name)
         if verbose:
             _print_values(name, resolved[key], source="user-provided")
 
     return resolved
+
+
+def _is_known_extension(defaults: dict[str, Any], key: str, prefix: str) -> bool:
+    """Return whether a nested key absent from the defaults is a known extension.
+
+    Parameters
+    ----------
+    defaults : dict
+        Default mapping at this nesting level.
+    key : str
+        Additional user-provided key.
+    prefix : str
+        Dotted path of this mapping, e.g. ``"cov_factor."``.
+
+    Returns
+    -------
+    bool
+        True for entries of mappings that are empty by default (free-form,
+        e.g. ``initial_sampling_values``), ``cov_factor.z``, and, in model
+        sections, a parameter's fiducial value (``<name>``) or nodes
+        (``<name>_znodes``) when the section configures that parameter
+        (e.g. through ``n_<name>`` or ``<name>_fixed``).
+    """
+
+    if not defaults:
+        return True
+    if prefix == "cov_factor." and key == "z":
+        return True
+    stem = key[: -len("_znodes")] if key.endswith("_znodes") else key
+    return any(
+        name == f"n_{stem}" or name.startswith(stem + "_") for name in defaults
+    )
 
 
 def _coerce_like(value: Any, default: Any) -> Any:

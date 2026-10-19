@@ -54,7 +54,7 @@ _CONFIG_GROUPS = (
     ("Contamination model", ("fid_cont",)),
     ("Instrumental systematics", ("fid_syst", "ic_correction")),
     ("Covariance", ("cov_syst_type", "emu_cov_type", "covariance_method", "cov_factor")),
-    ("Priors", ("use_star_priors", "prior_Gauss_rms", "Gauss_priors")),
+    ("Priors", ("use_star_priors", "prior_Gauss_rms", "Gauss_priors", "cosmo_prior_nsigma")),
     (
         "Inference",
         (
@@ -161,11 +161,13 @@ def update_cm2026_derived(
     """
 
     if config.get("out_folder") is None:
-        # ``<path_out>/<data_label>/global_opt/<emulator_label>``
+        # ``<path_out>/<data_label>/<name_variation or fit_type>/<emulator_label>``,
+        # e.g. ``DESIY1_QMLE3/global_opt/...`` or ``DESIY1_QMLE3/no_inflate/...``
         data_label = config["data_label"]
         data_label = data_label[0] if isinstance(data_label, (list, tuple)) else data_label
+        variation = config.get("name_variation") or config["fit_type"]
         config["out_folder"] = str(
-            Path(config["path_out"]) / data_label / "global_opt" / config["emulator_label"]
+            Path(config["path_out"]) / data_label / variation / config["emulator_label"]
         )
 
     z_min = config["z_min"]
@@ -198,11 +200,46 @@ def update_cm2026_derived(
 
     n_cov = len(config["cov_factor"]["z"])
     for name in ("val_stat", "val_syst", "val_emu", "val_full"):
-        value = config["cov_factor"][name]
-        scalar = value[0] if isinstance(value, (list, np.ndarray)) else value
-        config["cov_factor"][name] = np.full(n_cov, scalar)
+        config["cov_factor"][name] = _expand_cov_factor(
+            config["cov_factor"][name], n_cov, f"cov_factor.{name}"
+        )
 
     return config
+
+
+def _expand_cov_factor(value: Any, n_cov: int, name: str) -> np.ndarray:
+    """Expand a covariance factor to one value per covariance redshift.
+
+    Parameters
+    ----------
+    value : float or sequence of float
+        A scalar (or one-element sequence) applied at every redshift, or one
+        value per entry of ``cov_factor.z``.
+    n_cov : int
+        Number of covariance redshifts.
+    name : str
+        Dotted option name used in error messages.
+
+    Returns
+    -------
+    ndarray
+        Array of length ``n_cov``.
+
+    Raises
+    ------
+    ValueError
+        If a sequence has neither one nor ``n_cov`` elements.
+    """
+
+    values = np.atleast_1d(np.asarray(value, dtype=float))
+    if values.size == 1:
+        return np.full(n_cov, values[0])
+    if values.size != n_cov:
+        raise ValueError(
+            f"{name} has {values.size} values but cov_factor.z has {n_cov} "
+            "redshifts; give one value or one per redshift"
+        )
+    return values.copy()
 
 
 def _provided(overrides: dict[str, Any], section: str, name: str) -> bool:

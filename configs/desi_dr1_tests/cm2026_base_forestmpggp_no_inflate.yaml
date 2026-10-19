@@ -15,10 +15,12 @@ k_rebin_factor: 16
 name_variation: no_inflate
 cov_factor:
   val_stat: 1.0
-# Explicit so it does not overwrite the inflated run, whose out_folder: null
-# resolves to <path_out>/<data_label>/global_opt/<emulator_label>.
-out_folder: /home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/no_inflate/forest_mpg_gp
-path_out: /home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1
+# As and ns flat priors span the training-simulation mean +- 2 sigma, keeping
+# the GP emulator close to its training domain (n_p in particular).
+cosmo_prior_nsigma: 2.0
+# Outputs go to <path_out>/<data_label>/<name_variation or fit_type>/<emulator_label>/chain_N;
+# pass the root with ``scripts/data/data_sampler.py --path_out <dir>``.
+out_folder: null
 # Initial conditions from the forest_mpg_gp minimizer, saved with
 # Analysis.save_global_ic(get_global_ic_path(data_label, emulator_label)).
 # Until that file exists, the fit starts from the fiducial values.

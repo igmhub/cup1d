@@ -209,3 +209,23 @@ def test_mask_with_no_bins_in_second_dataset():
     bins, _, _ = P1DPlotter(like).prepare(zmask=[2.], n_perturb=2)
     assert len(bins) == 1
     assert bins[0].key == 'data0'
+
+
+def test_cosmo_plot_draws_only_the_centre_when_mle_errors_are_zero():
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from matplotlib.patches import Ellipse
+    from cup1d.postprocessing.cosmology import plot_cosmo_sampler_and_fit
+
+    rng = np.random.default_rng(0)
+    samples = rng.normal([0.35, -2.3], [0.01, 0.01], size=(2000, 2))
+    mle = {"Delta2_star": 0.35, "n_star": -2.3}
+
+    def ellipses(figure):
+        return [p for ax in figure.axes for p in ax.patches if isinstance(p, Ellipse)]
+
+    fixed = plot_cosmo_sampler_and_fit(samples, mle, np.zeros((2, 2)))
+    assert not ellipses(fixed)
+    free = plot_cosmo_sampler_and_fit(samples, mle, np.diag([1e-4, 1e-4]))
+    assert len(ellipses(free)) == 1
