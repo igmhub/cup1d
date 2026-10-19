@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -A desi
 #SBATCH -q regular
-#SBATCH -t 03:00:00
+#SBATCH -t 06:00:00
 #SBATCH --constraint=cpu
 #SBATCH --nodes=1
 #SBATCH -J p1d
