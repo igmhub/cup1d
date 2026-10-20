@@ -884,25 +884,51 @@ class Theory:
         for iz in range(Nz):
             kin_Mpc[iz, : len(k_eval[iz])] = k_eval[iz] * M_of_z[iz]
 
+        kaiser_metals = "Si_kaiser" in getattr(self.model_cont, "metal_models", {})
+        moments_Mpc = None
         if "forest" in self.emulator.emulator_label:
             new_cosmo_params = {}
             for name, value in like_params.items():
                 if name in ["As", "ns", "nrun"]:
                     new_cosmo_params[name] = value
             self.emulator.set_linear_theory(zs, new_cosmo_params=new_cosmo_params)
-            _res = self.emulator.emulate_p1d_Mpc(zs, kin_Mpc, emu_call)
+            if kaiser_metals:
+                # One pass for the Lya P1D and the Kaiser metal moments, with
+                # ForestFlow's default quadrature (as emulate_p1d_Mpc).
+                from forestflow.statistics import p1d as ff_p1d
+                from cup1d.likelihood.external import fused_projection_Mpc
+                arinyo = self.emulator.evaluate_arinyo(emu_call)
+                parameters = {name: np.asarray(values, dtype=float).reshape(-1)[:, None, None]
+                              for name, values in arinyo.items()}
+                _res, moments_Mpc = fused_projection_Mpc(
+                    self.emulator.model_Arinyo, self.emulator.linear, zs, kin_Mpc,
+                    parameters, ff_p1d._DEFAULT_P1D_K_MU_INTEGRATOR, moments=True)
+            else:
+                _res = self.emulator.emulate_p1d_Mpc(zs, kin_Mpc, emu_call)
         else:
+            if kaiser_metals:
+                raise ValueError("the Kaiser metal model needs a ForestFlow emulator")
             _res = self.emulator.emulate_p1d_Mpc(emu_call, kin_Mpc)
         p1d_Mpc = _res
 
         # move from Mpc to kms
         p1d_kms = []
         covars = []
+        metal_moments = None if moments_Mpc is None else []
         for iz in range(Nz):
             _p1d_kms = p1d_Mpc[iz][: len(k_eval[iz])] * M_of_z[iz]
             if k_kms_emu is not None:
                 _p1d_kms = interpolate_p1d(k_eval[iz], _p1d_kms, k_kms[iz])
             p1d_kms.append(_p1d_kms)
+            if moments_Mpc is not None:
+                from cup1d.likelihood.external import _interpolate_signed
+                row = {}
+                for name, values in moments_Mpc.items():
+                    moment = values[iz][: len(k_eval[iz])] * M_of_z[iz]
+                    if k_kms_emu is not None:
+                        moment = _interpolate_signed(k_eval[iz], moment, k_kms[iz])
+                    row[name] = moment
+                metal_moments.append(row)
             # if return_covar:
             #     if cov_Mpc is None:
             #         covars.append(None)
@@ -932,6 +958,7 @@ class Theory:
             M_of_z,
             like_params=like_params,
             remove=remove,
+            metal_moments=metal_moments,
         )
         # print(
         #     "mult_cont_total",

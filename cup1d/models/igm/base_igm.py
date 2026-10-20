@@ -5,6 +5,7 @@ from scipy.interpolate import (
     interp1d,
 )
 from cup1d.likelihood import parameter as likelihood_parameter
+from cup1d.utils.utils import split_string
 
 
 class IGM_model(object):
@@ -88,7 +89,7 @@ class IGM_model(object):
             self.n_pars = {}
             for key in self.list_coeffs:
                 self.n_pars[key] = len(
-                    [p for p in free_param_names if key + "_" in p]
+                    [p for p in free_param_names if split_string(p)[0] == key]
                 )
                 if self.n_pars[key] == 0:
                     npar = 1
@@ -228,7 +229,7 @@ class IGM_model(object):
                 name = key + "_" + str(ii)
                 set_prior = False
                 for key2 in self.flat_priors:
-                    if key2 in name:
+                    if key2 == key:
                         if self.prop_coeffs[key + "_ztype"] == "pivot":
                             if ii == 0:
                                 xmin = self.flat_priors[key2][-1][0]
@@ -458,7 +459,7 @@ class IGM_model(object):
             array_names = []
             array_values = []
             for par_name, par_value in like_params.items():
-                if (name + "_") in par_name:
+                if split_string(par_name)[0] == name:
                     array_names.append(par_name)
                     array_values.append(par_value)
                     Npar += 1
@@ -492,7 +493,7 @@ class IGM_model(object):
             array_names = []
             array_values = []
             for par_name, par_value in like_params.items():
-                if (name + "_") in par_name:
+                if split_string(par_name)[0] == name:
                     array_names.append(par_name)
                     array_values.append(par_value)
                     Npar += 1

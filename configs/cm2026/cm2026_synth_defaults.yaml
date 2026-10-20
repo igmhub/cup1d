@@ -447,6 +447,22 @@ fid_cont:
   sig_SiII_otype: exp
   # Whether Kaiser model: line-of-sight decorrelation of the SiII lines in km/s is fixed.
   sig_SiII_fixed: true
+  # Number of free redshift nodes for Kaiser model: amplitude factor of the SiII x SiII terms.
+  n_f_SiIIxSiII: 0
+  # Redshift interpolation scheme for Kaiser model: amplitude factor of the SiII x SiII terms.
+  f_SiIIxSiII_ztype: pivot
+  # Coefficient parameterization for Kaiser model: amplitude factor of the SiII x SiII terms.
+  f_SiIIxSiII_otype: exp
+  # Whether Kaiser model: amplitude factor of the SiII x SiII terms is fixed.
+  f_SiIIxSiII_fixed: true
+  # Number of free redshift nodes for Kaiser model: line-of-sight decorrelation of the SiII x SiII terms in km/s.
+  n_sig_SiIIxSiII: 0
+  # Redshift interpolation scheme for Kaiser model: line-of-sight decorrelation of the SiII x SiII terms in km/s.
+  sig_SiIIxSiII_ztype: pivot
+  # Coefficient parameterization for Kaiser model: line-of-sight decorrelation of the SiII x SiII terms in km/s.
+  sig_SiIIxSiII_otype: exp
+  # Whether Kaiser model: line-of-sight decorrelation of the SiII x SiII terms in km/s is fixed.
+  sig_SiIIxSiII_fixed: true
 
 ## Instrumental systematics
 # Fiducial instrumental-systematic model.

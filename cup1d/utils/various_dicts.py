@@ -43,6 +43,23 @@ for ii in range(11):
             + r"}$"
         )
     param_dict["HCD_const_" + str(ii)] = r"$c_{{\rm HCD}_" + str(ii) + r"}$"
+    # Kaiser silicon model: ln|b| per line, beta and ln(sigma) per species
+    for line, label in (("SiIII", r"SiIII"), ("SiIIa", r"SiIIa"), ("SiIIb", r"SiIIb"),
+                        ("SiIIc", r"SiIIc")):
+        param_dict["b_" + line + "_" + str(ii)] = (
+            r"$\ln|b_{\rm " + label + "}|_" + str(ii) + r"$"
+        )
+    for species in ("SiIII", "SiII"):
+        param_dict["beta_" + species + "_" + str(ii)] = (
+            r"$\beta_{\rm " + species + "," + str(ii) + r"}$"
+        )
+        param_dict["sig_" + species + "_" + str(ii)] = (
+            r"$\ln\sigma_{\rm " + species + "," + str(ii) + r"}$"
+        )
+    param_dict["f_SiIIxSiII_" + str(ii)] = r"$\ln f_{\rm SiII\times SiII," + str(ii) + r"}$"
+    param_dict["sig_SiIIxSiII_" + str(ii)] = (
+        r"$\ln\sigma_{\rm SiII\times SiII," + str(ii) + r"}$"
+    )
 
 
 metal_lines = [

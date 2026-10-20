@@ -1174,6 +1174,41 @@ class Fitter(object):
         return sampler
 
     @_single_threaded_numerics
+    def _masked_coordinates(self, x_base, mask_pars):
+        """Return the varied coordinates and an expander for masked minimizers.
+
+        With ``mask_pars`` the objective replaces the fixed coordinates, so a
+        minimizer over the full cube would drift along them and return a point
+        whose "fixed" coordinates moved. Minimizing over the free coordinates
+        only avoids that and lowers the dimension.
+
+        Parameters
+        ----------
+        x_base : array-like
+            Unit-cube point supplying the fixed coordinates.
+        mask_pars : bool
+            Hold the likelihood parameters marked fixed at ``x_base``.
+
+        Returns
+        -------
+        ind_free : ndarray
+            Indices of the minimized coordinates.
+        expand : callable
+            Maps a vector of the minimized coordinates to a full unit-cube point.
+        """
+        x_base = np.asarray(x_base, dtype=float).copy()
+        ind_free = np.arange(len(x_base))
+        if mask_pars:
+            ind_free = np.array([ii for ii, parameter in enumerate(self.like.free_params.values())
+                                 if not parameter["fixed"]], dtype=int)
+
+        def expand(x_free):
+            x = x_base.copy()
+            x[ind_free] = x_free
+            return x
+
+        return ind_free, expand
+
     def run_minimizer(
         self,
         log_func_minimize=None,
@@ -1253,7 +1288,7 @@ class Fitter(object):
                 for ii, parameter in enumerate(self.like.free_params.values()):
                     if parameter["fixed"]:
                         ind_fix.append(ii)
-                ind_fix = np.array(ind_fix)
+                ind_fix = np.array(ind_fix, dtype=int)  # int even when nothing is fixed
                 pfix = pini[ind_fix]
                 if zmask is not None:
                     fun = lambda x: log_func_minimize(
@@ -1280,6 +1315,25 @@ class Fitter(object):
             # star at the center of the parameter space
             mle_cube = np.ones(npars) * 0.5
 
+        ind_free, expand = self._masked_coordinates(mle_cube, mask_pars)
+
+        def nelder_mead(pini):
+            """Nelder-Mead over the minimized coordinates, returning full points."""
+            res = minimize(
+                lambda x_free: _log_func_minimize(expand(x_free)),
+                pini[ind_free],
+                method="Nelder-Mead",
+                bounds=((0.0, 1.0),) * len(ind_free),
+                options={
+                    "fatol": chi2_tol,  # fatol and xatol are both evaluated
+                    "xatol": 1e-6,  # needed to reach the good convergence
+                    "maxiter": neval,
+                    "maxfev": neval,
+                },
+            )
+            res.x = expand(res.x)
+            return res
+
         if burn_in:
 
             from scipy.stats import qmc
@@ -1304,18 +1358,7 @@ class Fitter(object):
                     pini[pini <= 0] = 0.05
                     pini[pini >= 1] = 0.95
 
-                    res = minimize(
-                        _log_func_minimize,
-                        pini,
-                        method="Nelder-Mead",
-                        bounds=((0.0, 1.0),) * npars,
-                        options={
-                            "fatol": chi2_tol,  # fatol and xatol are both evaluated
-                            "xatol": 1e-6,  # needed to reach the good convergence
-                            "maxiter": neval,
-                            "maxfev": neval,
-                        },
-                    )
+                    res = nelder_mead(pini)
                     self.print("ITER", it, ii, res.fun, pini[:2], res.x[:2])
                     if res.fun < _chi2:
                         _chi2 = res.fun
@@ -1335,18 +1378,7 @@ class Fitter(object):
             start1 = time.time()
             pini = mle_cube.copy()
 
-            res = minimize(
-                _log_func_minimize,
-                pini,
-                method="Nelder-Mead",
-                bounds=((0.0, 1.0),) * npars,
-                options={
-                    "fatol": chi2_tol,  # fatol and xatol are both evaluated
-                    "xatol": 1e-6,  # needed to reach the good convergence
-                    "maxiter": neval,
-                    "maxfev": neval,
-                },
-            )
+            res = nelder_mead(pini)
             # self.print(res)
 
             _chi2 = self.get_chi2(res.x, zmask=zmask)
@@ -1715,19 +1747,21 @@ class Fitter(object):
 
         self.print("Starting DA minimization")
 
+        ind_free, expand = self._masked_coordinates(mle_cube, mask_pars is not None)
         start = time.time()
         res = dual_annealing(
-            _log_func_minimize,
+            lambda x_free: _log_func_minimize(expand(x_free)),
             maxiter=10000,
-            x0=mle_cube,
-            bounds=((0.0, 1.0),) * npars,
+            x0=mle_cube[ind_free],
+            bounds=((0.0, 1.0),) * len(ind_free),
             minimizer_kwargs={
                 "method": "Nelder-Mead",
-                "bounds": ((0.0, 1.0),) * npars,
+                "bounds": ((0.0, 1.0),) * len(ind_free),
                 "options": {"fatol": 0.1, "xatol": 0},
             },
         )
         self.print(res)
+        res.x = expand(res.x)
 
         _chi2 = self.get_chi2(res.x, zmask=zmask)
 

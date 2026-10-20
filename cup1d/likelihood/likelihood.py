@@ -1891,7 +1891,8 @@ class Likelihood(object):
             Updates configured fixed flags, interpolates coefficient values at
             model nodes, resets contaminant/IGM coefficient models, and sets
             free ``As``/``ns`` when the file stores them (otherwise they keep
-            their fiducial values).
+            their fiducial values). Coefficient families absent from the file
+            (e.g. a metal model newer than it) also keep their fiducial values.
 
         Raises
         ------
@@ -1930,6 +1931,10 @@ class Likelihood(object):
 
             if (pname not in dir_out) and (pname == "HCD_const"):
                 parameter["value"] = 0
+            elif pname not in dir_out:
+                # e.g. a metal model newer than the file: keep the fiducial value
+                if verbose and (self.rank == 0):
+                    print(f"{name}: not in the IC file, keeping its fiducial value")
             else:
                 _z = dir_out[pname]["z"]
                 _val = dir_out[pname]["val"]

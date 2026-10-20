@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.interpolate import make_smoothing_spline, make_interp_spline
 from cup1d.likelihood import parameter as likelihood_parameter
+from cup1d.utils.utils import split_string
 
 
 class Contaminant(object):
@@ -97,7 +98,7 @@ class Contaminant(object):
             self.n_pars = {}
             for key in self.list_coeffs:
                 self.n_pars[key] = len(
-                    [p for p in free_param_names if key + "_" in p]
+                    [p for p in free_param_names if split_string(p)[0] == key]
                 )
                 if self.n_pars[key] == 0:
                     npar = 1
@@ -141,7 +142,7 @@ class Contaminant(object):
                 name = key + "_" + str(ii)
                 set_prior = False
                 for key2 in self.flat_priors:
-                    if key2 in name:
+                    if key2 == key:
                         if self.prop_coeffs[key + "_ztype"] == "pivot":
                             # xmin = self.flat_priors[key2][-(ii + 1)][0]
                             # xmax = self.flat_priors[key2][-(ii + 1)][1]
@@ -419,7 +420,7 @@ class Contaminant(object):
             array_names = []
             array_values = []
             for par_name, par_value in like_params.items():
-                if (name + "_") in par_name:
+                if split_string(par_name)[0] == name:
                     array_names.append(par_name)
                     array_values.append(par_value)
                     Npar += 1
@@ -472,7 +473,7 @@ class Contaminant(object):
             array_names = []
             array_values = []
             for par_name, par_value in like_params.items():
-                if (name + "_") in par_name:
+                if split_string(par_name)[0] == name:
                     array_names.append(par_name)
                     array_values.append(par_value)
                     Npar += 1

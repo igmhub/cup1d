@@ -77,14 +77,15 @@ def test_public_external_coefficient_route_returns_immutable_rows():
         result["fixture"][0].setflags(write=True)
 
 
+@pytest.mark.parametrize("damping", ["sigmoid", "gaussian"])
 @pytest.mark.parametrize("rule", ["k_perp", "k_mu"])
-def test_kaiser_metal_moments_equal_direct_projection_of_contaminated_p3d(rule):
+def test_kaiser_metal_moments_equal_direct_projection_of_contaminated_p3d(rule, damping):
     """Moments + SiKaiser reproduce the k_perp integral of the full contaminated P3D."""
     from cup1d.configuration.args import Args
     from cup1d.likelihood.external import (
         PredictionGroup, PredictionRequest, _quadrature, make_integrator,
         project_arinyo_request, project_metal_moments)
-    from cup1d.models.contaminants.metals.si_kaiser import SiKaiser, velocity_offset
+    from cup1d.models.contaminants.metals.si_kaiser import SiKaiser, lya_metal_damping, velocity_offset
     from forestflow.model.arinyo import ArinyoModel
     from forestflow.model.linear import LinearTheoryGrid
     from lace.cosmo.cosmology import Cosmology
@@ -107,12 +108,14 @@ def test_kaiser_metal_moments_equal_direct_projection_of_contaminated_p3d(rule):
     # Constant histories: ln|b| and ln(sigma) with exp otype, beta with const.
     coeffs = {"b_SiIII": [np.log(0.02)], "b_SiIIa": [np.log(0.015)], "b_SiIIb": [np.log(0.01)],
               "b_SiIIc": [np.log(0.012)], "beta_SiIII": [0.7], "beta_SiII": [1.1],
-              "sig_SiIII": [np.log(80.)], "sig_SiII": [np.log(150.)]}
+              "sig_SiIII": [np.log(80.)], "sig_SiII": [np.log(150.)],
+              "f_SiIIxSiII": [0.0], "sig_SiIIxSiII": [-20.0]}  # inactive SiII x SiII factor
     prop_coeffs = {}
     for name, otype in Args._KAISER_OTYPES.items():
         prop_coeffs[name + "_ztype"] = "pivot"
         prop_coeffs[name + "_otype"] = otype
-    metals = SiKaiser(coeffs=coeffs, prop_coeffs=prop_coeffs, flat_priors=Args._CONT_FLAT_PRIORS)
+    metals = SiKaiser(coeffs=coeffs, prop_coeffs=prop_coeffs, flat_priors=Args._CONT_FLAT_PRIORS,
+                      damping=damping)
     assert np.isclose(metals.coefficients(z)["SiIII"][0], -0.02)
     contaminated = lya + metals.get_contamination([z], [k_kms], metal_moments=[moments])[0]
 
@@ -132,7 +135,7 @@ def test_kaiser_metal_moments_equal_direct_projection_of_contaminated_p3d(rule):
     lya_k = pars["bias"] + pars["bias_eta"] * f * mu2
     par = metals.coefficients(z)
     kaiser = {l: b * (1 + beta * mu2) * leg for l, (b, beta, s) in par.items()}
-    window = {l: np.exp(-0.5 * (k_par / M * s) ** 2) for l, (b, beta, s) in par.items()}
+    window = {l: lya_metal_damping(k_par / M, s, damping) for l, (b, beta, s) in par.items()}
     p3d = lin * dnl * lya_k**2
     lines = list(par)
     for l in lines:
@@ -144,6 +147,82 @@ def test_kaiser_metal_moments_equal_direct_projection_of_contaminated_p3d(rule):
     direct = integrate(p3d)[0] * M
     np.testing.assert_allclose(contaminated, direct, rtol=1e-10)
     assert np.max(np.abs(contaminated / lya - 1)) > 0.05  # metals are not negligible here
+
+
+def test_kaiser_sii_x_sii_factor_acts_only_on_sii_x_sii_terms():
+    """f_SiIIxSiII and sig_SiIIxSiII rescale and decorrelate only the SiII x SiII terms."""
+    from cup1d.configuration.args import Args
+    from cup1d.models.contaminants.metals.si_kaiser import SPECIES, SiKaiser
+
+    k = np.geomspace(1e-3, 0.03, 7)
+    moments = {name: np.linspace(1.0, 2.0, k.size) * (i + 1)
+               for i, name in enumerate(("A0", "A1", "I0", "I1", "I2"))}
+    coeffs = {"b_SiIII": [np.log(0.02)], "b_SiIIa": [np.log(0.015)], "b_SiIIb": [np.log(0.01)],
+              "b_SiIIc": [np.log(0.012)], "beta_SiIII": [0.7], "beta_SiII": [1.1],
+              "sig_SiIII": [np.log(80.)], "sig_SiII": [np.log(150.)]}
+    prop_coeffs = {}
+    for name, otype in Args._KAISER_OTYPES.items():
+        prop_coeffs[name + "_ztype"] = "pivot"
+        prop_coeffs[name + "_otype"] = otype
+
+    def terms(f, sigma):
+        extra = {"f_SiIIxSiII": [np.log(f)], "sig_SiIIxSiII": [np.log(sigma)]}
+        model = SiKaiser(coeffs=coeffs | extra, prop_coeffs=prop_coeffs,
+                         flat_priors=Args._CONT_FLAT_PRIORS)
+        return model.p1d_terms(2.5, k, moments)
+
+    base = terms(1.0, np.exp(-20.0))
+    scaled = terms(3.0, 120.0)
+    window = 3.0 * np.exp(-0.5 * (k * 120.0) ** 2)
+    n_sii = 0
+    for name, term in base.items():
+        lines = name.split("_")
+        if all(line in SPECIES and SPECIES[line] == "SiII" for line in lines):
+            np.testing.assert_allclose(scaled[name], term * window, rtol=1e-12)
+            n_sii += 1
+        else:
+            np.testing.assert_array_equal(scaled[name], term)
+    assert n_sii == 6  # three SiII autos and three SiII x SiII crosses
+
+
+def test_lya_metal_damping_forms():
+    """The default is the Gaussian of Vega, the sigmoid that of CM2026; both are 1 at k = 0."""
+    from cup1d.models.contaminants.metals.si_kaiser import lya_metal_damping
+
+    k = np.array([0.0, 1e-3, 1e-2])
+    np.testing.assert_allclose(lya_metal_damping(k, 150.0), np.exp(-0.5 * (150.0 * k) ** 2))
+    np.testing.assert_allclose(lya_metal_damping(k, 150.0, "sigmoid"), 2 - 2 / (1 + np.exp(-150.0 * k)),
+                               rtol=1e-15)
+    assert lya_metal_damping(0.0, 150.0) == lya_metal_damping(0.0, 150.0, "sigmoid") == 1.0
+    with pytest.raises(ValueError):
+        lya_metal_damping(k, 150.0, "lorentzian")
+
+
+def test_coefficient_families_match_exactly_not_by_substring():
+    """sig_SiII and sig_SiIIxSiII keep their own priors, counts and overrides."""
+    from copy import deepcopy
+
+    from cup1d.configuration.args import Args
+    from cup1d.models.contaminants.metals.si_kaiser import FAMILIES, SiKaiser
+
+    priors = deepcopy(Args._CONT_FLAT_PRIORS)
+    priors["sig_SiIIxSiII"] = [[-1, 1], [1.0, 6.0]]  # sig_SiII precedes it with [0, 7]
+    prop_coeffs = {}
+    for name, otype in Args._KAISER_OTYPES.items():
+        prop_coeffs[name + "_ztype"] = "interp_lin"
+        prop_coeffs[name + "_otype"] = otype
+        prop_coeffs[name + "_znodes"] = [2.2, 3.0]
+    fid_vals = {name: [0.0, 0.0] for name in FAMILIES}
+    free = ["sig_SiII_0", "sig_SiII_1", "sig_SiIIxSiII_0", "sig_SiIIxSiII_1"]
+    model = SiKaiser(free_param_names=free, fid_vals=fid_vals, prop_coeffs=prop_coeffs,
+                     flat_priors=priors)
+    assert model.n_pars["sig_SiII"] == model.n_pars["sig_SiIIxSiII"] == 2
+    bounds = {name: (par["min_value"], par["max_value"]) for name, par in model.params.items()}
+    assert bounds["sig_SiII_0"] == (0.0, 7.0)
+    assert bounds["sig_SiIIxSiII_0"] == (1.0, 6.0)
+    like_params = {"sig_SiII_0": 1.0, "sig_SiII_1": 2.0, "sig_SiIIxSiII_0": 3.0, "sig_SiIIxSiII_1": 4.0}
+    np.testing.assert_array_equal(model.get_coeff("sig_SiII", like_params), [1.0, 2.0])
+    np.testing.assert_array_equal(model.get_coeff("sig_SiIIxSiII", like_params), [3.0, 4.0])
 
 
 @pytest.mark.parametrize("rule", ["k_perp", "k_mu"])

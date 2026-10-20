@@ -508,14 +508,17 @@ class Analysis(object):
             else:
                 raise ValueError("type_minimizer must be 'NM', 'DA', or 'PSO'")
 
-            # save fit
-            self.fprint(f"Saving the results to folder {self.fitter.save_directory}")
-            if save_chains or hasattr(self.fitter, "chain"):
+            # save fit (not when the analysis was built with create_output=False)
+            if self.fitter.save_directory is None:
+                self.fprint("No output directory: results are not saved")
+            elif save_chains or hasattr(self.fitter, "chain"):
+                self.fprint(f"Saving the results to folder {self.fitter.save_directory}")
                 self.fitter.save_sampler_results()
             else:
+                self.fprint(f"Saving the results to folder {self.fitter.save_directory}")
                 self.fitter.save_minimizer_results()
 
-            if make_plots:
+            if make_plots and self.fitter.save_directory is not None:
                 from cup1d.postprocessing.plotter import Plotter
 
                 # plot fit

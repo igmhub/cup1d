@@ -77,6 +77,61 @@ def _interpolate_signed(k_model, values, k_out):
     return interpolate_p1d(k_model, values, k_out)
 
 
+def fused_projection_Mpc(model, linear, zs, k_iMpc, parameters, integrator, moments=False):
+    """Project the Lya P1D and, optionally, the Kaiser metal moments in Mpc units.
+
+    The shared core of :func:`project_fused` and of the native ForestFlow
+    theory: the linear power, ForestFlow's nonlinear correction and the Kaiser
+    factors are evaluated once on the quadrature grid.
+
+    Parameters
+    ----------
+    model : forestflow.model.arinyo.ArinyoModel
+        Model providing ``linear``, ``default_params`` and ``nonlinear_correction``.
+    linear : object
+        Linear-theory grid matching ``zs``.
+    zs : array_like
+        Redshifts, one per row of ``k_iMpc``.
+    k_iMpc : ndarray
+        Parallel wavenumbers in 1/Mpc, shape ``(n_z, n_k)``.
+    parameters : mapping
+        Arinyo coefficients with shape ``(n_z, 1, 1)`` (missing ones take the
+        model defaults).
+    integrator : P1DIntegratorKMu or P1DIntegrator
+        Projection quadrature.
+    moments : bool, default=False
+        Also return the metal moments (see :func:`project_metal_moments`).
+
+    Returns
+    -------
+    p1d_Mpc : ndarray
+        Lya P1D in Mpc, shape ``(n_z, n_k)``.
+    metal_moments_Mpc : dict or None
+        Moments in Mpc keyed by :data:`METAL_MOMENT_NAMES`, or ``None``.
+    """
+    zs = np.asarray(zs, dtype=float)
+    parameters = model.default_params | parameters
+    k3d, mu, integrate = _quadrature(integrator, k_iMpc)
+    mu2 = mu**2
+    lin_p = model.linear.get_linP_Mpc(linear, zs, k3d)
+    growth = np.asarray(model.linear.get_fz(linear, zs), dtype=float)[:, None, None]
+    dnl = model.nonlinear_correction(lin_p, k3d, mu, parameters)
+    lya_kaiser = parameters["bias"] + parameters["bias_eta"] * growth * mu2
+    p1d = integrate(lin_p * lya_kaiser**2 * dnl)
+    if not moments:
+        return p1d, None
+    metal_leg = np.exp(-0.5 * (k3d / parameters["kp"]) ** 2)
+    cross = lin_p * np.sqrt(dnl) * metal_leg * lya_kaiser
+    metal = lin_p * metal_leg**2
+    return p1d, {
+        "A0": integrate(cross),
+        "A1": integrate(cross * mu2),
+        "I0": integrate(metal),
+        "I1": integrate(metal * mu2),
+        "I2": integrate(metal * mu2**2),
+    }
+
+
 def project_fused(request, snapshot, arinyo, projection=None, kmax_iMpc=np.inf,
                   integrator=None, *, model=None, linear=None, moments=False, n_k=None):
     """Project the Lya P1D and, optionally, the Kaiser metal moments in one pass.
@@ -147,25 +202,8 @@ def project_fused(request, snapshot, arinyo, projection=None, kmax_iMpc=np.inf,
     projected_moments = None
     if hasattr(model, "nonlinear_correction"):
         # One pass: shared P_L, D_NL and Kaiser factors on the quadrature grid.
-        parameters = model.default_params | parameters
-        k3d, mu, integrate = _quadrature(integrator, k_iMpc)
-        mu2 = mu**2
-        lin_p = model.linear.get_linP_Mpc(linear, zs, k3d)
-        growth = np.asarray(model.linear.get_fz(linear, zs), dtype=float)[:, None, None]
-        dnl = model.nonlinear_correction(lin_p, k3d, mu, parameters)
-        lya_kaiser = parameters["bias"] + parameters["bias_eta"] * growth * mu2
-        projected = integrate(lin_p * lya_kaiser**2 * dnl)
-        if moments:
-            metal_leg = np.exp(-0.5 * (k3d / parameters["kp"]) ** 2)
-            cross = lin_p * np.sqrt(dnl) * metal_leg * lya_kaiser
-            metal = lin_p * metal_leg**2
-            projected_moments = {
-                "A0": integrate(cross),
-                "A1": integrate(cross * mu2),
-                "I0": integrate(metal),
-                "I1": integrate(metal * mu2),
-                "I2": integrate(metal * mu2**2),
-            }
+        projected, projected_moments = fused_projection_Mpc(
+            model, linear, zs, k_iMpc, parameters, integrator, moments=moments)
     else:  # minimal compatibility models only expose the Cartesian P3D
         if moments:
             raise ValueError("metal moments need a model with nonlinear_correction")

@@ -162,6 +162,8 @@ PARAMETER_COMMENTS = {
     "beta_SiII": "Kaiser model: redshift-space parameter of the SiII lines.",
     "sig_SiIII": "Kaiser model: line-of-sight decorrelation of SiIII in km/s.",
     "sig_SiII": "Kaiser model: line-of-sight decorrelation of the SiII lines in km/s.",
+    "f_SiIIxSiII": "Kaiser model: amplitude factor of the SiII x SiII terms.",
+    "sig_SiIIxSiII": "Kaiser model: line-of-sight decorrelation of the SiII x SiII terms in km/s.",
 }
 
 
