@@ -8,7 +8,9 @@
 # ``notebooks/validation/convergence_rebin_quadrature``).
 emulator_label: forest_mpg_gp
 n_k_emu: 64
-k_rebin_factor: 16
+# 32: |dchi2| <= 0.011 near the best fit vs 128 (16: up to 0.11); see
+# notebooks/validation/convergence_rebin_quadrature.
+k_rebin_factor: 32
 # As and ns flat priors span the training-simulation mean +- 2 sigma, keeping
 # the GP emulator close to its training domain (n_p in particular).
 cosmo_prior_nsigma: 2.0

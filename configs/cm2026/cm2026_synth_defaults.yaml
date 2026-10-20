@@ -49,7 +49,7 @@ true_igm:
 true_cont:
   # High-column-density absorption model.
   hcd_model_type: new_rogers
-  # Metal-contamination model.
+  # Metal-contamination model: McDonald (CM2026 templates), SiVid or Kaiser.
   metal_model_type: McDonald
   # True/mock value(s): Amplitude of the Lyman-alpha--SiIII metal contribution.
   f_Lya_SiIII:
@@ -277,7 +277,7 @@ fid_igm:
 fid_cont:
   # High-column-density absorption model.
   hcd_model_type: new_rogers
-  # Metal-contamination model.
+  # Metal-contamination model: McDonald (CM2026 templates), SiVid or Kaiser.
   metal_model_type: McDonald
   # Number of free redshift nodes for Amplitude of the Lyman-alpha--SiIII metal contribution.
   n_f_Lya_SiIII: 2
@@ -383,6 +383,70 @@ fid_cont:
   HCD_const_otype: const
   # Whether Scale-independent high-column-density contribution. is fixed.
   HCD_const_fixed: true
+  # Number of free redshift nodes for Kaiser model: magnitude of the SiIII(1207) flux bias.
+  n_b_SiIII: 0
+  # Redshift interpolation scheme for Kaiser model: magnitude of the SiIII(1207) flux bias.
+  b_SiIII_ztype: pivot
+  # Coefficient parameterization for Kaiser model: magnitude of the SiIII(1207) flux bias.
+  b_SiIII_otype: exp
+  # Whether Kaiser model: magnitude of the SiIII(1207) flux bias is fixed.
+  b_SiIII_fixed: true
+  # Number of free redshift nodes for Kaiser model: magnitude of the SiII(1190) flux bias.
+  n_b_SiIIa: 0
+  # Redshift interpolation scheme for Kaiser model: magnitude of the SiII(1190) flux bias.
+  b_SiIIa_ztype: pivot
+  # Coefficient parameterization for Kaiser model: magnitude of the SiII(1190) flux bias.
+  b_SiIIa_otype: exp
+  # Whether Kaiser model: magnitude of the SiII(1190) flux bias is fixed.
+  b_SiIIa_fixed: true
+  # Number of free redshift nodes for Kaiser model: magnitude of the SiII(1193) flux bias.
+  n_b_SiIIb: 0
+  # Redshift interpolation scheme for Kaiser model: magnitude of the SiII(1193) flux bias.
+  b_SiIIb_ztype: pivot
+  # Coefficient parameterization for Kaiser model: magnitude of the SiII(1193) flux bias.
+  b_SiIIb_otype: exp
+  # Whether Kaiser model: magnitude of the SiII(1193) flux bias is fixed.
+  b_SiIIb_fixed: true
+  # Number of free redshift nodes for Kaiser model: magnitude of the SiII(1260) flux bias.
+  n_b_SiIIc: 0
+  # Redshift interpolation scheme for Kaiser model: magnitude of the SiII(1260) flux bias.
+  b_SiIIc_ztype: pivot
+  # Coefficient parameterization for Kaiser model: magnitude of the SiII(1260) flux bias.
+  b_SiIIc_otype: exp
+  # Whether Kaiser model: magnitude of the SiII(1260) flux bias is fixed.
+  b_SiIIc_fixed: true
+  # Number of free redshift nodes for Kaiser model: redshift-space parameter of SiIII.
+  n_beta_SiIII: 0
+  # Redshift interpolation scheme for Kaiser model: redshift-space parameter of SiIII.
+  beta_SiIII_ztype: pivot
+  # Coefficient parameterization for Kaiser model: redshift-space parameter of SiIII.
+  beta_SiIII_otype: const
+  # Whether Kaiser model: redshift-space parameter of SiIII is fixed.
+  beta_SiIII_fixed: true
+  # Number of free redshift nodes for Kaiser model: redshift-space parameter of the SiII lines.
+  n_beta_SiII: 0
+  # Redshift interpolation scheme for Kaiser model: redshift-space parameter of the SiII lines.
+  beta_SiII_ztype: pivot
+  # Coefficient parameterization for Kaiser model: redshift-space parameter of the SiII lines.
+  beta_SiII_otype: const
+  # Whether Kaiser model: redshift-space parameter of the SiII lines is fixed.
+  beta_SiII_fixed: true
+  # Number of free redshift nodes for Kaiser model: line-of-sight decorrelation of SiIII in km/s.
+  n_sig_SiIII: 0
+  # Redshift interpolation scheme for Kaiser model: line-of-sight decorrelation of SiIII in km/s.
+  sig_SiIII_ztype: pivot
+  # Coefficient parameterization for Kaiser model: line-of-sight decorrelation of SiIII in km/s.
+  sig_SiIII_otype: exp
+  # Whether Kaiser model: line-of-sight decorrelation of SiIII in km/s is fixed.
+  sig_SiIII_fixed: true
+  # Number of free redshift nodes for Kaiser model: line-of-sight decorrelation of the SiII lines in km/s.
+  n_sig_SiII: 0
+  # Redshift interpolation scheme for Kaiser model: line-of-sight decorrelation of the SiII lines in km/s.
+  sig_SiII_ztype: pivot
+  # Coefficient parameterization for Kaiser model: line-of-sight decorrelation of the SiII lines in km/s.
+  sig_SiII_otype: exp
+  # Whether Kaiser model: line-of-sight decorrelation of the SiII lines in km/s is fixed.
+  sig_SiII_fixed: true
 
 ## Instrumental systematics
 # Fiducial instrumental-systematic model.

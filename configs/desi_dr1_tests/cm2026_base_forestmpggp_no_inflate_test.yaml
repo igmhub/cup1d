@@ -7,7 +7,9 @@
 # default ``thin: 20`` such a short run would keep no samples at all.
 emulator_label: forest_mpg_gp
 n_k_emu: 64
-k_rebin_factor: 16
+# 32: |dchi2| <= 0.011 near the best fit vs 128 (16: up to 0.11); see
+# notebooks/validation/convergence_rebin_quadrature.
+k_rebin_factor: 32
 # Own variation name, so test chains are written to .../no_inflate_test/...
 name_variation: no_inflate_test
 cov_factor:

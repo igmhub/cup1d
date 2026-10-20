@@ -8,7 +8,9 @@
 # from ``configs/cm2026/cm2026_defaults.yaml``.
 emulator_label: forest_mpg_gp
 n_k_emu: 64
-k_rebin_factor: 16
+# 32: |dchi2| <= 0.011 near the best fit vs 128 (16: up to 0.11); see
+# notebooks/validation/convergence_rebin_quadrature.
+k_rebin_factor: 32
 fid_cosmo_label: Planck18_noBAO
 fix_cosmo: true
 name_variation: fixcosmo

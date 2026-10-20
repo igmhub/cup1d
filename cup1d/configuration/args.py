@@ -54,8 +54,19 @@ class Args:
         "HCD_damp1": [0, -20.0], "HCD_damp2": [0, -20.0],
         "HCD_damp3": [0, -20.0], "HCD_damp4": [0, -20.0],
         "HCD_const": [0, 0.0],
+        # Kaiser silicon model (metal_model_type: Kaiser): |bias| per
+        # transition, beta and line-of-sight decorrelation (km/s) per species.
+        "b_SiIII": [0, -20.0], "b_SiIIa": [0, -20.0],
+        "b_SiIIb": [0, -20.0], "b_SiIIc": [0, -20.0],
+        "beta_SiIII": [0, 0.5], "beta_SiII": [0, 0.5],
+        "sig_SiIII": [0, -20.0], "sig_SiII": [0, -20.0],
     }
     _SYST_PARAMS = {"R_coeff": [0, 0.0]}
+    # Default history types of the Kaiser silicon families when the
+    # configuration does not set them (inactive: pivot, no free nodes).
+    _KAISER_OTYPES = {"b_SiIII": "exp", "b_SiIIa": "exp", "b_SiIIb": "exp",
+                      "b_SiIIc": "exp", "beta_SiIII": "const", "beta_SiII": "const",
+                      "sig_SiIII": "exp", "sig_SiII": "exp"}
     _CONT_FLAT_PRIORS = {
         "f_Lya_SiIII": [[-1, 1], [-6, -2]],
         "s_Lya_SiIII": [[-1, 1], [2, 7]],
@@ -70,6 +81,15 @@ class Args:
         "HCD_damp3": [[-0.5, 0.5], [-10.0, -1.0]],
         "HCD_damp4": [[-0.5, 0.5], [-10.0, -1.0]],
         "HCD_const": [[-1, 1], [-0.2, 0.2]],
+        # ln|b| and ln(sigma / km/s) with exp otype; beta with const otype.
+        "b_SiIII": [[-1, 1], [-12.0, -2.0]],
+        "b_SiIIa": [[-1, 1], [-12.0, -2.0]],
+        "b_SiIIb": [[-1, 1], [-12.0, -2.0]],
+        "b_SiIIc": [[-1, 1], [-12.0, -2.0]],
+        "beta_SiIII": [[-1, 1], [0.0, 3.0]],
+        "beta_SiII": [[-1, 1], [0.0, 3.0]],
+        "sig_SiIII": [[-1, 1], [0.0, 7.0]],
+        "sig_SiII": [[-1, 1], [0.0, 7.0]],
     }
     _FIDUCIAL_VALUES = {
         "fid_igm": {"tau_eff": 0.0, "sigT_kms": 1.0, "gamma": 1.0, "kF_kms": 1.0},
@@ -80,6 +100,12 @@ class Args:
             "f_SiIIa_SiIII": 1.0, "f_SiIIb_SiIII": 1.0,
             "HCD_damp1": -1.4, "HCD_damp2": -6.0,
             "HCD_damp3": -5.0, "HCD_damp4": -5.0, "HCD_const": 0.0,
+            # ln|b| of the DESI DR2 Lya BAO baseline metal biases (Vega,
+            # z=2.33), beta = 0.5 and ln(100 km/s).
+            "b_SiIII": -4.906, "b_SiIIa": -5.259,
+            "b_SiIIb": -6.032, "b_SiIIc": -5.382,
+            "beta_SiIII": 0.5, "beta_SiII": 0.5,
+            "sig_SiIII": 4.605, "sig_SiII": 4.605,
         },
         "fid_syst": {"R_coeff": 0.0},
     }
@@ -92,6 +118,11 @@ class Args:
         "HCD_damp1": -10.0, "HCD_damp2": -10.0,
         "HCD_damp3": -10.0, "HCD_damp4": -10.0,
         "HCD_const": 0.0, "R_coeff": 0.0,
+        # Not free: negligible metals (exp(-20)), beta fixed to 0.5 and no
+        # decorrelation (sigma = exp(-20) km/s).
+        "b_SiIII": -20.0, "b_SiIIa": -20.0, "b_SiIIb": -20.0, "b_SiIIc": -20.0,
+        "beta_SiIII": 0.5, "beta_SiII": 0.5,
+        "sig_SiIII": -20.0, "sig_SiII": -20.0,
     }
     _COSMO_PRIORS = {
         "ombh2": [0.018, 0.026],
@@ -195,6 +226,11 @@ class Args:
         for section, names in sections.items():
             values = getattr(self, section)
             for name in names:
+                if name in self._KAISER_OTYPES:
+                    values.setdefault(f"{name}_ztype", "pivot")
+                    values.setdefault(f"{name}_otype", self._KAISER_OTYPES[name])
+                    values.setdefault(f"n_{name}", 0)
+                    values.setdefault(f"{name}_fixed", values[f"n_{name}"] == 0)
                 n_nodes = values.get(f"n_{name}", 0)
                 if name in values:
                     self._preserve_configured_fiducial_values(

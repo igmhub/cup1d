@@ -10,6 +10,7 @@ from cup1d.models.contaminants.metals import (
     si_mult,
     si_vid_final,
     si_add,
+    si_kaiser,
 )
 
 
@@ -85,42 +86,54 @@ class Contaminants(object):
 
         # setup metal models
         self.metal_models = {}
-        key = "Si_mult"
-        try:
-            self.metal_models[key] = metal_models[key]
-        except:
-            if pars_cont["metal_model_type"] == "SiVid":
-                # Ma+2025 2509.08613
-                self.metal_models[key] = si_vid_final.SiVid(
-                    free_param_names=free_param_names,
-                    fid_vals=fid_vals,
-                    prop_coeffs=prop_coeffs,
-                    z_max=z_max,
-                    flat_priors=flat_priors,
-                    Gauss_priors=Gauss_priors,
-                )
-            else:
-                self.metal_models[key] = si_mult.SiMult(
-                    free_param_names=free_param_names,
-                    fid_vals=fid_vals,
-                    prop_coeffs=prop_coeffs,
-                    z_max=z_max,
-                    flat_priors=flat_priors,
-                    Gauss_priors=Gauss_priors,
-                )
-
-        key = "Si_add"
-        try:
-            self.metal_models[key] = metal_models[key]
-        except:
-            self.metal_models[key] = si_add.SiAdd(
+        if pars_cont.get("metal_model_type") == "Kaiser" and not metal_models:
+            # Line-of-sight Kaiser silicon model, additive; replaces the
+            # Si_mult and Si_add silicon models. Needs metal moments.
+            self.metal_add = ["Si_kaiser"]
+            self.metal_models["Si_kaiser"] = si_kaiser.SiKaiser(
                 free_param_names=free_param_names,
                 fid_vals=fid_vals,
                 prop_coeffs=prop_coeffs,
-                z_max=z_max,
                 flat_priors=flat_priors,
                 Gauss_priors=Gauss_priors,
             )
+        if "Si_kaiser" not in self.metal_models:
+            key = "Si_mult"
+            try:
+                self.metal_models[key] = metal_models[key]
+            except:
+                if pars_cont["metal_model_type"] == "SiVid":
+                    # Ma+2025 2509.08613
+                    self.metal_models[key] = si_vid_final.SiVid(
+                        free_param_names=free_param_names,
+                        fid_vals=fid_vals,
+                        prop_coeffs=prop_coeffs,
+                        z_max=z_max,
+                        flat_priors=flat_priors,
+                        Gauss_priors=Gauss_priors,
+                    )
+                else:
+                    self.metal_models[key] = si_mult.SiMult(
+                        free_param_names=free_param_names,
+                        fid_vals=fid_vals,
+                        prop_coeffs=prop_coeffs,
+                        z_max=z_max,
+                        flat_priors=flat_priors,
+                        Gauss_priors=Gauss_priors,
+                    )
+
+            key = "Si_add"
+            try:
+                self.metal_models[key] = metal_models[key]
+            except:
+                self.metal_models[key] = si_add.SiAdd(
+                    free_param_names=free_param_names,
+                    fid_vals=fid_vals,
+                    prop_coeffs=prop_coeffs,
+                    z_max=z_max,
+                    flat_priors=flat_priors,
+                    Gauss_priors=Gauss_priors,
+                )
 
         # setup HCD model
         if hcd_model:
@@ -188,7 +201,8 @@ class Contaminants(object):
 
     #     return dict_out
 
-    def get_contamination(self, z, k_kms, mF, M_of_z, like_params=None, remove=None):
+    def get_contamination(self, z, k_kms, mF, M_of_z, like_params=None, remove=None,
+                          metal_moments=None):
         """Combine all scalar contaminant terms for requested P1D grids.
 
         Parameters
@@ -201,6 +215,8 @@ class Contaminants(object):
             Scalar physical coefficient overrides.
         remove : mapping, optional
             Metal transition flags overriding default contributions.
+        metal_moments : sequence of mapping, optional
+            Per-redshift metal moments, required by the Kaiser metal model.
 
         Returns
         -------
@@ -209,6 +225,8 @@ class Contaminants(object):
             HCD, feedback, and initial-condition correction factors.
         """
         if isinstance(like_params, dict) and like_params and all(np.asarray(value).ndim == 1 for value in like_params.values()):
+            if "Si_kaiser" in self.metal_models:
+                raise NotImplementedError("batched Kaiser metal model unavailable")
             return self.get_contamination_batch(z, k_kms, mF, M_of_z, like_params, remove=remove)
         # include multiplicative metal contamination
         cont_all = {}
@@ -224,12 +242,14 @@ class Contaminants(object):
                 cont_all["cont_add_metals"].append(np.zeros_like(k_kms[iz]))
 
         for model_name in self.metal_models:
+            extra = {"metal_moments": metal_moments} if model_name == "Si_kaiser" else {}
             cont = self.metal_models[model_name].get_contamination(
                 z=z,
                 k_kms=k_kms,
                 mF=mF,
                 like_params=like_params,
                 remove=remove,
+                **extra,
             )
             if len(z) == 1:
                 if model_name in self.metal_add:

@@ -11,9 +11,201 @@ from scipy.linalg import cho_solve
 from cup1d.utils.rebinning import Rebinning
 
 
+def make_integrator(projection=None):
+    """Build the P3D-to-P1D quadrature from projection settings.
+
+    Parameters
+    ----------
+    projection : mapping, optional
+        ``rule: k_mu`` selects ForestFlow's split Gauss--Legendre rule in ln k
+        at fixed k_par (``P1DIntegratorKMu``, also cup1d's native default);
+        any other ``rule`` (default ``k_perp``) the Simpson/Gauss--Legendre rule
+        in ln k_perp (``P1DIntegrator``). Remaining keys are forwarded.
+
+    Returns
+    -------
+    P1DIntegratorKMu or P1DIntegrator
+    """
+    from forestflow.statistics.p1d import P1DIntegrator, P1DIntegratorKMu
+
+    projection = {} if projection is None else dict(projection)
+    rule = projection.pop("rule", "k_perp")
+    if rule == "k_mu":
+        return P1DIntegratorKMu(**projection)
+    if rule != "k_perp":
+        raise ValueError("projection rule must be 'k_mu' or 'k_perp'")
+    return P1DIntegrator(**projection)
+
+
+def _k_perp_range(integrator):
+    """Return the transverse integration limits of a projection quadrature."""
+    if hasattr(integrator, "k_perp_iMpc"):
+        return integrator.k_perp_iMpc[0], integrator.k_perp_iMpc[-1]
+    return integrator.k_perp_min_iMpc, integrator.k_perp_max_iMpc
+
+
+def _quadrature(integrator, k_iMpc):
+    """Return ``k``, ``mu`` and an integrate function on the quadrature grid.
+
+    ``integrate(f)`` returns ``(1/2pi) int dk_perp k_perp f`` for values ``f``
+    sampled on the returned ``(k, mu)`` grid, for either quadrature rule.
+    """
+    if hasattr(integrator, "k_perp_iMpc"):
+        k_par, k_perp = integrator.geometry(k_iMpc)
+        k3d = np.hypot(k_par, k_perp)
+        return k3d, k_par / k3d, integrator.integrate
+    k3d, mu, weights = integrator.geometry(k_iMpc)
+    return k3d, mu, lambda values: integrator.integrate(values, k3d, weights)
+
+
+METAL_MOMENT_NAMES = ("A0", "A1", "I0", "I1", "I2")
+
+
+def _immutable(values):
+    """Return a read-only float64 copy (bytes-backed, WRITEABLE cannot be re-enabled)."""
+    values = np.asarray(values, dtype=np.float64)
+    return np.frombuffer(values.tobytes(), dtype=np.float64).reshape(values.shape)
+
+
+def _interpolate_signed(k_model, values, k_out):
+    """Cubic spline in (ln k, ln|Q|) for rows of one sign, as cup1d's P1D interpolation."""
+    from cup1d.theory.theory import interpolate_p1d
+
+    values = np.asarray(values, dtype=float)
+    if np.all(values < 0):
+        return -interpolate_p1d(k_model, -values, k_out)
+    return interpolate_p1d(k_model, values, k_out)
+
+
+def project_fused(request, snapshot, arinyo, projection=None, kmax_iMpc=np.inf,
+                  integrator=None, *, model=None, linear=None, moments=False, n_k=None):
+    """Project the Lya P1D and, optionally, the Kaiser metal moments in one pass.
+
+    The linear power, ForestFlow's nonlinear correction and the Kaiser factors
+    are evaluated once on the quadrature grid and shared by the Lya P1D and the
+    five metal moments (see :func:`project_metal_moments`).
+
+    Parameters
+    ----------
+    request, snapshot, arinyo, projection, kmax_iMpc, integrator, model, linear
+        As in :func:`project_arinyo_request`.
+    moments : bool, default=False
+        Also return the metal moments.
+    n_k : int, optional
+        Project on ``n_k`` log-spaced k per requested row (spanning it) and
+        interpolate to the requested grid with a cubic spline in
+        ``(ln k, ln |Q|)``, as cup1d's ``n_k_emu`` does for the emulator P1D
+        (:func:`cup1d.theory.theory.interpolate_p1d`). The projected quantities
+        are smooth in k; metal oscillations are applied afterwards on the
+        requested grid. ``None`` projects at every requested k.
+
+    Returns
+    -------
+    p1d : mapping
+        As :func:`project_arinyo_request`.
+    metal_moments : mapping or None
+        As :func:`project_metal_moments`, or ``None`` if ``moments`` is false.
+
+    Raises
+    ------
+    ValueError
+        If a grid exceeds declared coverage, the P1D is non-finite or
+        non-positive, or a moment is non-finite.
+    """
+    from forestflow.model.arinyo import ArinyoModel
+    from forestflow.model.linear import LinearTheoryGrid
+    from forestflow.statistics.p1d import P1D_Mpc
+
+    keys = list(dict.fromkeys((z, k) for group in request.groups
+                              for z, k in zip(group.redshifts, group.k_ikms)))
+    if not keys:
+        raise ValueError("external coefficient projection requires P1D grids")
+    if n_k is not None and (int(n_k) != n_k or n_k < 4):
+        raise ValueError("n_k must be an integer >= 4 or None")
+    zs = np.asarray([z for z, _ in keys], dtype=float)
+    # Evaluation grids: the requested rows, or n_k log-spaced points spanning them.
+    rows_kms = [np.asarray(k, dtype=float) for _, k in keys]
+    eval_kms = rows_kms if n_k is None else [np.geomspace(k[0], k[-1], int(n_k)) for k in rows_kms]
+    lengths = np.asarray([len(k) for k in eval_kms], dtype=int)
+    conversion = np.asarray(snapshot.get_dkms_diMpc(zs), dtype=float)
+    k_iMpc = np.empty((len(keys), int(lengths.max())))
+    for index, k in enumerate(eval_kms):
+        row = k * conversion[index]
+        if row.max() > kmax_iMpc:
+            raise ValueError("parallel k outside declared external-coefficient coverage")
+        k_iMpc[index, :len(row)] = row
+        k_iMpc[index, len(row):] = row[-1]
+    integrator = make_integrator(projection) if integrator is None else integrator
+    for cutoff in _k_perp_range(integrator):
+        snapshot.validate_k(np.sqrt(k_iMpc**2 + cutoff**2))
+    names = next(iter(arinyo.values())).keys()
+    parameters = {name: np.asarray([arinyo[z][name] for z in zs])[:, None, None]
+                  for name in names}
+    model = ArinyoModel(fiducial_cosmology=snapshot) if model is None else model
+    linear = LinearTheoryGrid(z=zs, cosmology=snapshot) if linear is None else linear
+
+    projected_moments = None
+    if hasattr(model, "nonlinear_correction"):
+        # One pass: shared P_L, D_NL and Kaiser factors on the quadrature grid.
+        parameters = model.default_params | parameters
+        k3d, mu, integrate = _quadrature(integrator, k_iMpc)
+        mu2 = mu**2
+        lin_p = model.linear.get_linP_Mpc(linear, zs, k3d)
+        growth = np.asarray(model.linear.get_fz(linear, zs), dtype=float)[:, None, None]
+        dnl = model.nonlinear_correction(lin_p, k3d, mu, parameters)
+        lya_kaiser = parameters["bias"] + parameters["bias_eta"] * growth * mu2
+        projected = integrate(lin_p * lya_kaiser**2 * dnl)
+        if moments:
+            metal_leg = np.exp(-0.5 * (k3d / parameters["kp"]) ** 2)
+            cross = lin_p * np.sqrt(dnl) * metal_leg * lya_kaiser
+            metal = lin_p * metal_leg**2
+            projected_moments = {
+                "A0": integrate(cross),
+                "A1": integrate(cross * mu2),
+                "I0": integrate(metal),
+                "I1": integrate(metal * mu2),
+                "I2": integrate(metal * mu2**2),
+            }
+    else:  # minimal compatibility models only expose the Cartesian P3D
+        if moments:
+            raise ValueError("metal moments need a model with nonlinear_correction")
+        projected = P1D_Mpc(linear, zs, k_iMpc, model.P3D_Mpc_kpar_kperp, parameters,
+                            integrator=integrator)
+    projected = projected * conversion[:, None]
+    if projected_moments is not None:
+        for name, values in projected_moments.items():
+            projected_moments[name] = values * conversion[:, None]
+
+    p1d_by_key, moments_by_key = {}, {}
+    for index, key in enumerate(keys):
+        row = projected[index, :lengths[index]]
+        if n_k is not None:
+            row = _interpolate_signed(eval_kms[index], row, rows_kms[index])
+        if not np.all(np.isfinite(row)) or np.any(row <= 0):
+            raise ValueError("non-finite/nonpositive external-coefficient projection")
+        p1d_by_key[key] = _immutable(row)
+        if projected_moments is not None:
+            out = {}
+            for name, values in projected_moments.items():
+                moment = values[index, :lengths[index]]
+                if n_k is not None:
+                    moment = _interpolate_signed(eval_kms[index], moment, rows_kms[index])
+                if not np.all(np.isfinite(moment)):
+                    raise ValueError(f"non-finite metal moment {name}")
+                out[name] = _immutable(moment)
+            moments_by_key[key] = MappingProxyType(out)
+
+    def by_group(table):
+        return MappingProxyType({group.identifier: tuple(table[(z, k)]
+                                 for z, k in zip(group.redshifts, group.k_ikms))
+                                 for group in request.groups})
+
+    return by_group(p1d_by_key), (by_group(moments_by_key) if moments else None)
+
+
 def project_arinyo_request(request, snapshot, arinyo, projection=None,
                            kmax_iMpc=np.inf, integrator=None, *,
-                           model=None, linear=None):
+                           model=None, linear=None, n_k=None):
     """Project externally supplied ForestFlow coefficients to raw P1D.
 
     Parameters
@@ -27,19 +219,20 @@ def project_arinyo_request(request, snapshot, arinyo, projection=None,
         Redshift-indexed named ForestFlow Arinyo coefficients. No emulator is
         constructed or evaluated by this function.
     projection : mapping, optional
-        Keyword arguments for ForestFlow's ``P1DIntegrator``.
+        Projection settings for :func:`make_integrator`.
     kmax_iMpc : float, default=numpy.inf
         Largest supported parallel wavenumber in 1/Mpc.
-    integrator : forestflow.statistics.p1d.P1DIntegrator, optional
+    integrator : P1DIntegratorKMu or P1DIntegrator, optional
         Existing projection integrator. Supplying it retains its bounded
         geometry cache; otherwise one is built from ``projection``.
     model : object, optional
-        Existing object exposing ``P3D_Mpc_kpar_kperp``.  This compatibility
-        hook lets interface callers retain an already constructed ForestFlow
-        model; ordinary callers leave it unset.
+        Existing ForestFlow ``ArinyoModel`` (or an object exposing only
+        ``P3D_Mpc_kpar_kperp``, for compatibility).
     linear : object, optional
         Matching linear-theory adapter used with ``model``.  When omitted, a
         point-specific adapter is constructed from ``snapshot``.
+    n_k : int, optional
+        Interpolation grid size, see :func:`project_fused`.
 
     Returns
     -------
@@ -58,48 +251,53 @@ def project_arinyo_request(request, snapshot, arinyo, projection=None,
     ForestFlow is imported lazily, keeping ordinary cup1d analyses independent
     of the optional external-coefficient route.
     """
-    from forestflow.model.arinyo import ArinyoModel
-    from forestflow.model.linear import LinearTheoryGrid
-    from forestflow.statistics.p1d import P1DIntegrator, P1D_Mpc
+    return project_fused(request, snapshot, arinyo, projection, kmax_iMpc, integrator,
+                         model=model, linear=linear, n_k=n_k)[0]
 
-    projection = {} if projection is None else dict(projection)
-    keys = list(dict.fromkeys((z, k) for group in request.groups
-                              for z, k in zip(group.redshifts, group.k_ikms)))
-    if not keys:
-        raise ValueError("external coefficient projection requires P1D grids")
-    zs = np.asarray([z for z, _ in keys], dtype=float)
-    lengths = np.asarray([len(k) for _, k in keys], dtype=int)
-    conversion = np.asarray(snapshot.get_dkms_diMpc(zs), dtype=float)
-    k_iMpc = np.empty((len(keys), int(lengths.max())))
-    for index, (_, k) in enumerate(keys):
-        row = np.asarray(k, dtype=float) * conversion[index]
-        if row.max() > kmax_iMpc:
-            raise ValueError("parallel k outside declared external-coefficient coverage")
-        k_iMpc[index, :len(row)] = row
-        k_iMpc[index, len(row):] = row[-1]
-    integrator = P1DIntegrator(**projection) if integrator is None else integrator
-    for cutoff in (integrator.k_perp_iMpc[0], integrator.k_perp_iMpc[-1]):
-        snapshot.validate_k(np.sqrt(k_iMpc**2 + cutoff**2))
-    names = next(iter(arinyo.values())).keys()
-    parameters = {name: np.asarray([arinyo[z][name] for z in zs])[:, None, None]
-                  for name in names}
-    model = ArinyoModel(fiducial_cosmology=snapshot) if model is None else model
-    linear = LinearTheoryGrid(z=zs, cosmology=snapshot) if linear is None else linear
-    projected = P1D_Mpc(linear, zs, k_iMpc, model.P3D_Mpc_kpar_kperp, parameters,
-                        integrator=integrator) * conversion[:, None]
-    if not np.all(np.isfinite(projected)) or np.any(projected <= 0):
-        raise ValueError("non-finite/nonpositive external-coefficient projection")
-    by_key = {}
-    for index, key in enumerate(keys):
-        # Own-data arrays can have WRITEABLE re-enabled.  A bytes-backed
-        # view makes the provider product genuinely immutable without taking
-        # a dependency on lya_interface's helper.
-        values = np.asarray(projected[index, :lengths[index]], dtype=np.float64)
-        row = np.frombuffer(values.tobytes(), dtype=np.float64).reshape(values.shape)
-        by_key[key] = row
-    return MappingProxyType({group.identifier: tuple(by_key[(z, k)]
-                            for z, k in zip(group.redshifts, group.k_ikms))
-                            for group in request.groups})
+
+def project_metal_moments(request, snapshot, arinyo, projection=None,
+                          kmax_iMpc=np.inf, integrator=None, *,
+                          model=None, linear=None, n_k=None):
+    """Project the k_perp moments that carry Kaiser metal terms to P1D.
+
+    For a line-of-sight Kaiser metal model the metal contributions to P1D are
+    polynomials in the metal ``beta`` with these moments as coefficients (see
+    :class:`cup1d.models.contaminants.metals.si_kaiser.SiKaiser`). With
+    ``mu = k_par / k`` and ``(1/2pi) int dk_perp k_perp``:
+
+    - ``A_j = (1/2pi) int dk_perp k_perp P_L sqrt(D_NL) d_m (b + b_eta f mu^2) mu^(2j)``,
+      ``j = 0, 1``: Lya x metal, with ForestFlow's Lya Kaiser factor and the
+      square root of its nonlinear correction (the Lya leg).
+    - ``I_j = (1/2pi) int dk_perp k_perp P_L d_m^2 mu^(2j)``, ``j = 0, 1, 2``:
+      metal x metal.
+
+    ``d_m = exp(-(k/k_p)^2 / 2)`` is the pressure smoothing of one metal leg,
+    with ForestFlow's Arinyo ``k_p`` (metals trace the same gas as Lya, whose
+    ``D_NL`` carries ``exp(-(k/k_p)^2)`` for its two legs).
+
+    Parameters
+    ----------
+    request, snapshot, arinyo, projection, kmax_iMpc, integrator, model, linear, n_k
+        As in :func:`project_arinyo_request`; the same quadrature geometry is
+        used, so moments and the Lya P1D share their numerical integration.
+        Use :func:`project_fused` to obtain both in a single pass.
+
+    Returns
+    -------
+    mapping
+        Immutable dataset-indexed tuples, one per requested redshift, of
+        dictionaries with keys :data:`METAL_MOMENT_NAMES`. Values are arrays on
+        the requested k grid in km/s units (multiplied by ``dkms/dMpc``, like
+        the P1D).
+
+    Raises
+    ------
+    ValueError
+        If a requested grid exceeds declared coverage or a moment is
+        non-finite.
+    """
+    return project_fused(request, snapshot, arinyo, projection, kmax_iMpc, integrator,
+                         model=model, linear=linear, moments=True, n_k=n_k)[1]
 
 
 def fingerprint(value):
@@ -338,7 +536,7 @@ def gaussian_residual(diff, factor, check_finite=True):
     return float(diff @ cho_solve(factor, diff, check_finite=check_finite)), float(2 * np.log(np.diag(factor[0])).sum())
 
 
-def apply_observation_model(model_cont, model_syst, zs, k_kms, p1d_kms, mean_flux, M_of_z, like_params=None, remove=None):
+def apply_observation_model(model_cont, model_syst, zs, k_kms, p1d_kms, mean_flux, M_of_z, like_params=None, remove=None, metal_moments=None):
     """Apply contaminant, resolution, and IC responses to raw P1D arrays.
 
     Parameters
@@ -354,6 +552,9 @@ def apply_observation_model(model_cont, model_syst, zs, k_kms, p1d_kms, mean_flu
         Nuisance values used by response models.
     remove : sequence of str, optional
         Contaminant terms to omit.
+    metal_moments : sequence of mapping, optional
+        Per-redshift moments from :func:`project_metal_moments`, required by
+        the Kaiser metal model.
 
     Returns
     -------
@@ -364,7 +565,7 @@ def apply_observation_model(model_cont, model_syst, zs, k_kms, p1d_kms, mean_flu
     """
     like_params = {} if like_params is None else like_params
     syst = model_syst.get_contamination(zs, k_kms, like_params=like_params) if any(name.startswith("R_coeff") for name in like_params) else np.ones(len(zs))
-    cont = model_cont.get_contamination(zs, k_kms, mean_flux, M_of_z, like_params=like_params, remove=remove)
+    cont = model_cont.get_contamination(zs, k_kms, mean_flux, M_of_z, like_params=like_params, remove=remove, metal_moments=metal_moments)
     powers, terms = [], []
     for index, z in enumerate(zs):
         powers.append((cont["cont_HCD"][index] * cont["cont_mul_metals"][index] * cont["IC_corr"][index] * p1d_kms[index] + cont["cont_add_metals"][index]) * syst[index])
@@ -462,7 +663,7 @@ class ExternalP1DLikelihood:
         """
         return self.request
 
-    def apply_observation_model(self, p1d_lya_kms, context, nuisance_parameters):
+    def apply_observation_model(self, p1d_lya_kms, context, nuisance_parameters, metal_moments=None):
         """Apply responses and rebin raw external predictions onto data grids.
 
         Parameters
@@ -473,6 +674,9 @@ class ExternalP1DLikelihood:
             Request identity, mean flux, and velocity conversions.
         nuisance_parameters : mapping
             Likelihood nuisance values used by response models.
+        metal_moments : mapping, optional
+            Metal moments keyed like ``p1d_lya_kms`` (from
+            :func:`project_metal_moments`), required by the Kaiser metal model.
 
         Returns
         -------
@@ -499,11 +703,12 @@ class ExternalP1DLikelihood:
                     raise ValueError("malformed or non-finite external prediction")
                 rows.append(power)
             inds = [index[z] for z in group.redshifts]
-            observed, _ = apply_observation_model(self.model_cont, self.model_syst, np.asarray(group.redshifts), [np.asarray(k) for k in group.k_ikms], rows, np.asarray(context.mean_flux)[inds], np.asarray(context.dkms_diMpc)[inds], nuisance_parameters)
+            moments = None if metal_moments is None else metal_moments[group.identifier]
+            observed, _ = apply_observation_model(self.model_cont, self.model_syst, np.asarray(group.redshifts), [np.asarray(k) for k in group.k_ikms], rows, np.asarray(context.mean_flux)[inds], np.asarray(context.dkms_diMpc)[inds], nuisance_parameters, metal_moments=moments)
             result[group.identifier] = self.Rebin_data.rebinning(group.identifier, observed)
         return result
 
-    def evaluate_from_p1d(self, p1d_lya_kms, context, nuisance_parameters):
+    def evaluate_from_p1d(self, p1d_lya_kms, context, nuisance_parameters, metal_moments=None):
         """Evaluate correlated Gaussian likelihood for raw external P1D rows.
 
         Parameters
@@ -514,6 +719,8 @@ class ExternalP1DLikelihood:
             Mean-flux and conversion context for the request.
         nuisance_parameters : mapping
             Nuisance values used by observational responses.
+        metal_moments : mapping, optional
+            Metal moments for the Kaiser metal model.
 
         Returns
         -------
@@ -521,7 +728,7 @@ class ExternalP1DLikelihood:
             Log likelihood, data chi-squared, optional log determinant,
             number of data points, and validity flag.
         """
-        predictions = self.apply_observation_model(p1d_lya_kms, context, nuisance_parameters)
+        predictions = self.apply_observation_model(p1d_lya_kms, context, nuisance_parameters, metal_moments)
         chi2, logdet, ndata = 0.0, 0.0, 0
         for key, dataset in self.data.items():
             if dataset.full_Pk_kms is not None:

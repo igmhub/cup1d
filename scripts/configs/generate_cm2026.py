@@ -154,6 +154,14 @@ PARAMETER_COMMENTS = {
     "HCD_damp4": "Amplitude of the fourth high-column-density component.",
     "HCD_const": "Scale-independent high-column-density contribution.",
     "R_coeff": "Spectrograph-resolution correction coefficient.",
+    "b_SiIII": "Kaiser model: magnitude of the SiIII(1207) flux bias.",
+    "b_SiIIa": "Kaiser model: magnitude of the SiII(1190) flux bias.",
+    "b_SiIIb": "Kaiser model: magnitude of the SiII(1193) flux bias.",
+    "b_SiIIc": "Kaiser model: magnitude of the SiII(1260) flux bias.",
+    "beta_SiIII": "Kaiser model: redshift-space parameter of SiIII.",
+    "beta_SiII": "Kaiser model: redshift-space parameter of the SiII lines.",
+    "sig_SiIII": "Kaiser model: line-of-sight decorrelation of SiIII in km/s.",
+    "sig_SiII": "Kaiser model: line-of-sight decorrelation of the SiII lines in km/s.",
 }
 
 
