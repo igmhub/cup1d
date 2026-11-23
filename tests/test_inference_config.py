@@ -134,6 +134,23 @@ def test_null_out_folder_uses_the_variation_name(tmp_path):
     assert Path(args.out_folder) == tmp_path / "DESIY1_QMLE3" / "no_inflate" / "forest_mpg_gp"
 
 
+def test_null_out_folder_joins_several_data_labels(tmp_path):
+    args = Args(
+        out_folder=None,
+        path_out=str(tmp_path),
+        data_label=["DESIY1_QMLE3", "Karacayli2022"],
+        emulator_label="lace_mpg",
+    )
+    assert Path(args.out_folder) == (
+        tmp_path / "DESIY1_QMLE3__Karacayli2022" / "global_opt" / "lace_mpg"
+    )
+
+
+def test_baseline_yaml_keeps_its_explicit_out_folder():
+    args = Args.from_baseline()
+    assert args.out_folder == "./DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr"
+
+
 def test_ic_filenames_include_the_variation_only_when_given():
     from cup1d.utils.ic_files import get_ic_filename
 

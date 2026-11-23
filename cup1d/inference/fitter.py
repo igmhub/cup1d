@@ -39,52 +39,86 @@ def _configure_pyswarms_logging():
     os.environ["LOG_CFG"] = str(config_path)
 
 
-def _single_threaded_numerics(function):
-    """Decorate a scalar numerical callable to use one BLAS/OpenMP thread.
+def default_n_threads(n_free=2):
+    """Return the number of numerical threads that leaves cores free.
+
+    Parameters
+    ----------
+    n_free : int, default: 2
+        Cores kept free for other tasks.
+
+    Returns
+    -------
+    int
+        ``max(1, n_available - n_free)``, where ``n_available`` counts the
+        cores this process may run on.
+    """
+    try:
+        n_available = len(os.sched_getaffinity(0))
+    except AttributeError:  # not available on macOS
+        n_available = os.cpu_count() or 1
+    return max(1, n_available - n_free)
+
+
+def _limited_threads(function):
+    """Decorate a numerical method to cap BLAS/OpenMP and torch threads.
+
+    The wrapped callable accepts an extra keyword ``n_threads`` (default
+    :func:`default_n_threads`, i.e. all available cores but two). Both the
+    threadpoolctl-managed backends and, when already imported, torch's
+    intra-op pool are capped; previous settings are restored on exit.
 
     Parameters
     ----------
     function : callable
-        Callable evaluated within a temporary single-thread numerical-backend
-        context.
+        Callable evaluated within the temporary thread limit.
 
     Returns
     -------
     callable
-        Wrapped callable with the same metadata and arguments as ``function``.
-
-    Notes
-    -----
-    Thread limits are restored after every call.  This is intended for scalar
-    optimizers whose small linear-algebra kernels do not benefit from nested
-    numerical parallelism.
+        Wrapped callable with the same metadata as ``function``.
     """
 
     @wraps(function)
-    def wrapped(*args, **kwargs):
-        """Call the decorated function under a one-thread numerical limit.
+    def wrapped(*args, n_threads=None, **kwargs):
+        """Call ``function`` with at most ``n_threads`` numerical threads."""
+        import sys
 
-        Parameters
-        ----------
-        *args
-            Positional arguments forwarded unchanged to the decorated
-            callable.
-        **kwargs
-            Keyword arguments forwarded unchanged to the decorated callable.
-
-        Returns
-        -------
-        object
-            Whatever the decorated callable returns.
-        """
-        # Nelder--Mead evaluates one point at a time. Limiting numerical
-        # backends here avoids paying thread-management overhead for the
-        # small linear-algebra kernels within each scalar likelihood call.
-        # ``threadpool_limits`` restores the caller's settings on exit.
-        with threadpool_limits(limits=1):
-            return function(*args, **kwargs)
+        n_threads = default_n_threads() if n_threads is None else int(n_threads)
+        torch = sys.modules.get("torch")
+        torch_threads = torch.get_num_threads() if torch is not None else None
+        try:
+            if torch is not None:
+                torch.set_num_threads(n_threads)
+            with threadpool_limits(limits=n_threads):
+                return function(*args, **kwargs)
+        finally:
+            if torch is not None:
+                torch.set_num_threads(torch_threads)
 
     return wrapped
+
+
+_NAUTILUS_WORKER_LIMITS = None
+
+
+def _single_thread_in_forked_worker(parent_pid):
+    """Limit numerical threads to one in a forked Nautilus worker.
+
+    Thread pools of OpenMP/BLAS (and torch) do not survive ``fork``: a worker
+    that enters a multithreaded region inherited from the parent can block
+    forever. Called at the start of every likelihood evaluation; the first
+    call in a worker process sets one thread for the rest of its life.
+    """
+    global _NAUTILUS_WORKER_LIMITS
+    if _NAUTILUS_WORKER_LIMITS is not None or os.getpid() == parent_pid:
+        return
+    import sys
+
+    _NAUTILUS_WORKER_LIMITS = threadpool_limits(limits=1)
+    torch = sys.modules.get("torch")
+    if torch is not None:
+        torch.set_num_threads(1)
 
 
 class Fitter(object):
@@ -795,7 +829,7 @@ class Fitter(object):
                 ``Delta2_star``, ``n_star``, and ``alpha_star`` in that order.
             """
             parameters = self.parameters_from_sampling_point(point)
-            return np.asarray(self.like.theory.get_blob_for_parameters(parameters)[:3])
+            return np.asarray(self.like.theory.get_star_params_for_parameters(parameters))
 
         central_star = star_parameters(self.mle_cube)
         jacobian = np.zeros((3, self.ndim))
@@ -1173,7 +1207,205 @@ class Fitter(object):
 
         return sampler
 
-    @_single_threaded_numerics
+    @_limited_threads
+    def run_sampler_nautilus(
+        self,
+        zmask=None,
+        vectorize=None,
+        n_live=2000,
+        n_eff=10000,
+        f_live=0.01,
+        discard_exploration=True,
+        filepath="default",
+        resume=True,
+        pool=None,
+        seed=None,
+        verbose=True,
+        sampler_kwargs=None,
+        run_kwargs=None,
+    ):
+        """Run the Nautilus nested sampler on the unit-cube posterior.
+
+        Parameters
+        ----------
+        zmask : array-like, optional
+            Single diagnostic redshift forwarded to the posterior.
+        vectorize : bool, optional
+            Evaluate likelihood batches through the columnar path. Defaults,
+            as for emcee, to true except for ForestFlow emulators.
+        n_live : int, default=2000
+            Number of live points.
+        n_eff : float, default=10000
+            Target effective posterior sample size.
+        f_live : float, default=0.01
+            Stopping threshold on the evidence fraction in the live set.
+        discard_exploration : bool, default=True
+            Drop exploration-phase points from the posterior (unbiased; the
+            Nautilus recommendation for production runs).
+        filepath : str, path-like, None, or 'default'
+            HDF5 checkpoint. ``'default'`` writes ``nautilus.hdf5`` in
+            ``save_directory`` (if any); ``None`` disables checkpointing.
+        resume : bool, default=True
+            Resume from ``filepath`` when it exists.
+        pool : int, optional
+            Number of worker processes for Nautilus (``multiprocessing`` with
+            fork, so Linux/macOS-fork only; e.g.
+            :func:`default_n_threads`). ``None`` runs serially. Pool objects
+            (e.g. MPI pools) would need a picklable likelihood and are not
+            supported.
+        seed : int, optional
+            Random seed.
+        verbose : bool, default=True
+            Print Nautilus progress.
+        sampler_kwargs, run_kwargs : mapping, optional
+            Extra keyword arguments for ``nautilus.Sampler`` and
+            ``Sampler.run``.
+
+        Returns
+        -------
+        nautilus.Sampler
+            The sampler, also stored as ``self.nautilus_sampler``.
+
+        Notes
+        -----
+        The prior is the identity on the unit cube, i.e. the flat priors of
+        ``like.free_params``; the log probability passed to Nautilus is
+        ``like.log_prob`` (flat priors only unless Gaussian priors are
+        configured), with blobs. Results are stored as returned by Nautilus
+        in ``self.nautilus_results``: weighted ``points`` (unit cube),
+        ``log_w``, ``log_l``, ``blobs`` (unnamed float array as for emcee,
+        blinded), and ``log_z``, ``n_eff``, ``n_like``. Use
+        :meth:`save_nautilus_results` to write them. Numerical threads are
+        capped as for the minimizers (``n_threads`` keyword).
+        """
+        try:
+            from nautilus import Sampler
+        except ImportError as error:
+            import importlib.util
+
+            spec = importlib.util.find_spec("nautilus")
+            origin = None if spec is None else spec.origin
+            raise ImportError(
+                "Nautilus nested sampling needs the 'nautilus-sampler' package "
+                "(pip install nautilus-sampler h5py). Note that the PyPI package "
+                "'nautilus' is an unrelated library with the same import name, and "
+                "that a local file named nautilus.py also shadows it. "
+                f"'import nautilus' currently resolves to: {origin}"
+            ) from error
+
+        if vectorize is None:
+            vectorize = "forest" not in self.like.theory.emulator.emulator_label
+        n_blobs = len(self.blob_names)
+        likelihood_kwargs = {} if zmask is None else {"zmask": zmask}
+
+        def prior(cube):
+            # flat priors: unit-cube coordinates are the sampling coordinates
+            return cube
+
+        parent_pid = os.getpid()
+
+        def likelihood(cube):
+            # parallel workers are forked processes: run each single-threaded
+            _single_thread_in_forked_worker(parent_pid)
+            if vectorize:
+                results = self.log_prob_and_blobs_batch(
+                    np.atleast_2d(cube), **likelihood_kwargs
+                )
+                values = np.asarray([np.asarray(row, dtype=float) for row in results])
+                return (values[:, 0], *[values[:, 1 + ii] for ii in range(n_blobs)])
+            result = self.log_prob_and_blobs(cube, **likelihood_kwargs)
+            return (float(result[0]), *[float(value) for value in result[1:]])
+
+        if filepath == "default":
+            filepath = (
+                None if self.save_directory is None
+                else os.path.join(self.save_directory, "nautilus.hdf5")
+            )
+        options = dict(
+            n_dim=self.ndim,
+            n_live=n_live,
+            vectorized=vectorize,
+            pass_dict=False,
+            pool=pool,
+            seed=seed,
+            blobs_dtype=[(name, float) for name in self.blob_names],
+            filepath=filepath,
+            resume=resume,
+        )
+        options.update(sampler_kwargs or {})
+        sampler = Sampler(prior, likelihood, **options)
+        self.print(
+            f"Running Nautilus with {n_live} live points in {self.ndim} "
+            f"dimensions (vectorized={vectorize}, checkpoint={filepath})"
+        )
+        run_options = dict(
+            f_live=f_live,
+            n_eff=n_eff,
+            discard_exploration=discard_exploration,
+            verbose=verbose,
+        )
+        run_options.update(run_kwargs or {})
+        sampler.run(**run_options)
+
+        points, log_w, log_l, blobs = sampler.posterior(return_blobs=True)
+        blobs = np.column_stack([np.asarray(blobs[name], dtype=float) for name in self.blob_names])
+        self.nautilus_sampler = sampler
+        self.nautilus_results = {
+            "points": np.asarray(points),
+            "log_w": np.asarray(log_w),
+            "log_l": np.asarray(log_l),
+            "blobs": blobs,
+            "log_z": float(sampler.log_z),
+            "n_eff": float(sampler.n_eff),
+            "n_like": int(sampler.n_like),
+        }
+        self.print(
+            f"Nautilus finished: log Z = {sampler.log_z:.3f}, "
+            f"n_eff = {sampler.n_eff:.0f}, n_like = {sampler.n_like}"
+        )
+
+        # best sampled point; keep the minimizer MLE unless it is improved
+        best = self.nautilus_results["points"][np.argmax(log_l)]
+        self.set_mle(best, self.get_chi2(best, zmask=zmask))
+        # Blinding affects only derived star-parameter blobs.
+        self.nautilus_results["blobs"] = blinding.apply_blinding(
+            self.like.blind, self.nautilus_results["blobs"]
+        )
+        return sampler
+
+    def save_nautilus_results(self):
+        """Save Nautilus posterior arrays and a result manifest.
+
+        Returns
+        -------
+        pathlib.Path
+            ``nautilus_results.npy`` manifest inside ``save_directory``.
+
+        Notes
+        -----
+        Writes ``nautilus_points.npy`` (unit cube), ``nautilus_log_w.npy``,
+        ``nautilus_log_l.npy``, and ``nautilus_blobs.npy`` next to the
+        manifest, which also records ``log_z``, ``n_eff``, ``n_like`` and the
+        configuration reference used by :meth:`save_sampler_results`.
+        """
+        if self.save_directory is None:
+            raise ValueError("This fitter has no output directory")
+        if not hasattr(self, "nautilus_results"):
+            raise ValueError("Run run_sampler_nautilus before saving its results")
+        directory = Path(self.save_directory).resolve()
+        payload = self._result_payload("nautilus")
+        for name in ("points", "log_w", "log_l", "blobs"):
+            path = directory / f"nautilus_{name}.npy"
+            np.save(path, self.nautilus_results[name])
+            payload[f"{name}_path"] = str(path)
+        for name in ("log_z", "n_eff", "n_like"):
+            payload[name] = self.nautilus_results[name]
+        payload["blob_names"] = list(self.blob_names)
+        out_file = directory / "nautilus_results.npy"
+        self.print(f"Saving data to {out_file}")
+        np.save(out_file, payload)
+        return out_file
+
     def _masked_coordinates(self, x_base, mask_pars):
         """Return the varied coordinates and an expander for masked minimizers.
 
@@ -1209,6 +1441,7 @@ class Fitter(object):
 
         return ind_free, expand
 
+    @_limited_threads
     def run_minimizer(
         self,
         log_func_minimize=None,
@@ -1439,6 +1672,7 @@ class Fitter(object):
                 hessian_step=hessian_step, zmask=zmask, method=error_method
             )
 
+    @_limited_threads
     def run_minimizer_pso(
         self,
         p0=None,
@@ -1646,6 +1880,7 @@ class Fitter(object):
             )
         return optimizer
 
+    @_limited_threads
     def run_minimizer_da(
         self,
         log_func_minimize=None,
@@ -1824,7 +2059,7 @@ class Fitter(object):
         self.print("Fit params cube:", self.mle_cube)
         self.print("Fit params no cube:", mle_no_cube)
 
-        star_pars = self.like.theory.get_blob_for_parameters(like_pars)
+        star_pars = self.like.theory.get_star_params_for_parameters(like_pars)
         self.mle_cosmo = {}
         self.mle_cosmo["Delta2_star"] = star_pars[0]
         self.mle_cosmo["n_star"] = star_pars[1]
@@ -2036,8 +2271,9 @@ class Fitter(object):
         Returns
         -------
         all_params : ndarray
-            Physical sampled parameters, optionally concatenated with six
-            derived blobs when those blobs are available.
+            Physical sampled parameters, optionally concatenated with the
+            derived blobs (``Delta2_star``, ``n_star``, and ``alpha_star`` when
+            stored; six columns for legacy chains).
         all_strings : list of str
             LaTeX labels aligned with the trailing axis of ``all_params``.
         lnprob : ndarray
@@ -2051,27 +2287,27 @@ class Fitter(object):
             collapse=collapse,
         )
 
-        return_all = False
-        if collapse:
-            if len(blobs[0]) == 6:
-                return_all = True
+        # Blob layouts are prefixes of the legacy order (blob_strings_orig):
+        # Delta2_star, n_star[, alpha_star[, f_star, g_star, H0]].
+        if blobs.dtype.names is None:
+            n_blobs = blobs.shape[-1] if blobs.ndim > chain.ndim - 1 else 0
         else:
-            if len(blobs[0, 0]) == 6:
-                return_all = True
+            n_blobs = len(blobs.dtype.names)
+        return_all = 0 < n_blobs <= len(blob_strings_orig)
 
         if return_all:
             # Build an array of chain + blobs
-            all_params = np.zeros((*chain.shape[:-1], chain.shape[-1] + 6))
+            all_params = np.zeros((*chain.shape[:-1], chain.shape[-1] + n_blobs))
 
             all_params[..., : chain.shape[-1]] = chain
             if blobs.dtype.names is None:
                 all_params[..., chain.shape[-1] :] = blobs
             else:
-                for ii in range(6):
+                for ii in range(n_blobs):
                     all_params[..., chain.shape[-1] + ii] = blobs[blob_strings_orig[ii]]
 
             # Ordered strings for all parameters
-            all_strings = self.paramstrings + blob_strings
+            all_strings = self.paramstrings + list(blob_strings[:n_blobs])
         else:
             all_params = chain
             all_strings = self.paramstrings
@@ -2366,6 +2602,7 @@ class Fitter(object):
 
         payload = self._result_payload("sampler")
         payload.update({name: str(path) for name, path in paths.items()})
+        payload["blob_names"] = list(self.blob_names)
         out_file = directory / "sampler_results.npy"
         self.print(f"Saving data to {out_file}")
         np.save(out_file, payload)
@@ -2424,6 +2661,12 @@ class Fitter(object):
                 if not array_path.is_absolute():
                     array_path = result_path.parent / array_path
                 setattr(self, attribute, np.load(array_path, allow_pickle=False))
+            # Files saved before blob names were recorded hold six columns in
+            # the legacy order.
+            if "blob_names" in payload:
+                self.blob_names = list(payload["blob_names"])
+            elif self.blobs.dtype.names is None and self.blobs.shape[-1] == len(blob_strings_orig):
+                self.blob_names = list(blob_strings_orig)
         return self
 
     def save_fitter(self, save_chains=False):

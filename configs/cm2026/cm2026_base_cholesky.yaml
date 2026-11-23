@@ -1,2 +1,4 @@
 # Baseline CM2026 analysis with a Cholesky-factorized covariance likelihood.
 covariance_method: cholesky
+# Output folder.
+out_folder: ./DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr

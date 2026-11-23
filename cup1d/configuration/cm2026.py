@@ -52,7 +52,7 @@ _CONFIG_GROUPS = (
     ),
     ("IGM model", ("igm_params", "fid_igm")),
     ("Contamination model", ("fid_cont",)),
-    ("Instrumental systematics", ("fid_syst", "ic_correction")),
+    ("Instrumental systematics", ("fid_syst", "syst_data_labels", "ic_correction")),
     ("Covariance", ("cov_syst_type", "emu_cov_type", "covariance_method", "cov_factor")),
     ("Priors", ("use_star_priors", "prior_Gauss_rms", "Gauss_priors", "cosmo_prior_nsigma")),
     (
@@ -161,10 +161,15 @@ def update_cm2026_derived(
     """
 
     if config.get("out_folder") is None:
+        # Fallback only: analysis YAML files should set out_folder explicitly
+        # (scripts/data/data_sampler.py --path_out relies on this derivation).
         # ``<path_out>/<data_label>/<name_variation or fit_type>/<emulator_label>``,
-        # e.g. ``DESIY1_QMLE3/global_opt/...`` or ``DESIY1_QMLE3/no_inflate/...``
+        # e.g. ``DESIY1_QMLE3/global_opt/...`` or ``DESIY1_QMLE3/no_inflate/...``.
+        # Several data sets are joined with ``__``, e.g.
+        # ``DESIY1_QMLE3__Karacayli2022/global_opt/...``.
         data_label = config["data_label"]
-        data_label = data_label[0] if isinstance(data_label, (list, tuple)) else data_label
+        if isinstance(data_label, (list, tuple)):
+            data_label = "__".join(data_label)
         variation = config.get("name_variation") or config["fit_type"]
         config["out_folder"] = str(
             Path(config["path_out"]) / data_label / variation / config["emulator_label"]

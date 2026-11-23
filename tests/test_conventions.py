@@ -52,6 +52,23 @@ def test_dense_blob_contract_and_legacy_compatibility():
     )
 
 
+def test_short_dense_blobs_are_legacy_prefixes():
+    # Delta2_star, n_star (and alpha_star when the running is free)
+    dense = np.arange(6.0).reshape(3, 2)
+    np.testing.assert_array_equal(get_blob_value(dense, "n_star"), dense[:, 1])
+    np.testing.assert_array_equal(get_blob_values(dense), dense)
+    with pytest.raises(ValueError):
+        get_blob_value(dense, "alpha_star")
+
+    blind = {"Delta2_star": 0.1, "n_star": -0.02, "alpha_star": 0.003}
+    blobs = np.zeros((4, 2))
+    apply_blinding(blind, blobs)
+    np.testing.assert_allclose(blobs, np.broadcast_to([0.1, -0.02], blobs.shape))
+    blobs = np.zeros((4, 3))
+    apply_blinding(blind, blobs)
+    np.testing.assert_allclose(blobs, np.broadcast_to([0.1, -0.02, 0.003], blobs.shape))
+
+
 def test_dense_blob_blinding_roundtrip():
     blobs = np.zeros((2, 3, 6))
     blind = {"Delta2_star": 0.1, "n_star": -0.02, "alpha_star": 0.003}

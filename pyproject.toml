@@ -53,6 +53,7 @@ test = ["pytest>=8"]
 forestflow = ["forestflow"]
 planck = ["cobaya"]
 extended = ["forestflow", "cobaya"]
+nested = ["nautilus-sampler", "h5py"]
 docs = [
     "sphinx>=7",
     "numpydoc>=1.6",

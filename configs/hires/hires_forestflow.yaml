@@ -4,9 +4,9 @@ data_label:
   - DESIY1_QMLE3
   - Karacayli2022
 kmax_ikms: 0.07
-emulator_label: forest_mpg_cinn
-# Match the historical no-resolution-correction setup.
-fid_syst:
-  n_R_coeff: 0
-  R_coeff_ztype: pivot
-  R_coeff_fixed: true
+emulator_label: forest_mpg_gp
+# Resolution corrections for DESI only (see hires.yaml).
+syst_data_labels:
+  - DESIY1_QMLE3
+# Output folder.
+out_folder: ./DESIY1_QMLE3__Karacayli2022/global_opt/forest_mpg_gp

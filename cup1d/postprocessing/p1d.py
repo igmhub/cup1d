@@ -220,6 +220,7 @@ class P1DPlotter:
 
         bins = []
         total_ndata = 0
+        self.dataset_stats = {}
         per_redshift_dof = 0
         n_free = len(self.like.free_params)
         for key, indices in selected.items():
@@ -230,6 +231,9 @@ class P1DPlotter:
             for i in indices:
                 ndata = np.count_nonzero(data.Pk_kms[i])
                 total_ndata += ndata
+                stats = self.dataset_stats.setdefault(key, [0.0, 0])
+                stats[0] += float(chi2_bins[key][i])
+                stats[1] += ndata
                 if z_at_time:
                     point = points[float(data.z[i])]
                     if isinstance(point, Mapping):
@@ -262,6 +266,7 @@ class P1DPlotter:
         if not bins:
             raise ValueError("No redshift bins remain after applying plot_every_iz and zmask.")
         dof = per_redshift_dof if z_at_time else total_ndata - n_free - (2 if fix_cosmo else 0)
+        self.ndata = total_ndata
         return bins, float(total_chi2), dof
 
     def _realizations(self, key, models, indices, count):
@@ -323,7 +328,9 @@ def _axes(bins, panels):
             ax.set_visible(False)
         return fig, list(axes[:len(bins)])
     keys = list(dict.fromkeys(b.key for b in bins))
-    fig, axes = plt.subplots(len(keys), 1, squeeze=False, figsize=(16, 14), sharex=True)
+    fig, axes = plt.subplots(
+        len(keys), 1, squeeze=False, figsize=(16, max(14, 10 * len(keys))), sharex=True
+    )
     lookup = dict(zip(keys, axes.ravel()))
     return fig, [lookup[b.key] for b in bins]
 
@@ -345,9 +352,63 @@ def _bin_label(item, print_chi2):
         LaTeX-formatted Matplotlib annotation.
     """
     if print_chi2:
-        return (rf"$\chi^2={item.chi2:.2f}$, $n_\mathrm{{deg}}={item.dof}$, "
-                f"prob={100 * item.probability:.2f}%")
+        return (rf"$\chi^2={item.chi2:.2f}$, "
+                rf"$n_\mathrm{{data}}={np.count_nonzero(item.data)}$")
     return rf"$z={item.z:g}$, $\chi^2={item.chi2:.2f}$, $n_\mathrm{{data}}={np.count_nonzero(item.data)}$"
+
+
+def _overlay_reference(bins, axes, *, alpha=0.5):
+    """Draw the first dataset's measurements behind the other datasets' axes.
+
+    Each reference redshift bin is drawn as a dotted line in the color of the
+    matching redshift (tolerance ``1e-3``) on the target axis; reference bins
+    without a matching redshift are skipped.
+
+    Parameters
+    ----------
+    bins : sequence of P1DBin
+        Prepared bins aligned with ``axes``.
+    axes : sequence of matplotlib.axes.Axes
+        Axes aligned with ``bins`` (one axis per dataset key).
+    alpha : float, default: 0.5
+        Line transparency of the reference measurements.
+    """
+    keys = list(dict.fromkeys(b.key for b in bins))
+    if len(keys) < 2:
+        return
+    reference = [b for b in bins if b.key == keys[0]]
+    for key in keys[1:]:
+        targets = [(b, ax) for b, ax in zip(bins, axes) if b.key == key]
+        ax = targets[0][1]
+        for ref in reference:
+            match = [b for b, _ in targets if np.isclose(b.z, ref.z, atol=1e-3, rtol=0)]
+            if not match:
+                continue
+            ax.plot(ref.k, ref.data * ref.k / np.pi, color=match[0].color,
+                    linestyle=':', lw=2, alpha=alpha, zorder=0)
+        ax.plot([], [], color='k', linestyle=':', lw=2, alpha=alpha,
+                label=f'{keys[0]} data')
+
+
+def _dataset_titles(axes, keys, stats, fontsize):
+    """Title each per-dataset axis with its summed chi-squared and data count.
+
+    Parameters
+    ----------
+    axes : sequence of matplotlib.axes.Axes
+        Axes aligned with prepared bins.
+    keys : sequence of str
+        Dataset key of each entry in ``axes``.
+    stats : mapping[str, sequence]
+        ``(sum of per-redshift chi2, ndata)`` for every dataset key, summed
+        over all selected redshifts.
+    fontsize : float
+        Base figure font size.
+    """
+    for key, ax in dict(zip(keys, axes)).items():
+        chi2_key, ndata_key = stats[key]
+        ax.set_title(rf'{key}: $\sum_z\chi^2_z={chi2_key:.2f}$, $n_\mathrm{{data}}={ndata_key}$',
+                     fontsize=fontsize - 2)
 
 
 def plot_p1d_spectra(bins, *, panels=False, fontsize=20, print_chi2=True):
@@ -389,6 +450,9 @@ def plot_p1d_spectra(bins, *, panels=False, fontsize=20, print_chi2=True):
         ax.set_yscale('log')
         if not panels or index % 3 == 0:
             ax.set_ylabel(r'$k_\parallel P_{\rm 1D}/\pi$', fontsize=fontsize)
+    if not panels:
+        _overlay_reference(bins, axes)
+    for ax in dict.fromkeys(axes):
         ax.legend(loc='lower right', ncol=1 if panels else 4, fontsize=fontsize - 4)
     return fig, axes
 
@@ -443,7 +507,7 @@ def plot_p1d_residuals(bins, *, panels=False, fontsize=20, print_chi2=True):
     return fig, axes
 
 
-def _finish(fig, axes, chi2, dof, *, fontsize, ylims, plot_fname, show):
+def _finish(fig, axes, chi2, dof, *, fontsize, ylims, plot_fname, show, ndata=None):
     """Finalize labels, limits, title, display, and optional figure files.
 
     Parameters
@@ -464,6 +528,8 @@ def _finish(fig, axes, chi2, dof, *, fontsize, ylims, plot_fname, show):
         File root for PDF and PNG output.
     show : bool
         Display the figure when no output path is supplied.
+    ndata : int, optional
+        Total number of data points, shown in the title when given.
 
     Raises
     ------
@@ -471,7 +537,9 @@ def _finish(fig, axes, chi2, dof, *, fontsize, ylims, plot_fname, show):
         If ``ylims`` cannot be aligned with the distinct plotted axes.
     """
     probability = chi2_distribution.sf(chi2, dof)
-    fig.suptitle(rf'$\chi^2={chi2:.2f}$, $n_\mathrm{{deg}}={dof}$, prob={probability * 100:.4g}%', fontsize=fontsize)
+    ndata_str = '' if ndata is None else rf'$n_\mathrm{{data}}={ndata}$, '
+    fig.suptitle(rf'$\chi^2={chi2:.2f}$, {ndata_str}$n_\mathrm{{deg}}={dof}$, '
+                 f'prob={probability * 100:.4g}%', fontsize=fontsize)
     unique_axes = list(dict.fromkeys(axes))
     if ylims is not None:
         limits = np.asarray(ylims)
@@ -488,6 +556,9 @@ def _finish(fig, axes, chi2, dof, *, fontsize, ylims, plot_fname, show):
     fig.supxlabel(r'$k_\parallel\,[\mathrm{km}^{-1}\mathrm{s}]$', fontsize=fontsize)
     fig.tight_layout()
     fig.subplots_adjust(wspace=.15, hspace=.15)
+    if axes and axes[0].get_title():
+        # extra 0.5 inch between the global title and the first panel title
+        fig.subplots_adjust(top=fig.subplotpars.top - 0.5 / fig.get_figheight())
     if plot_fname is not None:
         fig.savefig(str(plot_fname) + '.pdf')
         fig.savefig(str(plot_fname) + '.png')
@@ -574,7 +645,8 @@ def plot_p1d(
         )
     if z_at_time and rand_posterior is not None:
         raise ValueError('rand_posterior describes a joint fit; use it with z_at_time=False.')
-    bins, chi2, dof = P1DPlotter(likelihood).prepare(
+    plotter = P1DPlotter(likelihood)
+    bins, chi2, dof = plotter.prepare(
         values, zmask=zmask, plot_every_iz=plot_every_iz, z_at_time=z_at_time,
         rand_posterior=rand_posterior, n_perturb=n_perturb if plot_realizations else 0,
         collapse=collapse, plot_panels=plot_panels, glob_full=glob_full,
@@ -583,7 +655,9 @@ def plot_p1d(
     renderer = plot_p1d_residuals if residuals else plot_p1d_spectra
     with plt.rc_context({'mathtext.fontset': 'stix', 'font.family': 'STIXGeneral'}):
         fig, axes = renderer(bins, panels=plot_panels, fontsize=fontsize, print_chi2=print_chi2)
-        _finish(fig, axes, chi2, dof, fontsize=fontsize, ylims=ylims, plot_fname=plot_fname, show=show)
+        if not plot_panels and print_chi2 and not z_at_time:
+            _dataset_titles(axes, [b.key for b in bins], plotter.dataset_stats, fontsize)
+        _finish(fig, axes, chi2, dof, ndata=plotter.ndata, fontsize=fontsize, ylims=ylims, plot_fname=plot_fname, show=show)
     if print_ratio and getattr(likelihood, 'rank', 0) == 0:
         for item in bins:
             print(item.data / item.model)

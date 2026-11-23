@@ -11,6 +11,6 @@ n_k_emu: 64
 # 32: |dchi2| <= 0.011 near the best fit vs 128 (16: up to 0.11); see
 # notebooks/validation/convergence_rebin_quadrature.
 k_rebin_factor: 32
-# Outputs go to <path_out>/<data_label>/<name_variation or fit_type>/<emulator_label>/chain_N;
-# pass the root with ``scripts/data/data_sampler.py --path_out <dir>``.
-out_folder: null
+# Output folder. ``scripts/data/data_sampler.py --path_out <dir>`` replaces it
+# with <dir>/<data_label>/<name_variation or fit_type>/<emulator_label>/chain_N.
+out_folder: ./DESIY1_QMLE3/global_opt/forest_mpg_cinn

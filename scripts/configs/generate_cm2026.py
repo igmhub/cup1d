@@ -447,10 +447,11 @@ def main() -> None:
     )
     print(f"Wrote {SYNTH_DEFAULTS_OUTPUT}")
     write_yaml(
-        {},
+        # The defaults leave out_folder null: every analysis YAML sets it.
+        {"out_folder": "./DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr"},
         BASELINE_OUTPUT,
         force=options.force,
-        description="CM2026 override file with no changes",
+        description="CM2026 baseline override file (only the output folder)",
     )
     print(f"Wrote {BASELINE_OUTPUT}")
 

@@ -93,9 +93,11 @@ def test_dr1_baseline_chi_squared(tmp_path):
     )
 
     assert analysis.fitter.blobs_dtype is float
-    assert analysis.fitter.blob_names == [
-        "Delta2_star", "n_star", "alpha_star", "f_star", "g_star", "H0"
-    ]
+    # alpha_star is stored only when nrun is free
+    expected_blobs = ["Delta2_star", "n_star"]
+    if "nrun" in analysis.like.free_param_names:
+        expected_blobs.append("alpha_star")
+    assert analysis.fitter.blob_names == expected_blobs
 
     batch_points = np.vstack(
         [initial_point, initial_point + 1.0e-4, initial_point - 1.0e-4]
@@ -125,7 +127,7 @@ def test_dr1_baseline_chi_squared(tmp_path):
         zs, parameter_columns, return_M_of_z=True, return_blob=True
     )
     assert M_batch.shape == (len(batch_points), len(zs))
-    assert blobs_batch.shape == (len(batch_points), 6)
+    assert blobs_batch.shape == (len(batch_points), len(expected_blobs))
     for index, point in enumerate(batch_points):
         scalar_parameters = analysis.fitter.parameters_from_sampling_point(point)
         emu_scalar, M_scalar, blob_scalar = analysis.like.theory.get_emulator_calls(
@@ -206,7 +208,7 @@ def test_dr1_baseline_chi_squared(tmp_path):
         blobs_dtype=analysis.fitter.blobs_dtype,
     )
     _, dense_blobs = sampler.compute_log_prob(batch_points)
-    assert dense_blobs.shape == (len(batch_points), 6)
+    assert dense_blobs.shape == (len(batch_points), len(expected_blobs))
     assert dense_blobs.dtype == float
 
     assert not hasattr(analysis.like, "sampling_point_from_parameters")

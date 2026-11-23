@@ -181,7 +181,7 @@ def get_blob_values(blobs, names=None):
     blobs : array_like
         Dense last-axis blob array or structured blob array.
     names : sequence of str, optional
-        Requested names, defaulting to all canonical blob fields.
+        Requested names, defaulting to every stored field.
 
     Returns
     -------
@@ -191,20 +191,33 @@ def get_blob_values(blobs, names=None):
     Raises
     ------
     ValueError
-        If an unstructured array has the wrong last-axis width.
+        If an unstructured array is wider than the legacy layout or lacks a
+        requested field.
+
+    Notes
+    -----
+    Unstructured blobs with ``n`` columns hold the first ``n`` fields of
+    :data:`blob_strings_orig`: ``(Delta2_star, n_star)``, plus
+    ``alpha_star`` when the running is free, or all six legacy fields.
     """
 
     import numpy as np
 
-    names = blob_strings_orig if names is None else list(names)
     array = np.asarray(blobs)
     if array.dtype.names is not None:
+        names = array.dtype.names if names is None else list(names)
         return np.stack([array[name] for name in names], axis=-1)
-    if array.shape[-1] != len(blob_strings_orig):
+    n_columns = array.shape[-1]
+    if n_columns > len(blob_strings_orig):
         raise ValueError(
-            f"expected {len(blob_strings_orig)} blob columns; got {array.shape}"
+            f"expected at most {len(blob_strings_orig)} blob columns; got {array.shape}"
         )
-    indices = [blob_strings_orig.index(name) for name in names]
+    stored = blob_strings_orig[:n_columns]
+    names = stored if names is None else list(names)
+    missing = [name for name in names if name not in stored]
+    if missing:
+        raise ValueError(f"blob fields {missing} not stored (columns: {stored})")
+    indices = [stored.index(name) for name in names]
     return array[..., indices]
 
 

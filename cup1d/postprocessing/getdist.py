@@ -91,9 +91,12 @@ def read_chain_for_getdist(
         blob_names = None
     else:
         print("sampling cosmo parameters")
-        blob_names = ["Delta2_star", "n_star", "alpha_star", "f_star", "g_star"]
-        if "H0" not in param_names:
-            blob_names.append("H0")
+        # every stored blob (legacy chains: six fields; new chains:
+        # Delta2_star, n_star, and alpha_star when the running is free)
+        blob_names = list(getattr(sampler, "blob_names", None) or
+                          ["Delta2_star", "n_star", "alpha_star", "f_star", "g_star", "H0"])
+        if "H0" in param_names and "H0" in blob_names:
+            blob_names.remove("H0")
 
     # read value of free and derived parameters
     free_values, lnprob, blobs = sampler.get_chain(

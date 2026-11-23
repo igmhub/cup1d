@@ -298,6 +298,9 @@ fid_syst:
   R_coeff_otype: const
   # Whether Spectrograph-resolution correction coefficient. is fixed.
   R_coeff_fixed: false
+# Data labels to which the spectrograph-resolution correction (R_coeff) is
+# applied; null applies it to every data set.
+syst_data_labels: null
 # Whether to apply the initial-condition correction.
 ic_correction: false
 
@@ -358,9 +361,10 @@ file_ic: DESIY1_QMLE3_lace_mpg_ic_global.npy
 path_ic: null  # Resolved to the installed cup1d package data directory.
 
 ## Output and runtime
-# Directory in which analysis products are written. If null, it is derived as
-# <path_out>/<data_label>/<name_variation, or fit_type if null>/<emulator_label>.
-out_folder: ./DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr
+# Directory in which analysis products are written. Set it explicitly in every
+# analysis YAML. If null, it is derived as <path_out>/<data_labels joined by
+# '__'>/<name_variation, or fit_type if null>/<emulator_label>.
+out_folder: null
 # Root directory used when out_folder is null; scripts/data/data_sampler.py
 # --path_out overrides it from the command line.
 path_out: .

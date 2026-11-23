@@ -14,9 +14,9 @@ k_rebin_factor: 32
 fid_cosmo_label: Planck18_noBAO
 fix_cosmo: true
 name_variation: fixcosmo
-# Outputs go to <path_out>/<data_label>/<name_variation or fit_type>/<emulator_label>/chain_N;
-# pass the root with ``scripts/data/data_sampler.py --path_out <dir>``.
-out_folder: null
+# Output folder. ``scripts/data/data_sampler.py --path_out <dir>`` replaces it
+# with <dir>/<data_label>/<name_variation or fit_type>/<emulator_label>/chain_N.
+out_folder: ./DESIY1_QMLE3/fixcosmo/forest_mpg_gp
 # Initial conditions are looked up automatically: first this variation's own
 # DESIY1_QMLE3_forest_mpg_gp_fixcosmo_ic_global.npy (written by
 # ``analysis.save_global_ic()``), else the baseline file below.

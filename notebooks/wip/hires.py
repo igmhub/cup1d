@@ -61,7 +61,8 @@ analysis.like.get_chi2(free_params)
 
 # %%
 # %%time
-analysis.like.get_chi2(free_params)
+for ii in range(10):
+    analysis.like.get_chi2(free_params)
 
 # %% [markdown]
 # Plot model for these parameters
@@ -80,10 +81,23 @@ analysis.like.plot_p1d(free_params)
 analysis.run_minimizer(free_params)
 
 # %%
-best_params = analysis.fitter.mle_cube
+best_params = analysis.fitter.mle
 analysis.like.get_chi2(best_params)
 
 # %%
 analysis.like.plot_p1d(best_params)
 
 # %%
+# Save the best fit as initial conditions for this emulator and
+# data sets: cup1d/data/ics/DESIY1_QMLE3_Karacayli2022_<emulator>_ic_global.npy.
+# hires.yaml / hires_forestflow.yaml read this file automatically the next
+# time Analysis(args) is built.
+analysis.save_global_ic()
+
+# %%
+As 2.3958864569212954e-09
+ns 1.0482456067653185
+
+# %%
+As 2.5447842829851344e-09
+ns 0.9289598760036996

@@ -162,6 +162,8 @@ class Likelihood(object):
         # setup parameters
         self.free_param_names = free_param_names
         self.set_free_parameters(free_param_names, free_param_limits)
+        # sampler blobs: Delta2_star, n_star (+ alpha_star if nrun is free)
+        self.theory.set_blob_names(self.free_param_names)
         if verbose and (self.rank == 0):
             print(len(self.free_params), "free parameters")
 
@@ -762,6 +764,174 @@ class Likelihood(object):
             remove=remove,
         )
 
+    def _dataset_params(self, key, like_params):
+        """Drop resolution-systematic parameters for data sets without them.
+
+        Parameters
+        ----------
+        key : str
+            Data label of the data set being predicted.
+        like_params : mapping
+            Scalar or columnar physical parameter values.
+
+        Returns
+        -------
+        mapping
+            ``like_params`` unchanged when ``args.syst_data_labels`` is
+            ``None`` or contains ``key``; otherwise a copy without
+            ``R_coeff_*`` entries, so the theory applies no resolution
+            correction to this data set.
+        """
+        labels = getattr(self.args, "syst_data_labels", None)
+        if labels is None or key in labels:
+            return like_params
+        return {
+            name: value for name, value in like_params.items()
+            if not name.startswith("R_coeff")
+        }
+
+    def _emulator_inputs_per_dataset(self, like_params):
+        """Evaluate emulator inputs once and slice them for every data set.
+
+        Parameters
+        ----------
+        like_params : mapping
+            Scalar physical parameter values, or columns of shape
+            ``(n_batch,)``.
+
+        Returns
+        -------
+        dict
+            ``{key: (emu_call, M_of_z, blob)}`` for each data set (blobs are
+            ``(n_batch, n_blob)`` for columnar input), as
+            :meth:`Theory.get_emulator_calls` would return for that data
+            set's redshifts. The union inputs are kept in
+            ``self._union_emulator_call`` and ``self._union_M_of_z`` for
+            :meth:`_emulator_p1d_per_dataset`.
+
+        Notes
+        -----
+        Exact: every emulator input is a pointwise function of redshift for
+        a given parameter point, and the blob depends on cosmology only.
+        """
+        z_union = np.unique(np.concatenate(
+            [np.atleast_1d(zs) for zs in self.Rebin_data.zs.values()]
+        ))
+        emu_call, M_of_z, blob = self.theory.get_emulator_calls(
+            z_union, like_params=like_params, return_M_of_z=True, return_blob=True
+        )
+        self._union_emulator_call = emu_call
+        M_of_z = np.asarray(M_of_z)
+        self._union_M_of_z = M_of_z
+        out = {}
+        for key, zs in self.Rebin_data.zs.items():
+            zs = np.atleast_1d(zs)
+            index = np.searchsorted(z_union, zs)
+            # the last axis is redshift for scalar (n_z,) and batched
+            # (n_batch, n_z) inputs alike
+            out[key] = (
+                {name: np.asarray(values)[..., index] for name, values in emu_call.items()},
+                M_of_z[..., index],
+                blob,
+            )
+        return out
+
+    def _union_emulator_grid(self):
+        """Return the union redshift/k grid on which the emulator is evaluated.
+
+        Returns
+        -------
+        z_union : ndarray
+            Sorted unique redshifts of all data sets.
+        k_union : list of ndarray
+            Per union redshift, the concatenation of every data set's emulator
+            grid in ``s / km`` (``k_kms_emu`` when set, else ``k_kms``).
+        slices : dict
+            ``{key: [(iu, start, stop), ...]}``, one entry per data-set
+            redshift, locating its grid inside ``k_union[iu]``.
+
+        Notes
+        -----
+        The data grids are fixed, so the result is computed once and cached.
+        """
+        if getattr(self, "_union_grid", None) is not None:
+            return self._union_grid
+        z_union = np.unique(np.concatenate(
+            [np.atleast_1d(zs) for zs in self.Rebin_data.zs.values()]
+        ))
+        rows = [[] for _ in z_union]
+        lengths = np.zeros(len(z_union), dtype=int)
+        slices = {}
+        for key, zs in self.Rebin_data.zs.items():
+            k_emu = self.Rebin_data.k_kms_emu[key]
+            k_list = self.Rebin_data.k_kms[key] if k_emu is None else k_emu
+            slices[key] = []
+            for iz, z in enumerate(np.atleast_1d(zs)):
+                iu = int(np.searchsorted(z_union, z))
+                k_row = np.asarray(k_list[iz], dtype=float).reshape(-1)
+                rows[iu].append(k_row)
+                slices[key].append((iu, lengths[iu], lengths[iu] + len(k_row)))
+                lengths[iu] += len(k_row)
+        k_union = [np.concatenate(row) for row in rows]
+        self._union_grid = (z_union, k_union, slices)
+        return self._union_grid
+
+    def _emulator_p1d_per_dataset(self, like_params):
+        """Evaluate the emulator once on the union grid and split it.
+
+        Call after :meth:`_emulator_inputs_per_dataset` for the same point.
+
+        Parameters
+        ----------
+        like_params : mapping
+            Scalar values or columns of shape ``(n_batch,)``.
+
+        Returns
+        -------
+        dict
+            Scalar input: ``{key: (p1d_rows, moment_rows)}`` with one P1D row
+            (``Mpc``) per data-set redshift, and Kaiser metal moments in the
+            same layout or ``None``; this is the ``emulator_p1d_Mpc``
+            argument of :meth:`Theory.get_P1D_kms`.
+            Columnar input: ``{key: ndarray (n_batch, n_z, n_k)}`` (zero
+            padded), the ``emulator_p1d_Mpc`` argument of the batched path.
+        """
+        z_union, k_union, slices = self._union_emulator_grid()
+        M_of_z = self._union_M_of_z
+        n_k = max(len(row) for row in k_union)
+        out = {}
+        if M_of_z.ndim == 1:
+            kin = np.zeros((len(z_union), n_k))
+            for iu, row in enumerate(k_union):
+                kin[iu, :len(row)] = row * M_of_z[iu]
+            p1d, moments = self.theory.emulate_p1d_Mpc_rows(
+                z_union, kin, self._union_emulator_call, like_params
+            )
+            for key, items in slices.items():
+                p1d_rows = [np.asarray(p1d[iu])[a:b] for iu, a, b in items]
+                moment_rows = None
+                if moments is not None:
+                    moment_rows = {
+                        name: [np.asarray(values[iu])[a:b] for iu, a, b in items]
+                        for name, values in moments.items()
+                    }
+                out[key] = (p1d_rows, moment_rows)
+            return out
+        n_batch = M_of_z.shape[0]
+        kin = np.zeros((n_batch, len(z_union), n_k))
+        for iu, row in enumerate(k_union):
+            kin[:, iu, :len(row)] = row[None, :] * M_of_z[:, iu, None]
+        p1d = np.asarray(self.theory.emulate_p1d_Mpc_batch_rows(
+            z_union, kin, self._union_emulator_call, like_params
+        ))
+        for key, items in slices.items():
+            n_k_key = max(b - a for _, a, b in items)
+            array = np.zeros((n_batch, len(items), n_k_key))
+            for iz, (iu, a, b) in enumerate(items):
+                array[:, iz, :b - a] = p1d[:, iu, a:b]
+            out[key] = array
+        return out
+
     def get_p1d_kms(
         self,
         parameters=None,
@@ -792,8 +962,8 @@ class Likelihood(object):
 
         Notes
         -----
-        ForestFlow calls are primed across the union of requested redshifts
-        and its cache is cleared before returning, including rejection paths.
+        Emulator inputs and the emulator itself are evaluated once, on the
+        union of the data sets' redshifts and k grids, and split per data set.
         """
 
         # Public callers supply a full named point; theory receives scalar
@@ -805,33 +975,37 @@ class Likelihood(object):
 
         all_p1ds = {}
         other_stuff = {}
-        forest_emulator = self.theory.emulator
-        use_forest_cache = "forest" in forest_emulator.emulator_label
-        if use_forest_cache:
-            # Several data sets commonly contain identical redshifts. Prime
-            # ForestFlow once for their union instead of repeating cINN calls.
-            emulator_calls = [
-                self.theory.get_emulator_calls(
-                    self.Rebin_data.zs[key], like_params=like_params
-                )[0]
-                for key in self.Rebin_data.zs
-            ]
-            forest_emulator.prime_prediction_cache(emulator_calls)
+        # Emulator inputs depend only on the parameter point and redshift, so
+        # evaluate cosmology, linear-power parameters, IGM models, and blob
+        # once over the union of data-set redshifts and slice per data set.
+        emulator_inputs = self._emulator_inputs_per_dataset(like_params)
+        # Reject points outside the star priors or the emulator hull before
+        # paying for any emulator evaluation.
+        z_union = self._union_emulator_grid()[0]
+        union_blob = next(iter(emulator_inputs.values()))[2]
+        if not self.theory.is_admissible(
+            z_union, self._union_emulator_call, union_blob, like_params,
+            apply_hull=apply_hull,
+        ):
+            return None
+        # One emulator call on the union of redshifts and k grids, split back
+        # per data set (no repeated GP/ForestFlow evaluations).
+        emulator_p1d = self._emulator_p1d_per_dataset(like_params)
         for key in self.Rebin_data.zs:
             _results = self.theory.get_P1D_kms(
                 self.Rebin_data.zs[key],
                 self.Rebin_data.k_kms[key],
-                like_params=like_params,
+                like_params=self._dataset_params(key, like_params),
                 k_ikms_emu=self.Rebin_data.k_kms_emu[key],
                 return_covar=return_covar,
                 return_blob=return_blob,
                 return_emu_params=return_emu_params,
                 apply_hull=apply_hull,
                 remove=remove,
+                emulator_inputs=emulator_inputs[key],
+                emulator_p1d_Mpc=emulator_p1d[key],
             )
             if _results is None:
-                if use_forest_cache:
-                    forest_emulator.clear_prediction_cache()
                 return None
 
             if return_blob | return_emu_params:
@@ -846,8 +1020,6 @@ class Likelihood(object):
                 for ii in range(1, len(_results)):
                     other_stuff[key].append(_results[ii])
 
-        if use_forest_cache:
-            forest_emulator.clear_prediction_cache()
         return all_p1ds, other_stuff
 
     def get_chi2(self, parameters=None, return_all=False, zmask=None):
@@ -932,7 +1104,7 @@ class Likelihood(object):
         # what to return if we are out of priors
         null_out = [-np.inf, -np.inf]
         if return_blob:
-            blob = (0, 0, 0, 0, 0, 0)
+            blob = tuple([0] * len(self.theory.blob_names))
             null_out.append(blob)
 
         # evaluate model in physical parameter space
@@ -1316,19 +1488,21 @@ class Likelihood(object):
         # path below.
         if parameter_columns is not None and len(valid_indices):
             valid_columns = {name: np.asarray(values)[in_bounds] for name, values in parameter_columns.items()}
+            # one cosmology/IGM/blob evaluation shared by all data sets
+            emulator_inputs = self._emulator_inputs_per_dataset(valid_columns)
+            emulator_p1d = self._emulator_p1d_per_dataset(valid_columns)
             batched_predictions = {}
             for key, redshifts in self.Rebin_data.zs.items():
                 fine_prediction = self.theory.get_p1d_kms(
                     redshifts,
                     self.Rebin_data.k_kms[key],
-                    valid_columns,
+                    self._dataset_params(key, valid_columns),
                     k_kms_emu=self.Rebin_data.k_kms_emu[key],
+                    emulator_inputs=emulator_inputs[key],
+                    emulator_p1d_Mpc=emulator_p1d[key],
                 )
                 batched_predictions[key] = self.Rebin_data.rebinning_batch(key, fine_prediction)
-            first_redshifts = next(iter(self.Rebin_data.zs.values()))
-            _, _, valid_blobs = self.theory.get_emulator_calls(
-                first_redshifts, valid_columns, return_M_of_z=True, return_blob=True
-            )
+            valid_blobs = next(iter(emulator_inputs.values()))[2]
             for local_index, index in enumerate(valid_indices):
                 blobs[index] = tuple(valid_blobs[local_index])
         else:

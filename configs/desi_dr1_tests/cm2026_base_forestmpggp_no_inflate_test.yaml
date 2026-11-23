@@ -21,9 +21,9 @@ mcmc:
 # As and ns flat priors span the training-simulation mean +- 2 sigma, keeping
 # the GP emulator close to its training domain (n_p in particular).
 cosmo_prior_nsigma: 2.0
-# Outputs go to <path_out>/<data_label>/<name_variation or fit_type>/<emulator_label>/chain_N;
-# pass the root with ``scripts/data/data_sampler.py --path_out <dir>``.
-out_folder: null
+# Output folder. ``scripts/data/data_sampler.py --path_out <dir>`` replaces it
+# with <dir>/<data_label>/<name_variation or fit_type>/<emulator_label>/chain_N.
+out_folder: ./DESIY1_QMLE3/no_inflate_test/forest_mpg_gp
 # Initial conditions from the forest_mpg_gp minimizer, saved with
 # Analysis.save_global_ic(get_global_ic_path(data_label, emulator_label)).
 # Until that file exists, the fit starts from the fiducial values.

@@ -65,12 +65,20 @@ def _apply_blinding_offset(blind, values, sign):
         raise TypeError("blind must be a dictionary of cosmology offsets")
 
     if isinstance(values, np.ndarray) and values.dtype.names is None:
-        if values.shape[-1] < len(blob_strings_orig):
-            raise ValueError("unnamed cosmology array has too few blob columns")
+        # Unnamed blobs hold the leading fields of the legacy order:
+        # (Delta2_star, n_star[, alpha_star[, f_star, g_star, H0]]).
+        n_columns = values.shape[-1]
+        if n_columns < 2 or n_columns > len(blob_strings_orig):
+            raise ValueError(
+                f"unnamed cosmology array must have 2 to {len(blob_strings_orig)} "
+                f"blob columns; got {values.shape}"
+            )
         for key, offset in blind.items():
             if key not in blob_strings_orig:
                 raise KeyError(f"Unknown blinding parameter: {key}")
-            values[..., blob_strings_orig.index(key)] += sign * offset
+            index = blob_strings_orig.index(key)
+            if index < n_columns:
+                values[..., index] += sign * offset
         return values
 
     names = values.dtype.names if isinstance(values, np.ndarray) else None

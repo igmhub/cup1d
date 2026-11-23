@@ -150,7 +150,7 @@ class Analysis(object):
         if emulator is None:
             if rank == 0:
                 self.fprint("----------")
-                self.fprint("Setting emulator")
+                print(f"Setting emulator {self.args.emulator_label}", flush=True)
                 self.emulator = set_emulator(
                     emulator_label=self.args.emulator_label,
                 )
@@ -597,6 +597,41 @@ class Analysis(object):
                     zmask=zmask,
                 )
                 self.plotter.plots_sampler()
+
+    def run_sampler_nautilus(self, zmask=None, save=True, **kwargs):
+        """Run the Nautilus nested sampler and save its native results.
+
+        Parameters
+        ----------
+        zmask : array-like, optional
+            Single diagnostic redshift forwarded to the posterior.
+        save : bool, default=True
+            Write results with :meth:`Fitter.save_nautilus_results`.
+        **kwargs
+            Forwarded to :meth:`Fitter.run_sampler_nautilus` (``n_live``,
+            ``n_eff``, ``pool``, ``filepath``, ``n_threads``, ...).
+
+        Returns
+        -------
+        nautilus.Sampler or None
+            The sampler on rank zero; ``None`` on other ranks.
+
+        Notes
+        -----
+        Nautilus is a single sampler: it runs on MPI rank zero only.
+        Parallelize it with ``pool`` (number of worker processes).
+        """
+        rank = MPI.COMM_WORLD.Get_rank()
+        if rank != 0:
+            return None
+        start = time.time()
+        self.fprint("----------")
+        self.fprint("Running Nautilus sampler")
+        sampler = self.fitter.run_sampler_nautilus(zmask=zmask, **kwargs)
+        self.fprint(f"Sampler run in {np.round(time.time() - start, 2)} s")
+        if save and self.fitter.save_directory is not None:
+            self.fitter.save_nautilus_results()
+        return sampler
 
     def save_global_ic(self, fname=None):
         """Save the best-fit parameters as global initial conditions.
