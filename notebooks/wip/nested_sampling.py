@@ -78,13 +78,19 @@ print("output folder:", analysis.fitter.save_directory)
 #   pass an existing file to resume a run.
 
 # %%
+tighten prior??
+f_live < 0.01 (exploration)
+N_eff > n_eff (sampling)
+
+# %%
 # %%time
 sampler = analysis.run_sampler_nautilus(
     n_live=1000,
     n_eff=5000,
     # n_eff=2,
-    pool=None,
-    # pool=default_n_threads(),
+    # pool=None,
+    pool=default_n_threads(),
+    # run_kwargs={"n_like_max": 3000},
     seed=0,
 )
 

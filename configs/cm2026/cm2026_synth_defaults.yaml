@@ -13,12 +13,20 @@ z_min: 2.2
 z_max: 4.2
 # Redshift-bin width used to construct regular grids.
 zbin_width: 0.2
-# Factor controlling interpolation before k-bin rebinning.
-k_rebin_factor: 8
+# Factor controlling interpolation before k-bin rebinning. 32: |dchi2| <= 0.011
+# near the best fit against 128 (8: up to 1.5); see
+# notebooks/validation/convergence_rebin_quadrature.
+k_rebin_factor: 32
 # Number of log-spaced k points per redshift on which the emulator is
 # evaluated before interpolating to the rebinning grid. Null evaluates the
-# emulator at every rebinning point.
-n_k_emu: null
+# emulator at every rebinning point. 64: |dchi2| <= 0.0033 on DESI DR1, ~17x
+# faster (convergence_rebin_quadrature).
+n_k_emu: 64
+# With several data sets at the same redshifts (e.g. DESI + high resolution),
+# evaluate the model once per redshift on one fine grid and average it into
+# every data set's bins (cup1d.utils.rebinning.shared_fine_grid). False, or
+# different redshifts: one fine grid per data set.
+shared_k_grid: true
 # Optional explicit P1D measurement filename.
 p1d_fname: null
 # Optional base directory for input data.
@@ -507,8 +515,9 @@ prior_Gauss_rms: null
 # Optional parameter-specific Gaussian priors.
 Gauss_priors: null
 # If set, As and ns flat priors span the emulator-training mean +- this many
-# standard deviations; null keeps the training range expanded by 25%.
-cosmo_prior_nsigma: null
+# standard deviations (a reasonable flat range around the training set);
+# null keeps the training range expanded by 25%.
+cosmo_prior_nsigma: 2.0
 
 ## Inference
 # Inference configuration used for this analysis.

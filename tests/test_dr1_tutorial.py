@@ -12,8 +12,9 @@ from lace.configuration import get_data_path
 # Reference after scaling the full emulator covariance by the smooth data P1D
 # (PSMOOTH) instead of the measured P1D (655.2820094791965 -> 695.066433), and
 # interpolating it linearly in redshift between emulator snapshots instead of
-# taking the nearest one (-> 695.861141).
-EXPECTED_CHI_SQUARED = np.float64(695.861141)
+# taking the nearest one (-> 695.861141), and the converged defaults
+# k_rebin_factor 32 and n_k_emu 64 instead of 8 and null (-> 695.930961).
+EXPECTED_CHI_SQUARED = np.float64(695.930961)
 
 
 @pytest.mark.external_model

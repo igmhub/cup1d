@@ -68,13 +68,44 @@ def test_public_external_coefficient_route_returns_immutable_rows():
     coefficients = {2.5: dict(bias=-.15, bias_eta=-.2, q1=.2, q2=.01,
                              kvav=.5, av=.3, bv=1.2, kp=8.)}
     result = project_arinyo_request(request, snapshot, coefficients,
-                                    projection={"n_k_perp": 24, "k_perp_max_iMpc": 10.},
+                                    projection={"rule": "k_perp", "n_k_perp": 24, "k_perp_max_iMpc": 10.},
                                     kmax_iMpc=5.)
     assert result["fixture"][0].shape == (3,)
     assert np.all(np.isfinite(result["fixture"][0]))
     assert not result["fixture"][0].flags.writeable
     with np.testing.assert_raises(ValueError):
         result["fixture"][0].setflags(write=True)
+
+
+def test_coverage_is_checked_at_data_bin_centres():
+    """The fine grid may extend past kmax; the largest data bin centre may not."""
+    from cup1d.likelihood.external import PredictionGroup, PredictionRequest, project_arinyo_request
+    from lace.cosmo.cosmology import Cosmology
+
+    class ProjectionCosmology(Cosmology):
+        def validate_k(self, k_iMpc):
+            if np.any(np.asarray(k_iMpc) > self.get_kmax_linP_Mpc()):
+                raise ValueError("k outside the linear-power coverage")
+
+    snapshot = ProjectionCosmology()
+    M = float(snapshot.get_dkms_diMpc(np.array([2.5]))[0])
+    row = (.001, .002, 1.05 * 5. / M)  # last fine point 5% beyond kmax = 5/Mpc
+    coefficients = {2.5: dict(bias=-.15, bias_eta=-.2, q1=.2, q2=.01,
+                             kvav=.5, av=.3, bv=1.2, kp=8.)}
+
+    def project(coverage):
+        group = PredictionGroup("fixture", (2.5,), (row,), k_coverage_ikms=coverage)
+        return project_arinyo_request(PredictionRequest((group,), "fixture"), snapshot,
+                                      coefficients, kmax_iMpc=5., projection={
+                                          "rule": "k_perp", "n_k_perp": 24, "k_perp_max_iMpc": 10.})
+
+    with pytest.raises(ValueError, match="parallel k outside"):
+        project(None)
+    with pytest.raises(ValueError, match="parallel k outside"):
+        project((row[-1],))
+    assert np.all(np.isfinite(project((.95 * 5. / M,))["fixture"][0]))
+    group = PredictionGroup("fixture", (2.5,), (row,), k_coverage_ikms=(.002,))
+    assert PredictionGroup.from_dict(group.to_dict()) == group
 
 
 @pytest.mark.parametrize("damping", ["sigmoid", "gaussian"])
@@ -101,7 +132,7 @@ def test_kaiser_metal_moments_equal_direct_projection_of_contaminated_p3d(rule, 
     request = PredictionRequest((PredictionGroup("fixture", (z,), (tuple(k_kms),)),), "fixture")
     arinyo = {z: dict(bias=-.15, bias_eta=-.2, q1=.2, q2=.01, kvav=.5, av=.3, bv=1.2, kp=8.)}
     projection = ({"rule": "k_mu", "k_perp_max_iMpc": 10.} if rule == "k_mu"
-                  else {"n_k_perp": 120, "k_perp_max_iMpc": 10.})
+                  else {"rule": "k_perp", "n_k_perp": 120, "k_perp_max_iMpc": 10.})
     integrator = make_integrator(projection)
     lya = project_arinyo_request(request, snapshot, arinyo, kmax_iMpc=5., integrator=integrator)["fixture"][0]
     moments = project_metal_moments(request, snapshot, arinyo, kmax_iMpc=5., integrator=integrator)["fixture"][0]
@@ -268,3 +299,12 @@ def test_fused_projection_matches_forestflow_and_interpolation_is_accurate(rule)
         for name in mom:
             scale = np.max(np.abs(mom[name]))
             np.testing.assert_allclose(mom_i[name], mom[name], rtol=0, atol=2e-4 * scale)
+
+
+def test_resolution_correction_only_for_syst_data_labels():
+    """Native and external likelihoods share the per-data-set R_coeff rule."""
+    from cup1d.likelihood.external import dataset_nuisance
+    params = {"R_coeff_0": .1, "R_coeff_1": .2, "HCD_damp1_0": -3.}
+    assert dataset_nuisance("desi", params, None) is params
+    assert dataset_nuisance("desi", params, ("desi",)) is params
+    assert dataset_nuisance("hires", params, ("desi",)) == {"HCD_damp1_0": -3.}

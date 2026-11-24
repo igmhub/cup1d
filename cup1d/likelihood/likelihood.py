@@ -12,6 +12,7 @@ from cup1d.utils.utils import split_string
 from cup1d.utils.utils import get_path_repo
 from cup1d.utils import blinding
 from cup1d.utils import ic_files
+from cup1d.utils.warn_once import numpy_errors_once
 from cup1d.likelihood import parameter as parameter_space
 
 
@@ -153,6 +154,7 @@ class Likelihood(object):
             self.data,
             k_rebin_factor=args.k_rebin_factor,
             n_k_emu=getattr(args, "n_k_emu", None),
+            shared_k_grid=getattr(args, "shared_k_grid", True),
         )
 
         self.theory = theory
@@ -782,13 +784,50 @@ class Likelihood(object):
             ``R_coeff_*`` entries, so the theory applies no resolution
             correction to this data set.
         """
-        labels = getattr(self.args, "syst_data_labels", None)
-        if labels is None or key in labels:
-            return like_params
-        return {
-            name: value for name, value in like_params.items()
-            if not name.startswith("R_coeff")
-        }
+        from cup1d.likelihood.external import dataset_nuisance
+
+        return dataset_nuisance(key, like_params, getattr(self.args, "syst_data_labels", None))
+
+    def _group_params(self, keys, like_params):
+        """Parameters for the contaminated P1D of a group of data sets.
+
+        A single data set keeps its own parameters. A group sharing a fine
+        grid is evaluated without ``R_coeff_*``; each data set then applies
+        its own resolution correction (:meth:`_dataset_fine_p1d`).
+        """
+        from cup1d.likelihood.external import without_resolution
+
+        if len(keys) == 1:
+            return self._dataset_params(keys[0], like_params)
+        return without_resolution(like_params)
+
+    def _dataset_fine_p1d(self, keys, key, p1ds, like_params):
+        """Fine-grid P1D of data set ``key`` from its group's contaminated P1D.
+
+        Parameters
+        ----------
+        keys : list
+            The group (:attr:`Rebinning.groups`).
+        key : hashable
+            Data set within it.
+        p1ds : list of ndarray
+            Group P1D on the shared fine grid, scalar or columnar rows.
+        like_params : mapping
+            Scalar values or columns.
+
+        Returns
+        -------
+        list of ndarray
+            ``p1ds`` times the data set's resolution correction (the last
+            factor of the observation model), or ``p1ds`` for one data set.
+        """
+        from cup1d.likelihood.external import apply_resolution
+
+        if len(keys) == 1:
+            return p1ds
+        return apply_resolution(
+            self.theory.model_syst, np.atleast_1d(self.Rebin_data.zs[key]),
+            self.Rebin_data.k_kms[key], p1ds, self._dataset_params(key, like_params))
 
     def _emulator_inputs_per_dataset(self, like_params):
         """Evaluate emulator inputs once and slice them for every data set.
@@ -862,6 +901,8 @@ class Likelihood(object):
         rows = [[] for _ in z_union]
         lengths = np.zeros(len(z_union), dtype=int)
         slices = {}
+        # an identical row (shared fine grid) is evaluated once
+        seen = [{} for _ in z_union]
         for key, zs in self.Rebin_data.zs.items():
             k_emu = self.Rebin_data.k_kms_emu[key]
             k_list = self.Rebin_data.k_kms[key] if k_emu is None else k_emu
@@ -869,8 +910,13 @@ class Likelihood(object):
             for iz, z in enumerate(np.atleast_1d(zs)):
                 iu = int(np.searchsorted(z_union, z))
                 k_row = np.asarray(k_list[iz], dtype=float).reshape(-1)
+                fingerprint = k_row.tobytes()
+                if fingerprint in seen[iu]:
+                    slices[key].append(seen[iu][fingerprint])
+                    continue
                 rows[iu].append(k_row)
-                slices[key].append((iu, lengths[iu], lengths[iu] + len(k_row)))
+                seen[iu][fingerprint] = (iu, lengths[iu], lengths[iu] + len(k_row))
+                slices[key].append(seen[iu][fingerprint])
                 lengths[iu] += len(k_row)
         k_union = [np.concatenate(row) for row in rows]
         self._union_grid = (z_union, k_union, slices)
@@ -991,19 +1037,22 @@ class Likelihood(object):
         # One emulator call on the union of redshifts and k grids, split back
         # per data set (no repeated GP/ForestFlow evaluations).
         emulator_p1d = self._emulator_p1d_per_dataset(like_params)
-        for key in self.Rebin_data.zs:
+        for keys in self.Rebin_data.groups:
+            # data sets of a group share redshifts and the fine grid: one
+            # contaminated P1D, then each data set's resolution correction
+            lead = keys[0]
             _results = self.theory.get_P1D_kms(
-                self.Rebin_data.zs[key],
-                self.Rebin_data.k_kms[key],
-                like_params=self._dataset_params(key, like_params),
-                k_ikms_emu=self.Rebin_data.k_kms_emu[key],
+                self.Rebin_data.zs[lead],
+                self.Rebin_data.k_kms[lead],
+                like_params=self._group_params(keys, like_params),
+                k_ikms_emu=self.Rebin_data.k_kms_emu[lead],
                 return_covar=return_covar,
                 return_blob=return_blob,
                 return_emu_params=return_emu_params,
                 apply_hull=apply_hull,
                 remove=remove,
-                emulator_inputs=emulator_inputs[key],
-                emulator_p1d_Mpc=emulator_p1d[key],
+                emulator_inputs=emulator_inputs[lead],
+                emulator_p1d_Mpc=emulator_p1d[lead],
             )
             if _results is None:
                 return None
@@ -1013,12 +1062,13 @@ class Likelihood(object):
             else:
                 p1ds = _results
 
-            all_p1ds[key] = self.Rebin_data.rebinning(key, p1ds)
-
-            other_stuff[key] = []
-            if return_blob | return_emu_params:
-                for ii in range(1, len(_results)):
-                    other_stuff[key].append(_results[ii])
+            for key in keys:
+                own = self._dataset_fine_p1d(keys, key, p1ds, like_params)
+                all_p1ds[key] = self.Rebin_data.rebinning(key, own)
+                other_stuff[key] = []
+                if return_blob | return_emu_params:
+                    for ii in range(1, len(_results)):
+                        other_stuff[key].append(_results[ii])
 
         return all_p1ds, other_stuff
 
@@ -1144,7 +1194,10 @@ class Likelihood(object):
                     solved = cho_solve(chol_Pk_kms[iz], diff, check_finite=False)
                     chi2_z = np.dot(diff, solved)
                 else:
-                    chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
+                    # extreme emulator outputs (e.g. near prior edges) can
+                    # overflow; the resulting inf/nan is handled below
+                    with numpy_errors_once("likelihood chi2_z"):
+                        chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
                 # print(iz, chi2_z, np.mean(icov_Pk_kms[iz]), np.mean(diff))
                 # print(
                 #     np.dot(icov_Pk_kms[iz], diff),
@@ -1168,7 +1221,10 @@ class Likelihood(object):
                     solved = cho_solve(full_chol_Pk_kms, diff, check_finite=False)
                     chi2_all = np.dot(diff, solved)
                 else:
-                    chi2_all = np.dot(np.dot(full_icov_Pk_kms, diff), diff)
+                    with numpy_errors_once("likelihood chi2_all"):
+                        chi2_all = np.dot(
+                            np.dot(full_icov_Pk_kms, diff), diff
+                        )
                 if ignore_log_det_cov:
                     log_like += -0.5 * chi2_all
                 else:
@@ -1177,8 +1233,8 @@ class Likelihood(object):
                                    else np.log(np.abs(1 / np.linalg.det(full_icov_Pk_kms))) )
                     log_like += -0.5 * (chi2_all + log_det_cov)
 
-        # something went wrong
-        if np.isnan(log_like):
+        # something went wrong (nan, or +inf from overflow)
+        if not np.isfinite(log_like):
             return null_out
 
         out = [log_like, log_like_all]
@@ -1492,16 +1548,19 @@ class Likelihood(object):
             emulator_inputs = self._emulator_inputs_per_dataset(valid_columns)
             emulator_p1d = self._emulator_p1d_per_dataset(valid_columns)
             batched_predictions = {}
-            for key, redshifts in self.Rebin_data.zs.items():
+            for keys in self.Rebin_data.groups:
+                lead = keys[0]
                 fine_prediction = self.theory.get_p1d_kms(
-                    redshifts,
-                    self.Rebin_data.k_kms[key],
-                    self._dataset_params(key, valid_columns),
-                    k_kms_emu=self.Rebin_data.k_kms_emu[key],
-                    emulator_inputs=emulator_inputs[key],
-                    emulator_p1d_Mpc=emulator_p1d[key],
+                    self.Rebin_data.zs[lead],
+                    self.Rebin_data.k_kms[lead],
+                    self._group_params(keys, valid_columns),
+                    k_kms_emu=self.Rebin_data.k_kms_emu[lead],
+                    emulator_inputs=emulator_inputs[lead],
+                    emulator_p1d_Mpc=emulator_p1d[lead],
                 )
-                batched_predictions[key] = self.Rebin_data.rebinning_batch(key, fine_prediction)
+                for key in keys:
+                    own = self._dataset_fine_p1d(keys, key, fine_prediction, valid_columns)
+                    batched_predictions[key] = self.Rebin_data.rebinning_batch(key, own)
             valid_blobs = next(iter(emulator_inputs.values()))[2]
             for local_index, index in enumerate(valid_indices):
                 blobs[index] = tuple(valid_blobs[local_index])

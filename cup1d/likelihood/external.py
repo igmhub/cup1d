@@ -17,10 +17,11 @@ def make_integrator(projection=None):
     Parameters
     ----------
     projection : mapping, optional
-        ``rule: k_mu`` selects ForestFlow's split Gauss--Legendre rule in ln k
-        at fixed k_par (``P1DIntegratorKMu``, also cup1d's native default);
-        any other ``rule`` (default ``k_perp``) the Simpson/Gauss--Legendre rule
-        in ln k_perp (``P1DIntegrator``). Remaining keys are forwarded.
+        ``rule: k_mu`` (default) selects ForestFlow's split Gauss--Legendre
+        rule in ln k at fixed k_par (``P1DIntegratorKMu``), the quadrature of
+        native cup1d; ``rule: k_perp`` the Simpson/Gauss--Legendre rule in
+        ln k_perp (``P1DIntegrator``). Remaining keys are forwarded, so an
+        empty mapping gives ForestFlow's default ``P1DIntegratorKMu()``.
 
     Returns
     -------
@@ -29,7 +30,7 @@ def make_integrator(projection=None):
     from forestflow.statistics.p1d import P1DIntegrator, P1DIntegratorKMu
 
     projection = {} if projection is None else dict(projection)
-    rule = projection.pop("rule", "k_perp")
+    rule = projection.pop("rule", "k_mu")
     if rule == "k_mu":
         return P1DIntegratorKMu(**projection)
     if rule != "k_perp":
@@ -171,8 +172,16 @@ def project_fused(request, snapshot, arinyo, projection=None, kmax_iMpc=np.inf,
     from forestflow.model.linear import LinearTheoryGrid
     from forestflow.statistics.p1d import P1D_Mpc
 
-    keys = list(dict.fromkeys((z, k) for group in request.groups
-                              for z, k in zip(group.redshifts, group.k_ikms)))
+    # Coverage is checked at the largest data bin centre of each row, as the
+    # native kmax_ikms cut; the fine grid averaging the theory over the last
+    # bin's width may extend slightly beyond it (native cup1d does not check).
+    coverage = {}
+    for group in request.groups:
+        # duck-typed groups without coverage are checked over the whole row
+        k_coverage = getattr(group, "k_coverage_ikms", None) or [row[-1] for row in group.k_ikms]
+        for z, k, k_cover in zip(group.redshifts, group.k_ikms, k_coverage):
+            coverage[(z, k)] = max(coverage.get((z, k), 0.0), k_cover)
+    keys = list(coverage)
     if not keys:
         raise ValueError("external coefficient projection requires P1D grids")
     if n_k is not None and (int(n_k) != n_k or n_k < 4):
@@ -186,7 +195,7 @@ def project_fused(request, snapshot, arinyo, projection=None, kmax_iMpc=np.inf,
     k_iMpc = np.empty((len(keys), int(lengths.max())))
     for index, k in enumerate(eval_kms):
         row = k * conversion[index]
-        if row.max() > kmax_iMpc:
+        if coverage[keys[index]] * conversion[index] > kmax_iMpc:
             raise ValueError("parallel k outside declared external-coefficient coverage")
         k_iMpc[index, :len(row)] = row
         k_iMpc[index, len(row):] = row[-1]
@@ -259,7 +268,8 @@ def project_arinyo_request(request, snapshot, arinyo, projection=None,
     projection : mapping, optional
         Projection settings for :func:`make_integrator`.
     kmax_iMpc : float, default=numpy.inf
-        Largest supported parallel wavenumber in 1/Mpc.
+        Largest supported parallel wavenumber in 1/Mpc, checked at each
+        row's ``k_coverage_ikms`` (the largest data bin centre).
     integrator : P1DIntegratorKMu or P1DIntegrator, optional
         Existing projection integrator. Supplying it retains its bounded
         geometry cache; otherwise one is built from ``projection``.
@@ -366,10 +376,16 @@ class PredictionGroup:
         One redshift per requested wavenumber row.
     k_ikms : iterable of iterable of float
         Positive, strictly increasing velocity-wavenumber rows in s/km.
+    k_coverage_ikms : iterable of float, optional
+        Per row, the largest wavenumber (s/km) that must lie inside the
+        model's trained coverage: the largest data bin centre. ``k_ikms``
+        may extend beyond it, e.g. the fine grid that averages the theory over
+        the last bin's width. ``None`` checks the whole row.
     """
     identifier: str
     redshifts: tuple
     k_ikms: tuple
+    k_coverage_ikms: tuple = None
 
     def __post_init__(self):
         """Normalize grids to float tuples and validate their structure.
@@ -384,6 +400,11 @@ class PredictionGroup:
         object.__setattr__(self, "k_ikms", tuple(tuple(float(k) for k in row) for row in self.k_ikms))
         if not self.redshifts or len(self.redshifts) != len(self.k_ikms):
             raise ValueError("one nonempty k grid is required per redshift")
+        if self.k_coverage_ikms is not None:
+            coverage = tuple(float(k) for k in self.k_coverage_ikms)
+            object.__setattr__(self, "k_coverage_ikms", coverage)
+            if len(coverage) != len(self.k_ikms) or not all(np.isfinite(k) and k > 0 for k in coverage):
+                raise ValueError("one finite positive coverage k is required per redshift")
         for z, row in zip(self.redshifts, self.k_ikms):
             k = np.asarray(row)
             if not np.isfinite(z) or k.size == 0 or np.any(~np.isfinite(k)) or np.any(k <= 0) or np.any(np.diff(k) <= 0):
@@ -397,7 +418,10 @@ class PredictionGroup:
         dict
             JSON-compatible identifier, grids, and fingerprint list.
         """
-        return dict(identifier=self.identifier, redshifts=list(self.redshifts), k_ikms=[list(row) for row in self.k_ikms], grid_fingerprints=[fingerprint(list(row)) for row in self.k_ikms])
+        value = dict(identifier=self.identifier, redshifts=list(self.redshifts), k_ikms=[list(row) for row in self.k_ikms], grid_fingerprints=[fingerprint(list(row)) for row in self.k_ikms])
+        if self.k_coverage_ikms is not None:
+            value["k_coverage_ikms"] = list(self.k_coverage_ikms)
+        return value
 
     @classmethod
     def from_dict(cls, value):
@@ -574,6 +598,67 @@ def gaussian_residual(diff, factor, check_finite=True):
     return float(diff @ cho_solve(factor, diff, check_finite=check_finite)), float(2 * np.log(np.diag(factor[0])).sum())
 
 
+def dataset_nuisance(key, like_params, syst_data_labels=None):
+    """Return the nuisance parameters that apply to one data set.
+
+    Parameters
+    ----------
+    key : str
+        Data-set label.
+    like_params : mapping
+        Scalar or columnar nuisance values.
+    syst_data_labels : sequence of str, optional
+        Data sets that receive the resolution correction (``R_coeff_*``);
+        ``None`` applies it to every data set (``args.syst_data_labels``).
+
+    Returns
+    -------
+    mapping
+        ``like_params`` unchanged when ``syst_data_labels`` is ``None`` or
+        contains ``key``; otherwise a copy without ``R_coeff_*`` entries, so
+        no resolution correction is applied to this data set.
+    """
+    if syst_data_labels is None or key in syst_data_labels:
+        return like_params
+    return {name: value for name, value in like_params.items()
+            if not name.startswith("R_coeff")}
+
+
+def without_resolution(like_params):
+    """Return ``like_params`` without the resolution-correction ``R_coeff_*`` entries."""
+    return {name: value for name, value in like_params.items() if not name.startswith("R_coeff")}
+
+
+def apply_resolution(model_syst, zs, k_kms, powers, like_params):
+    """Multiply contaminated P1D rows by one data set's resolution correction.
+
+    With a shared fine grid, the contaminated P1D is computed once without
+    ``R_coeff_*`` and each data set applies its own (smooth) correction, as
+    the last factor of :func:`apply_observation_model`.
+
+    Parameters
+    ----------
+    model_syst : object
+        cup1d resolution-systematics model.
+    zs, k_kms : sequence
+        Redshifts and fine wavenumber rows in s/km.
+    powers : sequence of ndarray
+        Contaminated P1D rows, scalar ``(n_k,)`` or columnar ``(n_batch, n_k)``.
+    like_params : mapping
+        The data set's nuisance values (:func:`dataset_nuisance`).
+
+    Returns
+    -------
+    list of ndarray
+        ``powers`` times the correction, or ``powers`` itself without
+        ``R_coeff_*`` parameters.
+    """
+    if not any(name.startswith("R_coeff") for name in like_params):
+        return list(powers)
+    syst = model_syst.get_contamination(zs, k_kms, like_params=like_params)
+    return [power * correction for power, correction in zip(powers, syst)]
+
+
 def apply_observation_model(model_cont, model_syst, zs, k_kms, p1d_kms, mean_flux, M_of_z, like_params=None, remove=None, metal_moments=None):
     """Apply contaminant, resolution, and IC responses to raw P1D arrays.
 
@@ -619,7 +704,7 @@ class ExternalP1DLikelihood:
     the immutable :class:`PredictionRequest` contract.
     """
 
-    def __init__(self, data, model_cont, model_syst, cov_factor, emulator_covariance, fiducial_conversion, emu_cov_type="block", k_rebin_factor=1, configuration_id=None, include_logdet=False):
+    def __init__(self, data, model_cont, model_syst, cov_factor, emulator_covariance, fiducial_conversion, emu_cov_type="block", k_rebin_factor=1, configuration_id=None, include_logdet=False, syst_data_labels=None, shared_k_grid=True):
         """Initialize static data response, covariance, and prediction request.
 
         Parameters
@@ -644,6 +729,12 @@ class ExternalP1DLikelihood:
             Caller-defined configuration identifier embedded in the request.
         include_logdet : bool, default=False
             Include covariance log determinant in likelihood values.
+        syst_data_labels : sequence of str, optional
+            Data sets that receive the resolution correction, as native
+            ``args.syst_data_labels``; ``None`` applies it to all of them.
+        shared_k_grid : bool, default=True
+            One fine grid per redshift for data sets with the same redshifts,
+            as native ``args.shared_k_grid`` (:class:`Rebinning`).
 
         Raises
         ------
@@ -655,9 +746,10 @@ class ExternalP1DLikelihood:
         self.data, self.model_cont, self.model_syst = data, model_cont, model_syst
         if not isinstance(k_rebin_factor, int) or k_rebin_factor < 1 or not data:
             raise ValueError("nonempty data and positive integer rebin factor required")
-        self.Rebin_data = Rebinning(data, k_rebin_factor=k_rebin_factor)
+        self.Rebin_data = Rebinning(data, k_rebin_factor=k_rebin_factor, shared_k_grid=shared_k_grid)
         self.cov_factor = {key: np.asarray(value) for key, value in cov_factor.items()}
         self.emu_cov_type, self.include_logdet = emu_cov_type, include_logdet
+        self.syst_data_labels = None if syst_data_labels is None else tuple(syst_data_labels)
         z_factors = self.cov_factor.get("z")
         if z_factors is None or z_factors.ndim != 1 or not len(z_factors) or not np.all(np.isfinite(z_factors)):
             raise ValueError("covariance factors require a finite redshift vector")
@@ -689,7 +781,10 @@ class ExternalP1DLikelihood:
             tolerance = 1e-12 * max(np.max(np.abs(matrix)), np.finfo(float).tiny)
             if not np.all(np.isfinite(matrix)) or not np.allclose(matrix, matrix.T, rtol=0, atol=tolerance):
                 raise ValueError("effective covariance must be finite and symmetric")
-        self.request = PredictionRequest(tuple(PredictionGroup(key, self.Rebin_data.zs[key], self.Rebin_data.k_kms[key]) for key in data), configuration_id)
+        self.request = PredictionRequest(tuple(
+            PredictionGroup(key, self.Rebin_data.zs[key], self.Rebin_data.k_kms[key],
+                            k_coverage_ikms=[np.max(k) for k in data[key].k_kms])
+            for key in data), configuration_id)
 
     def get_prediction_request(self):
         """Return the immutable raw-P1D prediction contract.
@@ -730,20 +825,31 @@ class ExternalP1DLikelihood:
         if context.request_id != self.request.identity or set(p1d_lya_kms) != set(self.data):
             raise ValueError("prediction request identity or dataset mismatch")
         index = {z: i for i, z in enumerate(context.redshifts)}
+        groups = {group.identifier: group for group in self.request.groups}
         result = {}
-        for group in self.request.groups:
-            if len(p1d_lya_kms[group.identifier]) != len(group.redshifts):
-                raise ValueError("redshift prediction count mismatch")
+        for keys in self.Rebin_data.groups:
+            group = groups[keys[0]]  # data sets of a group share redshifts and fine grids
+            for key in keys:
+                if len(p1d_lya_kms[key]) != len(groups[key].redshifts):
+                    raise ValueError("redshift prediction count mismatch")
             rows = []
             for k, power in zip(group.k_ikms, p1d_lya_kms[group.identifier]):
                 power = np.asarray(power, dtype=float)
                 if power.shape != (len(k),) or not np.all(np.isfinite(power)):
                     raise ValueError("malformed or non-finite external prediction")
                 rows.append(power)
+            zs = np.asarray(group.redshifts)
+            k_rows = [np.asarray(k) for k in group.k_ikms]
             inds = [index[z] for z in group.redshifts]
             moments = None if metal_moments is None else metal_moments[group.identifier]
-            observed, _ = apply_observation_model(self.model_cont, self.model_syst, np.asarray(group.redshifts), [np.asarray(k) for k in group.k_ikms], rows, np.asarray(context.mean_flux)[inds], np.asarray(context.dkms_diMpc)[inds], nuisance_parameters, metal_moments=moments)
-            result[group.identifier] = self.Rebin_data.rebinning(group.identifier, observed)
+            # contaminants once per group; each data set adds its resolution correction
+            base = nuisance_parameters if len(keys) == 1 else without_resolution(nuisance_parameters)
+            observed, _ = apply_observation_model(self.model_cont, self.model_syst, zs, k_rows, rows, np.asarray(context.mean_flux)[inds], np.asarray(context.dkms_diMpc)[inds], dataset_nuisance(keys[0], base, self.syst_data_labels), metal_moments=moments)
+            for key in keys:
+                own = observed if len(keys) == 1 else apply_resolution(
+                    self.model_syst, zs, k_rows, observed,
+                    dataset_nuisance(key, nuisance_parameters, self.syst_data_labels))
+                result[key] = self.Rebin_data.rebinning(key, own)
         return result
 
     def evaluate_from_p1d(self, p1d_lya_kms, context, nuisance_parameters, metal_moments=None):
