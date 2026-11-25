@@ -132,6 +132,20 @@ class Args:
         "sig_SiIII": -20.0, "sig_SiII": -20.0,
         "f_SiIIxSiII": 0.0, "sig_SiIIxSiII": -20.0,
     }
+    # Defaults of families whose history is linear (otype: const) although
+    # the tables above are written for their logarithmic (exp) default. They
+    # replace the flat prior, the fiducial value and the null value when the
+    # configuration sets ``<family>_otype: const``.
+    # HCD amplitudes: upper bounds as the exp priors (exp(-0.03), exp(-1));
+    # the common small negative lower bound is a diagnostic of model mismatch.
+    # Fiducials are exp of the exp fiducials. Slopes of pivot histories may
+    # change the amplitude by its full range.
+    _CONST_OTYPE_DEFAULTS = {
+        "HCD_damp1": {"prior": [[-0.97, 0.97], [-0.002, 0.97]], "fiducial": 0.25, "null": 0.0},
+        "HCD_damp2": {"prior": [[-0.37, 0.37], [-0.002, 0.37]], "fiducial": 0.0025, "null": 0.0},
+        "HCD_damp3": {"prior": [[-0.37, 0.37], [-0.002, 0.37]], "fiducial": 0.0067, "null": 0.0},
+        "HCD_damp4": {"prior": [[-0.37, 0.37], [-0.002, 0.37]], "fiducial": 0.0067, "null": 0.0},
+    }
     _COSMO_PRIORS = {
         "ombh2": [0.018, 0.026],
         "omch2": [0.10, 0.14],
@@ -245,11 +259,36 @@ class Args:
                         values, name, n_nodes
                     )
                     continue
-                reference = self._FIDUCIAL_VALUES[section][name] if n_nodes > 0 else self._NULL_VALUES[name]
+                linear = self._const_otype_defaults(values, name)
+                if linear is not None:
+                    reference = linear["fiducial"] if n_nodes > 0 else linear["null"]
+                else:
+                    reference = self._FIDUCIAL_VALUES[section][name] if n_nodes > 0 else self._NULL_VALUES[name]
                 if values.get(f"{name}_ztype") == "pivot":
                     values[name] = [0, reference]
                 else:
                     values[name] = np.full(len(values.get(f"{name}_znodes", [])), reference)
+
+    @classmethod
+    def _const_otype_defaults(cls, section, name):
+        """Return the linear-history defaults of ``name`` if they apply.
+
+        Parameters
+        ----------
+        section : dict
+            Configuration section holding ``<name>_otype``.
+        name : str
+            Family name.
+
+        Returns
+        -------
+        dict or None
+            Entry of ``_CONST_OTYPE_DEFAULTS`` when the family is configured
+            with ``otype: const`` and has linear defaults, else ``None``.
+        """
+        if section.get(f"{name}_otype") == "const":
+            return cls._CONST_OTYPE_DEFAULTS.get(name)
+        return None
 
     @staticmethod
     def _preserve_configured_fiducial_values(values, name, n_nodes):
@@ -292,10 +331,18 @@ class Args:
         """Set built-in flat priors and ensure they contain reference values."""
 
         priors = deepcopy(self._CONT_FLAT_PRIORS)
+        linear = set()
+        for name in priors:
+            defaults = self._const_otype_defaults(self.fid_cont, name)
+            if defaults is not None:
+                priors[name] = deepcopy(defaults["prior"])
+                linear.add(name)
         variation = getattr(self, "name_variation", None)
         if variation is not None and variation.startswith("sim_"):
+            # widen the lower bound of logarithmic amplitudes only
             for name in ("f_Lya_SiIII", "f_Lya_SiII", "f_SiIIa_SiIIb", "HCD_damp1", "HCD_damp2", "HCD_damp3", "HCD_damp4"):
-                priors[name][-1][0] = -10.5
+                if name not in linear:
+                    priors[name][-1][0] = -10.5
         for name, bounds in priors.items():
             reference = self.fid_cont[name][-1]
             if reference < bounds[-1][0]:

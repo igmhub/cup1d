@@ -6,6 +6,31 @@ from cup1d.likelihood import parameter as parameter_space
 import matplotlib.pyplot as plt
 import os
 from cup1d.postprocessing.style import get_discrete_cmap
+from cup1d.utils.utils import split_string
+
+
+def _switch_off_other_hcd(self, free_params, ii, par_plot):
+    """Set every HCD damping amplitude except ``par_plot`` to its null value.
+
+    Parameters
+    ----------
+    self : Likelihood
+        Likelihood whose HCD model defines the null values.
+    free_params : dict
+        Physical free-parameter values, modified in place.
+    ii : int
+        Index of the plotted component; ``ii >= 4`` (the total) changes
+        nothing.
+    par_plot : str
+        Family of the plotted component, e.g. ``"HCD_damp1"``.
+    """
+    if ii + 1 > 4:
+        return
+    null_vals = self.theory.model_cont.hcd_model.null_vals
+    for name in free_params:
+        family = split_string(name)[0]
+        if family.startswith("HCD_damp") and family != par_plot:
+            free_params[name] = null_vals[family]
 
 
 def plot_hcd_cont(
@@ -72,10 +97,7 @@ def plot_hcd_cont(
 
         if chain is None:
             free_params = parameter_space.values_from_cube(self.free_params, p0)
-            for name in free_params:
-                if ii + 1 <= 4 and "HCD_damp" in name:
-                    if not name.startswith(par_plot):
-                        free_params[name] = -20
+            _switch_off_other_hcd(self, free_params, ii, par_plot)
 
             hcd_cont = self.theory.model_cont.hcd_model.get_contamination(
                 z=np.array([zstar]),
@@ -96,10 +118,7 @@ def plot_hcd_cont(
 
             for jj in range(nelem):
                 free_params = parameter_space.values_from_cube(self.free_params, chain_use[jj])
-                for name in free_params:
-                    if ii + 1 <= 4 and "HCD_damp" in name:
-                        if not name.startswith(par_plot):
-                            free_params[name] = -20
+                _switch_off_other_hcd(self, free_params, ii, par_plot)
                 all_hcd_cont[jj, :] = (
                     self.theory.model_cont.hcd_model.get_contamination(
                         z=np.array([zstar]),
@@ -724,19 +743,18 @@ def plot_parameters(self, z, like_params, folder=None):
                 )
             vals = np.array(vals)
 
-        if key in self.null_vals:
-            if np.all(vals == self.null_vals[key]):
-                continue
-        elif key == "HCD_const":
-            if np.all(vals == 0):
-                continue
-
+        # compare with the null in coefficient space (log for exp histories)
         if self.prop_coeffs[key + "_otype"] == "exp":
             vals = np.log(vals)
+        null = (self.null_vals or {}).get(key)
+        if null is None and key == "HCD_const":
+            null = 0.0
+        if null is not None and np.all(vals == null):
+            continue
 
         vals_out[key] = vals
 
-        _ = vals != self.null_vals[key]
+        _ = np.ones(len(vals), dtype=bool) if null is None else vals != null
         ax[ii].plot(z[_], vals[_], "o-", label="data")
         xz = np.log((1 + z) / (1 + self.z_0))
         if np.any(_):

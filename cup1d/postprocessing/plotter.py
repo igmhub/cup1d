@@ -8,7 +8,7 @@ from cup1d.configuration.args import Args
 from cup1d.likelihood import parameter as parameter_space
 from cup1d.postprocessing import p1d as p1d_plots
 from cup1d.postprocessing.igm import plot_likelihood_igm
-from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains
+from cup1d.utils.utils import get_discrete_cmap, get_path_repo, purge_chains, split_string
 
 
 class Plotter(object):
@@ -1827,6 +1827,22 @@ class Plotter(object):
         else:
             plt.show()
 
+    def _switch_off_hcd_damping(self, values):
+        """Move every free HCD damping amplitude of a cube point to its null.
+
+        Parameters
+        ----------
+        values : numpy.ndarray
+            Unit-cube point ordered as ``like.free_param_names``; modified in
+            place. The null values come from the HCD model, so they follow
+            the otype of each amplitude (log or linear).
+        """
+        null_vals = self.fitter.like.theory.model_cont.hcd_model.null_vals
+        for ind, name in enumerate(self.fitter.like.free_param_names):
+            family = split_string(name)[0]
+            if family.startswith("HCD_damp") and family in null_vals:
+                values[ind] = self.fitter.value_in_cube(name, null_vals[family])
+
     def plot_illustrate_contaminants_cum(self, values, zmask, fontsize=18):
         """Plot cumulative changes from successively enabled contaminants.
 
@@ -1917,16 +1933,7 @@ class Plotter(object):
             _values = values.copy()
 
             if "DLA" not in conts:
-                for ii in range(4):
-                    for jj in range(11):
-                        key = "HCD_damp" + str(ii + 1) + "_" + str(jj)
-                        try:
-                            ind = np.argwhere(
-                                np.array(self.fitter.like.free_param_names) == key
-                            )[0, 0]
-                            _values[ind] = -11.5
-                        except:
-                            pass
+                self._switch_off_hcd_damping(_values)
 
             remove = {
                 "SiIII_Lya": 0,
@@ -2185,16 +2192,7 @@ class Plotter(object):
             _values = values.copy()
 
             if "DLA" not in conts:
-                for ii in range(4):
-                    for jj in range(11):
-                        key = "HCD_damp" + str(ii + 1) + "_" + str(jj)
-                        try:
-                            ind = np.argwhere(
-                                np.array(self.fitter.like.free_param_names) == key
-                            )[0, 0]
-                            _values[ind] = -11.5
-                        except:
-                            pass
+                self._switch_off_hcd_damping(_values)
 
             remove = {
                 "SiIII_Lya": 0,
@@ -2396,13 +2394,7 @@ class Plotter(object):
         for icont, conts in enumerate(all_contaminants):
             _values = values.copy()
             if "DLA" not in conts:
-                for ii in range(4):
-                    key = "HCD_damp" + str(ii) + "_0"
-                    if key in self.fitter.like.free_param_names:
-                        ind = np.argwhere(
-                            np.array(self.fitter.like.free_param_names) == key
-                        )[0, 0]
-                        _values[ind] = 0
+                self._switch_off_hcd_damping(_values)
                 try:
                     ind = np.argwhere(
                         np.array(self.fitter.like.free_param_names) == "HCD_const_0"
@@ -2465,13 +2457,7 @@ class Plotter(object):
         for conts in remove_contaminants:
             _values = values.copy()
             if "DLA" in conts:
-                for ii in range(4):
-                    key = "HCD_damp" + str(ii) + "_0"
-                    if key in self.fitter.like.free_param_names:
-                        ind = np.argwhere(
-                            np.array(self.fitter.like.free_param_names) == key
-                        )[0, 0]
-                        _values[ind] = 0
+                self._switch_off_hcd_damping(_values)
                 try:
                     ind = np.argwhere(
                         np.array(self.fitter.like.free_param_names) == "HCD_const_0"

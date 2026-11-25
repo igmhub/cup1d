@@ -15,7 +15,8 @@ from cup1d.utils.compute_hessian import get_hessian, get_hessian_rows
 from cup1d.likelihood import parameter as parameter_space
 
 # our own modules
-from cup1d.utils.utils import create_print_function, purge_chains
+from cup1d.utils.utils import create_print_function, purge_chains, split_string
+from cup1d.utils.otypes import convert_otype, legacy_otype, parameter_otypes
 from cup1d.utils.utils import get_path_repo
 from cup1d.utils.various_dicts import (
     param_dict,
@@ -2508,7 +2509,8 @@ class Fitter(object):
         dict
             Format-versioned payload with configuration provenance, parameter
             ordering, prior bounds (``parameter_bounds``, used to map the
-            unit-cube chain to physical values), the number of data points
+            unit-cube chain to physical values), the output type of every
+            coefficient history (``parameter_otypes``), the number of data points
             (``n_data``), and fitted state.
         """
         return {
@@ -2520,6 +2522,11 @@ class Fitter(object):
                 name: [float(par["min_value"]), float(par["max_value"])]
                 for name, par in self.like.free_params.items()
             },
+            # output type of each coefficient (log or linear), so restoring
+            # under a configuration with another otype converts the values
+            "parameter_otypes": parameter_otypes(
+                self.like.args, self.like.free_param_names
+            ),
             "n_data": int(
                 sum(
                     len(data.full_Pk_kms)
@@ -2628,6 +2635,12 @@ class Fitter(object):
         ValueError
             If saved parameter names or MLE shape do not match the
             reconstructed likelihood.
+
+        Notes
+        -----
+        Coefficients saved with another otype (log or linear) than the
+        current configuration are converted, for the MLE and the chain; their
+        saved error estimates are then not restored.
         """
 
         expected_names = list(self.like.free_param_names)
@@ -2642,10 +2655,20 @@ class Fitter(object):
             raise ValueError(
                 f"Saved MLE has shape {cube.shape}; expected {(self.ndim,)}"
             )
+        conversions = self._otype_conversions(payload)
+        cube = self._convert_saved_cube(cube, payload, conversions)
         self.set_mle(cube, float(fit["mle_chi2"]))
-        for name in self._PERSISTED_FIT_ATTRIBUTES:
-            if name in fit:
-                setattr(self, name, copy.deepcopy(fit[name]))
+        if conversions:
+            # errors were estimated in the saved coordinates; recompute them
+            self.print(
+                "Saved error estimates are not restored because the otype of "
+                + ", ".join(sorted(conversions))
+                + " changed"
+            )
+        else:
+            for name in self._PERSISTED_FIT_ATTRIBUTES:
+                if name in fit:
+                    setattr(self, name, copy.deepcopy(fit[name]))
 
         result_path = Path(result_path).expanduser().resolve()
         self.save_directory = str(result_path.parent)
@@ -2661,6 +2684,10 @@ class Fitter(object):
                 if not array_path.is_absolute():
                     array_path = result_path.parent / array_path
                 setattr(self, attribute, np.load(array_path, allow_pickle=False))
+            if conversions:
+                self.chain = self._convert_saved_cube(
+                    self.chain, payload, conversions
+                )
             # Files saved before blob names were recorded hold six columns in
             # the legacy order.
             if "blob_names" in payload:
@@ -2668,6 +2695,88 @@ class Fitter(object):
             elif self.blobs.dtype.names is None and self.blobs.shape[-1] == len(blob_strings_orig):
                 self.blob_names = list(blob_strings_orig)
         return self
+
+    def _otype_conversions(self, payload):
+        """Return coefficients saved with another otype than configured now.
+
+        Parameters
+        ----------
+        payload : mapping
+            Result manifest. Its ``parameter_otypes`` records the otype of
+            every coefficient; files written before it was recorded are
+            assumed to use the CM2026 baseline otypes.
+
+        Returns
+        -------
+        dict
+            ``{name: (saved_otype, current_otype)}`` for every free parameter
+            whose otype differs.
+        """
+        saved = payload.get("parameter_otypes")
+        current = parameter_otypes(self.like.args, self.like.free_param_names)
+        conversions = {}
+        for name, otype in current.items():
+            if saved is not None:
+                old = saved.get(name)
+            else:
+                old = legacy_otype(split_string(name)[0])
+            if old is not None and old != otype:
+                conversions[name] = (old, otype)
+        if conversions:
+            self.print(
+                "Converting saved values to the configured otype: "
+                + ", ".join(f"{n} ({a} -> {b})" for n, (a, b) in conversions.items())
+            )
+        return conversions
+
+    def _convert_saved_cube(self, values, payload, conversions):
+        """Convert saved unit-cube coordinates to the current otypes.
+
+        Parameters
+        ----------
+        values : numpy.ndarray
+            Saved unit-cube coordinates with one trailing coordinate per free
+            parameter (an MLE or a chain).
+        payload : mapping
+            Result manifest providing the saved ``parameter_bounds``.
+        conversions : mapping
+            Output of :meth:`_otype_conversions`.
+
+        Returns
+        -------
+        numpy.ndarray
+            Coordinates in the current unit cube. Converted entries are mapped
+            to physical values with the saved bounds, converted (non-positive
+            linear values become the current lower bound of a log
+            coefficient), and mapped back with the current bounds.
+
+        Raises
+        ------
+        ValueError
+            If a conversion is needed but the manifest has no saved bounds.
+        """
+        if not conversions:
+            return values
+        bounds = payload.get("parameter_bounds")
+        if bounds is None:
+            raise ValueError(
+                "Cannot convert otypes of a result saved without "
+                "parameter_bounds; rerun the fit"
+            )
+        values = np.array(values, dtype=float, copy=True)
+        names = list(self.like.free_param_names)
+        for name, (old, new) in conversions.items():
+            ind = names.index(name)
+            low, high = bounds[name]
+            physical = low + values[..., ind] * (high - low)
+            parameter = self.like.free_params[name]
+            converted = convert_otype(
+                physical, old, new, floor=parameter["min_value"]
+            )
+            values[..., ind] = (converted - parameter["min_value"]) / (
+                parameter["max_value"] - parameter["min_value"]
+            )
+        return values
 
     def save_fitter(self, save_chains=False):
         """Save a minimizer or sampler result through the compatibility API.

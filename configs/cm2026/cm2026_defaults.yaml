@@ -64,6 +64,9 @@ igm_params:
 fid_igm:
   # Common scaling applied to the model priors.
   priors: 1.0
+  # Build the tau_eff prior from the training coverage including the
+  # emulator mean-flux rescalings (tau x 0.9-1.1).
+  tau_prior_rescalings: false
   # Simulation or observational reference for `mF`.
   label_mF: mpg_central
   # Simulation or observational reference for `T`.

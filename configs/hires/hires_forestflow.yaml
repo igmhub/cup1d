@@ -8,5 +8,17 @@ emulator_label: forest_mpg_gp
 # Resolution corrections for DESI only (see hires.yaml).
 syst_data_labels:
   - DESIY1_QMLE3
+# tau_eff prior from the emulator training coverage including its mean-flux
+# rescalings (tau x 0.9-1.1); the other IGM priors are unchanged.
+fid_igm:
+  tau_prior_rescalings: true
+# HCD damping amplitudes sampled linearly (otype: const) instead of as
+# logarithms; priors, fiducial and null values follow the linear defaults of
+# Args._CONST_OTYPE_DEFAULTS. Log-space ICs and saved fits are converted on load.
+fid_cont:
+  HCD_damp1_otype: const
+  HCD_damp2_otype: const
+  HCD_damp3_otype: const
+  HCD_damp4_otype: const
 # Output folder.
 out_folder: ./DESIY1_QMLE3__Karacayli2022/global_opt/forest_mpg_gp

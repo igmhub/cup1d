@@ -1,5 +1,6 @@
 import numpy as np
 from cup1d.models.contaminants.base_contaminants import Contaminant
+from cup1d.models.contaminants.HCD.hcd_model_rogers_class import apply_null, null_value
 
 
 def fun_cont(damp, k):
@@ -88,7 +89,7 @@ class HCD_BOSS(Contaminant):
         # null values
         if null_vals is None:
             null_vals = {
-                "HCD_damp1": -21.5,
+                "HCD_damp1": null_value(prop_coeffs.get("HCD_damp1_otype", "exp")),
             }
 
         super().__init__(
@@ -127,13 +128,9 @@ class HCD_BOSS(Contaminant):
             vals[key] = np.atleast_1d(
                 self.get_value(key, z, like_params=like_params)
             )
-            if key in self.null_vals:
-                if self.prop_coeffs[key + "_otype"] == "const":
-                    null = self.null_vals[key]
-                else:
-                    null = np.exp(self.null_vals[key])
-                _ = vals[key] <= null
-                vals[key][_] = 0
+            vals[key] = apply_null(
+                vals[key], self.null_vals.get(key), self.prop_coeffs[key + "_otype"]
+            )
         # print(vals)
 
         dla_corr = []
@@ -165,8 +162,9 @@ class HCD_BOSS(Contaminant):
         """
         z = np.atleast_1d(np.asarray(z, dtype=float))
         values = self.get_value_batch("HCD_damp1", z, like_params)
-        null = np.exp(self.null_vals["HCD_damp1"])
-        values = np.where(values <= null, 0.0, values)
+        values = apply_null(
+            values, self.null_vals.get("HCD_damp1"), self.prop_coeffs["HCD_damp1_otype"]
+        )
         return [
             fun_cont(values[:, iz, None], np.asarray(k_kms[iz])[None, :])
             for iz in range(len(z))

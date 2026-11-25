@@ -8,6 +8,12 @@ from cup1d.utils.utils import is_number_string
 from cup1d.utils.utils import get_path_repo
 
 
+# Rescalings of tau applied to every MPG simulation in the emulator training
+# sets (ForestFlow mpg_hypercube ``arr_val_scaling``; LaCE Cabayol23
+# ``scale_tau`` with ``training_val_scaling: all``).
+TAU_TRAINING_RESCALINGS = (0.9, 0.95, 1.0, 1.05, 1.1)
+
+
 class IGM(object):
     """Compose mean-flux, thermal, and pressure IGM history models."""
 
@@ -66,6 +72,9 @@ class IGM(object):
             fact_priors = pars_igm["priors"]
         else:
             fact_priors = 1.0
+        # build the tau_eff prior from the training coverage including the
+        # mean-flux rescalings of the emulator training set
+        tau_rescalings = bool(pars_igm.get("tau_prior_rescalings", False))
 
         fid_igm = self.get_igm(
             sim_igm_mF=self.fid_sim_igm_mF,
@@ -73,7 +82,10 @@ class IGM(object):
             sim_igm_kF=self.fid_sim_igm_kF,
         )
 
-        self.set_priors(fid_igm, prop_coeffs, fact_priors=fact_priors)
+        self.set_priors(
+            fid_igm, prop_coeffs, fact_priors=fact_priors,
+            tau_rescalings=tau_rescalings,
+        )
 
         self.models = {
             "F_model": F_model,
@@ -288,11 +300,22 @@ class IGM(object):
 
         return igms_return
 
-    def set_priors(self, fid_igm, prop_coeffs, fact_priors=1.0, z_pivot=3, percent=95):
+    def set_priors(
+        self, fid_igm, prop_coeffs, fact_priors=1.0, z_pivot=3, percent=95,
+        tau_rescalings=False,
+    ):
         """Set broad native uniform priors for every modeled IGM history.
 
         This is only important for giving the minimizer and the sampler a uniform
         prior that it is not too broad. The metric below takes care of the real priors
+
+        Each bound is the ``percent`` percentile over training simulations of
+        their largest deviation from the fiducial history, with a 5% margin.
+        With ``tau_rescalings``, the ``tau_eff`` deviations of MPG simulations
+        include the mean-flux rescalings of the emulator training set
+        (``TAU_TRAINING_RESCALINGS``): each simulation enters with its tau
+        history multiplied by the smallest and largest rescaling, which adds
+        their logarithms to the logarithmic bounds.
         """
 
         self.priors = {}
@@ -347,6 +370,9 @@ class IGM(object):
 
                 res_div[ii, 0] = np.max(all_igm[sim][par][_] / fid_igm[par][_])
                 res_div[ii, 1] = np.min(all_igm[sim][par][_] / fid_igm[par][_])
+                if tau_rescalings and par == "tau_eff" and emu_suite.startswith("mpg"):
+                    res_div[ii, 0] *= max(TAU_TRAINING_RESCALINGS)
+                    res_div[ii, 1] *= min(TAU_TRAINING_RESCALINGS)
 
             _ = np.argwhere(
                 np.isfinite(res_div[:, 0])

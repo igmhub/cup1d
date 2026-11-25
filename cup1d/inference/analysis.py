@@ -12,6 +12,7 @@ from cup1d.p1ds.factory import is_synthetic_data_label, set_p1d
 from cup1d.configuration.args import Args
 from cup1d.likelihood.likelihood import Likelihood
 from cup1d.inference.fitter import Fitter
+from cup1d.utils.otypes import history_otype
 from cup1d.utils.utils import get_path_repo
 from cup1d.utils.utils import create_print_function
 from cup1d.utils.utils import split_string
@@ -644,7 +645,7 @@ class Analysis(object):
             of this analysis, which the likelihood finds automatically.
             The saved dictionary is
             keyed by parameter family and each value has sorted ``'z'`` and
-            ``'val'`` arrays.  Free ``As`` and ``ns`` are stored as scalar
+            ``'val'`` arrays and the family ``'otype'`` (log or linear values).  Free ``As`` and ``ns`` are stored as scalar
             ``{'val': x}`` entries.
 
         Raises
@@ -687,7 +688,11 @@ class Analysis(object):
             # print(pname, znode, self.fitter.mle[name])
 
             if pname not in out_dict:
-                out_dict[pname] = {"z": [], "val": []}
+                out_dict[pname] = {
+                    "z": [],
+                    "val": [],
+                    "otype": history_otype(self.fitter.like.args, pname),
+                }
             out_dict[pname]["z"].append(znode)
             out_dict[pname]["val"].append(self.fitter.get_mle_value(name))
 

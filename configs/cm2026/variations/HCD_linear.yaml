@@ -1,0 +1,14 @@
+# CM2026 override file (written by hand, not by scripts/configs/generate_cm2026.py).
+# HCD damping amplitudes sampled linearly (otype: const) instead of as
+# logarithms. Priors, fiducial and null values switch to the linear defaults
+# of Args._CONST_OTYPE_DEFAULTS; their small negative lower bounds are a
+# diagnostic of model mismatch. Log-space ICs and saved fits are converted
+# on load.
+fid_cont:
+  HCD_damp1_otype: const
+  HCD_damp2_otype: const
+  HCD_damp3_otype: const
+  HCD_damp4_otype: const
+out_folder: ./DESIY1_QMLE3/HCD_linear/CH24_mpgcen_gpr
+pre_defined: null
+name_variation: HCD_linear

@@ -2,6 +2,49 @@ import numpy as np
 from cup1d.models.contaminants.base_contaminants import Contaminant
 
 
+# Logarithmic null of an HCD amplitude: exp(-21.5) is treated as exactly zero.
+LOG_NULL = -21.5
+
+
+def null_value(otype):
+    """Return the coefficient that switches an HCD amplitude off.
+
+    Parameters
+    ----------
+    otype : {"exp", "const"}
+        Output type of the amplitude history.
+
+    Returns
+    -------
+    float
+        ``LOG_NULL`` for logarithmic amplitudes, ``0`` for linear ones.
+    """
+    return LOG_NULL if otype == "exp" else 0.0
+
+
+def apply_null(values, null, otype):
+    """Set logarithmic amplitudes at or below their null to exactly zero.
+
+    Parameters
+    ----------
+    values : numpy.ndarray
+        Amplitudes after the output transform.
+    null : float or None
+        Null coefficient of the family; ``None`` leaves values unchanged.
+    otype : {"exp", "const"}
+        Output type. Linear (``const``) amplitudes are never clipped, so
+        negative diagnostic values reach the model.
+
+    Returns
+    -------
+    numpy.ndarray
+        Amplitudes with nulled entries set to zero.
+    """
+    if null is None or otype != "exp":
+        return values
+    return np.where(values <= np.exp(null), 0.0, values)
+
+
 def fun_damping(k_kms, a, b):
     """Evaluate the damping profile of a Rogers HCD component.
 
@@ -96,13 +139,13 @@ class HCD_Model_Rogers(Contaminant):
                 "HCD_const": [0, 0],
             }
 
-        # null values
+        # null values: the coefficient that switches a component off. For
+        # logarithmic (exp) amplitudes, values at or below exp(null) are set
+        # to zero; linear (const) amplitudes are off at zero and never clipped
         if null_vals is None:
             null_vals = {
-                "HCD_damp1": -21.5,
-                "HCD_damp2": -21.5,
-                "HCD_damp3": -21.5,
-                "HCD_damp4": -21.5,
+                key: null_value(prop_coeffs.get(key + "_otype", "exp"))
+                for key in ("HCD_damp1", "HCD_damp2", "HCD_damp3", "HCD_damp4")
             }
 
         self.a_0 = np.array([2.2001, 1.5083, 1.1415, 0.8633])
@@ -150,13 +193,9 @@ class HCD_Model_Rogers(Contaminant):
             vals[key] = np.atleast_1d(
                 self.get_value(key, z, like_params=like_params)
             )
-            if key in self.null_vals:
-                if self.prop_coeffs[key + "_otype"] == "const":
-                    null = self.null_vals[key]
-                else:
-                    null = np.exp(self.null_vals[key])
-                _ = vals[key] <= null
-                vals[key][_] = 0
+            vals[key] = apply_null(
+                vals[key], self.null_vals.get(key), self.prop_coeffs[key + "_otype"]
+            )
         # print(vals)
 
         dla_corr = []
@@ -195,8 +234,9 @@ class HCD_Model_Rogers(Contaminant):
         z = np.atleast_1d(np.asarray(z, dtype=float))
         values = {key: self.get_value_batch(key, z, like_params) for key in self.list_coeffs}
         for key in self.null_vals:
-            null = self.null_vals[key] if self.prop_coeffs[key + "_otype"] == "const" else np.exp(self.null_vals[key])
-            values[key] = np.where(values[key] <= null, 0.0, values[key])
+            values[key] = apply_null(
+                values[key], self.null_vals[key], self.prop_coeffs[key + "_otype"]
+            )
         output = []
         for iz, redshift in enumerate(z):
             k = np.asarray(k_kms[iz])[None, :]

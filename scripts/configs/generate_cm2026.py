@@ -326,6 +326,9 @@ def _describe_yaml_key(path: tuple[str, ...]) -> str:
         return f"Flat-prior bounds for {PARAMETER_COMMENTS.get(key, key)}"
     if key == "priors":
         return "Common scaling applied to the model priors."
+    if key == "tau_prior_rescalings":
+        return ("Build the tau_eff prior from the training coverage including the "
+                "emulator mean-flux rescalings (tau x 0.9-1.1).")
     if key == "hcd_model_type":
         return "High-column-density absorption model."
     if key == "metal_model_type":

@@ -9,6 +9,7 @@ from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
 from cup1d.postprocessing.show_results import print_results
 from cup1d.utils.ic_files import get_ic_filename, get_ic_path
+from cup1d.utils.otypes import parameter_otypes
 
 
 def get_at_a_time_ic_path(data_label, emulator_label, variation=None):
@@ -140,6 +141,9 @@ def generate_at_a_time_initial_conditions(
             output["mle_cube"].append(local_analysis.fitter.mle_cube.copy())
             output["mle"].append(dict(local_analysis.fitter.mle))
             output["chi2"].append(local_analysis.fitter.mle_chi2)
+            output["otypes"] = parameter_otypes(
+                local_analysis.like.args, local_analysis.like.free_param_names
+            )
 
     if rank != 0:
         return None

@@ -14,6 +14,7 @@ from cup1d.utils import blinding
 from cup1d.utils import ic_files
 from cup1d.utils.warn_once import numpy_errors_once
 from cup1d.likelihood import parameter as parameter_space
+from cup1d.utils.otypes import convert_otype, history_otype, interp_ic_history, legacy_otype
 
 
 def emulator_interpolation_weights(z, k_Mpc, emu_z, emu_k_Mpc):
@@ -2072,7 +2073,15 @@ class Likelihood(object):
             # print(iz, znode, dir_out["z"][iz])
             # print(dir_out["pnames"][iz], pname + "_0")
             iname = np.argwhere(np.array(dir_out["pnames"][iz]) == (pname + "_0"))[0, 0]
-            parameter["value"] = dir_out["mle"][iz][pname + "_0"]
+            # convert from the otype the file was written with (files that
+            # do not record it used the baseline otypes)
+            saved_otype = dir_out.get("otypes", {}).get(pname + "_0") or legacy_otype(pname)
+            parameter["value"] = convert_otype(
+                dir_out["mle"][iz][pname + "_0"],
+                saved_otype,
+                history_otype(self.args, pname),
+                floor=parameter["min_value"],
+            )
 
             if verbose and (self.rank == 0):
                 print(
@@ -2169,9 +2178,15 @@ class Likelihood(object):
                 if verbose and (self.rank == 0):
                     print(f"{name}: not in the IC file, keeping its fiducial value")
             else:
-                _z = dir_out[pname]["z"]
-                _val = dir_out[pname]["val"]
-                parameter["value"] = np.interp(znode, _z, _val)
+                # interpolated in the otype the file was written with, then
+                # converted to the configured one
+                parameter["value"] = interp_ic_history(
+                    dir_out[pname],
+                    pname,
+                    znode,
+                    history_otype(self.args, pname),
+                    floor=parameter["min_value"],
+                )
 
             if verbose and (self.rank == 0):
                 print(
