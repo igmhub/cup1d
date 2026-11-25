@@ -136,15 +136,14 @@ class Args:
     # the tables above are written for their logarithmic (exp) default. They
     # replace the flat prior, the fiducial value and the null value when the
     # configuration sets ``<family>_otype: const``.
-    # HCD amplitudes: upper bounds as the exp priors (exp(-0.03), exp(-1));
-    # the common small negative lower bound is a diagnostic of model mismatch.
-    # Fiducials are exp of the exp fiducials. Slopes of pivot histories may
-    # change the amplitude by its full range.
+    # HCD amplitudes: physical lower bound 0 and upper bounds as the exp
+    # priors (exp(-0.03), exp(-1)). Fiducials are exp of the exp fiducials.
+    # Slopes of pivot histories may change the amplitude by its full range.
     _CONST_OTYPE_DEFAULTS = {
-        "HCD_damp1": {"prior": [[-0.97, 0.97], [-0.002, 0.97]], "fiducial": 0.25, "null": 0.0},
-        "HCD_damp2": {"prior": [[-0.37, 0.37], [-0.002, 0.37]], "fiducial": 0.0025, "null": 0.0},
-        "HCD_damp3": {"prior": [[-0.37, 0.37], [-0.002, 0.37]], "fiducial": 0.0067, "null": 0.0},
-        "HCD_damp4": {"prior": [[-0.37, 0.37], [-0.002, 0.37]], "fiducial": 0.0067, "null": 0.0},
+        "HCD_damp1": {"prior": [[-0.97, 0.97], [0.0, 0.97]], "fiducial": 0.25, "null": 0.0},
+        "HCD_damp2": {"prior": [[-0.37, 0.37], [0.0, 0.37]], "fiducial": 0.0025, "null": 0.0},
+        "HCD_damp3": {"prior": [[-0.37, 0.37], [0.0, 0.37]], "fiducial": 0.0067, "null": 0.0},
+        "HCD_damp4": {"prior": [[-0.37, 0.37], [0.0, 0.37]], "fiducial": 0.0067, "null": 0.0},
     }
     _COSMO_PRIORS = {
         "ombh2": [0.018, 0.026],

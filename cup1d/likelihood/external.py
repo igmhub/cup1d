@@ -1,6 +1,6 @@
 """External, pre-contaminant P1D likelihood boundary."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 import json
 from types import MappingProxyType
@@ -568,6 +568,10 @@ class LikelihoodResult:
     logdet_cov: float
     ndata: int
     valid: bool
+    # data-set label -> chi2 and number of points (independent blocks: they
+    # add up to chi2_data and ndata)
+    chi2_by_dataset: dict = field(default_factory=dict)
+    ndata_by_dataset: dict = field(default_factory=dict)
 
 
 def gaussian_residual(diff, factor, check_finite=True):
@@ -874,14 +878,19 @@ class ExternalP1DLikelihood:
         """
         predictions = self.apply_observation_model(p1d_lya_kms, context, nuisance_parameters, metal_moments)
         chi2, logdet, ndata = 0.0, 0.0, 0
+        chi2_by_dataset, ndata_by_dataset = {}, {}
         for key, dataset in self.data.items():
             if dataset.full_Pk_kms is not None:
                 diffs, factors = [dataset.full_Pk_kms - np.concatenate(predictions[key])], [self.full_chol_Pk_kms[key]]
             else:
                 diffs, factors = [data - model for data, model in zip(dataset.Pk_kms, predictions[key])], self.chol_Pk_kms[key]
+            chi2_by_dataset[key], ndata_by_dataset[key] = 0.0, 0
             for diff, factor in zip(diffs, factors):
                 contribution, determinant = gaussian_residual(diff, factor)
                 chi2 += contribution
                 logdet += determinant if self.include_logdet else 0.0
                 ndata += len(diff)
-        return LikelihoodResult(-0.5 * (chi2 + logdet), chi2, logdet, ndata, True)
+                chi2_by_dataset[key] += contribution
+                ndata_by_dataset[key] += len(diff)
+        return LikelihoodResult(-0.5 * (chi2 + logdet), chi2, logdet, ndata, True,
+                                chi2_by_dataset, ndata_by_dataset)

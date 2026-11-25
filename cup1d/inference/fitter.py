@@ -2638,9 +2638,10 @@ class Fitter(object):
 
         Notes
         -----
-        Coefficients saved with another otype (log or linear) than the
-        current configuration are converted, for the MLE and the chain; their
-        saved error estimates are then not restored.
+        Coefficients saved with another otype (log or linear) or other prior
+        bounds than the current configuration are remapped through their
+        physical values, for the MLE (moved inside the current bounds) and the
+        chain; the saved error estimates are then not restored.
         """
 
         expected_names = list(self.like.free_param_names)
@@ -2656,14 +2657,14 @@ class Fitter(object):
                 f"Saved MLE has shape {cube.shape}; expected {(self.ndim,)}"
             )
         conversions = self._otype_conversions(payload)
-        cube = self._convert_saved_cube(cube, payload, conversions)
+        changed = self._changed_parameters(payload, conversions)
+        cube = self._convert_saved_cube(cube, payload, conversions, changed, clip=True)
         self.set_mle(cube, float(fit["mle_chi2"]))
-        if conversions:
+        if changed:
             # errors were estimated in the saved coordinates; recompute them
             self.print(
-                "Saved error estimates are not restored because the otype of "
-                + ", ".join(sorted(conversions))
-                + " changed"
+                "Saved error estimates are not restored because the otype or "
+                "prior bounds of " + ", ".join(sorted(changed)) + " changed"
             )
         else:
             for name in self._PERSISTED_FIT_ATTRIBUTES:
@@ -2684,9 +2685,9 @@ class Fitter(object):
                 if not array_path.is_absolute():
                     array_path = result_path.parent / array_path
                 setattr(self, attribute, np.load(array_path, allow_pickle=False))
-            if conversions:
+            if changed:
                 self.chain = self._convert_saved_cube(
-                    self.chain, payload, conversions
+                    self.chain, payload, conversions, changed
                 )
             # Files saved before blob names were recorded hold six columns in
             # the legacy order.
@@ -2729,8 +2730,38 @@ class Fitter(object):
             )
         return conversions
 
-    def _convert_saved_cube(self, values, payload, conversions):
-        """Convert saved unit-cube coordinates to the current otypes.
+    def _changed_parameters(self, payload, conversions):
+        """Return free parameters whose otype or prior bounds changed since saving.
+
+        Parameters
+        ----------
+        payload : mapping
+            Result manifest with the saved ``parameter_bounds`` (if recorded).
+        conversions : mapping
+            Output of :meth:`_otype_conversions`.
+
+        Returns
+        -------
+        set of str
+        """
+        changed = set(conversions)
+        bounds = payload.get("parameter_bounds") or {}
+        for name, parameter in self.like.free_params.items():
+            if name not in bounds:
+                continue
+            low, high = bounds[name]
+            if not (np.isclose(low, parameter["min_value"], rtol=1e-10, atol=0)
+                    and np.isclose(high, parameter["max_value"], rtol=1e-10, atol=0)):
+                changed.add(name)
+        if changed - set(conversions):
+            self.print(
+                "Prior bounds changed since the result was saved: "
+                + ", ".join(sorted(changed - set(conversions)))
+            )
+        return changed
+
+    def _convert_saved_cube(self, values, payload, conversions, changed=None, clip=False):
+        """Map saved unit-cube coordinates to the current parameterization.
 
         Parameters
         ----------
@@ -2741,21 +2772,29 @@ class Fitter(object):
             Result manifest providing the saved ``parameter_bounds``.
         conversions : mapping
             Output of :meth:`_otype_conversions`.
+        changed : iterable of str, optional
+            Parameters to remap (otype or bounds changed); defaults to
+            ``conversions``.
+        clip : bool, default=False
+            Move values outside the current bounds onto them (for a best fit
+            used as a starting point; chains are left as they are).
 
         Returns
         -------
         numpy.ndarray
-            Coordinates in the current unit cube. Converted entries are mapped
-            to physical values with the saved bounds, converted (non-positive
-            linear values become the current lower bound of a log
-            coefficient), and mapped back with the current bounds.
+            Coordinates in the current unit cube. Each changed entry is mapped
+            to its physical value with the saved bounds, converted to the
+            current otype (non-positive linear values become the current lower
+            bound of a log coefficient), and mapped back with the current
+            bounds.
 
         Raises
         ------
         ValueError
-            If a conversion is needed but the manifest has no saved bounds.
+            If a remap is needed but the manifest has no saved bounds.
         """
-        if not conversions:
+        changed = set(conversions) if changed is None else set(changed)
+        if not changed:
             return values
         bounds = payload.get("parameter_bounds")
         if bounds is None:
@@ -2765,15 +2804,21 @@ class Fitter(object):
             )
         values = np.array(values, dtype=float, copy=True)
         names = list(self.like.free_param_names)
-        for name, (old, new) in conversions.items():
+        for name in changed:
             ind = names.index(name)
             low, high = bounds[name]
             physical = low + values[..., ind] * (high - low)
             parameter = self.like.free_params[name]
-            converted = convert_otype(
-                physical, old, new, floor=parameter["min_value"]
-            )
-            values[..., ind] = (converted - parameter["min_value"]) / (
+            if name in conversions:
+                old, new = conversions[name]
+                physical = convert_otype(
+                    physical, old, new, floor=parameter["min_value"]
+                )
+            if clip:
+                physical = np.clip(
+                    physical, parameter["min_value"], parameter["max_value"]
+                )
+            values[..., ind] = (physical - parameter["min_value"]) / (
                 parameter["max_value"] - parameter["min_value"]
             )
         return values
