@@ -105,10 +105,26 @@ def plot_table_igm(
     data = np.load(
         base + folder + "fitter_results.npy", allow_pickle=True
     ).item()
-    p0 = data["fitter"]["mle_cube"]
-    free_params = pip.fitter.point_from_chain_row(p0)
-
     chain = np.load(base + folder + "chain.npy")
+
+    # The saved MLE and chain are in the unit cube of the run's priors, which
+    # may differ from the current ones (e.g. the CM2026 ns prior): map them to
+    # the current unit cube through their physical values, in place.
+    from cup1d.postprocessing.plots_corner import _load_parameter_bounds
+
+    names, saved_bounds = _load_parameter_bounds(base + folder)
+    current = pip.fitter.like.free_params
+    if names != list(current):
+        raise ValueError("saved parameters differ from the current configuration")
+    old_low = np.array([saved_bounds[n][0] for n in names])
+    old_width = np.array([saved_bounds[n][1] - saved_bounds[n][0] for n in names])
+    new_low = np.array([current[n]["min_value"] for n in names])
+    new_width = np.array([current[n]["max_value"] - current[n]["min_value"] for n in names])
+    scale, shift = old_width / new_width, (old_low - new_low) / new_width
+    p0 = np.asarray(data["fitter"]["mle_cube"]) * scale + shift
+    chain *= scale
+    chain += shift
+    free_params = pip.fitter.point_from_chain_row(p0)
 
     out = pip.fitter.like.plot_igm(
         free_params=free_params,

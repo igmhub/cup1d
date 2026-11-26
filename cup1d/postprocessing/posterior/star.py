@@ -3,6 +3,7 @@
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import MaxNLocator
 from scipy.stats import chi2 as chi2_distribution, norm
 
 from cup1d.postprocessing.posterior.samples import STAR_PARAMETERS
@@ -118,6 +119,8 @@ def plot_star_posterior(samples, fontsize=16, color="C0", truth=None):
         axes[1, 1].axvline(truth["n_star"], color="k", ls=":")
     for ax in axes.ravel():
         ax.tick_params(labelsize=fontsize - 4)
+        # avoid colliding tick labels where the bottom panels meet
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=4, prune="both"))
     if samples.label:
         fig.suptitle(samples.label, fontsize=fontsize)
     return fig

@@ -61,31 +61,46 @@ def default_n_threads(n_free=2):
     return max(1, n_available - n_free)
 
 
-def _limited_threads(function):
+def _limited_threads(function=None, default=None):
     """Decorate a numerical method to cap BLAS/OpenMP and torch threads.
 
     The wrapped callable accepts an extra keyword ``n_threads`` (default
-    :func:`default_n_threads`, i.e. all available cores but two). Both the
-    threadpoolctl-managed backends and, when already imported, torch's
-    intra-op pool are capped; previous settings are restored on exit.
+    ``default``, or :func:`default_n_threads`, i.e. all available cores but
+    two). Both the threadpoolctl-managed backends and, when already imported,
+    torch's intra-op pool are capped; previous settings are restored on exit.
 
     Parameters
     ----------
-    function : callable
-        Callable evaluated within the temporary thread limit.
+    function : callable, optional
+        Callable evaluated within the temporary thread limit. Omitted when the
+        decorator is called with options, ``@_limited_threads(default=1)``.
+    default : int, optional
+        Default ``n_threads`` of the wrapped callable.
 
     Returns
     -------
     callable
         Wrapped callable with the same metadata as ``function``.
+
+    Notes
+    -----
+    The limit applies to every thread pool (two OpenBLAS and two OpenMP
+    runtimes are loaded with LaCE), so their threads can add up. Single-point
+    likelihood evaluations involve small matrices, for which BLAS threads only
+    add overhead: with the CM2026 likelihood one evaluation takes ~14 ms on one
+    thread and ~44 ms on 14, so single-point minimizers default to one thread.
     """
+    if function is None:
+        return lambda f: _limited_threads(f, default)
 
     @wraps(function)
     def wrapped(*args, n_threads=None, **kwargs):
         """Call ``function`` with at most ``n_threads`` numerical threads."""
         import sys
 
-        n_threads = default_n_threads() if n_threads is None else int(n_threads)
+        if n_threads is None:
+            n_threads = default_n_threads() if default is None else int(default)
+        n_threads = int(n_threads)
         torch = sys.modules.get("torch")
         torch_threads = torch.get_num_threads() if torch is not None else None
         try:
@@ -1442,7 +1457,7 @@ class Fitter(object):
 
         return ind_free, expand
 
-    @_limited_threads
+    @_limited_threads(default=1)
     def run_minimizer(
         self,
         log_func_minimize=None,
@@ -1881,7 +1896,7 @@ class Fitter(object):
             )
         return optimizer
 
-    @_limited_threads
+    @_limited_threads(default=1)
     def run_minimizer_da(
         self,
         log_func_minimize=None,
@@ -2746,6 +2761,15 @@ class Fitter(object):
         """
         changed = set(conversions)
         bounds = payload.get("parameter_bounds") or {}
+        if not bounds:
+            from cup1d.utils.warn_once import warn_once
+
+            warn_once(
+                "This result was saved without its prior bounds: its unit-cube "
+                "values are mapped with the current priors, which is wrong if "
+                "they changed since (e.g. the CM2026 ns prior). Re-save it.",
+                key="result-without-parameter-bounds",
+            )
         for name, parameter in self.like.free_params.items():
             if name not in bounds:
                 continue

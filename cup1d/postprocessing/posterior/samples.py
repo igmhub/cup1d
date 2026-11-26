@@ -219,7 +219,7 @@ class PosteriorSamples:
         return sorted(rows, key=lambda row: -max(row[1:]))
 
     @classmethod
-    def from_cup1d_folder(cls, folder, nburn_extra=0, blinding=None, blinded=False, label=""):
+    def from_cup1d_folder(cls, folder, nburn_extra=0, blinding=None, blinded=False, label="", thin=1):
         """Load the samples of a native cup1d (emcee) run.
 
         Parameters
@@ -239,6 +239,9 @@ class PosteriorSamples:
             ``blinding`` is given, which unblinds them).
         label : str, default=""
             Legend label.
+        thin : int, default=1
+            Keep every ``thin``-th step of every walker. The chain is memory
+            mapped, so only the kept steps are read.
 
         Returns
         -------
@@ -248,18 +251,22 @@ class PosteriorSamples:
         from cup1d.utils.various_dicts import get_blob_value
 
         names, bounds = _load_parameter_bounds(folder)
-        chain = np.load(os.path.join(folder, "chain.npy"))[nburn_extra:]
-        blobs = np.load(os.path.join(folder, "blobs.npy"))[nburn_extra:]
-        lnprob = np.load(os.path.join(folder, "lnprob.npy"))[nburn_extra:]
-        cube = chain.reshape(-1, chain.shape[-1])
+        steps = slice(nburn_extra, None, thin)
+        chain = np.load(os.path.join(folder, "chain.npy"), mmap_mode="r")[steps]
+        blobs = np.load(os.path.join(folder, "blobs.npy"), mmap_mode="r")[steps]
+        lnprob = np.load(os.path.join(folder, "lnprob.npy"))[steps]
+        n_rows = chain.shape[0] * chain.shape[1]
+        values = np.empty((n_rows, len(names) + len(STAR_PARAMETERS)))
+        offsets = blinding or {}
+        for i, name in enumerate(STAR_PARAMETERS):
+            values[:, i] = np.asarray(get_blob_value(blobs, name)).reshape(-1) - offsets.get(name, 0.0)
         low = np.array([bounds[n][0] for n in names])
         high = np.array([bounds[n][1] for n in names])
-        physical = low + (high - low) * cube
-        offsets = blinding or {}
-        stars = [get_blob_value(blobs, name).reshape(-1) - offsets.get(name, 0.0)
-                 for name in STAR_PARAMETERS]
+        values[:, len(STAR_PARAMETERS):] = np.asarray(chain).reshape(n_rows, -1)
+        values[:, len(STAR_PARAMETERS):] *= high - low
+        values[:, len(STAR_PARAMETERS):] += low
         return cls(
-            np.column_stack([*stars, physical]), [*STAR_PARAMETERS, *names],
+            values, [*STAR_PARAMETERS, *names],
             bounds=bounds, minuslogpost=-lnprob.reshape(-1), sampled=names,
             label=label, blinded=bool(blinded) and blinding is None,
         )

@@ -120,7 +120,10 @@ def generate_at_a_time_initial_conditions(
     data = next(iter(grid_analysis.data.values()))
     redshifts = np.asarray(data.z)
 
-    output = {"z": redshifts, "pnames": [], "mle_cube": [], "mle": [], "chi2": []}
+    # mle_cube is in the unit cube of parameter_bounds (one mapping per
+    # redshift); readers should use the physical mle
+    output = {"z": redshifts, "pnames": [], "mle_cube": [], "mle": [], "chi2": [],
+              "parameter_bounds": []}
     final_analysis = None
 
     for index, redshift in enumerate(redshifts):
@@ -139,6 +142,10 @@ def generate_at_a_time_initial_conditions(
         if rank == 0:
             output["pnames"].append(list(local_analysis.like.free_param_names))
             output["mle_cube"].append(local_analysis.fitter.mle_cube.copy())
+            output["parameter_bounds"].append({
+                name: [float(par["min_value"]), float(par["max_value"])]
+                for name, par in local_analysis.like.free_params.items()
+            })
             output["mle"].append(dict(local_analysis.fitter.mle))
             output["chi2"].append(local_analysis.fitter.mle_chi2)
             output["otypes"] = parameter_otypes(

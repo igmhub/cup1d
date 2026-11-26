@@ -193,3 +193,5 @@ for label, res in results.items():
     for name, (total, each) in res.items():
         print(f"{name:38s} {total:8.2f} {total - base_total:+7.2f}  "
               + " ".join(f"{d:+6.1f}" for d in each - base_each))
+
+# %%

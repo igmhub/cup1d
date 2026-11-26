@@ -330,3 +330,9 @@ fig.supxlabel(r"$k_\parallel\,[\mathrm{s\,km^{-1}}]$", fontsize=15)
 fig.supylabel(r"$P_\mathrm{smooth}/P_\mathrm{poly} - 1$", fontsize=15)
 fig.tight_layout()
 plt.show()
+
+# %%
+
+# %%
+
+# %%

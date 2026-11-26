@@ -85,7 +85,6 @@ class Plotter(object):
             self.fitter = Analysis(args, out_folder=save_directory).fitter
 
             # add sampler results to fitter
-            self.fitter.mle_cube = data["fitter"]["mle_cube"]
             self.fitter.mle_cosmo = data["fitter"]["mle_cosmo"]
             loaded_mle = {
                 self.fitter.param_dict_rev.get(name, name): value
@@ -95,6 +94,11 @@ class Plotter(object):
                 name: value for name, value in loaded_mle.items()
                 if name in self.fitter.like.free_params
             }
+            # the saved mle_cube is in the unit cube of the run's priors, which
+            # may differ from the current ones: rebuild it from physical values
+            self.fitter.mle_cube = parameter_space.values_to_cube(
+                self.fitter.like.free_params, physical_mle
+            )
             self.fitter.mle = parameter_space.point_from_values(
                 self.fitter.like.free_params, physical_mle
             )
@@ -119,7 +123,18 @@ class Plotter(object):
                     setattr(self.fitter, name, data["fitter"][name])
             if "lnprob" in data["fitter"].keys():
                 self.fitter.lnprob = data["fitter"]["lnprob"]
-                self.fitter.chain = data["fitter"]["chain"]
+                # unit cube of the run's priors -> unit cube of the current ones
+                saved = data["like"]["free_params"]
+                current = self.fitter.like.free_params
+                names = list(data["like"]["free_param_names"])
+                old_low = np.array([saved[n]["min_value"] for n in names])
+                old_width = np.array([saved[n]["max_value"] - saved[n]["min_value"] for n in names])
+                new_low = np.array([current[n]["min_value"] for n in names])
+                new_width = np.array([current[n]["max_value"] - current[n]["min_value"] for n in names])
+                self.fitter.chain = (
+                    np.asarray(data["fitter"]["chain"]) * (old_width / new_width)
+                    + (old_low - new_low) / new_width
+                )
                 self.fitter.blobs = data["fitter"]["blobs"]
         else:
             ValueError("Provide either fitter or fname_chain")

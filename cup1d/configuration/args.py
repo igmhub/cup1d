@@ -192,6 +192,8 @@ class Args:
             defaults, options, verbose=False, warn_unknown=warn_unknown
         )
         config = update_cm2026_derived(config, options)
+        # complete settings before the runtime derivations below, for to_config
+        self._resolved_config = deepcopy(config)
         config = restore_runtime_types(config)
         for name, value in config.items():
             setattr(self, name, value)
@@ -204,6 +206,57 @@ class Args:
         self._set_parameter_nodes()
         self._set_fiducial_values()
         self._set_contaminant_priors()
+
+    # settings derived from the machine, re-derived wherever a configuration is read
+    _MACHINE_KEYS = ("path_ic",)
+
+    def to_config(self):
+        """Return the complete resolved settings as a plain YAML-ready mapping.
+
+        Returns
+        -------
+        dict
+            Every setting (CM2026 defaults merged with the overrides), with
+            NumPy values converted to Python ones and machine-derived paths
+            (:attr:`_MACHINE_KEYS`) left out. :meth:`from_yaml` of this
+            mapping reproduces the same arguments, independently of later
+            changes to the CM2026 defaults.
+        """
+
+        def plain(value):
+            if isinstance(value, dict):
+                return {key: plain(item) for key, item in value.items()}
+            if isinstance(value, (list, tuple)):
+                return [plain(item) for item in value]
+            if isinstance(value, np.ndarray):
+                return plain(value.tolist())
+            if isinstance(value, np.generic):
+                return value.item()
+            return value
+
+        return {key: plain(value) for key, value in self._resolved_config.items()
+                if key not in self._MACHINE_KEYS}
+
+    def write_yaml(self, filename, header=""):
+        """Freeze the complete resolved settings in a YAML file.
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            Output file, readable with :meth:`from_yaml`.
+        header : str, default=""
+            Comment lines written at the top (without ``#``).
+
+        Returns
+        -------
+        pathlib.Path
+        """
+        import yaml
+
+        path = Path(filename).expanduser()
+        comments = "".join(f"# {line}\n" for line in header.splitlines())
+        path.write_text(comments + yaml.safe_dump(self.to_config(), sort_keys=False))
+        return path
 
     def _set_parameter_nodes(self):
         """Construct model redshift nodes from the analysis settings."""

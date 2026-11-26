@@ -24,6 +24,20 @@ def parse_arguments():
         "CM2026 variation name; omitted or 'None' runs the baseline.",
     )
     parser.add_argument(
+        "--stage",
+        choices=("all", "minimize", "sample"),
+        default="all",
+        help="'minimize': only the minimizer (rank 0; run with one task); "
+        "'sample': only emcee, starting from the minimizer result given by "
+        "--results and writing to its folder; 'all' (default): both.",
+    )
+    parser.add_argument(
+        "--results",
+        default=None,
+        help="With --stage sample: minimizer_results.npy, or the chain_N "
+        "folder holding it, written by a --stage minimize run.",
+    )
+    parser.add_argument(
         "--path_out",
         default=None,
         help="Root output directory. Results are written to "
@@ -40,6 +54,11 @@ def main():
     size = comm.Get_size()
 
     arguments = parse_arguments()
+
+    if arguments.stage == "sample":
+        run_sampler_from_results(arguments.results, rank)
+        return
+
     options = {}
     if arguments.path_out is not None:
         # out_folder: null derives the folder structure below path_out
@@ -66,6 +85,41 @@ def main():
         input_pars[name]["value"] = analysis.fitter.value_from_cube(name, value)
 
     analysis.run_minimizer(input_pars, restart=True)
+    if arguments.stage == "minimize":
+        if rank == 0:
+            print(
+                f"Minimizer done: chi2 = {analysis.fitter.mle_chi2:.2f}, "
+                f"results in {analysis.fitter.save_directory}",
+                flush=True,
+            )
+        return
+    analysis.run_sampler()
+
+    if rank == 0:
+        plots_chain(
+            analysis.fitter.save_directory,
+            folder_out=analysis.fitter.save_directory,
+        )
+
+
+def run_sampler_from_results(results, rank):
+    """Run emcee from a saved minimizer result, writing next to it."""
+    if results is None:
+        raise ValueError("--stage sample needs --results")
+    results = Path(results)
+    if results.is_dir():
+        results = results / "minimizer_results.npy"
+    if not results.is_file():
+        raise FileNotFoundError(f"No minimizer result at {results}")
+
+    # the configuration is the one recorded in the result; the sampler starts
+    # at its best fit and saves to the same chain_N folder
+    analysis = Analysis.from_results(results)
+    if rank == 0:
+        print(
+            f"Sampling from {results} (chi2 = {analysis.fitter.mle_chi2:.2f})",
+            flush=True,
+        )
     analysis.run_sampler()
 
     if rank == 0:

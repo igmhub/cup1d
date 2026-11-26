@@ -174,7 +174,7 @@ def plot_correlation_matrix(samples, names=None, threshold=0.35, fontsize=12):
         for j in range(i):
             if abs(matrix[i, j]) > threshold:
                 ax.text(j, i, f"{matrix[i, j]:.2f}", ha="center", va="center",
-                        fontsize=max(fontsize - 7, 4))
+                        fontsize=max(fontsize - 4, 6))
     # group separators
     families = [family_of(name) for name in names]
     for i in range(1, n):
