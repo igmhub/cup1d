@@ -29,7 +29,10 @@ class P1D_Irsic2017(BaseDataP1D):
 
         z, k_kms, Pk_kms, cov_Pk_kms = read_from_file(datadir, add_syst, ignore_zcov)
 
-        super().__init__(z, k_kms, Pk_kms, cov_Pk_kms, z_min=z_min, z_max=z_max)
+        super().__init__(
+            z, k_kms, Pk_kms, cov_Pk_kms, z_min=z_min, z_max=z_max,
+            smooth_source=datadir + "/pk_xs_final.txt",
+        )
 
         return
 

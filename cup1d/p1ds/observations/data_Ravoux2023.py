@@ -28,7 +28,11 @@ class P1D_Ravoux2023(BaseDataP1D):
         # read redshifts, wavenumbers, power spectra and covariance matrices
         z, k, Pk, cov = read_from_file(datadir, velunits)
 
-        super().__init__(z, k, Pk, cov, z_min=z_min, z_max=z_max)
+        super().__init__(
+            z, k, Pk, cov, z_min=z_min, z_max=z_max,
+            smooth_source=datadir
+            + ("/p1d_measurement_kms.txt" if velunits else "/p1d_measurement.txt"),
+        )
 
         return
 

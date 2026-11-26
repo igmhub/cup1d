@@ -148,6 +148,7 @@ class BaseDataP1D(object):
         cov_stat=None,
         k_kms_min=None,
         k_kms_max=None,
+        smooth_source=None,
     ):
         """Initialize a P1D data set and apply its redshift selection.
 
@@ -172,6 +173,12 @@ class BaseDataP1D(object):
             Statistical-only covariance blocks.
         k_kms_min, k_kms_max : sequence of ndarray, optional
             Lower and upper wavenumber-bin edges in ``s / km``.
+        smooth_source : str or path-like, optional
+            Measurement file, only for readers that pass the full measurement
+            (no scale cuts). When given, ``P1Dsmooth_kms`` is computed by
+            :mod:`cup1d.p1ds.smooth_p1d` and cached next to this file. Readers
+            that cut scales compute it themselves before the cut and pass it
+            as ``Pksmooth_kms``.
 
         Raises
         ------
@@ -229,6 +236,16 @@ class BaseDataP1D(object):
         ) = res
 
         self.full_k_ikms = np.concatenate(self.k_ikms)
+        if smooth_source is not None:
+            from cup1d.p1ds.smooth_p1d import smooth_per_redshift
+
+            self.P1Dsmooth_kms = smooth_per_redshift(
+                smooth_source,
+                self.z,
+                self.k_ikms,
+                self.P1D_kms,
+                [np.diag(cov) for cov in self.cov_P1D_kms],
+            )
         for k_ikms, P1D_kms, cov_P1D_kms in zip(
             self.k_ikms, self.P1D_kms, self.cov_P1D_kms
         ):

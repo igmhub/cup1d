@@ -29,7 +29,10 @@ class P1D_PD2013(BaseDataP1D):
         else:
             z, k, Pk, cov = self.read_like_from_file(datadir, add_syst)
 
-        super().__init__(z, k, Pk, cov, z_min=z_min, z_max=z_max)
+        super().__init__(
+            z, k, Pk, cov, z_min=z_min, z_max=z_max,
+            smooth_source=datadir + ("/table4a.dat" if use_FFT else "/table5a.dat"),
+        )
 
         return
 

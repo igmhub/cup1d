@@ -3,6 +3,7 @@ from astropy.io import fits
 import numpy as np
 
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
+from cup1d.p1ds.smooth_p1d import smooth_measurement
 from cup1d.utils.utils import get_path_repo
 
 
@@ -420,17 +421,10 @@ def read_from_file(
     Pk_kms_raw = hdu[iuse].data["PLYA"] * data_bias
     diag_cov_raw = np.diag(cov_raw)
 
-    # smooth Pk, for adding emulator error
-    if type_measurement == "QMLE":
-        Pksmooth_kms_raw = hdu[iuse].data["PSMOOTH"] * data_bias
-    elif type_measurement == "FFT":
-        # We do not have smoothed P1D for FFT, get it from QMLE.
-        # We need to change this in the future, computing our own smooth version
-        # It is only used for the emulator errors, so it is not that important.
-        _ = fits.open(set_p1d_filename(data_label="QMLE"))
-        ksmooth_kms_raw = _[1].data["K"]
-        zsmooth = _[1].data["Z"]
-        Pksmooth_kms_raw = _[1].data["PSMOOTH"] * data_bias
+    # smooth P1D for the emulator error, from the whole measurement (before cuts)
+    Pksmooth_kms_raw = smooth_measurement(
+        p1d_fname, zs_raw, k_kms_raw, Pk_kms_raw, diag_cov_raw
+    )
 
     z_unique = np.unique(zs_raw)
     mask_raw = np.zeros(len(k_kms_raw), dtype=bool)
@@ -468,13 +462,7 @@ def read_from_file(
         _cov = np.array(cov_raw[slice_cov, slice_cov])
         _cov_stat = np.array(cov_stat_raw[slice_cov, slice_cov])
 
-        if type_measurement == "QMLE":
-            _pksmooth = np.array(Pksmooth_kms_raw[mask])
-        elif type_measurement == "FFT":
-            mask2 = zsmooth == z
-            _pksmooth = np.interp(
-                k_kms_raw[mask], ksmooth_kms_raw[mask2], Pksmooth_kms_raw[mask2]
-            )
+        _pksmooth = np.array(Pksmooth_kms_raw[mask])
 
         Pk_kms.append(_pk)
         cov.append(_cov)

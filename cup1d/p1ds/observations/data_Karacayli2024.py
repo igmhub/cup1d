@@ -3,6 +3,7 @@ import pandas
 import numpy as np
 
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
+from cup1d.p1ds.smooth_p1d import smooth_measurement
 
 
 class P1D_Karacayli2024(BaseDataP1D):
@@ -23,9 +24,11 @@ class P1D_Karacayli2024(BaseDataP1D):
         """
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
-        z, k, Pk, cov = read_from_file(diag_cov, kmax_nyq)
+        z, k, Pk, cov, Pksmooth = read_from_file(diag_cov, kmax_nyq)
 
-        super().__init__(z, k, Pk, cov, z_min=z_min, z_max=z_max)
+        super().__init__(
+            z, k, Pk, cov, z_min=z_min, z_max=z_max, Pksmooth_kms=Pksmooth
+        )
 
         return
 
@@ -45,8 +48,10 @@ def read_from_file(diag_cov, kmax_nyq):
     -------
     tuple
         Redshift bins, common wavenumbers in ``s / km``, padded P1D vectors in
-        ``km / s``, and covariance blocks in ``(km / s)**2``.  Padded modes
-        receive zero power and infinite variance for later removal.
+        ``km / s``, covariance blocks in ``(km / s)**2`` and padded smooth
+        P1D (from the whole measurement, :mod:`cup1d.p1ds.smooth_p1d`).
+        Padded modes receive zero power and infinite variance for later
+        removal.
     """
 
     # folder storing P1D measurement
@@ -60,7 +65,7 @@ def read_from_file(diag_cov, kmax_nyq):
     # z k1 k2 kc Pfid ThetaP p_final e_stat p_raw p_noise p_fid_qmle p_smooth
     # e_n_syst e_res_syst e_cont_syst e_dla_syst p_sb1 e_sb1_stat e_total
     data = pandas.read_table(
-        fname, comment="#", names=names, delim_whitespace=True
+        fname, comment="#", names=names, sep=r"\s+"
     ).to_records(index=False)
 
     if diag_cov:
@@ -71,6 +76,11 @@ def read_from_file(diag_cov, kmax_nyq):
         )
         cov_full = np.loadtxt(fname_cov)
 
+    # smooth P1D for the emulator error, from the whole measurement (before cuts)
+    smooth_full = smooth_measurement(
+        fname, data["z"], data["kc"], data["p_final"], np.diag(cov_full)
+    )
+
     zbins = np.unique(data["z"])
     kbins = np.unique(data["kc"])
     Nk = kbins.size
@@ -78,6 +88,7 @@ def read_from_file(diag_cov, kmax_nyq):
 
     print("Nz = {} , Nk = {}".format(Nz, Nk))
     Pk = []
+    Pksmooth = []
     cov = []
     for iz in range(Nz):
         z = zbins[iz]
@@ -91,6 +102,9 @@ def read_from_file(diag_cov, kmax_nyq):
         _nk = w.sum()
         tmp_d[:_nk] = data["p_final"][w]
         Pk.append(tmp_d)
+        tmp_s = np.zeros(Nk)
+        tmp_s[:_nk] = smooth_full[w]
+        Pksmooth.append(tmp_s)
 
         tmp_cov = np.zeros((Nk, Nk))
         # Fill non-existing k bins with inf
@@ -99,4 +113,4 @@ def read_from_file(diag_cov, kmax_nyq):
         tmp_cov[:_nk, :_nk] = cov_full[w, :][:, w]
         cov.append(tmp_cov)
 
-    return zbins, kbins, Pk, cov
+    return zbins, kbins, Pk, cov, Pksmooth

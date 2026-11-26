@@ -1,6 +1,7 @@
 import numpy as np
 
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
+from cup1d.p1ds.smooth_p1d import smooth_measurement
 
 
 class P1D_Karacayli2022(BaseDataP1D):
@@ -93,6 +94,15 @@ def read_from_file(kmax_kms):
     )
     cov_stat_raw = cov_raw
 
+    # smooth P1D for the emulator error, from the whole measurement (before cuts)
+    Pksmooth_kms_raw = smooth_measurement(
+        datadir + "final-conservative-p1d-karacayli_etal2021.txt",
+        zs_raw,
+        k_kms_raw,
+        Pk_kms_raw,
+        np.diag(cov_raw),
+    )
+
     zs = []
     k_kms = []
     k_kms_min = []
@@ -119,8 +129,7 @@ def read_from_file(kmax_kms):
         _cov = np.array(cov_raw[slice_cov, slice_cov])
         _cov_stat = np.array(cov_stat_raw[slice_cov, slice_cov])
 
-        # TBD (smooth pk)
-        _pksmooth = np.array(_pk)
+        _pksmooth = np.array(Pksmooth_kms_raw[mask])
 
         Pk_kms.append(_pk)
         cov.append(_cov)

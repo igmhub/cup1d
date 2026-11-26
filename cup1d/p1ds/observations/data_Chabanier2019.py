@@ -47,6 +47,7 @@ class P1D_Chabanier2019(BaseDataP1D):
             full_zs=full_zs,
             full_Pk_kms=full_Pk_kms,
             full_cov_kms=full_cov_kms,
+            smooth_source=BaseDataP1D.BASEDIR + "/Chabanier2019/Pk1D_data.dat",
         )
 
         return

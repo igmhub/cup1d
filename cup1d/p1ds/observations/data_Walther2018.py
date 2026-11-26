@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.linalg import block_diag
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
+from cup1d.p1ds.smooth_p1d import smooth_measurement
 
 
 class P1D_Walther2018(BaseDataP1D):
@@ -112,6 +113,11 @@ def read_from_file(kmax_kms, diag_cov=True):
     Pk_kms_raw = inkPk / k_kms_raw * np.pi
     err_Pk_kms_raw = inkPkstat / k_kms_raw * np.pi
 
+    # smooth P1D for the emulator error, from the whole measurement (before cuts)
+    Pksmooth_kms_raw = smooth_measurement(
+        p1d_file, zs_raw, k_kms_raw, Pk_kms_raw, err_Pk_kms_raw**2
+    )
+
     zs = []
     k_kms = []
     k_kms_min = []
@@ -149,8 +155,7 @@ def read_from_file(kmax_kms, diag_cov=True):
             _cov = np.multiply(_err_Pk, np.multiply(corr, _err_Pk))
         _cov_stat = _cov
 
-        # TBD (smooth pk)
-        _pksmooth = np.array(_pk)
+        _pksmooth = np.array(Pksmooth_kms_raw[mask])
 
         Pk_kms.append(_pk)
         cov.append(_cov)
