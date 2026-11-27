@@ -1,6 +1,6 @@
-import numpy as np
 from cup1d.models.contaminants.base_contaminants import Contaminant
-from cup1d.models.contaminants.HCD.hcd_model_rogers_class import apply_null, null_value
+from cup1d.models.contaminants.HCD.hcd_model_rogers_class import null_value
+from cup1d.utils.batch import as_redshift_rows, unbatch
 
 
 def fun_cont(damp, k):
@@ -105,67 +105,25 @@ class HCD_BOSS(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, like_params=None):
-        """Evaluate scalar-point HCD multiplicative corrections.
+        """BOSS-like HCD multiplicative correction on velocity k grids.
 
         Parameters
         ----------
         z : array-like
-            Redshifts matching ``k_kms`` rows.
-        k_kms : sequence of array-like
-            Wavenumber rows in s/km.
+            Redshifts.
+        k_kms : sequence of ndarray
+            Per-redshift wavenumbers in s/km.
         like_params : mapping, optional
-            Coefficient overrides in likelihood parameterization.
-
-        Returns
-        -------
-        list of ndarray or ndarray
-            One correction row per redshift, or the row itself for one
-            redshift.
-        """
-
-        vals = {}
-        for key in self.list_coeffs:
-            vals[key] = np.atleast_1d(
-                self.get_value(key, z, like_params=like_params)
-            )
-            vals[key] = apply_null(
-                vals[key], self.null_vals.get(key), self.prop_coeffs[key + "_otype"]
-            )
-        # print(vals)
-
-        dla_corr = []
-        for iz in range(len(z)):
-            cont = fun_cont(vals[f"HCD_damp1"][iz], k_kms[iz])
-            dla_corr.append(cont)
-
-        if len(z) == 1:
-            dla_corr = dla_corr[0]
-
-        return dla_corr
-
-    def get_contamination_batch(self, z, k_kms, like_params):
-        """Evaluate batched HCD corrections.
-
-        Parameters
-        ----------
-        z : array-like
-            Redshifts matching ``k_kms`` rows.
-        k_kms : sequence of array-like
-            Wavenumber rows in s/km.
-        like_params : mapping
-            Columnar parameter values with a leading batch dimension.
+            Scalar values (one point) or columns of shape ``(n_batch,)``.
 
         Returns
         -------
         list of ndarray
-            One array per redshift with shape ``(n_batch, n_k)``.
+            One array per redshift: ``(n_k,)`` for one point,
+            ``(n_batch, n_k)`` for a batch.
         """
-        z = np.atleast_1d(np.asarray(z, dtype=float))
-        values = self.get_value_batch("HCD_damp1", z, like_params)
-        values = apply_null(
-            values, self.null_vals.get("HCD_damp1"), self.prop_coeffs["HCD_damp1_otype"]
-        )
-        return [
-            fun_cont(values[:, iz, None], np.asarray(k_kms[iz])[None, :])
-            for iz in range(len(z))
-        ]
+        z, k_kms = as_redshift_rows(z, k_kms)
+        values, scalar = self.histories(z, like_params, null="exp")
+        output = [fun_cont(values["HCD_damp1"][:, iz, None], k_kms[iz][None, :]) for iz in range(len(z))]
+        return unbatch(output, scalar)
+

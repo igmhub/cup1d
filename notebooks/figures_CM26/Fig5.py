@@ -28,13 +28,11 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.rcParams['savefig.dpi'] = 120
 mpl.rcParams['figure.dpi'] = 120
-from cup1d.models.contaminants import si_add, si_mult
+from cup1d.models.contaminants.metals import si_add, si_mult
+from cup1d.postprocessing.io import save_figure_data
+from cup1d.postprocessing.style import apply_house_style
 
-
-from matplotlib import rcParams
-
-rcParams["mathtext.fontset"] = "stix"
-rcParams["font.family"] = "STIXGeneral"
+apply_house_style()
 
 # %% [markdown]
 # ### dv all metals
@@ -195,11 +193,7 @@ plt.tight_layout()
 # plt.savefig("figs/metal_contamination.pdf")
 
 # %%
-import cup1d, os
-
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_5.npy")
-np.save(fname, out_data)
+save_figure_data(out_data, "fig_5.npy")
 
 # %%
 
@@ -213,14 +207,3 @@ for val in vals:
 
 # %%
 1/90
-
-# %%
-
- '$f^\\mathrm{HCD}_{{\\rm LLS}_0}$': -1.26972353839923,
- '$f^\\mathrm{HCD}_{{\\rm LLS}_1}$': -1.2399946104079138,
- '$f^\\mathrm{HCD}_{{\\rm sub-DLA}_0}$': -9.167807803887731,
- '$f^\\mathrm{HCD}_{{\\rm sub-DLA}_1}$': -3.114029121360594,
- '$f^\\mathrm{HCD}_{{\\rm small DLA}_0}$': -5.115888890687746,
- '$f^\\mathrm{HCD}_{{\\rm small DLA}_1}$': -5.530119419372345,
- '$f^\\mathrm{HCD}_{{\\rm large DLA}_0}$': -4.688801235071705,
- '$f^\\mathrm{HCD}_{{\\rm large DLA}_1}$': -4.502944905689939,

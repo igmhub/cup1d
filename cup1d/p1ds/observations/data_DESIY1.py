@@ -5,6 +5,7 @@ import numpy as np
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
 from cup1d.p1ds.smooth_p1d import smooth_measurement
 from cup1d.utils.utils import get_path_repo
+from cup1d.utils.warn_once import warn_once
 
 
 def set_p1d_filename(data_label="QMLE3"):
@@ -57,7 +58,7 @@ def set_p1d_filename(data_label="QMLE3"):
     return p1d_fname
 
 
-def compute_cov(syst, type_measurement="QMLE", type_analysis="red", variation=None):
+def compute_cov(syst, type_measurement="QMLE", type_analysis="red"):
     """Build the systematic covariance selected for a DESI P1D analysis.
 
     Parameters
@@ -67,11 +68,9 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red", variation=No
         columns.  Each error column is in the same units as P1D, ``km / s``.
     type_measurement : {"QMLE", "FFT"}, default: "QMLE"
         P1D estimator that determines the available systematic components.
-    type_analysis : {"fid", "red", "xred"}, default: "red"
-        Systematic model: fully correlated, reduced, or extended-reduced.
-    variation : str, optional
-        ``"data_syst_diag"`` moves selected systematic components to the
-        covariance diagonal.
+    type_analysis : {"fid", "red", "red_diag", "xred"}, default: "red"
+        Systematic model: fully correlated, reduced, reduced with selected
+        components moved to the covariance diagonal, or extended-reduced.
 
     Returns
     -------
@@ -79,6 +78,9 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red", variation=No
         Systematic covariance with shape ``(ndata, ndata)`` and units
         ``(km / s)**2``; None for an unsupported measurement type.
     """
+    diag = type_analysis == "red_diag"
+    if diag:
+        type_analysis = "red"
     if type_measurement == "QMLE":
         sys_labels = [
             "E_DLA_COMPLETENESS",
@@ -103,7 +105,7 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red", variation=No
                 "E_CONTINUUM_ADD",
             ]
         elif type_analysis == "red":
-            if (variation is not None) and (variation == "data_syst_diag"):
+            if diag:
                 sys_labels_corr = [
                     # "E_DLA_COMPLETENESS",
                     # "E_BAL_COMPLETENESS",
@@ -168,7 +170,7 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red", variation=No
             ]
             sys_labels_ucorr = []
         elif (type_analysis == "red") | (type_analysis == "xred"):
-            if (variation is not None) and (variation == "data_syst_diag"):
+            if diag:
                 sys_labels_corr = [
                     # "E_PSF",
                     # # "E_RESOLUTION",
@@ -213,10 +215,8 @@ def compute_cov(syst, type_measurement="QMLE", type_analysis="red", variation=No
     cov = np.zeros((nelem, nelem))
     ind_diag = np.diag_indices_from(cov)
     for lab in sys_labels:
-        try:
-            _ = syst[lab]
-        except:
-            print(lab, " not in syst")
+        if lab not in syst.dtype.names:
+            warn_once(f"systematic {lab} not in {type_measurement} file", key=("syst", lab))
             continue
         if lab in sys_labels_ucorr:
             cov[ind_diag] += syst[lab] ** 2
@@ -239,7 +239,6 @@ class P1D_DESIY1(BaseDataP1D):
         cov_syst_type="red",
         p1d_fname=None,
         cov_fname=None,
-        variation=None,
         data_bias=1.0,
     ):
         """Load a DESI DR1 velocity-space P1D measurement.
@@ -250,14 +249,12 @@ class P1D_DESIY1(BaseDataP1D):
             DESI estimator label used to choose the default FITS product.
         z_min, z_max : float, default: 0, 10
             Inclusive redshift interval retained after reading.
-        cov_syst_type : {"fid", "red", "xred"}, default: "red"
+        cov_syst_type : {"fid", "red", "red_diag", "xred"}, default: "red"
             Prescription used to combine systematic covariance components.
         p1d_fname, cov_fname : str or path-like, optional
             Measurement and covariance FITS files.  ``cov_fname`` defaults to
-            the measurement file.
-        variation : str, optional
-            Named data-systematic variation, including ``"DLA_TAN"`` and
-            ``"data_syst_diag"``.
+            the measurement file; ``"default"`` selects the standard file of
+            ``data_label`` (a measurement variation with the baseline errors).
         data_bias : float, default: 1
             Multiplicative correction applied to P1D and consistently squared
             in the statistical covariance.
@@ -268,7 +265,7 @@ class P1D_DESIY1(BaseDataP1D):
         else:
             print("Reading P1D measurements from", p1d_fname)
 
-        if variation == "DLA_TAN":
+        if cov_fname == "default":
             cov_fname = set_p1d_filename(data_label=data_label)
 
         # read redshifts, wavenumbers, power spectra and covariance matrices
@@ -276,7 +273,6 @@ class P1D_DESIY1(BaseDataP1D):
             p1d_fname=p1d_fname,
             cov_fname=cov_fname,
             cov_syst_type=cov_syst_type,
-            variation=variation,
             data_bias=data_bias,
         )
         (
@@ -322,7 +318,6 @@ def read_from_file(
     nknyq=0.5,
     max_cov=1e3,
     cov_syst_type="red",
-    variation=None,
     data_bias=1.0,
 ):
     """Read and quality-filter a DESI DR1 P1D FITS data product.
@@ -341,8 +336,8 @@ def read_from_file(
     max_cov : float, default: 1e3
         Strict upper cut on retained covariance diagonal values in
         ``(km / s)**2``.
-    cov_syst_type, variation : str, optional
-        Options forwarded to :func:`compute_cov`.
+    cov_syst_type : str, optional
+        Systematic model forwarded to :func:`compute_cov`.
     data_bias : float, default: 1
         Multiplicative P1D correction; covariance scales as its square.
 
@@ -365,15 +360,15 @@ def read_from_file(
     # folder storing P1D measurement
     try:
         hdu = fits.open(p1d_fname)
-    except:
-        raise ValueError("Cannot read: ", p1d_fname)
+    except OSError as error:
+        raise ValueError(f"Cannot read {p1d_fname}") from error
 
     # folder storing P1D cov measurement, typically in the P1D measurement file
     if cov_fname is not None:
         try:
             hdu_cov = fits.open(cov_fname)
-        except:
-            raise ValueError("Cannot read: ", cov_fname)
+        except OSError as error:
+            raise ValueError(f"Cannot read {cov_fname}") from error
     else:
         hdu_cov = hdu
 
@@ -410,8 +405,10 @@ def read_from_file(
         hdu_cov[dict_with_keys["SYSTEMATICS"]].data,
         type_measurement=type_measurement,
         type_analysis=cov_syst_type,
-        variation=variation,
     )
+    # data_bias rescales the measurement: every error scales with it, so the
+    # relative statistical and systematic errors are unchanged
+    cov_syst_raw = cov_syst_raw * data_bias**2
     cov_raw = cov_stat_raw + cov_syst_raw
 
     zs_raw = hdu[iuse].data["Z"]
@@ -452,15 +449,16 @@ def read_from_file(
         )[:, 0]
         mask_raw[mask] = True
 
-        slice_cov = slice(mask[0], mask[-1] + 1)
+        # np.ix_: exact for any mask, also a non-contiguous one
+        block = np.ix_(mask, mask)
         k_kms.append(np.array(k_kms_raw[mask]))
         k_kms_min.append(np.array(k_kms_min_raw[mask]))
         k_kms_max.append(np.array(k_kms_max_raw[mask]))
 
         # add emulator error
         _pk = np.array(Pk_kms_raw[mask])
-        _cov = np.array(cov_raw[slice_cov, slice_cov])
-        _cov_stat = np.array(cov_stat_raw[slice_cov, slice_cov])
+        _cov = np.array(cov_raw[block])
+        _cov_stat = np.array(cov_stat_raw[block])
 
         _pksmooth = np.array(Pksmooth_kms_raw[mask])
 

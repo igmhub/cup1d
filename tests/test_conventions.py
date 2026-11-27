@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from types import SimpleNamespace
 
-from cup1d.conventions import canonicalize_unit_keys, validate_p1d_contract
+from cup1d.conventions import validate_p1d_contract
 from cup1d.p1ds.base_p1d_data import BaseDataP1D
 from cup1d.inference.fitter import Fitter
 from cup1d.likelihood.likelihood import Likelihood
@@ -10,12 +10,6 @@ from cup1d.likelihood import parameter
 from cup1d.utils.rebinning import Rebinning
 from cup1d.utils.blinding import apply_blinding, apply_unblinding
 from cup1d.utils.various_dicts import get_blob_value, get_blob_values
-
-
-def test_legacy_keys_are_canonicalized():
-    values = canonicalize_unit_keys({"k_kms": 1, "Pk_kms": 2})
-    assert values["k_ikms"] == 1
-    assert values["P1D_kms"] == 2
 
 
 def test_p1d_array_contract():
@@ -124,7 +118,7 @@ def test_rebinning_batch_matches_scalar_for_ragged_k_grids():
         np.array([[1.0, 2.0, 4.0], [4.0, 5.0, 7.0]]),
         np.array([[3.0, 3.0], [6.0, 6.0]]),
     ]
-    batched = rebin.rebinning_batch("data", batched_input)
+    batched = rebin.rebinning("data", batched_input)
     expected = [
         np.asarray([rebin.rebinning("data", [row[0], row[1]])[0] for row in scalar]),
         np.asarray([rebin.rebinning("data", [row[0], row[1]])[1] for row in scalar]),
@@ -145,12 +139,12 @@ def test_identity_rebinning_preserves_the_native_grid_and_spectral_shape():
         rebin.rebinning("data", [spectrum])[0], spectrum
     )
     np.testing.assert_array_equal(
-        rebin.rebinning_batch("data", [spectrum[None, :]])[0], spectrum[None, :]
+        rebin.rebinning("data", [spectrum[None, :]])[0], spectrum[None, :]
     )
 
 
 def test_emulator_grid_spans_rebinning_grid_and_interpolates_smooth_p1d():
-    from cup1d.theory.theory import interpolate_p1d
+    from cup1d.theory.projection import interpolate_p1d
 
     k_kms = np.linspace(0.002, 0.03, 20)
     data = SimpleNamespace(

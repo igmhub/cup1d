@@ -29,6 +29,7 @@ _CONFIG_GROUPS = (
             "shared_k_grid",
             "kmax_ikms",
             "p1d_fname",
+            "p1d_cov_fname",
             "path_data",
         ),
     ),
@@ -41,12 +42,11 @@ _CONFIG_GROUPS = (
             "true_syst",
             "apply_smoothing",
             "synth_cov_label",
-            "cov_label_hires",
             "add_noise",
             "seed_noise",
         ),
     ),
-    ("Emulator", ("emulator_label", "drop_emu_sim")),
+    ("Emulator", ("emulator_label",)),
     (
         "Cosmology",
         ("fid_cosmo_label", "z_star", "kp_kms", "fix_cosmo", "vary_alphas"),
@@ -55,7 +55,7 @@ _CONFIG_GROUPS = (
     ("Contamination model", ("fid_cont",)),
     ("Instrumental systematics", ("fid_syst", "syst_data_labels", "ic_correction")),
     ("Covariance", ("cov_syst_type", "emu_cov_type", "covariance_method", "cov_factor")),
-    ("Priors", ("use_star_priors", "prior_Gauss_rms", "Gauss_priors", "cosmo_prior_nsigma")),
+    ("Priors", ("use_star_priors", "prior_Gauss_rms", "cont_log_amp_min", "Gauss_priors", "cosmo_prior_nsigma", "use_hull", "hull_margin", "hull_reject")),
     (
         "Inference",
         (
@@ -74,7 +74,6 @@ _CONFIG_GROUPS = (
             "system",
             "verbose",
             "name_variation",
-            "pre_defined",
         ),
     ),
 )

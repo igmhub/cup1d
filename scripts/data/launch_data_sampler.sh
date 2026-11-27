@@ -60,7 +60,7 @@ variations=(
     # "kF_kms"
     ################
     # "configs/tan2026/DESIY1_FFT3_dir_DLA_TAN.yaml"
-    "configs/desi_dr1_tests/cm2026_base_forestmpggp.yaml"
+    "configs/cm2026/cm2026_base_forestmpggp.yaml"
 )
 
 source $HOME/miniconda3/bin/activate lace

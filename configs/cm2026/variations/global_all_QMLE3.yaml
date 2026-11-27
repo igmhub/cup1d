@@ -6,7 +6,6 @@ fix_cosmo: true
 fit_type: global_all
 file_ic: DESIY1_QMLE3_lace_mpg_ic_at_a_time.npy
 out_folder: ./DESIY1_QMLE3/global_all/CH24_mpgcen_gpr
-pre_defined: null
 fid_igm:
   n_tau_eff: 11
   n_sigT_kms: 11

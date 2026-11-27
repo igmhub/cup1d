@@ -7,10 +7,14 @@ import time
 from scipy.optimize import minimize
 from threadpoolctl import threadpool_limits
 import numpy as np
+from cup1d.utils.provenance import code_versions
+from cup1d.utils.warn_once import warn_once
+from cup1d.inference.minimize import nelder_mead_restarts
+from lace.cosmo.parameters import COSMOLOGY_PARAMETERS
 from mpi4py import MPI
 
 from cup1d.utils import blinding
-from cup1d.utils.compute_hessian import get_hessian, get_hessian_rows
+from cup1d.inference.compute_hessian import get_hessian, get_hessian_rows
 from cup1d.likelihood import parameter as parameter_space
 
 # our own modules
@@ -23,20 +27,6 @@ from cup1d.utils.various_dicts import (
     blob_strings,
     blob_strings_orig,
 )
-
-
-def _configure_pyswarms_logging():
-    """Point PySwarms at cup1d's logging configuration.
-
-    Notes
-    -----
-    Sets the process environment variable ``LOG_CFG`` to the packaged YAML
-    file.  PySwarms reads that variable when it is subsequently imported or
-    configured, avoiding its default ``report.log`` handler.
-    """
-
-    config_path = Path(__file__).resolve().parents[1] / "utils" / "pyswarms_logging.yaml"
-    os.environ["LOG_CFG"] = str(config_path)
 
 
 def default_n_threads(n_free=2):
@@ -114,27 +104,76 @@ def _limited_threads(function=None, default=None):
     return wrapped
 
 
-_NAUTILUS_WORKER_LIMITS = None
+def sampler_diagnostics(chain, acceptance, ensembles=1, names=None):
+    """Convergence diagnostics of an emcee chain.
 
+    Parameters
+    ----------
+    chain : ndarray, shape (n_steps, n_walkers, n_dim)
+        Post-burn-in chain.
+    acceptance : ndarray, shape (n_walkers,)
+        Acceptance fraction of every walker.
+    ensembles : int, default=1
+        Number of independent ensembles, in consecutive blocks of walkers;
+        with more than one, the Gelman--Rubin R of every parameter between
+        ensembles.
+    names : sequence of str, optional
+        Parameter names.
 
-def _single_thread_in_forked_worker(parent_pid):
-    """Limit numerical threads to one in a forked Nautilus worker.
-
-    Thread pools of OpenMP/BLAS (and torch) do not survive ``fork``: a worker
-    that enters a multithreaded region inherited from the parent can block
-    forever. Called at the start of every likelihood evaluation; the first
-    call in a worker process sets one thread for the rest of its life.
+    Returns
+    -------
+    dict
+        ``tau`` (integrated autocorrelation time per parameter, in steps),
+        ``steps_over_tau`` (chain length over the largest tau; emcee advises
+        at least 50), ``acceptance_mean``/``acceptance_min`` and, for several
+        ensembles, ``r_minus_one`` per parameter.
     """
-    global _NAUTILUS_WORKER_LIMITS
-    if _NAUTILUS_WORKER_LIMITS is not None or os.getpid() == parent_pid:
-        return
-    import sys
+    import emcee
 
-    _NAUTILUS_WORKER_LIMITS = threadpool_limits(limits=1)
-    torch = sys.modules.get("torch")
-    if torch is not None:
-        torch.set_num_threads(1)
+    chain = np.asarray(chain)
+    n_steps = chain.shape[0]
+    names = list(names) if names is not None else [str(i) for i in range(chain.shape[-1])]
+    if n_steps < 2:
+        tau = np.full(chain.shape[-1], np.nan)
+    else:
+        tau = np.asarray(emcee.autocorr.integrated_time(chain, quiet=True), dtype=float)
+    out = {
+        "names": names,
+        "n_steps": int(n_steps),
+        "tau": tau,
+        "steps_over_tau": float(n_steps / np.nanmax(tau)) if np.any(np.isfinite(tau)) else np.nan,
+        "acceptance_mean": float(np.mean(acceptance)),
+        "acceptance_min": float(np.min(acceptance)),
+    }
+    if ensembles > 1:
+        blocks = np.array_split(chain, ensembles, axis=1)
+        # each ensemble pooled over walkers and steps
+        means = np.array([b.reshape(-1, chain.shape[-1]).mean(axis=0) for b in blocks])
+        variances = np.array([b.reshape(-1, chain.shape[-1]).var(axis=0, ddof=1) for b in blocks])
+        n = blocks[0].shape[0] * blocks[0].shape[1]
+        within = variances.mean(axis=0)
+        between = n * means.var(axis=0, ddof=1)
+        out["r_minus_one"] = np.sqrt(((n - 1) / n * within + between / n) / within) - 1
+    return out
 
+
+def format_sampler_diagnostics(diagnostics):
+    """One-paragraph summary of :func:`sampler_diagnostics`."""
+    tau = diagnostics["tau"]
+    if not np.any(np.isfinite(tau)):
+        return f"emcee: {diagnostics['n_steps']} stored steps, too few for diagnostics"
+    worst = diagnostics["names"][int(np.nanargmax(tau))]
+    text = (f"emcee: {diagnostics['n_steps']} steps, largest autocorrelation time "
+            f"{np.nanmax(tau):.0f} steps ({worst}), steps/tau = {diagnostics['steps_over_tau']:.1f} "
+            f"(advised > 50); acceptance mean {diagnostics['acceptance_mean']:.2f}, "
+            f"min {diagnostics['acceptance_min']:.2f}")
+    if "hull_rejected_fraction" in diagnostics:
+        text += f"; {100 * diagnostics['hull_rejected_fraction']:.1f}% of the points outside the training hull"
+    if "r_minus_one" in diagnostics:
+        r = diagnostics["r_minus_one"]
+        text += (f"; R-1 between ensembles max {np.nanmax(r):.3f} "
+                 f"({diagnostics['names'][int(np.nanargmax(r))]})")
+    return text
 
 class Fitter(object):
     """Manage optimization, sampling, persistence, and derived fit products.
@@ -160,6 +199,10 @@ class Fitter(object):
         fix_cosmology=False,
         random_seed=None,
         create_output=True,
+        walkers_per_parameter=None,
+        mpi_ensemble="single",
+        backend=True,
+        resume=True,
     ):
         """Initialize fitting state for a likelihood and sampling schedule.
 
@@ -169,8 +212,9 @@ class Fitter(object):
             Likelihood whose free parameters, prediction, and posterior are
             evaluated by this fitter.
         nwalkers : int, default=1
-            Requested emcee walkers.  It is raised to ``2 * ndim + 1`` when
-            necessary for the number of free parameters.
+            Requested emcee walkers, ignored when ``walkers_per_parameter`` is
+            given.  Raised to ``2 * ndim + 1`` (with a message) when fewer,
+            the minimum of emcee's stretch move.
         nsteps, nburn : int, default=1, 0
             Production and burn-in steps per walker.
         thin : int, default=1
@@ -193,6 +237,11 @@ class Fitter(object):
         create_output : bool, default=True
             Create the output directory on rank zero.  Disable when restoring
             an existing result.
+        walkers_per_parameter : int, optional
+            Walkers per free parameter: ``nwalkers = walkers_per_parameter *
+            ndim`` (the configuration's ``mcmc.n_walkers``).
+        mpi_ensemble, backend, resume
+            Defaults of :meth:`run_sampler`.
         """
 
         self.parallel = parallel
@@ -225,10 +274,18 @@ class Fitter(object):
         self.nsteps = nsteps
         self.ndim = len(self.like.free_params)
 
-        if nwalkers < 2 * self.ndim:
-            self.nwalkers = 2 * self.ndim + 1
-        else:
-            self.nwalkers = nwalkers
+        if walkers_per_parameter is not None:
+            nwalkers = int(walkers_per_parameter) * self.ndim
+        if nwalkers < 2 * self.ndim + 1:
+            if walkers_per_parameter is not None or nwalkers > 1:
+                self.print(f"{nwalkers} walkers are too few for {self.ndim} parameters: "
+                           f"using {2 * self.ndim + 1} (the emcee minimum)")
+            nwalkers = 2 * self.ndim + 1
+        self.nwalkers = nwalkers
+        self.mpi_ensemble = mpi_ensemble
+        self.backend = backend
+        self.resume = resume
+        self.sampler_diagnostics = None
 
         if self.rank == 0:
             if create_output:
@@ -305,6 +362,46 @@ class Fitter(object):
         """
 
         return copy.deepcopy(self.like.free_params)
+
+    def initial_parameters_from_results(self, result_path):
+        """Initial parameter definitions at the best fit of a saved result.
+
+        The saved unit-cube best fit is mapped to the current priors and
+        otypes (as :meth:`restore_results`); parameters the result does not
+        have keep their current initial value.
+
+        Parameters
+        ----------
+        result_path : str or path-like
+            ``minimizer_results.npy`` or ``sampler_results.npy`` of an
+            earlier fit with the same configuration.
+
+        Returns
+        -------
+        dict
+            As :meth:`initial_parameters`.
+        """
+        payload = np.load(result_path, allow_pickle=True).item()
+        saved_names = list(payload.get("parameter_names") or [])
+        cube = np.asarray(payload["fit"]["mle_cube"], dtype=float)
+        names = list(self.like.free_param_names)
+        pars = self.initial_parameters()
+        if saved_names == names:
+            conversions = self._otype_conversions(payload)
+            changed = self._changed_parameters(payload, conversions)
+            cube = self._convert_saved_cube(cube, payload, conversions, changed, clip=True)
+            for name, value in self.parameters_from_sampling_point(cube).items():
+                pars[name]["value"] = value
+            return pars
+        # another parameter set: copy the common ones through their saved bounds
+        bounds = payload.get("parameter_bounds") or {}
+        for ind, name in enumerate(saved_names):
+            if name in pars and name in bounds:
+                low, high = bounds[name]
+                value = low + cube[ind] * (high - low)
+                pars[name]["value"] = float(np.clip(
+                    value, pars[name]["min_value"], pars[name]["max_value"]))
+        return pars
 
     def _cube_from_point(self, point=None):
         """Convert named physical values to unit-cube optimizer coordinates.
@@ -524,6 +621,19 @@ class Fitter(object):
             self.param_dict.get(name, name): value for name, value in self.truth.items()
         }
 
+    def training_hull_report(self, cube):
+        """Text: whether the emulator inputs at ``cube`` are inside the training hull."""
+        like = self.like
+        if not like.theory.use_hull:
+            return "training hull: not checked (use_hull: false)"
+        like._emulator_inputs_per_dataset(self.parameters_from_sampling_point(cube))
+        z_union = like._union_emulator_grid()[0]
+        violations = like.theory.hull_violations(z_union, like._union_emulator_call)
+        if not violations:
+            return "training hull: the emulator inputs are inside"
+        pairs = "; ".join(f"{a}-{b} at z = {', '.join(map(str, z))}" for a, b, z in violations)
+        return f"training hull: OUTSIDE (the emulator extrapolates) in {pairs}"
+
     def near_prior_bounds(self, cube=None, fraction=0.02, text=False):
         """Parameters close to a flat-prior edge at a point (default: the MLE).
 
@@ -663,7 +773,7 @@ class Fitter(object):
         self,
         hessian_step=1.0e-4,
         zmask=None,
-        method="finite_difference",
+        method="gauss_newton",
         flat_prior_curvature=True,
     ):
         """Estimate local MLE errors from the negative-log-posterior Hessian.
@@ -674,7 +784,7 @@ class Fitter(object):
             Finite-difference displacement used for curvature derivatives.
         zmask : array-like, optional
             Redshifts retained in likelihood and Gauss--Newton calculations.
-        method : {'finite_difference', 'gauss_newton', 'hybrid'}, default='finite_difference'
+        method : {'finite_difference', 'gauss_newton', 'hybrid'}, default='gauss_newton'
             Curvature estimator.  ``'hybrid'`` replaces cosmology rows of the
             Gauss--Newton matrix with finite-difference rows.
         flat_prior_curvature : bool, default=True
@@ -720,9 +830,7 @@ class Fitter(object):
             hessian = self._gauss_newton_hessian(hessian_step, zmask=zmask)
         elif method == "hybrid":
             hessian = self._gauss_newton_hessian(hessian_step, zmask=zmask)
-            cosmology_names = set(
-                self.like.theory.fid_cosmo["cosmo"].input_cosmo_params_dict
-            )
+            cosmology_names = set(COSMOLOGY_PARAMETERS)
             indices = [
                 index
                 for index, name in enumerate(self.like.free_params)
@@ -800,33 +908,25 @@ class Fitter(object):
             parameters = self.parameters_from_sampling_point(point)
             return np.asarray(self.like.theory.get_star_params_for_parameters(parameters))
 
+        from cup1d.inference.curvature import difference_step
+
         central_star = star_parameters(self.mle_cube)
         jacobian = np.zeros((3, self.ndim))
-        cosmology_names = set(
-            self.like.theory.fid_cosmo["cosmo"].input_cosmo_params_dict
-        )
+        cosmology_names = set(COSMOLOGY_PARAMETERS)
         for index, name in enumerate(self.like.free_params):
             if name not in cosmology_names:
                 continue
-            step = min(hessian_step, self.mle_cube[index], 1.0 - self.mle_cube[index])
+            step = difference_step(self.mle_cube[index], hessian_step)
             direction = np.zeros(self.ndim)
-            if step > 0:
-                direction[index] = step
+            direction[index] = step
+            if step == hessian_step and self.mle_cube[index] - step >= 0.0:
                 jacobian[:, index] = (
                     star_parameters(self.mle_cube + direction)
                     - star_parameters(self.mle_cube - direction)
                 ) / (2 * step)
-            elif self.mle_cube[index] < 1.0:
-                step = min(hessian_step, 1.0 - self.mle_cube[index])
-                direction[index] = step
+            else:
                 jacobian[:, index] = (
                     star_parameters(self.mle_cube + direction) - central_star
-                ) / step
-            else:
-                step = min(hessian_step, self.mle_cube[index])
-                direction[index] = step
-                jacobian[:, index] = (
-                    central_star - star_parameters(self.mle_cube - direction)
                 ) / step
 
         # Null nuisance modes are handled by the pseudoinverse above. Their
@@ -1016,11 +1116,12 @@ class Fitter(object):
         pini=None,
         log_func=None,
         zmask=None,
-        timeout=None,
-        force_timeout=False,
         vectorize=None,
+        mpi_ensemble=None,
+        backend=None,
+        resume=None,
     ):
-        """Run emcee burn-in and production chains from an initial point.
+        """Run emcee burn-in and production steps from an initial point.
 
         Parameters
         ----------
@@ -1032,23 +1133,30 @@ class Fitter(object):
             the built-in batched-likelihood selection.
         zmask : array-like, optional
             Redshifts forwarded to the selected log-probability callable.
-        timeout : float, optional
-            Retained compatibility option; it is not used by this sampler.
-        force_timeout : bool, default=False
-            Retained compatibility option; it is not used by this sampler.
         vectorize : bool, optional
             Batch the default likelihood across walkers.  When omitted, use
             vectorization except for emulator labels containing ``'forest'``.
+        mpi_ensemble : {"single", "independent"}, optional
+            With MPI: one ensemble whose walkers are evaluated by all ranks
+            (rank 0 runs emcee and scatters each batch of walkers), or one
+            independent ensemble per rank, concatenated at the end. Default:
+            :attr:`mpi_ensemble`.
+        backend : bool, optional
+            Write the chain to ``emcee_chain.h5`` (``emcee_chain_rank<r>.h5``
+            for independent ensembles) as it runs. Default: :attr:`backend`.
+        resume : bool, optional
+            Continue the run stored in an existing backend file of the same
+            shape instead of starting again. Default: :attr:`resume`.
 
         Returns
         -------
-        emcee.EnsembleSampler
-            The rank-local sampler.  On rank zero, fitted chains, blobs, log
-            probabilities, and the MAP-derived MLE are stored on the fitter.
+        emcee.EnsembleSampler or None
+            The sampler of this rank (``None`` on worker ranks of a single
+            ensemble). On rank zero, the chains, blobs, log probabilities,
+            the MAP-derived MLE and :attr:`sampler_diagnostics` are stored.
 
         Notes
         -----
-        In MPI mode, rank zero concatenates walker axes received from workers.
         Blinding is applied only to stored derived-star blobs, after the MLE
         is selected.
         """
@@ -1057,9 +1165,13 @@ class Fitter(object):
 
         if isinstance(pini, Mapping):
             pini = self.sampling_point_from_parameters(pini)
+        mpi_ensemble = self.mpi_ensemble if mpi_ensemble is None else mpi_ensemble
+        backend = self.backend if backend is None else backend
+        resume = self.resume if resume is None else resume
+        if mpi_ensemble not in ("single", "independent"):
+            raise ValueError("mpi_ensemble must be 'single' or 'independent'")
         if vectorize is None:
-            emulator_label = self.like.theory.emulator.emulator_label
-            vectorize = "forest" not in emulator_label
+            vectorize = self.like.theory.emulator.batches
         use_vectorized = vectorize and log_func is None
         if log_func is None:
             _log_func = (
@@ -1069,311 +1181,132 @@ class Fitter(object):
             )
         else:
             _log_func = log_func
-
         if zmask is not None:
-            log_func = lambda x: _log_func(x, zmask=zmask)
+            local_func = lambda x: _log_func(x, zmask=zmask)
         else:
-            log_func = _log_func
+            local_func = _log_func
 
-        if self.parallel == False:
-            ## Get initial walkers
-            p0 = self.get_initial_walkers(pini=pini)
-
-            sampler = emcee.EnsembleSampler(
-                self.nwalkers,
-                self.ndim,
-                log_func,
-                blobs_dtype=self.blobs_dtype,
-                vectorize=use_vectorized,
-            )
-            self._seed_sampler(sampler)
-            self.print(
-                f"Running MCMC with {self.nwalkers} walkers, {self.ndim} dimensions, and {self.nsteps}, {self.nburn}.",
-            )
-            for sample in sampler.sample(p0, iterations=self.nburn + self.nsteps):
-                if sampler.iteration % 100 == 0:
-                    self.print(
-                        "Step %d out of %d "
-                        % (sampler.iteration, self.nburn + self.nsteps)
-                    )
-
-            ## Get samples, flat=False to be able to mask not converged chains latter
-            self.lnprob = sampler.get_log_prob(
-                flat=False, discard=self.nburn, thin=self.thin
-            )
-            self.chain = sampler.get_chain(
-                flat=False, discard=self.nburn, thin=self.thin
-            )
-            self.blobs = sampler.get_blobs(
-                flat=False, discard=self.nburn, thin=self.thin
-            )
+        single = self.parallel and self.size > 1 and mpi_ensemble == "single"
+        if single and self.rank != 0:
+            # worker: evaluate the walkers rank 0 sends until it is done
+            self._serve_walkers(local_func, use_vectorized)
+            return None
+        if single:
+            log_func, vectorized = self._distributed_log_prob(local_func, use_vectorized), True
         else:
-            # MPIPool does not work for me in nersc for whatever reason
-            # I need to get creative
+            log_func, vectorized = local_func, use_vectorized
 
-            p0 = self.get_initial_walkers(pini=pini)
-            sampler = emcee.EnsembleSampler(
-                self.nwalkers,
-                self.ndim,
-                log_func,
-                blobs_dtype=self.blobs_dtype,
-                vectorize=use_vectorized,
-            )
-
-            self._seed_sampler(sampler)
-            for sample in sampler.sample(
-                p0,
-                iterations=self.nburn + self.nsteps,
-                skip_initial_state_check=True,
-            ):
-                if sampler.iteration % 100 == 0:
-                    self.print(
-                        "Step %d out of %d "
-                        % (sampler.iteration, self.nsteps + self.nburn)
-                    )
-
-            self.print(f"Rank {self.rank} done")
-            _lnprob = sampler.get_log_prob(
-                flat=False, discard=self.nburn, thin=self.thin
-            )
-            _chain = sampler.get_chain(flat=False, discard=self.nburn, thin=self.thin)
-            _blobs = sampler.get_blobs(flat=False, discard=self.nburn, thin=self.thin)
-
-            if self.rank != 0:
-                self.comm.send(_lnprob, dest=0, tag=1000 + self.rank)
-                self.comm.send(_chain, dest=0, tag=2000 + self.rank)
-                self.comm.send(_blobs, dest=0, tag=3000 + self.rank)
-
-            if self.rank == 0:
-                chain = []
-                lnprob = []
-                blobs = []
-
-                lnprob.append(_lnprob)
-                chain.append(_chain)
-                blobs.append(_blobs)
-
-                for irank in range(1, self.size):
-                    self.print("Receiving from rank %d" % irank)
-                    lnprob.append(self.comm.recv(source=irank, tag=1000 + irank))
-                    chain.append(self.comm.recv(source=irank, tag=2000 + irank))
-                    blobs.append(self.comm.recv(source=irank, tag=3000 + irank))
-
-                self.lnprob = np.concatenate(lnprob, axis=1)
-                self.chain = np.concatenate(chain, axis=1)
-                self.blobs = np.concatenate(blobs, axis=1)
-
-        if self.rank == 0:
-            map_ind = np.argmax(self.lnprob.reshape(-1))
-            map_chain = self.chain.reshape(-1, self.chain.shape[-1])[map_ind]
-            # lnprob includes the log prior; compare on the likelihood chi2
-            # used by the minimizer, and keep the minimizer MLE (and its
-            # error estimates) unless the chain found a better point.
-            map_chi2 = self.get_chi2(map_chain, zmask=zmask)
-            self.set_mle(map_chain, map_chi2)
-            # Blinding affects only derived star-parameter blobs.
-            self.blobs = blinding.apply_blinding(self.like.blind, self.blobs)
-
-        return sampler
-
-    @_limited_threads
-    def run_sampler_nautilus(
-        self,
-        zmask=None,
-        vectorize=None,
-        n_live=2000,
-        n_eff=10000,
-        f_live=0.01,
-        discard_exploration=True,
-        filepath="default",
-        resume=True,
-        pool=None,
-        seed=None,
-        verbose=True,
-        sampler_kwargs=None,
-        run_kwargs=None,
-    ):
-        """Run the Nautilus nested sampler on the unit-cube posterior.
-
-        Parameters
-        ----------
-        zmask : array-like, optional
-            Single diagnostic redshift forwarded to the posterior.
-        vectorize : bool, optional
-            Evaluate likelihood batches through the columnar path. Defaults,
-            as for emcee, to true except for ForestFlow emulators.
-        n_live : int, default=2000
-            Number of live points.
-        n_eff : float, default=10000
-            Target effective posterior sample size.
-        f_live : float, default=0.01
-            Stopping threshold on the evidence fraction in the live set.
-        discard_exploration : bool, default=True
-            Drop exploration-phase points from the posterior (unbiased; the
-            Nautilus recommendation for production runs).
-        filepath : str, path-like, None, or 'default'
-            HDF5 checkpoint. ``'default'`` writes ``nautilus.hdf5`` in
-            ``save_directory`` (if any); ``None`` disables checkpointing.
-        resume : bool, default=True
-            Resume from ``filepath`` when it exists.
-        pool : int, optional
-            Number of worker processes for Nautilus (``multiprocessing`` with
-            fork, so Linux/macOS-fork only; e.g.
-            :func:`default_n_threads`). ``None`` runs serially. Pool objects
-            (e.g. MPI pools) would need a picklable likelihood and are not
-            supported.
-        seed : int, optional
-            Random seed.
-        verbose : bool, default=True
-            Print Nautilus progress.
-        sampler_kwargs, run_kwargs : mapping, optional
-            Extra keyword arguments for ``nautilus.Sampler`` and
-            ``Sampler.run``.
-
-        Returns
-        -------
-        nautilus.Sampler
-            The sampler, also stored as ``self.nautilus_sampler``.
-
-        Notes
-        -----
-        The prior is the identity on the unit cube, i.e. the flat priors of
-        ``like.free_params``; the log probability passed to Nautilus is
-        ``like.log_prob`` (flat priors only unless Gaussian priors are
-        configured), with blobs. Results are stored as returned by Nautilus
-        in ``self.nautilus_results``: weighted ``points`` (unit cube),
-        ``log_w``, ``log_l``, ``blobs`` (unnamed float array as for emcee,
-        blinded), and ``log_z``, ``n_eff``, ``n_like``. Use
-        :meth:`save_nautilus_results` to write them. Numerical threads are
-        capped as for the minimizers (``n_threads`` keyword).
-        """
+        storage = None
+        if backend and self.save_directory is not None:
+            name = "emcee_chain.h5" if (single or self.size == 1) else f"emcee_chain_rank{self.rank}.h5"
+            storage = emcee.backends.HDFBackend(str(Path(self.save_directory) / name))
+        p0 = self.get_initial_walkers(pini=pini)
+        total = self.nburn + self.nsteps
+        done = 0
+        if storage is not None:
+            if (resume and storage.initialized and storage.iteration > 0
+                    and storage.shape == (self.nwalkers, self.ndim)):
+                done = storage.iteration
+                p0 = storage.get_last_sample()  # continue from the stored state
+                self.print(f"resuming the chain in {storage.filename} after {done} steps")
+            else:
+                storage.reset(self.nwalkers, self.ndim)
+        sampler = emcee.EnsembleSampler(
+            self.nwalkers, self.ndim, log_func, blobs_dtype=self.blobs_dtype,
+            vectorize=vectorized, backend=storage,
+        )
+        self._seed_sampler(sampler)
+        self.print(
+            f"Running MCMC with {self.nwalkers} walkers, {self.ndim} dimensions, "
+            f"{self.nsteps} steps and {self.nburn} burn-in"
+            + (f", walkers evaluated by {self.size} ranks" if single else "")
+            + (f", {self.size} independent ensembles" if self.parallel and not single and self.size > 1 else "")
+        )
         try:
-            from nautilus import Sampler
-        except ImportError as error:
-            import importlib.util
+            for _ in sampler.sample(p0, iterations=max(total - done, 0),
+                                    skip_initial_state_check=self.parallel):
+                if sampler.iteration % 100 == 0:
+                    self.print("Step %d out of %d" % (sampler.iteration, total))
+        finally:
+            if single:
+                self.comm.bcast(("stop", None), root=0)
 
-            spec = importlib.util.find_spec("nautilus")
-            origin = None if spec is None else spec.origin
-            raise ImportError(
-                "Nautilus nested sampling needs the 'nautilus-sampler' package "
-                "(pip install nautilus-sampler h5py). Note that the PyPI package "
-                "'nautilus' is an unrelated library with the same import name, and "
-                "that a local file named nautilus.py also shadows it. "
-                f"'import nautilus' currently resolves to: {origin}"
-            ) from error
+        _lnprob = sampler.get_log_prob(flat=False, discard=self.nburn, thin=self.thin)
+        _chain = sampler.get_chain(flat=False, discard=self.nburn, thin=self.thin)
+        _blobs = sampler.get_blobs(flat=False, discard=self.nburn, thin=self.thin)
+        _acceptance = np.asarray(sampler.acceptance_fraction)
+        if self.parallel and not single and self.size > 1:
+            gathered = self.comm.gather((_lnprob, _chain, _blobs, _acceptance), root=0)
+            if self.rank != 0:
+                return sampler
+            self.lnprob = np.concatenate([g[0] for g in gathered], axis=1)
+            self.chain = np.concatenate([g[1] for g in gathered], axis=1)
+            self.blobs = np.concatenate([g[2] for g in gathered], axis=1)
+            acceptance = np.concatenate([g[3] for g in gathered])
+            ensembles = self.size
+        else:
+            self.lnprob, self.chain, self.blobs = _lnprob, _chain, _blobs
+            acceptance, ensembles = _acceptance, 1
 
-        if vectorize is None:
-            vectorize = "forest" not in self.like.theory.emulator.emulator_label
-        n_blobs = len(self.blob_names)
-        likelihood_kwargs = {} if zmask is None else {"zmask": zmask}
-
-        def prior(cube):
-            # flat priors: unit-cube coordinates are the sampling coordinates
-            return cube
-
-        parent_pid = os.getpid()
-
-        def likelihood(cube):
-            # parallel workers are forked processes: run each single-threaded
-            _single_thread_in_forked_worker(parent_pid)
-            if vectorize:
-                results = self.log_prob_and_blobs_batch(
-                    np.atleast_2d(cube), **likelihood_kwargs
-                )
-                values = np.asarray([np.asarray(row, dtype=float) for row in results])
-                return (values[:, 0], *[values[:, 1 + ii] for ii in range(n_blobs)])
-            result = self.log_prob_and_blobs(cube, **likelihood_kwargs)
-            return (float(result[0]), *[float(value) for value in result[1:]])
-
-        if filepath == "default":
-            filepath = (
-                None if self.save_directory is None
-                else os.path.join(self.save_directory, "nautilus.hdf5")
-            )
-        options = dict(
-            n_dim=self.ndim,
-            n_live=n_live,
-            vectorized=vectorize,
-            pass_dict=False,
-            pool=pool,
-            seed=seed,
-            blobs_dtype=[(name, float) for name in self.blob_names],
-            filepath=filepath,
-            resume=resume,
+        self.sampler_diagnostics = sampler_diagnostics(
+            self.chain, acceptance, ensembles=ensembles,
+            names=list(self.like.free_params),
         )
-        options.update(sampler_kwargs or {})
-        sampler = Sampler(prior, likelihood, **options)
-        self.print(
-            f"Running Nautilus with {n_live} live points in {self.ndim} "
-            f"dimensions (vectorized={vectorize}, checkpoint={filepath})"
-        )
-        run_options = dict(
-            f_live=f_live,
-            n_eff=n_eff,
-            discard_exploration=discard_exploration,
-            verbose=verbose,
-        )
-        run_options.update(run_kwargs or {})
-        sampler.run(**run_options)
-
-        points, log_w, log_l, blobs = sampler.posterior(return_blobs=True)
-        blobs = np.column_stack([np.asarray(blobs[name], dtype=float) for name in self.blob_names])
-        self.nautilus_sampler = sampler
-        self.nautilus_results = {
-            "points": np.asarray(points),
-            "log_w": np.asarray(log_w),
-            "log_l": np.asarray(log_l),
-            "blobs": blobs,
-            "log_z": float(sampler.log_z),
-            "n_eff": float(sampler.n_eff),
-            "n_like": int(sampler.n_like),
-        }
-        self.print(
-            f"Nautilus finished: log Z = {sampler.log_z:.3f}, "
-            f"n_eff = {sampler.n_eff:.0f}, n_like = {sampler.n_like}"
-        )
-
-        # best sampled point; keep the minimizer MLE unless it is improved
-        best = self.nautilus_results["points"][np.argmax(log_l)]
-        self.set_mle(best, self.get_chi2(best, zmask=zmask))
+        theory = self.like.theory
+        checks = getattr(theory, "hull_checks", 0)
+        if checks:
+            # rank 0's evaluations: a representative fraction
+            self.sampler_diagnostics["hull_rejected_fraction"] = theory.hull_rejections / checks
+        self.print(format_sampler_diagnostics(self.sampler_diagnostics))
+        map_ind = np.argmax(self.lnprob.reshape(-1))
+        map_chain = self.chain.reshape(-1, self.chain.shape[-1])[map_ind]
+        # lnprob includes the log prior; compare on the likelihood chi2
+        # used by the minimizer, and keep the minimizer MLE (and its
+        # error estimates) unless the chain found a better point.
+        map_chi2 = self.get_chi2(map_chain, zmask=zmask)
+        self.set_mle(map_chain, map_chi2)
         # Blinding affects only derived star-parameter blobs.
-        self.nautilus_results["blobs"] = blinding.apply_blinding(
-            self.like.blind, self.nautilus_results["blobs"]
-        )
+        self.blobs = blinding.apply_blinding(self.like.blind, self.blobs)
         return sampler
 
-    def save_nautilus_results(self):
-        """Save Nautilus posterior arrays and a result manifest.
+    def _rows_of_rank(self, n_rows, rank):
+        """Walkers evaluated by ``rank`` (round robin, balanced)."""
+        return np.arange(rank, n_rows, self.size)
 
-        Returns
-        -------
-        pathlib.Path
-            ``nautilus_results.npy`` manifest inside ``save_directory``.
+    def _evaluate_rows(self, local_func, vectorized, coords, rank):
+        """Evaluate this rank's share of a batch: ``(indices, results)``."""
+        rows = self._rows_of_rank(len(coords), rank)
+        if len(rows) == 0:
+            return rows, []
+        if vectorized:
+            results = list(local_func(coords[rows]))
+        else:
+            results = [local_func(coords[row]) for row in rows]
+        return rows, results
 
-        Notes
-        -----
-        Writes ``nautilus_points.npy`` (unit cube), ``nautilus_log_w.npy``,
-        ``nautilus_log_l.npy``, and ``nautilus_blobs.npy`` next to the
-        manifest, which also records ``log_z``, ``n_eff``, ``n_like`` and the
-        configuration reference used by :meth:`save_sampler_results`.
-        """
-        if self.save_directory is None:
-            raise ValueError("This fitter has no output directory")
-        if not hasattr(self, "nautilus_results"):
-            raise ValueError("Run run_sampler_nautilus before saving its results")
-        directory = Path(self.save_directory).resolve()
-        payload = self._result_payload("nautilus")
-        for name in ("points", "log_w", "log_l", "blobs"):
-            path = directory / f"nautilus_{name}.npy"
-            np.save(path, self.nautilus_results[name])
-            payload[f"{name}_path"] = str(path)
-        for name in ("log_z", "n_eff", "n_like"):
-            payload[name] = self.nautilus_results[name]
-        payload["blob_names"] = list(self.blob_names)
-        out_file = directory / "nautilus_results.npy"
-        self.print(f"Saving data to {out_file}")
-        np.save(out_file, payload)
-        return out_file
+    def _distributed_log_prob(self, local_func, vectorized):
+        """Vectorized emcee callable on rank 0 that shares walkers over ranks."""
+
+        def log_prob(coords):
+            coords = np.asarray(coords)
+            self.comm.bcast(("evaluate", coords), root=0)
+            own = self._evaluate_rows(local_func, vectorized, coords, 0)
+            gathered = self.comm.gather(own, root=0)
+            results = [None] * len(coords)
+            for rows, values in gathered:
+                for row, value in zip(rows, values):
+                    results[row] = value
+            return results
+
+        return log_prob
+
+    def _serve_walkers(self, local_func, vectorized):
+        """Worker ranks: evaluate the walkers broadcast by rank 0 until told to stop."""
+        while True:
+            command, coords = self.comm.bcast(None, root=0)
+            if command == "stop":
+                return
+            self.comm.gather(self._evaluate_rows(local_func, vectorized, coords, self.rank), root=0)
 
     def _masked_coordinates(self, x_base, mask_pars):
         """Return the varied coordinates and an expander for masked minimizers.
@@ -1423,7 +1356,7 @@ class Fitter(object):
         chi2_tol=0.1,
         estimate_errors=False,
         hessian_step=1.0e-4,
-        error_method="finite_difference",
+        error_method="gauss_newton",
     ):
         """Minimize negative log posterior with bounded Nelder--Mead searches.
 
@@ -1453,7 +1386,7 @@ class Fitter(object):
             Estimate local MLE errors after a fit.
         hessian_step : float, default=1e-4
             Displacement passed to MLE-error estimation.
-        error_method : str, default='finite_difference'
+        error_method : str, default='gauss_newton'
             Curvature estimator passed to :meth:`estimate_mle_errors`.
 
         Notes
@@ -1568,408 +1501,23 @@ class Fitter(object):
                 pnext0 = pnext.copy()
             mle_cube = pnext0
 
+        chi2_ini = self.get_chi2(mle_cube, zmask=zmask)
+        self.print("Starting NM minimization, chi2=", chi2_ini)
+        # repeated Nelder-Mead runs from the best point (shared with lya_interface)
+        result = nelder_mead_restarts(
+            lambda x_free: _log_func_minimize(expand(x_free)),
+            mle_cube[ind_free],
+            neval=neval,
+            chi2_tol=chi2_tol,
+            log=self.print,
+        )
+        mle_cube = expand(result.x)
         chi2 = self.get_chi2(mle_cube, zmask=zmask)
-        chi2_ini = chi2 * 1
-
-        self.print("Starting NM minimization, chi2=", chi2)
-        keep = True
-        ii = 0
-        rep = 0
-        start = time.time()
-        while keep:
-            start1 = time.time()
-            pini = mle_cube.copy()
-
-            res = nelder_mead(pini)
-            # self.print(res)
-
-            _chi2 = self.get_chi2(res.x, zmask=zmask)
-            diff_chi = _chi2 - chi2
-
-            self.print(
-                "Step, rep, time",
-                ii,
-                rep,
-                np.round(time.time() - start1, 2),
-                np.round(time.time() - start, 2),
-            )
-            self.print(
-                "Minimization improved (ini, last, now, diff):",
-                np.round(chi2_ini, 4),
-                np.round(chi2, 4),
-                np.round(_chi2, 4),
-                np.round(diff_chi, 4),
-            )
-
-            # keep the best point found so far
-            if diff_chi < 0:
-                chi2 = _chi2.copy()
-                mle_cube = res.x.copy()
-
-            if res.success:
-                keep = False
-            elif -diff_chi > chi2_tol:
-                rep = 0
-            else:
-                rep += 1
-
-            if rep >= 2:
-                # multiple times to ensure that it is real
-                keep = False
-
-            ii += 1
+        self.print(f"{result.message}; chi2 {chi2_ini:.4f} -> {chi2:.4f}")
 
         self.print("Passed out:", chi2)
         self.print(self.near_prior_bounds(mle_cube, fraction=0.05, text=True))
-        self.set_mle(mle_cube, chi2)
-        if estimate_errors:
-            self.estimate_mle_errors(
-                hessian_step=hessian_step, zmask=zmask, method=error_method
-            )
-
-    @_limited_threads
-    def run_minimizer_pso(
-        self,
-        p0=None,
-        zmask=None,
-        n_particles=128,
-        iters=1000,
-        options=None,
-        pso_type="global",
-        vectorize=True,
-        restart=False,
-        chi2_tol=0.1,
-        estimate_errors=False,
-        hessian_step=1.0e-4,
-        error_method="finite_difference",
-    ):
-        """Minimize the posterior with global- or local-neighborhood PSO.
-
-        Parameters
-        ----------
-        p0 : mapping or array-like, optional
-            Named physical values or a unit-cube swarm centre.  Defaults to
-            the unit-cube centre.
-        zmask : array-like, optional
-            Redshift mask forwarded to likelihood evaluations.
-        n_particles : int, default=128
-            Number of swarm particles; must be at least two.
-        iters : int, default=1000
-            Maximum swarm updates; must be positive.
-        options : mapping, optional
-            PySwarms coefficients.  Defaults to ``c1=1.5``, ``c2=1.5``, and
-            ``w=0.7``; local PSO additionally receives ``k`` and ``p``.
-        pso_type : {'global', 'local'}, default='global'
-            Swarm topology.
-        vectorize : bool, default=True
-            Evaluate all particles together through the batched likelihood.
-        restart : bool, default=False
-            Force replacement of a stored MLE even if this fit is worse.
-        chi2_tol : float, default=0.1
-            Absolute tolerance transformed into PySwarms' relative stopping
-            criterion.
-        estimate_errors : bool, default=False
-            Estimate local errors after fitting.
-        hessian_step : float, default=1e-4
-            Displacement used for optional error estimation.
-        error_method : str, default='finite_difference'
-            Curvature estimator used for optional error estimation.
-
-        Returns
-        -------
-        pyswarms.single.GlobalBestPSO or pyswarms.single.LocalBestPSO
-            Configured optimizer after the completed run.
-
-        Raises
-        ------
-        ValueError
-            If particle count, iteration count, tolerance, topology, or the
-            initial point shape is invalid.
-
-        Notes
-        -----
-        ``pso_type="global"`` attracts all particles to the swarm-wide best;
-        ``pso_type="local"`` uses a dynamic neighborhood to preserve separate
-        searches for longer. When ``vectorize`` is true, each swarm iteration evaluates all
-        particles in one batched likelihood call. Set it false to use the
-        scalar likelihood once per particle, primarily for benchmarking.
-        ``iters`` remains a maximum: after an initial swarm-exploration phase,
-        the optimizer stops after 20 consecutive global-best improvements
-        smaller than ``chi2_tol`` (0.1 by default). The tolerance matches the
-        local minimizer, while the longer window respects PSO's different
-        iteration scale. With ``restart=True``
-        the run replaces the stored MLE even when it is worse than a previous one.
-        """
-        if n_particles < 2 or iters < 1:
-            raise ValueError("n_particles must be at least 2 and iters positive")
-        pso_type = pso_type.lower()
-        if pso_type not in {"global", "local"}:
-            raise ValueError("pso_type must be 'global' or 'local'")
-        if chi2_tol <= 0:
-            raise ValueError("chi2_tol must be positive")
-        if restart:
-            self.mle_chi2 = 1e10
-        if options is None:
-            options = {"c1": 1.5, "c2": 1.5, "w": 0.7}
-        else:
-            options = dict(options)
-        if pso_type == "local":
-            # PySwarms' local topology requires these neighborhood settings.
-            options.setdefault("k", min(10, n_particles))
-            options.setdefault("p", 2)
-        if isinstance(p0, Mapping):
-            p0 = self.sampling_point_from_parameters(p0)
-        initial = np.full(self.ndim, 0.5) if p0 is None else np.asarray(p0, dtype=float)
-        if initial.shape != (self.ndim,):
-            raise ValueError(f"p0 must have shape ({self.ndim},)")
-        rng = np.random.default_rng(42)
-        # A dense random displacement changes every parameter at once. In this
-        # high-dimensional likelihood those proposals are usually much worse
-        # than the supplied point, leaving PSO with no useful direction. Seed
-        # the swarm with one-coordinate probes at several scales first,
-        # then sparse probes.
-        init_pos = np.repeat(initial[None, :], n_particles, axis=0)
-        probe_steps = (0.025, 0.05, 0.075, 0.1)
-        n_axis_probes = min(n_particles - 1, 2 * self.ndim * len(probe_steps))
-        probe_index = np.arange(n_axis_probes)
-        axes = probe_index % self.ndim
-        signs = np.where((probe_index // self.ndim) % 2 == 0, -1.0, 1.0)
-        steps = np.asarray(probe_steps)[probe_index // (2 * self.ndim)]
-        probe_rows = np.arange(1, n_axis_probes + 1)
-        init_pos[probe_rows, axes] = initial[axes] + steps * signs
-        for index in range(n_axis_probes + 1, n_particles):
-            active = rng.choice(self.ndim, size=min(3, self.ndim), replace=False)
-            init_pos[index, active] += rng.normal(0.0, 0.05, size=len(active))
-        init_pos = np.clip(init_pos, 0.0, 1.0)
-
-        def objective(points):
-            """Return negative log posterior for every swarm particle.
-
-            Parameters
-            ----------
-            points : ndarray
-                Unit-cube points with shape ``(n_particles, ndim)``.
-
-            Returns
-            -------
-            ndarray
-                Negative log posterior for each input particle.
-            """
-            if vectorize:
-                results = self.log_prob_and_blobs_batch(points, zmask=zmask)
-            else:
-                results = [
-                    self.log_prob_and_blobs(point, zmask=zmask) for point in points
-                ]
-            return -np.asarray([result[0] for result in results], dtype=float)
-
-        # PySwarms expresses its stop criterion relative to the objective.
-        # Scale it so the first-order absolute criterion is the same 0.1
-        # objective tolerance used by the Nelder--Mead minimizer. PSO needs
-        # a longer stagnation window because an iteration is only one swarm
-        # update, unlike a completed Nelder--Mead local search.
-        initial_cost = objective(initial[None, :])[0]
-        initial_chi2 = self.get_chi2(initial, zmask=zmask)
-        ftol = chi2_tol / (1.0 + abs(initial_cost))
-        self.print(
-            f"Starting {pso_type} PSO minimization with",
-            n_particles,
-            "particles; max iterations=",
-            iters,
-        )
-        self.print("Initial chi2 =", np.round(initial_chi2, 4))
-        _configure_pyswarms_logging()
-        if pso_type == "global":
-            from pyswarms.single import GlobalBestPSO as PSO
-        else:
-            from pyswarms.single import LocalBestPSO as PSO
-        optimizer = PSO(
-            n_particles=n_particles,
-            dimensions=self.ndim,
-            options=options,
-            bounds=(np.zeros(self.ndim), np.ones(self.ndim)),
-            init_pos=init_pos,
-            bh_strategy="periodic",
-            ftol=ftol,
-            ftol_iter=20,
-        )
-        if self.verbose:
-            # PySwarms sends raw floats to tqdm, which switches to scientific
-            # notation for moderately large costs. Keep its progress bar, but
-            # render the best objective in the same fixed-point format used by
-            # cup1d's start/end diagnostics.
-            def report_progress(**values):
-                """Format PySwarms' best objective for its progress bar.
-
-                Parameters
-                ----------
-                **values
-                    Progress fields supplied by PySwarms.
-
-                Returns
-                -------
-                None
-                    Updates the optimizer reporter postfix in place.
-                """
-                if "best_cost" in values:
-                    values["best_cost"] = f"{float(values['best_cost']):.2f}"
-                optimizer.rep.t.set_postfix(**values)
-
-            optimizer.rep.hook = report_progress
-        cost, position = optimizer.optimize(
-            objective, iters=iters, verbose=self.verbose
-        )
-        chi2 = self.get_chi2(position, zmask=zmask)
-        self.print(
-            "PSO finished after",
-            len(optimizer.cost_history),
-            "iterations",
-        )
-        self.print("Final chi2 =", np.round(chi2, 4))
-        self.pso_cost = float(cost)
-        self.pso_position = np.asarray(position)
-        self.set_mle(self.pso_position, chi2, force=restart)
-        if estimate_errors:
-            self.estimate_mle_errors(
-                hessian_step=hessian_step, zmask=zmask, method=error_method
-            )
-        return optimizer
-
-    @_limited_threads(default=1)
-    def run_minimizer_da(
-        self,
-        log_func_minimize=None,
-        p0=None,
-        zmask=None,
-        mask_pars=None,
-        restart=True,
-        estimate_errors=False,
-        hessian_step=1.0e-4,
-        error_method="finite_difference",
-    ):
-        """Minimize negative log posterior with SciPy dual annealing.
-
-        Parameters
-        ----------
-        log_func_minimize : callable, optional
-            Negative-log-posterior callable in unit-cube coordinates.
-        p0 : mapping or array-like, optional
-            Named physical values or unit-cube initial point.
-        zmask : array-like, optional
-            Redshift mask forwarded to the objective.
-        mask_pars : object, optional
-            Legacy fixed-parameter switch interpreted by the nested objective
-            helper; ``None`` leaves all coordinates free.
-        restart : bool, default=True
-            Replace a stored MLE even if this annealing result is worse.
-        estimate_errors : bool, default=False
-            Estimate MLE errors after fitting.
-        hessian_step : float, default=1e-4
-            Displacement used for optional error estimation.
-        error_method : str, default='finite_difference'
-            Curvature estimator passed to :meth:`estimate_mle_errors`.
-
-        Notes
-        -----
-        The method writes fitted state through :meth:`set_mle` and returns
-        ``None``.
-        """
-
-        from scipy.optimize import dual_annealing
-
-        def set_log_func_minimize(pini, zmask=None, mask_pars=None):
-            """Prepare dual-annealing objective with optional coordinate masks.
-
-            Parameters
-            ----------
-            pini : array-like
-                Initial unit-cube point supplying fixed-coordinate values.
-            zmask : array-like, optional
-                Redshift mask forwarded to the objective.
-            mask_pars : object, optional
-                If not ``None``, hold likelihood parameters marked fixed.
-
-            Returns
-            -------
-            callable
-                Objective accepting a complete unit-cube vector.
-            """
-            if mask_pars is None:
-                if zmask is not None:
-                    fun = lambda x: log_func_minimize(x, zmask=zmask)
-                    return fun
-                else:
-                    return log_func_minimize
-            else:
-                ind_fix = []
-                for ii, parameter in enumerate(self.like.free_params.values()):
-                    if parameter["fixed"]:
-                        ind_fix.append(ii)
-                ind_fix = np.array(ind_fix)
-                pfix = pini[ind_fix]
-                if zmask is not None:
-                    fun = lambda x: log_func_minimize(
-                        x, zmask=zmask, ind_fix=ind_fix, pfix=pfix
-                    )
-                    return fun
-                else:
-                    fun = lambda x: log_func_minimize(x, ind_fix=ind_fix, pfix=pfix)
-                    return fun
-
-        if restart:
-            self.mle_chi2 = 1e10
-
-        if isinstance(p0, Mapping):
-            p0 = self.sampling_point_from_parameters(p0)
-        _log_func_minimize = set_log_func_minimize(p0, zmask=zmask, mask_pars=mask_pars)
-
-        npars = len(self.like.free_params)
-
-        if p0 is not None:
-            # start at the initial value
-            mle_cube = p0.copy()
-        else:
-            # star at the center of the parameter space
-            mle_cube = np.ones(npars) * 0.5
-
-        mle_cube[mle_cube <= 0] = 0.05
-        mle_cube[mle_cube >= 1] = 0.95
-
-        chi2 = self.get_chi2(mle_cube, zmask=zmask)
-        chi2_ini = chi2 * 1
-
-        self.print("Starting DA minimization")
-
-        ind_free, expand = self._masked_coordinates(mle_cube, mask_pars is not None)
-        start = time.time()
-        res = dual_annealing(
-            lambda x_free: _log_func_minimize(expand(x_free)),
-            maxiter=10000,
-            x0=mle_cube[ind_free],
-            bounds=((0.0, 1.0),) * len(ind_free),
-            minimizer_kwargs={
-                "method": "Nelder-Mead",
-                "bounds": ((0.0, 1.0),) * len(ind_free),
-                "options": {"fatol": 0.1, "xatol": 0},
-            },
-        )
-        self.print(res)
-        res.x = expand(res.x)
-
-        _chi2 = self.get_chi2(res.x, zmask=zmask)
-
-        if _chi2 < chi2:
-            chi2 = _chi2.copy()
-            mle_cube = res.x.copy()
-
-        self.print("Step took:", np.round(time.time() - start, 2))
-        self.print(
-            "Minimization improved:",
-            np.round(chi2_ini, 4),
-            np.round(chi2, 4),
-            np.round(chi2_ini - chi2, 4),
-        )
-
+        self.print(self.training_hull_report(mle_cube))
         self.set_mle(mle_cube, chi2)
         if estimate_errors:
             self.estimate_mle_errors(
@@ -2015,7 +1563,9 @@ class Fitter(object):
         mle_no_cube = np.asarray(list(like_pars.values()))
 
         self.print("Fit params cube:", self.mle_cube)
-        self.print("Fit params no cube:", mle_no_cube)
+        if not self.like.blind.is_blinded:
+            # physical As, ns would reveal the blinded cosmology
+            self.print("Fit params no cube:", mle_no_cube)
 
         star_pars = self.like.theory.get_star_params_for_parameters(like_pars)
         self.mle_cosmo = {}
@@ -2034,11 +1584,7 @@ class Fitter(object):
         if "As" not in self.like.free_params:
             return
 
-        for key in self.like.blind:
-            if self.like.blind[key] != 0:
-                self.print("Results are blinded")
-            else:
-                self.print("Results are not blinded")
+        self.print("Results are blinded" if self.like.blind.is_blinded else "Results are not blinded")
 
         for par in self.mle_cosmo:
             if par == "Delta2_star":
@@ -2075,74 +1621,45 @@ class Fitter(object):
         seed = int(self.rng.integers(0, np.iinfo(np.uint32).max))
         sampler.random_state = np.random.RandomState(seed).get_state()
 
-    def get_initial_walkers(self, pini=None, rms=0.01):
-        """Draw clipped unit-cube initial positions for all emcee walkers.
+    def get_initial_walkers(self, pini=None, rms=0.01, scale=0.1):
+        """Initial unit-cube positions of all emcee walkers.
 
         Parameters
         ----------
         pini : array-like, optional
             Unit-cube centre.  Defaults to 0.5 for every parameter.
         rms : float, default=0.01
-            Positive uniform displacement width added independently to each
-            coordinate.
+            Width of the centred uniform ball used without a covariance.
+        scale : float, default=0.1
+            Walkers are drawn from a Gaussian with ``scale**2`` times the
+            Gauss--Newton covariance (``mle_covariance_cube``, which includes
+            the flat priors, so no direction is wider than the cube), as the
+            lya_interface Cobaya chains.
 
         Returns
         -------
         ndarray
-            Initial walker positions with shape ``(nwalkers, ndim)``.  Values
-            at or above 1 are redrawn in ``[0.95, 0.96)`` and values at or
-            below 0 in ``(0.04, 0.05]``.
+            Shape ``(nwalkers, ndim)``, reflected into the unit cube.
         """
 
-        ndim = self.ndim
-        nwalkers = self.nwalkers
-
-        self.print("set %d walkers with %d dimensions" % (nwalkers, ndim))
-
-        p0 = self.rng.random(ndim * nwalkers).reshape((nwalkers, ndim))
-        for ii in range(ndim):
-            if pini is None:
-                p0[:, ii] = 0.5 + p0[:, ii] * rms
-            else:
-                p0[:, ii] = pini[ii] + p0[:, ii] * rms
-        # Scatter walkers that leave the unit cube back inside it; identical
-        # values would freeze that coordinate under the stretch move.
-        _ = p0 >= 1.0
-        p0[_] = 0.95 + self.rng.random(np.count_nonzero(_)) * 0.01
-        _ = p0 <= 0.0
-        p0[_] = 0.05 - self.rng.random(np.count_nonzero(_)) * 0.01
-
-        return p0
-
-    def get_trunc_norm(self, mean, n_samples):
-        """Draw unit-interval truncated-normal values around a mean.
-
-        Parameters
-        ----------
-        mean : float or array-like
-            Centre passed to SciPy's truncated normal distribution.
-        n_samples : int or tuple of int
-            Requested output size.
-
-        Returns
-        -------
-        ndarray
-            Draws limited to ``[0, 1]`` using ``like.prior_Gauss_rms`` as the
-            distribution scale.
-        """
-
-        from scipy.stats import truncnorm
-
-        rms = self.like.prior_Gauss_rms
-        values = truncnorm.rvs(
-            (0.0 - mean) / rms,
-            (1.0 - mean) / rms,
-            scale=rms,
-            loc=mean,
-            size=n_samples,
-        )
-
-        return values
+        centre = np.full(self.ndim, 0.5) if pini is None else np.asarray(pini, dtype=float)
+        covariance = getattr(self, "mle_covariance_cube", None)
+        if covariance is not None and pini is not None:
+            covariance = np.asarray(covariance, dtype=float)
+            # symmetric square root: robust for a (nearly) singular matrix
+            values, vectors = np.linalg.eigh(0.5 * (covariance + covariance.T))
+            root = vectors * np.sqrt(np.clip(values, 0.0, None))
+            p0 = centre + scale * self.rng.standard_normal((self.nwalkers, self.ndim)) @ root.T
+            self.print(f"set {self.nwalkers} walkers around the initial point "
+                       f"({scale} x the Gauss-Newton covariance)")
+        else:
+            p0 = centre + (self.rng.random((self.nwalkers, self.ndim)) - 0.5) * rms
+            self.print(f"set {self.nwalkers} walkers in a ball of width {rms} around the initial point")
+        # reflect at the cube edges (keeps distinct values: identical values
+        # would freeze a coordinate under the stretch move)
+        p0 = np.abs(p0)
+        p0 = np.where(p0 > 1.0, 2.0 - p0, p0)
+        return np.clip(p0, 1e-9, 1 - 1e-9)
 
     def get_chain(self, cube=True, extra_nburn=0, delta_lnprob_cut=None, collapse=True):
         """Return retained sampler points, log posterior values, and blobs.
@@ -2329,31 +1846,6 @@ class Fitter(object):
 
         return
 
-    def _write_dict_to_text(self, saveDict):
-        """Write selected saved-result metadata to ``info.txt``.
-
-        Parameters
-        ----------
-        saveDict : mapping
-            Result metadata.  Large chain, blob, posterior, and autocorrelation
-            arrays are omitted from the human-readable file.
-
-        Returns
-        -------
-        None
-            Writes ``info.txt`` inside ``save_directory``.
-        """
-
-        ## What keys don't we want to include in the info file
-        dontPrint = ["lnprob", "flatchain", "blobs", "autocorr"]
-
-        with open(self.save_directory + "/info.txt", "w") as f:
-            for item in saveDict.keys():
-                if item not in dontPrint:
-                    f.write("%s: %s\n" % (item, str(saveDict[item])))
-
-        return
-
     def get_best_fit(self, delta_lnprob_cut=None, stat_best_fit="mean"):
         """Summarize the chain or return the stored maximum-likelihood point.
 
@@ -2408,24 +1900,22 @@ class Fitter(object):
         Returns
         -------
         dict
-            Absolute YAML path, loader type, and synthetic-data flag.
-
-        Raises
-        ------
-        ValueError
-            If the likelihood configuration was not created from a YAML file.
+            The frozen resolved configuration (``config``: every setting,
+            programmatic overrides included), the code versions that produced
+            the result, and, when the arguments came from a YAML file, its
+            path and loader (for information and to detect later changes).
         """
 
-        config_path = getattr(self.like.args, "config_path", None)
-        if config_path is None:
-            raise ValueError(
-                "Cannot save reconstructable results because Args was not "
-                "created from a YAML file"
-            )
+        args = self.like.args
+        config_path = getattr(args, "config_path", None)
         return {
-            "config_path": str(Path(config_path).expanduser().resolve()),
-            "config_loader": getattr(self.like.args, "config_loader", "yaml"),
-            "synthetic": bool(getattr(self.like.args, "synthetic", False)),
+            "config": args.to_config(),
+            "code_versions": code_versions(),
+            "config_path": (
+                None if config_path is None else str(Path(config_path).expanduser().resolve())
+            ),
+            "config_loader": getattr(args, "config_loader", "yaml"),
+            "synthetic": bool(getattr(args, "synthetic", False)),
         }
 
     def _fit_result(self):
@@ -2566,7 +2056,8 @@ class Fitter(object):
         np.save(paths["lnprob_path"], self.lnprob)
 
         payload = self._result_payload("sampler")
-        payload.update({name: str(path) for name, path in paths.items()})
+        # relative to the result file: the folder can be moved (e.g. rsync)
+        payload.update({name: path.name for name, path in paths.items()})
         payload["blob_names"] = list(self.blob_names)
         out_file = directory / "sampler_results.npy"
         self.print(f"Saving data to {out_file}")
@@ -2617,7 +2108,17 @@ class Fitter(object):
         conversions = self._otype_conversions(payload)
         changed = self._changed_parameters(payload, conversions)
         cube = self._convert_saved_cube(cube, payload, conversions, changed, clip=True)
-        self.set_mle(cube, float(fit["mle_chi2"]))
+        # the chi2 of the current likelihood at the saved point (code or
+        # configuration may have changed since the result was saved)
+        chi2 = float(self.get_chi2(cube))
+        saved_chi2 = float(fit["mle_chi2"])
+        if abs(chi2 - saved_chi2) > 1e-3:
+            warn_once(
+                f"chi2 at the saved best fit is {chi2:.4f} with the current code "
+                f"and configuration, {saved_chi2:.4f} when it was saved",
+                key=("restored_chi2", str(result_path)),
+            )
+        self.set_mle(cube, chi2)
         if changed:
             # errors were estimated in the saved coordinates; recompute them
             self.print(
@@ -2640,13 +2141,15 @@ class Fitter(object):
                 ("lnprob", "lnprob_path"),
             ):
                 array_path = Path(payload[key]).expanduser()
-                if not array_path.is_absolute():
-                    array_path = result_path.parent / array_path
+                if not array_path.is_absolute() or not array_path.exists():
+                    # relative name, or an absolute path from another machine
+                    array_path = result_path.parent / array_path.name
                 setattr(self, attribute, np.load(array_path, allow_pickle=False))
             if changed:
                 self.chain = self._convert_saved_cube(
                     self.chain, payload, conversions, changed
                 )
+            self.sampler_diagnostics = payload.get("sampler_diagnostics")
             # Files saved before blob names were recorded hold six columns in
             # the legacy order.
             if "blob_names" in payload:
@@ -2789,22 +2292,3 @@ class Fitter(object):
                 parameter["max_value"] - parameter["min_value"]
             )
         return values
-
-    def save_fitter(self, save_chains=False):
-        """Save a minimizer or sampler result through the compatibility API.
-
-        Parameters
-        ----------
-        save_chains : bool, default=False
-            Save sampler arrays and manifest when true; otherwise save only
-            the minimizer result.
-
-        Returns
-        -------
-        pathlib.Path
-            Path returned by the selected persistence method.
-        """
-
-        if save_chains:
-            return self.save_sampler_results()
-        return self.save_minimizer_results()

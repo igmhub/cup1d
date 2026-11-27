@@ -1,5 +1,6 @@
 import numpy as np
 from cup1d.models.contaminants.base_contaminants import Contaminant
+from cup1d.utils.batch import as_redshift_rows, unbatch
 
 
 # Logarithmic null of an HCD amplitude: exp(-21.5) is treated as exactly zero.
@@ -65,6 +66,14 @@ def fun_damping(k_kms, a, b):
     return 1 / (a * np.exp(k_kms * b) - 1) ** 2
 
 
+# Rogers et al. (2018, 1706.08532) template coefficients, pivot z = 2
+ROGERS_Z0 = 2.0
+ROGERS_A0 = np.array([2.2001, 1.5083, 1.1415, 0.8633])
+ROGERS_A1 = np.array([0.0134, 0.0994, 0.0937, 0.2943])
+ROGERS_B0 = np.array([36.449, 81.388, 162.95, 429.58])
+ROGERS_B1 = np.array([-0.0674, -0.2287, 0.0126, -0.4964])
+
+
 class HCD_Model_Rogers(Contaminant):
     """Rogers-style redshift-dependent HCD damping contamination model.
 
@@ -90,8 +99,10 @@ class HCD_Model_Rogers(Contaminant):
         coeffs, prop_coeffs, free_param_names
             Coefficient histories and metadata forwarded to :class:`Contaminant`.
         z_0 : float, default=3
-            Requested pivot redshift; internal damping evolution is referenced
-            to the calibrated model pivot.
+            Pivot redshift of the model: of the coefficient histories and of
+            the Rogers et al. (2018) templates. The published template
+            coefficients (pivot z=2) are converted to this pivot, so the
+            templates do not depend on its value.
         fid_vals, flat_priors, null_vals, Gauss_priors : mapping, optional
             Coefficient defaults, limits, null thresholds, and Gaussian widths.
         """
@@ -148,11 +159,12 @@ class HCD_Model_Rogers(Contaminant):
                 for key in ("HCD_damp1", "HCD_damp2", "HCD_damp3", "HCD_damp4")
             }
 
-        self.a_0 = np.array([2.2001, 1.5083, 1.1415, 0.8633])
-        self.a_1 = np.array([0.0134, 0.0994, 0.0937, 0.2943])
-        self.b_0 = np.array([36.449, 81.388, 162.95, 429.58])
-        self.b_1 = np.array([-0.0674, -0.2287, 0.0126, -0.4964])
-        self.z_0 = 2
+        # Rogers et al. (2018) templates: a(z) = a_0 ((1+z)/(1+z_r))^a_1 and
+        # b(z) likewise, with z_r = ROGERS_Z0; converted below to pivot z_0
+        self.a_1 = ROGERS_A1.copy()
+        self.b_1 = ROGERS_B1.copy()
+        self.a_0 = ROGERS_A0 * ((1 + z_0) / (1 + ROGERS_Z0)) ** self.a_1
+        self.b_0 = ROGERS_B0 * ((1 + z_0) / (1 + ROGERS_Z0)) ** self.b_1
 
         super().__init__(
             coeffs=coeffs,
@@ -167,83 +179,33 @@ class HCD_Model_Rogers(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, like_params=None):
-        """Evaluate scalar-point Rogers HCD corrections.
+        """Rogers+18 HCD multiplicative correction on velocity k grids.
 
         Parameters
         ----------
         z : array-like
-            Redshift rows.
+            Redshifts.
         k_kms : sequence of ndarray
-            Per-redshift velocity wavenumber grids in s/km.
+            Per-redshift wavenumbers in s/km.
         like_params : mapping, optional
-            Coefficient overrides.
+            Scalar values (one point) or columns of shape ``(n_batch,)``.
 
         Returns
         -------
-        ndarray or list of ndarray
-            Dimensionless corrections; one array per redshift unless one row
-            was requested.
+        list of ndarray
+            One array per redshift: ``(n_k,)`` for one point,
+            ``(n_batch, n_k)`` for a batch.
         """
-
-        # z = np.atleast_1d(z)
-        # k_kms = np.atleast_2d(k_kms)
-
-        vals = {}
-        for key in self.list_coeffs:
-            vals[key] = np.atleast_1d(
-                self.get_value(key, z, like_params=like_params)
-            )
-            vals[key] = apply_null(
-                vals[key], self.null_vals.get(key), self.prop_coeffs[key + "_otype"]
-            )
-        # print(vals)
-
-        dla_corr = []
-        for iz in range(len(z)):
-            cont = 1 + vals["HCD_const"][iz] + np.zeros_like(k_kms[iz])
-            for it in range(4):
-                # compute the z-dependent correction terms
-                a_z = (
-                    self.a_0[it]
-                    * ((1 + z[iz]) / (1 + self.z_0)) ** self.a_1[it]
-                )
-                b_z = (
-                    self.b_0[it]
-                    * ((1 + z[iz]) / (1 + self.z_0)) ** self.b_1[it]
-                )
-                cont += vals[f"HCD_damp{it+1}"][iz] * fun_damping(
-                    k_kms[iz], a_z, b_z
-                )
-                # cont += (
-                #     vals[f"HCD_damp{it+1}"][iz]
-                #     * ((1 + z[iz]) / (1 + self.z_0)) ** (-3.55)
-                #     * fun_damping(k_kms[iz], a_z, b_z)
-                # )
-            dla_corr.append(cont)
-
-        if len(z) == 1:
-            dla_corr = dla_corr[0]
-
-        return dla_corr
-
-    def get_contamination_batch(self, z, k_kms, like_params):
-        """Evaluate Rogers HCD corrections for columnar likelihood samples.
-
-        Returns a list of dimensionless arrays with shape ``(n_batch, nk_z)``.
-        """
-        z = np.atleast_1d(np.asarray(z, dtype=float))
-        values = {key: self.get_value_batch(key, z, like_params) for key in self.list_coeffs}
-        for key in self.null_vals:
-            values[key] = apply_null(
-                values[key], self.null_vals[key], self.prop_coeffs[key + "_otype"]
-            )
+        z, k_kms = as_redshift_rows(z, k_kms)
+        values, scalar = self.histories(z, like_params, null="exp")
         output = []
         for iz, redshift in enumerate(z):
-            k = np.asarray(k_kms[iz])[None, :]
-            cont = 1 + values["HCD_const"][:, iz, None]
+            k = k_kms[iz][None, :]
+            cont = 1 + values["HCD_const"][:, iz, None] + np.zeros_like(k)
             for it in range(4):
                 a_z = self.a_0[it] * ((1 + redshift) / (1 + self.z_0)) ** self.a_1[it]
                 b_z = self.b_0[it] * ((1 + redshift) / (1 + self.z_0)) ** self.b_1[it]
                 cont = cont + values[f"HCD_damp{it + 1}"][:, iz, None] * fun_damping(k, a_z, b_z)
             output.append(cont)
-        return output
+        return unbatch(output, scalar)
+

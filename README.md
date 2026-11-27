@@ -117,7 +117,7 @@ The remaining notebooks are organized by purpose:
 - `notebooks/data/observations` and `notebooks/data/mocks`: inspect input P1D
   measurements and synthetic data.
 - `notebooks/likelihood`: likelihood diagnostics, initial-condition fits, and
-  fit inspection. `inference_methods.py` compares Nelder--Mead, PSO, and
+  fit inspection. `inference_methods.py` compares Nelder--Mead and
   scalar/batched emcee sampling for the baseline.
 - `notebooks/igm` and `notebooks/contaminants`: visualize physical and
   nuisance-model components.

@@ -8,5 +8,4 @@ fid_cont:
   s_SiIIa_SiIIb_ztype: pivot
   s_SiIIa_SiIIb_fixed: true
 out_folder: ./DESIY1_QMLE3/metal_si2/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: metal_si2

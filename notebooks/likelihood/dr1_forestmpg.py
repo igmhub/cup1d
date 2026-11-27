@@ -44,13 +44,13 @@ from cup1d.utils.utils import get_path_repo
 # EMULATOR_LABEL = "forest_mpg_gp_no_inflate"
 EMULATOR_LABEL = "forest_mpg_gp_fixcosmo"
 config_names = {
-    "forest_mpg_cinn": "cm2026_base_forestmpgcinn.yaml",
-    "forest_mpg_gp": "cm2026_base_forestmpggp.yaml",
-    "forest_mpg_gp_fixcosmo": "cm2026_base_forestmpggp_fixcosmo.yaml",
-    "forest_mpg_gp_no_inflate": "cm2026_base_forestmpggp_no_inflate.yaml",
+    "forest_mpg_cinn": "desi_dr1_tests/cm2026_base_forestmpgcinn.yaml",
+    "forest_mpg_gp": "cm2026/cm2026_base_forestmpggp.yaml",
+    "forest_mpg_gp_fixcosmo": "desi_dr1_tests/cm2026_base_forestmpggp_fixcosmo.yaml",
+    "forest_mpg_gp_no_inflate": "desi_dr1_tests/cm2026_base_forestmpggp_no_inflate.yaml",
 }
 config_file = os.path.join(
-    get_path_repo("cup1d"), "configs", "desi_dr1_tests", config_names[EMULATOR_LABEL]
+    get_path_repo("cup1d"), "configs", config_names[EMULATOR_LABEL]
 )
 args = Args.from_yaml(config_file, verbose=False)
 analysis = Analysis(args)
@@ -140,18 +140,16 @@ chain_path = "PATH_TO_FOREST_MPG_BLOBS.npy"
 # mle_cosmo_unblind = apply_unblinding(
 #     analysis.like.blind, analysis.fitter.mle_cosmo.copy()
 # )
-# from cup1d.postprocessing import plot_cosmo_sampler_and_fit
+# from cup1d.postprocessing.posterior import PosteriorSamples
+# from cup1d.postprocessing.posterior.star import overlay_gaussian, plot_star_posterior
 
-# samples = np.column_stack(
-#     [results_unblind["Delta2_star"], results_unblind["n_star"]]
+# samples = PosteriorSamples(
+#     np.column_stack([results_unblind["Delta2_star"], results_unblind["n_star"]]),
+#     ["Delta2_star", "n_star"],
 # )
-# fig = plot_cosmo_sampler_and_fit(
-#     samples,
-#     mle_cosmo_unblind,
-#     analysis.fitter.mle_cosmo_covariance[:2, :2],
-#     sampler_label="Sampler contours",
-#     fit_label="Minimizer",
-# )
+# fig = plot_star_posterior(samples)
+# overlay_gaussian(fig, mle_cosmo_unblind, analysis.fitter.mle_cosmo_covariance[:2, :2],
+#                  nsigma=1, label="Minimizer", posterior_label="Sampler contours")
 # plt.show()
 
 # %% [markdown]
@@ -238,17 +236,22 @@ analysis.fitter.estimate_mle_errors(method="gauss_newton")
 mle_cosmo_unblind = apply_unblinding(
     analysis.like.blind, analysis.fitter.mle_cosmo.copy()
 )
-from cup1d.postprocessing import plot_cosmo_sampler_and_fit
+from cup1d.postprocessing.posterior import PosteriorSamples
+from cup1d.postprocessing.posterior.star import overlay_gaussian, plot_star_posterior
 
-samples = np.column_stack(
-    [results_unblind["Delta2_star"], results_unblind["n_star"]]
+samples = PosteriorSamples(
+    np.column_stack([results_unblind["Delta2_star"], results_unblind["n_star"]]),
+    ["Delta2_star", "n_star"],
 )
-fig = plot_cosmo_sampler_and_fit(
-    samples,
+fig = plot_star_posterior(samples)
+# 1 sigma ellipse in the 1D convention (Delta chi2 = 1)
+overlay_gaussian(
+    fig,
     mle_cosmo_unblind,
     analysis.fitter.mle_cosmo_covariance[:2, :2],
-    sampler_label="Sampler contours",
-    fit_label="Minimizer",
+    nsigma=1,
+    label="Minimizer",
+    posterior_label="Sampler contours",
 )
 plt.show()
 

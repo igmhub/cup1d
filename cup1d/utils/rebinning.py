@@ -223,97 +223,50 @@ class Rebinning(object):
                 ]
 
     def rebinning(self, key, Pk_kms_newk):
-        """Rebin scalar P1D predictions from fine to data k grids.
+        """Average fine-grid P1D predictions onto the data k bins.
 
         Parameters
         ----------
         key : hashable
             Data-set key supplied to the constructor.
         Pk_kms_newk : sequence of array_like
-            One fine-grid P1D prediction per redshift bin.
+            One prediction per redshift bin on the fine grid: ``(n_k_fine,)``
+            for one point or ``(n_batch, n_k_fine)`` for a batch.
 
         Returns
         -------
         list of ndarray
-            Predictions averaged onto the corresponding observed k grids.
-        """
-        Pk_kms_origk = []
-        for iz in range(len(self.zs[key])):
-            _Pk_kms = (
-                np.sum(
-                    self.cover[key][iz] * Pk_kms_newk[iz][np.newaxis, :],
-                    axis=1,
-                )
-                / self.sum_cover[key][iz]
-            )
-            Pk_kms_origk.append(_Pk_kms)
-        return Pk_kms_origk
-
-    def rebinning_batch(self, key, Pk_kms_newk):
-        """Rebin a batch of P1D predictions without looping over walkers.
-
-        Parameters
-        ----------
-        key : hashable
-            Data-set key supplied to the constructor.
-        Pk_kms_newk : sequence of ndarray
-            List over redshift bins. Item ``iz`` has shape
-        ``(n_batch, n_k_fine[iz])`` and the returned item has shape
-        ``(n_batch, n_k_data[iz])``. Keeping a list over redshift preserves
-        the ragged k grids used by the observational data.
-
-        Returns
-        -------
-        list of ndarray
-            Batched predictions on observed grids.
+            Predictions on the data grids, ``(n_k_data,)`` or
+            ``(n_batch, n_k_data)`` per redshift.
 
         Raises
         ------
         ValueError
-            If redshift counts, fine-grid widths, dimensions, or batch sizes
-            do not match the precomputed weights.
+            If the redshift count or a fine-grid width does not match.
         """
-
         if len(Pk_kms_newk) != len(self.zs[key]):
             raise ValueError(
                 f"expected {len(self.zs[key])} redshift predictions for {key}; "
                 f"got {len(Pk_kms_newk)}"
             )
+        weights = self._weights(key)
         rebinned = []
-        n_batch = None
         for iz, prediction in enumerate(Pk_kms_newk):
             prediction = np.asarray(prediction, dtype=float)
-            if prediction.ndim != 2:
+            if prediction.ndim not in (1, 2) or prediction.shape[-1] != weights[iz].shape[1]:
                 raise ValueError(
-                    "batched prediction must have shape (n_batch, n_k); "
-                    f"redshift {iz} has shape {prediction.shape}"
+                    f"redshift {iz} prediction has shape {prediction.shape}; expected "
+                    f"(n_batch,) + ({weights[iz].shape[1]},)"
                 )
-            if prediction.shape[1] != self.cover[key][iz].shape[1]:
-                raise ValueError(
-                    f"redshift {iz} has {prediction.shape[1]} k bins, expected "
-                    f"{self.cover[key][iz].shape[1]}"
-                )
-            if n_batch is None:
-                n_batch = prediction.shape[0]
-            elif prediction.shape[0] != n_batch:
-                raise ValueError("all redshift predictions must share n_batch")
-            weights = self.cover[key][iz] / self.sum_cover[key][iz][:, None]
-            rebinned.append(prediction @ weights.T)
+            rebinned.append(prediction @ weights[iz].T)
         return rebinned
 
-
-# def rebinning(key, zs, Pk_kms_finek):
-#     """For rebinning Pk predictions"""
-#     Pk_kms_origk = []
-#     # _Pk_kms_finek = np.atleast_1d(Pk_kms_finek)
-#     for iz in range(len(zs)):
-#         indz = np.argmin(np.abs(self.data.z - zs[iz]))
-#         _Pk_kms = (
-#             np.sum(
-#                 self.rebin[key]["cover"][indz] * Pk_kms_finek[iz][np.newaxis, :],
-#                 axis=1,
-#             )
-#             / self.rebin[key]["sum_cover"][indz]
-#         )
-#         Pk_kms_origk.append(_Pk_kms)
-#     return Pk_kms_origk
+    def _weights(self, key):
+        """Rebinning matrices of data set ``key``, one ``(n_k_data, n_k_fine)`` per redshift."""
+        if not hasattr(self, "_weight_cache"):
+            self._weight_cache = {}
+        if key not in self._weight_cache:
+            self._weight_cache[key] = [
+                cover / total[:, None] for cover, total in zip(self.cover[key], self.sum_cover[key])
+            ]
+        return self._weight_cache[key]

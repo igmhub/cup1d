@@ -15,7 +15,6 @@ fid_cont:
   f_SiIIb_SiIII_ztype: pivot
   f_SiIIb_SiIII_fixed: true
 out_folder: ./DESIY1_QMLE3/Metals_Ma2025/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: Metals_Ma2025
 initial_sampling_values:
   f_Lya_SiIII_0: 0.1

@@ -5,6 +5,11 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+from cup1d.postprocessing.labels import STAR_LABELS
+# contour_delta_chi2 and ellipse_offsets are imported from here by lya_interface
+from cup1d.postprocessing.primitives import (  # noqa: F401
+    contour_delta_chi2, ellipse_offsets, gaussian_ellipse,
+)
 from cup1d.utils.utils import get_path_repo
 
 STAR = ("Delta2_star", "n_star", "alpha_star")
@@ -39,43 +44,10 @@ def simulation_star_params(emulator, nyx_version="Jul2024"):
             for label, entry in cosmo.items()}
 
 
-def contour_delta_chi2(nsigma=None, level=None):
-    """Delta chi2 of a 2D Gaussian contour.
-
-    ``nsigma``: the contour whose projection onto each axis is the 1D
-    ``nsigma`` interval (Delta chi2 = nsigma**2; the convention of cup1d's
-    figures, 39%/86% of the 2D probability for 1/2 sigma). ``level``: the
-    contour enclosing that 2D probability (e.g. 0.6827 -> Delta chi2 = 2.30).
-    """
-    if (nsigma is None) == (level is None):
-        raise ValueError("give exactly one of nsigma and level")
-    if nsigma is not None:
-        return float(nsigma) ** 2
-    from scipy.stats import chi2
-
-    return float(chi2.ppf(level, 2))
-
-
-def ellipse_offsets(covariance, delta_chi2, n_points=200):
-    """Outline of a 2D Gaussian contour around the origin, shape ``(2, n_points)``.
-
-    Points ``x`` with ``x^T C^-1 x = delta_chi2`` for the 2x2 covariance ``C``.
-    """
-    eigenvalues, eigenvectors = np.linalg.eigh(np.asarray(covariance, dtype=float))
-    if np.any(eigenvalues < -1e-12 * max(1.0, np.max(np.abs(eigenvalues)))):
-        raise ValueError("covariance is not positive semidefinite")
-    angle = np.linspace(0, 2 * np.pi, n_points)
-    circle = np.vstack([np.cos(angle), np.sin(angle)])
-    return eigenvectors @ (np.sqrt(delta_chi2 * np.maximum(eigenvalues, 0))[:, None] * circle)
-
-
 def _ellipse(ax, center, covariance, nsigma, color, alpha):
     """Filled Gaussian contour of a 2x2 covariance (nsigma: 1D-projection convention)."""
-    from matplotlib.patches import Polygon
-
-    outline = ellipse_offsets(covariance, contour_delta_chi2(nsigma=nsigma))
-    ax.add_patch(Polygon((np.asarray(center)[:, None] + outline).T, closed=True,
-                         facecolor=color, edgecolor=color, alpha=alpha, lw=1.5, zorder=2))
+    gaussian_ellipse(ax, center, covariance, nsigma=nsigma, facecolor=color, edgecolor=color,
+                     alpha=alpha, lw=1.5, zorder=2)
 
 
 def plot_star_simulations(simulations, fits, nsigma=(1, 2), fontsize=16, annotate=True, ax=None):
@@ -121,8 +93,8 @@ def plot_star_simulations(simulations, fits, nsigma=(1, 2), fontsize=16, annotat
         ax.scatter(*center, marker=fit.get("marker", "X"), s=120, color=color, edgecolor="k",
                    zorder=3, label=fit["label"])
 
-    ax.set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
-    ax.set_ylabel(r"$n_\star$", fontsize=fontsize)
+    ax.set_xlabel(STAR_LABELS["Delta2_star"], fontsize=fontsize)
+    ax.set_ylabel(STAR_LABELS["n_star"], fontsize=fontsize)
     ax.tick_params(labelsize=fontsize - 4)
     ax.legend(fontsize=fontsize - 5, loc="best")
     fig.tight_layout()

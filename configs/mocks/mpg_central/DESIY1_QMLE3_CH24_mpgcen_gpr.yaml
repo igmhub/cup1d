@@ -3,7 +3,7 @@ data_label:
   - mpg_central
 # Simulation labels are not yet accepted by Lace's Cosmology class. Use the
 # supported reference cosmology while taking the mock P1D from mpg_central.
-true_cosmo_label: Planck18
+true_cosmo_label: Planck18_wonu
 synth_cov_label: DESIY1_QMLE3
 apply_smoothing: true
 fix_cosmo: false
@@ -29,4 +29,3 @@ fid_cont:
   HCD_damp4: -10.0
   HCD_const: 0.0
 out_folder: ./mock_mpg_central/global_opt/CH24_mpgcen_gpr
-pre_defined: null

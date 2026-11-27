@@ -1,16 +1,7 @@
 import numpy as np
 from cup1d.models.contaminants.base_contaminants import Contaminant
-
-
-def vel_diff(lambda1, lambda2):
-    """Convert rest wavelengths to an absolute logarithmic velocity separation."""
-    c_kms = 299792.458
-    return np.abs(np.log(lambda2 / lambda1)) * c_kms
-
-
-def rstrength(lambda1, lambda2, f1, f2):
-    """Return an optically-thin wavelength--oscillator-strength ratio."""
-    return (lambda1 * f1) / (lambda2 * f2)
+from cup1d.utils.batch import as_redshift_rows, unbatch
+from cup1d.models.contaminants.metals._common import rstrength, vel_diff
 
 
 class SiVid(Contaminant):
@@ -164,103 +155,39 @@ class SiVid(Contaminant):
         )
 
     def get_contamination(self, z, k_kms, mF, like_params=None, remove=None):
-        """Evaluate the SiVid multiplicative correction on velocity k grids.
+        """SiVid multiplicative correction (Ma+2026, Eq. 18) on velocity k grids.
 
         Parameters
         ----------
-        z, mF : array-like
-            Redshift rows and matching mean-flux values.
+        z : array-like
+            Redshifts.
         k_kms : sequence of ndarray
-            Per-redshift line-of-sight wavenumbers in s/km.
+            Per-redshift wavenumbers in s/km.
+        mF : array-like
+            Mean flux, ``(n_z,)`` for one point or ``(n_batch, n_z)``.
         like_params : mapping, optional
-            Coefficient-history overrides.
+            Scalar values (one point) or columns of shape ``(n_batch,)``.
         remove : mapping, optional
-            Transition flags overriding default contributions.
+            Unused: only Lya x SiIII is modelled.
 
         Returns
         -------
         list of ndarray
-            Dimensionless multiplicative corrections in redshift order.
+            One array per redshift: ``(n_k,)`` for one point,
+            ``(n_batch, n_k)`` for a batch.
         """
-
-        # z = np.atleast_1d(z)
-        # k_kms = np.atleast_2d(k_kms)
-        # mF = np.atleast_1d(mF)
-
-        vals = {}
-        for key in self.list_coeffs:
-            vals[key] = np.atleast_1d(self.get_value(key, z, like_params=like_params))
-            if key in self.null_vals:
-                if self.prop_coeffs[key + "_otype"] == "const":
-                    null = self.null_vals[key]
-                else:
-                    null = np.exp(self.null_vals[key])
-                _ = vals[key] <= null
-                vals[key][_] = 0
-
-        # for key in vals:
-        #     print(key, vals[key])
-
-        ra3 = self.rat["SiIIa_SiIII"]
-        rb3 = self.rat["SiIIb_SiIII"]
-        rc3 = self.rat["SiIIc_SiIII"]
-
-        self.off = {
-            "SiIII_Lya": 1,
-            "SiIIa_Lya": 0,
-            "SiIIb_Lya": 0,
-            "SiIIc_Lya": 0,
-            "SiIII_SiIIa": 0,
-            "SiIII_SiIIb": 0,
-            "SiIII_SiIIc": 0,
-            "SiIIc_SiIIb": 0,
-            "SiIIc_SiIIa": 0,
-            "SiIIb_SiIIa": 0,
-        }
-
-        if remove is not None:
-            for key in remove:
-                if key in self.off:
-                    self.off[key] = remove[key]
-
-        metal_corr = []
-
+        z, k_kms = as_redshift_rows(z, k_kms)
+        values, scalar = self.histories(z, like_params)
+        mF = np.atleast_2d(np.asarray(mF, dtype=float))
+        output = []
         for iz in range(len(z)):
-            # k-dependent damping of Lya-SiIII
-            # Eq. 18 from Ma+2026 https://arxiv.org/abs/2509.08613
+            k = k_kms[iz][None, :]
+            one_minus_flux = 1 - mF[:, iz, None]
+            p_siiii = values["f_Lya_SiIII"][:, iz, None] / one_minus_flux * np.exp(
+                values["s_Lya_SiIII"][:, iz, None] * k)
+            p_lya_siiii = (values["f_Lya_SiII"][:, iz, None] / one_minus_flux
+                           * np.cos(self.dv["SiIII_Lya"] * k)
+                           * np.exp(-values["s_Lya_SiII"][:, iz, None] * k))
+            output.append(1 + p_siiii + p_lya_siiii)
+        return unbatch(output, scalar)
 
-            PSiIII = (
-                vals["f_Lya_SiIII"][iz]
-                / (1 - mF[iz])
-                * np.exp(vals["s_Lya_SiIII"][iz] * k_kms[iz])
-            )
-            PLya_SiIII = (
-                vals["f_Lya_SiII"][iz]
-                / (1 - mF[iz])
-                * np.cos(self.dv["SiIII_Lya"] * k_kms[iz])
-                * np.exp(-vals["s_Lya_SiII"][iz] * k_kms[iz])
-            )
-
-            metal_corr.append(1 + PSiIII + PLya_SiIII)
-
-        return metal_corr
-
-    def get_contamination_batch(self, z, k_kms, mF, like_params, remove=None):
-        """Evaluate SiVid corrections for columnar likelihood samples.
-
-        Returns a list of dimensionless ``(n_batch, nk_z)`` arrays.
-        """
-        z = np.atleast_1d(np.asarray(z, dtype=float))
-        values = {key: self.get_value_batch(key, z, like_params) for key in self.list_coeffs}
-        for key in self.null_vals:
-            null = self.null_vals[key] if self.prop_coeffs[key + "_otype"] == "const" else np.exp(self.null_vals[key])
-            values[key] = np.where(values[key] <= null, 0.0, values[key])
-        return [
-            1
-            + values["f_Lya_SiIII"][:, iz, None] / (1 - np.asarray(mF)[:, iz, None])
-            * np.exp(values["s_Lya_SiIII"][:, iz, None] * np.asarray(k_kms[iz])[None, :])
-            + values["f_Lya_SiII"][:, iz, None] / (1 - np.asarray(mF)[:, iz, None])
-            * np.cos(self.dv["SiIII_Lya"] * np.asarray(k_kms[iz])[None, :])
-            * np.exp(-values["s_Lya_SiII"][:, iz, None] * np.asarray(k_kms[iz])[None, :])
-            for iz in range(len(z))
-        ]

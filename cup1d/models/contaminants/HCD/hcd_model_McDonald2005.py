@@ -1,5 +1,6 @@
 import numpy as np
 from cup1d.likelihood import parameter as likelihood_parameter
+from cup1d.utils.batch import as_columns, as_redshift_rows, unbatch
 
 
 class HCD_Model_McDonald2005(object):
@@ -103,50 +104,41 @@ class HCD_Model_McDonald2005(object):
         return np.exp(ln_out)
 
     def get_contamination(self, z, k_kms, like_params=None):
-        """Evaluate multiplicative HCD correction on velocity wavenumbers.
+        """McDonald+05 HCD multiplicative correction on velocity k grids.
 
         Parameters
         ----------
-        z : float
-            Redshift.
-        k_kms : array-like
-            Line-of-sight wavenumbers in s/km.
+        z : array-like
+            Redshifts.
+        k_kms : sequence of ndarray
+            Per-redshift wavenumbers in s/km.
         like_params : mapping, optional
-            HCD coefficient overrides.
+            Scalar values (one point) or columns of shape ``(n_batch,)``.
 
         Returns
         -------
-        float or ndarray
-            Dimensionless multiplicative P1D correction.
+        list of ndarray
+            One array per redshift: ``(n_k,)`` for one point,
+            ``(n_batch, n_k)`` for a batch.
         """
-        A_damp = self.get_A_damp(z, like_params=like_params)
-        if A_damp == 0:
-            return 1
-
-        # fitting function from Palanque-Delabrouille et al. (2015)
-        # that qualitatively describes Fig 2 of McDonald et al. (2005)
-        f_HCD = 0.018 + 1 / (15000 * k_kms - 8.9)
-        return 1 + A_damp * f_HCD
-
-    def get_contamination_batch(self, z, k_kms, like_params):
-        """Evaluate McDonald HCD corrections for columnar parameter samples.
-
-        Returns one dimensionless ``(n_batch, nk_z)`` correction array per
-        supplied redshift grid.
-        """
-        z = np.atleast_1d(np.asarray(z, dtype=float))
-        n_batch = len(next(iter(like_params.values())))
-        coeff = np.broadcast_to(np.asarray(self.ln_A_damp_coeff, dtype=float), (n_batch, len(self.ln_A_damp_coeff))).copy()
+        z, k_kms = as_redshift_rows(z, k_kms)
+        columns, n_batch, scalar = as_columns(like_params)
+        coeff = np.broadcast_to(np.asarray(self.ln_A_damp_coeff, dtype=float),
+                                (n_batch, len(self.ln_A_damp_coeff))).copy()
         for index in range(len(self.ln_A_damp_coeff)):
             name = f"ln_A_damp_{index}"
-            if name in like_params:
-                coeff[:, -(index + 1)] = np.asarray(like_params[name])
+            if name in columns:
+                coeff[:, -(index + 1)] = columns[name]
         xz = np.log((1 + z) / (1 + self.z_0))
         log_amplitude = np.zeros((n_batch, len(z)))
         for coefficient in coeff.T:
             log_amplitude = log_amplitude * xz[None, :] + coefficient[:, None]
         amplitude = np.where(coeff[:, -1, None] <= self.null_value, 0.0, np.exp(log_amplitude))
-        return [1 + amplitude[:, iz, None] * (0.018 + 1 / (15000 * np.asarray(k_kms[iz])[None, :] - 8.9)) for iz in range(len(z))]
+        # fitting function of Palanque-Delabrouille et al. (2015), which
+        # describes Fig 2 of McDonald et al. (2005)
+        output = [1 + amplitude[:, iz, None] * (0.018 + 1 / (15000 * k_kms[iz][None, :] - 8.9))
+                  for iz in range(len(z))]
+        return unbatch(output, scalar)
 
     def get_parameters(self):
         """Return HCD likelihood parameter definitions keyed by name."""
@@ -189,17 +181,3 @@ class HCD_Model_McDonald2005(object):
             ln_A_damp_coeff = self.ln_A_damp_coeff
 
         return ln_A_damp_coeff
-
-    def plot_contamination(
-        self,
-        z,
-        k_kms,
-        ln_A_damp_coeff=None,
-        plot_every_iz=1,
-        cmap=None,
-        smooth_k=False,
-    ):
-        """Render McDonald HCD corrections across redshift and k grids."""
-        from cup1d.postprocessing.contaminants import plot_hcd_contamination as _plot
-
-        return _plot(self, z, k_kms, ln_A_damp_coeff, plot_every_iz, cmap, smooth_k)

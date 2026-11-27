@@ -11,12 +11,7 @@ plotter
     optionally compared with other best fits.
 """
 
-from matplotlib import rcParams
-
 from cup1d.postprocessing.minimizer.plotter import MinimizerPlotter, legacy_fit_entry
 from cup1d.postprocessing.minimizer.star import plot_star_simulations, simulation_star_params
-
-rcParams["mathtext.fontset"] = "stix"
-rcParams["font.family"] = "STIXGeneral"
 
 __all__ = ["MinimizerPlotter", "legacy_fit_entry", "plot_star_simulations", "simulation_star_params"]

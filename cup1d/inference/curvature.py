@@ -93,6 +93,18 @@ def flatten_p1d(predictions, blocks):
             for block in blocks]
 
 
+def difference_step(center, step):
+    """Signed step for a derivative at ``center`` in ``[0, 1]``.
+
+    ``step`` when ``center +- step`` are both in the cube (central
+    difference), else a full step towards the interior (one-sided): a point
+    at an edge never gets a tiny, noisy step.
+    """
+    if center - step >= 0.0 and center + step <= 1.0:
+        return step
+    return step if center + step <= 1.0 else -step
+
+
 def finite_difference_jacobian(vectors, center, step):
     """Derivatives of a list of model vectors with respect to unit-cube coordinates.
 
@@ -115,15 +127,13 @@ def finite_difference_jacobian(vectors, center, step):
     base = vectors(center)
     jacobians = [np.empty((len(b), center.size)) for b in base]
     for index in range(center.size):
-        h = min(step, center[index], 1.0 - center[index])
+        h = difference_step(center[index], step)
         direction = np.zeros(center.size)
-        if h > 0:
-            direction[index] = h
+        direction[index] = h
+        if h == step and center[index] - step >= 0.0:
             plus, minus = vectors(center + direction), vectors(center - direction)
             columns = [(p - m) / (2 * h) for p, m in zip(plus, minus)]
         else:
-            h = step if center[index] < 1.0 else -step
-            direction[index] = h
             other = vectors(center + direction)
             columns = [(o - b) / h for o, b in zip(other, base)]
         for jacobian, column in zip(jacobians, columns):

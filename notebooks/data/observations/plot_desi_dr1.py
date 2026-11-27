@@ -127,7 +127,7 @@ plt.tight_layout()
 # panel per redshift bin.
 
 # %%
-from cup1d.postprocessing.plotter import plot_cov
+from cup1d.postprocessing.p1d.covariance import measurement_error_components, plot_measurement_errors
 from cup1d.p1ds.observations.data_DESIY1 import set_p1d_filename
 
 for label, args in {
@@ -136,7 +136,8 @@ for label, args in {
     "FFT3_dir": fft3_dir_args,
 }.items():
     print(label)
-    plot_cov(set_p1d_filename(args.data_label[0]))
+    fig = plot_measurement_errors(measurement_error_components(set_p1d_filename(args.data_label[0])))
+    plt.show()
 
 
 

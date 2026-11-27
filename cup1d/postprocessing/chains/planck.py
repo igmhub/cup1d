@@ -185,26 +185,6 @@ def get_planck_2013(
     )
 
 
-def get_planck_2015(
-    model="base_mnu", data="plikHM_TT_lowTEB", root_dir=None, linP_tag="zlinP"
-):
-    """Load a Planck-2015 chain.
-
-    Parameters
-    ----------
-    model, data, root_dir, linP_tag
-        Forwarded to :func:`get_planck_results` with release 2015.
-
-    Returns
-    -------
-    dict
-        Loaded-chain metadata and GetDist objects.
-    """
-    return get_planck_results(
-        2015, model=model, data=data, root_dir=root_dir, linP_tag=linP_tag
-    )
-
-
 def get_planck_2018(
     model="base_mnu",
     data="plikHM_TTTEEE_lowl_lowE",

@@ -6,6 +6,7 @@ from matplotlib.ticker import MaxNLocator
 
 from cup1d.postprocessing.posterior.samples import STAR_PARAMETERS, family_of
 from cup1d.postprocessing.posterior.stats import density_contours, padded_range
+from cup1d.postprocessing.style import styled
 
 # group name -> history families, in plotting order. Families absent from a
 # run are skipped; parameters in no group end up in "Other".
@@ -69,7 +70,56 @@ def _range_with_bounds(values, weights, bounds):
     return low, high
 
 
-def plot_parameters_vs_star(samples, names, title=None, fontsize=16, show_correlation=True):
+def amplitude_transforms(names):
+    """Show logarithmic amplitudes as amplitudes (``exp``; ``1/exp`` for the ``s_`` damping lengths).
+
+    Returns
+    -------
+    dict
+        ``{name: (function, label)}`` for :func:`plot_parameters_vs_star`
+        for the metal and HCD parameters among ``names``.
+    """
+    from cup1d.postprocessing.labels import parameter_label
+
+    out = {}
+    for name in names:
+        family = family_of(name)
+        # the labels already name the amplitudes (as in the DR1 paper)
+        if family.startswith(("f_", "HCD_damp")):
+            out[name] = (np.exp, parameter_label(name))
+        elif family.startswith("s_"):
+            out[name] = (lambda x: np.exp(-x), parameter_label(name))
+    return out
+
+
+def parameters_vs_star_data(samples, names, transforms=None):
+    """Weighted 16/50/84 quantiles and correlations behind :func:`plot_parameters_vs_star`.
+
+    Returns
+    -------
+    dict
+        Per parameter (transformed): ``<name>_16_50_84`` and its correlation
+        with every star parameter ``<name>_r_<star>``; and the star quantiles.
+    """
+    from cup1d.postprocessing.posterior.stats import weighted_quantile
+
+    transforms = transforms or {}
+    w = samples.weights
+    out = {f"{star}_16_50_84": samples.quantiles(star) for star in STAR_PARAMETERS}
+    for name in names:
+        values = samples.column(name)
+        if name in transforms:
+            values = transforms[name][0](values)
+        out[f"{name}_16_50_84"] = weighted_quantile(values, [0.16, 0.5, 0.84], w)
+        for star in STAR_PARAMETERS:
+            r = np.cov(values, samples.column(star), aweights=w)
+            out[f"{name}_r_{star}"] = r[0, 1] / np.sqrt(r[0, 0] * r[1, 1])
+    return out
+
+
+@styled
+def plot_parameters_vs_star(samples, names, title=None, fontsize=16, show_correlation=True,
+                            transforms=None):
     """Plot the joint posterior of each parameter with Delta2_star and n_star.
 
     Parameters
@@ -84,6 +134,9 @@ def plot_parameters_vs_star(samples, names, title=None, fontsize=16, show_correl
         Base font size.
     show_correlation : bool, default=True
         Write the weighted correlation coefficient in every panel.
+    transforms : mapping, optional
+        ``{name: (function, label)}``: plot ``function(values)`` with that
+        label (prior bounds transformed too), e.g. :func:`amplitude_transforms`.
 
     Returns
     -------
@@ -100,9 +153,15 @@ def plot_parameters_vs_star(samples, names, title=None, fontsize=16, show_correl
     star_ranges = [padded_range(v, w) for v in stars]
     fig, axes = plt.subplots(2, len(names), figsize=(2.8 * len(names) + 1.2, 5.6),
                              sharey="row", squeeze=False)
+    transforms = transforms or {}
     for j, name in enumerate(names):
         values = samples.column(name)
         bounds = samples.bounds.get(name)
+        if name in transforms:
+            function = transforms[name][0]
+            values = function(values)
+            if bounds is not None:
+                bounds = tuple(sorted(float(function(np.float64(b))) for b in bounds))
         xrange = _range_with_bounds(values, w, bounds)
         for i, star in enumerate(stars):
             ax = axes[i, j]
@@ -124,7 +183,8 @@ def plot_parameters_vs_star(samples, names, title=None, fontsize=16, show_correl
             ax.tick_params(labelsize=fontsize - 5)
             if i == 0:
                 ax.tick_params(labelbottom=False)
-        axes[1, j].set_xlabel(samples.label_of(name), fontsize=fontsize)
+        axes[1, j].set_xlabel(transforms[name][1] if name in transforms else samples.label_of(name),
+                              fontsize=fontsize)
     for i, name in enumerate(STAR_PARAMETERS):
         axes[i, 0].set_ylabel(samples.label_of(name), fontsize=fontsize)
     if title:
@@ -134,6 +194,7 @@ def plot_parameters_vs_star(samples, names, title=None, fontsize=16, show_correl
     return fig
 
 
+@styled
 def plot_correlation_matrix(samples, names=None, threshold=0.35, fontsize=12):
     """Plot the posterior correlation matrix of all the parameters.
 

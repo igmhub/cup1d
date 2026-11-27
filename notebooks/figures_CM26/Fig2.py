@@ -22,27 +22,26 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import os
-import cup1d
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
+from cup1d.postprocessing.io import save_figure_data
+from cup1d.postprocessing.p1d.covariance import (
+    error_budget_data, p1d_error_budget, plot_error_budget, plot_p1d_correlation,
+)
 
 # %%
-args = Args(pre_defined="CM2026", system="local")
-# pip = Analysis(args, out_folder=args.out_folder)
-pip = Analysis(args, out_folder=None)
+args = Args.from_baseline()
+pip = Analysis(args, create_output=False)
 
 # %%
-# store_data = pip.fitter.like.data.plot_p1d(store_data=True, fname=None)
-store_data = pip.fitter.like.plot_cov_to_pk(use_pk_smooth=False, store_data=True)
+budget = p1d_error_budget(pip.fitter.like, use_pk_smooth=False)
+fig = plot_error_budget(budget)
 
 # %%
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_2.npy")
-np.save(fname, store_data)
+save_figure_data(error_budget_data(budget), "fig_2.npy")
 
 # %% [markdown]
 # ### Plot correlation matrix
 
 # %%
-pip.fitter.like.plot_correlation_matrix()
+fig = plot_p1d_correlation(pip.fitter.like)

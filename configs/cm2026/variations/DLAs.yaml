@@ -8,5 +8,4 @@ fid_cont:
   HCD_damp2_ztype: pivot
   HCD_damp2_fixed: true
 out_folder: ./DESIY1_QMLE3/DLAs/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: DLAs

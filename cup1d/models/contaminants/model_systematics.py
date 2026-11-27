@@ -1,6 +1,5 @@
-import numpy as np
 
-from cup1d.models.contaminants.spectro_resolution import resolution_class
+from cup1d.models.contaminants import resolution
 
 
 class Systematics(object):
@@ -59,8 +58,9 @@ class Systematics(object):
         if resolution_model:
             self.resolution_model = resolution_model
         else:
-            self.resolution_model = resolution_class.Resolution(
+            self.resolution_model = resolution.Resolution(
                 free_param_names=free_param_names,
+                form=pars_syst.get("R_form", "exponential"),
                 fid_vals=fid_vals,
                 prop_coeffs=prop_coeffs,
                 flat_priors=flat_priors,
@@ -82,38 +82,22 @@ class Systematics(object):
     #     return dict_out
 
     def get_contamination(self, z, k_kms, like_params=None):
-        """Return resolution corrections for scalar or columnar parameters.
+        """Resolution correction for one point or a batch.
 
         Parameters
         ----------
         z : array-like
-            Redshift rows.
+            Redshifts.
         k_kms : sequence of ndarray
-            Per-redshift wavenumber grids in s/km.
+            Per-redshift wavenumbers in s/km.
         like_params : mapping, optional
-            Scalar values or one-dimensional batch columns.
+            Scalar values (one point) or columns of shape ``(n_batch,)``.
 
         Returns
         -------
-        ndarray or list of ndarray
-            Dimensionless resolution corrections, with a leading batch axis for
-            columnar inputs.
+        list of ndarray
+            Dimensionless corrections, ``(n_k,)`` per redshift for one point
+            or ``(n_batch, n_k)`` for a batch.
         """
-        if isinstance(like_params, dict) and like_params and all(np.asarray(value).ndim == 1 for value in like_params.values()):
-            return self.resolution_model.get_contamination_batch(z, k_kms, like_params)
-        # include multiplicative resolution correction
-        cont = self.resolution_model.get_contamination(
-            z=z, k_kms=k_kms, like_params=like_params
-        )
+        return self.resolution_model.get_contamination(z, k_kms, like_params=like_params)
 
-        if len(z) == 1:
-            cont_resolution = np.ones_like(k_kms) * cont
-        else:
-            cont_resolution = []
-            for iz in range(len(z)):
-                if type(cont) != int:
-                    cont_resolution.append(np.ones_like(k_kms[iz]) * cont[iz])
-                else:
-                    cont_resolution.append(np.ones_like(k_kms[iz]) * cont)
-
-        return cont_resolution

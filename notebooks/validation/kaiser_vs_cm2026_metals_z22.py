@@ -62,7 +62,7 @@ plt.rcParams.update({"mathtext.fontset": "stix", "font.family": "STIXGeneral", "
 # ## Settings and the CM2026 analysis
 
 # %%
-CONFIG = Path(get_path_repo("cup1d")) / "configs" / "desi_dr1_tests" / "cm2026_base_forestmpggp.yaml"
+CONFIG = Path(get_path_repo("cup1d")) / "configs" / "cm2026" / "cm2026_base_forestmpggp.yaml"
 Z = 2.2  # the only redshift (z_max = Z selects the bin and its covariance block)
 BETA_FREE = False  # False: betas fixed at 0.5 (the Kaiser default for a metal not varied)
 KAISER_DAMPING = "gaussian"  # Kaiser Lya x metal damping: "gaussian" (as Vega) or "sigmoid" (as CM2026)

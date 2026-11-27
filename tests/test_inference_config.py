@@ -7,7 +7,7 @@ import pytest
 
 from cup1d.configuration.args import Args
 from cup1d.inference.fitter import Fitter
-from cup1d.theory.theory import interpolate_p1d
+from cup1d.theory.projection import interpolate_p1d
 
 CONFIGS = Path(__file__).resolve().parents[1] / "configs"
 

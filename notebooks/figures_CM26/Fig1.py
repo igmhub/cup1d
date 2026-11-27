@@ -22,18 +22,16 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import os
-from cup1d.inference.analysis import Analysis
+from cup1d.configuration.args import Args
+from cup1d.p1ds.factory import set_p1d
+from cup1d.postprocessing.io import save_figure_data
 
 # %%
-# args = Args(pre_defined="CM2026", system="local")
-pip = Analysis()
+args = Args.from_baseline()
+data = set_p1d(args, args.data_label[0])
 
 # %%
-pip.fitter.like.data.plot_p1d()
+fig = data.plot_p1d()
 
 # %%
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_1.npy")
-np.save(fname, store_data)
-
+save_figure_data(data.plot_p1d(store_data=True), "fig_1.npy")

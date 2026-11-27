@@ -6,5 +6,4 @@ fid_igm:
   n_gamma: 6
   n_kF_kms: 6
 out_folder: ./DESIY1_QMLE3/more_igm/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: more_igm

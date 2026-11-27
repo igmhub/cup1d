@@ -3,5 +3,4 @@
 fid_igm:
   priors: 1.1
 out_folder: ./DESIY1_QMLE3/IGM_priors/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: IGM_priors

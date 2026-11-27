@@ -22,104 +22,57 @@
 # %load_ext autoreload
 # %autoreload 2
 
+from pathlib import Path
+
 import numpy as np
-import os
 
 # our own modules
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
-from cup1d.postprocessing.plotter import Plotter
-
-# %%
-
-data_label = "DESIY1_QMLE3"
-name_variation = None
-emulator_label = "lace_mpg"
-# emulator_label = "lace_nyx"
-
-# emu_cov_type = "block"
-# emu_cov_type = "diagonal"
-emu_cov_type = "full"
-# name_variation = "Ma2025"
-name_variation = "no_inflate"
-
-args = Args(data_label=data_label, emulator_label=emulator_label, emu_cov_type=emu_cov_type)
-args.set_baseline(
-    fit_type="at_a_time_global", 
-    fix_cosmo=True, 
-    name_variation=name_variation, 
+from cup1d.postprocessing.fit.illustrate import (
+    plot_contaminant_residuals, residual_scenarios, residual_scenarios_data,
 )
+from cup1d.postprocessing.io import save_figure_data
+from cup1d.utils.utils import get_path_repo
 
-pip = Analysis(args, out_folder=None)
+# %% [markdown]
+# Local (one redshift at a time) fits to DESI DR1 QMLE3 with lace-mpg, fixed
+# cosmology and without inflating the statistical errors (the
+# `at_a_time_global` setup with the `no_inflate` covariance of the paper).
 
 # %%
-npoints = []
-for ii in range(len(pip.fitter.like.data.z)):
-    npoints.append(len(pip.fitter.like.data.k_kms[ii]))
-npoints = np.array(npoints)
+config_path = (Path(get_path_repo("cup1d")) / "configs" / "cm2026" / "variations"
+               / "at_a_time_global_QMLE3.yaml")
+args = Args.from_yaml(config_path, verbose=False)
+pip = Analysis(args, create_output=False)
+data = next(iter(pip.like.data.values()))
+
+# %%
+npoints = np.array([len(k) for k in data.k_kms])
 npoints
 
-# %%
-out_mle = []
-out_mle_cube = []
-out_chi2 = []
-out_pnames = []
-# for ii in range(len(pip.fitter.like.data.z)):
-for ii in range(1):
-    zmask = np.array([pip.fitter.like.data.z[ii]])
-
-    pip = Analysis(args, out_folder=None)
-    
-    print()
-    
-    f_space_len = 14
-    s_space_len = 5
-    for p in pip.fitter.like.free_params.values():
-        print(
-            p["name"], (f_space_len-len(p["name"])) * " ", "\t",
-            np.round(p["value"], 3), (s_space_len-len(str(np.round(p["value"], 3)))) * " ", "\t",
-            np.round(p["min_value"], 3), (s_space_len-len(str(np.round(p["min_value"], 3)))) * " ", "\t",
-            np.round(p["max_value"], 3), (s_space_len-len(str(np.round(p["max_value"], 3)))) * " ", "\t",
-            p["Gauss_priors_width"],
-        )
-
-    
-    print()
-    
-    print(ii, zmask)
-    p0 = np.array(list(pip.fitter.like.fid["fit_cube"].values()))
-    pip.fitter.run_minimizer(log_func_minimize=pip.fitter.minus_log_prob, p0=p0, zmask=zmask, restart=True)
-    out_pnames.append(pip.fitter.like.free_param_names)
-    out_mle.append(pip.fitter.mle)
-    out_mle_cube.append(pip.fitter.mle_cube)
-    out_chi2.append(pip.fitter.mle_chi2)
+# %% [markdown]
+# Fit the first redshift bin (z = 2.2)
 
 # %%
-pip.fitter.get_chi2(pip.fitter.mle_cube, zmask=zmask)
+iz = 0
+zmask = np.array([data.z[iz]])
+p0 = pip.fitter.initial_parameters()
+pip.fitter.run_minimizer(log_func_minimize=pip.fitter.minus_log_prob, p0=p0, zmask=zmask, restart=True)
+print("chi2 at z =", zmask[0], ":", pip.fitter.get_chi2(pip.fitter.mle_cube, zmask=zmask))
+best = pip.fitter.parameters_from_sampling_point(pip.fitter.mle_cube)
+
+# %% [markdown]
+# Residuals after switching off each contaminant term
 
 # %%
-chi2_z22 = {
-    "full": 29.34193443427515,
-    "no HCD": 50.562410331579215,
-    "no SiII-SiIII": 40.0704405056536,
-    "no SiII-SiII": 58.36565506912524,
-    "no Lya-SiII": 75.86759701563147,
-    "no Lya-SiIII": 661.8034659063873,
-    "no cont": 764.4559241510051,
-}
-for key in chi2_z22:
-    print(key, np.round(chi2_z22[key] - chi2_z22["full"], 1))
+scenarios = residual_scenarios(pip.like, best, zmask[0])
+for name, chi2 in scenarios["chi2"].items():
+    print(f"{name:12s} chi2 = {chi2:7.1f}, delta chi2 = {chi2 - scenarios['chi2']['all']:6.1f}")
 
 # %%
-diru = 'figs'
-# diru=None
-plotter = Plotter(pip.fitter, save_directory=diru, zmask=zmask)
+fig = plot_contaminant_residuals(scenarios, fontsize=22)
+# fig.savefig("figs/cont_illustrate_each2.2.pdf")
 
 # %%
-store_data = plotter.plot_illustrate_contaminants_each(out_mle_cube[0].copy(), zmask, fontsize=22, store_data=True)
-# %%
-import cup1d, os
-
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_7.npy")
-np.save(fname, store_data)
+save_figure_data(residual_scenarios_data(scenarios), "fig_7.npy")

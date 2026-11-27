@@ -79,11 +79,6 @@ def warn_once(message, category=UserWarning, key=None, stacklevel=1):
     )
 
 
-def reset_warn_once():
-    """Forget which warnings were shown, so they can appear again."""
-    _SEEN.clear()
-
-
 @contextmanager
 def numpy_errors_once(label, errors=("over", "invalid", "divide")):
     """Report NumPy floating-point errors in this block once per label.

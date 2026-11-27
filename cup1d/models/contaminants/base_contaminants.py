@@ -1,10 +1,9 @@
 import numpy as np
-from scipy.interpolate import make_smoothing_spline, make_interp_spline
-from cup1d.likelihood import parameter as likelihood_parameter
-from cup1d.utils.utils import split_string
+from cup1d.models.history import CoefficientHistories
+from cup1d.utils.batch import as_columns
 
 
-class Contaminant(object):
+class Contaminant(CoefficientHistories):
     """Base model for redshift-dependent contaminant coefficient histories.
 
     Subclasses share parameter construction, fiducial interpolation, and
@@ -82,436 +81,21 @@ class Contaminant(object):
                 raise ValueError(
                     "can not specify both coeffs and free_param_names"
                 )
+            self.n_pars = {}
             for key in self.list_coeffs:
-                # set coeffs
-                if key in coeffs:
-                    self.coeffs[key] = coeffs[key]
-                else:
-                    raise ("Coeff not specified:", key)
+                if key not in coeffs:
+                    raise ValueError(f"Coeff not specified: {key}")
+                self.coeffs[key] = coeffs[key]
+                self.n_pars[key] = len(np.atleast_1d(coeffs[key]))
         else:
             if free_param_names is None:
                 raise ValueError(
                     "must specify either coeffs or free_param_names"
                 )
 
-            # figure out number of HCD free params
-            self.n_pars = {}
-            for key in self.list_coeffs:
-                self.n_pars[key] = len(
-                    [p for p in free_param_names if split_string(p)[0] == key]
-                )
-                if self.n_pars[key] == 0:
-                    npar = 1
-                else:
-                    npar = self.n_pars[key]
-                self.coeffs[key] = [0.0] * npar
-
-                for ii in range(npar):
-                    if self.prop_coeffs[key + "_ztype"] == "pivot":
-                        # self.coeffs[key][-(ii + 1)] = self.fid_vals[key][
-                        #     -(ii + 1)
-                        # ]
-                        if ii == 0:
-                            self.coeffs[key][-1] = self.fid_vals[key][-1]
-                        else:
-                            self.coeffs[key][-(ii + 1)] = self.fid_vals[key][0]
-                    else:
-                        self.coeffs[key][ii] = self.fid_vals[key][-1]
+            self.set_coefficients(free_param_names)
 
         self.set_params()
-
-    def set_params(self):
-        """Build canonical likelihood parameter definitions for coefficients.
-
-        Returns
-        -------
-        None
-            Sets ``params`` keyed by indexed coefficient parameter name.
-
-        Raises
-        ------
-        ValueError
-            If no matching flat-prior definition exists for a coefficient.
-        """
-
-        self.params = {}
-
-        for key in self.list_coeffs:
-            values = self.coeffs[key]
-            for ii in range(len(values)):
-                name = key + "_" + str(ii)
-                set_prior = False
-                for key2 in self.flat_priors:
-                    if key2 == key:
-                        if self.prop_coeffs[key + "_ztype"] == "pivot":
-                            # xmin = self.flat_priors[key2][-(ii + 1)][0]
-                            # xmax = self.flat_priors[key2][-(ii + 1)][1]
-                            if ii == 0:
-                                xmin = self.flat_priors[key2][-1][0]
-                                xmax = self.flat_priors[key2][-1][1]
-                            else:
-                                xmin = self.flat_priors[key2][0][0]
-                                xmax = self.flat_priors[key2][0][1]
-                        else:
-                            xmin = self.flat_priors[key2][-1][0]
-                            xmax = self.flat_priors[key2][-1][1]
-                        set_prior = True
-                        break
-
-                if set_prior is False:
-                    raise ValueError("Cannot find priors of:", key)
-
-                # note non-trivial order in coefficients
-                Gwidth = None
-                if self.Gauss_priors is not None:
-                    if name in self.Gauss_priors:
-                        if self.prop_coeffs[key + "_ztype"] == "pivot":
-                            Gwidth = self.Gauss_priors[name][-(ii + 1)]
-                        else:
-                            Gwidth = self.Gauss_priors[name][ii]
-
-                if self.prop_coeffs[key + "_ztype"] == "pivot":
-                    _value = values[-(ii + 1)]
-                else:
-                    _value = values[ii]
-
-                par = likelihood_parameter.make_parameter(
-                    name=name,
-                    value=_value,
-                    min_value=xmin,
-                    max_value=xmax,
-                    Gauss_priors_width=Gwidth,
-                    hessian_transform=self.prop_coeffs[key + "_otype"],
-                )
-                self.params[name] = par
-
-    def get_Nparam(self):
-        """Return the number of coefficient likelihood parameters.
-
-        Returns
-        -------
-        int
-            Number of entries in ``params``.
-
-        Raises
-        ------
-        ValueError
-            If the parameter count and stored coefficient count disagree.
-        """
-        n_params = len(self.params)
-        n_coeffs = 0
-        for coeff in self.coeffs:
-            n_coeffs += len(coeff)
-        if n_params != n_coeffs:
-            raise ValueError("mismatch between number of params and coeffs")
-        return n_params
-
-    def get_value(self, name, z, like_params=None):
-        """Evaluate one scalar-point coefficient history at redshift values.
-
-        Parameters
-        ----------
-        name : str
-            Coefficient family name.
-        z : float or array-like
-            Redshift or redshifts.
-        like_params : mapping, optional
-            Likelihood coefficient overrides.
-
-        Returns
-        -------
-        float or ndarray
-            History after configured constant or exponential output transform.
-
-        Raises
-        ------
-        ValueError
-            If redshift interpolation or output-transform metadata is invalid.
-        """
-        coeff = self.get_coeff(name, like_params=like_params)
-        # print(name, coeff, self.prop_coeffs[name + "_otype"])
-
-        if self.prop_coeffs[name + "_ztype"] == "pivot":
-            xz = np.log((1 + z) / (1 + self.z_0))
-            ln_poly = np.poly1d(coeff)
-            ln_out = ln_poly(xz)
-        elif self.prop_coeffs[name + "_ztype"].startswith("interp"):
-            if self.prop_coeffs[name + "_ztype"].endswith("_lin"):
-                ln_out = np.interp(z, self.prop_coeffs[name + "_znodes"], coeff)
-            elif self.prop_coeffs[name + "_ztype"].endswith("_spl"):
-                f_out = make_interp_spline(
-                    self.prop_coeffs[name + "_znodes"],
-                    coeff,
-                    k=1,
-                )
-                ln_out = f_out(z)
-            elif self.prop_coeffs[name + "_ztype"].endswith("_smspl"):
-                f_out = make_smoothing_spline(
-                    self.prop_coeffs[name + "_znodes"], coeff
-                )
-                ln_out = f_out(z)
-            else:
-                raise ValueError(
-                    "prop_coeffs must be interp_lin, interp_spl, or interp_smspl for",
-                    name,
-                )
-        else:
-            raise ValueError(
-                "prop_coeffs must be interp_lin, interp_spl, interp_smspl, or pivot for",
-                name,
-            )
-
-        if self.z_max is not None:
-            if len(np.atleast_1d(z)) > 1:
-                _ = z >= self.z_max[name]
-                if np.any(_):
-                    ln_out[_] = self.null_vals[name]
-            else:
-                if z >= self.z_max[name]:
-                    ln_out = self.null_vals[name]
-
-        if self.prop_coeffs[name + "_otype"] == "const":
-            return ln_out
-        elif self.prop_coeffs[name + "_otype"] == "exp":
-            return np.exp(ln_out)
-        else:
-            raise ValueError("prop_coeffs must be const or exp for", name)
-
-    def get_value_batch(self, name, z, like_params):
-        """Evaluate a coefficient history for several parameter points.
-
-        Parameters
-        ----------
-        name : str
-            Configured history family.
-        z : float or array_like
-            Scalar or one-dimensional redshift grid, converted to an array.
-        like_params : mapping of str to numpy.ndarray
-            Nonempty columnar parameter mapping. Each relevant coefficient
-            array has shape ``(n_batch,)``. Missing family coefficients retain
-            their stored values; the first mapping entry sets the batch size.
-
-        Returns
-        -------
-        numpy.ndarray
-            History values with shape ``(n_batch, n_z)``. The configured
-            ``exp`` output transform is applied after interpolation.
-
-        Raises
-        ------
-        ValueError
-            If the mapping is empty or a relevant column has the wrong shape.
-        NotImplementedError
-            If the history uses an unsupported interpolation type.
-
-        Notes
-        -----
-        Supported histories are pivot polynomials, linear interpolation, and
-        degree-one splines. This method evaluates the coefficient history;
-        it does not multiply a fiducial physical history.
-        """
-
-        z = np.atleast_1d(np.asarray(z, dtype=float))
-        first = next(iter(like_params.values()), None)
-        if first is None:
-            raise ValueError("like_params must contain a batched parameter")
-        n_batch = len(np.asarray(first))
-        coeff = np.broadcast_to(
-            np.asarray(self.coeffs[name], dtype=float),
-            (n_batch, len(self.coeffs[name])),
-        ).copy()
-        for index in range(self.n_pars[name]):
-            parameter_name = name + "_" + str(index)
-            if parameter_name not in like_params:
-                continue
-            value = np.asarray(like_params[parameter_name], dtype=float)
-            if value.shape != (n_batch,):
-                raise ValueError(
-                    f"batched parameter {parameter_name} has shape {value.shape}; "
-                    f"expected ({n_batch},)"
-                )
-            target = -(index + 1) if self.prop_coeffs[name + "_ztype"] == "pivot" else index
-            coeff[:, target] = value
-
-        ztype = self.prop_coeffs[name + "_ztype"]
-        if ztype == "pivot":
-            xz = np.log((1 + z) / (1 + self.z_0))
-            ln_out = np.zeros((n_batch, len(z)))
-            for coefficient in coeff.T:
-                ln_out = ln_out * xz[None, :] + coefficient[:, None]
-        elif ztype.endswith("_lin") or ztype.endswith("_spl"):
-            nodes = self.prop_coeffs[name + "_znodes"]
-            if ztype.endswith("_lin"):
-                ln_out = np.asarray(
-                    [np.interp(z, nodes, row) for row in coeff], dtype=float
-                )
-            else:
-                spline = make_interp_spline(nodes, coeff.T, k=1, axis=0)
-                ln_out = np.asarray(spline(z)).T
-        else:
-            raise NotImplementedError(
-                f"batched {ztype} histories are not supported for {name}"
-            )
-        if self.prop_coeffs[name + "_otype"] == "exp":
-            return np.exp(ln_out)
-        return ln_out
-
-    def get_parameter(self, name):
-        """Return a stored coefficient parameter definition.
-
-        Parameters
-        ----------
-        name : str
-            Full coefficient parameter name in ``self.params``.
-
-        Returns
-        -------
-        dict
-            Shared parameter definition. Mutations affect the model.
-
-        Raises
-        ------
-        KeyError
-            If the parameter name is absent.
-        """
-        return self.params[name]
-
-    def get_parameters(self):
-        """Return shared likelihood parameter definitions for all families.
-
-        Returns
-        -------
-        dict
-            Mapping from indexed coefficient names to mutable parameter records.
-        """
-        return self.params
-
-    def get_coeff(self, name, like_params=None):
-        """Retrieve history coefficients with physical named overrides.
-
-        Parameters
-        ----------
-        name : str
-            Coefficient family in ``self.coeffs``.
-        like_params : mapping, optional
-            Values keyed by ``name_<index>``. If the family is overridden,
-            all configured indices must be supplied. Other families are ignored.
-
-        Returns
-        -------
-        numpy.ndarray
-            Coefficients in polynomial order for pivot histories or node order
-            for interpolation. Overrides operate on a copy; an absent or empty
-            mapping returns the stored array itself.
-
-        Raises
-        ------
-        ValueError
-            If the number of supplied family coefficients is inconsistent.
-
-        Notes
-        -----
-        Pivot coefficient index zero denotes the constant polynomial term,
-        stored at the end of the array.
-        """
-        if like_params:
-            coeff = self.coeffs[name].copy()
-            Npar = 0
-            array_names = []
-            array_values = []
-            for par_name, par_value in like_params.items():
-                if split_string(par_name)[0] == name:
-                    array_names.append(par_name)
-                    array_values.append(par_value)
-                    Npar += 1
-            array_names = np.array(array_names)
-            array_values = np.array(array_values)
-
-            # return fiducial value
-            if Npar == 0:
-                return coeff
-            elif Npar != self.n_pars[name]:
-                print(Npar, self.n_pars[name])
-                raise ValueError("number of params mismatch for: " + name)
-
-            for ii in range(Npar):
-                ind_arr = np.argwhere(name + "_" + str(ii) == array_names)[0, 0]
-                if self.prop_coeffs[name + "_ztype"] == "pivot":
-                    coeff[-(ii + 1)] = array_values[ind_arr]
-                else:
-                    coeff[ii] = array_values[ind_arr]
-        else:
-            coeff = self.coeffs[name]
-
-        return coeff
-
-    def reset_coeffs(self, like_params, rank=0):
-        """Persist complete named coefficient overrides into this model.
-
-        Parameters
-        ----------
-        like_params : mapping
-            Physical coefficient values keyed by ``<family>_<index>``. A
-            partially supplied family is rejected to preserve its history.
-        rank : int, default=0
-            MPI rank that emits before/after diagnostic output.
-
-        Returns
-        -------
-        None
-            Updates ``coeffs`` in place.
-
-        Raises
-        ------
-        ValueError
-            If supplied values cover only part of a coefficient family.
-        """
-        for name in self.coeffs:
-            Npar = 0
-            if rank == 0:
-                print("orig", name, self.coeffs[name])
-            array_names = []
-            array_values = []
-            for par_name, par_value in like_params.items():
-                if split_string(par_name)[0] == name:
-                    array_names.append(par_name)
-                    array_values.append(par_value)
-                    Npar += 1
-            array_names = np.array(array_names)
-            array_values = np.array(array_values)
-
-            # return fiducial value
-            if Npar == 0:
-                continue
-            elif Npar != self.n_pars[name]:
-                if rank == 0:
-                    print(Npar, self.n_pars[name])
-                raise ValueError("number of params mismatch for: " + name)
-
-            for ii in range(Npar):
-                ind_arr = np.argwhere(name + "_" + str(ii) == array_names)[0, 0]
-                if self.prop_coeffs[name + "_ztype"] == "pivot":
-                    self.coeffs[name][-(ii + 1)] = array_values[ind_arr]
-                else:
-                    self.coeffs[name][ii] = array_values[ind_arr]
-            if rank == 0:
-                print("new", name, self.coeffs[name])
-
-    def plot_parameters(self, z, like_params, folder=None):
-        """Render redshift-dependent coefficient histories.
-
-        Parameters
-        ----------
-        z : array-like
-            Redshift grid.
-        like_params : mapping
-            Coefficient values to display.
-        folder : path-like, optional
-            Destination directory owned by the postprocessing renderer.
-        """
-        from cup1d.postprocessing.contaminants import plot_parameters as _plot
-
-        return _plot(self, z, like_params, folder)
 
     # def plot_contamination(
     #     self,
@@ -648,3 +232,37 @@ class Contaminant(object):
     #             fig1.savefig(name + "_all.png")
     #         fig2.savefig(name + "_z.pdf")
     #         fig2.savefig(name + "_z.png")
+
+    def histories(self, z, like_params, null="metal"):
+        """Every coefficient history of the model for one point or a batch.
+
+        Parameters
+        ----------
+        z : ndarray
+            Redshifts.
+        like_params : mapping or None
+            Scalar values (one point) or columns of shape ``(n_batch,)``.
+        null : {"metal", "exp", None}, default "metal"
+            Families at or below their null value (``null_vals``) are set to
+            zero: ``"metal"`` compares with the null after the output
+            transform for every otype; ``"exp"`` only for ``otype: exp``
+            families (linear amplitudes may be negative).
+
+        Returns
+        -------
+        values : dict of str to ndarray
+            ``(n_batch, n_z)`` per family.
+        scalar : bool
+            True for one point (drop the batch axis of the results).
+        """
+        columns, n_batch, scalar = as_columns(like_params)
+        values = {key: self.get_value_batch(key, z, columns, n_batch) for key in self.list_coeffs}
+        for key in values:
+            if null is None or self.null_vals is None or key not in self.null_vals:
+                continue
+            otype = self.prop_coeffs[key + "_otype"]
+            if null == "exp" and otype != "exp":
+                continue
+            threshold = self.null_vals[key] if otype == "const" else np.exp(self.null_vals[key])
+            values[key] = np.where(values[key] <= threshold, 0.0, values[key])
+        return values, scalar

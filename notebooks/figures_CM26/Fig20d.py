@@ -19,37 +19,42 @@
 # Best-fitting resolution correction
 
 # %%
-import os
 import numpy as np
 
-from cup1d.utils.utils import get_path_repo
-from cup1d.postprocessing.plots_corner import plots_chain
-
-# blinding to be subtracted from blinded measurement
-fname = os.path.join(get_path_repo("cup1d"), "data", "blinding_dr1.npy")
-real_blinding = np.load(fname, allow_pickle=True).item()
-
+from cup1d.configuration.args import Args
+from cup1d.postprocessing.io import save_figure_data
+from cup1d.postprocessing.literature import dr1_chain_directory
+from cup1d.postprocessing.posterior import PosteriorSamples
+from cup1d.postprocessing.posterior.histories import plot_parameters_vs_z
 
 # my local machine
-folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
+folder = dr1_chain_directory()
 # nersc
 # folder = "/global/cfs/cdirs/desi/users/jjchaves/P1D_results/DESI_DR1/chain/"
 
-# for more efficiency, comment everything but the plotting routine of this correction
-store_data = plots_chain(folder, store_data=True, truth=real_blinding)
+samples = PosteriorSamples.from_cup1d_folder(folder, thin=2)
+znodes = Args.from_baseline().fid_syst["R_coeff_znodes"]
 
 # %%
-import cup1d, os
+fig = plot_parameters_vs_z(samples, {"R_coeff": znodes}, fontsize=20)
+# fig.savefig("figs/zreso.pdf", bbox_inches="tight")
 
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_20d.npy")
-np.save(fname, store_data)
+# %%
+names = samples.family("R_coeff")
+quantiles = np.array([samples.quantiles(name, [0.16, 0.5, 0.84]) for name in names]).T
+save_figure_data({"x": np.asarray(znodes)[[int(n.rsplit("_", 1)[1]) for n in names]], "y": quantiles},
+                 "fig_20d.npy")
 
 # %% [markdown]
 # ## Other variations, check out local machine
 
 # %%
-base = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/"
+import os
+
+from cup1d.postprocessing.chains.products import write_chain_products
+from cup1d.postprocessing.literature import dr1_output_root
+
+base = str(dr1_output_root())
 
 variations = {
     "DESIY1_QMLE3_mpg": ["Fiducial", "DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_1/"],
@@ -91,6 +96,10 @@ variations = {
     # "sim_sherwood": ["Val: sherwood simulation", "DESIY1_QMLE3/sim_sherwood/CH24_mpgcen_gpr/chain_1/"],
 }
 
+# contours and summaries of every variation (read by the variation tables and figures)
 for ii, var in enumerate(variations):
     folder = os.path.join(base, variations[var][1])
-    store_data = plots_chain(folder, store_data=True, truth=real_blinding)
+    if not os.path.isfile(os.path.join(folder, "chain.npy")):
+        print("missing:", folder)
+        continue
+    write_chain_products(folder)

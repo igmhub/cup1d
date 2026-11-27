@@ -8,7 +8,7 @@ import numpy as np
 
 from cup1d.postprocessing.posterior.stats import weighted_correlation, weighted_quantile
 
-STAR_PARAMETERS = ("Delta2_star", "n_star")
+from cup1d.postprocessing.labels import STAR_PARAMETERS, parameter_label  # noqa: F401
 
 
 def family_of(name):
@@ -24,30 +24,6 @@ def index_of(name):
     """Return the trailing integer index of a native coefficient, or None."""
     match = re.fullmatch(r".+_(\d+)", name)
     return int(match.group(1)) if match else None
-
-
-def parameter_label(name, blinded=False):
-    """Return the LaTeX label of a native parameter.
-
-    Parameters
-    ----------
-    name : str
-        Native cup1d name, e.g. ``tau_eff_0`` or ``Delta2_star``.
-    blinded : bool, default=False
-        Append ``(blinded)`` to the star parameters.
-
-    Returns
-    -------
-    str
-        Label from :data:`cup1d.utils.various_dicts.param_dict`, or the
-        name itself when it has none.
-    """
-    from cup1d.utils.various_dicts import param_dict
-
-    label = param_dict.get(name, name.replace("_", r"\_"))
-    if blinded and name in STAR_PARAMETERS:
-        label += " (blinded)"
-    return label
 
 
 @dataclass
@@ -247,10 +223,10 @@ class PosteriorSamples:
         -------
         PosteriorSamples
         """
-        from cup1d.postprocessing.plots_corner import _load_parameter_bounds
+        from cup1d.postprocessing.chains.products import load_parameter_bounds
         from cup1d.utils.various_dicts import get_blob_value
 
-        names, bounds = _load_parameter_bounds(folder)
+        names, bounds = load_parameter_bounds(folder)
         steps = slice(nburn_extra, None, thin)
         chain = np.load(os.path.join(folder, "chain.npy"), mmap_mode="r")[steps]
         blobs = np.load(os.path.join(folder, "blobs.npy"), mmap_mode="r")[steps]

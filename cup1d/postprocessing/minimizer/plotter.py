@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from cup1d.postprocessing.minimizer.star import STAR, plot_star_simulations, simulation_star_params
+from cup1d.postprocessing.style import apply_house_style
 
 
 class MinimizerPlotter:
@@ -26,7 +27,7 @@ class MinimizerPlotter:
         the same data share the offsets, so their differences are meaningful.
     """
 
-    FIGURES = ("star_simulations", "best_fit_p1d")
+    FIGURES = ("star_simulations", "best_fit_p1d", "igm_histories")
 
     def __init__(self, analysis, out_folder=None, label=None, unblind=False):
         self.analysis = analysis
@@ -37,6 +38,7 @@ class MinimizerPlotter:
         variation = getattr(analysis.args, "name_variation", None)
         self.label = label or (variation if variation not in (None, "None") else
                                (Path(folder).name if folder else "best fit"))
+        apply_house_style()
 
     @classmethod
     def from_results(cls, path, **kwargs):
@@ -100,7 +102,20 @@ class MinimizerPlotter:
                                                          for r in edges) if edges else "none"))
         return "\n".join(lines)
 
-    def star_simulations(self, others=(), nsigma=(1, 2), annotate=True):
+    @property
+    def point(self):
+        """Best-fitting physical point ``{name: value}``."""
+        return self.fitter.parameters_from_sampling_point(self.fitter.mle_cube)
+
+    def truth_entry(self, marker="*"):
+        """True star parameters of a mock or forecast (entry of :func:`plot_star_simulations`), or None."""
+        truth = getattr(self.fitter.like, "truth", None)
+        if not truth or "linP" not in truth:
+            return None
+        star = {name: float(truth["linP"][name]) for name in STAR if name in truth["linP"]}
+        return dict(label="truth", star=star, marker=marker, color="C3")
+
+    def star_simulations(self, others=(), nsigma=(1, 2), annotate=True, truth=True):
         """Delta2_star--n_star: training simulations, this and other best fits.
 
         ``others``: further :class:`MinimizerPlotter` (e.g. previous runs),
@@ -109,6 +124,8 @@ class MinimizerPlotter:
         """
         simulations = simulation_star_params(self.fitter.like.theory.emulator)
         fits = [self.fit_entry(color="C1")]
+        if truth and self.truth_entry() is not None:
+            fits.append(self.truth_entry())
         for i, other in enumerate(others):
             entry = other.fit_entry(color=f"C{i + 2}", marker="P") if hasattr(other, "fit_entry") else dict(other)
             entry.setdefault("color", f"C{i + 2}")
@@ -125,8 +142,34 @@ class MinimizerPlotter:
         bins, chi2, dof = p1d.prepare(point)
         return plot_best_fit(bins, chi2, dof, ndata=p1d.ndata, title=self.label)
 
+    def igm_histories(self, quantities=("tau_eff", "gamma", "sigT_kms", "kF_kms"), truth=True,
+                      literature=None, prior_envelope=False, training=False, n_z=100):
+        """IGM histories of the best fit (with nodes), optionally with the truth of a
+        mock, the literature, the prior envelope and the training simulations.
+
+        ``literature`` defaults to showing it only when there is no truth.
+        """
+        from cup1d.postprocessing.fit.igm import igm_at_point, igm_nodes, igm_prior_envelope
+        from cup1d.postprocessing.posterior.histories import plot_igm_histories
+
+        like = self.fitter.like
+        data = next(iter(like.data.values()))
+        z = np.linspace(min(data.z), max(data.z), n_z)
+        best = igm_at_point(like.theory.model_igm, self.point, z)
+        mock_truth = getattr(like, "truth", None) or {}
+        truth_igm = mock_truth.get("igm") if truth else None
+        if literature is None:
+            literature = truth_igm is None
+        return plot_igm_histories(
+            None, z, best_fit=best, best_fit_label=self.label, quantities=quantities,
+            best_fit_nodes=igm_nodes(best, z, self.analysis.args.fid_igm, quantities),
+            literature=literature, truth=truth_igm,
+            prior_envelope=igm_prior_envelope(like, z) if prior_envelope else None,
+            training=like.theory.emu_igm_all if training else None,
+        )
+
     def plot_all(self, others=(), skip=()):
-        """Write every figure (png and pdf) and ``minimizer_summary.txt``."""
+        """Write every figure (png and pdf) and ``minimizer_summary.txt``; return the summary text."""
         self.out_folder.mkdir(parents=True, exist_ok=True)
         for name in self.FIGURES:
             if name in skip:
@@ -137,8 +180,7 @@ class MinimizerPlotter:
             plt.close(fig)
         text = "\n\n".join(p.summary() for p in (self, *others) if hasattr(p, "summary"))
         (self.out_folder / "minimizer_summary.txt").write_text(text + "\n")
-        print(text)
-        print(f"figures in {self.out_folder}")
+        return text
 
 
 def legacy_fit_entry(folder, label=None, unblind=False):
@@ -147,17 +189,12 @@ def legacy_fit_entry(folder, label=None, unblind=False):
     Its star parameters are blinded with the DR1 offsets
     (``data/blinding_dr1.npy``), removed with ``unblind``.
     """
-    import os
-
-    from cup1d.utils.utils import get_path_repo
-
     fit = np.load(Path(folder) / "fitter_results.npy", allow_pickle=True).item()["fitter"]
     star = {name: float(fit["mle_cosmo"][name]) for name in STAR}
     if unblind:
+        from cup1d.postprocessing.literature import load_blinding_dr1
         from cup1d.utils.blinding import Blinding
 
-        blind = Blinding(np.load(os.path.join(get_path_repo("cup1d"), "data", "blinding_dr1.npy"),
-                                 allow_pickle=True).item())
-        star = blind.unblind(star)
+        star = Blinding(load_blinding_dr1()).unblind(star)
     chi2 = -2 * float(fit["lnprob_mle"])
     return dict(label=f"{label or Path(folder).name} ($\\chi^2$ = {chi2:.1f})", star=star, marker="s")

@@ -4,5 +4,4 @@ z_min: 2.6
 fid_syst:
   n_R_coeff: 9
 out_folder: ./DESIY1_QMLE3/zmin/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: zmin

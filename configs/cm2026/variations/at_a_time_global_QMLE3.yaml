@@ -6,7 +6,6 @@ data_label:
 fix_cosmo: true
 fit_type: at_a_time_global
 out_folder: ./DESIY1_QMLE3/at_a_time_global/CH24_mpgcen_gpr
-pre_defined: null
 fid_igm:
   n_tau_eff: 1
   tau_eff_ztype: pivot

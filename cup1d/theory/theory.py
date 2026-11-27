@@ -2,55 +2,27 @@ from collections.abc import Mapping
 
 import numpy as np
 from lace.cosmo import base_cosmology
+from lace.cosmo.parameters import COSMOLOGY_PARAMETERS, THETA_PARAMETERS
+from cup1d.utils.warn_once import warn_once
 from lace.cosmo import cosmology
 from lace.cosmo import rescale_cosmology
 
 from cup1d.likelihood.parameter import make_parameter
-from cup1d.models.contaminants.model_contaminants import Contaminants
-from cup1d.models.contaminants.model_systematics import Systematics
-from cup1d.models.igm.model_igm import IGM
-from cup1d.utils.hull import Hull
+from cup1d.emulator.hull import Hull
 from cup1d.utils.utils import is_number_string
-from cup1d.utils.utils_sims import get_training_hc
+from cup1d.emulator.utils_sims import get_training_hc
+from cup1d.utils.batch import as_columns, as_redshift_rows, row
+from cup1d.emulator.factory import as_emulator
+from cup1d.theory.emulator_inputs import emulator_inputs
+from cup1d.models.observation import apply_observation_model
+from cup1d.theory.projection import interpolate_p1d, interpolate_signed
 
 
-def interpolate_p1d(k_model, p1d_model, k_out):
-    """Interpolate P1D along its last axis with a cubic spline.
 
-    Parameters
-    ----------
-    k_model : array_like
-        Increasing wavenumbers at which ``p1d_model`` was evaluated.
-    p1d_model : array_like
-        P1D values with the wavenumber axis last.
-    k_out : array_like
-        Wavenumbers inside ``[k_model[0], k_model[-1]]``.
 
-    Returns
-    -------
-    ndarray
-        Interpolated P1D. Each P1D (row along the last axis) is splined
-        independently in ``(ln k, ln P)``, falling back to ``(ln k, P)`` if any
-        of its values is not positive. Rows containing non-finite values, e.g.
-        from an emulator extrapolating far outside its training domain, are
-        returned as NaN so that the likelihood can reject that point.
-    """
-    from scipy.interpolate import CubicSpline
 
-    ln_k_model = np.log(np.asarray(k_model, dtype=float))
-    ln_k_out = np.log(np.asarray(k_out, dtype=float))
-    p1d_model = np.asarray(p1d_model, dtype=float)
-    rows = p1d_model.reshape(-1, p1d_model.shape[-1])
-    out = np.full((rows.shape[0], ln_k_out.size), np.nan)
-    for irow, row in enumerate(rows):
-        if not np.all(np.isfinite(row)):
-            continue
-        if np.all(row > 0):
-            out[irow] = np.exp(CubicSpline(ln_k_model, np.log(row))(ln_k_out))
-        else:
-            out[irow] = CubicSpline(ln_k_model, row)(ln_k_out)
-    return out.reshape(p1d_model.shape[:-1] + (ln_k_out.size,))
-
+# half width of the nrun prior around the fiducial (not set by the training set)
+NRUN_PRIOR_HALF_WIDTH = 0.05
 
 class Theory:
     r"""Translate likelihood parameters into emulator P1D predictions.
@@ -67,6 +39,7 @@ class Theory:
         model_cont=None,
         model_syst=None,
         use_hull=True,
+        hull_margin=0.05,
         verbose=False,
         z_star=3.0,
         kp_kms=0.009,
@@ -81,11 +54,13 @@ class Theory:
         emulator : object
             Required P1D emulator exposing its parameter list and simulation
             training cube.
-        model_igm, model_cont, model_syst : object, optional
-            Preconfigured IGM, contaminant, and systematic models. Defaults
-            are constructed when omitted.
+        model_igm, model_cont, model_syst : object
+            IGM, contaminant, and systematic models (required).
         use_hull : bool, default: True
             Enable checks against the emulator's admitted training domain.
+        hull_margin : float, default: 0.05
+            Fractional expansion of the training hull about the mean of the
+            training points (0 is the strict hull), in every 2D projection.
         verbose : bool, default: False
             Retained compatibility verbosity flag.
         z_star : float, default: 3.0
@@ -112,34 +87,30 @@ class Theory:
         self.z_star = z_star
         self.kp_kms = kp_kms
         self.use_hull = use_hull
+        self.hull_margin = float(hull_margin)
         self.use_star_priors = use_star_priors
         self.input_cosmo_priors = cosmo_priors
         self.cosmo_prior_nsigma = cosmo_prior_nsigma
 
         if emulator is None:
             raise ValueError("Emulator not specified")
-        self.emulator = emulator
+        # one interface to LaCE and ForestFlow (cup1d.emulator.factory)
+        self.emulator = as_emulator(emulator)
         self.emu_kp_Mpc = self.emulator.kp_Mpc
-        res = get_training_hc(self.emulator.list_sim_cube[0][:3])
+        res = get_training_hc(self.emulator.suite)
         self.emu_pars = res[0]
         self.hc_points = res[1]
         self.emu_cosmo_all = res[2]
         self.emu_igm_all = res[3]
 
-        if model_igm is None:
-            self.model_igm = IGM(zs)
-        else:
-            self.model_igm = model_igm
-
-        if model_cont is None:
-            self.model_cont = Contaminants()
-        else:
-            self.model_cont = model_cont
-
-        if model_syst is None:
-            self.model_syst = Systematics()
-        else:
-            self.model_syst = model_syst
+        if model_igm is None or model_cont is None or model_syst is None:
+            raise ValueError(
+                "Theory needs model_igm, model_cont and model_syst "
+                "(cup1d.theory.factory.set_theory builds them from the configuration)"
+            )
+        self.model_igm = model_igm
+        self.model_cont = model_cont
+        self.model_syst = model_syst
 
     def set_fid_cosmo(self, zs, cosmo_label=None, cosmo_params_dict=None):
         """Set the fiducial cosmology and precompute redshift-dependent values.
@@ -152,13 +123,19 @@ class Theory:
             LaCE cosmology label.
         cosmo_params_dict : mapping, optional
             Explicit cosmological parameters, overriding a label as defined by
-            :class:`lace.cosmo.cosmology.Cosmology`.
+            :class:`lace.cosmo.cosmology.Cosmology`. Without a label or
+            parameters, an existing fiducial cosmology is kept (only the
+            redshift-dependent values are recomputed).
         """
 
         zs = np.unique(np.concatenate([np.atleast_1d(zs), [self.z_star]]))
-        cosmo = cosmology.Cosmology(
-            cosmo_label=cosmo_label, cosmo_params_dict=cosmo_params_dict
-        )
+        if cosmo_label is None and cosmo_params_dict is None and getattr(self, "fid_cosmo", None):
+            # new redshifts, same cosmology (e.g. a mock keeps its own truth)
+            cosmo = self.fid_cosmo["cosmo"]
+        else:
+            cosmo = cosmology.Cosmology(
+                cosmo_label=cosmo_label, cosmo_params_dict=cosmo_params_dict
+            )
         self.fid_cosmo = {
             "zs": zs,
             "cosmo": cosmo,
@@ -172,8 +149,8 @@ class Theory:
             self.hull = Hull(
                 zs=zs,
                 data_hull=self.hc_points,
-                suite=self.emulator.list_sim_cube[0][:3],
-                extra_factor=1.15,
+                suite=self.emulator.suite,
+                extra_factor=1.0 + self.hull_margin,
             )
             self.hull_hires = self.hull
         self.set_cosmo_priors()
@@ -224,8 +201,8 @@ class Theory:
         Parameters
         ----------
         extra_factor : float, default: 1.25
-            Multiplicative expansion applied to training-derived primordial
-            bounds before explicit configuration overrides.
+            Factor widening the training-derived ``As`` and ``ns`` ranges
+            about their centres, before explicit configuration overrides.
 
         Notes
         -----
@@ -233,7 +210,8 @@ class Theory:
         explicitly supplied through ``Args.cosmo_priors``. Background limits
         always come from that Args mapping. With ``cosmo_prior_nsigma`` set,
         the ``As`` and ``ns`` limits are the training mean +- that many
-        standard deviations (``extra_factor`` then applies to ``nrun`` only).
+        standard deviations. ``nrun`` (not varied in the training suites)
+        gets ``fiducial +- NRUN_PRIOR_HALF_WIDTH``.
         """
 
         # pivot scale of primordial power
@@ -298,16 +276,21 @@ class Theory:
             "nrun": np.array([hc_fid["nrun"].min(), hc_fid["nrun"].max()]),
         }
 
+        # widen each training range about its centre
         for par in self.cosmo_priors:
-            for ii in range(2):
-                if (ii == 0) and (self.cosmo_priors[par][ii] < 0):
-                    self.cosmo_priors[par][ii] *= extra_factor
-                elif (ii == 0) and (self.cosmo_priors[par][ii] >= 0):
-                    self.cosmo_priors[par][ii] *= 1 - (extra_factor - 1)
-                elif (ii == 1) and (self.cosmo_priors[par][ii] < 0):
-                    self.cosmo_priors[par][ii] *= 1 - (extra_factor - 1)
-                elif (ii == 1) and (self.cosmo_priors[par][ii] >= 0):
-                    self.cosmo_priors[par][ii] *= extra_factor
+            low, high = self.cosmo_priors[par]
+            centre, half_width = 0.5 * (low + high), 0.5 * (high - low)
+            self.cosmo_priors[par] = np.array(
+                [centre - extra_factor * half_width, centre + extra_factor * half_width]
+            )
+
+        # the training suites do not vary the running: the spread of their
+        # alpha_star is a transfer-function offset, not primordial running,
+        # and excludes nrun = 0. A broad range around the fiducial instead
+        # (it only matters when nrun is free).
+        self.cosmo_priors["nrun"] = np.array(
+            [fid_nrun - NRUN_PRIOR_HALF_WIDTH, fid_nrun + NRUN_PRIOR_HALF_WIDTH]
+        )
 
         if self.cosmo_prior_nsigma is not None:
             # keep the emulator close to its training domain: n_p depends on
@@ -351,10 +334,12 @@ class Theory:
         fiducial_cosmo = self.fid_cosmo["cosmo"]
         like_params = self._parameter_values(like_params)
         like_params = {} if like_params is None else like_params
+        # every cosmological name (also those the fiducial left at CAMB's
+        # defaults, e.g. nnu); the other parameters (IGM, nuisance) are not
         new_params_dict = {
             name: value
             for name, value in like_params.items()
-            if name in fiducial_cosmo.input_cosmo_params_dict
+            if name in COSMOLOGY_PARAMETERS
         }
         try:
             return rescale_cosmology.RescaledCosmology(fiducial_cosmo, new_params_dict)
@@ -362,6 +347,10 @@ class Theory:
             pass
 
         cosmo_params_dict = fiducial_cosmo.input_cosmo_params_dict.copy()
+        if any(name in THETA_PARAMETERS for name in new_params_dict):
+            # theta replaces H0 (and any other angular-size parameter)
+            for name in ("H0",) + THETA_PARAMETERS:
+                cosmo_params_dict.pop(name, None)
         cosmo_params_dict.update(new_params_dict)
         return cosmology.Cosmology(cosmo_params_dict=cosmo_params_dict)
 
@@ -386,190 +375,58 @@ class Theory:
             cosmo.get_linP_Mpc_params(z, self.emu_kp_Mpc) for z in np.atleast_1d(zs)
         ]
 
-    @staticmethod
-    def _is_columnar_parameter_mapping(like_params):
-        """Return whether a parameter mapping carries a leading batch axis.
-
-        Parameters
-        ----------
-        like_params : mapping
-            Scalar or one-dimensional parameter arrays.
-
-        Returns
-        -------
-        bool
-            True for consistent one-dimensional columns.
-
-        Raises
-        ------
-        ValueError
-            If parameter dimensions are mixed or batch lengths differ.
-        """
-
-        if not isinstance(like_params, Mapping) or not like_params:
-            return False
-        dimensions = {np.asarray(value).ndim for value in like_params.values()}
-        if dimensions == {0}:
-            return False
-        if dimensions != {1}:
-            raise ValueError(
-                "likelihood parameters must be all scalars or all "
-                "one-dimensional batch arrays"
-            )
-        lengths = {len(np.asarray(value)) for value in like_params.values()}
-        if len(lengths) != 1:
-            raise ValueError("all batched likelihood parameters must share n_batch")
-        return True
-
     def get_emulator_calls(
         self, zs, like_params=None, return_M_of_z=True, return_blob=False
     ):
-        """Build emulator inputs for scalar or columnar parameter mappings.
+        """Emulator inputs for one parameter point or a batch.
 
         Parameters
         ----------
         zs : array_like
             Evaluation redshifts.
         like_params : mapping, optional
-            Scalar or columnar parameter point.
+            Scalar values (one point) or columns of shape ``(n_batch,)``.
         return_M_of_z : bool, default: True
-            Include ``H(z)/(1+z)`` conversions in the return value.
+            Include the ``dkms/dMpc`` conversions.
         return_blob : bool, default: False
-            Include compressed cosmology summary values.
+            Include the compressed cosmology values (:attr:`blob_names`).
 
         Returns
         -------
         dict or tuple
-            Emulator input arrays, optionally accompanied by conversions and
-            summary blobs. Batched arrays have leading ``(n_batch, n_z)``.
+            ``emu_call`` (optionally with ``M_of_z`` and the blob): arrays of
+            shape ``(n_z,)`` and a blob tuple for one point;
+            ``(n_batch, n_z)`` arrays and an ``(n_batch, n_blob)`` blob array
+            for a batch.
 
         Notes
         -----
-        Scalar values preserve the historical return shapes.  A mapping whose
-        values all have shape ``(n_batch,)`` is dispatched to
-        :meth:`get_emulator_calls_batch`, returning inputs and conversions with
-        leading ``(n_batch, n_z)`` axes.
+        The cosmology is evaluated per point: cup1d analyses rescale one CAMB
+        run (LaCE ``RescaledCosmology``), which is inexpensive. The IGM
+        histories are evaluated for the whole batch at once.
         """
-
-        like_params = self._parameter_values(like_params)
-        if self._is_columnar_parameter_mapping(like_params):
-            emu_call, M_of_z, blobs = self.get_emulator_calls_batch(zs, like_params)
-            if return_M_of_z:
-                return (emu_call, M_of_z, blobs) if return_blob else (emu_call, M_of_z)
-            return (emu_call, blobs) if return_blob else emu_call
-
-        # LaCE handles both transfer-function rescaling and the new-CAMB case.
-        cosmo = self.get_cosmology(like_params)
-        linP_Mpc_params = [cosmo.get_linP_Mpc_params(z, self.emu_kp_Mpc) for z in zs]
-        M_of_zs = cosmo.get_dkms_dMpc(zs)
-        if return_blob:
-            blob = self.get_blob(cosmo)
-
-        from cup1d.theory.emulator_inputs import emulator_inputs
-
-        emu_call = emulator_inputs(
-            self.emulator.emu_params, zs, linP_Mpc_params, M_of_zs,
-            self.model_igm, like_params=like_params,
-        )
-
-        if return_M_of_z:
-            if return_blob:
-                return emu_call, M_of_zs, blob
-            return emu_call, M_of_zs
-        if return_blob:
-            return emu_call, blob
-        return emu_call
-
-    def get_emulator_calls_batch(self, zs, like_params):
-        """Build batched emulator inputs with shape ``(n_batch, n_z)``.
-
-        Parameters
-        ----------
-        zs : array_like
-            Evaluation redshifts.
-        like_params : mapping of array_like
-            Values with shared shape ``(n_batch,)``.
-
-        Returns
-        -------
-        tuple
-            ``(emu_call, M_of_z, blobs)`` with batch-leading arrays.
-
-        Raises
-        ------
-        ValueError
-            If the point is empty or columns are not one-dimensional and equal
-            in length.
-
-        Notes
-        -----
-        The background/linear-power rescaling is intentionally evaluated once
-        per point: cup1d analyses use LaCE's inexpensive
-        ``RescaledCosmology`` path after setup, not repeated CAMB calls.  IGM
-        histories are evaluated columnarly across the full batch.
-        """
-
         zs = np.atleast_1d(np.asarray(zs, dtype=float))
-        like_params = self._parameter_values(like_params)
-        if not isinstance(like_params, Mapping) or not like_params:
-            raise ValueError("like_params must be a non-empty columnar mapping")
-        n_batch = None
-        for name, values in like_params.items():
-            values = np.asarray(values, dtype=float)
-            if values.ndim != 1:
-                raise ValueError(
-                    f"batched parameter {name} must have shape (n_batch,), got {values.shape}"
-                )
-            if n_batch is None:
-                n_batch = len(values)
-            elif len(values) != n_batch:
-                raise ValueError(f"batched parameter {name} has inconsistent length")
-
-        cosmologies = [
-            self.get_cosmology({name: values[index] for name, values in like_params.items()})
-            for index in range(n_batch)
-        ]
+        values = self._parameter_values(like_params) or {}
+        columns, n_batch, scalar = as_columns(values)
+        cosmologies = [self.get_cosmology(row(columns, index)) for index in range(n_batch)]
         linear = base_cosmology.BaseCosmology.get_linP_Mpc_params_for_cosmologies(
             cosmologies, zs, self.emu_kp_Mpc
         )
-        M_of_z = base_cosmology.BaseCosmology.get_dkms_dMpc_for_cosmologies(
-            cosmologies, zs
+        M_of_z = base_cosmology.BaseCosmology.get_dkms_dMpc_for_cosmologies(cosmologies, zs)
+        if scalar:
+            linear = {name: value[0] for name, value in linear.items()}
+            M_of_z = M_of_z[0]
+        emu_call = emulator_inputs(
+            self.emulator.emu_params, zs, linear, M_of_z, self.model_igm,
+            like_params=values if scalar else columns,
         )
-        emu_call = {}
-        for key in self.emulator.emu_params:
-            if key in {"Delta2_p", "n_p", "alpha_p"}:
-                emu_call[key] = linear[key]
-            elif key == "mF":
-                tau = self.model_igm.models["F_model"].get_value_batch(
-                    "tau_eff", zs, like_params
-                )
-                tau *= self.model_igm.models["F_model"].fid_interp["tau_eff"](zs)[None, :]
-                emu_call[key] = np.exp(-tau)
-                emu_call["mF_fid"] = self.model_igm.models["F_model"].get_mean_flux(zs)
-            elif key == "gamma":
-                gamma = self.model_igm.models["T_model"].get_value_batch(
-                    "gamma", zs, like_params
-                )
-                emu_call[key] = gamma * self.model_igm.models["T_model"].fid_interp["gamma"](zs)[None, :]
-            elif key == "sigT_Mpc":
-                sigT = self.model_igm.models["T_model"].get_value_batch(
-                    "sigT_kms", zs, like_params
-                )
-                sigT *= self.model_igm.models["T_model"].fid_interp["sigT_kms"](zs)[None, :]
-                emu_call[key] = sigT / M_of_z
-            elif key in {"kF_Mpc", "lambda_P"}:
-                kF = self.model_igm.models["P_model"].get_value_batch(
-                    "kF_kms", zs, like_params
-                )
-                kF *= self.model_igm.models["P_model"].fid_interp["kF_kms"](zs)[None, :]
-                if key == "kF_Mpc":
-                    emu_call[key] = kF * M_of_z
-                else:
-                    emu_call[key] = 1000 / (kF * M_of_z)
-            else:
-                raise ValueError("Not a theory model for emulator parameter", key)
-        blobs = np.asarray([self.get_blob(cosmo) for cosmo in cosmologies])
-        return emu_call, M_of_z, blobs
+        out = [emu_call]
+        if return_M_of_z:
+            out.append(M_of_z)
+        if return_blob:
+            blobs = np.asarray([self.get_blob(cosmo) for cosmo in cosmologies])
+            out.append(tuple(blobs[0]) if scalar else blobs)
+        return out[0] if len(out) == 1 else tuple(out)
 
     # Default sampler blobs; ``alpha_star`` is added when the running is
     # free (see :meth:`set_blob_names`). Any layout is a prefix of the legacy
@@ -663,7 +520,7 @@ class Theory:
         k_ikms,
         like_params=None,
         return_covar=False,
-        return_blob=True,
+        return_blob=None,
         return_emu_params=False,
         apply_hull=True,
         hires=False,
@@ -693,7 +550,7 @@ class Theory:
             Precomputed ``(emu_call, M_of_z, blob)`` for ``zs`` and
             ``like_params``; see :meth:`get_emulator_calls`.
         emulator_p1d_Mpc : tuple, optional
-            Precomputed emulator output; see :meth:`_get_p1d_kms_scalar`.
+            Precomputed emulator output; see :meth:`get_p1d_kms`.
 
         Returns
         -------
@@ -717,58 +574,13 @@ class Theory:
             emulator_p1d_Mpc=emulator_p1d_Mpc,
         )
 
-    def get_p1d_kms(self, zs, k_kms, like_params=None, **kwargs):
-        """Return scalar or batched P1D according to parameter-array shape.
-
-        Parameters
-        ----------
-        zs : array_like
-            P1D redshifts.
-        k_kms : sequence of array_like
-            Per-redshift wavenumber grids in ``s / km``.
-        like_params : mapping, optional
-            Scalar values or same-length batch columns.
-        **kwargs
-            Scalar-path output controls. The batch path accepts only
-            ``remove`` and ``k_kms_emu``. ``k_kms_emu`` (one increasing grid
-            per redshift, covering ``k_kms``) evaluates the emulator on that
-            grid and interpolates its P1D to ``k_kms`` before contaminants and
-            systematics are applied.
-
-        Returns
-        -------
-        list or object
-            Scalar-path P1D output, or a list of arrays with shape
-            ``(n_batch, n_k_z)`` for columnar parameters.
-
-        Raises
-        ------
-        ValueError
-            If unsupported scalar-path controls are supplied for a batch.
-
-        Notes
-        -----
-        A scalar parameter mapping follows the historical API. A columnar
-        mapping with values shaped ``(n_batch,)`` returns a list over redshift
-        whose items have shape ``(n_batch, n_k_z)``.
-        """
-        like_params = self._parameter_values(like_params)
-        if self._is_columnar_parameter_mapping(like_params):
-            unsupported = set(kwargs) - {
-                "remove", "k_kms_emu", "emulator_inputs", "emulator_p1d_Mpc"
-            }
-            if unsupported:
-                raise ValueError(f"batched P1D does not support {sorted(unsupported)}")
-            return self._get_p1d_kms_batch(zs, k_kms, like_params, **kwargs)
-        return self._get_p1d_kms_scalar(zs, k_kms, like_params=like_params, **kwargs)
-
-    def _get_p1d_kms_scalar(
+    def get_p1d_kms(
         self,
         zs,
         k_kms,
         like_params=None,
         return_covar=False,
-        return_blob=True,
+        return_blob=None,
         return_emu_params=False,
         apply_hull=True,
         hires=False,
@@ -778,275 +590,118 @@ class Theory:
         emulator_inputs=None,
         emulator_p1d_Mpc=None,
     ):
-        """Emulate a scalar P1D in velocity units for requested redshifts.
+        """Observed-model P1D in velocity units, for one point or a batch.
 
         Parameters
         ----------
         zs : array_like
-            Evaluation redshifts.
+            Redshifts.
         k_kms : sequence of array_like
-            Per-redshift grids in ``s / km``.
+            Per-redshift wavenumbers in ``s / km``.
         like_params : mapping, optional
-            Scalar physical parameter values.
+            Scalar values (one point) or columns of shape ``(n_batch,)``.
         return_covar : bool, default: False
-            Include emulator covariance placeholders in the output.
-        return_blob : bool, default: True
-            Include compressed cosmology summary values.
+            Append an (empty) emulator-covariance list (historical API).
+        return_blob : bool, optional
+            Append the blob; by default for one point only.
         return_emu_params : bool, default: False
-            Include constructed emulator input parameters.
-        apply_hull : bool, default: True
-            Reject points outside the emulator training hull.
-        hires : bool, default: False
-            Select the high-resolution hull when enabled.
+            Append the emulator inputs.
+        apply_hull, hires : bool
+            For one point, return ``None`` if the star priors or the
+            (high-resolution) training hull reject it. A batch is not checked
+            here (:meth:`cup1d.likelihood.likelihood.Likelihood.log_prob_and_blobs_batch`
+            checks it before the emulator call).
         remove : mapping, optional
-            Contaminant removal flags passed to the contamination model.
+            Contaminant switches (figures).
         return_contaminants : bool, default: False
-            Include term-by-term contamination dictionaries.
+            Append the term-by-term contamination, one dict per redshift.
         k_kms_emu : sequence of array_like, optional
-            Per-redshift grids in ``s / km`` on which the emulator is
-            evaluated. Its P1D is then interpolated to ``k_kms`` (see
-            :func:`interpolate_p1d`). Contaminants always use ``k_kms``.
+            Per-redshift grids (``s / km``) on which the emulator is
+            evaluated; its P1D is then interpolated to ``k_kms``
+            (:func:`interpolate_p1d`). Contaminants always use ``k_kms``.
         emulator_inputs : tuple, optional
             Precomputed ``(emu_call, M_of_z, blob)`` for exactly ``zs`` and
-            the emulator-relevant entries of ``like_params``, as returned by
-            :meth:`get_emulator_calls` with ``return_blob=True``. Lets a
-            caller share one cosmology/IGM evaluation across data sets.
+            ``like_params`` (:meth:`get_emulator_calls`).
         emulator_p1d_Mpc : tuple, optional
-            Precomputed ``(p1d_Mpc, moments_Mpc)`` rows on the emulator grid
-            (``k_kms_emu`` or ``k_kms`` times ``M_of_z``), as returned by
-            :meth:`emulate_p1d_Mpc_rows`; skips the emulator call.
+            Precomputed ``(p1d_Mpc, moments_Mpc)`` on the emulator grid
+            (:meth:`emulate_p1d_Mpc_rows`); skips the emulator call.
 
         Returns
         -------
-        list, tuple, or None
-            P1D arrays, optionally with requested auxiliary outputs. Returns
-            ``None`` when a star prior or hull rejects the parameter point.
+        list or list
+            P1D per redshift, ``(n_k,)`` for one point and ``(n_batch, n_k)``
+            for a batch, followed by the requested extras; ``None`` for a
+            rejected point.
         """
-
-        zs = np.atleast_1d(zs)
-        like_params = {} if like_params is None else like_params
+        values = self._parameter_values(like_params) or {}
+        columns, n_batch, scalar = as_columns(values)
+        if return_blob is None:
+            return_blob = scalar
+        zs, k_kms = as_redshift_rows(zs, k_kms)
+        n_z = len(zs)
 
         if emulator_inputs is None:
             emulator_inputs = self.get_emulator_calls(
-                zs,
-                like_params=like_params,
-                return_M_of_z=True,
-                return_blob=True,
+                zs, like_params=values, return_M_of_z=True, return_blob=True
             )
         emu_call, M_of_z, blob = emulator_inputs
-
-        if not self.is_admissible(
-            zs, emu_call, blob, like_params, apply_hull=apply_hull, hires=hires
+        if scalar and not self.is_admissible(
+            zs, emu_call, blob, values, apply_hull=apply_hull, hires=hires
         ):
             return None
 
-        # compute input k to emulator in Mpc
-        Nz = len(zs)
-        length = 0
-        if Nz > 1:
-            for iz in range(Nz):
-                if len(k_kms[iz]) > length:
-                    length = len(k_kms[iz])
-        else:
-            if len(k_kms) == 1:
-                k_kms = k_kms[0]
-            length = len(k_kms)
-            k_kms = [k_kms]
-
-        # grids on which the emulator is evaluated
-        if k_kms_emu is None:
-            k_eval = k_kms
-        else:
-            if Nz == 1 and np.ndim(k_kms_emu[0]) == 0:
-                k_kms_emu = [k_kms_emu]
-            k_eval = [np.asarray(k_kms_emu[iz]) for iz in range(Nz)]
-            length = max(len(values) for values in k_eval)
-
-        kin_Mpc = np.zeros((Nz, length))
-        for iz in range(Nz):
-            kin_Mpc[iz, : len(k_eval[iz])] = k_eval[iz] * M_of_z[iz]
-
+        # one implementation: a single point is a batch of one
+        batch_call = {name: np.broadcast_to(value, (n_batch, n_z)) for name, value in emu_call.items()}
+        M_batch = np.broadcast_to(np.asarray(M_of_z, dtype=float), (n_batch, n_z))
+        k_eval = k_kms if k_kms_emu is None else as_redshift_rows(zs, k_kms_emu)[1]
         if emulator_p1d_Mpc is None:
-            p1d_Mpc, moments_Mpc = self.emulate_p1d_Mpc_rows(
-                zs, kin_Mpc, emu_call, like_params
-            )
+            n_k = max(len(values_k) for values_k in k_eval)
+            kin = np.zeros((n_batch, n_z, n_k))
+            for iz, values_k in enumerate(k_eval):
+                kin[:, iz, : len(values_k)] = values_k[None, :] * M_batch[:, iz, None]
+            p1d_Mpc, moments_Mpc = self.emulate_p1d_Mpc_rows(zs, kin, batch_call, columns)
         else:
             p1d_Mpc, moments_Mpc = emulator_p1d_Mpc
 
-        # move from Mpc to kms
         p1d_kms = []
-        covars = []
         metal_moments = None if moments_Mpc is None else []
-        for iz in range(Nz):
-            _p1d_kms = p1d_Mpc[iz][: len(k_eval[iz])] * M_of_z[iz]
+        for iz in range(n_z):
+            n_k = len(k_eval[iz])
+            power = p1d_Mpc[:, iz, :n_k] * M_batch[:, iz, None]
             if k_kms_emu is not None:
-                _p1d_kms = interpolate_p1d(k_eval[iz], _p1d_kms, k_kms[iz])
-            p1d_kms.append(_p1d_kms)
+                power = interpolate_p1d(k_eval[iz], power, k_kms[iz])
+            p1d_kms.append(power)
             if moments_Mpc is not None:
-                from cup1d.likelihood.external import _interpolate_signed
-                row = {}
-                for name, values in moments_Mpc.items():
-                    moment = values[iz][: len(k_eval[iz])] * M_of_z[iz]
+                moment_row = {}
+                for name, moment in moments_Mpc.items():
+                    moment = moment[:, iz, :n_k] * M_batch[:, iz, None]
                     if k_kms_emu is not None:
-                        moment = _interpolate_signed(k_eval[iz], moment, k_kms[iz])
-                    row[name] = moment
-                metal_moments.append(row)
-            # if return_covar:
-            #     if cov_Mpc is None:
-            #         covars.append(None)
-            #     else:
-            #         covars.append(
-            #             cov_Mpc[iz][: len(k_kms[iz]), : len(k_kms[iz])]
-            #             * M_of_z[iz] ** 2
-            #         )
+                        moment = interpolate_signed(k_eval[iz], moment, k_kms[iz])
+                    moment_row[name] = moment
+                metal_moments.append(moment_row)
 
-        # check if need to apply systematics
-        apply_syst = False
-        for name in like_params:
-            if name.startswith("R_coeff"):
-                apply_syst = True
-
-        if apply_syst:
-            syst_total = self.model_syst.get_contamination(
-                zs, k_kms, like_params=like_params
-            )
-        else:
-            syst_total = np.ones(len(zs))
-
-        cont_all = self.model_cont.get_contamination(
-            zs,
-            k_kms,
-            emu_call["mF"],
-            M_of_z,
-            like_params=like_params,
-            remove=remove,
-            metal_moments=metal_moments,
+        powers, terms = apply_observation_model(
+            self.model_cont, self.model_syst, zs, k_kms, p1d_kms, batch_call["mF"],
+            M_batch, like_params=columns, remove=remove, metal_moments=metal_moments,
         )
-        # print(
-        #     "mult_cont_total",
-        #     np.concatenate(cont_all["cont_mul_metals"]).min(),
-        #     np.concatenate(cont_all["cont_mul_metals"]).max(),
-        # )
-        # print(
-        #     "add_cont_total",
-        #     np.concatenate(cont_all["cont_add_metals"]).min(),
-        #     np.concatenate(cont_all["cont_add_metals"]).max(),
-        # )
-        # print(
-        #     "HCD",
-        #     np.concatenate(cont_all["cont_HCD"]).min(),
-        #     np.concatenate(cont_all["cont_HCD"]).max(),
-        # )
-        # print(
-        #     "syst_total",
-        #     np.concatenate(syst_total).min(),
-        #     np.concatenate(syst_total).max(),
-        # )
+        if scalar:
+            powers = [power[0] for power in powers]
+            terms = [
+                {key: value[0] if isinstance(value, np.ndarray) and value.ndim == 2 else value
+                 for key, value in term.items()}
+                for term in terms
+            ]
 
-        # if len(cont_all["cont_HCD"]) != len(z):
-        # print(len(zs))
-        # print(len(cont_all["cont_HCD"]))
-        # print(len(cont_all["cont_mul_metals"]))
-        # # print(len(cont_all["IC_corr"]))
-        # # print(len(p1d_kms))
-        # print(len(cont_all["cont_add_metals"]))
-        # print(len(syst_total))
-
-        terms = []
-        p1d_cont_kms = []
-        for iz, z in enumerate(zs):
-            terms.append(
-                {
-                    "z": z,
-                    "k_kms": k_kms[iz],
-                    "p1d_emu_kms": p1d_kms[iz],
-                    "C_res": syst_total[iz],
-                    "C_mul_metals": cont_all["cont_mul_metals"][iz],
-                    "C_add_metals": cont_all["cont_add_metals"][iz],
-                    "C_HCD": cont_all["cont_HCD"][iz],
-                    "IC_corr": cont_all["IC_corr"][iz],
-                    "p1d_tot_kms": "[(C_mul_metals * C_HCD * IC_corr * p1d_emu_kms + C_add_metals) * C_res]",
-                }
-            )
-            _p1d_cont_kms = (
-                cont_all["cont_HCD"][iz]
-                * cont_all["cont_mul_metals"][iz]
-                * cont_all["IC_corr"][iz]
-                * p1d_kms[iz]
-                + cont_all["cont_add_metals"][iz]
-            ) * syst_total[iz]
-
-            p1d_cont_kms.append(_p1d_cont_kms)
-
-        out = [p1d_cont_kms]
+        out = [powers]
         if return_covar:
-            out.append(covars)
+            out.append([])
         if return_blob:
             out.append(blob)
         if return_emu_params:
             out.append(emu_call)
         if return_contaminants:
             out.append(terms)
-
         return out[0] if len(out) == 1 else out
-
-    def _get_p1d_kms_batch(
-        self, zs, k_kms, like_params, remove=None, k_kms_emu=None,
-        emulator_inputs=None, emulator_p1d_Mpc=None,
-    ):
-        """Evaluate LaCE P1D for a columnar batch, returning ``[(batch, k_z)]``.
-
-        Parameters
-        ----------
-        zs : array_like
-            Evaluation redshifts.
-        k_kms : sequence of array_like
-            Per-redshift wavenumber grids in ``s / km``.
-        like_params : mapping of array_like
-            Physical parameter columns with common shape ``(n_batch,)``.
-        remove : mapping, optional
-            Contaminant removal flags.
-        k_kms_emu : sequence of array_like, optional
-            Per-redshift emulator grids in ``s / km``; the emulator P1D is
-            interpolated from them to ``k_kms`` before contaminants.
-
-        Returns
-        -------
-        list of ndarray
-            One P1D array of shape ``(n_batch, n_k_z)`` per redshift.
-
-        Notes
-        -----
-        This path flattens batch and redshift for the GP emulator; ragged data
-        grids remain a list over redshift. ForestFlow keeps its dedicated
-        latent-index batch path until its linear-theory wrapper accepts a
-        cosmology batch.
-        """
-        zs = np.atleast_1d(np.asarray(zs, dtype=float))
-        if emulator_inputs is None:
-            emulator_inputs = self.get_emulator_calls(
-                zs, like_params, return_M_of_z=True, return_blob=True
-            )
-        emu_call, M_of_z, _ = emulator_inputs
-        n_batch, n_z = M_of_z.shape
-        k_eval = k_kms if k_kms_emu is None else k_kms_emu
-        n_k = max(len(values) for values in k_eval)
-        kin = np.zeros((n_batch, n_z, n_k))
-        for iz, values in enumerate(k_eval):
-            kin[:, iz, :len(values)] = np.asarray(values)[None, :] * M_of_z[:, iz, None]
-        if emulator_p1d_Mpc is None:
-            p_mpc = self.emulate_p1d_Mpc_batch_rows(zs, kin, emu_call, like_params)
-        else:
-            p_mpc = emulator_p1d_Mpc
-        p_kms = [p_mpc[:, iz, :len(k_eval[iz])] * M_of_z[:, iz, None] for iz in range(n_z)]
-        if k_kms_emu is not None:
-            p_kms = [interpolate_p1d(k_eval[iz], p_kms[iz], k_kms[iz]) for iz in range(n_z)]
-        cont = self.model_cont.get_contamination(zs, k_kms, emu_call["mF"], M_of_z, like_params, remove=remove)
-        if any(name.startswith("R_coeff") for name in like_params):
-            syst = self.model_syst.get_contamination(zs, k_kms, like_params)
-        else:
-            syst = [np.ones_like(item) for item in p_kms]
-        return [(cont["cont_HCD"][iz] * cont["cont_mul_metals"][iz] * cont["IC_corr"][iz] * p_kms[iz] + cont["cont_add_metals"][iz]) * syst[iz] for iz in range(n_z)]
 
     def is_admissible(self, zs, emu_call, blob, like_params, apply_hull=True, hires=False):
         """Return whether a point passes the star priors and the emulator hull.
@@ -1070,6 +725,8 @@ class Theory:
             ``False`` if a star prior or the hull rejects the point; checked
             before any emulator evaluation.
         """
+        if not hasattr(self, "hull_checks"):
+            self.hull_checks = self.hull_rejections = 0
         if self.star_priors is not None:
             star = None
             for key in self.star_priors:
@@ -1091,93 +748,76 @@ class Theory:
             p0 = np.zeros((len(zs), len(hull.params)))
             for jj, key in enumerate(hull.params):
                 p0[:, jj] = emu_call[key]
+            self.hull_checks += 1
             if not hull.in_hulls(p0):
-                return False
+                self.hull_rejections += 1
+                if getattr(self, "hull_reject", True):
+                    return False
+                warn_once(
+                    "a point has emulator inputs outside the training hull: kept "
+                    "(hull_reject: false), the emulator extrapolates there; the "
+                    "fraction is reported with the fit",
+                    key="outside_training_hull",
+                )
         return True
 
-    def emulate_p1d_Mpc_rows(self, zs, kin_Mpc, emu_call, like_params):
-        """Evaluate the emulator P1D (and Kaiser metal moments) in Mpc units.
-
-        Parameters
-        ----------
-        zs : array_like
-            Redshifts, one per row of ``kin_Mpc``.
-        kin_Mpc : ndarray, shape (n_z, n_k)
-            Parallel wavenumbers in ``1 / Mpc``; shorter rows are zero padded.
-        emu_call : mapping
-            Emulator inputs with one value per redshift.
-        like_params : mapping
-            Scalar parameter values (ForestFlow reads ``As``, ``ns``, ``nrun``).
+    def hull_violations(self, zs, emu_call):
+        """Pairs of emulator inputs (and redshifts) outside the training hull.
 
         Returns
         -------
-        p1d_Mpc : ndarray, shape (n_z, n_k)
-            Emulated P1D in ``Mpc``.
-        moments_Mpc : dict or None
-            Kaiser metal moments, each ``(n_z, n_k)``, when that metal model
-            is active; otherwise ``None``.
+        list of tuple
+            ``(input_1, input_2, redshifts)`` for every violated projection;
+            empty when inside (or without a hull).
         """
-        kaiser_metals = "Si_kaiser" in getattr(self.model_cont, "metal_models", {})
-        moments_Mpc = None
-        if "forest" in self.emulator.emulator_label:
-            new_cosmo_params = {}
-            for name, value in like_params.items():
-                if name in ["As", "ns", "nrun"]:
-                    new_cosmo_params[name] = value
-            self.emulator.set_linear_theory(zs, new_cosmo_params=new_cosmo_params)
-            if kaiser_metals:
-                # One pass for the Lya P1D and the Kaiser metal moments, with
-                # ForestFlow's default quadrature (as emulate_p1d_Mpc).
-                from forestflow.statistics import p1d as ff_p1d
-                from cup1d.likelihood.external import fused_projection_Mpc
-                arinyo = self.emulator.evaluate_arinyo(emu_call)
-                parameters = {name: np.asarray(values, dtype=float).reshape(-1)[:, None, None]
-                              for name, values in arinyo.items()}
-                _res, moments_Mpc = fused_projection_Mpc(
-                    self.emulator.model_Arinyo, self.emulator.linear, zs, kin_Mpc,
-                    parameters, ff_p1d._DEFAULT_P1D_K_MU_INTEGRATOR, moments=True)
-            else:
-                _res = self.emulator.emulate_p1d_Mpc(zs, kin_Mpc, emu_call)
-        else:
-            if kaiser_metals:
-                raise ValueError("the Kaiser metal model needs a ForestFlow emulator")
-            _res = self.emulator.emulate_p1d_Mpc(emu_call, kin_Mpc)
-        p1d_Mpc = _res
-        return p1d_Mpc, moments_Mpc
+        from cup1d.emulator.hull import in_hull
 
-    def emulate_p1d_Mpc_batch_rows(self, zs, kin_Mpc, emu_call, like_params):
-        """Evaluate the emulator P1D for a columnar batch in Mpc units.
+        hull = getattr(self, "hull", None) if self.use_hull else None
+        if hull is None:
+            return []
+        zs = np.atleast_1d(zs)
+        points = np.stack([np.asarray(emu_call[key], dtype=float) for key in hull.params], axis=1)
+        out = []
+        for projection in hull.hulls:
+            inside = in_hull(projection, points[:, [projection.dim0, projection.dim1]])
+            if not inside.all():
+                out.append((hull.params[projection.dim0], hull.params[projection.dim1],
+                            [round(float(z), 2) for z in zs[~inside]]))
+        return out
+
+    def emulate_p1d_Mpc_rows(self, zs, kin_Mpc, emu_call, like_params):
+        """Emulator P1D (and Kaiser metal moments) in Mpc units for a batch.
 
         Parameters
         ----------
         zs : array_like
             Redshifts.
         kin_Mpc : ndarray, shape (n_batch, n_z, n_k)
-            Parallel wavenumbers in ``1 / Mpc`` (zero padded).
+            Parallel wavenumbers in ``1 / Mpc``; shorter rows are zero padded.
         emu_call : mapping
-            Batched emulator inputs with leading ``(n_batch, n_z)`` axes.
-        like_params : mapping of array_like
-            Parameter columns of shape ``(n_batch,)``.
+            Emulator inputs of shape ``(n_batch, n_z)``.
+        like_params : mapping
+            Parameter columns of shape ``(n_batch,)`` (ForestFlow reads the
+            cosmology from them); empty for the fiducial point.
 
         Returns
         -------
-        ndarray, shape (n_batch, n_z, n_k)
+        p1d_Mpc : ndarray, shape (n_batch, n_z, n_k)
             Emulated P1D in ``Mpc``.
+        moments_Mpc : dict or None
+            Kaiser metal moments, each ``(n_batch, n_z, n_k)``, when that
+            metal model is active; otherwise ``None``.
         """
         zs = np.atleast_1d(np.asarray(zs, dtype=float))
-        n_batch, n_z, n_k = kin_Mpc.shape
-        if "forest" in self.emulator.emulator_label:
-            cosmology_parameters = [
-                {name: np.asarray(values)[ib] for name, values in like_params.items() if name in {"As", "ns", "nrun"}}
-                for ib in range(n_batch)
-            ]
-            return self.emulator.emulate_p1d_Mpc(
-                zs, kin_Mpc, emu_call, cosmology_parameters=cosmology_parameters
-            )
-        flat_call = {name: np.asarray(values).reshape(-1) for name, values in emu_call.items() if name in self.emulator.emu_params}
-        return self.emulator.emulate_p1d_Mpc(
-            flat_call, kin_Mpc.reshape(n_batch * n_z, n_k)
-        ).reshape(n_batch, n_z, n_k)
+        n_batch = np.asarray(kin_Mpc).shape[0]
+        cosmologies = None
+        if self.emulator.forestflow:
+            # the same LaCE cosmology as the emulator inputs and M(z), so any
+            # change of the background reaches the linear power too
+            cosmologies = [self.get_cosmology(row(like_params, index)) for index in range(n_batch)]
+        if "Si_kaiser" in getattr(self.model_cont, "metal_models", {}):
+            return self.emulator.p1d_and_metal_moments_Mpc(zs, kin_Mpc, emu_call, cosmologies)
+        return self.emulator.p1d_Mpc(zs, kin_Mpc, emu_call, cosmologies=cosmologies), None
 
     def get_parameters(self):
         """Return all theory, IGM, contamination, and systematic parameters.

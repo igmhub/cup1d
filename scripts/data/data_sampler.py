@@ -7,7 +7,6 @@ os.environ["OMP_NUM_THREADS"] = "1"  # export OMP_NUM_THREADS=4
 from mpi4py import MPI
 from cup1d.configuration import Args
 from cup1d.inference import Analysis
-from cup1d.postprocessing.plots_corner import plots_chain
 from cup1d.utils.utils import get_path_repo
 
 
@@ -74,17 +73,29 @@ def main():
         args = Args.from_variation(configuration, **options)
 
     analysis = Analysis(args, out_folder=args.out_folder)
-    input_pars = analysis.fitter.initial_parameters()
+    # restart from this configuration's own latest fit when there is one
+    # (earlier chain_N folder of the same out_folder); the IC file and
+    # initial_sampling_values are only the fallback
+    previous = latest_saved_fit(analysis.fitter.save_directory)
+    if previous is not None:
+        if rank == 0:
+            print(f"Starting from the saved fit {previous}", flush=True)
+        input_pars = analysis.fitter.initial_parameters_from_results(previous)
+        initial_values = {}
+    else:
+        input_pars = analysis.fitter.initial_parameters()
+        initial_values = args.initial_sampling_values
 
     # initial_sampling_values are unit-cube coordinates keyed by parameter name
-    for name, value in args.initial_sampling_values.items():
+    for name, value in initial_values.items():
         if name not in input_pars:
             raise ValueError(
                 f"Initial sampling value provided for unknown parameter {name}"
             )
         input_pars[name]["value"] = analysis.fitter.value_from_cube(name, value)
 
-    analysis.run_minimizer(input_pars, restart=True)
+    # Gauss-Newton errors: saved with the fit, and the walkers of the sampler start from them
+    analysis.run_minimizer(input_pars, restart=True, estimate_errors=True)
     if arguments.stage == "minimize":
         if rank == 0:
             print(
@@ -96,10 +107,46 @@ def main():
     analysis.run_sampler()
 
     if rank == 0:
-        plots_chain(
-            analysis.fitter.save_directory,
-            folder_out=analysis.fitter.save_directory,
-        )
+        chain_products(analysis)
+
+
+def chain_products(analysis):
+    """Contours, summary, log-probability traces and posterior figures of a chain."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import numpy as np
+
+    from cup1d.postprocessing.chains.products import write_chain_products
+    from cup1d.postprocessing.io import save_figure
+    from cup1d.postprocessing.posterior import PosteriorPlotter
+    from cup1d.postprocessing.primitives import plot_traces
+
+    folder = analysis.fitter.save_directory
+    write_chain_products(folder)
+    lnprob = np.load(os.path.join(folder, "lnprob.npy"))
+    save_figure(plot_traces(lnprob, ylabel=r"$\ln P$", show_mean=True), os.path.join(folder, "lnprob"),
+                close=True)
+    PosteriorPlotter.from_analysis(analysis).plot_all()
+
+
+def latest_saved_fit(save_directory):
+    """Newest result of an earlier ``chain_N`` sibling of ``save_directory``.
+
+    Returns the ``minimizer_results.npy`` (or ``sampler_results.npy``) of the
+    highest-numbered earlier ``chain_N`` folder that has one, or ``None``.
+    """
+    current = Path(save_directory)
+    folders = []
+    for folder in current.parent.glob("chain_*"):
+        suffix = folder.name.removeprefix("chain_")
+        if folder != current and suffix.isdigit():
+            folders.append((int(suffix), folder))
+    for _, folder in sorted(folders, reverse=True):
+        for name in ("minimizer_results.npy", "sampler_results.npy"):
+            if (folder / name).is_file():
+                return folder / name
+    return None
 
 
 def run_sampler_from_results(results, rank):
@@ -123,10 +170,7 @@ def run_sampler_from_results(results, rank):
     analysis.run_sampler()
 
     if rank == 0:
-        plots_chain(
-            analysis.fitter.save_directory,
-            folder_out=analysis.fitter.save_directory,
-        )
+        chain_products(analysis)
 
 
 if __name__ == "__main__":

@@ -78,7 +78,9 @@ print(k_kms.shape, Pk_kms.shape, cov_Pk_kms.shape)
 # #### Components of the covariance matrix
 
 # %%
-analysis.like.plot_cov_to_pk()
+from cup1d.postprocessing.p1d.covariance import p1d_error_budget, plot_error_budget
+
+fig = plot_error_budget(p1d_error_budget(analysis.like))
 
 # %%
 # access the components of the covariance matrix
@@ -267,17 +269,22 @@ analysis.fitter.estimate_mle_errors(method="gauss_newton")
 mle_cosmo_unblind = apply_unblinding(
     analysis.like.blind, analysis.fitter.mle_cosmo.copy()
 )
-from cup1d.postprocessing import plot_cosmo_sampler_and_fit
+from cup1d.postprocessing.posterior import PosteriorSamples
+from cup1d.postprocessing.posterior.star import overlay_gaussian, plot_star_posterior
 
-samples = np.column_stack(
-    [results_unblind["Delta2_star"], results_unblind["n_star"]]
+samples = PosteriorSamples(
+    np.column_stack([results_unblind["Delta2_star"], results_unblind["n_star"]]),
+    ["Delta2_star", "n_star"],
 )
-fig = plot_cosmo_sampler_and_fit(
-    samples,
+fig = plot_star_posterior(samples)
+# 1 sigma ellipse in the 1D convention (Delta chi2 = 1)
+overlay_gaussian(
+    fig,
     mle_cosmo_unblind,
     analysis.fitter.mle_cosmo_covariance[:2, :2],
-    sampler_label="Sampler contours",
-    fit_label="Minimizer",
+    nsigma=1,
+    label="Minimizer",
+    posterior_label="Sampler contours",
 )
 plt.show()
 

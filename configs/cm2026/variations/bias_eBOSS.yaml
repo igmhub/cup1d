@@ -2,5 +2,4 @@
 # This is a CM2026 override file and can be edited directly.
 data_bias: 0.95
 out_folder: ./DESIY1_QMLE3/bias_eBOSS/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: bias_eBOSS

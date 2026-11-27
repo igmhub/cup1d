@@ -22,48 +22,49 @@
 # %load_ext autoreload
 # %autoreload 2
 
-import os
 import numpy as np
-import cup1d
+
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
+from cup1d.postprocessing.chains.products import load_parameter_bounds
+from cup1d.postprocessing.io import save_figure_data
+from cup1d.postprocessing.literature import dr1_chain_directory
+from cup1d.postprocessing.p1d import P1DPlotter, p1d_figure_data, plot_p1d_bins
 
 # %%
-args = Args(pre_defined="CM2026", system="local")
-pip = Analysis(args, out_folder=None)
+args = Args.from_baseline()
+pip = Analysis(args, create_output=False)
+
+# %% [markdown]
+# The best fit of the paper chain is stored in unit-cube coordinates of the
+# chain's priors (the `ns` prior changed since), so it is converted with them.
 
 # %%
 # my local machine
-folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
+folder = dr1_chain_directory()
 # nersc
 # folder = "/global/cfs/cdirs/desi/users/jjchaves/P1D_results/DESI_DR1/chain/"
 
-data = np.load(folder + "fitter_results.npy", allow_pickle=True).item()
-p0 = data["fitter"]["mle_cube"]
-free_params = p0
-pip.fitter.like.get_chi2(free_params)
+data = np.load(folder / "fitter_results.npy", allow_pickle=True).item()
+names, bounds = load_parameter_bounds(folder)
+free_params = {name: bounds[name][0] + (bounds[name][1] - bounds[name][0]) * cube
+               for name, cube in zip(names, data["fitter"]["mle_cube"])}
+print("chi2 saved with the chain:", -2 * data["fitter"]["lnprob_mle"])
+print("chi2 now:", pip.fitter.like.get_chi2(free_params))
 
 # %%
-ylims=np.array([
+ylims = np.array([
     [0.85, 1.15],
     [0.85, 1.15],
     [0.7, 1.3],
     [0., 2.0],
 ])
 
-out_data = pip.fitter.like.plot_p1d(
-    free_params,
-    residuals=True, 
-    plot_panels=True, 
-    print_chi2=False, 
-    fix_cosmo=False,
-    ylims=ylims, 
-    plot_fname=None,
-    # plot_fname="figs/residual_fid_opt_global",
-    store_data=True
-)
+p1d_plotter = P1DPlotter(pip.fitter.like)
+bins, chi2, dof = p1d_plotter.prepare(free_params, plot_panels=True)
+fig = plot_p1d_bins(bins, chi2, dof, residuals=True, panels=True, ndata=p1d_plotter.ndata,
+                    print_chi2=False, ylims=ylims)
+# fig.savefig("figs/residual_fid_opt_global.pdf")
 
 # %%
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_9.npy")
-np.save(fname, store_data)
+save_figure_data(p1d_figure_data(bins, residuals=True), "fig_9.npy")

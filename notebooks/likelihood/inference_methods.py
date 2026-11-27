@@ -14,13 +14,13 @@
 # ---
 
 # %% [markdown]
-# # Baseline inference: minimization, PSO, and sampling
+# # Baseline inference: minimization and sampling
 #
-# This notebook uses the CM2026 baseline likelihood to compare its three
-# inference routes: local Nelder--Mead minimization, particle-swarm
-# optimization (PSO), and ensemble sampling with ``emcee``.
+# This notebook uses the CM2026 baseline likelihood to compare its two
+# inference routes: local Nelder--Mead minimization and ensemble sampling with
+# ``emcee``.
 #
-# PSO and ``emcee`` can evaluate a group of likelihood points at once.  The
+# ``emcee`` can evaluate a group of likelihood points at once.  The
 # ``vectorize`` switch below compares that batched route to evaluating exactly
 # the same kind of points one at a time.  Nelder--Mead is intrinsically scalar,
 # so it is shown once.
@@ -95,40 +95,12 @@ nm_seconds = perf_counter() - start
 nm_chi2 = analysis.fitter.mle_chi2
 print(f"Nelder--Mead chi2: {nm_chi2:.3f} ({nm_seconds:.1f} s)")
 
-# %% [markdown]
-# ## PSO with and without batched likelihood calls
-#
-# Each PSO iteration evaluates every particle.  With ``vectorize=True`` those
-# particles are passed to one batched likelihood call; with ``False`` the same
-# particles are evaluated one by one. Both runs reuse the already-loaded model,
-# start from ``initial_point``, and use the same deterministic swarm setup.
-
-# %%
-def run_pso(vectorize, chi2_tol=0.1, pso_type="global"):
-    start = perf_counter()
-    # ``initial_point`` is reused unchanged for each independent PSO run.
-    analysis.fitter.run_minimizer_pso(
-        p0=initial_point,
-        n_particles=100 if test else 300,
-        iters=10 if test else 100,
-        vectorize=vectorize,
-        restart=True,
-        chi2_tol=chi2_tol,
-        pso_type=pso_type,
-    )
-    return analysis.fitter.mle_chi2, analysis.fitter.mle_cube.copy(), perf_counter() - start
-
-
-pso_scalar_chi2, _, pso_scalar_seconds = run_pso(vectorize=False)
-print(f"PSO scalar chi2: {pso_scalar_chi2:.3f} ({pso_scalar_seconds:.1f} s)")
-
-pso_batched_chi2, pso_batched_point, pso_batched_seconds = run_pso(vectorize=True)
-print(f"PSO batched chi2: {pso_batched_chi2:.3f} ({pso_batched_seconds:.1f} s)")
+nm_point = analysis.fitter.mle_cube.copy()
 
 # %% [markdown]
 # ## emcee with and without batched likelihood calls
 #
-# Both chains reuse the same likelihood and start from the same PSO point.
+# Both chains reuse the same likelihood and start from the Nelder--Mead best fit.
 # Resetting the fitter random generator gives them identical initial walkers.
 # ``vectorize=False`` calls the scalar likelihood per walker; ``vectorize=True``
 # evaluates walker groups together.
@@ -137,7 +109,7 @@ print(f"PSO batched chi2: {pso_batched_chi2:.3f} ({pso_batched_seconds:.1f} s)")
 def run_sampler(vectorize):
     analysis.fitter.rng = np.random.default_rng(1234)
     start = perf_counter()
-    analysis.fitter.run_sampler(pini=pso_batched_point, vectorize=vectorize)
+    analysis.fitter.run_sampler(pini=nm_point, vectorize=vectorize)
     seconds = perf_counter() - start
     best_chi2 = -2.0 * np.max(analysis.fitter.lnprob)
     return best_chi2, seconds
@@ -159,22 +131,16 @@ summary = pd.DataFrame(
     {
         "method": [
             "Nelder--Mead (scalar)",
-            "PSO (scalar)",
-            "PSO (batched)",
             "emcee (scalar)",
             "emcee (batched)",
         ],
         "seconds": [
             nm_seconds,
-            pso_scalar_seconds,
-            pso_batched_seconds,
             sampler_scalar_seconds,
             sampler_batched_seconds,
         ],
         "best chi2": [
             nm_chi2,
-            pso_scalar_chi2,
-            pso_batched_chi2,
             sampler_scalar_chi2,
             sampler_batched_chi2,
         ],
@@ -183,14 +149,12 @@ summary = pd.DataFrame(
 summary["speedup relative to scalar counterpart"] = [
     np.nan,
     1.0,
-    pso_scalar_seconds / pso_batched_seconds,
-    1.0,
     sampler_scalar_seconds / sampler_batched_seconds,
 ]
 summary
 
 # %% [markdown]
-# For a scientific run, first obtain a converged minimizer or PSO solution,
-# then set ``test = False`` and choose appropriate PSO and MCMC budgets. Keep
-# ``vectorize=True`` for PSO and emcee unless profiling the selected emulator
-# and hardware shows otherwise.
+# For a scientific run, first obtain a converged minimizer solution, then set
+# ``test = False`` and choose appropriate minimizer and MCMC budgets. Keep
+# ``vectorize=True`` for emcee unless profiling the selected emulator and
+# hardware shows otherwise.

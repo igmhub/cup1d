@@ -48,11 +48,6 @@ def make_parameter(
     }
 
 
-# Compatibility for callers that imported the former constructor. This is a
-# function alias, not a parameter class: calls now return plain dictionaries.
-LikelihoodParameter = make_parameter
-
-
 def info_str(parameter, all_info=False):
     """Format a compact parameter-definition description.
 

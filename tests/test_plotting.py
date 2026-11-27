@@ -163,7 +163,7 @@ def test_core_modules_do_not_import_rendering_libraries():
 
 def test_model_and_simulation_compatibility_wrappers():
     from cup1d.models.contaminants.HCD.hcd_model_McDonald2005 import HCD_Model_McDonald2005
-    from cup1d.p1ds.simulations.data_accel2 import Accel2_P1D
+    from cup1d.p1ds.synthetic.data_accel2 import Accel2_P1D
     from cup1d.utils.utils import get_discrete_cmap
     from cup1d.utils.fit_ellipse import plot_ellipse
 

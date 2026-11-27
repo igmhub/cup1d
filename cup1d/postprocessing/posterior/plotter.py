@@ -6,6 +6,8 @@ import traceback
 import matplotlib.pyplot as plt
 import numpy as np
 
+from cup1d.postprocessing.style import apply_house_style
+
 from cup1d.postprocessing.posterior import contaminants as cont
 from cup1d.postprocessing.posterior import histories, parameters, star
 from cup1d.postprocessing.posterior.p1d import plot_best_fit
@@ -70,6 +72,41 @@ class PosteriorPlotter:
         self.formats = tuple(formats)
         self.log = log
         self._draws = None
+        apply_house_style()
+
+    @classmethod
+    def from_analysis(cls, analysis, out_folder=None, samples=None, thin=1, **kwargs):
+        """Plotter of a native cup1d run, with the models of its likelihood.
+
+        Parameters
+        ----------
+        analysis : cup1d.inference.analysis.Analysis
+            Analysis whose sampler wrote ``analysis.fitter.save_directory``
+            (or rebuilt with :meth:`~cup1d.inference.analysis.Analysis.from_results`).
+        out_folder : str or path-like, optional
+            Output folder (default: the chain folder).
+        samples : PosteriorSamples, optional
+            Samples (default: read from the chain folder, star parameters as
+            stored).
+        thin : int, default=1
+            Thinning when reading the samples.
+        **kwargs
+            Further :class:`PosteriorPlotter` options.
+        """
+        from cup1d.postprocessing.posterior.samples import PosteriorSamples
+
+        folder = analysis.fitter.save_directory
+        if samples is None:
+            samples = PosteriorSamples.from_cup1d_folder(folder, thin=thin,
+                                                         blinded=analysis.like.blind.is_blinded)
+        like = analysis.like
+        data = next(iter(like.data.values()))
+        znodes = {name[: -len("_znodes")]: values for name, values in analysis.args.fid_syst.items()
+                  if name.endswith("_znodes")}
+        kwargs.setdefault("z_range", (float(min(data.z)), float(max(data.z))))
+        kwargs.setdefault("syst_znodes", znodes)
+        return cls(samples, out_folder or folder, igm=like.theory.model_igm,
+                   contaminants=like.theory.model_cont, **kwargs)
 
     @property
     def draws(self):

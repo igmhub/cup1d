@@ -62,11 +62,11 @@ from cup1d.utils.utils import get_path_repo
 # %%
 EMULATOR_LABEL = "forest_mpg_gp"  # or "forest_mpg_cinn"
 config_names = {
-    "forest_mpg_cinn": "cm2026_base_forestmpgcinn.yaml",
-    "forest_mpg_gp": "cm2026_base_forestmpggp.yaml",
+    "forest_mpg_cinn": "desi_dr1_tests/cm2026_base_forestmpgcinn.yaml",
+    "forest_mpg_gp": "cm2026/cm2026_base_forestmpggp.yaml",
 }
 config_file = os.path.join(
-    get_path_repo("cup1d"), "configs", "desi_dr1_tests", config_names[EMULATOR_LABEL]
+    get_path_repo("cup1d"), "configs", config_names[EMULATOR_LABEL]
 )
 
 DCHI2_TARGET = 0.05
@@ -259,7 +259,7 @@ converged = {"k_rebin_factor": 128, "n_k_emu": 128}
 combined = {}
 for label in ("forest_mpg_gp", "forest_mpg_cinn"):
     config_file = os.path.join(
-        get_path_repo("cup1d"), "configs", "desi_dr1_tests", config_names[label]
+        get_path_repo("cup1d"), "configs", config_names[label]
     )
     baseline = build_analysis()
     points = test_points(baseline)

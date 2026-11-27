@@ -12,5 +12,4 @@ fid_cont:
   HCD_damp4_ztype: pivot
   HCD_damp4_fixed: true
 out_folder: ./DESIY1_QMLE3/HCD_BOSS/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: HCD_BOSS

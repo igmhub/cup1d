@@ -1,20 +1,7 @@
 import numpy as np
 from cup1d.models.contaminants.base_contaminants import Contaminant
-
-
-def vel_diff(lambda1, lambda2):
-    """Convert two rest wavelengths into their velocity separation.
-
-    Wavelength inputs share any length unit; the returned absolute separation
-    is in km/s using the logarithmic Doppler convention.
-    """
-    c_kms = 299792.458
-    return np.abs(np.log(lambda2 / lambda1)) * c_kms
-
-
-def rstrength(lambda1, lambda2, f1, f2):
-    """Return the optically-thin wavelength--oscillator-strength ratio."""
-    return (lambda1 * f1) / (lambda2 * f2)
+from cup1d.utils.batch import as_redshift_rows, unbatch
+from cup1d.models.contaminants.metals._common import rstrength, vel_diff
 
 
 class SiAdd(Contaminant):
@@ -140,143 +127,73 @@ class SiAdd(Contaminant):
             Gauss_priors=Gauss_priors,
         )
 
-    def get_contamination(self, z, k_kms, mF, like_params=None, remove=None):
-        """Evaluate additive Si II P1D contamination on velocity k grids.
+    def switches(self, remove=None):
+        """Component switches for one evaluation.
+
+        Parameters
+        ----------
+        remove : mapping, optional
+            ``{component: 0 or 1}`` overrides of :attr:`off` (e.g. to remove
+            a component in a figure). They apply to this evaluation only;
+            :attr:`off` is never modified.
+
+        Returns
+        -------
+        dict
+        """
+        off = dict(self.off)
+        if remove is not None:
+            off.update({key: value for key, value in remove.items() if key in off})
+        return off
+
+    def get_contamination(self, z, k_kms, mF=None, like_params=None, remove=None):
+        """Additive Si II x Si II P1D on velocity k grids.
 
         Parameters
         ----------
         z : array-like
-            Redshift rows.
+            Redshifts.
         k_kms : sequence of ndarray
-            Per-redshift wavenumber grids in s/km.
-        mF : array-like
-            Mean flux values; retained for interface compatibility.
+            Per-redshift wavenumbers in s/km.
+        mF : array-like, optional
+            Unused (interface of the metal models).
         like_params : mapping, optional
-            Coefficient-history overrides.
+            Scalar values (one point) or columns of shape ``(n_batch,)``.
         remove : mapping, optional
             Pair flags overriding selected transition contributions.
 
         Returns
         -------
         list of ndarray
-            Additive P1D contributions with units matching the caller's P1D.
+            One array per redshift: ``(n_k,)`` for one point,
+            ``(n_batch, n_k)`` for a batch.
         """
-
-        # z = np.atleast_1d(z)
-        # k_kms = np.atleast_2d(k_kms)
-        # mF = np.atleast_1d(mF)
-
-        vals = {}
-        for key in self.list_coeffs:
-            vals[key] = np.atleast_1d(
-                self.get_value(key, z, like_params=like_params)
-            )
-            if key in self.null_vals:
-                if self.prop_coeffs[key + "_otype"] == "const":
-                    null = self.null_vals[key]
-                else:
-                    null = np.exp(self.null_vals[key])
-                _ = vals[key] <= null
-                vals[key][_] = 0
-        # print(vals)
-
-        rac = self.rat["SiIIa_SiIIc"]
-        rbc = self.rat["SiIIb_SiIIc"]
-        rab = self.rat["SiIIa_SiIIb"]
-
-        if remove is not None:
-            for key in remove:
-                if key in self.off:
-                    self.off[key] = remove[key]
-        # print(self.off)
-
-        metal_corr = []
-
-        for iz in range(len(z)):
-            aSiII = vals["f_SiIIa_SiIIb"][iz].copy()
-
-            # G_SiII_SiII = 2 - 2 / (
-            #     1 + np.exp(-vals["s_SiIIa_SiIIb"][iz] * k_kms[iz])
-            # )
-            G_SiII_SiII = np.exp(
-                -1 * vals["s_SiIIa_SiIIb"][iz] ** 2 * k_kms[iz] ** 2
-            )
-
-            Cac = (
-                1
-                + rac**2
-                + 2 * rac * np.cos(self.dv["SiIIc_SiIIa"] * k_kms[iz])
-            )
-
-            Cbc = (
-                1
-                + rbc**2
-                + 2 * rbc * np.cos(self.dv["SiIIc_SiIIb"] * k_kms[iz])
-            )
-
-            Cba = rbc**2 * (
-                1
-                + rab**2
-                + 2 * rab * np.cos(self.dv["SiIIb_SiIIa"] * k_kms[iz])
-            )
-
-            dv_d = 0.5 * (self.dv["SiIIc_SiIIa"] - self.dv["SiIIc_SiIIb"])
-            dv_s = 0.5 * (self.dv["SiIIc_SiIIa"] + self.dv["SiIIc_SiIIb"])
-            Cacbc1 = 2 * (1 + rac * rbc) * np.cos(dv_d * k_kms[iz])
-            Cacbc2 = 2 * (rac + rbc) * np.cos(dv_s * k_kms[iz])
-
-            dv_d = 0.5 * (self.dv["SiIIc_SiIIa"] - self.dv["SiIIb_SiIIa"])
-            dv_s = 0.5 * (self.dv["SiIIc_SiIIa"] + self.dv["SiIIb_SiIIa"])
-            Cacba1 = 2 * rbc * (1 + rac * rab) * np.cos(dv_d * k_kms[iz])
-            Cacba2 = 2 * rbc * (rac + rab) * np.cos(dv_s * k_kms[iz])
-
-            dv_d = 0.5 * (self.dv["SiIIc_SiIIb"] - self.dv["SiIIb_SiIIa"])
-            dv_s = 0.5 * (self.dv["SiIIc_SiIIb"] + self.dv["SiIIb_SiIIa"])
-            Cbcba1 = 2 * rbc * (1 + rbc * rab) * np.cos(dv_d * k_kms[iz])
-            Cbcba2 = 2 * rbc * (rbc + rab) * np.cos(dv_s * k_kms[iz])
-
-            ktot = (
-                self.off["SiIIc_SiIIa"] * Cac
-                + self.off["SiIIc_SiIIb"] * Cbc
-                + self.off["SiIIb_SiIIa"] * Cba
-                + self.off["SiIIacbc"] * Cacbc1
-                + self.off["SiIIacbc"] * Cacbc2
-                + self.off["SiIIacab"] * Cacba1
-                + self.off["SiIIacab"] * Cacba2
-                + self.off["SiIIbcab"] * Cbcba1
-                + self.off["SiIIbcab"] * Cbcba2
-            )
-
-            metal_corr.append(aSiII**2 * ktot * G_SiII_SiII)
-
-        return metal_corr
-
-    def get_contamination_batch(self, z, k_kms, mF, like_params, remove=None):
-        """Evaluate additive Si II corrections for columnar likelihood samples.
-
-        Returns one additive ``(n_batch, nk_z)`` P1D array per redshift.
-        """
-        z = np.atleast_1d(np.asarray(z, dtype=float))
-        values = {key: self.get_value_batch(key, z, like_params) for key in self.list_coeffs}
-        for key in self.null_vals:
-            null = self.null_vals[key] if self.prop_coeffs[key + "_otype"] == "const" else np.exp(self.null_vals[key])
-            values[key] = np.where(values[key] <= null, 0.0, values[key])
-        off = self.off.copy()
-        if remove is not None:
-            off.update({key: value for key, value in remove.items() if key in off})
+        z, k_kms = as_redshift_rows(z, k_kms)
+        values, scalar = self.histories(z, like_params)
+        off = self.switches(remove)
         rac, rbc, rab = self.rat["SiIIa_SiIIc"], self.rat["SiIIb_SiIIc"], self.rat["SiIIa_SiIIb"]
+        dv = self.dv
+        # (flag, first and second velocity offsets, coefficients of the
+        # difference and sum terms) of the three cross pairs
+        pairs = (
+            ("SiIIacbc", "SiIIc_SiIIa", "SiIIc_SiIIb", 2 * (1 + rac * rbc), 2 * (rac + rbc)),
+            ("SiIIacab", "SiIIc_SiIIa", "SiIIb_SiIIa", 2 * rbc * (1 + rac * rab), 2 * rbc * (rac + rab)),
+            ("SiIIbcab", "SiIIc_SiIIb", "SiIIb_SiIIa", 2 * rbc * (1 + rbc * rab), 2 * rbc * (rbc + rab)),
+        )
         output = []
         for iz in range(len(z)):
-            k = np.asarray(k_kms[iz])[None, :]
+            k = k_kms[iz][None, :]
             amp = values["f_SiIIa_SiIIb"][:, iz, None]
             damping = np.exp(-values["s_SiIIa_SiIIb"][:, iz, None] ** 2 * k**2)
-            Cac = 1 + rac**2 + 2 * rac * np.cos(self.dv["SiIIc_SiIIa"] * k)
-            Cbc = 1 + rbc**2 + 2 * rbc * np.cos(self.dv["SiIIc_SiIIb"] * k)
-            Cba = rbc**2 * (1 + rab**2 + 2 * rab * np.cos(self.dv["SiIIb_SiIIa"] * k))
-            pairs = (("SiIIacbc", "SiIIc_SiIIa", "SiIIc_SiIIb", 2*(1+rac*rbc), 2*(rac+rbc)), ("SiIIacab", "SiIIc_SiIIa", "SiIIb_SiIIa", 2*rbc*(1+rac*rab), 2*rbc*(rac+rab)), ("SiIIbcab", "SiIIc_SiIIb", "SiIIb_SiIIa", 2*rbc*(1+rbc*rab), 2*rbc*(rbc+rab)))
-            total = off["SiIIc_SiIIa"]*Cac + off["SiIIc_SiIIb"]*Cbc + off["SiIIb_SiIIa"]*Cba
+            total = (
+                off["SiIIc_SiIIa"] * (1 + rac**2 + 2 * rac * np.cos(dv["SiIIc_SiIIa"] * k))
+                + off["SiIIc_SiIIb"] * (1 + rbc**2 + 2 * rbc * np.cos(dv["SiIIc_SiIIb"] * k))
+                + off["SiIIb_SiIIa"] * rbc**2 * (1 + rab**2 + 2 * rab * np.cos(dv["SiIIb_SiIIa"] * k))
+            )
             for flag, first, second, coef_d, coef_s in pairs:
-                d, s = .5*(self.dv[first]-self.dv[second]), .5*(self.dv[first]+self.dv[second])
-                total = total + off[flag]*(coef_d*np.cos(d*k)+coef_s*np.cos(s*k))
+                half_diff = 0.5 * (dv[first] - dv[second])
+                half_sum = 0.5 * (dv[first] + dv[second])
+                total = total + off[flag] * (coef_d * np.cos(half_diff * k) + coef_s * np.cos(half_sum * k))
             output.append(amp**2 * total * damping)
-        return output
+        return unbatch(output, scalar)
+

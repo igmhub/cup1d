@@ -51,7 +51,7 @@ from cup1d.utils.utils import get_path_repo, split_string
 # frees the silicon betas.
 
 # %%
-CONFIG = Path(get_path_repo("cup1d")) / "configs" / "desi_dr1_tests" / "cm2026_base_forestmpggp.yaml"
+CONFIG = Path(get_path_repo("cup1d")) / "configs" / "cm2026" / "cm2026_base_forestmpggp.yaml"
 BETA_FREE = False  # False: betas fixed at 0.5 (the Kaiser default for a metal not varied)
 N_NODES = 2  # redshift nodes of each Kaiser bias / sigma history
 OLD_SILICON = ("f_Lya_SiIII", "s_Lya_SiIII", "f_Lya_SiII", "s_Lya_SiII",

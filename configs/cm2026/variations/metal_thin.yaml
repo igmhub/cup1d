@@ -8,5 +8,4 @@ fid_cont:
   f_SiIIb_SiIII_ztype: pivot
   f_SiIIb_SiIII_fixed: true
 out_folder: ./DESIY1_QMLE3/metal_thin/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: metal_thin

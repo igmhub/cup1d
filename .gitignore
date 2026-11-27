@@ -18,3 +18,6 @@ docs/generated/
 !/data/
 /data/*
 !/data/blinding_dr1.npy
+
+# Planck linear-power chains (~66 MB): kept on disk, not tracked.
+/data/planck_linP_chains/COM_CosmoParams_fullGrid_*/

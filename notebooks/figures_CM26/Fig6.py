@@ -28,12 +28,11 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.rcParams['savefig.dpi'] = 120
 mpl.rcParams['figure.dpi'] = 120
-from cup1d.models.contaminants import hcd_model_rogers_class
+from cup1d.models.contaminants.HCD import hcd_model_rogers_class
+from cup1d.postprocessing.io import save_figure_data
+from cup1d.postprocessing.style import apply_house_style
 
-from matplotlib import rcParams
-
-rcParams["mathtext.fontset"] = "stix"
-rcParams["font.family"] = "STIXGeneral"
+apply_house_style()
 
 # %% [markdown]
 # ### Fig. 6
@@ -63,7 +62,7 @@ for ii in range(4):
     coeffs["HCD_damp"+str(ii+1)] = [0, np.log(val)]
     
     hcd_model = hcd_model_rogers_class.HCD_Model_Rogers(coeffs = coeffs)
-    cont = hcd_model.get_contamination(z=np.array([3]), k_kms=[k_kms])
+    cont = hcd_model.get_contamination(z=np.array([3]), k_kms=[k_kms])[0]
     ax.plot(k_kms, cont, label=r"$f^\mathrm{HCD}_\mathrm{"+labs[ii]+"}=$"+str(val), ls=ls[ii], lw=2)
 
     out_data["x"] = k_kms
@@ -83,10 +82,6 @@ plt.tight_layout()
 # plt.savefig("figs/HCD_contamination.pdf")
 
 # %%
-import cup1d, os
-
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_6.npy")
-np.save(fname, out_data)
+save_figure_data(out_data, "fig_6.npy")
 
 # %%

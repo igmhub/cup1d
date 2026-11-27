@@ -36,7 +36,6 @@ dependencies = [
     "shapely",
     "astropy",
     "PyYAML",
-    "pyswarms>=1.3",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -53,7 +52,6 @@ test = ["pytest>=8"]
 forestflow = ["forestflow"]
 planck = ["cobaya"]
 extended = ["forestflow", "cobaya"]
-nested = ["nautilus-sampler", "h5py"]
 docs = [
     "sphinx>=7",
     "numpydoc>=1.6",

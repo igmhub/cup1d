@@ -1,6 +1,8 @@
+"""Nuisance-parameter table of a chain (Table C2 of the DR1 paper)."""
+
 import numpy as np
-from cup1d.postprocessing.plots_corner import prepare_data
-from cup1d.utils.various_dicts import param_dict
+
+from cup1d.postprocessing.labels import parameter_label
 
 
 def format_value_with_error(m, ep, em):
@@ -38,16 +40,26 @@ def format_value_with_error(m, ep, em):
 
 
 def table_nuisance(folder_variation):
-    """Print paired LaTex nuisance-parameter summary rows from a chain folder.
+    """Paired LaTeX nuisance-parameter summary rows of a chain folder.
 
     Parameters
     ----------
     folder_variation : str or path-like
-        Folder accepted by :func:`cup1d.postprocessing.plots_corner.prepare_data`.
-    """
-    labels, lnprob, dat, priors, dat_Asns = prepare_data(folder_variation)
+        Chain folder read by
+        :meth:`cup1d.postprocessing.posterior.PosteriorSamples.from_cup1d_folder`.
 
-    dat = dat.reshape(-1, dat.shape[-1])
+    Returns
+    -------
+    str
+        Two blocks of LaTeX rows: value with errors, then value over error.
+    """
+    from cup1d.postprocessing.posterior import PosteriorSamples
+
+    samples = PosteriorSamples.from_cup1d_folder(folder_variation)
+    # Delta2_star, n_star, then the sampled parameters (As and ns replaced by
+    # the star parameters, as in the paper table)
+    labels = list(samples.names[:2]) + list(samples.sampled[2:])
+    dat = np.column_stack([samples.column(name) for name in labels])
 
     for ii in range(2, dat.shape[-1]):
         if (
@@ -69,41 +81,37 @@ def table_nuisance(folder_variation):
     err_plus = p84 - p50
     err_mid = 0.5 * (err_plus + err_minus)
 
+    rows = []
     imin = 18
     n = len(labels) - imin
     half = (n + 1) // 2  # split index
     for ii in range(half):
         i = ii + imin
-        left_label = param_dict[labels[i]]
+        left_label = parameter_label(labels[i])
         left_value = format_value_with_error(p50[i], err_plus[i], err_minus[i])
         if i > 1:
             if i + half < n + imin:
-                right_label = param_dict[labels[i + half]]
+                right_label = parameter_label(labels[i + half])
                 right_value = format_value_with_error(
                     p50[i + half], err_plus[i + half], err_minus[i + half]
                 )
-                print(
-                    f"{left_label:<10} & {left_value:<20} & {right_label:<10} & {right_value} \\\\"
-                )
+                rows.append(f"{left_label:<10} & {left_value:<20} & {right_label:<10} & {right_value} \\\\")
             else:
                 # Odd number of parameters
-                print(f"{left_label:<10} & {left_value:<20} & & \\\\")
+                rows.append(f"{left_label:<10} & {left_value:<20} & & \\\\")
 
-    print("")
-    print("")
+    rows += ["", ""]
     for ii in range(half):
         i = ii + imin
-        left_label = param_dict[labels[i]]
+        left_label = parameter_label(labels[i])
         left_value = p50[i] / err_mid[i]
         if i > 1:
             if i + half < n + imin:
-                right_label = param_dict[labels[i + half]]
+                right_label = parameter_label(labels[i + half])
                 right_value = p50[i + half] / err_mid[i + half]
-                print(
-                    f"{left_label:<10} & {left_value:<20} & {right_label:<10} & {right_value} \\\\"
-                )
+                rows.append(f"{left_label:<10} & {left_value:<20} & {right_label:<10} & {right_value} \\\\")
             else:
                 # Odd number of parameters
-                print(f"{left_label:<10} & {left_value:<20} & & \\\\")
+                rows.append(f"{left_label:<10} & {left_value:<20} & & \\\\")
 
-    return
+    return "\n".join(rows)

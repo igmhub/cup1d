@@ -2,5 +2,4 @@
 # This is a CM2026 override file and can be edited directly.
 fid_cosmo_label: DESIDR2_ACT
 out_folder: ./DESIY1_QMLE3/cosmo/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: cosmo

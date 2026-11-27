@@ -32,8 +32,8 @@ import numpy as np
 from cup1d.configuration import Args
 from cup1d.emulator.archive import set_archive
 from cup1d.inference import Analysis
-from cup1d.p1ds.simulations.data_eBOSS_mock import P1D_eBOSS_mock
-from cup1d.p1ds.simulations.data_gadget import Gadget_P1D
+from cup1d.p1ds.synthetic.data_eBOSS_mock import P1D_eBOSS_mock
+from cup1d.p1ds.synthetic.data_gadget import Gadget_P1D
 
 # %% [markdown]
 # Load the fiducial eBOSS mock without perturbing its P1D values and display

@@ -16,8 +16,11 @@ from lace.configuration import get_data_path
 # k_rebin_factor 32 and n_k_emu 64 instead of 8 and null (-> 695.930961),
 # and scaling it by cup1d's own smooth P1D (cup1d.p1ds.smooth_p1d, spline fitted
 # to the whole measurement) instead of the file's PSMOOTH (commits dd6dd1b and
-# 508dfcd; -> 683.323912).
-EXPECTED_CHI_SQUARED = np.float64(683.323912)
+# 508dfcd; -> 683.323912), then the Rogers HCD templates at their own pivot
+# z = 2 (they were evaluated around z = 3), the exponential resolution
+# correction instead of its first-order expansion, and CAMB without the CMB
+# (as Cobaya's CAMB) (-> 685.268296).
+EXPECTED_CHI_SQUARED = np.float64(685.268296)
 
 
 @pytest.mark.external_model
@@ -145,10 +148,10 @@ def test_dr1_baseline_chi_squared(tmp_path):
             np.testing.assert_allclose(emu_batch[name][index], emu_scalar[name])
 
     k_kms = next(iter(analysis.like.Rebin_data.k_kms.values()))
-    hcd_batch = analysis.like.theory.model_cont.hcd_model.get_contamination_batch(
+    hcd_batch = analysis.like.theory.model_cont.hcd_model.get_contamination(
         zs, k_kms, parameter_columns
     )
-    resolution_batch = analysis.like.theory.model_syst.resolution_model.get_contamination_batch(
+    resolution_batch = analysis.like.theory.model_syst.resolution_model.get_contamination(
         zs, k_kms, parameter_columns
     )
     for index, point in enumerate(batch_points):
@@ -164,7 +167,7 @@ def test_dr1_baseline_chi_squared(tmp_path):
             np.testing.assert_allclose(resolution_batch[iz][index], resolution_scalar[iz])
 
     si_add = analysis.like.theory.model_cont.metal_models["Si_add"]
-    si_add_batch = si_add.get_contamination_batch(
+    si_add_batch = si_add.get_contamination(
         zs, k_kms, emu_batch["mF"], parameter_columns
     )
     for index, point in enumerate(batch_points):
@@ -179,7 +182,7 @@ def test_dr1_baseline_chi_squared(tmp_path):
             np.testing.assert_allclose(si_add_batch[iz][index], si_add_scalar[iz])
 
     si_mult = analysis.like.theory.model_cont.metal_models["Si_mult"]
-    si_mult_batch = si_mult.get_contamination_batch(
+    si_mult_batch = si_mult.get_contamination(
         zs, k_kms, emu_batch["mF"], parameter_columns
     )
     for index, point in enumerate(batch_points):
@@ -228,10 +231,12 @@ def test_dr1_baseline_chi_squared(tmp_path):
     minimizer_payload = np.load(minimizer_path, allow_pickle=True).item()
     assert minimizer_path.name == "minimizer_results.npy"
     assert set(minimizer_payload) == {
-        "format_version", "result_type", "config_path", "config_loader",
-        "synthetic", "parameter_names", "parameter_bounds", "parameter_otypes",
-        "n_data", "fit",
+        "format_version", "result_type", "config", "code_versions", "config_path",
+        "config_loader", "synthetic", "parameter_names", "parameter_bounds",
+        "parameter_otypes", "n_data", "fit",
     }
+    # the frozen configuration rebuilds the same arguments
+    assert minimizer_payload["config"] == arguments.to_config()
     assert {
         "mle_cube", "mle_chi2", "mle_cosmo_errors",
         "mle_cosmo_covariance", "mle_cosmo_correlation",
@@ -249,8 +254,9 @@ def test_dr1_baseline_chi_squared(tmp_path):
     sampler_payload = np.load(sampler_path, allow_pickle=True).item()
     assert sampler_path.name == "sampler_results.npy"
     for key in ("chain_path", "blobs_path", "lnprob_path"):
-        assert key in sampler_payload
-        assert Path(sampler_payload[key]).exists()
+        # names relative to the result file: the folder can be moved
+        assert not Path(sampler_payload[key]).is_absolute()
+        assert (sampler_path.parent / sampler_payload[key]).exists()
 
     directories_before_load = {
         path.name for path in tmp_path.iterdir() if path.is_dir()

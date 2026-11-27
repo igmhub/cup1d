@@ -1,4 +1,3 @@
-import os
 import time
 import warnings
 from pathlib import Path
@@ -18,53 +17,27 @@ from cup1d.utils.utils import create_print_function
 from cup1d.utils.utils import split_string
 
 
-def get_grid_large(nelem):
-    """Build a rectangular grid spanning the MPG cosmology training set.
-
-    Parameters
-    ----------
-    nelem : int
-        Number of samples along each of the ``Delta2_star`` and ``n_star``
-        axes.
-
-    Returns
-    -------
-    xgrid, ygrid : ndarray
-        Two arrays of shape ``(nelem, nelem)`` returned by
-        :func:`numpy.meshgrid`.  Together they cover the extrema stored in
-        LaCE's ``Australia20/mpg_emu_cosmo.npy`` metadata.
-
-    Notes
-    -----
-    This helper depends on the installed LaCE repository data rather than an
-    archive supplied to :class:`Analysis`.
-    """
-    fname = os.path.join(
-        get_path_repo("lace"),
-        "data",
-        "sim_suites",
-        "Australia20",
-        "mpg_emu_cosmo.npy",
-    )
-
-    data_cosmo = np.load(fname, allow_pickle=True).item()
-
-    pars = np.zeros((30, 2))
-    for ii, key in enumerate(data_cosmo):
-        try:
-            int(key[-1])
-        except:
-            continue
-
-        pars[ii, 0] = data_cosmo[key]["star_params"]["Delta2_star"]
-        pars[ii, 1] = data_cosmo[key]["star_params"]["n_star"]
-
-    x = np.linspace(pars[:, 0].min(), pars[:, 0].max(), nelem)
-    y = np.linspace(pars[:, 1].min(), pars[:, 1].max(), nelem)
-    xgrid, ygrid = np.meshgrid(x, y)
-
-    return xgrid, ygrid
-
+def _warn_if_yaml_changed(args, recorded_path, payload, synthetic):
+    """Warn when the recorded YAML now resolves to other settings."""
+    if recorded_path is None or not recorded_path.exists():
+        return
+    try:
+        if payload.get("config_loader") == "variation":
+            current = Args.from_variation(recorded_path, verbose=False, synthetic=synthetic)
+        else:
+            current = Args.from_yaml(recorded_path, verbose=False, synthetic=synthetic)
+    except Exception as error:  # a YAML that no longer loads is only informative here
+        warnings.warn(f"could not compare with {recorded_path}: {error}", stacklevel=3)
+        return
+    frozen, now = args.to_config(), current.to_config()
+    changed = sorted(key for key in set(frozen) | set(now) if frozen.get(key) != now.get(key))
+    if changed:
+        warnings.warn(
+            f"{recorded_path} (with the current defaults) now differs from the "
+            f"configuration frozen in the result in: {', '.join(changed)}. The "
+            "frozen configuration is used.",
+            stacklevel=3,
+        )
 
 class Analysis(object):
     """Assemble the P1D data, theory, likelihood, and inference driver.
@@ -84,8 +57,7 @@ class Analysis(object):
     theory : object
         Fiducial theory object evaluated by the likelihood.
     like : cup1d.likelihood.likelihood.Likelihood
-        Likelihood used for minimization and sampling.  ``likelihood`` is a
-        backward-compatible alias for this attribute.
+        Likelihood used for minimization and sampling.
     fitter : cup1d.inference.fitter.Fitter
         Object managing minimizer and sampler runs.
     """
@@ -180,7 +152,7 @@ class Analysis(object):
                 self.emulator,
                 free_parameters,
                 fid_or_true="true",
-                use_hull=False,
+                use_hull=getattr(self.args, "use_hull", True),
             )
         else:
             true_theory = None
@@ -217,7 +189,7 @@ class Analysis(object):
             self.emulator,
             free_parameters,
             fid_or_true="fid",
-            use_hull=False,
+            use_hull=getattr(self.args, "use_hull", True),
             zs=zs,
         )
 
@@ -230,14 +202,14 @@ class Analysis(object):
             covariance_method=self.args.covariance_method,
             args=self.args,
         )
-        # Backward-compatible descriptive alias. Public analysis code should
-        # use ``analysis.like`` rather than reaching through the fitter.
-        self.likelihood = self.like
 
         self.fitter = Fitter(
             like=self.like,
             rootdir=self.out_folder,
-            nwalkers=self.args.mcmc["n_walkers"],
+            walkers_per_parameter=self.args.mcmc["n_walkers"],
+            mpi_ensemble=self.args.mcmc.get("mpi_ensemble", "single"),
+            backend=self.args.mcmc.get("backend", True),
+            resume=self.args.mcmc.get("resume", True),
             nburn=self.args.mcmc["n_burn_in"],
             nsteps=self.args.mcmc["n_steps"],
             thin=self.args.mcmc["thin"],
@@ -296,46 +268,18 @@ class Analysis(object):
         if result_type not in {"minimizer", "sampler"}:
             raise ValueError(f"Unknown result type: {result_type!r}")
 
-        recorded_path = Path(payload["config_path"]).expanduser()
-        if config_path is not None:
-            config_path = Path(config_path).expanduser()
-            if config_path != recorded_path:
-                warnings.warn(
-                    f"Using config_path={config_path} instead of the YAML "
-                    f"recorded by the result ({recorded_path}).",
-                    stacklevel=2,
-                )
-        elif recorded_path.exists():
-            config_path = recorded_path
-        else:
-            matches = sorted(
-                (Path(get_path_repo("cup1d")) / "configs").rglob(
-                    recorded_path.name
-                )
-            )
-            config_path = matches[0] if len(matches) == 1 else recorded_path
-            if config_path != recorded_path:
-                warnings.warn(
-                    f"YAML configuration recorded by the result "
-                    f"({recorded_path}) does not exist; falling back to "
-                    f"local file {config_path}. It may differ from the one "
-                    f"used for the original run.",
-                    stacklevel=2,
-                )
-        if not config_path.exists():
-            raise FileNotFoundError(
-                f"YAML configuration recorded by the result does not exist: "
-                f"{recorded_path}; pass config_path= to override"
-            )
         synthetic = bool(payload.get("synthetic", False))
-        if payload.get("config_loader") == "variation":
-            args = Args.from_variation(
-                config_path, verbose=False, synthetic=synthetic
-            )
+        recorded = payload.get("config_path")
+        recorded_path = None if recorded is None else Path(recorded).expanduser()
+        if config_path is None and "config" in payload:
+            # the frozen resolved configuration: independent of later changes
+            # to the YAML or the defaults, programmatic overrides included
+            args = Args._from_overrides(payload["config"], verbose=False, synthetic=synthetic)
+            args.config_path = recorded
+            args.config_loader = payload.get("config_loader", "yaml")
+            _warn_if_yaml_changed(args, recorded_path, payload, synthetic)
         else:
-            args = Args.from_yaml(
-                config_path, verbose=False, synthetic=synthetic
-            )
+            args = cls._args_from_recorded_yaml(payload, recorded_path, config_path, synthetic)
         if "args" in analysis_options or "create_output" in analysis_options:
             raise TypeError(
                 "from_results reconstructs args from YAML and controls "
@@ -348,119 +292,73 @@ class Analysis(object):
         analysis.results_path = str(result_path)
         return analysis
 
-    def set_emcee_options(
-        self,
-        data_label,
-        cov_label,
-        n_igm,
-        n_steps=0,
-        n_burn_in=0,
-        test=False,
-    ):
-        """Choose legacy emcee step and burn-in counts from data labels.
-
-        Parameters
-        ----------
-        data_label : str
-            Label selecting the default production step count.
-        cov_label : str
-            Covariance label selecting the default burn-in count.
-        n_igm : int
-            Retained for compatibility with older callers.  It does not alter
-            the counts chosen by this implementation.
-        n_steps, n_burn_in : int, default=0
-            Explicit positive counts.  A value of zero requests the
-            label-dependent defaults.
-        test : bool, default=False
-            If true, use ten production steps and no burn-in.
-
-        Notes
-        -----
-        The values are assigned to ``self.n_steps`` and ``self.n_burn_in``;
-        they do not modify the already-created fitter configuration.
-        """
-        # set steps
-        if test == True:
-            self.n_steps = 10
+    @staticmethod
+    def _args_from_recorded_yaml(payload, recorded_path, config_path, synthetic):
+        """Arguments of a result without a frozen configuration (older files),
+        or from an explicit ``config_path``."""
+        if config_path is not None:
+            config_path = Path(config_path).expanduser()
+            if config_path != recorded_path:
+                warnings.warn(
+                    f"Using config_path={config_path} instead of the YAML "
+                    f"recorded by the result ({recorded_path}).",
+                    stacklevel=3,
+                )
+        elif recorded_path is not None and recorded_path.exists():
+            config_path = recorded_path
         else:
-            if n_steps != 0:
-                self.n_steps = n_steps
-            else:
-                if data_label == "Chabanier2019":
-                    self.n_steps = 2000
-                else:
-                    self.n_steps = 1250
-
-        # set burn-in
-        if test == True:
-            self.n_burn_in = 0
-        else:
-            if n_burn_in != 0:
-                self.n_burn_in = n_burn_in
-            else:
-                if data_label == "Chabanier2019":
-                    self.n_burn_in = 2000
-                else:
-                    if cov_label == "Chabanier2019":
-                        self.n_burn_in = 1500
-                    elif cov_label == "QMLE_Ohio":
-                        self.n_burn_in = 1500
-                    else:
-                        self.n_burn_in = 1500
+            if recorded_path is None:
+                raise FileNotFoundError("the result records no configuration; pass config_path=")
+            matches = sorted(
+                (Path(get_path_repo("cup1d")) / "configs").rglob(recorded_path.name)
+            )
+            config_path = matches[0] if len(matches) == 1 else recorded_path
+            if config_path != recorded_path:
+                warnings.warn(
+                    f"YAML configuration recorded by the result "
+                    f"({recorded_path}) does not exist; falling back to "
+                    f"local file {config_path}. It may differ from the one "
+                    f"used for the original run.",
+                    stacklevel=3,
+                )
+        if not config_path.exists():
+            raise FileNotFoundError(
+                f"YAML configuration recorded by the result does not exist: "
+                f"{recorded_path}; pass config_path= to override"
+            )
+        if payload.get("config_loader") == "variation":
+            return Args.from_variation(config_path, verbose=False, synthetic=synthetic)
+        return Args.from_yaml(config_path, verbose=False, synthetic=synthetic)
 
     def run_minimizer(
         self,
         p0,
-        make_plots=False,
         mask_pars=False,
-        save_chains=False,
         zmask=None,
         restart=False,
-        type_minimizer="NM",
         estimate_errors=False,
         hessian_step=1.0e-4,
-        error_method="finite_difference",
-        vectorize=True,
-        pso_type="global",
+        error_method="gauss_newton",
     ):
-        """Run a minimizer on rank zero and broadcast its best-fit cube.
+        """Run Nelder--Mead on rank zero and broadcast its best-fit cube.
 
         Parameters
         ----------
         p0 : array-like
             Initial point in the fitter's sampling-coordinate convention.
-        make_plots : bool, default=False
-            Create minimizer diagnostic plots after a successful root-rank
-            run.
         mask_pars : bool, default=False
             Request the Nelder--Mead parameter-masking behavior implemented
             by :meth:`Fitter.run_minimizer`.
-        save_chains : bool, default=False
-            Save sampler-style results even when the minimizer did not attach
-            a chain.
         zmask : array-like, optional
-            Redshift mask forwarded to the selected minimizer and plotter.
+            Redshift mask forwarded to the minimizer.
         restart : bool, default=False
-            Forward restart handling to the selected fitter method.
-        type_minimizer : {'NM', 'DA', 'PSO'}, default='NM'
-            Select Nelder--Mead, differential annealing, or particle swarm
-            optimization.
+            Forward restart handling to :meth:`Fitter.run_minimizer`.
         estimate_errors : bool, default=False
             Estimate parameter errors after minimization.
         hessian_step : float, default=1e-4
             Finite-difference displacement used for error estimation.
-        error_method : str, default='finite_difference'
+        error_method : str, default='gauss_newton'
             Error-estimation method understood by :class:`Fitter`.
-        vectorize : bool, default=True
-            Enable vectorized likelihood evaluation for particle swarm runs.
-        pso_type : str, default='global'
-            Particle-swarm variant forwarded when ``type_minimizer`` is
-            ``'PSO'``.
-
-        Raises
-        ------
-        ValueError
-            If ``type_minimizer`` is not ``'NM'``, ``'DA'``, or ``'PSO'``.
 
         Notes
         -----
@@ -473,62 +371,29 @@ class Analysis(object):
         size = comm.Get_size()
 
         if rank == 0:
-            start = time.time()
             self.fprint("----------")
             self.fprint("Running minimizer")
             # start fit from initial values
-
-            if type_minimizer == "NM":
-                self.fitter.run_minimizer(
-                    log_func_minimize=self.fitter.minus_log_prob,
-                    p0=p0,
-                    zmask=zmask,
-                    mask_pars=mask_pars,
-                    restart=restart,
-                    estimate_errors=estimate_errors,
-                    hessian_step=hessian_step,
-                    error_method=error_method,
-                )
-            elif type_minimizer == "PSO":
-                self.fitter.run_minimizer_pso(
-                    p0=p0, zmask=zmask, vectorize=vectorize, pso_type=pso_type,
-                    restart=restart,
-                    estimate_errors=estimate_errors, hessian_step=hessian_step,
-                    error_method=error_method,
-                )
-            elif type_minimizer == "DA":
-                self.fitter.run_minimizer_da(
-                    log_func_minimize=self.fitter.minus_log_prob,
-                    p0=p0,
-                    zmask=zmask,
-                    restart=restart,
-                    estimate_errors=estimate_errors,
-                    hessian_step=hessian_step,
-                    error_method=error_method,
-                )
-            else:
-                raise ValueError("type_minimizer must be 'NM', 'DA', or 'PSO'")
+            self.fitter.run_minimizer(
+                log_func_minimize=self.fitter.minus_log_prob,
+                p0=p0,
+                zmask=zmask,
+                mask_pars=mask_pars,
+                restart=restart,
+                estimate_errors=estimate_errors,
+                hessian_step=hessian_step,
+                error_method=error_method,
+            )
 
             # save fit (not when the analysis was built with create_output=False)
             if self.fitter.save_directory is None:
                 self.fprint("No output directory: results are not saved")
-            elif save_chains or hasattr(self.fitter, "chain"):
+            elif hasattr(self.fitter, "chain"):
                 self.fprint(f"Saving the results to folder {self.fitter.save_directory}")
                 self.fitter.save_sampler_results()
             else:
                 self.fprint(f"Saving the results to folder {self.fitter.save_directory}")
                 self.fitter.save_minimizer_results()
-
-            if make_plots and self.fitter.save_directory is not None:
-                from cup1d.postprocessing.plotter import Plotter
-
-                # plot fit
-                self.plotter = Plotter(
-                    self.fitter,
-                    save_directory=self.fitter.save_directory,
-                    zmask=zmask,
-                )
-                self.plotter.plots_minimizer()
 
             # distribute best_fit to all tasks
             for irank in range(1, size):
@@ -537,9 +402,7 @@ class Analysis(object):
             # get testing_data from task 0
             self.fitter.mle_cube = comm.recv(source=0, tag=(rank + 1) * 13)
 
-    def run_sampler(
-        self, pini=None, make_plots=False, zmask=None, vectorize=None
-    ):
+    def run_sampler(self, pini=None, zmask=None, vectorize=None):
         """Run the configured sampler, optionally starting at a supplied point.
 
         Parameters
@@ -547,26 +410,19 @@ class Analysis(object):
         pini : array-like, optional
             Initial sampling-coordinate point.  Defaults to the current
             ``fitter.mle_cube``, normally produced by :meth:`run_minimizer`.
-        make_plots : bool, default=False
-            Create sampler diagnostic plots on rank zero after saving results.
         zmask : array-like, optional
-            Redshift mask forwarded to the fitter and optional plotter.
+            Redshift mask forwarded to the fitter.
         vectorize : bool, optional
             Override the fitter's vectorized likelihood-evaluation setting.
 
         Notes
         -----
         All MPI ranks participate in sampling; only rank zero saves result
-        products and creates plots.  The method returns ``None``.
+        products.  The method returns ``None``.
         """
-
-        # def func_for_sampler(p0):
-        #     res = self.fitter.like.get_log_like(values=p0, return_blob=True)
-        #     return res[0], *res[2]
 
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
-        size = comm.Get_size()
 
         if rank == 0:
             start = time.time()
@@ -587,52 +443,6 @@ class Analysis(object):
             self.fprint("----------")
             self.fprint("Saving data")
             self.fitter.save_sampler_results()
-
-            # plot fit
-            if make_plots:
-                from cup1d.postprocessing.plotter import Plotter
-
-                self.plotter = Plotter(
-                    self.fitter,
-                    save_directory=self.fitter.save_directory,
-                    zmask=zmask,
-                )
-                self.plotter.plots_sampler()
-
-    def run_sampler_nautilus(self, zmask=None, save=True, **kwargs):
-        """Run the Nautilus nested sampler and save its native results.
-
-        Parameters
-        ----------
-        zmask : array-like, optional
-            Single diagnostic redshift forwarded to the posterior.
-        save : bool, default=True
-            Write results with :meth:`Fitter.save_nautilus_results`.
-        **kwargs
-            Forwarded to :meth:`Fitter.run_sampler_nautilus` (``n_live``,
-            ``n_eff``, ``pool``, ``filepath``, ``n_threads``, ...).
-
-        Returns
-        -------
-        nautilus.Sampler or None
-            The sampler on rank zero; ``None`` on other ranks.
-
-        Notes
-        -----
-        Nautilus is a single sampler: it runs on MPI rank zero only.
-        Parallelize it with ``pool`` (number of worker processes).
-        """
-        rank = MPI.COMM_WORLD.Get_rank()
-        if rank != 0:
-            return None
-        start = time.time()
-        self.fprint("----------")
-        self.fprint("Running Nautilus sampler")
-        sampler = self.fitter.run_sampler_nautilus(zmask=zmask, **kwargs)
-        self.fprint(f"Sampler run in {np.round(time.time() - start, 2)} s")
-        if save and self.fitter.save_directory is not None:
-            self.fitter.save_nautilus_results()
-        return sampler
 
     def save_global_ic(self, fname=None):
         """Save the best-fit parameters as global initial conditions.

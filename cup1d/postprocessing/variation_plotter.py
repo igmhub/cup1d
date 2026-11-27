@@ -437,12 +437,9 @@ class VariationPlotter:
                 return default
             return tuple(np.median(contour[0.68][0][axis]) for axis in (0, 1))
 
-        from cup1d.theory.camb import CAMBModel
         from cup1d.theory.cosmology import set_cosmo
 
-        star = CAMBModel(
-            np.asarray([3.0]), cosmo=set_cosmo(spec.simulation_label)
-        ).get_linP_params()
+        star = set_cosmo(spec.simulation_label).get_linP_kms_params(3.0, 0.009)
         return star["Delta2_star"], star["n_star"]
 
     def _add_prior_region(self, ax, names, reference_x, reference_y):

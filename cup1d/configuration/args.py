@@ -202,8 +202,8 @@ class Args:
         self.training_set = get_training_set(self.emulator_label)
         self.cont_params = {name: values.copy() for name, values in self._CONT_PARAMS.items()}
         self.syst_params = {name: values.copy() for name, values in self._SYST_PARAMS.items()}
-        self._set_covariance_redshifts()
-        self._set_parameter_nodes()
+        # nodes and covariance factors are derived by update_cm2026_derived
+        self.cov_factor["z"] = np.asarray(self.cov_factor["z"], dtype=float)
         self._set_fiducial_values()
         self._set_contaminant_priors()
 
@@ -257,41 +257,6 @@ class Args:
         comments = "".join(f"# {line}\n" for line in header.splitlines())
         path.write_text(comments + yaml.safe_dump(self.to_config(), sort_keys=False))
         return path
-
-    def _set_parameter_nodes(self):
-        """Construct model redshift nodes from the analysis settings."""
-
-        for section, names in ((self.fid_igm, self.igm_params), (self.fid_cont, self.cont_params), (self.fid_syst, self.syst_params)):
-            for name in names:
-                n_nodes = section.get(f"n_{name}", 0)
-                key = f"{name}_znodes"
-                if n_nodes > 0 and key not in section:
-                    if n_nodes == 1:
-                        section[key] = np.asarray([self.z_star])
-                    elif section is self.fid_syst:
-                        section[key] = np.linspace(self.z_min, self.z_max, n_nodes)
-                    else:
-                        section[key] = np.geomspace(self.z_min, self.z_max, n_nodes)
-
-    def _set_covariance_redshifts(self):
-        """Construct the covariance grid and expand its scalar factors."""
-
-        # The grid is normally set by update_cm2026_derived, which keeps a
-        # user-provided cov_factor.z; only build it here when it is missing.
-        if self.cov_factor.get("z") is None:
-            self.cov_factor["z"] = np.arange(self.z_min, self.z_max + 0.5 * self.zbin_width, self.zbin_width)
-        self.cov_factor["z"] = np.asarray(self.cov_factor["z"], dtype=float)
-        n_redshifts = len(self.cov_factor["z"])
-        for name in ("val_stat", "val_syst", "val_emu", "val_full"):
-            value = np.atleast_1d(np.asarray(self.cov_factor[name], dtype=float))
-            if value.size == 1:
-                value = np.full(n_redshifts, value[0])
-            if value.size != n_redshifts:
-                raise ValueError(
-                    f"cov_factor.{name} has {value.size} values but cov_factor.z "
-                    f"has {n_redshifts} redshifts"
-                )
-            self.cov_factor[name] = value
 
     def _set_fiducial_values(self):
         """Create internal model reference values from the parameter layout."""
@@ -389,12 +354,12 @@ class Args:
             if defaults is not None:
                 priors[name] = deepcopy(defaults["prior"])
                 linear.add(name)
-        variation = getattr(self, "name_variation", None)
-        if variation is not None and variation.startswith("sim_"):
-            # widen the lower bound of logarithmic amplitudes only
+        log_amp_min = getattr(self, "cont_log_amp_min", None)
+        if log_amp_min is not None:
+            # lower bound of the logarithmic amplitudes only
             for name in ("f_Lya_SiIII", "f_Lya_SiII", "f_SiIIa_SiIIb", "HCD_damp1", "HCD_damp2", "HCD_damp3", "HCD_damp4"):
                 if name not in linear:
-                    priors[name][-1][0] = -10.5
+                    priors[name][-1][0] = log_amp_min
         for name, bounds in priors.items():
             reference = self.fid_cont[name][-1]
             if reference < bounds[-1][0]:

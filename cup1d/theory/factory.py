@@ -1,10 +1,10 @@
 import numpy as np
-from lace.cosmo import cosmology
 
 from cup1d.models.contaminants.model_contaminants import Contaminants
 from cup1d.models.contaminants.model_systematics import Systematics
 from cup1d.models.igm.model_igm import IGM
 from cup1d.theory.theory import Theory
+from cup1d.emulator.factory import as_emulator
 
 
 def set_theory(
@@ -69,24 +69,35 @@ def set_theory(
 
     model_syst = Systematics(free_param_names=free_parameters, pars_syst=pars_syst)
 
+    emulator = as_emulator(emulator)
+    if fid_or_true == "true" and emulator.forestflow:
+        # the truth gets its own copy: set_cosmology below must not change
+        # the cosmology of the fiducial theory sharing the emulator (the
+        # trained model itself is shared, read only)
+        emulator = emulator.independent_copy()
+
     theory = Theory(
         emulator=emulator,
         model_igm=model_igm,
         model_cont=model_cont,
         model_syst=model_syst,
         use_hull=use_hull,
+        hull_margin=getattr(args, "hull_margin", 0.05),
         use_star_priors=args.use_star_priors,
         z_star=args.z_star,
         kp_kms=args.kp_kms,
         cosmo_priors=args.cosmo_priors,
         cosmo_prior_nsigma=getattr(args, "cosmo_prior_nsigma", None),
     )
+    # with the hull built: reject points outside it, or only count them
+    theory.hull_reject = bool(getattr(args, "hull_reject", True))
     theory.set_fid_cosmo(np.unique(zs), cosmo_label=cosmo_label)
 
     theory.model_igm.set_fid_igm(np.unique(zs))
 
-    if type(emulator).__name__ == "P1DEmulator":
-        emulator_cosmology = cosmology.Cosmology(cosmo_label=cosmo_label)
-        emulator.set_cosmology(emulator_cosmology.input_cosmo_params_dict)
+    if theory.emulator.forestflow:
+        # the theory's fiducial cosmology itself (no second CAMB run; the
+        # rescaled cosmologies of the theory then use ForestFlow's cache)
+        theory.emulator.set_cosmology(theory.fid_cosmo["cosmo"])
 
     return theory

@@ -1,6 +1,6 @@
 # DESI DR1 test (not part of the CM2026 paper) using the ForestFlow Gaussian-process emulator.
 #
-# Identical to ``cm2026_base_forestmpggp.yaml`` except that the statistical
+# Identical to ``configs/cm2026/cm2026_base_forestmpggp.yaml`` except that the statistical
 # errors are not artificially inflated by 5% (``cov_factor.val_stat`` is 1.0
 # instead of the default 1.05), as in ``configs/cm2026/variations/no_inflate.yaml``.
 #

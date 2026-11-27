@@ -8,5 +8,4 @@ fid_cont:
   s_Lya_SiII_ztype: pivot
   s_Lya_SiII_fixed: true
 out_folder: ./DESIY1_QMLE3/metal_deco/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: metal_deco

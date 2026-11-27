@@ -26,13 +26,7 @@ plotter
     :class:`PosteriorPlotter`, which writes all of them to a folder.
 """
 
-from matplotlib import rcParams
-
-# house style of the cup1d figures
-rcParams["mathtext.fontset"] = "stix"
-rcParams["font.family"] = "STIXGeneral"
-
-from cup1d.postprocessing.posterior.samples import PosteriorSamples, parameter_label  # noqa: E402
-from cup1d.postprocessing.posterior.plotter import PosteriorPlotter  # noqa: E402
+from cup1d.postprocessing.posterior.samples import PosteriorSamples, parameter_label
+from cup1d.postprocessing.posterior.plotter import PosteriorPlotter
 
 __all__ = ["PosteriorSamples", "PosteriorPlotter", "parameter_label"]

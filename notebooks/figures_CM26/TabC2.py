@@ -25,5 +25,5 @@ from cup1d.postprocessing.tables.nuisance import table_nuisance
 # folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 # nersc
 folder = "/global/cfs/cdirs/desi/users/jjchaves/P1D_results/DESI_DR1/chain/"
-table_nuisance(folder)
+print(table_nuisance(folder))
 # %%

@@ -21,9 +21,10 @@ Data, emulator, and theory
    :toctree: generated
 
    cup1d.p1ds.factory
+   cup1d.p1ds.synthetic.forecast
    cup1d.emulator.archive
    cup1d.emulator.factory
-   cup1d.theory.camb
+   cup1d.emulator.hull
    cup1d.theory.cosmology
    cup1d.theory.factory
    cup1d.theory.linear_power
@@ -38,6 +39,7 @@ Models and likelihood
    cup1d.models.igm.model_igm
    cup1d.models.contaminants.model_contaminants
    cup1d.models.contaminants.model_systematics
+   cup1d.models.contaminants.resolution
    cup1d.likelihood.likelihood
    cup1d.likelihood.parameter
    cup1d.likelihood.parameters
@@ -54,7 +56,6 @@ Post-processing and utilities
    cup1d.postprocessing.likelihood
    cup1d.postprocessing.igm
    cup1d.postprocessing.contaminants
-   cup1d.postprocessing.inference
    cup1d.postprocessing.geometry
    cup1d.postprocessing.style
    cup1d.postprocessing.data.simulations

@@ -1,7 +1,6 @@
 import numpy as np
 
 from cup1d.models.contaminants.HCD import (
-    hcd_model_McDonald2005,
     hcd_model_rogers_class,
     hcd_boss,
 )
@@ -12,7 +11,7 @@ from cup1d.models.contaminants.metals import (
     si_add,
     si_kaiser,
 )
-
+from cup1d.utils.batch import as_columns, as_redshift_rows, unbatch
 
 
 class Contaminants(object):
@@ -23,8 +22,6 @@ class Contaminants(object):
         free_param_names=None,
         metal_models=None,
         hcd_model=None,
-        sn_model=None,
-        agn_model=None,
         pars_cont=None,
         ic_correction=None,
     ):
@@ -36,8 +33,6 @@ class Contaminants(object):
             Free contaminant coefficient names.
         metal_models, hcd_model : mapping or object, optional
             Prebuilt components replacing native construction.
-        sn_model, agn_model : object, optional
-            Retained optional feedback-model hooks.
         pars_cont : mapping
             Native contaminant coefficient histories, priors, and model types.
         ic_correction : bool, optional
@@ -77,12 +72,8 @@ class Contaminants(object):
                     elif key3.endswith("ztype"):
                         prop_coeffs[key3] = "pivot"
 
-        # if joint_model:
-        self.metal_add = [
-            # "CIVa_CIVb",
-            # "MgIIa_MgIIb",
-            "Si_add",
-        ]
+        # metal models that add to the P1D (the others multiply it)
+        self.metal_add = ["Si_add"]
 
         # setup metal models
         self.metal_models = {}
@@ -99,9 +90,9 @@ class Contaminants(object):
             )
         if "Si_kaiser" not in self.metal_models:
             key = "Si_mult"
-            try:
+            if metal_models and key in metal_models:
                 self.metal_models[key] = metal_models[key]
-            except:
+            else:
                 if pars_cont["metal_model_type"] == "SiVid":
                     # Ma+2025 2509.08613
                     self.metal_models[key] = si_vid_final.SiVid(
@@ -123,9 +114,9 @@ class Contaminants(object):
                     )
 
             key = "Si_add"
-            try:
+            if metal_models and key in metal_models:
                 self.metal_models[key] = metal_models[key]
-            except:
+            else:
                 self.metal_models[key] = si_add.SiAdd(
                     free_param_names=free_param_names,
                     fid_vals=fid_vals,
@@ -139,14 +130,10 @@ class Contaminants(object):
         if hcd_model:
             self.hcd_model = hcd_model
         else:
-            if pars_cont["hcd_model_type"] == "McDonald2005":
-                self.hcd_model = hcd_model_McDonald2005.HCD_Model_McDonald2005(
-                    free_param_names=free_param_names,
-                    fid_A_damp=pars_cont["A_damp1"],
-                )
-            elif pars_cont["hcd_model_type"] == "new_rogers":
+            if pars_cont["hcd_model_type"] == "new_rogers":
                 self.hcd_model = hcd_model_rogers_class.HCD_Model_Rogers(
                     free_param_names=free_param_names,
+                    z_0=pars_cont.get("hcd_z_0", 3.0),
                     fid_vals=fid_vals,
                     prop_coeffs=prop_coeffs,
                     flat_priors=flat_priors,
@@ -162,235 +149,63 @@ class Contaminants(object):
                 )
             else:
                 raise ValueError(
-                    "hcd_model_type must be one of 'Rogers2017', 'McDonald2005', 'new', or 'BOSS'"
+                    "hcd_model_type must be 'new_rogers' (Rogers+18 templates) or 'BOSS'"
                 )
 
-        # # setup SN model
-        # if sn_model:
-        #     self.sn_model = sn_model
-        # else:
-        #     self.sn_model = SN_model.SN_Model(
-        #         free_param_names=free_param_names,
-        #         fid_value=pars_cont["SN"],
-        #     )
-
-        # # setup AGN model
-        # if agn_model:
-        #     self.agn_model = sn_model
-        # else:
-        #     self.agn_model = AGN_model.AGN_Model(
-        #         free_param_names=free_param_names,
-        #         fid_value=pars_cont["AGN"],
-        #     )
-
-    # def get_dict_cont(self):
-    #     dict_out = {}
-
-    #     # maximum number of parameters
-    #     for ii in range(2):
-    #         for metal_line in self.args.metal_lines:
-    #             flag = "f_" + metal_line + "_" + str(ii)
-    #             dict_out[flag] = self.fid_metals[flag][-1 - ii]
-    #             flag = "s_" + metal_line + "_" + str(ii)
-    #             dict_out[flag] = self.fid_metals[flag][-1 - ii]
-    #         dict_out["ln_A_damp_" + str(ii)] = self.fid_A_damp[-1 - ii]
-    #         dict_out["ln_A_scale_" + str(ii)] = self.fid_A_scale[-1 - ii]
-    #         dict_out["ln_SN_" + str(ii)] = self.fid_SN[-1 - ii]
-    #         dict_out["ln_AGN_" + str(ii)] = self.fid_AGN[-1 - ii]
-    #     dict_out["ic_correction"] = self.args.ic_correction
-
-    #     return dict_out
-
-    def get_contamination(self, z, k_kms, mF, M_of_z, like_params=None, remove=None,
+    def get_contamination(self, z, k_kms, mF, M_of_z=None, like_params=None, remove=None,
                           metal_moments=None):
-        """Combine all scalar contaminant terms for requested P1D grids.
+        """All contaminant factors for one parameter point or a batch.
 
         Parameters
         ----------
-        z, mF, M_of_z : array-like
-            Redshifts, mean fluxes, and velocity-to-comoving conversions.
+        z : array-like
+            Redshifts.
         k_kms : sequence of ndarray
-            Per-redshift wavenumber grids in s/km.
+            Per-redshift wavenumbers in s/km.
+        mF : array-like
+            Mean flux, ``(n_z,)`` for one point or ``(n_batch, n_z)``.
+        M_of_z : array-like, optional
+            Unused (kept for the feedback models, which are not active).
         like_params : mapping, optional
-            Scalar physical coefficient overrides.
+            Scalar values (one point) or columns of shape ``(n_batch,)``.
         remove : mapping, optional
-            Metal transition flags overriding default contributions.
+            Metal transition flags overriding the default contributions (for
+            figures; the models are not changed).
         metal_moments : sequence of mapping, optional
             Per-redshift metal moments, required by the Kaiser metal model.
 
         Returns
         -------
-        dict
-            Additive-metal P1D terms and dimensionless multiplicative metal,
-            HCD, feedback, and initial-condition correction factors.
+        dict of str to list of ndarray
+            ``cont_mul_metals``, ``cont_HCD`` and ``IC_corr`` (dimensionless)
+            and ``cont_add_metals`` (P1D units): one array per redshift,
+            ``(n_k,)`` for one point and ``(n_batch, n_k)`` for a batch. The
+            observed P1D is ``C_HCD C_mul IC P + C_add`` (then the resolution
+            correction; :func:`cup1d.models.observation.apply_observation_model`).
         """
-        if isinstance(like_params, dict) and like_params and all(np.asarray(value).ndim == 1 for value in like_params.values()):
-            if "Si_kaiser" in self.metal_models:
-                raise NotImplementedError("batched Kaiser metal model unavailable")
-            return self.get_contamination_batch(z, k_kms, mF, M_of_z, like_params, remove=remove)
-        # include multiplicative metal contamination
-        cont_all = {}
-
-        if len(z) == 1:
-            cont_all["cont_mul_metals"] = np.ones_like(k_kms)
-            cont_all["cont_add_metals"] = np.zeros_like(k_kms)
-        else:
-            cont_all["cont_mul_metals"] = []
-            cont_all["cont_add_metals"] = []
-            for iz in range(len(z)):
-                cont_all["cont_mul_metals"].append(np.ones_like(k_kms[iz]))
-                cont_all["cont_add_metals"].append(np.zeros_like(k_kms[iz]))
-
-        for model_name in self.metal_models:
-            extra = {"metal_moments": metal_moments} if model_name == "Si_kaiser" else {}
-            cont = self.metal_models[model_name].get_contamination(
-                z=z,
-                k_kms=k_kms,
-                mF=mF,
-                like_params=like_params,
-                remove=remove,
-                **extra,
-            )
-            if len(z) == 1:
-                if model_name in self.metal_add:
-                    cont_all["cont_add_metals"] += cont
-                else:
-                    cont_all["cont_mul_metals"] *= cont
-            else:
-                for iz in range(len(z)):
-                    if model_name in self.metal_add:
-                        if type(cont) != int:
-                            cont_all["cont_add_metals"][iz] += cont[iz]
-                        else:
-                            cont_all["cont_add_metals"][iz] += cont
-                    else:
-                        if type(cont) != int:
-                            cont_all["cont_mul_metals"][iz] *= cont[iz]
-                        else:
-                            cont_all["cont_mul_metals"][iz] *= cont
-
-        # include HCD contamination
-        cont = self.hcd_model.get_contamination(
-            z=z,
-            k_kms=k_kms,
-            like_params=like_params,
-        )
-        if len(z) == 1:
-            cont_all["cont_HCD"] = np.ones_like(k_kms) * cont
-        else:
-            cont_all["cont_HCD"] = []
-            for iz in range(len(z)):
-                if type(cont) != int:
-                    cont_all["cont_HCD"].append(np.ones_like(k_kms[iz]) * cont[iz])
-                else:
-                    cont_all["cont_HCD"].append(np.ones_like(k_kms[iz]) * cont)
-
-        # include SN contamination
-        # if len(z) != 1:
-        #     k_Mpc = []
-        #     for iz in range(len(z)):
-        #         k_Mpc.append(k_kms[iz] * M_of_z[iz])
-        # else:
-        #     k_Mpc = [k_kms[0] * M_of_z[0]]
-        # cont_SN = self.sn_model.get_contamination(
-        #     z=z,
-        #     k_Mpc=k_Mpc,
-        #     like_params=like_params,
-        # )
-        cont_all["cont_SN"] = np.ones_like(z)
-
-        # include AGN contamination
-        # cont_AGN = self.agn_model.get_contamination(
-        #     z=z,
-        #     k_kms=k_kms,
-        #     like_params=like_params,
-        # )
-        # if np.any(cont_AGN < 0):
-        #     cont_AGN = 1
-        cont_all["cont_AGN"] = np.ones_like(z)
-
-        if self.ic_correction:
-            cont_all["IC_corr"] = ref_nyx_ic_correction(k_kms, z)
-        else:
-            cont_all["IC_corr"] = np.ones_like(z)
-
-        # if len(z) == 1:
-        #     mult_cont_total = (
-        #         cont_mul_metals * cont_HCD * cont_SN * cont_AGN * IC_corr
-        #     )
-        #     add_cont_total = cont_add_metals
-        # else:
-        #     mult_cont_total = []
-        #     add_cont_total = []
-        #     if type(cont_mul_metals) == int:
-        #         _cont_mul_metals = np.ones_like(z)
-        #     else:
-        #         _cont_mul_metals = cont_mul_metals
-
-        #     if type(cont_add_metals) == int:
-        #         _cont_add_metals = np.zeros_like(z)
-        #     else:
-        #         _cont_add_metals = cont_add_metals
-
-        #     if type(cont_HCD) == int:
-        #         _cont_HCD = np.ones_like(z)
-        #     else:
-        #         _cont_HCD = cont_HCD
-
-        #     if type(cont_SN) == int:
-        #         _cont_SN = np.ones_like(z)
-        #     else:
-        #         _cont_SN = cont_SN
-
-        #     if type(cont_AGN) == int:
-        #         _cont_AGN = np.ones_like(z)
-        #     else:
-        #         _cont_AGN = cont_AGN
-
-        #     if type(IC_corr) == int:
-        #         _IC_corr = np.ones_like(z)
-        #     else:
-        #         _IC_corr = IC_corr
-
-        #     for iz in range(len(z)):
-        #         mult_cont_total.append(
-        #             _cont_mul_metals[iz]
-        #             * _cont_HCD[iz]
-        #             * _cont_SN[iz]
-        #             * _cont_AGN[iz]
-        #             * _IC_corr[iz]
-        #         )
-        #         add_cont_total.append(_cont_add_metals[iz])
-
-        return cont_all
-
-
-    def get_contamination_batch(self, z, k_kms, mF, M_of_z, like_params, remove=None):
-        """Combine contaminants for columnar parameter samples.
-
-        Each returned redshift item has shape ``(n_batch, nk_z)``; additive
-        metal terms retain the caller's P1D units and every other term is
-        dimensionless.
-        """
-        z = np.atleast_1d(z)
-        n_batch = len(next(iter(like_params.values())))
-        mult = [np.ones((n_batch, len(k_kms[iz]))) for iz in range(len(z))]
-        add = [np.zeros((n_batch, len(k_kms[iz]))) for iz in range(len(z))]
+        z, k_kms = as_redshift_rows(z, k_kms)
+        _, n_batch, scalar = as_columns(like_params)
+        shapes = [(n_batch, len(k)) for k in k_kms]
+        mult = [np.ones(shape) for shape in shapes]
+        add = [np.zeros(shape) for shape in shapes]
         for name, model in self.metal_models.items():
-            if not hasattr(model, "get_contamination_batch"):
-                raise NotImplementedError(f"batched metal model unavailable: {name}")
-            correction = model.get_contamination_batch(z, k_kms, mF, like_params, remove=remove)
+            extra = {"metal_moments": metal_moments} if name == "Si_kaiser" else {}
+            correction = model.get_contamination(
+                z, k_kms, mF, like_params=like_params, remove=remove, **extra)
             for iz in range(len(z)):
                 if name in self.metal_add:
-                    add[iz] += correction[iz]
+                    add[iz] = add[iz] + correction[iz]
                 else:
-                    mult[iz] *= correction[iz]
-        if not hasattr(self.hcd_model, "get_contamination_batch"):
-            raise NotImplementedError("batched HCD model unavailable")
-        hcd = self.hcd_model.get_contamination_batch(z, k_kms, like_params)
-        ic = [np.broadcast_to(np.asarray(ref_nyx_ic_correction(k_kms, z)[iz]), (n_batch, len(k_kms[iz]))) if self.ic_correction else np.ones_like(mult[iz]) for iz in range(len(z))]
-        return {"cont_mul_metals": mult, "cont_add_metals": add, "cont_HCD": hcd, "cont_SN": [np.ones_like(item) for item in mult], "cont_AGN": [np.ones_like(item) for item in mult], "IC_corr": ic}
-
+                    mult[iz] = mult[iz] * correction[iz]
+        hcd = self.hcd_model.get_contamination(z, k_kms, like_params=like_params)
+        hcd = [np.broadcast_to(hcd[iz], shapes[iz]) for iz in range(len(z))]
+        if self.ic_correction:
+            ic = [np.broadcast_to(row, shapes[iz])
+                  for iz, row in enumerate(ref_nyx_ic_correction(k_kms, z))]
+        else:
+            ic = [np.ones(shape) for shape in shapes]
+        out = {"cont_mul_metals": mult, "cont_add_metals": add, "cont_HCD": hcd, "IC_corr": ic}
+        return {key: unbatch(rows, scalar) for key, rows in out.items()}
 
 def ref_nyx_ic_correction(k_kms, z):
     # This is the function fitted from the comparison of two Nyx runs,
@@ -402,17 +217,15 @@ def ref_nyx_ic_correction(k_kms, z):
     Parameters
     ----------
     k_kms : numpy.ndarray or sequence of numpy.ndarray
-        Wavenumbers in s/km. For multiple redshifts, provide one possibly
-        ragged grid per redshift.
+        Wavenumbers in s/km, one (possibly ragged) grid per redshift; one
+        array for a single redshift.
     z : array_like
-        Nonempty redshift sequence. The single-redshift branch uses its
-        array directly in the fitted polynomial.
+        Redshifts.
 
     Returns
     -------
-    numpy.ndarray or list of numpy.ndarray
-        Dimensionless multiplicative correction. A single redshift returns
-        an array; multiple redshifts return a list in input order.
+    list of numpy.ndarray
+        Dimensionless multiplicative correction, one array per redshift.
 
     Notes
     -----
@@ -423,47 +236,9 @@ def ref_nyx_ic_correction(k_kms, z):
     """
     ic_corr_z = np.array([0.15261529, -2.30600644, 2.61877894])
     ic_corr_k = 0.003669741766936781
-    if len(z) == 1:
-        ancorIC = (ic_corr_z[0] * z**2 + ic_corr_z[1] * z + ic_corr_z[2]) * (
-            1 - np.exp(-k_kms / ic_corr_k)
-        )
-        corICs = 1 / (1 - ancorIC / 100)
-    else:
-        corICs = []
-        for iz in range(len(z)):
-            ancorIC = (
-                ic_corr_z[0] * z[iz] ** 2 + ic_corr_z[1] * z[iz] + ic_corr_z[2]
-            ) * (1 - np.exp(-k_kms[iz] / ic_corr_k))
-            corICs.append(1 / (1 - ancorIC / 100))
-
-    return corICs
-
-
-# def nyx_ic_correction(k_kms, z):
-#     # This is the function fitted from the comparison of two Nyx runs,
-#     # one with 2lpt (single fluid) IC and the other one with monofonic (2 fluid)
-#     # - The high k points and z evolution are well determined
-#     # - Low k term: quite uncertain, due to cosmic variance
-#     coeff0 = np.poly1d(np.array([0.00067032, -0.00626953, 0.0073908]))
-#     coeff1 = np.poly1d(np.array([0.00767315, -0.04693207, 0.07151469]))
-#     cfit = np.zeros(2)
-#     cfit[0] = coeff0(z)
-#     cfit[1] = coeff1(z)
-
-#     rfit = np.poly1d(cfit)
-#     # multiplicative correction
-#     ic_corr = 10 ** rfit(np.log10(k_kms))
-
-#     return ic_corr
-
-
-# def nuisance_nyx_ic_correction(P0, k, z, Aic, Bic):
-#     ic_corr_k = 0.003669741766936781
-#     correction = (Aic + Bic * (z - 3)) * (1 - np.exp(-k / ic_corr_k))  # in %
-#     return P0 / (1 - 0.01 * correction)
-
-
-# def prior_nyx_ic_correction():
-#     # The central values are the result of a 1st order polynomial fit from the
-#     # 2nd order function given in _ref_nyx_ic_correction(P0, k, z)
-#     return {"Aic": (-2.9, 1.0), "Bic": (-1.4, 0.5)}
+    z, k_kms = as_redshift_rows(z, k_kms)
+    corrections = []
+    for zz, k in zip(z, k_kms):
+        percent = np.polyval(ic_corr_z, zz) * (1 - np.exp(-k / ic_corr_k))
+        corrections.append(1 / (1 - percent / 100))
+    return corrections

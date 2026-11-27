@@ -2,5 +2,4 @@
 # This is a CM2026 override file and can be edited directly.
 emu_cov_type: block
 out_folder: ./DESIY1_QMLE3/emu_block/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: emu_block

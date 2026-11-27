@@ -8,16 +8,18 @@ steps:
    YAML loading, defaults, and the :class:`cup1d.configuration.Args` object.
 
 ``p1ds``
-   Observational, simulated, forecast, and mock P1D data interfaces.
+   P1D data interfaces: measurements in ``p1ds/observations`` and synthetic
+   data (simulation mocks and forecasts) in ``p1ds/synthetic``.
 
 ``emulator``
-   Emulator archive selection and emulator construction.
+   Emulator archive selection, emulator construction, and the training-set
+   convex hull.
 
 ``theory``
-   Cosmology, CAMB, linear-power, and Lyman-alpha theory construction.
+   Cosmology, linear-power, projection, and Lyman-alpha theory construction.
 
 ``models``
-   IGM, contaminant, metal, HCD, feedback, and instrumental-systematic models.
+   IGM, contaminant, metal, HCD, resolution, and observation models.
 
 ``likelihood``
    Likelihood evaluation and likelihood parameter definitions.
@@ -31,7 +33,8 @@ steps:
    scientific classes. See :doc:`plotting`.
 
 ``old_code``
-   Preserved legacy implementations that are not part of the active API.
+   Only ``old_input.py``, the legacy ``Args`` used by
+   ``scripts/configs/generate_cm2026.py``. Not part of the active API.
 
 The main public entry points are:
 

@@ -1,6 +1,6 @@
 """Statistical likelihood and its parameter definitions."""
 
-__all__ = ["Likelihood", "make_parameter", "LikelihoodParameter"]
+__all__ = ["Likelihood", "make_parameter"]
 
 
 def __getattr__(name):
@@ -26,7 +26,7 @@ def __getattr__(name):
         from cup1d.likelihood.likelihood import Likelihood
 
         return Likelihood
-    if name in {"make_parameter", "LikelihoodParameter"}:
+    if name == "make_parameter":
         from cup1d.likelihood.parameter import make_parameter
 
         return make_parameter

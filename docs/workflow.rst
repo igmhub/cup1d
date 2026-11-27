@@ -67,11 +67,7 @@ contaminants and systematics, and returns predictions on the data grid.
 
 .. code-block:: python
 
-   analysis.run_minimizer(
-       initial_cube,
-       estimate_errors=False,
-       make_plots=False,
-   )
+   analysis.run_minimizer(initial_cube, estimate_errors=False)
    print(analysis.fitter.mle)
    print(analysis.fitter.mle_chi2)
 
@@ -89,12 +85,10 @@ the authoritative configuration.
 
    analysis.run_sampler()
 
-``Analysis.run_minimizer(type_minimizer="PSO")`` runs particle-swarm
-optimization. ``pso_type="global"`` (the default) shares the swarm-wide best
-position, while ``pso_type="local"`` preserves local neighborhoods longer.
-By default particles are evaluated together through the vectorized likelihood;
-pass ``vectorize=False`` to benchmark or force scalar particle evaluations.
-``NM`` remains the default local minimizer.
+``Analysis.run_minimizer`` uses Nelder--Mead with restarts, the only
+minimizer in cup1d. With ``mcmc: backend: true`` (the default) the chain is
+also checkpointed to ``emcee_chain.h5`` and a rerun with ``resume: true``
+continues from it.
 
 By default, emcee submits each LaCE walker sub-ensemble as one likelihood
 batch. ForestFlow uses compiled scalar calls on CPU because they benchmark

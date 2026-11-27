@@ -9,9 +9,21 @@ CM2026 analyses
 ---------------
 
 The observational defaults live in
-``configs/cm2026/cm2026_defaults.yaml``. The standard baseline overlay is
-``configs/cm2026/cm2026_base.yaml`` and named variations live in
-``configs/cm2026/variations``.
+``configs/cm2026/cm2026_defaults.yaml`` (synthetic data add
+``configs/cm2026/cm2026_synth_defaults.yaml``). The overlays on top of them
+are
+
+``configs/cm2026/cm2026_base.yaml``
+   The CM2026 baseline with the LaCE Gaussian-process emulator.
+
+``configs/cm2026/cm2026_base_forestmpggp.yaml``
+   The DR1 production configuration with the ForestFlow Gaussian-process
+   emulator (``forest_mpg_gp``).
+
+``configs/cm2026/cm2026_base_cholesky.yaml``
+   The baseline with a Cholesky covariance factorization (test).
+
+Named variations live in ``configs/cm2026/variations``.
 
 Create arguments for the baseline or a named variation with:
 
@@ -27,10 +39,19 @@ Each variation YAML is sparse: its values override the baseline defaults.
 Redshift nodes, covariance grids, fiducial model values, priors, and emulator
 training-set choices are derived internally where appropriate.
 
+Every configuration sets ``out_folder`` explicitly. The folder derived from
+the data label, variation, and emulator is only a fallback, and
+``scripts/data/data_sampler.py --path_out <dir>`` replaces it with
+``<dir>/<data_label>/<name_variation or fit_type>/<emulator_label>/chain_N``.
+
 Other analyses
 --------------
 
 Configurations that are not CM2026 variations are grouped by analysis type:
+
+``configs/desi_dr1_tests``
+   DR1 tests of the ForestFlow configuration: the cINN emulator, fixed
+   cosmology, and no covariance inflation.
 
 ``configs/forecasts``
    Synthetic forecasts, named by the covariance data set and emulator.

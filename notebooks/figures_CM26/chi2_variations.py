@@ -44,7 +44,7 @@ from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
 from cup1d.p1ds.observations.data_DESIY1 import set_p1d_filename
 from cup1d.p1ds.smooth_p1d import read_cache, smooth_rows
-from cup1d.postprocessing.plots_corner import _load_parameter_bounds
+from cup1d.postprocessing.chains.products import load_parameter_bounds
 
 # %% [markdown]
 # ## Likelihood and points
@@ -63,7 +63,7 @@ data = like.data[key]
 
 folder = "/home/jchaves/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7/"
 fit = np.load(folder + "fitter_results.npy", allow_pickle=True).item()
-names, bounds = _load_parameter_bounds(folder)
+names, bounds = load_parameter_bounds(folder)
 paper_best = {name: bounds[name][0] + (bounds[name][1] - bounds[name][0]) * cube
               for name, cube in zip(names, fit["fitter"]["mle_cube"])}
 print("chi2 saved with the chain (paper):", -2 * fit["fitter"]["lnprob_mle"])

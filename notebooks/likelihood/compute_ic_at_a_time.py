@@ -42,7 +42,9 @@ from pathlib import Path
 import numpy as np
 
 from cup1d import Analysis, Args
-from cup1d.postprocessing.plotter import Plotter
+from cup1d.postprocessing.fit.illustrate import (
+    plot_contaminant_residuals, residual_scenarios, residual_scenarios_data,
+)
 from cup1d.utils.utils import get_path_repo
 
 
@@ -134,21 +136,15 @@ for ii in range(1):
 # ## Inspect contamination contributions
 #
 # This diagnostic figure compares the P1D residual after selectively removing
-# contamination terms. It is not part of the IC-generation script. Set
-# `zenodo_filename` only when deliberately exporting the plotted arrays.
+# contamination terms. It is not part of the IC-generation script. Call
+# `cup1d.postprocessing.io.save_figure_data(store_data, ...)` only to export the plotted arrays.
 
 # %%
-# diru = "figs"
-diru = None
-plotter = Plotter(analysis.fitter, save_directory=diru, zmask=zmask)
-
-store_data = plotter.plot_illustrate_contaminants_each(
-    out_mle_cube[0].copy(),
-    zmask,
-    fontsize=22,
-    store_data=True,
-    zenodo_filename=None,
-)
+best = analysis.fitter.parameters_from_sampling_point(out_mle_cube[0])
+scenarios = residual_scenarios(analysis.like, best, zmask[0])
+fig = plot_contaminant_residuals(scenarios, fontsize=22)
+# fig.savefig("figs/cont_illustrate_each" + str(zmask[0]) + ".pdf")
+store_data = residual_scenarios_data(scenarios)
 # %%
 # store_data_ting = store_data
 store_data_orig = store_data

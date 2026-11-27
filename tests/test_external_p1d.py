@@ -2,7 +2,7 @@ import pytest
 """The external observation API and native scalar API share algebra/order."""
 import numpy as np
 from cup1d.theory.theory import Theory
-from cup1d.likelihood.external import apply_observation_model
+from cup1d.models.observation import apply_observation_model
 
 
 class Contaminants:
@@ -16,6 +16,9 @@ class Systematics:
         return [np.full(len(k),11.) for k in ks]
 
 
+from cup1d.emulator.factory import as_emulator
+
+
 class Emulator:
     emulator_label="fixture"
     def emulate_p1d_Mpc(self,inputs,k):
@@ -24,7 +27,7 @@ class Emulator:
 
 class FixtureTheory(Theory):
     def __init__(self):
-        self.emulator=Emulator()
+        self.emulator=as_emulator(Emulator())
         self.model_cont=Contaminants()
         self.model_syst=Systematics()
         self.star_priors=None
@@ -52,7 +55,7 @@ def test_native_scalar_external_order_and_return_contract():
 
 def test_public_external_coefficient_route_returns_immutable_rows():
     """Supplied coefficients are projected without invoking an emulator."""
-    from cup1d.likelihood.external import PredictionGroup, PredictionRequest, project_arinyo_request
+    from cup1d.theory.projection import PredictionGroup, PredictionRequest, project_arinyo_request
     from lace.cosmo.cosmology import Cosmology
 
     class ProjectionCosmology(Cosmology):
@@ -79,7 +82,7 @@ def test_public_external_coefficient_route_returns_immutable_rows():
 
 def test_coverage_is_checked_at_data_bin_centres():
     """The fine grid may extend past kmax; the largest data bin centre may not."""
-    from cup1d.likelihood.external import PredictionGroup, PredictionRequest, project_arinyo_request
+    from cup1d.theory.projection import PredictionGroup, PredictionRequest, project_arinyo_request
     from lace.cosmo.cosmology import Cosmology
 
     class ProjectionCosmology(Cosmology):
@@ -113,9 +116,7 @@ def test_coverage_is_checked_at_data_bin_centres():
 def test_kaiser_metal_moments_equal_direct_projection_of_contaminated_p3d(rule, damping):
     """Moments + SiKaiser reproduce the k_perp integral of the full contaminated P3D."""
     from cup1d.configuration.args import Args
-    from cup1d.likelihood.external import (
-        PredictionGroup, PredictionRequest, _quadrature, make_integrator,
-        project_arinyo_request, project_metal_moments)
+    from cup1d.theory.projection import PredictionGroup, PredictionRequest, _quadrature, make_integrator, project_arinyo_request, project_metal_moments
     from cup1d.models.contaminants.metals.si_kaiser import SiKaiser, lya_metal_damping, velocity_offset
     from forestflow.model.arinyo import ArinyoModel
     from forestflow.model.linear import LinearTheoryGrid
@@ -259,8 +260,7 @@ def test_coefficient_families_match_exactly_not_by_substring():
 @pytest.mark.parametrize("rule", ["k_perp", "k_mu"])
 def test_fused_projection_matches_forestflow_and_interpolation_is_accurate(rule):
     """The one-pass Lya P1D equals ForestFlow's projection; n_k interpolation is accurate."""
-    from cup1d.likelihood.external import (
-        PredictionGroup, PredictionRequest, make_integrator, project_fused)
+    from cup1d.theory.projection import PredictionGroup, PredictionRequest, make_integrator, project_fused
     from forestflow.model.arinyo import ArinyoModel
     from forestflow.model.linear import LinearTheoryGrid
     from lace.cosmo.cosmology import Cosmology
@@ -303,7 +303,7 @@ def test_fused_projection_matches_forestflow_and_interpolation_is_accurate(rule)
 
 def test_resolution_correction_only_for_syst_data_labels():
     """Native and external likelihoods share the per-data-set R_coeff rule."""
-    from cup1d.likelihood.external import dataset_nuisance
+    from cup1d.models.observation import dataset_nuisance
     params = {"R_coeff_0": .1, "R_coeff_1": .2, "HCD_damp1_0": -3.}
     assert dataset_nuisance("desi", params, None) is params
     assert dataset_nuisance("desi", params, ("desi",)) is params

@@ -6,7 +6,12 @@ import numpy as np
 from matplotlib.ticker import MaxNLocator
 from scipy.stats import chi2 as chi2_distribution, norm
 
+from cup1d.postprocessing.labels import STAR_LABELS
+from cup1d.postprocessing.literature import (  # noqa: F401 - re-exported
+    DR1, LITERATURE, gaussian_chi2 as _gaussian_chi2, gaussian_constraint,
+)
 from cup1d.postprocessing.posterior.samples import STAR_PARAMETERS
+from cup1d.postprocessing.style import styled
 from cup1d.postprocessing.posterior.stats import (
     density_contours, format_quantiles, marginal_density, padded_range,
 )
@@ -14,46 +19,6 @@ from cup1d.postprocessing.posterior.stats import (
 # Delta chi2 of the 68 and 95 per cent regions of a two-parameter Gaussian
 GAUSSIAN_LEVELS = tuple(chi2_distribution.ppf([0.68, 0.95], 2))
 
-# name -> (function of cup1d.likelihood.marginal, legend label, colour, line style)
-LITERATURE = {
-    "McDonald2005": ("gaussian_chi2_McDonald2005", "SDSS (McDonald+05)", "C1", ":"),
-    "PalanqueDelabrouille2015": ("gaussian_chi2_PalanqueDelabrouille2015",
-                                 "BOSS (Palanque-Delabrouille+15)", "C2", "-."),
-    "Chabanier2019": ("gaussian_chi2_Chabanier2019", "eBOSS (Chabanier+19)", "C3", "--"),
-    "Walther2024": ("gaussian_chi2_Walther2024", "eBOSS + priors (Walther+24)", "C4", "--"),
-}
-DR1 = ("gaussian_chi2_DESI_DR1", "DESI DR1 (Chaves-Montero+26)", "k", "-")
-
-
-def gaussian_constraint(function_name):
-    """Return the Gaussian summary of a published compressed constraint.
-
-    Parameters
-    ----------
-    function_name : str
-        Function of :mod:`cup1d.likelihood.marginal`, e.g.
-        ``"gaussian_chi2_DESI_DR1"``.
-
-    Returns
-    -------
-    dict
-        ``Delta2_star``, ``Delta2_star_err``, ``n_star``, ``n_star_err`` and
-        the correlation ``r``.
-    """
-    from cup1d.likelihood import marginal
-
-    result = getattr(marginal, function_name)(-2.3, 0.35)
-    return {key: result[key] for key in ("Delta2_star", "Delta2_star_err", "n_star", "n_star_err", "r")}
-
-
-def _gaussian_chi2(function_name, n_star, delta2_star):
-    """Evaluate a published Gaussian constraint on a grid."""
-    from cup1d.likelihood import marginal
-
-    function = getattr(marginal, function_name)
-    if function_name == "gaussian_chi2_Walther2024":
-        return function(n_star, delta2_star, ana_type="priors")["chi2"]
-    return function(n_star, delta2_star)["chi2"]
 
 
 def _contourf(ax, x, y, weights, cmap="Blues", color="C0", ranges=None, bins=40, smooth=1.0):
@@ -63,6 +28,7 @@ def _contourf(ax, x, y, weights, cmap="Blues", color="C0", ranges=None, bins=40,
     ax.contour(X, Y, H, levels=thresholds[:-1], colors=color, linewidths=1.5)
 
 
+@styled
 def plot_star_posterior(samples, fontsize=16, color="C0", truth=None):
     """Plot the posterior of Delta2_star and n_star with their marginals.
 
@@ -126,6 +92,7 @@ def plot_star_posterior(samples, fontsize=16, color="C0", truth=None):
     return fig
 
 
+@styled
 def plot_star_literature(samples, literature=tuple(LITERATURE), include_dr1=True,
                          fontsize=16, xlim=(0.23, 0.52), ylim=(-2.39, -2.24), color="C0"):
     """Compare the Delta2_star--n_star posterior with published constraints.
@@ -202,12 +169,81 @@ def plot_star_literature(samples, literature=tuple(LITERATURE), include_dr1=True
         ax.set_ylim(0, 1.1)
         ax.set_yticks([])
     amplitude.tick_params(labelbottom=False)
-    amplitude.set_title(rf"$\Delta^2_\star = {format_quantiles(x, w)}$", fontsize=fontsize)
-    slope.set_title(rf"$n_\star = {format_quantiles(y, w)}$", fontsize=fontsize)
-    joint.set_xlabel(r"$\Delta^2_\star$", fontsize=fontsize)
-    joint.set_ylabel(r"$n_\star$", fontsize=fontsize)
-    slope.set_xlabel(r"$n_\star$", fontsize=fontsize)
+    amplitude.set_title(f"{STAR_LABELS['Delta2_star'][:-1]} = {format_quantiles(x, w)}$",
+                        fontsize=fontsize)
+    slope.set_title(f"{STAR_LABELS['n_star'][:-1]} = {format_quantiles(y, w)}$", fontsize=fontsize)
+    joint.set_xlabel(STAR_LABELS["Delta2_star"], fontsize=fontsize)
+    joint.set_ylabel(STAR_LABELS["n_star"], fontsize=fontsize)
+    slope.set_xlabel(STAR_LABELS["n_star"], fontsize=fontsize)
     for ax in (joint, amplitude, slope):
         ax.tick_params(labelsize=fontsize - 4)
     axes[0, 1].legend(handles=handles, loc="center", fontsize=fontsize - 4, frameon=False)
+    return fig
+
+
+def overlay_gaussian(fig, mean, covariance, nsigma=1, color="C3", label="MLE Gaussian",
+                     error_label=None, posterior_label=None):
+    """Overlay a Gaussian (e.g. a minimizer's Gauss--Newton errors) on :func:`plot_star_posterior`.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        Output of :func:`plot_star_posterior`.
+    mean : mapping or array_like
+        ``{"Delta2_star": ..., "n_star": ...}`` or the pair of values.
+    covariance : array_like, shape (2, 2)
+        Covariance of (Delta2_star, n_star), same coordinates as the samples.
+    nsigma : float, default=1
+        Ellipse in the 1D-interval convention (Delta chi2 = nsigma**2), see
+        :func:`cup1d.postprocessing.primitives.gaussian_ellipse`.
+    color : str, default="C3"
+        Colour.
+    label : str, default="MLE Gaussian"
+        Legend label of the centre.
+    error_label : str, optional
+        Legend label of the ellipse (default: ``"<nsigma>$\\sigma$"``).
+    posterior_label : str, optional
+        Legend entry for the posterior contours (colour C0).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The same figure. With zero errors (e.g. fixed cosmology) only the
+        centre is drawn: a marker and vertical lines in the marginals.
+    """
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+
+    from cup1d.postprocessing.primitives import gaussian_ellipse
+
+    if isinstance(mean, dict):
+        mean = [mean[name] for name in STAR_PARAMETERS]
+    mean = np.asarray(mean, dtype=float)
+    covariance = np.asarray(covariance, dtype=float)
+    if covariance.shape != (2, 2) or not np.all(np.isfinite(covariance)) or np.any(np.diag(covariance) < 0):
+        raise ValueError("covariance must be a finite 2x2 matrix with non-negative variances")
+    errors = np.sqrt(np.diag(covariance))
+    has_errors = bool(np.all(errors > 0))
+    axes = np.asarray(fig.axes).reshape(2, 2)
+    joint = axes[1, 0]
+    if has_errors:
+        gaussian_ellipse(joint, mean, covariance, nsigma=nsigma, facecolor=color, edgecolor=color,
+                         alpha=0.3)
+    joint.plot(*mean, "X", color=color)
+    for index, ax in enumerate((axes[0, 0], axes[1, 1])):
+        if has_errors:
+            grid = np.linspace(*ax.get_xlim(), 300)
+            ax.plot(grid, np.exp(-0.5 * ((grid - mean[index]) / errors[index]) ** 2), color=color)
+        else:
+            ax.axvline(mean[index], color=color)
+    handles = [Line2D([], [], marker="X", color=color, linestyle="", label=label)]
+    if has_errors:
+        handles.append(Patch(facecolor=color, edgecolor=color, alpha=0.3,
+                             label=error_label or f"{nsigma:g}$\\sigma$"))
+    legend_axis = axes[0, 1]
+    legend_axis.set_visible(True)
+    legend_axis.axis("off")
+    if posterior_label is not None:
+        handles.insert(0, Line2D([], [], color="C0", label=posterior_label))
+    legend_axis.legend(handles=handles, loc="center")
     return fig

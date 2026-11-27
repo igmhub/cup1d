@@ -1,31 +1,11 @@
+"""Published compressed linear-power (Delta2_star, n_star) likelihoods.
 
+Each measurement is a correlated Gaussian in ``(n_star, Delta2_star)``;
+:func:`gaussian_chi2` is ForestFlow's implementation with ``x = n_star`` and
+``y = Delta2_star``.
+"""
 
-def gaussian_chi2(neff, DL2, neff_val, DL2_val, neff_err, DL2_err, r):
-    """Evaluate a correlated Gaussian compressed linear-power chi-squared.
-
-    Parameters
-    ----------
-    neff, DL2 : float or array-like
-        Effective slope and dimensionless linear-power amplitude at the
-        experiment's stated velocity-space pivot.
-    neff_val, DL2_val : float
-        Measured central values.
-    neff_err, DL2_err : float
-        One-standard-deviation marginal errors.
-    r : float
-        Correlation coefficient between slope and amplitude.
-
-    Returns
-    -------
-    float or ndarray
-        Delta chi-squared relative to the measurement central value.
-    """
-    chi2 = (
-        (DL2 - DL2_val) ** 2 / DL2_err**2
-        + (neff - neff_val) ** 2 / neff_err**2
-        - 2 * r * (neff - neff_val) * (DL2 - DL2_val) / DL2_err / neff_err
-    ) / (1 - r * r)
-    return chi2
+from forestflow.priors.importance import gaussian_chi2
 
 
 def gaussian_chi2_McDonald2005(neff, DL2):

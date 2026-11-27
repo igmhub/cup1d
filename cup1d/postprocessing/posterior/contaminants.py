@@ -53,7 +53,7 @@ def metal_contamination(contaminants, igm, columns, z, k_kms):
         For metal models without a columnar implementation (e.g. Kaiser).
     """
     models = contaminants.metal_models
-    if "Si_mult" not in models or not hasattr(models["Si_mult"], "get_contamination_batch"):
+    if "Si_mult" not in models or not hasattr(models["Si_mult"], "get_contamination"):
         raise NotImplementedError(f"no columnar multiplicative silicon model in {sorted(models)}")
     z = np.array([float(z)])
     k = [np.asarray(k_kms, dtype=float)]
@@ -61,10 +61,10 @@ def metal_contamination(contaminants, igm, columns, z, k_kms):
     out = {}
     for label, pairs in METAL_COMPONENTS.items():
         flags = {pair: int(pair in pairs) for pair in _PAIRS}
-        out[label] = models["Si_mult"].get_contamination_batch(z, k, mF, columns, remove=flags)[0]
-    out["All"] = models["Si_mult"].get_contamination_batch(z, k, mF, columns)[0]
-    if "Si_add" in models and hasattr(models["Si_add"], "get_contamination_batch"):
-        out["SiII-SiII (additive)"] = models["Si_add"].get_contamination_batch(z, k, mF, columns)[0]
+        out[label] = models["Si_mult"].get_contamination(z, k, mF, columns, remove=flags)[0]
+    out["All"] = models["Si_mult"].get_contamination(z, k, mF, columns)[0]
+    if "Si_add" in models and hasattr(models["Si_add"], "get_contamination"):
+        out["SiII-SiII (additive)"] = models["Si_add"].get_contamination(z, k, mF, columns)[0]
     return out
 
 
@@ -91,7 +91,7 @@ def hcd_contamination(contaminants, columns, z, k_kms):
         null value (fixed amplitudes keep their configured values).
     """
     model = contaminants.hcd_model
-    if not hasattr(model, "get_contamination_batch"):
+    if not hasattr(model, "get_contamination"):
         raise NotImplementedError(f"no columnar HCD model in {type(model).__name__}")
     z = np.array([float(z)])
     k = [np.asarray(k_kms, dtype=float)]
@@ -105,8 +105,8 @@ def hcd_contamination(contaminants, columns, z, k_kms):
             if other != family and other in model.null_vals:
                 for index in range(len(model.coeffs.get(other, []))):
                     own[f"{other}_{index}"] = np.full(n, model.null_vals[other], dtype=float)
-        out[label] = model.get_contamination_batch(z, k, own)[0]
-    out["All"] = model.get_contamination_batch(z, k, columns)[0]
+        out[label] = model.get_contamination(z, k, own)[0]
+    out["All"] = model.get_contamination(z, k, columns)[0]
     return out
 
 

@@ -44,8 +44,8 @@ from cup1d.utils.utils import get_path_repo
 EMULATOR_LABEL = "forest_mpg_gp"
 SAMPLING = EMULATOR_LABEL == "forest_mpg_cinn"  # only the cINN has latent draws
 CONFIG_NAMES = {
-    "forest_mpg_cinn": "cm2026_base_forestmpgcinn.yaml",
-    "forest_mpg_gp": "cm2026_base_forestmpggp.yaml",
+    "forest_mpg_cinn": "desi_dr1_tests/cm2026_base_forestmpgcinn.yaml",
+    "forest_mpg_gp": "cm2026/cm2026_base_forestmpggp.yaml",
 }
 
 # Set this to the number of latent ForestFlow realizations to average for every
@@ -64,7 +64,7 @@ METHODS = (
 # ## Build the DR1 Forest-MPG likelihood
 
 # %%
-config_file = Path(get_path_repo("cup1d")) / "configs" / "desi_dr1_tests" / CONFIG_NAMES[EMULATOR_LABEL]
+config_file = Path(get_path_repo("cup1d")) / "configs" / CONFIG_NAMES[EMULATOR_LABEL]
 args = Args.from_yaml(config_file, verbose=False)
 # Keep this diagnostic out of the production DR1 output tree.
 args.out_folder = "/tmp/cup1d_dr1_forestmpg_chi2"
@@ -103,7 +103,6 @@ def initial_chi2_for(n_realizations, method=("sobol", "mean", "transformed", "ne
         )
     # Do not reuse any batched likelihood prediction after changing the
     # ForestFlow setting.
-    analysis.emulator.clear_prediction_cache()
     start = perf_counter()
     chi2 = analysis.fitter.get_chi2(initial_point)
     return chi2, perf_counter() - start
@@ -178,7 +177,7 @@ for row in summary:
 comparison = {}
 for label in ("forest_mpg_cinn", "forest_mpg_gp"):
     args_cmp = Args.from_yaml(
-        Path(get_path_repo("cup1d")) / "configs" / "desi_dr1_tests" / CONFIG_NAMES[label],
+        Path(get_path_repo("cup1d")) / "configs" / CONFIG_NAMES[label],
         verbose=False,
     )
     args_cmp.out_folder = "/tmp/cup1d_dr1_forestmpg_chi2"
@@ -191,7 +190,6 @@ for label in ("forest_mpg_cinn", "forest_mpg_gp"):
     analysis_cmp.fitter.get_chi2(point)  # warm-up
     times = []
     for _ in range(5):
-        emulator_cmp.clear_prediction_cache()
         start = perf_counter()
         chi2_cmp = analysis_cmp.fitter.get_chi2(point)
         times.append(perf_counter() - start)

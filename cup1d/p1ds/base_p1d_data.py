@@ -318,51 +318,6 @@ class BaseDataP1D(object):
 
         return self.cov_Pk_kms[iz]
 
-    def get_icov_iz(self, iz):
-        """Return the inverse P1D covariance block at one redshift bin.
-
-        Parameters
-        ----------
-        iz : int
-            Index into :attr:`z`.
-
-        Returns
-        -------
-        ndarray of float
-            Inverse covariance matrix with shape ``(nk, nk)`` and units
-            ``(s / km)**2``.
-        """
-
-        return self.icov_Pk_kms[iz]
-
-    def cull_data(self, kmin_kms=0, kmax_kms=10):
-        """Restrict every redshift block to an inclusive wavenumber interval.
-
-        Parameters
-        ----------
-        kmin_kms, kmax_kms : float or None, default: 0, 10
-            Lower and upper retained limits in ``s / km``.  Passing ``None``
-            for both leaves the data unchanged.
-
-        Notes
-        -----
-        This method mutates the per-redshift wavenumber, P1D, covariance, and
-        inverse-covariance arrays in place.
-        """
-
-        if (kmin_kms is None) & (kmax_kms is None):
-            return
-
-        for iz in range(len(self.z)):
-            ind = np.argwhere(
-                (self.k_kms[iz] >= kmin_kms) & (self.k_kms[iz] <= kmax_kms)
-            )[:, 0]
-            sli = slice(ind[0], ind[-1] + 1)
-            self.k_kms[iz] = self.k_kms[iz][sli]
-            self.Pk_kms[iz] = self.Pk_kms[iz][sli]
-            self.cov_Pk_kms[iz] = self.cov_Pk_kms[iz][sli, sli]
-            self.icov_Pk_kms[iz] = self.icov_Pk_kms[iz][sli, sli]
-
     def plot_p1d(
         self,
         use_dimensionless=True,
@@ -394,11 +349,11 @@ class BaseDataP1D(object):
         -------
         object
             Figure or plotting payload returned by
-            :func:`cup1d.postprocessing.data.p1d.plot_p1d`.
+            :func:`cup1d.postprocessing.p1d.data.plot_p1d_data`.
         """
-        from cup1d.postprocessing.data import p1d
+        from cup1d.postprocessing.p1d.data import plot_p1d_data
 
-        return p1d.plot_p1d(
+        return plot_p1d_data(
             self.z,
             self.k_kms,
             self.Pk_kms,

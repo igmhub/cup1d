@@ -22,28 +22,27 @@
 # %load_ext autoreload
 # %autoreload 2
 
+from pathlib import Path
+
 import numpy as np
-import os
 
 # our own modules
 from cup1d.configuration.args import Args
 from cup1d.inference.analysis import Analysis
+from cup1d.postprocessing.io import save_figure_data
+from cup1d.postprocessing.p1d import P1DPlotter, p1d_figure_data, plot_p1d_bins
+from cup1d.utils.utils import get_path_repo
+
+# %% [markdown]
+# One free node per redshift for every IGM and contaminant parameter, starting
+# from the one-redshift-at-a-time fits (fixed cosmology, no inflation of the
+# statistical errors): the `global_all` setup of the paper.
 
 # %%
-data_label = "DESIY1_QMLE3"
-name_variation = None
-emulator_label = "lace_mpg"
-# emulator_label = "lace_nyx"
-name_variation = "no_inflate"
-
-args = Args(data_label=data_label, emulator_label=emulator_label)
-args.set_baseline(
-    fit_type="global_all", 
-    fix_cosmo=True, 
-    name_variation=name_variation, 
-)
-
-pip = Analysis(args, out_folder=None)
+config_path = (Path(get_path_repo("cup1d")) / "configs" / "cm2026" / "variations"
+               / "global_all_QMLE3.yaml")
+args = Args.from_yaml(config_path, verbose=False)
+pip = Analysis(args, create_output=False)
 
 # %%
 p0 = pip.fitter.initial_parameters()
@@ -55,31 +54,21 @@ pip.fitter.like.get_chi2(free_params, zmask=[2.2])
 
 n_param_glob_full = 17
 
-ylims=np.array([
+ylims = np.array([
     [0.85, 1.15],
     [0.85, 1.15],
     [0.7, 1.3],
     [0., 2.0],
 ])
 
-pname = None
-# pname = "figs/residual_full_global"
-out_data = pip.fitter.like.plot_p1d(
-    free_params,
-    residuals=True,
-    plot_panels=True,
-    glob_full=True,
-    n_param_glob_full=n_param_glob_full,
-    # fontsize=18,
+p1d_plotter = P1DPlotter(pip.fitter.like)
+bins, chi2, dof = p1d_plotter.prepare(
+    free_params, plot_panels=True, glob_full=True, n_param_glob_full=n_param_glob_full,
     chi2_nozcov=True,
-    plot_fname=pname,
-    ylims=ylims,
-    store_data=True
 )
+fig = plot_p1d_bins(bins, chi2, dof, residuals=True, panels=True, ndata=p1d_plotter.ndata,
+                    print_chi2=True, ylims=ylims)
+# fig.savefig("figs/residual_full_global.pdf")
 
 # %%
-import cup1d, os
-
-path_out = os.path.join(os.path.dirname(cup1d.__path__[0]), "data", "zenodo")
-fname = os.path.join(path_out, "fig_8.npy")
-np.save(fname, out_data)
+save_figure_data(p1d_figure_data(bins, residuals=True), "fig_8.npy")

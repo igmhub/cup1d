@@ -7,14 +7,14 @@ cup1d performs cosmological inference from Lyman-alpha P1D. LaCE owns cosmology,
 - Public entry points: `cup1d.Analysis`, `cup1d.Args`; YAML examples in `configs/cm2026/` and `notebooks/tutorials/`.
 - Configuration: `cup1d/configuration/`; data readers/mocks: `cup1d/p1ds/`; emulators: `cup1d/emulator/`; cosmology and forward model: `cup1d/theory/`.
 - IGM, contaminants, and resolution: `cup1d/models/`; likelihood and named parameters: `cup1d/likelihood/`; minimization/sampling: `cup1d/inference/`; diagnostics: `cup1d/postprocessing/`.
-- Deprecated paths include `cup1d/old_code/`, `cup1d/p1ds/old/`, `notebooks/old/`, and `notebooks/wip/`.
+- Deprecated paths: `cup1d/old_code/` (only `old_input.py`, used by `scripts/configs/generate_cm2026.py`) and `notebooks/wip/`.
 
 ## Working rules
 
 - Inspect `git status`, the current branch, and applicable nested instructions before editing. The maintained branch is `main`; do not switch branches or discard user changes automatically.
 - Read the relevant implementation, tests, and `docs/workflow*` before changing a public interface. Follow active imports rather than assuming every notebook defines supported behavior.
 - Make focused changes. Preserve scientific defaults, parameter ordering, serialization, and scalar/batch behavior unless the task explicitly changes them. Document intentional numerical changes and their validation.
-- Do not edit `old_code/`, notebook `old/`, `wip/`, or developer experiments by default. Historical/paper modules are not necessarily deprecated: check callers first. Never copy an obsolete API back into the active package without checking it.
+- Do not edit `old_code/`, notebook `wip/`, or developer experiments by default. Historical/paper modules are not necessarily deprecated: check callers first. Never copy an obsolete API back into the active package without checking it.
 - Do not regenerate simulation archives, model weights, covariance products, chains, or publication outputs as part of a routine code change. Use configured external assets and report missing prerequisites. Never replace a scientific regression reference solely to make a test pass.
 - Use Python >=3.12 and editable installs. Install sibling IGMHub repositories explicitly from compatible revisions, rather than relying on the PyPI name `lace`. Record the three commit SHAs for cross-package validation.
 - Distinguish fast unit checks from model/data-dependent regression tests. A skipped or unavailable regression is not a pass. Prefer a small test of the failing scientific invariant over a test that merely reproduces the implementation.

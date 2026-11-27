@@ -8,6 +8,10 @@ from typing import Any
 import numpy as np
 import yaml
 
+# options that were never read and were removed; ignored when found in old
+# frozen configurations
+RETIRED_KEYS = frozenset({"pre_defined", "drop_emu_sim", "cov_label_hires"})
+
 
 def read_config(filename: str | Path) -> dict[str, Any]:
     """Read a YAML configuration mapping.
@@ -91,22 +95,6 @@ def restore_runtime_types(config: dict[str, Any]) -> dict[str, Any]:
     return config
 
 
-def print_config_values(config: dict[str, Any], source: str) -> None:
-    """Print every leaf of a configuration mapping with one source label.
-
-    Parameters
-    ----------
-    config : dict
-        Possibly nested configuration mapping.
-    source : str
-        Label printed for every leaf, such as ``"default"`` or
-        ``"user-provided"``.
-    """
-
-    for name, value in config.items():
-        _print_values(name, value, source=source)
-
-
 def print_resolved_values(
     config: dict[str, Any], overrides: dict[str, Any], prefix: str = ""
 ) -> None:
@@ -187,6 +175,15 @@ def apply_overrides(
     if missing_delete_keys:
         names = ", ".join(sorted(missing_delete_keys))
         raise ValueError(f"Cannot delete unknown option(s) in {prefix}: {names}")
+
+    if not prefix and RETIRED_KEYS & overrides.keys():
+        # settings that no longer exist (frozen configurations of older results)
+        from cup1d.utils.warn_once import warn_once
+
+        retired = sorted(RETIRED_KEYS & overrides.keys())
+        warn_once(f"ignoring retired configuration option(s): {', '.join(retired)}",
+                  key="retired-config-options")
+        overrides = {key: value for key, value in overrides.items() if key not in RETIRED_KEYS}
 
     additional = overrides.keys() - defaults.keys() - {"__delete__"}
     if additional and not prefix:

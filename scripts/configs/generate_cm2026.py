@@ -92,7 +92,6 @@ TOP_LEVEL_COMMENTS = {
     "k_rebin_factor": "Factor controlling interpolation before k-bin rebinning.",
     "n_k_emu": "Number of log-spaced k points per redshift on which the emulator is evaluated before interpolating to the rebinning grid. Null evaluates the emulator at every rebinning point.",
     "emulator_label": "Identifier of the P1D emulator.",
-    "drop_emu_sim": "Simulation omitted from emulator training, or null to use all simulations.",
     "true_cosmo_label": "Cosmology used to generate synthetic data.",
     "fid_cosmo_label": "Fiducial cosmology used by the likelihood model.",
     "igm_params": "Names of the intergalactic-medium model parameters.",
@@ -106,7 +105,6 @@ TOP_LEVEL_COMMENTS = {
     "fid_syst": "Fiducial instrumental-systematic model.",
     "apply_smoothing": "Whether smoothing is applied when constructing mock P1D data.",
     "synth_cov_label": "Dataset used to construct synthetic-data covariance.",
-    "cov_label_hires": "Dataset used for the high-resolution covariance model.",
     "cov_syst_type": "Structure assumed for the observational systematic covariance.",
     "z_star": "Pivot redshift for compressed linear-power parameters.",
     "kp_kms": "Pivot wavenumber in inverse velocity units.",
@@ -126,7 +124,6 @@ TOP_LEVEL_COMMENTS = {
     "path_out": "Base directory for analysis outputs.",
     "path_ic": "Directory containing initial-condition corrections.",
     "p1d_fname": "Optional explicit P1D measurement filename.",
-    "pre_defined": "Name of the historical preset used to create this resolved file.",
     "file_ic": "Initial-condition filename, resolved relative to `path_ic`.",
     "path_data": "Optional base directory for input data.",
     "training_set": "Simulation archive used to train or construct the emulator.",
@@ -186,7 +183,7 @@ def to_builtin(value: Any) -> Any:
 def make_baseline() -> dict[str, Any]:
     """Return the legacy fully resolved CM2026 baseline configuration."""
 
-    args = Args(pre_defined="CM2026")
+    args = Args()
     return to_builtin(vars(args))
 
 

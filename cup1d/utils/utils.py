@@ -1,8 +1,8 @@
-import os
-import re
 import numpy as np
 
+from lace.configuration import get_path_repo  # noqa: F401  (re-exported)
 from lace.utils.chains import purge_chains as _lace_purge_chains
+from lace.utils.misc import split_string  # noqa: F401  (re-exported)
 
 
 def purge_chains(ln_prop_chains, nsplit=4, abs_diff=15):
@@ -26,7 +26,6 @@ def purge_chains(ln_prop_chains, nsplit=4, abs_diff=15):
         Walker indices satisfying or failing both convergence heuristics.
     """
     minval = np.median(ln_prop_chains) - abs_diff
-    print(minval)
     both = _lace_purge_chains(
         ln_prop_chains, nsplit=nsplit, abs_diff=abs_diff, minval=minval
     )
@@ -56,26 +55,6 @@ def is_number_string(value):
         return False
 
 
-def split_string(s):
-    """Split a trailing underscore-index from a parameter name.
-
-    Parameters
-    ----------
-    s : str
-        Name optionally ending in ``_<integer>``.
-
-    Returns
-    -------
-    tuple of str and str or None
-        Base name and trailing index when present.
-    """
-    match = re.match(r"^(.*)_(\d+)$", s)
-    if match:
-        return match.group(1), match.group(2)
-    else:
-        return s, None
-
-
 # Function to generate n discrete colors from any continuous colormap
 def get_discrete_cmap(n, base_cmap="jet"):
     """Construct a discrete Matplotlib colormap through the style helper.
@@ -97,34 +76,13 @@ def get_discrete_cmap(n, base_cmap="jet"):
     return _plot(n, base_cmap)
 
 
-def mpi_hello_world():
-    """Print an MPI communicator greeting from every rank.
-
-    Requires
-    --------
-    mpi4py
-        Available MPI Python bindings.
-    """
-    from mpi4py import MPI
-
-    # Get the MPI communicator
-    comm = MPI.COMM_WORLD
-
-    # Get the rank and size of the MPI process
-    rank = comm.Get_rank()
-    size = comm.Get_size()
-
-    # Print a "Hello, World!" message from each MPI process
-    print(f"Hello from rank {rank} out of {size} processes.", flush=True)
-
-
 def create_print_function(verbose=True):
     """Create a rank-zero MPI-aware print function.
 
     Parameters
     ----------
     verbose : bool, default: True
-        Retained compatibility argument; per-call verbosity controls output.
+        Default verbosity; a call can override it with its own ``verbose``.
 
     Returns
     -------
@@ -137,50 +95,11 @@ def create_print_function(verbose=True):
 
     mpi_rank = MPI.COMM_WORLD.Get_rank() if MPI.COMM_WORLD.Get_size() > 1 else 0
 
-    def print_new(*args, verbose=True):
-        """Print arguments from rank zero when per-call verbosity is enabled."""
-        if verbose and mpi_rank == 0:
+    default = verbose
+
+    def print_new(*args, verbose=None):
+        """Print from rank zero if verbose (per call, else the default)."""
+        if (default if verbose is None else verbose) and mpi_rank == 0:
             print(*args, flush=True)
-        else:
-            pass
 
     return print_new
-
-
-def get_path_repo(name_repo):
-    """Return the installed source root of a supported IGMHub package.
-
-    Parameters
-    ----------
-    name_repo : {"cup1d", "lace"}
-        Package whose repository root is requested.
-
-    Returns
-    -------
-    str
-        Absolute source-root path.
-
-    Raises
-    ------
-    ImportError
-        If the repository name is unsupported.
-    """
-    if name_repo == "cup1d":
-        import cup1d
-
-        path = os.path.dirname(cup1d.__path__[0])
-    elif name_repo == "lace":
-        import lace
-
-        path = os.path.dirname(lace.__path__[0])
-    else:
-        raise ImportError(
-            name_repo
-            + " is not a valid repository name. Expected values are 'cup1d' or 'lace'."
-        )
-
-    # if name_repo in path:
-    #     pass
-    # else:
-    #     path = os.path.join(path, name_repo)
-    return path

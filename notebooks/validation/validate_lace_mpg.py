@@ -90,12 +90,10 @@ analysis.like.plot_p1d(best_fit_point, residuals=True, plot_panels=True)
 # the mock. External observational measurements are omitted.
 
 # %%
-analysis.like.plot_igm(
-    free_params=best_fit_point,
-    plot_external_data=False,
-    plot_truth=True,
-    variation_label="Best fit",
-)
+from cup1d.postprocessing.minimizer import MinimizerPlotter
+
+minimizer_plotter = MinimizerPlotter(analysis, label="Best fit")
+fig = minimizer_plotter.igm_histories(truth=True, literature=False)
 
 
 # %% [markdown]
@@ -105,9 +103,6 @@ analysis.like.plot_igm(
 # for the mock, and every simulation cosmology that trained the emulator.
 
 # %%
-from cup1d.postprocessing import Plotter
-
-plotter = Plotter(analysis.fitter)
-plotter.plot_mle_cosmo(plot_errors=True, error_method="gauss_newton")
+fig = minimizer_plotter.star_simulations(truth=True)
 
 # %%

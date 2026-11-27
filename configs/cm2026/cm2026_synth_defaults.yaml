@@ -29,12 +29,15 @@ n_k_emu: 64
 shared_k_grid: true
 # Optional explicit P1D measurement filename.
 p1d_fname: null
+# Optional file with the P1D covariance and systematics: null uses p1d_fname,
+# "default" the standard file of the data label (DESI only).
+p1d_cov_fname: null
 # Optional base directory for input data.
 path_data: null
 
 ## Synthetic data
 # Cosmology used to generate synthetic data.
-true_cosmo_label: Planck18
+true_cosmo_label: Planck18_wonu
 # IGM settings used to generate synthetic data.
 true_igm:
   # Common scaling applied to the model priors.
@@ -60,6 +63,8 @@ true_igm:
 true_cont:
   # High-column-density absorption model.
   hcd_model_type: new_rogers
+  # Pivot redshift of the HCD model (coefficient histories and Rogers+18 templates).
+  hcd_z_0: 3.0
   # Metal-contamination model: McDonald (CM2026 templates), SiVid or Kaiser.
   metal_model_type: McDonald
   # True/mock value(s): Amplitude of the Lyman-alpha--SiIII metal contribution.
@@ -194,6 +199,8 @@ true_cont:
   HCD_const_otype: const
 # Instrumental-systematic settings used to generate synthetic data.
 true_syst:
+  # Resolution correction: exponential (Gaussian kernel) or linear (first order).
+  R_form: exponential
   # True/mock value(s): Spectrograph-resolution correction coefficient.
   R_coeff:
   - 0
@@ -208,8 +215,6 @@ true_syst:
 apply_smoothing: false
 # Dataset used to construct synthetic-data covariance.
 synth_cov_label: Chabanier2019
-# Dataset used for the high-resolution covariance model.
-cov_label_hires: Karacayli2022
 # Whether random noise is added to synthetic data.
 add_noise: false
 # Random seed used when adding noise.
@@ -218,12 +223,10 @@ seed_noise: 0
 ## Emulator
 # Identifier of the P1D emulator.
 emulator_label: lace_mpg
-# Simulation omitted from emulator training, or null to use all simulations.
-drop_emu_sim: null
 
 ## Cosmology
 # Fiducial cosmology used by the likelihood model.
-fid_cosmo_label: Planck18
+fid_cosmo_label: Planck18_wonu
 # Pivot redshift for compressed linear-power parameters.
 z_star: 3
 # Pivot wavenumber in inverse velocity units.
@@ -291,6 +294,8 @@ fid_igm:
 fid_cont:
   # High-column-density absorption model.
   hcd_model_type: new_rogers
+  # Pivot redshift of the HCD model (coefficient histories and Rogers+18 templates).
+  hcd_z_0: 3.0
   # Metal-contamination model: McDonald (CM2026 templates), SiVid or Kaiser.
   metal_model_type: McDonald
   # Number of free redshift nodes for Amplitude of the Lyman-alpha--SiIII metal contribution.
@@ -481,6 +486,8 @@ fid_cont:
 ## Instrumental systematics
 # Fiducial instrumental-systematic model.
 fid_syst:
+  # Resolution correction: exponential (Gaussian kernel) or linear (first order).
+  R_form: exponential
   # Number of free redshift nodes for Spectrograph-resolution correction coefficient.
   n_R_coeff: 11
   # Redshift interpolation scheme for Spectrograph-resolution correction coefficient.
@@ -518,12 +525,25 @@ cov_factor:
 use_star_priors: null
 # Optional common RMS for Gaussian priors.
 prior_Gauss_rms: null
+# Optional lower prior bound of the logarithmic metal and HCD amplitudes
+# (e.g. -10.5 to switch them off in synthetic data); null keeps the defaults.
+cont_log_amp_min: null
 # Optional parameter-specific Gaussian priors.
 Gauss_priors: null
 # If set, As and ns flat priors span the emulator-training mean +- this many
 # standard deviations (a reasonable flat range around the training set);
 # null keeps the training range expanded by 25%.
 cosmo_prior_nsigma: 2.0
+# Check whether the emulator inputs of each point are inside the convex hull
+# of the training simulations, in every pair of inputs (~0.1 ms per point).
+use_hull: true
+# Fractional expansion of that hull about the training mean (0: strict hull).
+hull_margin: 0.05
+# Reject the points outside (true), or keep them and report the fraction
+# (false). The DR1 initial conditions need a margin of 0.60 and the 2025 best
+# fit 0.54 to be inside (gamma at z = 2.2 is 1.94; the training maximum is
+# 1.82): rejecting changes the baseline.
+hull_reject: false
 
 ## Inference
 # Inference configuration used for this analysis.
@@ -540,8 +560,16 @@ mcmc:
   n_burn_in: 1500
   # Number of retained sampling steps per walker.
   n_steps: 2000
-  # Number of ensemble-sampler walkers per free parameter.
+  # Walkers per free parameter (nwalkers = n_walkers x ndim; at least
+  # 2 ndim + 1, the emcee minimum).
   n_walkers: 10
+  # With MPI: single (one ensemble, walkers evaluated by all ranks) or
+  # independent (one ensemble per rank, R-1 between them).
+  mpi_ensemble: single
+  # Write the chain to emcee_chain.h5 while running.
+  backend: true
+  # Continue the chain of an existing emcee_chain.h5 of the same shape.
+  resume: true
   # Keep one sample for every this many sampler steps.
   thin: 20
 # Initial-condition filename, resolved relative to `path_ic`.
@@ -563,5 +591,3 @@ system: null
 verbose: true
 # Name of the analysis variation, or null for the baseline.
 name_variation: null
-# Name of the historical preset used to create this resolved file.
-pre_defined: CM2026

@@ -40,7 +40,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from cup1d.models.contaminants.metals.si_add import SiAdd, vel_diff
+from cup1d.models.contaminants.metals.si_add import SiAdd
+from cup1d.models.contaminants.metals._common import vel_diff
 from cup1d.models.contaminants.metals.si_mult import SiMult
 
 # %% [markdown]

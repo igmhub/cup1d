@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from cup1d.utils.warn_once import warn_once
 from lace.configuration import get_nyx_path
 from cup1d.models.igm.mean_flux_class import MeanFlux
 from cup1d.models.igm.pressure_class import Pressure
@@ -13,6 +14,35 @@ from cup1d.utils.utils import get_path_repo
 # ``scale_tau`` with ``training_val_scaling: all``).
 TAU_TRAINING_RESCALINGS = (0.9, 0.95, 1.0, 1.05, 1.1)
 
+
+
+def _history_ratio(z_sim, values_sim, z_fid, values_fid):
+    """Simulation history over the fiducial, on the simulation redshifts.
+
+    The fiducial is interpolated linearly in z onto the simulation grid,
+    within its own redshift range only; zero or non-finite values are
+    dropped.
+    """
+    z_sim = np.asarray(z_sim, dtype=float)
+    values_sim = np.asarray(values_sim, dtype=float)
+    z_fid = np.asarray(z_fid, dtype=float)
+    values_fid = np.asarray(values_fid, dtype=float)
+    good = (z_fid != 0) & np.isfinite(values_fid) & (values_fid != 0)
+    if good.sum() < 2:
+        return np.array([])
+    order = np.argsort(z_fid[good])
+    zf, vf = z_fid[good][order], values_fid[good][order]
+    inside = (z_sim >= zf[0]) & (z_sim <= zf[-1]) & np.isfinite(values_sim) & (values_sim != 0)
+    return values_sim[inside] / np.interp(z_sim[inside], zf, vf)
+
+
+def _warn_literature_range(label, z):
+    """Warn once that a literature fiducial is extrapolated outside its data."""
+    warn_once(
+        f"{label} fiducial measured for {np.min(z):.1f} <= z <= {np.max(z):.1f}; "
+        "outside, its quadratic fit is extrapolated",
+        key=("igm_literature_range", label),
+    )
 
 class IGM(object):
     """Compose mean-flux, thermal, and pressure IGM history models."""
@@ -168,7 +198,7 @@ class IGM(object):
         )
         try:
             self.igm_hist_mpg = np.load(fname, allow_pickle=True).item()
-        except:
+        except OSError as error:
             raise ValueError(
                 fname
                 + " not found. You can produce it using LaCE"
@@ -179,7 +209,7 @@ class IGM(object):
 
         try:
             self.igm_hist_nyx = np.load(fname, allow_pickle=True).item()
-        except:
+        except OSError as error:
             raise ValueError(
                 fname
                 + " not found. You can produce it using LaCE"
@@ -203,70 +233,49 @@ class IGM(object):
                 igms_return["kF_kms" + "_z"] = zz
                 igms_return["kF_kms"] = np.poly1d(res_fit)(zz)
                 continue
-            elif sim_igm.startswith("Turner24"):
+            elif sim_igm == "Turner24":
+                # mean flux only
+                if ii != 0:
+                    raise ValueError("Turner24 only provides the mean flux (label_mF)")
                 from cup1d.likelihood.likelihood import others_igm
 
                 gal21, tu24 = others_igm()
-
+                _warn_literature_range("Turner24", tu24["z"])
                 igms_return["tau_eff_z"] = tu24["z"]
+                igms_return["mF"] = tu24["mF"]
+                igms_return["tau_eff"] = -np.log(tu24["mF"])
                 igms_return["F_suite"] = "mpg"
-
-                if sim_igm == "Turner24_smooth":
-                    ndeg = 2
-                    pfit = np.polyfit(
-                        tu24["z"],
-                        tu24["mF"],
-                        ndeg,
-                        w=1 / tu24["mF_err"],
-                    )
-                    mF = np.poly1d(pfit)(tu24["z"])
-                else:
-                    mF = tu24["mF"]
-
-                igms_return["mF"] = mF
-                igms_return["tau_eff"] = -np.log(mF)
                 continue
-            elif sim_igm in ("Gaikwad21", "Gaikwad21_smooth"):
+            elif sim_igm == "Gaikwad21":
+                # mean flux (label_mF) or temperature (label_T), each sector
+                # on its own; no pressure smoothing
+                if ii == 2:
+                    raise ValueError("Gaikwad21 does not provide kF (label_kF)")
                 from lace.cosmo.thermal_broadening import thermal_broadening_kms
                 from cup1d.likelihood.likelihood import others_igm
 
-                if "T_suite" in igms_return:
-                    continue
-
                 gal21, tu24 = others_igm()
-
-                igms_return["tau_eff_z"] = gal21["z"]
-                igms_return["sigT_kms_z"] = gal21["z"]
-                igms_return["gamma_z"] = gal21["z"]
-                igms_return["F_suite"] = "mpg"
-                igms_return["T_suite"] = "mpg"
-
-                if sim_igm == "Gaikwad21_smooth":
-                    ndeg = 5
-                    pfit = np.polyfit(
-                        gal21["z"],
-                        gal21["mF"],
-                        ndeg,
-                        w=1 / gal21["mF_err"],
-                    )
-                    mF = np.poly1d(pfit)(gal21["z"])
-                    T0 = gal21["T0"]
-                    gamma = gal21["gamma"]
+                _warn_literature_range("Gaikwad21", gal21["z"])
+                if ii == 0:
+                    igms_return["tau_eff_z"] = gal21["z"]
+                    igms_return["mF"] = gal21["mF"]
+                    igms_return["tau_eff"] = -np.log(gal21["mF"])
+                    igms_return["F_suite"] = "mpg"
                 else:
-                    mF = gal21["mF"]
-                    T0 = gal21["T0"]
-                    gamma = gal21["gamma"]
-
-                igms_return["mF"] = mF
-                igms_return["tau_eff"] = -np.log(mF)
-
-                # others_igm stores T0 in units of 1e4 K; the broadening needs K
-                igms_return["sigT_kms"] = thermal_broadening_kms(T0 * 1e4)
-                # igms_return["sigT_Mpc"] = igm_hist["sigT_Mpc"]
-                igms_return["gamma"] = gamma
+                    igms_return["sigT_kms_z"] = gal21["z"]
+                    igms_return["gamma_z"] = gal21["z"]
+                    # others_igm stores T0 in units of 1e4 K; the broadening needs K
+                    igms_return["sigT_kms"] = thermal_broadening_kms(gal21["T0"] * 1e4)
+                    igms_return["gamma"] = gal21["gamma"]
+                    igms_return["T_suite"] = "mpg"
                 continue
+            elif sim_igm in ("Turner24_smooth", "Gaikwad21_smooth"):
+                raise ValueError(
+                    f"{sim_igm} was removed: every fiducial history is already "
+                    f"smoothed by a quadratic fit (use {sim_igm[:-7]})"
+                )
             else:
-                ValueError("sim_igm must be 'mpg' or 'nyx'")
+                raise ValueError(f"unknown IGM history {sim_igm!r}")
 
             if sim_igm not in igm_hist:
                 igm_return = igm_hist[sim_igm + "_0"]
@@ -346,7 +355,7 @@ class IGM(object):
             elif emu_suite.startswith("nyx"):
                 all_igm = self.igm_hist_nyx
             else:
-                ValueError("sim_igm must be 'mpg' or 'nyx'")
+                raise ValueError(f"unknown simulation suite {emu_suite!r}")
 
             res_div = np.zeros((len(all_igm), 2))
             for ii, sim in enumerate(all_igm):
@@ -358,19 +367,16 @@ class IGM(object):
                 if is_number_string(sim_label[-1]) == False:
                     continue
 
-                try:
-                    _ = np.argwhere(
-                        np.isfinite(fid_igm[par])
-                        & (fid_igm[par] != 0)
-                        & (all_igm[sim][par] != 0)
-                    )[:, 0]
-                except:
+                if par not in all_igm[sim]:
                     continue
-                if len(_) == 0:
+                # the fiducial on the simulation's redshifts (a literature
+                # fiducial has its own grid), without extrapolation
+                ratio = _history_ratio(all_igm[sim]["z"], all_igm[sim][par], z, fid_igm[par])
+                if len(ratio) == 0:
                     continue
 
-                res_div[ii, 0] = np.max(all_igm[sim][par][_] / fid_igm[par][_])
-                res_div[ii, 1] = np.min(all_igm[sim][par][_] / fid_igm[par][_])
+                res_div[ii, 0] = np.max(ratio)
+                res_div[ii, 1] = np.min(ratio)
                 if tau_rescalings and par == "tau_eff" and emu_suite.startswith("mpg"):
                     res_div[ii, 0] *= max(TAU_TRAINING_RESCALINGS)
                     res_div[ii, 1] *= min(TAU_TRAINING_RESCALINGS)
@@ -381,8 +387,7 @@ class IGM(object):
                 & (np.abs(res_div[:, 0]) != 1)
             )[:, 0]
             if len(_) == 0:
-                print("no good points for ", par)
-                self.priors[par] = [[-1, 1], [-1, 1]]
+                raise ValueError(f"no simulation constrains the prior of {par}")
                 continue
 
             if otype == "exp":
@@ -398,8 +403,7 @@ class IGM(object):
                 & (np.abs(res_div[:, 1]) != 1)
             )[:, 0]
             if len(_) == 0:
-                print("no good points for ", par)
-                self.priors[par] = [[-1, 1], [-1, 1]]
+                raise ValueError(f"no simulation constrains the prior of {par}")
                 continue
 
             if otype == "exp":

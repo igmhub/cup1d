@@ -3,5 +3,4 @@
 fid_cont:
   n_HCD_damp1: 4
 out_folder: ./DESIY1_QMLE3/LLS_nz4/CH24_mpgcen_gpr
-pre_defined: null
 name_variation: LLS_nz4

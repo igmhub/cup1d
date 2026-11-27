@@ -45,7 +45,8 @@ def main():
         main_fit.out_folder = main_fit.out_folder.__class__(args.out)
     if args.paper:
         others.append(legacy_fit_entry(args.paper, label="DR1 paper", unblind=args.unblind))
-    main_fit.plot_all(others=others, skip=("best_fit_p1d",) if args.no_p1d else ())
+    print(main_fit.plot_all(others=others, skip=("best_fit_p1d",) if args.no_p1d else ()))
+    print(f"figures in {main_fit.out_folder}")
 
 
 if __name__ == "__main__":

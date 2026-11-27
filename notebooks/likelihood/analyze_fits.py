@@ -105,10 +105,12 @@ analysis.like.plot_p1d(best_fit_parameters, residuals=True, plot_panels=True, pr
 # For a minimizer result we show the maximum-likelihood history. The plot also
 # overlays Gaikwad et al. (2021) and Turner et al. (2024) mean-flux data as
 # tau_eff, and the Gaikwad temperature measurements as sigma_T. To show
-# posterior bands, load a sampler chain and pass it as `chain_uformat`.
+# posterior bands, see `figures_CM26/posterior_figures.py`.
 
 # %%
-analysis.like.plot_igm(free_params=best_fit_parameters)
+from cup1d.postprocessing.minimizer import MinimizerPlotter
+
+fig = MinimizerPlotter(analysis, label="Best fit").igm_histories(literature=True)
 
 
 # %% [markdown]
@@ -118,6 +120,8 @@ analysis.like.plot_igm(free_params=best_fit_parameters)
 # to the P1D covariance where they are available.
 
 # %%
-analysis.like.plot_cov_to_pk()
+from cup1d.postprocessing.p1d.covariance import p1d_error_budget, plot_error_budget
+
+fig = plot_error_budget(p1d_error_budget(analysis.like))
 
 # %%

@@ -99,7 +99,6 @@ class EmulatorPriorPlotter:
         """
 
         from lace.cosmo.cosmology import Cosmology
-        from cup1d.theory.camb import CAMBModel
 
         cosmology = Cosmology(cosmo_params_dict=dict(
             H0=67.66,
@@ -113,21 +112,14 @@ class EmulatorPriorPlotter:
             pivot_scalar=0.05,
             w=-1,
         ))
-        model = CAMBModel(
-            zs=[self.z_star],
-            cosmo=cosmology,
-            z_star=self.z_star,
-            kp_kms=self.kp_kms,
-            fast_camb=False,
-        )
-        star_params = model.get_linP_params()
+        star_params = cosmology.get_linP_kms_params(self.z_star, self.kp_kms)
         self._fiducial = {
             "As": 2.105e-09,
             "ns": 0.9665,
             "nrun": 0.0,
             **star_params,
         }
-        self._kp_mpc = self.kp_kms * model.dkms_dMpc(self.z_star)
+        self._kp_mpc = self.kp_kms * cosmology.get_dkms_diMpc(self.z_star)
 
     def _map_primordial_grid(self, ranges):
         """Map a rectangular primordial ``As``--``ns`` grid into star space.

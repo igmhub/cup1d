@@ -25,7 +25,7 @@ the transverse integral:
     P1D_mn = b_m b_n (I_0 + (beta_m + beta_n) I_1 + beta_m beta_n I_2),
 
 with the moments ``A_j`` and ``I_j`` of
-:func:`cup1d.likelihood.external.project_metal_moments`. The contamination is
+:func:`cup1d.theory.projection.project_metal_moments`. The contamination is
 additive:
 
     P1D_obs = P1D_Lya + sum_m 2 cos(k dv_am) P1D_am + sum_m P1D_mm
@@ -41,6 +41,7 @@ CM2026 model. Inactive (the default), ``f_SiII W_SiII = 1``.
 import numpy as np
 
 from cup1d.models.contaminants.base_contaminants import Contaminant
+from cup1d.utils.batch import as_columns, as_redshift_rows
 
 C_KMS = 299792.458
 WAVELENGTHS = {
@@ -144,6 +145,11 @@ class SiKaiser(Contaminant):
                             if velocity_offset(m, n) <= dv_max_kms]
         self.lines = lines
 
+    def _value(self, name, z, like_params):
+        """History of ``name`` at one redshift: a float for one point, ``(n_batch, 1)`` for a batch."""
+        value = self.get_value(name, z, like_params)
+        return float(value) if np.ndim(value) == 0 else np.asarray(value).reshape(-1, 1)
+
     def coefficients(self, z, like_params=None):
         """Return per-transition ``b``, ``beta`` and ``sigma`` at redshift ``z``.
 
@@ -152,20 +158,21 @@ class SiKaiser(Contaminant):
         z : float
             Redshift.
         like_params : mapping, optional
-            Coefficient overrides keyed by indexed parameter name.
+            Scalar values (one point) or columns of shape ``(n_batch,)``.
 
         Returns
         -------
         dict
-            ``{line: (bias, beta, sigma_kms)}``; biases are negative.
+            ``{line: (bias, beta, sigma_kms)}``; biases are negative. Floats
+            for one point, ``(n_batch, 1)`` arrays for a batch.
         """
         out = {}
         for line in self.lines:
             species = SPECIES[line]
             out[line] = (
-                -float(self.get_value("b_" + line, z, like_params)),
-                float(self.get_value("beta_" + species, z, like_params)),
-                float(self.get_value("sig_" + species, z, like_params)),
+                -self._value("b_" + line, z, like_params),
+                self._value("beta_" + species, z, like_params),
+                self._value("sig_" + species, z, like_params),
             )
         return out
 
@@ -179,7 +186,8 @@ class SiKaiser(Contaminant):
         k_kms : array_like
             Parallel wavenumbers in s/km.
         moments : mapping
-            Moments ``A0, A1, I0, I1, I2`` on ``k_kms`` in km/s.
+            Moments ``A0, A1, I0, I1, I2`` on ``k_kms`` in km/s, ``(n_k,)`` or
+            ``(n_batch, n_k)``.
         like_params : mapping, optional
             Coefficient overrides.
 
@@ -196,8 +204,8 @@ class SiKaiser(Contaminant):
         par = self.coefficients(z, like_params)
         window = {line: lya_metal_damping(k, sigma, self.damping) for line, (_, _, sigma) in par.items()}
         # optional amplitude and decorrelation of the SiII x SiII terms (1 if inactive)
-        sigma_sii = float(self.get_value("sig_SiIIxSiII", z, like_params))
-        window_sii = (float(self.get_value("f_SiIIxSiII", z, like_params))
+        sigma_sii = self._value("sig_SiIIxSiII", z, like_params)
+        window_sii = (self._value("f_SiIIxSiII", z, like_params)
                       * np.exp(-0.5 * (k * sigma_sii) ** 2))
 
         def metal_metal(m, n):
@@ -237,12 +245,13 @@ class SiKaiser(Contaminant):
             Term names (as returned by :meth:`p1d_terms`) mapped to true to
             omit them, in addition to ``self.exclude``.
         metal_moments : sequence of mapping
-            Per-redshift moments on ``k_kms``.
+            Per-redshift moments on ``k_kms``, ``(n_k,)`` or ``(n_batch, n_k)``.
 
         Returns
         -------
         list of ndarray
-            Additive P1D terms in km/s, one per redshift.
+            Additive P1D in km/s, one array per redshift: ``(n_k,)`` for one
+            point, ``(n_batch, n_k)`` for a batch.
 
         Raises
         ------
@@ -252,12 +261,14 @@ class SiKaiser(Contaminant):
         if metal_moments is None:
             raise ValueError(
                 "the Kaiser metal model needs metal moments from a ForestFlow "
-                "projection (cup1d.likelihood.external.project_metal_moments)")
+                "projection (cup1d.theory.projection.project_metal_moments)")
         remove = {} if remove is None else remove
+        z, k_kms = as_redshift_rows(z, k_kms)
+        _, n_batch, scalar = as_columns(like_params)
         out = []
-        for iz, zz in enumerate(np.atleast_1d(z)):
+        for iz, zz in enumerate(z):
             terms = self.p1d_terms(zz, k_kms[iz], metal_moments[iz], like_params)
-            total = np.zeros(len(k_kms[iz]))
+            total = np.zeros(len(k_kms[iz]) if scalar else (n_batch, len(k_kms[iz])))
             for name, term in terms.items():
                 if name not in self.exclude and not remove.get(name, False):
                     total = total + term

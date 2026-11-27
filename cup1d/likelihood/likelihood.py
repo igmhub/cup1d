@@ -15,6 +15,7 @@ from cup1d.utils import ic_files
 from cup1d.utils.warn_once import numpy_errors_once
 from cup1d.likelihood import parameter as parameter_space
 from cup1d.utils.otypes import convert_otype, history_otype, interp_ic_history, legacy_otype
+from cup1d.utils.batch import as_columns, row
 
 
 def emulator_covariance_path(emulator):
@@ -32,7 +33,7 @@ def emulator_covariance_path(emulator):
         ``<ForestFlow or LaCE>/data/covariance/l1O_cov_<emulator_label>.npy``.
     """
     label = emulator.emulator_label
-    if "forest" in label:
+    if getattr(emulator, "forestflow", "forest" in label):
         import forestflow
 
         root = os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "covariance")
@@ -95,6 +96,74 @@ def emulator_interpolation_weights(z, k_Mpc, emu_z, emu_k_Mpc):
     return weights
 
 
+
+
+
+def emulator_kmax_iMpc(emulator):
+    """Largest parallel wavenumber (1/Mpc) the P1D emulator was trained on."""
+    for name in ("kmax_1d_iMpc", "kmax_Mpc"):  # ForestFlow, LaCE
+        value = getattr(emulator, name, None)
+        if value is not None:
+            return float(value)
+    return np.inf
+
+
+def check_emulator_k_range(data, theory):
+    """Raise if any data set reaches beyond the emulator's small-scale limit.
+
+    The largest data wavenumber of every redshift, converted with the
+    fiducial ``M(z)``, must not exceed :func:`emulator_kmax_iMpc` (the rule of
+    the Cobaya route, ``cup1d.likelihood.external``).
+
+    Raises
+    ------
+    ValueError
+        Listing the offending data sets and redshifts.
+    """
+    kmax = emulator_kmax_iMpc(theory.emulator)
+    if not np.isfinite(kmax):
+        return
+    cosmo = theory.fid_cosmo["cosmo"]
+    beyond = []
+    for key, dataset in data.items():
+        for z, k_kms in zip(dataset.z, dataset.k_kms):
+            k_iMpc = float(np.max(k_kms)) * float(cosmo.get_dkms_dMpc(z))
+            if k_iMpc > kmax:
+                beyond.append(f"{key} z={z:.2f}: k = {k_iMpc:.2f}/Mpc")
+    if beyond:
+        raise ValueError(
+            f"data beyond the emulator's range (kmax = {kmax}/Mpc): " + "; ".join(beyond)
+            + ". Cut the data at smaller k (e.g. kmax_ikms) or use another emulator."
+        )
+
+def _log_det_cov(icov, chol, method):
+    """``log det C`` from the Cholesky factor or from ``C^-1`` (no underflow)."""
+    if method == "cholesky" and chol is not None:
+        return 2 * np.log(np.diag(chol[0])).sum()
+    sign, logdet = np.linalg.slogdet(icov)
+    return -logdet
+
+def _at_a_time_value(results, iz, name):
+    """Best-fit value of ``name`` in redshift bin ``iz`` of an at-a-time file.
+
+    Handles the formats written so far: ``mle`` keyed by parameter name,
+    with plain values or ``{"value": ...}`` entries, and older files keyed by
+    LaTeX labels in the order of ``pnames``.
+    """
+    mle = results["mle"][iz]
+    if name in mle:
+        value = mle[name]
+    else:
+        names = list(results["pnames"][iz])
+        # LaTeX-keyed parameters in pnames order, then the star blobs
+        labels = [key for key in mle if key not in ("Delta2_star", "n_star", "alpha_star")]
+        if name not in names or len(names) != len(labels):
+            raise KeyError(f"{name} not in the at-a-time fit of redshift bin {iz}")
+        value = mle[labels[names.index(name)]]
+    if isinstance(value, dict):
+        value = value["value"]
+    return float(value)
+
 class Likelihood(object):
     """Evaluate P1D data likelihoods using a theory prediction and priors.
 
@@ -109,7 +178,7 @@ class Likelihood(object):
         theory,
         free_param_names=None,
         free_param_limits=None,
-        verbose=False,
+        verbose=None,
         cov_factor=1.0,
         prior_Gauss_rms=None,
         emu_cov_type="block",
@@ -132,11 +201,13 @@ class Likelihood(object):
         free_param_limits : sequence of tuple, optional
             Lower and upper physical limits in the same order as
             ``free_param_names``.
-        verbose : bool, default=False
-            Print setup diagnostics from the MPI root rank.
+        verbose : bool, optional
+            Print setup diagnostics from the MPI root rank; default: the
+            configuration's ``verbose`` (``False`` without ``args``).
         cov_factor : float or mapping, default=1.0
-            Data, systematic, and emulator covariance scaling accepted by the
-            configured covariance builder.
+            Factors of the statistical, systematic, emulator and full
+            covariance: ``{"z", "val_stat", "val_syst", "val_emu",
+            "val_full"}`` per redshift, or one float for all of them.
         prior_Gauss_rms : float, optional
             Fraction of each parameter's uniform width used for Gaussian
             priors. ``None`` instead uses parameter-specific widths or no
@@ -162,8 +233,20 @@ class Likelihood(object):
 
         self.rank = MPI.COMM_WORLD.Get_rank()
 
+        # explicit argument, else the configuration
+        if verbose is None:
+            verbose = bool(getattr(args, "verbose", False)) if args is not None else False
         self.verbose = verbose
+        # explicit argument, else the configuration (null: no Gaussian prior)
+        if prior_Gauss_rms is None and args is not None:
+            prior_Gauss_rms = getattr(args, "prior_Gauss_rms", None)
         self.prior_Gauss_rms = prior_Gauss_rms
+        if np.isscalar(cov_factor):
+            # one factor for every covariance term at every redshift
+            cov_factor = {"z": np.array([0.0]), **{
+                name: np.array([float(cov_factor)])
+                for name in ("val_stat", "val_syst", "val_emu", "val_full")
+            }}
         self.cov_factor = cov_factor
         self.emu_cov_type = emu_cov_type
         if covariance_method not in {"inverse", "cholesky"}:
@@ -183,6 +266,9 @@ class Likelihood(object):
         )
 
         self.theory = theory
+        # stop if the data reach smaller scales than the emulator was trained
+        # on (larger scales are fine); the same rule as the Cobaya route
+        check_emulator_k_range(self.data, self.theory)
         # Set inverse covariance. We do it here so we can account for emulator error
         self.set_icov()
 
@@ -225,11 +311,11 @@ class Likelihood(object):
                 if "pnames" in ic_content:
                     if self.rank == 0:
                         print("Setting ICs from at a time fit")
-                    self.set_ic_from_z_at_time(ic_file, verbose=True)
+                    self.set_ic_from_z_at_time(ic_file, verbose=self.verbose)
                 else:
                     if self.rank == 0:
                         print("Setting ICs from global fit")
-                    self.set_ic_global(ic_file, verbose=True)
+                    self.set_ic_global(ic_file, verbose=self.verbose)
             else:
                 if self.rank == 0:
                     tried = "\n".join(f"  {path}" for path in ic_files.ic_candidates(args))
@@ -244,37 +330,48 @@ class Likelihood(object):
                     )
 
     def set_Gauss_priors(self):
-        """Build Gaussian-prior widths aligned with free-parameter order.
+        """Build Gaussian priors aligned with the free-parameter order.
 
         Returns
         -------
         None
-            Sets ``Gauss_priors`` to finite widths or ``None`` when no
-            Gaussian prior is active.
+            Sets ``Gauss_priors`` (widths) and ``Gauss_priors_mean``
+            (centres), or ``None`` for both when no Gaussian prior is active.
 
         Notes
         -----
-        ``prior_Gauss_rms`` takes precedence over parameter-specific
-        ``Gauss_priors_width`` values. A width of ``1e4`` represents an
-        effectively inactive prior and is removed when all widths are inactive.
-        """
+        Widths, by precedence: ``prior_Gauss_rms`` times the flat-prior range
+        (every parameter); the top-level ``Gauss_priors`` mapping of the
+        configuration (``{parameter: width}``); the parameter's own
+        ``Gauss_priors_width``. The centres are the parameter values when the
+        priors are built, before any initial condition replaces them, so a
+        previous fit to the same data never becomes the prior.
 
-        self.Gauss_priors = np.ones((len(self.free_params)))
+        Raises
+        ------
+        ValueError
+            If the ``Gauss_priors`` mapping names a parameter that is not free.
+        """
+        by_name = getattr(self.args, "Gauss_priors", None) or {}
+        unknown = set(by_name) - set(self.free_params)
+        if unknown:
+            raise ValueError(f"Gauss_priors for parameters that are not free: {sorted(unknown)}")
+        widths = np.full(len(self.free_params), np.inf)
         for ii, (name, parameter) in enumerate(self.free_params.items()):
             if self.prior_Gauss_rms is not None:
-                width = parameter["max_value"] - parameter["min_value"]
-                _prior = self.prior_Gauss_rms * width
+                widths[ii] = self.prior_Gauss_rms * (parameter["max_value"] - parameter["min_value"])
+            elif name in by_name and by_name[name] is not None:
+                widths[ii] = by_name[name]
             elif parameter["Gauss_priors_width"] is not None:
-                _prior = parameter["Gauss_priors_width"]
-            else:
-                _prior = 1e4  # so we get zero
-
-            self.Gauss_priors[ii] = _prior
-
-        if np.any(self.Gauss_priors != 1e4):
-            pass
-        else:
+                widths[ii] = parameter["Gauss_priors_width"]
+        if np.all(np.isinf(widths)):
             self.Gauss_priors = None
+            self.Gauss_priors_mean = None
+        else:
+            self.Gauss_priors = widths
+            self.Gauss_priors_mean = np.asarray(
+                [parameter["value"] for parameter in self.free_params.values()], dtype=float
+            )
 
     def set_icov(self, emulator_covariance=None, fiducial_conversion=None):
         """Build effective P1D covariance, Cholesky factors, and inverses.
@@ -568,34 +665,6 @@ class Likelihood(object):
         if self.verbose and self.rank == 0:
             print(f"likelihood setup with {len(self.free_params)} free parameters")
 
-    def cosmology_params(self, parameters):
-        """Extract supported cosmological values from a physical parameter map.
-
-        Parameters
-        ----------
-        parameters : mapping
-            Physical values keyed by parameter name.
-
-        Returns
-        -------
-        dict
-            Present values among ``ombh2``, ``omch2``, ``cosmomc_theta``,
-            ``As``, ``ns``, ``mnu``, and ``nrun``.
-
-        Raises
-        ------
-        ValueError
-            If none of the supported cosmology names is present.
-        """
-
-        names = {"ombh2", "omch2", "cosmomc_theta", "As", "ns", "mnu", "nrun"}
-        cosmo_dict = {
-            name: value for name, value in parameters.items() if name in names
-        }
-        if not cosmo_dict:
-            raise ValueError("No cosmology parameters found")
-        return cosmo_dict
-
     def set_truth(self):
         """Store compatible mock-data truth in physical and unit-cube forms.
 
@@ -788,7 +857,7 @@ class Likelihood(object):
             ``R_coeff_*`` entries, so the theory applies no resolution
             correction to this data set.
         """
-        from cup1d.likelihood.external import dataset_nuisance
+        from cup1d.models.observation import dataset_nuisance
 
         return dataset_nuisance(key, like_params, getattr(self.args, "syst_data_labels", None))
 
@@ -799,7 +868,7 @@ class Likelihood(object):
         grid is evaluated without ``R_coeff_*``; each data set then applies
         its own resolution correction (:meth:`_dataset_fine_p1d`).
         """
-        from cup1d.likelihood.external import without_resolution
+        from cup1d.models.observation import without_resolution
 
         if len(keys) == 1:
             return self._dataset_params(keys[0], like_params)
@@ -825,7 +894,7 @@ class Likelihood(object):
             ``p1ds`` times the data set's resolution correction (the last
             factor of the observation model), or ``p1ds`` for one data set.
         """
-        from cup1d.likelihood.external import apply_resolution
+        from cup1d.models.observation import apply_resolution
 
         if len(keys) == 1:
             return p1ds
@@ -929,58 +998,109 @@ class Likelihood(object):
     def _emulator_p1d_per_dataset(self, like_params):
         """Evaluate the emulator once on the union grid and split it.
 
-        Call after :meth:`_emulator_inputs_per_dataset` for the same point.
+        Call after :meth:`_emulator_inputs_per_dataset` for the same columns.
 
         Parameters
         ----------
         like_params : mapping
-            Scalar values or columns of shape ``(n_batch,)``.
+            Columns of shape ``(n_batch,)``.
 
         Returns
         -------
         dict
-            Scalar input: ``{key: (p1d_rows, moment_rows)}`` with one P1D row
-            (``Mpc``) per data-set redshift, and Kaiser metal moments in the
-            same layout or ``None``; this is the ``emulator_p1d_Mpc``
-            argument of :meth:`Theory.get_P1D_kms`.
-            Columnar input: ``{key: ndarray (n_batch, n_z, n_k)}`` (zero
-            padded), the ``emulator_p1d_Mpc`` argument of the batched path.
+            ``{key: (p1d, moments)}``: the emulator P1D (``Mpc``) as an
+            ``(n_batch, n_z, n_k)`` array (zero padded) and the Kaiser metal
+            moments in the same layout or ``None``; the ``emulator_p1d_Mpc``
+            argument of :meth:`Theory.get_p1d_kms`.
         """
         z_union, k_union, slices = self._union_emulator_grid()
-        M_of_z = self._union_M_of_z
-        n_k = max(len(row) for row in k_union)
-        out = {}
-        if M_of_z.ndim == 1:
-            kin = np.zeros((len(z_union), n_k))
-            for iu, row in enumerate(k_union):
-                kin[iu, :len(row)] = row * M_of_z[iu]
-            p1d, moments = self.theory.emulate_p1d_Mpc_rows(
-                z_union, kin, self._union_emulator_call, like_params
-            )
-            for key, items in slices.items():
-                p1d_rows = [np.asarray(p1d[iu])[a:b] for iu, a, b in items]
-                moment_rows = None
-                if moments is not None:
-                    moment_rows = {
-                        name: [np.asarray(values[iu])[a:b] for iu, a, b in items]
-                        for name, values in moments.items()
-                    }
-                out[key] = (p1d_rows, moment_rows)
-            return out
+        M_of_z = np.atleast_2d(self._union_M_of_z)
         n_batch = M_of_z.shape[0]
+        emu_call = {name: np.broadcast_to(values, M_of_z.shape)
+                    for name, values in self._union_emulator_call.items()}
+        n_k = max(len(k_row) for k_row in k_union)
         kin = np.zeros((n_batch, len(z_union), n_k))
-        for iu, row in enumerate(k_union):
-            kin[:, iu, :len(row)] = row[None, :] * M_of_z[:, iu, None]
-        p1d = np.asarray(self.theory.emulate_p1d_Mpc_batch_rows(
-            z_union, kin, self._union_emulator_call, like_params
-        ))
-        for key, items in slices.items():
+        for iu, k_row in enumerate(k_union):
+            kin[:, iu, :len(k_row)] = k_row[None, :] * M_of_z[:, iu, None]
+        p1d, moments = self.theory.emulate_p1d_Mpc_rows(z_union, kin, emu_call, like_params)
+
+        def split(values, items):
             n_k_key = max(b - a for _, a, b in items)
             array = np.zeros((n_batch, len(items), n_k_key))
             for iz, (iu, a, b) in enumerate(items):
-                array[:, iz, :b - a] = p1d[:, iu, a:b]
-            out[key] = array
+                array[:, iz, :b - a] = values[:, iu, a:b]
+            return array
+
+        out = {}
+        for key, items in slices.items():
+            key_moments = None
+            if moments is not None:
+                key_moments = {name: split(values, items) for name, values in moments.items()}
+            out[key] = (split(p1d, items), key_moments)
         return out
+
+    def predict_batch(self, columns, remove=None, apply_hull=True, return_emu_params=False):
+        """Rebinned model P1D of every data set for a batch of points.
+
+        The single forward model of the likelihood: cosmology and IGM
+        (emulator inputs) once for all data sets, star priors and training
+        hull before the emulator, one emulator call on the union of the data
+        grids, then the observation model per group of data sets and the
+        rebinning. One point is a batch of one.
+
+        Parameters
+        ----------
+        columns : mapping of str to ndarray
+            Physical parameter columns of shape ``(n_batch,)``.
+        remove : mapping, optional
+            Contaminant switches (figures).
+        apply_hull : bool, default=True
+            Apply the training-hull check (the star priors always apply).
+        return_emu_params : bool, default=False
+            Also return the emulator inputs of each data set.
+
+        Returns
+        -------
+        predictions : dict
+            ``{key: [ndarray (n_valid, n_k_data) per redshift]}`` for the
+            accepted points.
+        valid : ndarray of bool, shape (n_batch,)
+            Points accepted by the star priors and the training hull.
+        blobs : ndarray, shape (n_batch, n_blob)
+            Blobs of every point.
+        emu_params : dict, optional
+            ``{key: emulator inputs (n_valid, n_z)}`` when requested.
+        """
+        emulator_inputs = self._emulator_inputs_per_dataset(columns)
+        blobs = np.asarray(next(iter(emulator_inputs.values()))[2])
+        valid = self._admissible_rows(columns, emulator_inputs, apply_hull=apply_hull)
+        predictions, emu_params = {}, {}
+        if not np.any(valid):
+            return (predictions, valid, blobs, emu_params) if return_emu_params else (predictions, valid, blobs)
+        if not np.all(valid):
+            columns = {name: values[valid] for name, values in columns.items()}
+            emulator_inputs = self._emulator_inputs_per_dataset(columns)
+        emulator_p1d = self._emulator_p1d_per_dataset(columns)
+        for keys in self.Rebin_data.groups:
+            # data sets of a group share redshifts and the fine grid: one
+            # contaminated P1D, then each data set's resolution correction
+            lead = keys[0]
+            fine = self.theory.get_p1d_kms(
+                self.Rebin_data.zs[lead],
+                self.Rebin_data.k_kms[lead],
+                self._group_params(keys, columns),
+                k_kms_emu=self.Rebin_data.k_kms_emu[lead],
+                remove=remove,
+                emulator_inputs=emulator_inputs[lead],
+                emulator_p1d_Mpc=emulator_p1d[lead],
+            )
+            for key in keys:
+                own = self._dataset_fine_p1d(keys, key, fine, columns)
+                predictions[key] = self.Rebin_data.rebinning(key, own)
+                emu_params[key] = emulator_inputs[key][0]
+        if return_emu_params:
+            return predictions, valid, blobs, emu_params
+        return predictions, valid, blobs
 
     def get_p1d_kms(
         self,
@@ -991,93 +1111,55 @@ class Likelihood(object):
         apply_hull=True,
         remove=None,
     ):
-        """Compute rebinned theoretical P1D predictions for every data set.
+        """Rebinned model P1D of every data set at one point.
 
         Parameters
         ----------
         parameters : mapping, optional
             Full or partial named physical point; omitted values use defaults.
         return_covar, return_blob, return_emu_params : bool, default=False
-            Request corresponding auxiliary theory outputs.
+            Request the corresponding extras (historical API: they are
+            returned only with ``return_blob`` or ``return_emu_params``).
         apply_hull : bool, default=True
-            Apply emulator hull/domain admission checks.
-        remove : sequence of str, optional
-            Contaminant contributions omitted by theory.
+            Apply the training-hull check.
+        remove : mapping, optional
+            Contaminant switches (figures).
 
         Returns
         -------
-        predictions, auxiliary : tuple or None
-            Re-binned P1D rows keyed by dataset label and requested auxiliary
-            outputs. ``None`` signals an inadmissible theory prediction.
-
-        Notes
-        -----
-        Emulator inputs and the emulator itself are evaluated once, on the
-        union of the data sets' redshifts and k grids, and split per data set.
+        tuple or None
+            ``(predictions, extras)``: P1D per data set and redshift, and per
+            data set the list ``[covariances], [blob], [emulator inputs]`` as
+            requested; ``None`` for a point rejected by the star priors or the
+            training hull. See :meth:`predict_batch` (one point is a batch of
+            one).
         """
-
-        # Public callers supply a full named point; theory receives scalar
-        # values through this private boundary adapter.
         like_params = (
             {} if parameters is None
             else parameter_space.values_from_point(self.free_params, parameters)
         )
-
-        all_p1ds = {}
-        other_stuff = {}
-        # Emulator inputs depend only on the parameter point and redshift, so
-        # evaluate cosmology, linear-power parameters, IGM models, and blob
-        # once over the union of data-set redshifts and slice per data set.
-        emulator_inputs = self._emulator_inputs_per_dataset(like_params)
-        # Reject points outside the star priors or the emulator hull before
-        # paying for any emulator evaluation.
-        z_union = self._union_emulator_grid()[0]
-        union_blob = next(iter(emulator_inputs.values()))[2]
-        if not self.theory.is_admissible(
-            z_union, self._union_emulator_call, union_blob, like_params,
-            apply_hull=apply_hull,
-        ):
+        columns = {name: np.array([value], dtype=float) for name, value in like_params.items()}
+        predictions, valid, blobs, emu_params = self.predict_batch(
+            columns, remove=remove, apply_hull=apply_hull, return_emu_params=True)
+        if not valid[0]:
             return None
-        # One emulator call on the union of redshifts and k grids, split back
-        # per data set (no repeated GP/ForestFlow evaluations).
-        emulator_p1d = self._emulator_p1d_per_dataset(like_params)
-        for keys in self.Rebin_data.groups:
-            # data sets of a group share redshifts and the fine grid: one
-            # contaminated P1D, then each data set's resolution correction
-            lead = keys[0]
-            _results = self.theory.get_P1D_kms(
-                self.Rebin_data.zs[lead],
-                self.Rebin_data.k_kms[lead],
-                like_params=self._group_params(keys, like_params),
-                k_ikms_emu=self.Rebin_data.k_kms_emu[lead],
-                return_covar=return_covar,
-                return_blob=return_blob,
-                return_emu_params=return_emu_params,
-                apply_hull=apply_hull,
-                remove=remove,
-                emulator_inputs=emulator_inputs[lead],
-                emulator_p1d_Mpc=emulator_p1d[lead],
-            )
-            if _results is None:
-                return None
-
-            if return_blob | return_emu_params:
-                p1ds = _results[0]
-            else:
-                p1ds = _results
-
-            for key in keys:
-                own = self._dataset_fine_p1d(keys, key, p1ds, like_params)
-                all_p1ds[key] = self.Rebin_data.rebinning(key, own)
-                other_stuff[key] = []
-                if return_blob | return_emu_params:
-                    for ii in range(1, len(_results)):
-                        other_stuff[key].append(_results[ii])
-
+        blob = tuple(blobs[0])
+        all_p1ds, other_stuff = {}, {}
+        for key, rows in predictions.items():
+            all_p1ds[key] = [values[0] for values in rows]
+            extras = []
+            if return_blob or return_emu_params:
+                if return_covar:
+                    extras.append([])
+                if return_blob:
+                    extras.append(blob)
+                if return_emu_params:
+                    extras.append({name: values[0] for name, values in emu_params[key].items()})
+            other_stuff[key] = extras
         return all_p1ds, other_stuff
 
     def get_chi2(self, parameters=None, return_all=False, zmask=None):
-        """Compute chi2 using data and theory, without emulator covariance.
+        """Compute chi2 using data and theory (data plus emulator covariance).
 
         Parameters
         ----------
@@ -1121,6 +1203,67 @@ class Likelihood(object):
         else:
             return chi2_total
 
+    def log_like_rows(self, predictions, zmask=None, ignore_log_det_cov=True, per_redshift=False):
+        """Gaussian log likelihood of a batch of predictions.
+
+        Parameters
+        ----------
+        predictions : dict
+            ``{key: [ndarray (n, n_k_data) per redshift]}`` (:meth:`predict_batch`).
+        zmask : float, optional
+            One diagnostic redshift (its covariance block only).
+        ignore_log_det_cov : bool, default=True
+            Omit the covariance normalization.
+        per_redshift : bool, default=False
+            Also return the per-redshift contributions (from the redshift
+            blocks of the covariance, also when the full covariance is used
+            for the total).
+
+        Returns
+        -------
+        log_like : ndarray, shape (n,)
+        per_z : dict
+            ``{key: ndarray (n, n_z)}`` with ``per_redshift`` (else empty).
+        """
+        n = len(next(iter(predictions.values()))[0])
+        log_like = np.zeros(n)
+        per_z = {}
+        for key in self.Rebin_data.zs:
+            data = self.data[key]
+            full_icov = self.full_icov_Pk_kms[key]
+            use_full = full_icov is not None and zmask is None
+            if per_redshift or not use_full:
+                blocks = np.zeros((n, len(data.z)))
+                for iz, redshift in enumerate(data.z):
+                    if zmask is not None and not np.any(np.abs(zmask - redshift) < 1.0e-3):
+                        continue
+                    residual = np.asarray(data.Pk_kms[iz])[None, :] - predictions[key][iz]
+                    blocks[:, iz] = -0.5 * self._chi2_rows(
+                        residual, self.icov_Pk_kms[key][iz], self.chol_Pk_kms[key][iz],
+                        ignore_log_det_cov)
+                if per_redshift:
+                    per_z[key] = blocks
+                if not use_full:
+                    log_like += blocks.sum(axis=1)
+            if use_full:
+                residual = data.full_Pk_kms[None, :] - np.concatenate(predictions[key], axis=1)
+                log_like -= 0.5 * self._chi2_rows(
+                    residual, full_icov, self.full_chol_Pk_kms.get(key), ignore_log_det_cov)
+        return log_like, per_z
+
+    def _chi2_rows(self, residual, icov, chol, ignore_log_det_cov=True):
+        """``r C^-1 r`` (plus ``ln det C`` unless ignored) of residual rows ``(n, m)``."""
+        # extreme emulator outputs (e.g. near prior edges) can overflow; the
+        # resulting inf/nan rejects the point
+        with numpy_errors_once("likelihood chi2"):
+            if self.covariance_method == "cholesky":
+                chi2 = np.sum(residual * cho_solve(chol, residual.T, check_finite=False).T, axis=1)
+            else:
+                chi2 = np.sum((residual @ icov) * residual, axis=1)
+        if not ignore_log_det_cov:
+            chi2 = chi2 + _log_det_cov(icov, chol, self.covariance_method)
+        return chi2
+
     def get_log_like(
         self,
         parameters=None,
@@ -1128,7 +1271,7 @@ class Likelihood(object):
         return_blob=False,
         zmask=None,
     ):
-        """Compute P1D Gaussian log likelihood and per-redshift contributions.
+        """Gaussian log likelihood of one point and its per-redshift contributions.
 
         Parameters
         ----------
@@ -1137,7 +1280,7 @@ class Likelihood(object):
         ignore_log_det_cov : bool, default=True
             Omit covariance normalization determinants.
         return_blob : bool, default=False
-            Include the theory blob associated with the prediction.
+            Include the blob of the point.
         zmask : float or array-like, optional
             Exactly one diagnostic redshift, or ``None`` for the joint fit.
 
@@ -1145,105 +1288,34 @@ class Likelihood(object):
         -------
         list
             ``[log_like, log_like_all]`` and, when requested,
-            ``[log_like, log_like_all, blob]``. Rejected predictions return
-            negative infinities (and a zero blob when requested).
+            ``[log_like, log_like_all, blob]``. Rejected or non-finite
+            predictions return negative infinities (and a zero blob).
 
         A non-null ``zmask`` may select exactly one redshift. This is for
         one-redshift diagnostic fits: selecting a subset omits cross-redshift
         covariance, so multi-redshift masks are rejected.
         """
-
         zmask = self._validate_single_redshift_mask(zmask)
-
-        # what to return if we are out of priors
         null_out = [-np.inf, -np.inf]
         if return_blob:
-            blob = tuple([0] * len(self.theory.blob_names))
-            null_out.append(blob)
-
-        # evaluate model in physical parameter space
-        _res = self.get_p1d_kms(parameters, return_blob=return_blob)
-        if _res is None:
+            null_out.append(tuple([0] * len(self.theory.blob_names)))
+        like_params = (
+            {} if parameters is None
+            else parameter_space.values_from_point(self.free_params, parameters)
+        )
+        columns = {name: np.array([value], dtype=float) for name, value in like_params.items()}
+        predictions, valid, blobs = self.predict_batch(columns)
+        if not valid[0]:
             return null_out
-        else:
-            if return_blob:
-                emu_p1d, extra = _res
-                blob = next(iter(extra.values()))[0]
-            else:
-                emu_p1d = _res[0]
-
-        # compute log like contribution from each sample and redshift bin
-        log_like_all = {}
-        log_like = 0
-        for key in self.Rebin_data.zs:
-
-            log_like_all[key] = np.zeros((self.Rebin_data.zs[key].shape[0]))
-
-            emu_p1d_use = emu_p1d[key]
-            data = self.data[key]
-            icov_Pk_kms = self.icov_Pk_kms[key]
-            chol_Pk_kms = self.chol_Pk_kms[key]
-            full_icov_Pk_kms = self.full_icov_Pk_kms[key]
-            full_chol_Pk_kms = self.full_chol_Pk_kms.get(key)
-
-            # loop over redshift bins
-            for iz in range(len(data.z)):
-                if zmask is not None:
-                    ind = np.argwhere(np.abs(zmask - data.z[iz]) < 1e-3)
-                    if len(ind) == 0:
-                        continue
-                # compute chi2 for this redshift bin
-                diff = data.Pk_kms[iz] - np.array(emu_p1d_use[iz]).reshape(-1)
-                if self.covariance_method == "cholesky":
-                    solved = cho_solve(chol_Pk_kms[iz], diff, check_finite=False)
-                    chi2_z = np.dot(diff, solved)
-                else:
-                    # extreme emulator outputs (e.g. near prior edges) can
-                    # overflow; the resulting inf/nan is handled below
-                    with numpy_errors_once("likelihood chi2_z"):
-                        chi2_z = np.dot(np.dot(icov_Pk_kms[iz], diff), diff)
-                # print(iz, chi2_z, np.mean(icov_Pk_kms[iz]), np.mean(diff))
-                # print(
-                #     np.dot(icov_Pk_kms[iz], diff),
-                # )
-                # print(iz, chi2_z)
-                # check whether to add determinant of covariance as well
-                if ignore_log_det_cov:
-                    log_like_all[key][iz] = -0.5 * chi2_z
-                else:
-                    log_det_cov = (2 * np.log(np.diag(chol_Pk_kms[iz][0])).sum()
-                                   if self.covariance_method == "cholesky"
-                                   else np.log(np.abs(1 / np.linalg.det(icov_Pk_kms[iz]))))
-                    log_like_all[key][iz] = -0.5 * (chi2_z + log_det_cov)
-
-            if (full_icov_Pk_kms is None) | (zmask is not None):
-                log_like += np.sum(log_like_all[key])
-            else:
-                # compute chi2 using full cov
-                diff = data.full_Pk_kms - np.concatenate(emu_p1d_use)
-                if self.covariance_method == "cholesky":
-                    solved = cho_solve(full_chol_Pk_kms, diff, check_finite=False)
-                    chi2_all = np.dot(diff, solved)
-                else:
-                    with numpy_errors_once("likelihood chi2_all"):
-                        chi2_all = np.dot(
-                            np.dot(full_icov_Pk_kms, diff), diff
-                        )
-                if ignore_log_det_cov:
-                    log_like += -0.5 * chi2_all
-                else:
-                    log_det_cov = (2 * np.log(np.diag(full_chol_Pk_kms[0])).sum()
-                                   if self.covariance_method == "cholesky"
-                                   else np.log(np.abs(1 / np.linalg.det(full_icov_Pk_kms))) )
-                    log_like += -0.5 * (chi2_all + log_det_cov)
-
+        log_like, per_z = self.log_like_rows(
+            predictions, zmask=zmask, ignore_log_det_cov=ignore_log_det_cov, per_redshift=True)
+        log_like = log_like[0]
         # something went wrong (nan, or +inf from overflow)
         if not np.isfinite(log_like):
             return null_out
-
-        out = [log_like, log_like_all]
+        out = [log_like, {key: values[0] for key, values in per_z.items()}]
         if return_blob:
-            out.append(blob)
+            out.append(tuple(blobs[0]))
         return out
 
     @staticmethod
@@ -1345,12 +1417,9 @@ class Likelihood(object):
             return self.min_log_like
         if self.Gauss_priors is None:
             return 0.0
-        fiducial = np.asarray(
-            [parameter["value"] for parameter in self.free_params.values()]
-        )
         values = np.asarray([parameters[name] for name in self.free_params])
         return -np.sum(
-            (fiducial - values) ** 2 / (2 * self.Gauss_priors**2)
+            (self.Gauss_priors_mean - values) ** 2 / (2 * self.Gauss_priors**2)
         )
 
     def compute_log_prob(
@@ -1454,68 +1523,80 @@ class Likelihood(object):
         )
         return lnprob, *blob
 
-    def _parameter_batch_rows(self, parameters_batch):
-        """Validate a parameter batch and expose scalar compatibility rows.
+    def _parameter_columns(self, parameters_batch):
+        """Physical parameter columns of every free parameter.
 
         Parameters
         ----------
         parameters_batch : mapping or iterable of mapping
-            Preferred columnar mapping of one-dimensional arrays, or legacy
-            iterable of scalar physical parameter mappings.
+            Columns of shape ``(n_batch,)``, or one mapping per point.
 
         Returns
         -------
-        list of dict
-            Scalar parameter mappings in batch order.
+        dict of str to ndarray
+            ``(n_batch,)`` per free parameter (absent ones at their value).
 
         Raises
         ------
         ValueError
-            If a column is not one-dimensional or columns have different
-            batch lengths.
-
-        New callers should provide ``{name: array(n_batch)}``, which avoids
-        creating parameter dictionaries in the sampler/fitter layer.  The
-        scalar rows are retained temporarily because cosmology and several
-        legacy contaminant models have scalar-only APIs.
+            If a column is not one-dimensional or columns differ in length.
         """
+        if not isinstance(parameters_batch, dict):
+            points = [parameter_space.values_from_point(self.free_params, point)
+                      for point in parameters_batch]
+            parameters_batch = {name: np.array([point[name] for point in points], dtype=float)
+                                for name in self.free_params}
+        columns, n_batch, scalar = as_columns(parameters_batch)
+        if scalar and parameters_batch:
+            raise ValueError("batched parameters must have shape (n_batch,)")
+        return {
+            name: columns[name] if name in columns else np.full(n_batch, parameter["value"], dtype=float)
+            for name, parameter in self.free_params.items()
+        } | {name: values for name, values in columns.items() if name not in self.free_params}
 
-        if isinstance(parameters_batch, dict):
-            if not parameters_batch:
-                return []
-            arrays = {}
-            n_batch = None
-            for name, values in parameters_batch.items():
-                values = np.asarray(values, dtype=float)
-                if values.ndim != 1:
-                    raise ValueError(
-                        f"batched parameter {name} must have shape (n_batch,), "
-                        f"got {values.shape}"
-                    )
-                if n_batch is None:
-                    n_batch = len(values)
-                elif len(values) != n_batch:
-                    raise ValueError(
-                        f"batched parameter {name} has length {len(values)}, "
-                        f"expected {n_batch}"
-                    )
-                arrays[name] = values
-            return [
-                {name: values[index] for name, values in arrays.items()}
-                for index in range(n_batch)
-            ]
-        return list(parameters_batch)
+    def _admissible_rows(self, columns, emulator_inputs, apply_hull=True):
+        """Star-prior and training-hull check of every row of a batch.
+
+        Parameters
+        ----------
+        columns : mapping
+            Physical parameter columns of shape ``(n_batch,)``.
+        emulator_inputs : dict
+            Output of :meth:`_emulator_inputs_per_dataset` for ``columns``.
+        apply_hull : bool, default=True
+            Apply the training-hull check.
+
+        Returns
+        -------
+        ndarray of bool
+            ``True`` for rows that :meth:`Theory.is_admissible` accepts.
+        """
+        n_batch = len(next(iter(columns.values()))) if columns else 1
+        if self.theory.star_priors is None and not (self.theory.use_hull and apply_hull):
+            return np.ones(n_batch, dtype=bool)
+        z_union = self._union_emulator_grid()[0]
+        blobs = next(iter(emulator_inputs.values()))[2]
+        union_call = self._union_emulator_call
+        return np.asarray([
+            self.theory.is_admissible(
+                z_union,
+                {name: np.atleast_2d(values)[index] for name, values in union_call.items()},
+                blobs[index],
+                row(columns, index),
+                apply_hull=apply_hull,
+            )
+            for index in range(n_batch)
+        ])
 
     def log_prob_and_blobs_batch(
         self, parameters_batch, ignore_log_det_cov=True, zmask=None
     ):
-        """Evaluate posterior values and blobs for a physical-parameter batch.
+        """Posterior and blobs of a batch of physical parameter points.
 
         Parameters
         ----------
         parameters_batch : mapping or iterable of mapping
-            Preferred columnar mapping with arrays of shape ``(n_batch,)``, or
-            legacy scalar parameter mappings.
+            Columns of shape ``(n_batch,)``, or one mapping per point.
         ignore_log_det_cov : bool, default=True
             Omit covariance normalization determinants.
         zmask : float or array-like, optional
@@ -1524,124 +1605,37 @@ class Likelihood(object):
         Returns
         -------
         list of tuple
-            One tuple per input point: posterior log probability followed by
-            theory blob values. Out-of-bounds or rejected points receive the
-            configured posterior floor.
-
-        Emulator calls are coalesced before model evaluation. Predictions are
-        then stacked so covariance contractions are evaluated over the entire
-        batch with NumPy rather than one point at a time.
+            One tuple per point: the log posterior followed by the blob
+            values. Points out of bounds, rejected by the star priors or the
+            training hull, or with non-finite predictions get the posterior
+            floor ``min_log_like``.
         """
-
         zmask = self._validate_single_redshift_mask(zmask)
-        parameter_columns = parameters_batch if isinstance(parameters_batch, dict) else None
-        parameters_batch = self._parameter_batch_rows(parameters_batch)
-        n_points = len(parameters_batch)
-        in_bounds = np.asarray(
-            [self.parameters_in_bounds(parameters) for parameters in parameters_batch]
-        )
-        valid_indices = np.flatnonzero(in_bounds)
-        blobs = [self.theory.get_blob()] * n_points
-        batched_predictions = None
-        # Columnar callers use one complete forward-model evaluation per data
-        # group. Legacy list-of-dictionaries callers retain the compatibility
-        # path below.
-        if parameter_columns is not None and len(valid_indices):
-            valid_columns = {name: np.asarray(values)[in_bounds] for name, values in parameter_columns.items()}
-            # one cosmology/IGM/blob evaluation shared by all data sets
-            emulator_inputs = self._emulator_inputs_per_dataset(valid_columns)
-            emulator_p1d = self._emulator_p1d_per_dataset(valid_columns)
-            batched_predictions = {}
-            for keys in self.Rebin_data.groups:
-                lead = keys[0]
-                fine_prediction = self.theory.get_p1d_kms(
-                    self.Rebin_data.zs[lead],
-                    self.Rebin_data.k_kms[lead],
-                    self._group_params(keys, valid_columns),
-                    k_kms_emu=self.Rebin_data.k_kms_emu[lead],
-                    emulator_inputs=emulator_inputs[lead],
-                    emulator_p1d_Mpc=emulator_p1d[lead],
-                )
-                for key in keys:
-                    own = self._dataset_fine_p1d(keys, key, fine_prediction, valid_columns)
-                    batched_predictions[key] = self.Rebin_data.rebinning_batch(key, own)
-            valid_blobs = next(iter(emulator_inputs.values()))[2]
-            for local_index, index in enumerate(valid_indices):
-                blobs[index] = tuple(valid_blobs[local_index])
-        else:
-            predictions = [None] * n_points
-            for index, parameters in enumerate(parameters_batch):
-                if not in_bounds[index]:
-                    continue
-                result = self.get_p1d_kms(parameters, return_blob=True)
-                if result is None:
-                    continue
-                predictions[index] = result[0]
-                extra = result[1]
-                blobs[index] = next(iter(extra.values()))[0]
-            valid_indices = np.flatnonzero([prediction is not None for prediction in predictions])
-
-        log_like = np.full(n_points, self.min_log_like, dtype=float)
-        if len(valid_indices):
-            batch_log_like = np.zeros(len(valid_indices))
-            for key in self.Rebin_data.zs:
-                data = self.data[key]
-                inverse_covariance = self.icov_Pk_kms[key]
-                chol_covariance = self.chol_Pk_kms[key]
-                full_inverse_covariance = self.full_icov_Pk_kms[key]
-                full_chol_covariance = self.full_chol_Pk_kms.get(key)
-                if full_inverse_covariance is not None and zmask is None:
-                    model = (
-                        np.concatenate(batched_predictions[key], axis=1)
-                        if batched_predictions is not None
-                        else np.stack([np.concatenate(predictions[index][key]) for index in valid_indices])
-                    )
-                    residual = data.full_Pk_kms[None, :] - model
-                    chi2 = (np.sum(residual * cho_solve(full_chol_covariance, residual.T, check_finite=False).T, axis=1)
-                            if self.covariance_method == "cholesky" else np.einsum("bi,ij,bj->b", residual, full_inverse_covariance, residual, optimize=True))
-                    batch_log_like -= 0.5 * chi2
-                    if not ignore_log_det_cov:
-                        batch_log_like -= 0.5 * np.log(
-                            np.abs(1 / np.linalg.det(full_inverse_covariance))
-                        )
-                    continue
-
-                for redshift_index, redshift in enumerate(data.z):
-                    if zmask is not None and not np.any(
-                        np.abs(zmask - redshift) < 1.0e-3
-                    ):
-                        continue
-                    model = (
-                        batched_predictions[key][redshift_index]
-                        if batched_predictions is not None
-                        else np.stack([predictions[index][key][redshift_index] for index in valid_indices])
-                    )
-                    residual = data.Pk_kms[redshift_index][None, :] - model
-                    chi2 = (np.sum(residual * cho_solve(chol_covariance[redshift_index], residual.T, check_finite=False).T, axis=1)
-                            if self.covariance_method == "cholesky" else np.einsum("bi,ij,bj->b", residual, inverse_covariance[redshift_index], residual, optimize=True))
-                    batch_log_like -= 0.5 * chi2
-                    if not ignore_log_det_cov:
-                        batch_log_like -= 0.5 * np.log(
-                            np.abs(
-                                1
-                                / np.linalg.det(
-                                    inverse_covariance[redshift_index]
-                                )
-                            )
-                        )
-            # fmax maps NaN (non-finite predictions) to the floor
-            log_like[valid_indices] = np.fmax(
-                batch_log_like, self.min_log_like
-            )
-
-        log_prior = np.asarray(
-            [self.get_log_prior(parameters) for parameters in parameters_batch]
-        )
-        posterior = log_like + log_prior
-        posterior[~in_bounds] = self.min_log_like
-        return [
-            (posterior[index], *blobs[index]) for index in range(n_points)
-        ]
+        columns = self._parameter_columns(parameters_batch)
+        names = list(self.free_params)
+        values = np.stack([columns[name] for name in names], axis=1)
+        low = np.array([self.free_params[name]["min_value"] for name in names])
+        high = np.array([self.free_params[name]["max_value"] for name in names])
+        in_bounds = np.all((values >= low) & (values <= high), axis=1)
+        n_points = len(values)
+        log_post = np.full(n_points, self.min_log_like, dtype=float)
+        blobs = np.tile(np.asarray(self.theory.get_blob(), dtype=float), (n_points, 1))
+        if np.any(in_bounds):
+            inside = {name: column[in_bounds] for name, column in columns.items()}
+            predictions, valid, inside_blobs = self.predict_batch(inside)
+            index = np.flatnonzero(in_bounds)
+            blobs[index] = inside_blobs
+            if np.any(valid):
+                log_like, _ = self.log_like_rows(
+                    predictions, zmask=zmask, ignore_log_det_cov=ignore_log_det_cov)
+                log_prior = 0.0
+                if self.Gauss_priors is not None:
+                    log_prior = -np.sum(
+                        (self.Gauss_priors_mean - values[index[valid]]) ** 2
+                        / (2 * self.Gauss_priors**2), axis=1)
+                # fmax maps NaN (non-finite predictions) to the floor
+                log_post[index[valid]] = np.fmax(log_like, self.min_log_like) + log_prior
+        return [(log_post[i], *blobs[i]) for i in range(n_points)]
 
     def old_plot_p1d(
         self,
@@ -2075,12 +2069,11 @@ class Likelihood(object):
             iz = np.argmin(np.abs(dir_out["z"] - znode))
             # print(iz, znode, dir_out["z"][iz])
             # print(dir_out["pnames"][iz], pname + "_0")
-            iname = np.argwhere(np.array(dir_out["pnames"][iz]) == (pname + "_0"))[0, 0]
             # convert from the otype the file was written with (files that
             # do not record it used the baseline otypes)
             saved_otype = dir_out.get("otypes", {}).get(pname + "_0") or legacy_otype(pname)
             parameter["value"] = convert_otype(
-                dir_out["mle"][iz][pname + "_0"],
+                _at_a_time_value(dir_out, iz, pname + "_0"),
                 saved_otype,
                 history_otype(self.args, pname),
                 floor=parameter["min_value"],
