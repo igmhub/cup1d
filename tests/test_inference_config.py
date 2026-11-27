@@ -36,14 +36,21 @@ def test_gauss_newton_hessian_scales_exponential_parameters_to_the_cube():
     def physical(cube):
         return np.array([-10.0, 0.0]) + np.asarray(cube) * widths
 
-    def prediction(cube, zmask=None):
+    def get_p1d_kms(cube):
         x = physical(cube)
-        return np.array([np.exp(x[0]), x[1]]), np.eye(2)
+        return {"data": [np.array([np.exp(x[0]), x[1]])]}, {}
+
+    from scipy.linalg import cho_factor
 
     fitter = object.__new__(Fitter)
-    fitter.like = SimpleNamespace(free_params=free_params, Gauss_priors=None)
+    # one data set, one redshift, unit covariance
+    fitter.like = SimpleNamespace(
+        free_params=free_params, Gauss_priors=None, get_p1d_kms=get_p1d_kms,
+        data={"data": SimpleNamespace(z=[3.0], full_Pk_kms=None)},
+        chol_Pk_kms={"data": [cho_factor(np.eye(2), lower=True)]}, full_chol_Pk_kms={},
+    )
     fitter.ndim = 2
-    fitter._prediction_vector_and_icov = prediction
+    fitter.parameters_from_sampling_point = lambda cube: np.asarray(cube)
     for cube_p in (0.1, 0.5, 0.9):
         fitter.mle_cube = np.array([cube_p, 0.4])
         amplitude = np.exp(physical(fitter.mle_cube)[0])

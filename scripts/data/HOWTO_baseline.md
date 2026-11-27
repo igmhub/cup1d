@@ -1,62 +1,74 @@
 # DR1 baseline with the current code: what to run
 
-Paper run for comparison: `~/Proyectos/projects/lya/data/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7`.
-Use the `lace` environment (`conda activate lace`).
+Two comparisons:
+
+* **cup1d vs Cobaya (lya_interface)**, same configuration, with the ForestFlow GP
+  emulator: `configs/desi_dr1_tests/cm2026_base_forestmpggp.yaml` (CM2026 baseline, only
+  the emulator changed). lya_interface does not support the LaCE emulator yet.
+* **LaCE baseline vs DR1 paper**, cup1d only: `configs/cm2026/cm2026_base.yaml` (`None` below).
+
+Paper run: `$OUT/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7`. Use the `lace` environment.
+New runs go to `<data>/<variation or global_opt>/<emulator>/chain_N`, with emulator
+`lace_mpg` or `forest_mpg_gp`.
 
 ## 1. Minimize (laptop, from the cup1d folder)
 
 ```bash
 OUT=~/Proyectos/projects/lya/data/out_DESI_DR1
-python scripts/data/data_sampler.py None       --stage minimize --path_out $OUT   # baseline (HCD in log)
-python scripts/data/data_sampler.py HCD_linear --stage minimize --path_out $OUT   # HCD amplitudes linear
+FF=configs/desi_dr1_tests/cm2026_base_forestmpggp.yaml
+python scripts/data/data_sampler.py $FF        --stage minimize --path_out $OUT   # ForestFlow GP
+python scripts/data/data_sampler.py None       --stage minimize --path_out $OUT   # LaCE baseline (HCD in log)
+python scripts/data/data_sampler.py HCD_linear --stage minimize --path_out $OUT   # LaCE, HCD linear
 ```
 
-The last line printed gives the chi2 and the new folder (`.../global_opt/CH24_mpgcen_gpr/chain_N`
-and `.../HCD_linear/CH24_mpgcen_gpr/chain_N`).
+The last line printed gives the chi2 and the folder.
 
 ## 2. Look at the best fits
 
 ```bash
-BASE=$OUT/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_N        # set N
-LIN=$OUT/DESIY1_QMLE3/HCD_linear/CH24_mpgcen_gpr/chain_N
+FFMIN=$OUT/DESIY1_QMLE3/global_opt/forest_mpg_gp/chain_N     # set N
+BASE=$OUT/DESIY1_QMLE3/global_opt/lace_mpg/chain_N
+LIN=$OUT/DESIY1_QMLE3/HCD_linear/lace_mpg/chain_N
 PAPER=$OUT/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7
 
-# Delta2_star-n_star vs simulations with Gauss-Newton errors, best-fit P1D, summary
-python scripts/data/minimizer_plots.py $BASE $LIN --paper $PAPER --unblind
+# Delta2_star-n_star vs simulations with Gauss-Newton errors, best-fit P1D, summary (written in the first folder)
+python scripts/data/minimizer_plots.py $BASE $LIN $FFMIN --paper $PAPER --unblind
 # numbers: chi2 and star parameters vs the paper (--all: every parameter)
-python scripts/data/compare_minimizers.py $PAPER $BASE $LIN --unblind
+python scripts/data/compare_minimizers.py $PAPER $BASE $LIN $FFMIN --unblind
 ```
-
-Figures and `minimizer_summary.txt` are written in `$BASE`.
 
 ## 3. emcee with cup1d (NERSC)
 
-Copy the baseline minimizer folder and start the sampler from it (it writes into the same folder):
+Copy a minimizer folder and start the sampler from it (it writes into the same folder):
 
 ```bash
-rsync -av $BASE perlmutter:'$SCRATCH'/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/   # laptop
+rsync -av $FFMIN perlmutter:'$SCRATCH'/out_DESI_DR1/DESIY1_QMLE3/global_opt/forest_mpg_gp/   # laptop
 # on Perlmutter, from the cup1d checkout (after git pull):
-sbatch scripts/data/launch_sampler.sh $SCRATCH/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_N
+sbatch scripts/data/launch_sampler.sh $SCRATCH/out_DESI_DR1/DESIY1_QMLE3/global_opt/forest_mpg_gp/chain_N
 ```
 
-## 4. Same YAML with Cobaya through lya_interface (NERSC)
+Same for the LaCE baseline (`.../global_opt/lace_mpg/chain_N`).
 
-The interface YAML `lya_interface/examples/dr1_cm2026_base_evaluate.yaml` is generated from
-`configs/cm2026/cm2026_base.yaml` (regenerate after changing it:
-`python scripts/config_from_cup1d.py ../cup1d/configs/cm2026/cm2026_base.yaml examples/dr1_cm2026_base_evaluate.yaml`).
-On Perlmutter, from the lya_interface checkout:
+## 4. Same configuration with Cobaya through lya_interface (NERSC)
+
+`lya_interface/examples/dr1_cm2026_forestmpggp_evaluate.yaml` is generated from the cup1d YAML
+above (regenerate after changing it:
+`python scripts/config_from_cup1d.py ../cup1d/configs/desi_dr1_tests/cm2026_base_forestmpggp.yaml examples/dr1_cm2026_forestmpggp_evaluate.yaml`).
+At the same point it gives the native cup1d chi2 within 0.03. On Perlmutter, from the
+lya_interface checkout:
 
 ```bash
-export CONFIG=$PWD/examples/dr1_cm2026_base_evaluate.yaml
-export RUN_DIR=$CFS/data/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/cobaya_mcmc
-sbatch --export=ALL,CONFIG=$CONFIG,RUN_DIR=$RUN_DIR scripts/nersc/prepare_job.sh       # best fit, covmat, YAML
-sbatch --export=ALL,RUN_DIR=$RUN_DIR,NEW_CHAIN=1 scripts/nersc/mcmc_job_test.sh       # 30 min check
-sbatch --export=ALL,RUN_DIR=$RUN_DIR scripts/nersc/mcmc_job.sh                        # production
+CONFIG=$PWD/examples/dr1_cm2026_forestmpggp_evaluate.yaml
+RUN_DIR=$CFS/data/DESIY1_QMLE3/global_opt/forest_mpg_gp/cobaya_mcmc
+sbatch --export=ALL,CONFIG=$CONFIG,RUN_DIR=$RUN_DIR scripts/nersc/prepare_job.sh   # best fit, covmat, YAML
+sbatch --export=ALL,RUN_DIR=$RUN_DIR,NEW_CHAIN=1 scripts/nersc/mcmc_job_test.sh    # 30 min check
+sbatch --export=ALL,RUN_DIR=$RUN_DIR scripts/nersc/mcmc_job.sh                     # production
 ```
 
 Follow and plot it as in `lya_interface/scripts/nersc/HOWTO.md` (`chain_diagnostics.py $RUN_DIR`,
-`chain_plots.py $RUN_DIR --unblind`).
+`chain_plots.py $RUN_DIR --unblind`). The job resources were tuned for the hires ForestFlow
+run: check the time per step in the 30 min test.
 
 ## Before running on NERSC
 
-Commit and push cup1d (`high_res`) and lya_interface, then `git pull` both on Perlmutter.
+`git pull` cup1d, lya_interface and LaCE on Perlmutter.

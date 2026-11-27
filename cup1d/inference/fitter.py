@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 import time
 from scipy.optimize import minimize
-from scipy.linalg import block_diag
 from threadpoolctl import threadpool_limits
 import numpy as np
 from mpi4py import MPI
@@ -525,76 +524,6 @@ class Fitter(object):
             self.param_dict.get(name, name): value for name, value in self.truth.items()
         }
 
-    def _prediction_vector_and_icov(self, values, zmask=None):
-        """Flatten selected model bins and assemble their inverse covariance.
-
-        Parameters
-        ----------
-        values : array-like
-            Unit-cube coordinates for the free likelihood parameters.
-        zmask : array-like, optional
-            Redshifts to retain, matched to data bins with an absolute
-            tolerance of ``1e-3``.  By default retain all bins.
-
-        Returns
-        -------
-        prediction : ndarray
-            Concatenated one-dimensional model prediction for selected data
-            bins.
-        inverse_covariance : ndarray
-            Block-diagonal inverse covariance aligned with ``prediction``.
-
-        Raises
-        ------
-        ValueError
-            If the emulator rejects the point or ``zmask`` selects no bins.
-        """
-
-        parameters = self.parameters_from_sampling_point(values)
-        result = self.like.get_p1d_kms(parameters)
-        if result is None:
-            raise ValueError("cannot estimate errors outside the emulator domain")
-        predictions = result[0]
-        model_vectors = []
-        covariance_blocks = []
-        for key, data in self.like.data.items():
-            if zmask is None:
-                indices = np.arange(len(data.z))
-            else:
-                indices = np.flatnonzero(
-                    np.any(
-                        np.isclose(
-                            np.asarray(data.z)[:, None],
-                            np.atleast_1d(zmask)[None, :],
-                            atol=1.0e-3,
-                            rtol=0,
-                        ),
-                        axis=1,
-                    )
-                )
-            if len(indices) == 0:
-                continue
-            model_vectors.append(
-                np.concatenate(
-                    [
-                        np.asarray(predictions[key][index]).reshape(-1)
-                        for index in indices
-                    ]
-                )
-            )
-            full_icov = self.like.full_icov_Pk_kms[key]
-            if full_icov is not None and zmask is None:
-                covariance_blocks.append(full_icov)
-            else:
-                covariance_blocks.append(
-                    block_diag(
-                        *[self.like.icov_Pk_kms[key][index] for index in indices]
-                    )
-                )
-        if not model_vectors:
-            raise ValueError("zmask does not select any data bins")
-        return np.concatenate(model_vectors), block_diag(*covariance_blocks)
-
     def _gauss_newton_hessian(self, hessian_step, zmask=None):
         """Approximate unit-cube posterior curvature from model derivatives.
 
@@ -682,37 +611,19 @@ class Fitter(object):
                 log_width[exponential] * amplitudes / amplitude_range[exponential]
             )
 
-        model, inverse_covariance = self._prediction_vector_and_icov(
-            hessian_to_cube(hessian_point), zmask=zmask
-        )
-        jacobian = np.empty((model.size, self.ndim))
-        for index in range(self.ndim):
-            step = min(hessian_step, hessian_point[index], 1.0 - hessian_point[index])
-            direction = np.zeros(self.ndim)
-            if step > 0:
-                direction[index] = step
-                plus, _ = self._prediction_vector_and_icov(
-                    hessian_to_cube(hessian_point + direction), zmask=zmask
-                )
-                minus, _ = self._prediction_vector_and_icov(
-                    hessian_to_cube(hessian_point - direction), zmask=zmask
-                )
-                jacobian[:, index] = (plus - minus) / (2 * step)
-            elif self.mle_cube[index] < 1.0:
-                step = min(hessian_step, 1.0 - self.mle_cube[index])
-                direction[index] = step
-                plus, _ = self._prediction_vector_and_icov(
-                    hessian_to_cube(hessian_point + direction), zmask=zmask
-                )
-                jacobian[:, index] = (plus - model) / step
-            else:
-                step = min(hessian_step, self.mle_cube[index])
-                direction[index] = step
-                minus, _ = self._prediction_vector_and_icov(
-                    hessian_to_cube(hessian_point - direction), zmask=zmask
-                )
-                jacobian[:, index] = (model - minus) / step
-        hessian = jacobian.T @ inverse_covariance @ jacobian
+        from cup1d.inference.curvature import p1d_gauss_newton
+
+        def predict(point):
+            """Rebinned P1D at a point of the Hessian coordinates."""
+            parameters = self.parameters_from_sampling_point(hessian_to_cube(point))
+            result = self.like.get_p1d_kms(parameters)
+            if result is None:
+                raise ValueError("cannot estimate errors outside the emulator domain")
+            return result[0]
+
+        # J^T C^-1 J with the covariance blocks the likelihood uses (the full
+        # covariance of a data set when it has one)
+        hessian = p1d_gauss_newton(self.like, predict, hessian_point, hessian_step, zmask=zmask)
         hessian = hessian * np.outer(cube_scale, cube_scale)
         priors = self.like.Gauss_priors
         if priors is not None:
@@ -726,7 +637,11 @@ class Fitter(object):
         return hessian
 
     def estimate_mle_errors(
-        self, hessian_step=1.0e-4, zmask=None, method="finite_difference"
+        self,
+        hessian_step=1.0e-4,
+        zmask=None,
+        method="finite_difference",
+        flat_prior_curvature=True,
     ):
         """Estimate local MLE errors from the negative-log-posterior Hessian.
 
@@ -739,6 +654,15 @@ class Fitter(object):
         method : {'finite_difference', 'gauss_newton', 'hybrid'}, default='finite_difference'
             Curvature estimator.  ``'hybrid'`` replaces cosmology rows of the
             Gauss--Newton matrix with finite-difference rows.
+        flat_prior_curvature : bool, default=True
+            Add the flat priors as Gaussians of the same variance (width**2 /
+            12, i.e. curvature 12 in unit-cube coordinates). A Gaussian
+            approximation cannot truncate at prior edges; without this, data-
+            unconstrained directions (many IGM parameters in DR1) extend far
+            beyond their priors and inflate the cosmology errors by a factor
+            ~3 (sigma(Delta2_star) 0.10 instead of 0.035 for DR1, whose
+            posterior gives 0.032). ``False`` gives the likelihood-only
+            curvature.
 
         Returns
         -------
@@ -792,6 +716,11 @@ class Fitter(object):
                 "method must be 'finite_difference', 'gauss_newton', or 'hybrid'"
             )
         hessian = 0.5 * (hessian + hessian.T)
+        if flat_prior_curvature:
+            from cup1d.inference.curvature import FLAT_PRIOR_CURVATURE
+
+            # uniform prior on [0, 1] in the cube: variance 1/12
+            hessian = hessian + FLAT_PRIOR_CURVATURE * np.eye(self.ndim)
         eigenvalues, eigenvectors = np.linalg.eigh(hessian)
         if not np.all(np.isfinite(eigenvalues)):
             raise ValueError(f"{method} curvature contains non-finite values")
@@ -810,6 +739,7 @@ class Fitter(object):
         inverse_eigenvalues[~null_modes] = 1.0 / eigenvalues[~null_modes]
 
         self.mle_error_method = method
+        self.mle_flat_prior_curvature = bool(flat_prior_curvature)
         self.mle_hessian = hessian
         self.mle_hessian_rank = int(np.count_nonzero(~null_modes))
         self.mle_covariance_cube = (eigenvectors * inverse_eigenvalues) @ eigenvectors.T
@@ -1906,6 +1836,7 @@ class Fitter(object):
         restart=True,
         estimate_errors=False,
         hessian_step=1.0e-4,
+        error_method="finite_difference",
     ):
         """Minimize negative log posterior with SciPy dual annealing.
 
@@ -1926,6 +1857,8 @@ class Fitter(object):
             Estimate MLE errors after fitting.
         hessian_step : float, default=1e-4
             Displacement used for optional error estimation.
+        error_method : str, default='finite_difference'
+            Curvature estimator passed to :meth:`estimate_mle_errors`.
 
         Notes
         -----
@@ -2448,6 +2381,7 @@ class Fitter(object):
 
     _PERSISTED_FIT_ATTRIBUTES = (
         "mle_error_method",
+        "mle_flat_prior_curvature",
         "mle_hessian",
         "mle_hessian_rank",
         "mle_covariance_cube",

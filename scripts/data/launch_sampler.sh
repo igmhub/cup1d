@@ -4,7 +4,7 @@
 # The configuration is the one recorded in minimizer_results.npy; the chain
 # starts at that best fit and is written to the same chain_N folder.
 #
-#   sbatch scripts/data/launch_sampler.sh $SCRATCH/out_DESI_DR1/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_N
+#   sbatch scripts/data/launch_sampler.sh $SCRATCH/out_DESI_DR1/DESIY1_QMLE3/global_opt/lace_mpg/chain_N
 #
 #SBATCH -A desi
 #SBATCH -q regular

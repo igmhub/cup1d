@@ -3,7 +3,8 @@
 Writes into the chain folder of the first result (``--out`` to change it):
 
 * ``minimizer_star_simulations``: Delta2_star--n_star of the emulator training
-  simulations, the best fit with its 1 and 2 sigma Gauss--Newton ellipses, and
+  simulations, the best fit with its 1 and 2 sigma Gauss--Newton ellipses
+  (flat priors included as Gaussians of the same variance), and
   the best fits of the other results given.
 * ``minimizer_best_fit_p1d``: model against the data.
 * ``minimizer_summary.txt``: chi2, star parameters with errors, parameters

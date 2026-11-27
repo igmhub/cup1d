@@ -226,7 +226,7 @@ class IGM(object):
                 igms_return["mF"] = mF
                 igms_return["tau_eff"] = -np.log(mF)
                 continue
-            elif sim_igm == "Gaikwad21":
+            elif sim_igm in ("Gaikwad21", "Gaikwad21_smooth"):
                 from lace.cosmo.thermal_broadening import thermal_broadening_kms
                 from cup1d.likelihood.likelihood import others_igm
 
@@ -260,7 +260,8 @@ class IGM(object):
                 igms_return["mF"] = mF
                 igms_return["tau_eff"] = -np.log(mF)
 
-                igms_return["sigT_kms"] = thermal_broadening_kms(T0)
+                # others_igm stores T0 in units of 1e4 K; the broadening needs K
+                igms_return["sigT_kms"] = thermal_broadening_kms(T0 * 1e4)
                 # igms_return["sigT_Mpc"] = igm_hist["sigT_Mpc"]
                 igms_return["gamma"] = gamma
                 continue

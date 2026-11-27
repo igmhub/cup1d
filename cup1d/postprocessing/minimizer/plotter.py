@@ -43,9 +43,11 @@ class MinimizerPlotter:
         """Load ``minimizer_results.npy`` (or the ``chain_N`` folder holding it)."""
         from cup1d.inference.analysis import Analysis
 
-        path = Path(path)
+        path = Path(path).expanduser()
         if path.is_dir():
             path = path / "minimizer_results.npy"
+        if not path.is_file():
+            raise FileNotFoundError(f"no minimizer result: {path} does not exist")
         return cls(Analysis.from_results(path), **kwargs)
 
     @property
@@ -62,8 +64,14 @@ class MinimizerPlotter:
 
     @property
     def star_covariance(self):
-        """Gauss--Newton covariance of (Delta2_star, n_star, alpha_star)."""
-        if not hasattr(self.fitter, "mle_cosmo_covariance"):
+        """Gauss--Newton covariance of (Delta2_star, n_star, alpha_star).
+
+        With the flat priors as Gaussians (the default of
+        ``Fitter.estimate_mle_errors``); results saved without them are
+        recomputed.
+        """
+        if not (hasattr(self.fitter, "mle_cosmo_covariance")
+                and getattr(self.fitter, "mle_flat_prior_curvature", False)):
             self.fitter.estimate_mle_errors(method="gauss_newton")
         return np.asarray(self.fitter.mle_cosmo_covariance)
 
@@ -85,7 +93,8 @@ class MinimizerPlotter:
         """Text: chi2, star parameters with Gauss--Newton errors, prior edges."""
         errors = np.sqrt(np.diag(self.star_covariance))
         lines = [f"{self.label}: chi2 = {self.chi2:.2f}, "
-                 f"{'unblinded' if self.unblind else 'blinded'} star parameters"]
+                 f"{'unblinded' if self.unblind else 'blinded'} star parameters, "
+                 "Gauss-Newton errors with flat priors as Gaussians"]
         lines += [f"  {name:12s} {self.star[name]: .5f} +- {err:.5f}" for name, err in zip(STAR, errors)]
         edges = self.near_bounds()
         lines.append("  near prior edges: " + (", ".join(f"{n} ({c:.3f})" for n, c in edges) if edges else "none"))
