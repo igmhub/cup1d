@@ -13,8 +13,11 @@ from lace.configuration import get_data_path
 # (PSMOOTH) instead of the measured P1D (655.2820094791965 -> 695.066433), and
 # interpolating it linearly in redshift between emulator snapshots instead of
 # taking the nearest one (-> 695.861141), and the converged defaults
-# k_rebin_factor 32 and n_k_emu 64 instead of 8 and null (-> 695.930961).
-EXPECTED_CHI_SQUARED = np.float64(695.930961)
+# k_rebin_factor 32 and n_k_emu 64 instead of 8 and null (-> 695.930961),
+# and scaling it by cup1d's own smooth P1D (cup1d.p1ds.smooth_p1d, spline fitted
+# to the whole measurement) instead of the file's PSMOOTH (commits dd6dd1b and
+# 508dfcd; -> 683.323912).
+EXPECTED_CHI_SQUARED = np.float64(683.323912)
 
 
 @pytest.mark.external_model
@@ -226,13 +229,15 @@ def test_dr1_baseline_chi_squared(tmp_path):
     assert minimizer_path.name == "minimizer_results.npy"
     assert set(minimizer_payload) == {
         "format_version", "result_type", "config_path", "config_loader",
-        "synthetic", "parameter_names", "parameter_bounds", "n_data", "fit",
+        "synthetic", "parameter_names", "parameter_bounds", "parameter_otypes",
+        "n_data", "fit",
     }
     assert {
         "mle_cube", "mle_chi2", "mle_cosmo_errors",
         "mle_cosmo_covariance", "mle_cosmo_correlation",
     } <= set(minimizer_payload["fit"])
     assert minimizer_payload["fit"]["mle_error_method"] == "gauss_newton"
+    assert minimizer_payload["fit"]["mle_flat_prior_curvature"] is True
 
     analysis.fitter.chain = np.zeros((2, 2, analysis.fitter.ndim))
     analysis.fitter.lnprob = np.zeros((2, 2))

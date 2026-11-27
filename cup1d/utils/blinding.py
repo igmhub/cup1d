@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+from types import MappingProxyType
+
 import numpy as np
 from cup1d.utils.various_dicts import blob_strings_orig, conv_strings
 
@@ -61,7 +64,7 @@ def _apply_blinding_offset(blind, values, sign):
     only ``Delta2_star`` and ``n_star``), but malformed inputs are not silently
     ignored.  The operation is in-place, matching the historical API.
     """
-    if not isinstance(blind, dict):
+    if not isinstance(blind, Mapping):
         raise TypeError("blind must be a dictionary of cosmology offsets")
 
     if isinstance(values, np.ndarray) and values.dtype.names is None:
@@ -128,3 +131,65 @@ def apply_unblinding(blind, dict_cosmo):
         The modified input object.
     """
     return _apply_blinding_offset(blind, dict_cosmo, sign=-1)
+
+
+class Blinding(Mapping):
+    """Blinding offsets of the compressed cosmology for a set of data.
+
+    The single place where the offsets are decided (cup1d's likelihood and
+    lya_interface both build it): seeded by the ``blinding`` string of the
+    first data set that requests blinding, zero offsets otherwise. It is a
+    read-only mapping ``{"Delta2_star": ..., "n_star": ..., "alpha_star": ...}``,
+    so it can be passed wherever an offsets dict is expected.
+
+    Parameters
+    ----------
+    offsets : mapping
+        Additive offsets keyed by compressed-cosmology name.
+    """
+
+    def __init__(self, offsets):
+        self._offsets = MappingProxyType({key: float(value) for key, value in offsets.items()})
+
+    @classmethod
+    def from_data(cls, data_sets):
+        """Offsets for P1D data sets (iterable of objects with ``apply_blinding``
+        and ``blinding``), as native cup1d analyses use them."""
+        for data in data_sets:
+            if data.apply_blinding:
+                seed = int.from_bytes(data.blinding.encode("utf-8"), byteorder="big")
+                return cls(set_blinding(True, seed))
+        return cls(set_blinding(False, 0))
+
+    def __getitem__(self, key):
+        return self._offsets[key]
+
+    def __iter__(self):
+        return iter(self._offsets)
+
+    def __len__(self):
+        return len(self._offsets)
+
+    def __repr__(self):
+        return f"Blinding({dict(self._offsets)})"
+
+    @property
+    def is_blinded(self):
+        """Whether any offset is non-zero."""
+        return any(value != 0 for value in self._offsets.values())
+
+    def blind(self, values):
+        """Copy of ``values`` (mapping or structured/blob array) with the offsets added."""
+        return apply_blinding(self, _copy(values))
+
+    def unblind(self, values):
+        """Copy of ``values`` with the offsets removed."""
+        return apply_unblinding(self, _copy(values))
+
+
+def _copy(values):
+    """Copy of a mapping (values as float arrays/scalars) or an array."""
+    if isinstance(values, np.ndarray):
+        return values.copy()
+    return {key: np.array(value, dtype=float) if np.ndim(value) else float(value)
+            for key, value in values.items()}

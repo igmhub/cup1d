@@ -465,44 +465,12 @@ class Theory:
         if return_blob:
             blob = self.get_blob(cosmo)
 
-        emu_call = {}
-        for key in self.emulator.emu_params:
-            if key in {"Delta2_p", "n_p", "alpha_p"}:
-                emu_call[key] = np.zeros(len(zs))
-                for ii in range(len(linP_Mpc_params)):
-                    emu_call[key][ii] = linP_Mpc_params[ii][key]
-            elif key == "mF":
-                emu_call[key] = self.model_igm.models["F_model"].get_mean_flux(
-                    zs, like_params=like_params
-                )
-                emu_call["mF_fid"] = self.model_igm.models["F_model"].get_mean_flux(zs)
-            elif key == "gamma":
-                emu_call[key] = self.model_igm.models["T_model"].get_gamma(
-                    zs, like_params=like_params
-                )
-            elif key == "sigT_Mpc":
-                emu_call[key] = (
-                    self.model_igm.models["T_model"].get_sigT_kms(
-                        zs, like_params=like_params
-                    )
-                    / M_of_zs
-                )
-            elif key == "kF_Mpc":
-                emu_call[key] = (
-                    self.model_igm.models["P_model"].get_kF_kms(
-                        zs, like_params=like_params
-                    )
-                    * M_of_zs
-                )
-            elif key == "lambda_P":
-                emu_call[key] = 1000 / (
-                    self.model_igm.models["P_model"].get_kF_kms(
-                        zs, like_params=like_params
-                    )
-                    * M_of_zs
-                )
-            else:
-                raise ValueError("Not a theory model for emulator parameter", key)
+        from cup1d.theory.emulator_inputs import emulator_inputs
+
+        emu_call = emulator_inputs(
+            self.emulator.emu_params, zs, linP_Mpc_params, M_of_zs,
+            self.model_igm, like_params=like_params,
+        )
 
         if return_M_of_z:
             if return_blob:

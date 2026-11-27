@@ -524,6 +524,29 @@ class Fitter(object):
             self.param_dict.get(name, name): value for name, value in self.truth.items()
         }
 
+    def near_prior_bounds(self, cube=None, fraction=0.02, text=False):
+        """Parameters close to a flat-prior edge at a point (default: the MLE).
+
+        Parameters
+        ----------
+        cube : array-like, optional
+            Unit-cube point; ``mle_cube`` if omitted.
+        fraction : float, default=0.02
+            Maximum distance to an edge, as a fraction of the prior range.
+        text : bool, default=False
+            Return the formatted report instead of the rows.
+
+        Returns
+        -------
+        list of dict or str
+            As :func:`cup1d.likelihood.parameter.near_prior_bounds`.
+        """
+        cube = self.mle_cube if cube is None else cube
+        values = self.parameters_from_sampling_point(cube)
+        bounds = {name: (p["min_value"], p["max_value"]) for name, p in self.like.free_params.items()}
+        rows = parameter_space.near_prior_bounds(values, bounds, fraction=fraction)
+        return parameter_space.format_near_prior_bounds(rows, fraction) if text else rows
+
     def _gauss_newton_hessian(self, hessian_step, zmask=None):
         """Approximate unit-cube posterior curvature from model derivatives.
 
@@ -1597,21 +1620,7 @@ class Fitter(object):
             ii += 1
 
         self.print("Passed out:", chi2)
-        _ = (mle_cube > 0.95) | (mle_cube < 0.05)
-        if np.sum(_) > 0:
-            self.print(
-                "Almost out of bounds:",
-            )
-            _ = np.argwhere((mle_cube > 0.95) | (mle_cube < 0.05))[:, 0]
-            for ii in range(len(_)):
-                ind = _[ii]
-                self.print(
-                    self.like.free_param_names[ind],
-                    mle_cube[ind],
-                    self.value_from_cube(
-                        self.like.free_param_names[ind], mle_cube[ind]
-                    ),
-                )
+        self.print(self.near_prior_bounds(mle_cube, fraction=0.05, text=True))
         self.set_mle(mle_cube, chi2)
         if estimate_errors:
             self.estimate_mle_errors(

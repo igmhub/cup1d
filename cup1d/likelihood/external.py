@@ -88,7 +88,8 @@ def fused_projection_Mpc(model, linear, zs, k_iMpc, parameters, integrator, mome
     Parameters
     ----------
     model : forestflow.model.arinyo.ArinyoModel
-        Model providing ``linear``, ``default_params`` and ``nonlinear_correction``.
+        Model providing ``linear``, ``default_params``, ``kernel_terms`` and
+        ``pressure_leg``.
     linear : object
         Linear-theory grid matching ``zs``.
     zs : array_like
@@ -116,12 +117,12 @@ def fused_projection_Mpc(model, linear, zs, k_iMpc, parameters, integrator, mome
     mu2 = mu**2
     lin_p = model.linear.get_linP_Mpc(linear, zs, k3d)
     growth = np.asarray(model.linear.get_fz(linear, zs), dtype=float)[:, None, None]
-    dnl = model.nonlinear_correction(lin_p, k3d, mu, parameters)
-    lya_kaiser = parameters["bias"] + parameters["bias_eta"] * growth * mu2
-    p1d = integrate(lin_p * lya_kaiser**2 * dnl)
+    # ForestFlow's Arinyo kernel and its factors (shared by the metal terms)
+    p3d, lya_kaiser, dnl = model.kernel_terms(lin_p, growth, k3d, mu, parameters)
+    p1d = integrate(p3d)
     if not moments:
         return p1d, None
-    metal_leg = np.exp(-0.5 * (k3d / parameters["kp"]) ** 2)
+    metal_leg = model.pressure_leg(k3d, parameters["kp"])
     cross = lin_p * np.sqrt(dnl) * metal_leg * lya_kaiser
     metal = lin_p * metal_leg**2
     return p1d, {
@@ -172,6 +173,53 @@ def project_fused(request, snapshot, arinyo, projection=None, kmax_iMpc=np.inf,
     from forestflow.model.linear import LinearTheoryGrid
     from forestflow.statistics.p1d import P1D_Mpc
 
+    rows = _request_rows(request, snapshot, kmax_iMpc, n_k)
+    zs, k_iMpc = rows.zs, rows.k_iMpc
+    integrator = make_integrator(projection) if integrator is None else integrator
+    for cutoff in _k_perp_range(integrator):
+        snapshot.validate_k(np.sqrt(k_iMpc**2 + cutoff**2))
+    names = next(iter(arinyo.values())).keys()
+    parameters = {name: np.asarray([arinyo[z][name] for z in zs])[:, None, None]
+                  for name in names}
+    model = ArinyoModel(fiducial_cosmology=snapshot) if model is None else model
+    linear = LinearTheoryGrid(z=zs, cosmology=snapshot) if linear is None else linear
+
+    projected_moments = None
+    if hasattr(model, "kernel_terms"):
+        # One pass: shared P_L, D_NL and Kaiser factors on the quadrature grid.
+        projected, projected_moments = fused_projection_Mpc(
+            model, linear, zs, k_iMpc, parameters, integrator, moments=moments)
+    else:  # minimal compatibility models only expose the Cartesian P3D
+        if moments:
+            raise ValueError("metal moments need a model with kernel_terms")
+        projected = P1D_Mpc(linear, zs, k_iMpc, model.P3D_Mpc_kpar_kperp, parameters,
+                            integrator=integrator)
+    return _pack_request(request, rows, projected, projected_moments if moments else None)
+
+
+@dataclass(frozen=True)
+class _RequestRows:
+    """Unique (z, k) rows of a prediction request on the evaluation grid.
+
+    ``keys``: (z, k_ikms) of each row; ``zs``: their redshifts; ``rows_kms``:
+    requested grids; ``eval_kms``: evaluation grids (the requested ones, or
+    ``n_k`` log-spaced points spanning them); ``lengths``: their lengths;
+    ``conversion``: dkms/dMpc per row; ``k_iMpc``: evaluation grids in 1/Mpc,
+    padded with each row's last k; ``n_k`` as requested.
+    """
+
+    keys: list
+    zs: np.ndarray
+    rows_kms: list
+    eval_kms: list
+    lengths: np.ndarray
+    conversion: np.ndarray
+    k_iMpc: np.ndarray
+    n_k: int | None
+
+
+def _request_rows(request, snapshot, kmax_iMpc, n_k):
+    """Unique (z, k) rows of a request, checked against the k coverage."""
     # Coverage is checked at the largest data bin centre of each row, as the
     # native kmax_ikms cut; the fine grid averaging the theory over the last
     # bin's width may extend slightly beyond it (native cup1d does not check).
@@ -199,44 +247,35 @@ def project_fused(request, snapshot, arinyo, projection=None, kmax_iMpc=np.inf,
             raise ValueError("parallel k outside declared external-coefficient coverage")
         k_iMpc[index, :len(row)] = row
         k_iMpc[index, len(row):] = row[-1]
-    integrator = make_integrator(projection) if integrator is None else integrator
-    for cutoff in _k_perp_range(integrator):
-        snapshot.validate_k(np.sqrt(k_iMpc**2 + cutoff**2))
-    names = next(iter(arinyo.values())).keys()
-    parameters = {name: np.asarray([arinyo[z][name] for z in zs])[:, None, None]
-                  for name in names}
-    model = ArinyoModel(fiducial_cosmology=snapshot) if model is None else model
-    linear = LinearTheoryGrid(z=zs, cosmology=snapshot) if linear is None else linear
+    return _RequestRows(keys, zs, rows_kms, eval_kms, lengths, conversion, k_iMpc, n_k)
 
+
+def _pack_request(request, rows, p1d_Mpc, moments_Mpc=None):
+    """P1D (and moments) in Mpc on the evaluation rows -> km/s per data set.
+
+    Returns the P1D and, with moments, the moments, as immutable mappings
+    ``{group identifier: (one array per redshift of the group)}``.
+    """
+    projected = p1d_Mpc * rows.conversion[:, None]
     projected_moments = None
-    if hasattr(model, "nonlinear_correction"):
-        # One pass: shared P_L, D_NL and Kaiser factors on the quadrature grid.
-        projected, projected_moments = fused_projection_Mpc(
-            model, linear, zs, k_iMpc, parameters, integrator, moments=moments)
-    else:  # minimal compatibility models only expose the Cartesian P3D
-        if moments:
-            raise ValueError("metal moments need a model with nonlinear_correction")
-        projected = P1D_Mpc(linear, zs, k_iMpc, model.P3D_Mpc_kpar_kperp, parameters,
-                            integrator=integrator)
-    projected = projected * conversion[:, None]
-    if projected_moments is not None:
-        for name, values in projected_moments.items():
-            projected_moments[name] = values * conversion[:, None]
+    if moments_Mpc is not None:
+        projected_moments = {name: values * rows.conversion[:, None]
+                             for name, values in moments_Mpc.items()}
 
     p1d_by_key, moments_by_key = {}, {}
-    for index, key in enumerate(keys):
-        row = projected[index, :lengths[index]]
-        if n_k is not None:
-            row = _interpolate_signed(eval_kms[index], row, rows_kms[index])
+    for index, key in enumerate(rows.keys):
+        row = projected[index, :rows.lengths[index]]
+        if rows.n_k is not None:
+            row = _interpolate_signed(rows.eval_kms[index], row, rows.rows_kms[index])
         if not np.all(np.isfinite(row)) or np.any(row <= 0):
             raise ValueError("non-finite/nonpositive external-coefficient projection")
         p1d_by_key[key] = _immutable(row)
         if projected_moments is not None:
             out = {}
             for name, values in projected_moments.items():
-                moment = values[index, :lengths[index]]
-                if n_k is not None:
-                    moment = _interpolate_signed(eval_kms[index], moment, rows_kms[index])
+                moment = values[index, :rows.lengths[index]]
+                if rows.n_k is not None:
+                    moment = _interpolate_signed(rows.eval_kms[index], moment, rows.rows_kms[index])
                 if not np.all(np.isfinite(moment)):
                     raise ValueError(f"non-finite metal moment {name}")
                 out[name] = _immutable(moment)
@@ -247,7 +286,42 @@ def project_fused(request, snapshot, arinyo, projection=None, kmax_iMpc=np.inf,
                                  for z, k in zip(group.redshifts, group.k_ikms))
                                  for group in request.groups})
 
-    return by_group(p1d_by_key), (by_group(moments_by_key) if moments else None)
+    return by_group(p1d_by_key), (by_group(moments_by_key) if projected_moments is not None else None)
+
+
+def emulate_request(request, snapshot, emulator, inputs, kmax_iMpc=np.inf, n_k=None):
+    """P1D of a prediction request from an emulator that predicts P1D directly.
+
+    The counterpart of :func:`project_fused` for P1D emulators (LaCE GP):
+    the same request rows, evaluation grids and packing, with
+    ``emulator.emulate_p1d_Mpc(inputs, k_iMpc)`` instead of a P3D projection.
+
+    Parameters
+    ----------
+    request : PredictionRequest
+        Data-set groups with redshifts and ragged k grids in s/km.
+    snapshot : object
+        Cosmology exposing ``get_dkms_diMpc(z)``.
+    emulator : object
+        P1D emulator with ``emulate_p1d_Mpc(inputs, k_Mpc)``, ``inputs``
+        mapping names to arrays with one value per row of ``k_Mpc``.
+    inputs : mapping
+        ``{z: {emulator input: value}}`` for every requested redshift.
+    kmax_iMpc : float, default=inf
+        Largest admitted parallel k (the emulator coverage).
+    n_k : int, optional
+        As in :func:`project_fused`.
+
+    Returns
+    -------
+    mapping
+        As :func:`project_fused` (P1D in km/s per data-set group).
+    """
+    rows = _request_rows(request, snapshot, kmax_iMpc, n_k)
+    names = next(iter(inputs.values())).keys()
+    row_inputs = {name: np.asarray([inputs[z][name] for z in rows.zs], dtype=float) for name in names}
+    p1d_Mpc = np.asarray(emulator.emulate_p1d_Mpc(row_inputs, rows.k_iMpc), dtype=float)
+    return _pack_request(request, rows, p1d_Mpc)[0]
 
 
 def project_arinyo_request(request, snapshot, arinyo, projection=None,
@@ -706,7 +780,13 @@ class ExternalP1DLikelihood:
     This boundary owns data rebinning, observational responses, and effective
     covariance.  Theory code supplies only uncontaminated P1D rows satisfying
     the immutable :class:`PredictionRequest` contract.
+
+    ``columnar = True`` (class attribute) evaluates one point through the
+    batch kernels of the contaminant, resolution and rebinning models
+    (a singleton parameter axis); the results are the same.
     """
+
+    columnar = False
 
     def __init__(self, data, model_cont, model_syst, cov_factor, emulator_covariance, fiducial_conversion, emu_cov_type="block", k_rebin_factor=1, configuration_id=None, include_logdet=False, syst_data_labels=None, shared_k_grid=True):
         """Initialize static data response, covariance, and prediction request.
@@ -828,6 +908,14 @@ class ExternalP1DLikelihood:
         """
         if context.request_id != self.request.identity or set(p1d_lya_kms) != set(self.data):
             raise ValueError("prediction request identity or dataset mismatch")
+        # Columnar path: a singleton parameter axis selects the batch kernels of
+        # the contaminant, resolution and rebinning models (same results). The
+        # Kaiser metal model has no columnar kernel; without nuisance
+        # parameters there is nothing to batch.
+        columnar = self.columnar and bool(nuisance_parameters) and metal_moments is None
+        if columnar:
+            nuisance_parameters = {name: np.array([value], dtype=float)
+                                   for name, value in nuisance_parameters.items()}
         index = {z: i for i, z in enumerate(context.redshifts)}
         groups = {group.identifier: group for group in self.request.groups}
         result = {}
@@ -841,19 +929,26 @@ class ExternalP1DLikelihood:
                 power = np.asarray(power, dtype=float)
                 if power.shape != (len(k),) or not np.all(np.isfinite(power)):
                     raise ValueError("malformed or non-finite external prediction")
-                rows.append(power)
+                rows.append(power[None, :] if columnar else power)
             zs = np.asarray(group.redshifts)
             k_rows = [np.asarray(k) for k in group.k_ikms]
             inds = [index[z] for z in group.redshifts]
+            mean_flux = np.asarray(context.mean_flux)[inds]
+            M_of_z = np.asarray(context.dkms_diMpc)[inds]
+            if columnar:
+                mean_flux, M_of_z = mean_flux[None, :], M_of_z[None, :]
             moments = None if metal_moments is None else metal_moments[group.identifier]
             # contaminants once per group; each data set adds its resolution correction
             base = nuisance_parameters if len(keys) == 1 else without_resolution(nuisance_parameters)
-            observed, _ = apply_observation_model(self.model_cont, self.model_syst, zs, k_rows, rows, np.asarray(context.mean_flux)[inds], np.asarray(context.dkms_diMpc)[inds], dataset_nuisance(keys[0], base, self.syst_data_labels), metal_moments=moments)
+            observed, _ = apply_observation_model(self.model_cont, self.model_syst, zs, k_rows, rows, mean_flux, M_of_z, dataset_nuisance(keys[0], base, self.syst_data_labels), metal_moments=moments)
             for key in keys:
                 own = observed if len(keys) == 1 else apply_resolution(
                     self.model_syst, zs, k_rows, observed,
                     dataset_nuisance(key, nuisance_parameters, self.syst_data_labels))
-                result[key] = self.Rebin_data.rebinning(key, own)
+                if columnar:
+                    result[key] = [row[0] for row in self.Rebin_data.rebinning_batch(key, own)]
+                else:
+                    result[key] = self.Rebin_data.rebinning(key, own)
         return result
 
     def evaluate_from_p1d(self, p1d_lya_kms, context, nuisance_parameters, metal_moments=None):

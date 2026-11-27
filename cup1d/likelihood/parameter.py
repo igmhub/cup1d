@@ -301,3 +301,57 @@ def values_from_cube_batch(parameters, values):
         name: value_from_cube(parameters, name, values[:, index])
         for index, name in enumerate(parameters)
     }
+
+
+def near_prior_bounds(values, bounds, fraction=0.02, priors=None):
+    """Parameters whose value lies close to a hard edge of its prior.
+
+    The single implementation of this check (cup1d minimizer report,
+    :class:`cup1d.postprocessing.minimizer.MinimizerPlotter` and
+    lya_interface's Cobaya fits).
+
+    Parameters
+    ----------
+    values : mapping
+        Physical value of every parameter.
+    bounds : mapping
+        ``(min, max)`` of every parameter: flat-prior bounds, or the
+        truncation edges of a truncated prior. Parameters with infinite
+        bounds or missing from ``bounds`` are skipped.
+    fraction : float, default=0.02
+        Maximum distance to an edge, as a fraction of the prior range.
+    priors : mapping, optional
+        Name of each parameter's prior distribution (reported only).
+
+    Returns
+    -------
+    list of dict
+        One entry per parameter and edge: ``name``, ``value``, ``side``
+        (``'lower'``/``'upper'``), ``bound``, ``distance`` (fraction of the
+        range) and ``prior``, closest first.
+    """
+    rows = []
+    for name, value in values.items():
+        if name not in bounds:
+            continue
+        low, high = (float(b) for b in bounds[name])
+        if not (np.isfinite(low) and np.isfinite(high)) or high <= low:
+            continue
+        value = float(value)
+        for side, bound in (("lower", low), ("upper", high)):
+            distance = abs(value - bound) / (high - low)
+            if distance <= fraction:
+                rows.append(dict(name=name, value=value, side=side, bound=bound,
+                                 distance=float(distance),
+                                 prior=(priors or {}).get(name, "uniform")))
+    return sorted(rows, key=lambda row: row["distance"])
+
+
+def format_near_prior_bounds(rows, fraction=0.02):
+    """Format :func:`near_prior_bounds` output, one parameter per line."""
+    if not rows:
+        return f"No parameter within {fraction:.0%} of the prior range from a bound."
+    lines = [f"Parameters within {fraction:.0%} of the prior range from a bound:"]
+    lines += [f"  {r['name']:24s} {r['value']: .6g}  ({r['side']} {r['prior']} bound {r['bound']:.6g}, "
+              f"{r['distance']:.2%} of the range)" for r in rows]
+    return "\n".join(lines)

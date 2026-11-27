@@ -17,6 +17,30 @@ from cup1d.likelihood import parameter as parameter_space
 from cup1d.utils.otypes import convert_otype, history_otype, interp_ic_history, legacy_otype
 
 
+def emulator_covariance_path(emulator):
+    """File with the relative (leave-one-out) covariance of an emulator.
+
+    Parameters
+    ----------
+    emulator : object
+        Emulator exposing ``emulator_label`` (the internal one, e.g.
+        ``CH24_mpgcen_gpr`` for ``lace_mpg``).
+
+    Returns
+    -------
+    str
+        ``<ForestFlow or LaCE>/data/covariance/l1O_cov_<emulator_label>.npy``.
+    """
+    label = emulator.emulator_label
+    if "forest" in label:
+        import forestflow
+
+        root = os.path.join(os.path.dirname(forestflow.__path__[0]), "data", "covariance")
+    else:
+        root = os.path.join(get_path_repo("lace"), "data", "covariance")
+    return os.path.join(root, f"l1O_cov_{label}.npy")
+
+
 def emulator_interpolation_weights(z, k_Mpc, emu_z, emu_k_Mpc):
     """Weights mapping data points onto the emulator-covariance grid.
 
@@ -178,18 +202,8 @@ class Likelihood(object):
         # store model
         self.set_model()
 
-        # set blinding
-        apply_blinding = False
-        seed = 0
-        # apply blinding if any of the data sets has apply_blinding set to True
-        for key in self.data:
-            if self.data[key].apply_blinding:
-                apply_blinding = True
-                seed = int.from_bytes(
-                    self.data[key].blinding.encode("utf-8"), byteorder="big"
-                )
-                break
-        self.blind = blinding.set_blinding(apply_blinding, seed)
+        # blinding offsets of the first data set that requests blinding
+        self.blind = blinding.Blinding.from_data(self.data.values())
 
         # set IC for likelihood: the variation's own file, else the baseline
         # of the same sample and emulator, else the configured file_ic
@@ -291,18 +305,7 @@ class Likelihood(object):
                 "emulator_covariance and fiducial_conversion must be supplied together"
             )
         if emulator_covariance is None:
-            filename = "l1O_cov_" + self.theory.emulator.emulator_label + ".npy"
-            if "forest" in self.theory.emulator.emulator_label:
-                import forestflow
-
-                covariance_root = os.path.join(
-                    os.path.dirname(forestflow.__path__[0]), "data", "covariance"
-                )
-            else:
-                covariance_root = os.path.join(
-                    get_path_repo("lace"), "data", "covariance"
-                )
-            full_path = os.path.join(covariance_root, filename)
+            full_path = emulator_covariance_path(self.theory.emulator)
             emu_cov = np.load(full_path, allow_pickle=True).item()
             fiducial_conversion = self.theory.fid_cosmo["cosmo"].get_dkms_dMpc
         else:

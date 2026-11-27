@@ -4,7 +4,6 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import Ellipse
 
 from cup1d.utils.utils import get_path_repo
 
@@ -40,14 +39,42 @@ def simulation_star_params(emulator, nyx_version="Jul2024"):
             for label, entry in cosmo.items()}
 
 
+def contour_delta_chi2(nsigma=None, level=None):
+    """Delta chi2 of a 2D Gaussian contour.
+
+    ``nsigma``: the contour whose projection onto each axis is the 1D
+    ``nsigma`` interval (Delta chi2 = nsigma**2; the convention of cup1d's
+    figures, 39%/86% of the 2D probability for 1/2 sigma). ``level``: the
+    contour enclosing that 2D probability (e.g. 0.6827 -> Delta chi2 = 2.30).
+    """
+    if (nsigma is None) == (level is None):
+        raise ValueError("give exactly one of nsigma and level")
+    if nsigma is not None:
+        return float(nsigma) ** 2
+    from scipy.stats import chi2
+
+    return float(chi2.ppf(level, 2))
+
+
+def ellipse_offsets(covariance, delta_chi2, n_points=200):
+    """Outline of a 2D Gaussian contour around the origin, shape ``(2, n_points)``.
+
+    Points ``x`` with ``x^T C^-1 x = delta_chi2`` for the 2x2 covariance ``C``.
+    """
+    eigenvalues, eigenvectors = np.linalg.eigh(np.asarray(covariance, dtype=float))
+    if np.any(eigenvalues < -1e-12 * max(1.0, np.max(np.abs(eigenvalues)))):
+        raise ValueError("covariance is not positive semidefinite")
+    angle = np.linspace(0, 2 * np.pi, n_points)
+    circle = np.vstack([np.cos(angle), np.sin(angle)])
+    return eigenvectors @ (np.sqrt(delta_chi2 * np.maximum(eigenvalues, 0))[:, None] * circle)
+
+
 def _ellipse(ax, center, covariance, nsigma, color, alpha):
-    """Gaussian contour of a 2x2 covariance (nsigma: radius in sigmas)."""
-    eigenvalues, eigenvectors = np.linalg.eigh(covariance)
-    if np.any(eigenvalues < 0):
-        raise ValueError("covariance of the star parameters is not positive semidefinite")
-    angle = np.degrees(np.arctan2(eigenvectors[1, 1], eigenvectors[0, 1]))
-    ax.add_patch(Ellipse(center, width=2 * nsigma * np.sqrt(eigenvalues[1]),
-                         height=2 * nsigma * np.sqrt(eigenvalues[0]), angle=angle,
+    """Filled Gaussian contour of a 2x2 covariance (nsigma: 1D-projection convention)."""
+    from matplotlib.patches import Polygon
+
+    outline = ellipse_offsets(covariance, contour_delta_chi2(nsigma=nsigma))
+    ax.add_patch(Polygon((np.asarray(center)[:, None] + outline).T, closed=True,
                          facecolor=color, edgecolor=color, alpha=alpha, lw=1.5, zorder=2))
 
 

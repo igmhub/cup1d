@@ -1,11 +1,12 @@
 # DR1 baseline with the current code: what to run
 
-Two comparisons:
+Comparisons:
 
-* **cup1d vs Cobaya (lya_interface)**, same configuration, with the ForestFlow GP
-  emulator: `configs/desi_dr1_tests/cm2026_base_forestmpggp.yaml` (CM2026 baseline, only
-  the emulator changed). lya_interface does not support the LaCE emulator yet.
-* **LaCE baseline vs DR1 paper**, cup1d only: `configs/cm2026/cm2026_base.yaml` (`None` below).
+* **cup1d vs Cobaya (lya_interface)**, same configuration, with either emulator:
+  LaCE GP (`configs/cm2026/cm2026_base.yaml`, the CM2026 baseline; `None` below) or
+  ForestFlow GP (`configs/desi_dr1_tests/cm2026_base_forestmpggp.yaml`). Minimizations:
+  `lya_interface/notebooks/07_dr1_p1d_lace_cobaya_vs_cup1d` (laptop).
+* **LaCE baseline vs DR1 paper**, cup1d.
 
 Paper run: `$OUT/DESIY1_QMLE3/global_opt/CH24_mpgcen_gpr/chain_7`. Use the `lace` environment.
 New runs go to `<data>/<variation or global_opt>/<emulator>/chain_N`, with emulator
@@ -51,15 +52,20 @@ Same for the LaCE baseline (`.../global_opt/lace_mpg/chain_N`).
 
 ## 4. Same configuration with Cobaya through lya_interface (NERSC)
 
-`lya_interface/examples/dr1_cm2026_forestmpggp_evaluate.yaml` is generated from the cup1d YAML
-above (regenerate after changing it:
-`python scripts/config_from_cup1d.py ../cup1d/configs/desi_dr1_tests/cm2026_base_forestmpggp.yaml examples/dr1_cm2026_forestmpggp_evaluate.yaml`).
-At the same point it gives the native cup1d chi2 within 0.03. On Perlmutter, from the
-lya_interface checkout:
+The interface YAMLs are generated from the cup1d YAMLs (regenerate after changing them):
 
 ```bash
-CONFIG=$PWD/examples/dr1_cm2026_forestmpggp_evaluate.yaml
-RUN_DIR=$CFS/data/DESIY1_QMLE3/global_opt/forest_mpg_gp/cobaya_mcmc
+python scripts/config_from_cup1d.py ../cup1d/configs/cm2026/cm2026_base.yaml examples/dr1_cm2026_base_evaluate.yaml
+python scripts/config_from_cup1d.py ../cup1d/configs/desi_dr1_tests/cm2026_base_forestmpggp.yaml examples/dr1_cm2026_forestmpggp_evaluate.yaml
+```
+
+At the same point they give the native cup1d chi2 within 1e-4 (LaCE) and 0.03 (ForestFlow,
+projection quadrature). On Perlmutter, from the lya_interface checkout (LaCE shown; for
+ForestFlow use `dr1_cm2026_forestmpggp_evaluate.yaml` and `.../forest_mpg_gp/cobaya_mcmc`):
+
+```bash
+CONFIG=$PWD/examples/dr1_cm2026_base_evaluate.yaml
+RUN_DIR=$CFS/data/DESIY1_QMLE3/global_opt/lace_mpg/cobaya_mcmc
 sbatch --export=ALL,CONFIG=$CONFIG,RUN_DIR=$RUN_DIR scripts/nersc/prepare_job.sh   # best fit, covmat, YAML
 sbatch --export=ALL,RUN_DIR=$RUN_DIR,NEW_CHAIN=1 scripts/nersc/mcmc_job_test.sh    # 30 min check
 sbatch --export=ALL,RUN_DIR=$RUN_DIR scripts/nersc/mcmc_job.sh                     # production
@@ -71,4 +77,4 @@ run: check the time per step in the 30 min test.
 
 ## Before running on NERSC
 
-`git pull` cup1d, lya_interface and LaCE on Perlmutter.
+`git pull` cup1d, lya_interface, LaCE and ForestFlow on Perlmutter.

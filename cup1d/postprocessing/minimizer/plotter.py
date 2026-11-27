@@ -59,7 +59,7 @@ class MinimizerPlotter:
         """Best-fitting star parameters (blinded unless ``unblind``)."""
         star = {name: float(self.fitter.mle_cosmo[name]) for name in STAR}
         if self.unblind:
-            star = {name: star[name] - self.fitter.like.blind[name] for name in STAR}
+            star = self.fitter.like.blind.unblind(star)
         return star
 
     @property
@@ -84,10 +84,9 @@ class MinimizerPlotter:
         return entry
 
     def near_bounds(self, fraction=0.02):
-        """Parameters within ``fraction`` of a flat prior edge (unit cube)."""
-        cube = np.asarray(self.fitter.mle_cube)
-        names = list(self.fitter.like.free_param_names)
-        return [(n, c) for n, c in zip(names, cube) if c < fraction or c > 1 - fraction]
+        """Parameters within ``fraction`` of a flat-prior edge at the best fit
+        (:meth:`cup1d.inference.fitter.Fitter.near_prior_bounds`)."""
+        return self.fitter.near_prior_bounds(fraction=fraction)
 
     def summary(self):
         """Text: chi2, star parameters with Gauss--Newton errors, prior edges."""
@@ -97,7 +96,8 @@ class MinimizerPlotter:
                  "Gauss-Newton errors with flat priors as Gaussians"]
         lines += [f"  {name:12s} {self.star[name]: .5f} +- {err:.5f}" for name, err in zip(STAR, errors)]
         edges = self.near_bounds()
-        lines.append("  near prior edges: " + (", ".join(f"{n} ({c:.3f})" for n, c in edges) if edges else "none"))
+        lines.append("  near prior edges: " + (", ".join(f"{r['name']} ({r['side']}, {r['distance']:.1%})"
+                                                         for r in edges) if edges else "none"))
         return "\n".join(lines)
 
     def star_simulations(self, others=(), nsigma=(1, 2), annotate=True):
@@ -154,8 +154,10 @@ def legacy_fit_entry(folder, label=None, unblind=False):
     fit = np.load(Path(folder) / "fitter_results.npy", allow_pickle=True).item()["fitter"]
     star = {name: float(fit["mle_cosmo"][name]) for name in STAR}
     if unblind:
-        blind = np.load(os.path.join(get_path_repo("cup1d"), "data", "blinding_dr1.npy"),
-                        allow_pickle=True).item()
-        star = {name: star[name] - blind[name] for name in STAR}
+        from cup1d.utils.blinding import Blinding
+
+        blind = Blinding(np.load(os.path.join(get_path_repo("cup1d"), "data", "blinding_dr1.npy"),
+                                 allow_pickle=True).item())
+        star = blind.unblind(star)
     chi2 = -2 * float(fit["lnprob_mle"])
     return dict(label=f"{label or Path(folder).name} ($\\chi^2$ = {chi2:.1f})", star=star, marker="s")

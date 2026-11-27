@@ -2,9 +2,14 @@ import os
 import re
 import numpy as np
 
+from lace.utils.chains import purge_chains as _lace_purge_chains
+
 
 def purge_chains(ln_prop_chains, nsplit=4, abs_diff=15):
     """Select walkers with stable, sufficiently high log-probability histories.
+
+    Thin wrapper around :func:`lace.utils.chains.purge_chains` that keeps the
+    cup1d defaults (threshold relative to the global median) and return format.
 
     Parameters
     ----------
@@ -22,32 +27,11 @@ def purge_chains(ln_prop_chains, nsplit=4, abs_diff=15):
     """
     minval = np.median(ln_prop_chains) - abs_diff
     print(minval)
-    # split each walker in nsplit chunks
-    split_arr = np.array_split(ln_prop_chains, nsplit, axis=0)
-    # compute median of each chunck
-    split_med = []
-    for ii in range(nsplit):
-        split_med.append(split_arr[ii].mean(axis=0))
-    # (nwalkers, nchucks)
-    split_res = np.array(split_med).T
-    # compute median of chunks for each walker ()
-    split_res_med = split_res.mean(axis=1)
-
-    # step-dependence convergence
-    # check that average logprob does not vary much with step
-    # compute difference between chunks and median of each chain
-    keep1 = (np.abs(split_res - split_res_med[:, np.newaxis]) < abs_diff).all(
-        axis=1
+    both = _lace_purge_chains(
+        ln_prop_chains, nsplit=nsplit, abs_diff=abs_diff, minval=minval
     )
-    # total-dependence convergence
-    # check that average logprob is close to minimum logprob of all chains
-    # check that all chunks are above a target minimum value
-    keep2 = (split_res > minval).all(axis=1)
-
-    # combine both criteria
-    both = keep1 & keep2
     keep = np.argwhere(both)[:, 0]
-    keep_not = np.argwhere(both == False)[:, 0]
+    keep_not = np.argwhere(~both)[:, 0]
 
     return keep, keep_not
 

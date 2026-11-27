@@ -53,7 +53,7 @@ def load(path, unblind=False):
         chi2 = float(payload["fit"]["mle_chi2"])
         star = {name: float(fitter.mle_cosmo[name]) for name in STAR}  # blinded
         if unblind:
-            star = {name: star[name] - fitter.like.blind[name] for name in STAR}
+            star = fitter.like.blind.unblind(star)
         otypes = payload.get("parameter_otypes", {})
     else:  # legacy DR1 paper result
         from cup1d.postprocessing.plots_corner import _load_parameter_bounds
@@ -66,9 +66,11 @@ def load(path, unblind=False):
         if unblind:  # offsets of the DR1 paper data
             from cup1d.utils.utils import get_path_repo
 
-            blind = np.load(os.path.join(get_path_repo("cup1d"), "data", "blinding_dr1.npy"),
-                            allow_pickle=True).item()
-            star = {name: star[name] - blind[name] for name in STAR}
+            from cup1d.utils.blinding import Blinding
+
+            blind = Blinding(np.load(os.path.join(get_path_repo("cup1d"), "data", "blinding_dr1.npy"),
+                                     allow_pickle=True).item())
+            star = blind.unblind(star)
         otypes = {}
     values = {n: bounds[n][0] + (bounds[n][1] - bounds[n][0]) * c for n, c in zip(names, cube)}
     return dict(label=str(path.parent), chi2=chi2, star=star, values=values,
